@@ -48,6 +48,7 @@ static indigo_driver *drivers[MAX_DRIVERS];
 static indigo_client *clients[MAX_CLIENTS];
 
 char *indigo_property_type_text[] = {
+  "UNDEFINED_TYPE",
   "TEXT",
   "NUMBER",
   "SWITCH",
@@ -63,25 +64,29 @@ char *indigo_property_state_text[] = {
 };
 
 char *indigo_property_perm_text[] = {
+  "UNDEFINED_PERM",
   "RO",
   "RW",
   "WO"
 };
 
-char *indigo_rule_text[] = {
+char *indigo_switch_rule_text[] = {
+  "UNDEFINED_RULE",
   "ONE_OF_MANY",
   "AT_MOST_ONE",
   "ANY_OF_MANY"
 };
 
+indigo_property INDIGO_ALL_PROPERTIES;
+
 static void log_message(const char *format, va_list args) {
-  char buffer[128];
+  char buffer[256];
   struct timeval tmnow;
   gettimeofday(&tmnow, NULL);
   strftime (buffer, 9, "%H:%M:%S", localtime(&tmnow.tv_sec));
   sprintf(buffer + 8, ".%06d ", tmnow.tv_usec);
-  vsprintf(buffer + 16, format, args);
-  printf("%s\n", buffer);
+  vsnprintf(buffer + 16, 240, format, args);
+  fprintf(stderr, "%s\n", buffer);
 }
 
 void indigo_trace(const char *format, ...) {
@@ -102,9 +107,9 @@ void indigo_debug_property(const char *message, indigo_property *property, bool 
   if (message != NULL)
     indigo_debug(message);
   if (defs)
-    indigo_debug("'%s'.'%s' %s %s %s %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->type == INDIGO_SWITCH_VECTOR ? indigo_rule_text[property->rule]: ""), property->label);
+    indigo_debug("'%s'.'%s' %s %s %s %d.%d %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
   else
-    indigo_debug("'%s'.'%s' %s %s %s %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->type == INDIGO_SWITCH_VECTOR ? indigo_rule_text[property->rule]: ""));
+    indigo_debug("'%s'.'%s' %s %s %s %d.%d %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
   if (items) {
     for (int i = 0; i < property->count; i++) {
       indigo_item *item = &property->items[i];
@@ -160,8 +165,10 @@ void indigo_log(const char *format, ...) {
 }
 
 indigo_result indigo_init() {
-  memset(drivers, MAX_DRIVERS, sizeof(indigo_driver *));
-  memset(clients, MAX_CLIENTS, sizeof(indigo_client *));
+  memset(drivers, 0, MAX_DRIVERS * sizeof(indigo_driver *));
+  memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
+  memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
+  INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
   return INDIGO_OK;
 }
 
@@ -206,13 +213,14 @@ indigo_result indigo_start() {
   return success ? INDIGO_OK : INDIGO_PARTIALLY_FAILED;
 }
 
-indigo_result indigo_enumerate_properties(indigo_client *client) {
+indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
+  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
   bool success = true;
   for (int i = 0; i < MAX_DRIVERS; i++) {
     indigo_driver *driver = drivers[i];
     if (driver == NULL)
       break;
-    if (driver->enumerate_properties(driver, client))
+    if (driver->enumerate_properties(driver, client, property))
       success = false;
   }
   return success ? INDIGO_OK : INDIGO_PARTIALLY_FAILED;
@@ -289,77 +297,89 @@ indigo_result indigo_stop() {
   return success ? INDIGO_OK : INDIGO_PARTIALLY_FAILED;
 }
 
-indigo_property *indigo_allocate_text_property(const char *device, const char *name, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
+indigo_property *indigo_allocate_text_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
   int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
   indigo_property *property = malloc(size);
-  memset(property, size, 0);
+  memset(property, 0, size);
   strncpy(property->device, device, NAME_SIZE);
   strncpy(property->name, name, NAME_SIZE);
+  strncpy(property->group, group, NAME_SIZE);
   strncpy(property->label, label, VALUE_SIZE);
   property->type = INDIGO_TEXT_VECTOR;
   property->state = state;
   property->perm = perm;
+  property->version = INDIGO_VERSION_CURRENT;
   property->count = count;
   return property;
 }
 
-indigo_property *indigo_allocate_number_property(const char *device, const char *name, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
+indigo_property *indigo_allocate_number_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
   int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
   indigo_property *property = malloc(size);
-  memset(property, size, 0);
+  memset(property, 0, size);
   strncpy(property->device, device, NAME_SIZE);
   strncpy(property->name, name, NAME_SIZE);
+  strncpy(property->group, group, NAME_SIZE);
   strncpy(property->label, label, VALUE_SIZE);
   property->type = INDIGO_NUMBER_VECTOR;
   property->state = state;
   property->perm = perm;
+  property->version = INDIGO_VERSION_CURRENT;
   property->count = count;
   return property;
 }
 
-indigo_property *indigo_allocate_switch_property(const char *device, const char *name, const char *label, indigo_property_state state, indigo_property_perm perm, indigo_rule rule, int count) {
+indigo_property *indigo_allocate_switch_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, indigo_rule rule, int count) {
   int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
   indigo_property *property = malloc(size);
-  memset(property, size, 0);
+  memset(property, 0, size);
   strncpy(property->device, device, NAME_SIZE);
   strncpy(property->name, name, NAME_SIZE);
+  strncpy(property->group, group, NAME_SIZE);
   strncpy(property->label, label, VALUE_SIZE);
   property->type = INDIGO_SWITCH_VECTOR;
   property->state = state;
   property->perm = perm;
   property->rule = rule;
+  property->version = INDIGO_VERSION_CURRENT;
   property->count = count;
   return property;
 }
 
-indigo_property *indigo_allocate_light_property(const char *device, const char *name, const char *label, indigo_property_state state, int count) {
+indigo_property *indigo_allocate_light_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count) {
   int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
   indigo_property *property = malloc(size);
-  memset(property, size, 0);
+  memset(property, 0, size);
   strncpy(property->device, device, NAME_SIZE);
   strncpy(property->name, name, NAME_SIZE);
+  strncpy(property->group, group, NAME_SIZE);
   strncpy(property->label, label, VALUE_SIZE);
   property->type = INDIGO_LIGHT_VECTOR;
+  property->perm = INDIGO_RO_PERM;
   property->state = state;
+  property->version = INDIGO_VERSION_CURRENT;
   property->count = count;
   return property;
 }
 
-indigo_property *indigo_allocate_blob_property(const char *device, const char *name, const char *label, indigo_property_state state, int count) {
+indigo_property *indigo_allocate_blob_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count) {
   int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
   indigo_property *property = malloc(size);
-  memset(property, size, 0);
+  memset(property, 0, size);
   strncpy(property->device, device, NAME_SIZE);
   strncpy(property->name, name, NAME_SIZE);
+  strncpy(property->group, group, NAME_SIZE);
   strncpy(property->label, label, VALUE_SIZE);
   property->type = INDIGO_BLOB_VECTOR;
+  property->perm = INDIGO_RO_PERM;
   property->state = state;
+  property->version = INDIGO_VERSION_CURRENT;
   property->count = count;
   return property;
 }
 
 void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *value) {
-  memset(item, sizeof(indigo_item), 0);
+  memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name, NAME_SIZE);
   strncpy(item->label, label, NAME_SIZE);
   strncpy(item->text_value, value, VALUE_SIZE);

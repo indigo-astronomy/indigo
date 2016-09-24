@@ -7,10 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		592662B11D9590630021746A /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 592662B01D9590630021746A /* main.c */; };
+		592662B11D9590630021746A /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 592662B01D9590630021746A /* test.c */; };
 		59D381CA1D96A8E400E87393 /* indigo_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381BF1D965FDA00E87393 /* indigo_driver.c */; };
 		59D381CB1D96A8E700E87393 /* ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* ccd_simulator.c */; };
 		59D381CC1D96A8EA00E87393 /* indigo_bus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381A81D9592A400E87393 /* indigo_bus.c */; };
+		59D381EE1D96CD1900E87393 /* indigo_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381CD1D96AB9500E87393 /* indigo_xml.c */; };
+		59D381EF1D96CD1D00E87393 /* indigo_bus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381A81D9592A400E87393 /* indigo_bus.c */; };
+		59D381F21D9705EF00E87393 /* driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381F11D9705EF00E87393 /* driver.c */; };
+		59D381FE1D97085600E87393 /* indigo_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381BF1D965FDA00E87393 /* indigo_driver.c */; };
+		59D381FF1D97085600E87393 /* ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* ccd_simulator.c */; };
+		59D382001D97085600E87393 /* indigo_bus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381A81D9592A400E87393 /* indigo_bus.c */; };
+		59D382011D97085600E87393 /* indigo_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381CD1D96AB9500E87393 /* indigo_xml.c */; };
+		59D382021D97085600E87393 /* driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381F11D9705EF00E87393 /* driver.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -23,11 +31,29 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		59D381E51D96CCFC00E87393 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		59D381F51D97083A00E87393 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		592662AD1D9590630021746A /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
-		592662B01D9590630021746A /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		592662B01D9590630021746A /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		59D381A71D95926E00E87393 /* indigo_bus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = indigo_bus.h; path = indigo_bus/indigo_bus.h; sourceTree = SOURCE_ROOT; wrapsLines = 0; };
 		59D381A81D9592A400E87393 /* indigo_bus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = indigo_bus.c; path = indigo_bus/indigo_bus.c; sourceTree = SOURCE_ROOT; };
 		59D381AB1D95996100E87393 /* ccd_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ccd_simulator.c; sourceTree = "<group>"; };
@@ -37,10 +63,32 @@
 		59D381C71D96A33D00E87393 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59D381C81D96A39400E87393 /* LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.md; sourceTree = "<group>"; };
 		59D381C91D96A4E800E87393 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; usesTabs = 1; };
+		59D381CD1D96AB9500E87393 /* indigo_xml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_xml.c; sourceTree = "<group>"; };
+		59D381CE1D96AB9500E87393 /* indigo_xml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_xml.h; sourceTree = "<group>"; };
+		59D381E71D96CCFC00E87393 /* pokus */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pokus; sourceTree = BUILT_PRODUCTS_DIR; };
+		59D381E91D96CCFD00E87393 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		59D381F01D96F4D100E87393 /* XML.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = XML.txt; sourceTree = "<group>"; };
+		59D381F11D9705EF00E87393 /* driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = driver.c; sourceTree = "<group>"; };
+		59D381F71D97083A00E87393 /* driver */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = driver; sourceTree = BUILT_PRODUCTS_DIR; };
+		59D381F91D97083A00E87393 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		592662AA1D9590630021746A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		59D381E41D96CCFC00E87393 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		59D381F41D97083A00E87393 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -59,6 +107,8 @@
 				59D381AF1D95998300E87393 /* indigo_drivers */,
 				59D381A61D9590EA00E87393 /* indigo_bus */,
 				592662AF1D9590630021746A /* indigo_test */,
+				59D381E81D96CCFD00E87393 /* pokus */,
+				59D381F81D97083A00E87393 /* driver */,
 				592662AE1D9590630021746A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -68,6 +118,8 @@
 			isa = PBXGroup;
 			children = (
 				592662AD1D9590630021746A /* test */,
+				59D381E71D96CCFC00E87393 /* pokus */,
+				59D381F71D97083A00E87393 /* driver */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -75,7 +127,8 @@
 		592662AF1D9590630021746A /* indigo_test */ = {
 			isa = PBXGroup;
 			children = (
-				592662B01D9590630021746A /* main.c */,
+				592662B01D9590630021746A /* test.c */,
+				59D381F11D9705EF00E87393 /* driver.c */,
 			);
 			path = indigo_test;
 			sourceTree = "<group>";
@@ -85,6 +138,9 @@
 			children = (
 				59D381A71D95926E00E87393 /* indigo_bus.h */,
 				59D381A81D9592A400E87393 /* indigo_bus.c */,
+				59D381CE1D96AB9500E87393 /* indigo_xml.h */,
+				59D381CD1D96AB9500E87393 /* indigo_xml.c */,
+				59D381F01D96F4D100E87393 /* XML.txt */,
 			);
 			path = indigo_bus;
 			sourceTree = "<group>";
@@ -108,6 +164,22 @@
 			path = indigo_drivers;
 			sourceTree = "<group>";
 		};
+		59D381E81D96CCFD00E87393 /* pokus */ = {
+			isa = PBXGroup;
+			children = (
+				59D381E91D96CCFD00E87393 /* main.c */,
+			);
+			path = pokus;
+			sourceTree = "<group>";
+		};
+		59D381F81D97083A00E87393 /* driver */ = {
+			isa = PBXGroup;
+			children = (
+				59D381F91D97083A00E87393 /* main.c */,
+			);
+			path = driver;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -128,6 +200,40 @@
 			productReference = 592662AD1D9590630021746A /* test */;
 			productType = "com.apple.product-type.tool";
 		};
+		59D381E61D96CCFC00E87393 /* pokus */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 59D381EB1D96CCFD00E87393 /* Build configuration list for PBXNativeTarget "pokus" */;
+			buildPhases = (
+				59D381E31D96CCFC00E87393 /* Sources */,
+				59D381E41D96CCFC00E87393 /* Frameworks */,
+				59D381E51D96CCFC00E87393 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = pokus;
+			productName = pokus;
+			productReference = 59D381E71D96CCFC00E87393 /* pokus */;
+			productType = "com.apple.product-type.tool";
+		};
+		59D381F61D97083A00E87393 /* driver */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 59D381FB1D97083A00E87393 /* Build configuration list for PBXNativeTarget "driver" */;
+			buildPhases = (
+				59D381F31D97083A00E87393 /* Sources */,
+				59D381F41D97083A00E87393 /* Frameworks */,
+				59D381F51D97083A00E87393 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = driver;
+			productName = driver;
+			productReference = 59D381F71D97083A00E87393 /* driver */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -138,6 +244,14 @@
 				ORGANIZATIONNAME = "CloudMakers, s. r. o.";
 				TargetAttributes = {
 					592662AC1D9590630021746A = {
+						CreatedOnToolsVersion = 8.0;
+						ProvisioningStyle = Automatic;
+					};
+					59D381E61D96CCFC00E87393 = {
+						CreatedOnToolsVersion = 8.0;
+						ProvisioningStyle = Automatic;
+					};
+					59D381F61D97083A00E87393 = {
 						CreatedOnToolsVersion = 8.0;
 						ProvisioningStyle = Automatic;
 					};
@@ -156,6 +270,8 @@
 			projectRoot = "";
 			targets = (
 				592662AC1D9590630021746A /* test */,
+				59D381E61D96CCFC00E87393 /* pokus */,
+				59D381F61D97083A00E87393 /* driver */,
 			);
 		};
 /* End PBXProject section */
@@ -166,9 +282,31 @@
 			buildActionMask = 2147483647;
 			files = (
 				59D381CC1D96A8EA00E87393 /* indigo_bus.c in Sources */,
-				592662B11D9590630021746A /* main.c in Sources */,
+				592662B11D9590630021746A /* test.c in Sources */,
 				59D381CB1D96A8E700E87393 /* ccd_simulator.c in Sources */,
+				59D381F21D9705EF00E87393 /* driver.c in Sources */,
 				59D381CA1D96A8E400E87393 /* indigo_driver.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		59D381E31D96CCFC00E87393 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				59D381EF1D96CD1D00E87393 /* indigo_bus.c in Sources */,
+				59D381EE1D96CD1900E87393 /* indigo_xml.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		59D381F31D97083A00E87393 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				59D381FE1D97085600E87393 /* indigo_driver.c in Sources */,
+				59D381FF1D97085600E87393 /* ccd_simulator.c in Sources */,
+				59D382001D97085600E87393 /* indigo_bus.c in Sources */,
+				59D382011D97085600E87393 /* indigo_xml.c in Sources */,
+				59D382021D97085600E87393 /* driver.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -276,6 +414,34 @@
 			};
 			name = Release;
 		};
+		59D381EC1D96CCFD00E87393 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		59D381ED1D96CCFD00E87393 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		59D381FC1D97083A00E87393 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		59D381FD1D97083A00E87393 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -296,6 +462,22 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		59D381EB1D96CCFD00E87393 /* Build configuration list for PBXNativeTarget "pokus" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				59D381EC1D96CCFD00E87393 /* Debug */,
+				59D381ED1D96CCFD00E87393 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+		59D381FB1D97083A00E87393 /* Build configuration list for PBXNativeTarget "driver" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				59D381FC1D97083A00E87393 /* Debug */,
+				59D381FD1D97083A00E87393 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
 		};
 /* End XCConfigurationList section */
 	};

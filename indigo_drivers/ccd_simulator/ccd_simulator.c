@@ -38,19 +38,28 @@
 
 #include "ccd_simulator.h"
 
+#define DEVICE "CCD Simulator"
+
 static indigo_property *connection_property;
 static indigo_property *exposure_property;
 static indigo_property *ccd1_property;
 
 static indigo_result ccd_simulator_init(indigo_driver *driver) {
-  connection_property = indigo_allocate_switch_property("CCD Simulator", "CONNECTION", "Connection", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+  connection_property = indigo_allocate_switch_property(DEVICE, "CONNECTION", "Main", "Connection", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
   indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "Connected", false);
   indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "Disconnected", true);
-  exposure_property = indigo_allocate_number_property("CCD Simulator", "CCD_EXPOSURE", "Expose", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+  exposure_property = indigo_allocate_number_property(DEVICE, "CCD_EXPOSURE", "Main", "Expose", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
   indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "Expose the CCD chip (seconds)", 0, 900, 1, 1);
-  ccd1_property = indigo_allocate_blob_property("CCD Simulator", "CCD1", "Image", INDIGO_IDLE_STATE, 1);
+  ccd1_property = indigo_allocate_blob_property(DEVICE, "CCD1", "Main", "Image", INDIGO_IDLE_STATE, 1);
   indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "Primary CCD image");
-  ccd1_property->items[0].blob_value = malloc(ccd1_property->items[0].blob_size = 2*4096*4096);
+  
+  int size = 2*64*64; //2*4096*4096;
+  char *blob = malloc(size);
+  for (int i = 0; i < size; i++)
+    blob[i] = rand();
+  ccd1_property->items[0].blob_size = size;
+  ccd1_property->items[0].blob_value = blob;
+  
   strncpy(ccd1_property->items[0].blob_format, ".bin", NAME_SIZE);
   return INDIGO_OK;
 }
@@ -59,17 +68,24 @@ static indigo_result ccd_simulator_start(indigo_driver *driver) {
   return INDIGO_OK;
 }
 
-static indigo_result ccd_simulator_enumerate_properties(indigo_driver *driver, indigo_client *client) {
-  indigo_define_property(driver, connection_property);
-  if (connection_property->items[0].switch_value) {
-    indigo_define_property(driver, exposure_property);
-    indigo_define_property(driver, ccd1_property);
+static indigo_result ccd_simulator_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
+  if (*property->device == 0 || !strcmp(property->device, DEVICE)) {
+    if (*property->name == 0 || !strcmp(property->name, connection_property->name))
+      indigo_define_property(driver, connection_property);
+    if (connection_property->items[0].switch_value) {
+      if (*property->name == 0 || !strcmp(property->name, exposure_property->name))
+        indigo_define_property(driver, exposure_property);
+      if (*property->name == 0 || !strcmp(property->name, ccd1_property->name))
+        indigo_define_property(driver, ccd1_property);
+    }
   }
   return INDIGO_OK;
 }
 
 static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   if (indigo_property_match(connection_property, property)) {
+    connection_property->items[0].switch_value = false;
+    connection_property->items[1].switch_value = false;
     indigo_property_copy_values(connection_property, property);
     if (connection_property->items[0].switch_value) {
       indigo_define_property(driver, exposure_property);
