@@ -12,8 +12,8 @@ make all
 
 and then execute either (client and driver in single executable with direct communication over the bus)
 
-test
+./test
 
 or (client executing driver as child proces with the legacy INDI wire protocol)
 
-client driver
+./client ./driver
