@@ -38,7 +38,7 @@
 #include <stdbool.h>
 
 #define INDIGO_TRACE(c)
-#define INDIGO_DEBUG(c)
+#define INDIGO_DEBUG(c) c
 #define INDIGO_ERROR(c) c
 #define INDIGO_LOG(c) c
 
@@ -121,6 +121,7 @@ typedef struct {
 struct indigo_client;
 
 typedef struct indigo_driver {
+  int input, output;
   indigo_result (*init)(struct indigo_driver *driver);
   indigo_result (*start)(struct indigo_driver *driver);
   indigo_result (*enumerate_properties)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
@@ -129,6 +130,7 @@ typedef struct indigo_driver {
 } indigo_driver;
 
 typedef struct indigo_client {
+  int input, output;
   indigo_result (*init)(struct indigo_client *client);
   indigo_result (*start)(struct indigo_client *client);
   indigo_result (*define_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);

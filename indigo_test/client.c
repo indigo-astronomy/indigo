@@ -38,13 +38,13 @@
 #include <string.h>
 
 #include "indigo_bus.h"
-#include "ccd_simulator.h"
+#include "indigo_client_xml.h"
 
 static indigo_property *connection_property;
 static indigo_property *exposure_property;
 static indigo_property *ccd1_property;
 
-static indigo_result test_init(indigo_client *client) {
+static indigo_result client_init(indigo_client *client) {
   connection_property = indigo_allocate_switch_property("CCD Simulator", "CONNECTION", "Main", "Connection", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
   indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "Connected", false);
   indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "Disconnected", true);
@@ -52,28 +52,28 @@ static indigo_result test_init(indigo_client *client) {
   indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "Expose the CCD chip (seconds)", 0, 900, 1, 1);
   ccd1_property = indigo_allocate_blob_property("CCD Simulator", "CCD1", "Main", "Image", INDIGO_IDLE_STATE, 1);
   indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "Primary CCD image");
-  indigo_log("------------------------------------------ Test: initialized...");
+  indigo_log("------------------------------------------ Client: initialized...");
   return INDIGO_OK;
 }
 
-static indigo_result test_start(indigo_client *client) {
-  indigo_log("------------------------------------------ Test: started...");
+static indigo_result client_start(indigo_client *client) {
+  indigo_log("------------------------------------------ Client: started...");
   return INDIGO_OK;
 }
 
-static indigo_result test_define_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
+static indigo_result client_define_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
   return INDIGO_OK;
 }
 
-static indigo_result test_update_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
+static indigo_result client_update_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
   if (indigo_property_match(connection_property, property)) {
     indigo_property_copy_values(connection_property, property);
     if (connection_property->items[0].switch_value) {
-      indigo_log("------------------------------------------ Test: connected...");
+      indigo_log("------------------------------------------ Client: connected...");
       exposure_property->items[0].number_value = 3.0;
       indigo_change_property(client, exposure_property);
     } else {
-      indigo_log("------------------------------------------ Test: disconnected...");
+      indigo_log("------------------------------------------ Client: disconnected...");
       indigo_stop();
     }
     return INDIGO_OK;
@@ -81,16 +81,16 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
   if (indigo_property_match(exposure_property, property)) {
     indigo_property_copy_values(exposure_property, property);
     if (exposure_property->state == INDIGO_BUSY_STATE) {
-      indigo_log("------------------------------------------ Test: exposure %gs...", exposure_property->items[0].number_value);
+      indigo_log("------------------------------------------ Client: exposure %gs...", exposure_property->items[0].number_value);
     } else if (exposure_property->state == INDIGO_OK_STATE) {
-      indigo_log("------------------------------------------ Test: exposure done...");
+      indigo_log("------------------------------------------ Client: exposure done...");
     }
     return INDIGO_OK;
   }
   if (indigo_property_match(ccd1_property, property)) {
     indigo_property_copy_values(ccd1_property, property);
     if (ccd1_property->state == INDIGO_OK_STATE) {
-      indigo_log("------------------------------------------ Test: image received...");
+      indigo_log("------------------------------------------ Client: image received...");
       connection_property->items[0].switch_value = false;
       connection_property->items[1].switch_value = true;
       indigo_change_property(client, connection_property);
@@ -100,35 +100,35 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
   return INDIGO_OK;
 }
 
-static indigo_result test_delete_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
+static indigo_result client_delete_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
   return INDIGO_OK;
 }
 
-static indigo_result test_stop(indigo_client *client) {
-  indigo_log("------------------------------------------ Test: stopped...");
+static indigo_result client_stop(indigo_client *client) {
+  indigo_log("------------------------------------------ Client: stopped...");
   exit(0);
   return INDIGO_OK;
 }
 
-static indigo_client *test() {
-  static indigo_client test = {
+static indigo_client *Client() {
+  static indigo_client Client = {
     0, 0,
-    test_init,
-    test_start,
-    test_define_property,
-    test_update_property,
-    test_delete_property,
-    test_stop
+    client_init,
+    client_start,
+    client_define_property,
+    client_update_property,
+    client_delete_property,
+    client_stop
   };
-  return &test;
+  return &Client;
 }
 
 int main(int argc, const char * argv[]) {
-  indigo_client *client = test();
+  indigo_client *client = Client();
   
   indigo_init();
-  indigo_register_driver(ccd_simulator);
-  indigo_register_client(test);
+  indigo_register_driver(xml_client_parser);
+  indigo_register_client(Client);
   indigo_start();
   
   indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);

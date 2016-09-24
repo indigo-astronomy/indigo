@@ -32,23 +32,12 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
+#ifndef indigo_client_xml_h
+#define indigo_client_xml_h
 
 #include "indigo_bus.h"
-#include "ccd_simulator.h"
-#include "indigo_driver_xml.h"
+#include "indigo_xml.h"
 
-int main(int argc, const char * argv[]) {
-  
-  indigo_init();
-  indigo_register_driver(ccd_simulator);
-  indigo_register_client(xml_driver_parser);
-  indigo_start();
-  
-  indigo_xml_parse(0, NULL, xml_driver_parser(0, 1));
-  
-  return 0;
-}
+extern indigo_driver *xml_client_parser(int input, int ouput);
+
+#endif /* indigo_client_xml_h */

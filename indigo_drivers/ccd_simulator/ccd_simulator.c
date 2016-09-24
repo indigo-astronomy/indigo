@@ -124,6 +124,7 @@ static indigo_result ccd_simulator_stop(indigo_driver *driver) {
 
 indigo_driver *ccd_simulator() {
   static indigo_driver ccd_simulator = {
+    0, 0,
     ccd_simulator_init,
     ccd_simulator_start,
     ccd_simulator_enumerate_properties,

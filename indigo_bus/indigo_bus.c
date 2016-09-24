@@ -48,7 +48,7 @@ static indigo_driver *drivers[MAX_DRIVERS];
 static indigo_client *clients[MAX_CLIENTS];
 
 char *indigo_property_type_text[] = {
-  "UNDEFINED_TYPE",
+  "UNDEFINED",
   "TEXT",
   "NUMBER",
   "SWITCH",
@@ -57,24 +57,24 @@ char *indigo_property_type_text[] = {
 };
 
 char *indigo_property_state_text[] = {
-  "IDLE",
-  "OK",
-  "BUSY",
-  "ALERT"
+  "Idle",
+  "Ok",
+  "Busy",
+  "Alert"
 };
 
 char *indigo_property_perm_text[] = {
-  "UNDEFINED_PERM",
-  "RO",
-  "RW",
-  "WO"
+  "UNDEFINED",
+  "ro",
+  "rw",
+  "wo"
 };
 
 char *indigo_switch_rule_text[] = {
-  "UNDEFINED_RULE",
-  "ONE_OF_MANY",
-  "AT_MOST_ONE",
-  "ANY_OF_MANY"
+  "UNDEFINED",
+  "OneOfMany",
+  "AtMostOne",
+  "AnyOfMany"
 };
 
 indigo_property INDIGO_ALL_PROPERTIES;

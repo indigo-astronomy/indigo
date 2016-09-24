@@ -64,12 +64,48 @@ typedef enum {
   END_TAG
 } parser_state;
 
+static indigo_property_state parse_state(char *value) {
+  if (!strcmp(value, "Ok"))
+    return INDIGO_OK_STATE;
+  if (!strcmp(value, "Busy"))
+    return INDIGO_BUSY_STATE;
+  if (!strcmp(value, "Alert"))
+    return INDIGO_ALERT_STATE;
+  return INDIGO_IDLE_STATE;
+}
+
+static indigo_property_perm parse_perm(char *value) {
+  if (!strcmp(value, "rw"))
+    return INDIGO_RW_PERM;
+  if (!strcmp(value, "wo"))
+    return INDIGO_WO_PERM;
+  return INDIGO_RO_PERM;
+}
+
+static indigo_rule parse_rule(char *value) {
+  if (!strcmp(value, "OneOfMany"))
+    return INDIGO_ONE_OF_MANY_RULE;
+  if (!strcmp(value, "AtMostOne"))
+    return INDIGO_AT_MOST_ONE_RULE;
+  return INDIGO_ANY_OF_MANY_RULE;
+}
+
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
 
 void *top_level_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
 void *new_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
 void *new_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
 void *new_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *def_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *def_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *def_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *def_light_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *def_blob_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *set_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *set_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *set_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *set_light_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
+void *set_blob_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
 
 void *get_properties_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
   if (state == ATTRIBUTE_VALUE) {
@@ -126,15 +162,7 @@ void *new_text_vector_handler(parser_state state, char *name, char *value, indig
     } else if (!strcmp(name, "name")) {
       strncpy(property->name, value, NAME_SIZE);
     } else if (!strcmp(name, "state")) {
-      if (!strcmp(value, "Idle")) {
-        property->state = INDIGO_OK_STATE;
-      } else if (!strcmp(value, "Ok")) {
-        property->state = INDIGO_OK_STATE;
-      } else if (!strcmp(value, "Busy")) {
-        property->state = INDIGO_BUSY_STATE;
-      } else if (!strcmp(value, "Alert")) {
-        property->state = INDIGO_ALERT_STATE;
-      }
+      property->state = parse_state(value);
     }
     return new_text_vector_handler;
   } else if (state == TEXT) {
@@ -178,15 +206,7 @@ void *new_number_vector_handler(parser_state state, char *name, char *value, ind
     } else if (!strcmp(name, "name")) {
       strncpy(property->name, value, NAME_SIZE);
     } else if (!strcmp(name, "state")) {
-      if (!strcmp(value, "Idle")) {
-        property->state = INDIGO_OK_STATE;
-      } else if (!strcmp(value, "Ok")) {
-        property->state = INDIGO_OK_STATE;
-      } else if (!strcmp(value, "Busy")) {
-        property->state = INDIGO_BUSY_STATE;
-      } else if (!strcmp(value, "Alert")) {
-        property->state = INDIGO_ALERT_STATE;
-      }
+      property->state = parse_state(value);
     }
     return new_number_vector_handler;
   } else if (state == TEXT) {
@@ -230,15 +250,7 @@ void *new_switch_vector_handler(parser_state state, char *name, char *value, ind
     } else if (!strcmp(name, "name")) {
       strncpy(property->name, value, NAME_SIZE);
     } else if (!strcmp(name, "state")) {
-      if (!strcmp(value, "Idle")) {
-        property->state = INDIGO_OK_STATE;
-      } else if (!strcmp(value, "Ok")) {
-        property->state = INDIGO_OK_STATE;
-      } else if (!strcmp(value, "Busy")) {
-        property->state = INDIGO_BUSY_STATE;
-      } else if (!strcmp(value, "Alert")) {
-        property->state = INDIGO_ALERT_STATE;
-      }
+      property->state = parse_state(value);
     }
     return new_switch_vector_handler;
   } else if (state == TEXT) {
@@ -257,6 +269,472 @@ void *new_switch_vector_handler(parser_state state, char *name, char *value, ind
   return top_level_handler;
 }
 
+void *set_one_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return set_one_text_vector_handler;
+    }
+  } else if (state == TEXT) {
+    strncat(property->items[property->count-1].text_value, value, VALUE_SIZE);
+    return set_one_text_vector_handler;
+  }
+  return set_text_vector_handler;
+}
+
+void *set_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "oneText")) {
+      property->count++;
+      return set_one_text_vector_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    }
+    return set_text_vector_handler;
+  } else if (state == TEXT) {
+    return set_text_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_TEXT_VECTOR;
+    indigo_update_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *set_one_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return set_one_number_vector_handler;
+    }
+  } else if (state == TEXT) {
+    property->items[property->count-1].number_value = atof(value);
+    return set_one_number_vector_handler;
+  }
+  return set_number_vector_handler;
+}
+
+void *set_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "oneNumber")) {
+      property->count++;
+      return set_one_number_vector_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    }
+    return set_number_vector_handler;
+  } else if (state == TEXT) {
+    return set_number_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_NUMBER_VECTOR;
+    indigo_update_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *set_one_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return set_one_switch_vector_handler;
+    }
+  } else if (state == TEXT) {
+    property->items[property->count-1].switch_value = !strcmp(value, "On");
+    return set_one_switch_vector_handler;
+  }
+  return set_switch_vector_handler;
+}
+
+void *set_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "oneSwitch")) {
+      property->count++;
+      return set_one_switch_vector_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    }
+    return set_switch_vector_handler;
+  } else if (state == TEXT) {
+    return set_switch_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_SWITCH_VECTOR;
+    indigo_update_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *set_one_light_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return set_one_light_vector_handler;
+    }
+  } else if (state == TEXT) {
+    property->items[property->count-1].light_value = parse_state(value);
+    return set_one_light_vector_handler;
+  }
+  return set_light_vector_handler;
+}
+
+void *set_light_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "oneLight")) {
+      property->count++;
+      return set_one_light_vector_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    }
+    return set_light_vector_handler;
+  } else if (state == TEXT) {
+    return set_light_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_LIGHT_VECTOR;
+    indigo_update_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *set_one_blob_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return set_one_blob_vector_handler;
+    }
+    if (!strcmp(name, "format")) {
+      strncpy(property->items[property->count-1].blob_format, value, NAME_SIZE);
+      return set_one_blob_vector_handler;
+    }
+    if (!strcmp(name, "size")) {
+      property->items[property->count-1].blob_size = atol(value);
+      return set_one_blob_vector_handler;
+    }
+  } else if (state == TEXT) {
+    
+    // TBD
+    
+    return set_one_blob_vector_handler;
+  }
+  return set_blob_vector_handler;
+}
+
+void *set_blob_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "oneBLOB")) {
+      property->count++;
+      return set_one_blob_vector_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    }
+    return set_blob_vector_handler;
+  } else if (state == TEXT) {
+    return set_blob_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_BLOB_VECTOR;
+    indigo_update_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *def_text_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return def_text_handler;
+    }
+    if (!strcmp(name, "label")) {
+      strncpy(property->items[property->count-1].label, value, NAME_SIZE);
+      return def_text_handler;
+    }
+  } else if (state == TEXT) {
+    strncat(property->items[property->count-1].text_value, value, VALUE_SIZE);
+    return def_text_handler;
+  }
+  return def_text_vector_handler;
+}
+
+void *def_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "defText")) {
+      property->count++;
+      return def_text_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "group")) {
+      strncpy(property->group, value, NAME_SIZE);
+    } else if (!strcmp(name, "label")) {
+      strncpy(property->label, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    } else if (!strcmp(name, "perm")) {
+      property->perm = parse_perm(value);
+    }
+    return def_text_vector_handler;
+  } else if (state == TEXT) {
+    return def_text_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_TEXT_VECTOR;
+    indigo_define_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *def_number_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return def_number_handler;
+    }
+    if (!strcmp(name, "label")) {
+      strncpy(property->items[property->count-1].label, value, NAME_SIZE);
+      return def_number_handler;
+    }
+    if (!strcmp(name, "min")) {
+      property->items[property->count-1].number_min = atof(value);
+      return def_number_handler;
+    }
+    if (!strcmp(name, "max")) {
+      property->items[property->count-1].number_max = atof(value);
+      return def_number_handler;
+    }
+    if (!strcmp(name, "step")) {
+      property->items[property->count-1].number_step = atof(value);
+      return def_number_handler;
+    }
+  } else if (state == TEXT) {
+    property->items[property->count-1].number_value = atof(value);
+    return def_number_handler;
+  }
+  return def_number_vector_handler;
+}
+
+void *def_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "defNumber")) {
+      property->count++;
+      return def_number_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "group")) {
+      strncpy(property->group, value, NAME_SIZE);
+    } else if (!strcmp(name, "label")) {
+      strncpy(property->label, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    } else if (!strcmp(name, "perm")) {
+      property->perm = parse_perm(value);
+    }
+    return def_number_vector_handler;
+  } else if (state == TEXT) {
+    return def_number_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_NUMBER_VECTOR;
+    indigo_define_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *def_switch_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return def_switch_handler;
+    }
+    if (!strcmp(name, "label")) {
+      strncpy(property->items[property->count-1].label, value, NAME_SIZE);
+      return def_switch_handler;
+    }
+  } else if (state == TEXT) {
+    property->items[property->count-1].switch_value = !strcmp(value, "On");
+    return def_switch_handler;
+  }
+  return def_switch_vector_handler;
+}
+
+void *def_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "defSwitch")) {
+      property->count++;
+      return def_switch_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "group")) {
+      strncpy(property->group, value, NAME_SIZE);
+    } else if (!strcmp(name, "label")) {
+      strncpy(property->label, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    } else if (!strcmp(name, "perm")) {
+      property->perm = parse_perm(value);
+    } else if (!strcmp(name, "rule")) {
+      property->rule = parse_rule(value);
+    }
+    return def_switch_vector_handler;
+  } else if (state == TEXT) {
+    return def_switch_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_SWITCH_VECTOR;
+    indigo_define_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *def_light_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return def_light_handler;
+    }
+    if (!strcmp(name, "label")) {
+      strncpy(property->items[property->count-1].label, value, NAME_SIZE);
+      return def_light_handler;
+    }
+  } else if (state == TEXT) {
+    property->items[property->count-1].light_value = parse_state(value);
+    return def_light_handler;
+  }
+  return def_light_vector_handler;
+}
+
+void *def_light_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "defLight")) {
+      property->count++;
+      return def_light_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "group")) {
+      strncpy(property->group, value, NAME_SIZE);
+    } else if (!strcmp(name, "label")) {
+      strncpy(property->label, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    }
+    return def_light_vector_handler;
+  } else if (state == TEXT) {
+    return def_light_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_LIGHT_VECTOR;
+    indigo_define_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *def_blob_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "name")) {
+      strncpy(property->items[property->count-1].name, value, NAME_SIZE);
+      return def_blob_handler;
+    }
+    if (!strcmp(name, "label")) {
+      strncpy(property->items[property->count-1].label, value, NAME_SIZE);
+      return def_blob_handler;
+    }
+  } else if (state == TEXT) {
+    return def_blob_handler;
+  }
+  return def_blob_vector_handler;
+}
+
+void *def_blob_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == BEGIN_TAG) {
+    if (!strcmp(name, "defBLOB")) {
+      property->count++;
+      return def_blob_handler;
+    }
+  } else if (state == ATTRIBUTE_VALUE) {
+    if (!strcmp(name, "device")) {
+      strncpy(property->device, value, NAME_SIZE);
+    } else if (!strcmp(name, "name")) {
+      strncpy(property->name, value, NAME_SIZE);
+    } else if (!strcmp(name, "group")) {
+      strncpy(property->group, value, NAME_SIZE);
+    } else if (!strcmp(name, "label")) {
+      strncpy(property->label, value, NAME_SIZE);
+    } else if (!strcmp(name, "state")) {
+      property->state = parse_state(value);
+    }
+    return def_blob_vector_handler;
+  } else if (state == TEXT) {
+    return def_blob_vector_handler;
+  } else if (state == END_TAG) {
+    property->type = INDIGO_BLOB_VECTOR;
+    indigo_define_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
+void *del_property_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == ATTRIBUTE_VALUE) {
+    if (!strncmp(name, "device", NAME_SIZE)) {
+      strcpy(property->device, value);
+    } else if (!strncmp(name, "name", NAME_SIZE)) {
+      strcpy(property->name, value);
+    }
+    return del_property_handler;
+  } else if (state == TEXT) {
+    return del_property_handler;
+  } else if (state == END_TAG) {
+    indigo_delete_property(driver, property);
+    memset(property, 0, PROPERTY_SIZE);
+  }
+  return top_level_handler;
+}
+
 void *top_level_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
   if (state == BEGIN_TAG) {
     if (!strcmp(name, "getProperties"))
@@ -267,6 +745,28 @@ void *top_level_handler(parser_state state, char *name, char *value, indigo_prop
       return new_number_vector_handler;
     if (!strcmp(name, "newSwitchVector"))
       return new_switch_vector_handler;
+    if (!strcmp(name, "setTextVector"))
+      return set_text_vector_handler;
+    if (!strcmp(name, "setNumberVector"))
+      return set_number_vector_handler;
+    if (!strcmp(name, "setSwitchVector"))
+      return set_switch_vector_handler;
+    if (!strcmp(name, "setLightVector"))
+      return set_light_vector_handler;
+    if (!strcmp(name, "setBLOBVector"))
+      return set_blob_vector_handler;
+    if (!strcmp(name, "defTextVector"))
+      return def_text_vector_handler;
+    if (!strcmp(name, "defNumberVector"))
+      return def_number_vector_handler;
+    if (!strcmp(name, "defSwitchVector"))
+      return def_switch_vector_handler;
+    if (!strcmp(name, "defLightVector"))
+      return def_light_vector_handler;
+    if (!strcmp(name, "defBLOBVector"))
+      return def_blob_vector_handler;
+    if (!strcmp(name, "delProperty"))
+      return del_property_handler;
   }
   return top_level_handler;
 }
@@ -460,184 +960,6 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
   }
 }
 
-static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
-
-static void xprintf(const char *format, ...) {
-  char buffer[1024];
-  va_list args;
-  va_start(args, format);
-  int length = vsnprintf(buffer, 1024, format, args);
-  va_end(args);
-  write(1, buffer, length);
-}
-
-static indigo_result xml_driver_parser_init(indigo_client *client) {
-  return INDIGO_OK;
-}
-
-static indigo_result xml_driver_parser_start(indigo_client *client) {
-  return INDIGO_OK;
-}
-
-static indigo_result xml_driver_parser_define_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
-  pthread_mutex_lock(&xmutex);
-  switch (property->type) {
-    case INDIGO_TEXT_VECTOR:
-      xprintf("<defTextVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
-      for (int i = 0; i < property->count; i++) {
-        indigo_item *item = &property->items[i];
-        xprintf("<defText name='%s' label='%s'>%s</defText>\n", item->name, item->label, item->text_value);
-      }
-      xprintf("</defTextVector>\n");
-      break;
-    case INDIGO_NUMBER_VECTOR:
-      xprintf("<defNumberVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
-      for (int i = 0; i < property->count; i++) {
-        indigo_item *item = &property->items[i];
-        xprintf("<defNumber name='%s' label='%s' min='%g' max='%g' step='%g'>%g</defNumber>\n", item->name, item->label, item->number_min, item->number_max, item->number_step, item->number_value);
-      }
-      xprintf("</defNumberVector>\n");
-      break;
-    case INDIGO_SWITCH_VECTOR:
-      xprintf("<defSwitchVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s' rule='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule]);
-      for (int i = 0; i < property->count; i++) {
-        indigo_item *item = &property->items[i];
-        xprintf("<defSwitch name='%s' label='%s'>%s</defSwitch>\n", item->name, item->label, item->switch_value ? "On" : "Off");
-      }
-      xprintf("</defSwitchVector>\n");
-      break;
-    case INDIGO_LIGHT_VECTOR:
-      xprintf("<defLightVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
-      for (int i = 0; i < property->count; i++) {
-        indigo_item *item = &property->items[i];
-        xprintf(" <defLight name='%s' label='%s'>%s</defLight>\n", item->name, item->label, indigo_property_state_text[item->light_value]);
-      }
-      xprintf("</defLightVector>\n");
-      break;
-    case INDIGO_BLOB_VECTOR:
-      xprintf("<defBLOBVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
-      for (int i = 0; i < property->count; i++) {
-        indigo_item *item = &property->items[i];
-        xprintf("<defBLOB name='%s' label='%s'/>\n", item->name, item->label);
-      }
-      xprintf("</defBLOBtVector>\n");
-      break;
-  }
-  pthread_mutex_unlock(&xmutex);
-  return INDIGO_OK;
-}
-
-static char encoding_table[] =
-{ 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-  'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-  'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-  'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-  'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-  'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-  'w', 'x', 'y', 'z', '0', '1', '2', '3',
-  '4', '5', '6', '7', '8', '9', '+', '/'
-};
-
-static int mod_table[] = {0, 2, 1};
-
-static indigo_result xml_driver_parser_update_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
-  pthread_mutex_lock(&xmutex);
-  switch (property->type) {
-    case INDIGO_TEXT_VECTOR:
-      xprintf("<setTextVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
-      for (int i = 0; i < property->count; i++) {
-        indigo_item *item = &property->items[i];
-        xprintf("<oneText name='%s'>%s</oneText>\n", item->name, item->text_value);
-      }
-      xprintf("</setTextVector>\n");
-      break;
-    case INDIGO_NUMBER_VECTOR:
-      xprintf("<setNumberVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
-      for (int i = 0; i < property->count; i++) {
-        indigo_item *item = &property->items[i];
-        xprintf("<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
-      }
-      xprintf("</setNumberVector>\n");
-      break;
-    case INDIGO_SWITCH_VECTOR:
-      xprintf("<setSwitchVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
-      for (int i = 0; i < property->count; i++) {
-        indigo_item *item = &property->items[i];
-        xprintf("<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
-      }
-      xprintf("</setSwitchVector>\n");
-      break;
-    case INDIGO_LIGHT_VECTOR:
-      xprintf("<setLightVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
-      for (int i = 0; i < property->count; i++) {
-        indigo_item *item = &property->items[i];
-        xprintf("<oneLight name='%s'>%s</oneLight>\n", item->name, indigo_property_state_text[item->light_value]);
-      }
-      xprintf("</setLightVector>\n");
-      break;
-    case INDIGO_BLOB_VECTOR:
-      xprintf("<setBLOBVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
-      if (property->state == INDIGO_OK_STATE) {
-        for (int i = 0; i < property->count; i++) {
-          indigo_item *item = &property->items[i];
-          long input_length = item->blob_size;
-          long output_length = 4 * ((input_length + 2) / 3);
-          unsigned char *data = item->blob_value;
-          char encoded_data[74];
-          xprintf("<oneBLOB name='%s' format='%s' size='%ld'>\n", item->name, item->blob_format, output_length);
-          int j = 0;
-          int i = 0;
-          while (i < input_length) {
-            uint32_t octet_a = i < input_length ? (unsigned char)data[i++] : 0;
-            uint32_t octet_b = i < input_length ? (unsigned char)data[i++] : 0;
-            uint32_t octet_c = i < input_length ? (unsigned char)data[i++] : 0;
-            uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
-            encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
-            encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
-            encoded_data[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];
-            encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
-            if (j == 72) {
-              encoded_data[j++] = '\n';
-              encoded_data[j++] = 0;
-              xprintf(encoded_data);
-              j = 0;
-            }
-          }
-          for (int i = 0; i < mod_table[input_length % 3]; i++) {
-            encoded_data[j++] = '=';
-          }
-          encoded_data[j++] = '\n';
-          encoded_data[j++] = 0;
-          xprintf(encoded_data);
-          xprintf("</oneBLOB>\n");
-        }
-      }
-      xprintf("</setBLOBtVector>\n");
-      break;
-  }
-  pthread_mutex_unlock(&xmutex);
-  return INDIGO_OK;
-}
-
-static indigo_result xml_driver_parser_delete_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
-  pthread_mutex_lock(&xmutex);
-  xprintf("<delProperty device='%s' name='%s'>\n", property->device, property->name);
-  pthread_mutex_unlock(&xmutex);
-  return INDIGO_OK;
-}
-
-static indigo_result xml_driver_parser_stop(indigo_client *client) {
-  return INDIGO_OK;
-}
-
-indigo_client *xml_driver_parser() {
-  static indigo_client test = {
-    xml_driver_parser_init,
-    xml_driver_parser_start,
-    xml_driver_parser_define_property,
-    xml_driver_parser_update_property,
-    xml_driver_parser_delete_property,
-    xml_driver_parser_stop
-  };
-  return &test;
-}
+//int main() {
+//  indigo_xml_parse(0, NULL, NULL);
+//}

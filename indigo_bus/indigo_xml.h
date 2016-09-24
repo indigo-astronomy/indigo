@@ -37,7 +37,6 @@
 
 #include "indigo_bus.h"
 
-extern indigo_client *xml_driver_parser();
 extern void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client);
 
 #endif /* indigo_xml_h */

@@ -19,6 +19,11 @@
 		59D382001D97085600E87393 /* indigo_bus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381A81D9592A400E87393 /* indigo_bus.c */; };
 		59D382011D97085600E87393 /* indigo_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381CD1D96AB9500E87393 /* indigo_xml.c */; };
 		59D382021D97085600E87393 /* driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381F11D9705EF00E87393 /* driver.c */; };
+		59D382051D9720C200E87393 /* indigo_driver_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382031D9720C200E87393 /* indigo_driver_xml.c */; };
+		59D382131D97345D00E87393 /* indigo_bus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381A81D9592A400E87393 /* indigo_bus.c */; };
+		59D382141D97345D00E87393 /* indigo_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381CD1D96AB9500E87393 /* indigo_xml.c */; };
+		59D382151D97345D00E87393 /* indigo_client_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382061D97314C00E87393 /* indigo_client_xml.c */; };
+		59D382171D97348500E87393 /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382161D97348500E87393 /* client.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -49,6 +54,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		59D3820A1D97343000E87393 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -66,11 +80,15 @@
 		59D381CD1D96AB9500E87393 /* indigo_xml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_xml.c; sourceTree = "<group>"; };
 		59D381CE1D96AB9500E87393 /* indigo_xml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_xml.h; sourceTree = "<group>"; };
 		59D381E71D96CCFC00E87393 /* pokus */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pokus; sourceTree = BUILT_PRODUCTS_DIR; };
-		59D381E91D96CCFD00E87393 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		59D381F01D96F4D100E87393 /* XML.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = XML.txt; sourceTree = "<group>"; };
 		59D381F11D9705EF00E87393 /* driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = driver.c; sourceTree = "<group>"; };
 		59D381F71D97083A00E87393 /* driver */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = driver; sourceTree = BUILT_PRODUCTS_DIR; };
-		59D381F91D97083A00E87393 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		59D382031D9720C200E87393 /* indigo_driver_xml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_driver_xml.c; sourceTree = "<group>"; };
+		59D382041D9720C200E87393 /* indigo_driver_xml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_driver_xml.h; sourceTree = "<group>"; };
+		59D382061D97314C00E87393 /* indigo_client_xml.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_client_xml.c; sourceTree = "<group>"; };
+		59D382071D97314C00E87393 /* indigo_client_xml.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_client_xml.h; sourceTree = "<group>"; };
+		59D3820C1D97343000E87393 /* client */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = client; sourceTree = BUILT_PRODUCTS_DIR; };
+		59D382161D97348500E87393 /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +113,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		59D382091D97343000E87393 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -107,8 +132,6 @@
 				59D381AF1D95998300E87393 /* indigo_drivers */,
 				59D381A61D9590EA00E87393 /* indigo_bus */,
 				592662AF1D9590630021746A /* indigo_test */,
-				59D381E81D96CCFD00E87393 /* pokus */,
-				59D381F81D97083A00E87393 /* driver */,
 				592662AE1D9590630021746A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -120,6 +143,7 @@
 				592662AD1D9590630021746A /* test */,
 				59D381E71D96CCFC00E87393 /* pokus */,
 				59D381F71D97083A00E87393 /* driver */,
+				59D3820C1D97343000E87393 /* client */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -128,6 +152,7 @@
 			isa = PBXGroup;
 			children = (
 				592662B01D9590630021746A /* test.c */,
+				59D382161D97348500E87393 /* client.c */,
 				59D381F11D9705EF00E87393 /* driver.c */,
 			);
 			path = indigo_test;
@@ -140,6 +165,10 @@
 				59D381A81D9592A400E87393 /* indigo_bus.c */,
 				59D381CE1D96AB9500E87393 /* indigo_xml.h */,
 				59D381CD1D96AB9500E87393 /* indigo_xml.c */,
+				59D382041D9720C200E87393 /* indigo_driver_xml.h */,
+				59D382031D9720C200E87393 /* indigo_driver_xml.c */,
+				59D382071D97314C00E87393 /* indigo_client_xml.h */,
+				59D382061D97314C00E87393 /* indigo_client_xml.c */,
 				59D381F01D96F4D100E87393 /* XML.txt */,
 			);
 			path = indigo_bus;
@@ -162,22 +191,6 @@
 				59D381AA1D95984D00E87393 /* ccd_simulator */,
 			);
 			path = indigo_drivers;
-			sourceTree = "<group>";
-		};
-		59D381E81D96CCFD00E87393 /* pokus */ = {
-			isa = PBXGroup;
-			children = (
-				59D381E91D96CCFD00E87393 /* main.c */,
-			);
-			path = pokus;
-			sourceTree = "<group>";
-		};
-		59D381F81D97083A00E87393 /* driver */ = {
-			isa = PBXGroup;
-			children = (
-				59D381F91D97083A00E87393 /* main.c */,
-			);
-			path = driver;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -234,6 +247,23 @@
 			productReference = 59D381F71D97083A00E87393 /* driver */;
 			productType = "com.apple.product-type.tool";
 		};
+		59D3820B1D97343000E87393 /* client */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 59D382101D97343000E87393 /* Build configuration list for PBXNativeTarget "client" */;
+			buildPhases = (
+				59D382081D97343000E87393 /* Sources */,
+				59D382091D97343000E87393 /* Frameworks */,
+				59D3820A1D97343000E87393 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = client;
+			productName = client;
+			productReference = 59D3820C1D97343000E87393 /* client */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -255,6 +285,10 @@
 						CreatedOnToolsVersion = 8.0;
 						ProvisioningStyle = Automatic;
 					};
+					59D3820B1D97343000E87393 = {
+						CreatedOnToolsVersion = 8.0;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = 592662A81D9590630021746A /* Build configuration list for PBXProject "indigo" */;
@@ -269,9 +303,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				592662AC1D9590630021746A /* test */,
 				59D381E61D96CCFC00E87393 /* pokus */,
+				592662AC1D9590630021746A /* test */,
 				59D381F61D97083A00E87393 /* driver */,
+				59D3820B1D97343000E87393 /* client */,
 			);
 		};
 /* End PBXProject section */
@@ -307,6 +342,18 @@
 				59D382001D97085600E87393 /* indigo_bus.c in Sources */,
 				59D382011D97085600E87393 /* indigo_xml.c in Sources */,
 				59D382021D97085600E87393 /* driver.c in Sources */,
+				59D382051D9720C200E87393 /* indigo_driver_xml.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		59D382081D97343000E87393 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				59D382171D97348500E87393 /* client.c in Sources */,
+				59D382131D97345D00E87393 /* indigo_bus.c in Sources */,
+				59D382141D97345D00E87393 /* indigo_xml.c in Sources */,
+				59D382151D97345D00E87393 /* indigo_client_xml.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -442,6 +489,20 @@
 			};
 			name = Release;
 		};
+		59D382111D97343000E87393 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		59D382121D97343000E87393 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -476,6 +537,14 @@
 			buildConfigurations = (
 				59D381FC1D97083A00E87393 /* Debug */,
 				59D381FD1D97083A00E87393 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+		59D382101D97343000E87393 /* Build configuration list for PBXNativeTarget "client" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				59D382111D97343000E87393 /* Debug */,
+				59D382121D97343000E87393 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 		};
