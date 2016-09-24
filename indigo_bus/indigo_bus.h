@@ -42,6 +42,10 @@
 #define INDIGO_ERROR(c) c
 #define INDIGO_LOG(c) c
 
+#define NAME_SIZE 32
+#define VALUE_SIZE 256
+#define MAX_ITEMS 32
+
 typedef enum {
   INDIGO_OK = 0,
   INDIGO_PARTIALLY_FAILED,
@@ -84,25 +88,26 @@ typedef enum {
 extern char *indigo_switch_type_text[];
 
 typedef struct {
-  const char *name;
-  const char *label;
-  const char *text_value;
+  char name[NAME_SIZE];
+  char label[VALUE_SIZE];
+  char text_value[VALUE_SIZE];
   double number_min, number_max, number_step, number_value;
   bool switch_value;
   indigo_property_state light_value;
-  const char *blob_format;
+  char blob_format[NAME_SIZE];
   long blob_size;
   void *blob_value;
 } indigo_item;
 
 typedef struct {
-  const char *device;
-  const char *name;
-  const char *label;
+  char device[NAME_SIZE];
+  char name[NAME_SIZE];
+  char label[VALUE_SIZE];
   indigo_property_state state;
   indigo_property_type type;
   indigo_property_perm perm;
   indigo_rule rule;
+  float version;
   int count;
   indigo_item items[];
 } indigo_property;

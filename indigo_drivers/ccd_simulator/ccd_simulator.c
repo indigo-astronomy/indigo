@@ -51,7 +51,7 @@ static indigo_result ccd_simulator_init(indigo_driver *driver) {
   ccd1_property = indigo_allocate_blob_property("CCD Simulator", "CCD1", "Image", INDIGO_IDLE_STATE, 1);
   indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "Primary CCD image");
   ccd1_property->items[0].blob_value = malloc(ccd1_property->items[0].blob_size = 2*4096*4096);
-  ccd1_property->items[0].blob_format = ".bin";
+  strncpy(ccd1_property->items[0].blob_format, ".bin", NAME_SIZE);
   return INDIGO_OK;
 }
 
