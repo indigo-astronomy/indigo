@@ -53,7 +53,7 @@ static indigo_result ccd_simulator_init(indigo_driver *driver) {
   ccd1_property = indigo_allocate_blob_property(DEVICE, "CCD1", "Main", "Image", INDIGO_IDLE_STATE, 1);
   indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "Primary CCD image");
   
-  int size = 2*64*64; //2*4096*4096;
+  int size = 2*4096*4096;
   char *blob = malloc(size);
   for (int i = 0; i < size; i++)
     blob[i] = rand();
@@ -122,9 +122,11 @@ static indigo_result ccd_simulator_stop(indigo_driver *driver) {
   return INDIGO_OK;
 }
 
+/* This driver is singleton, the same instance is returned every time */
+
 indigo_driver *ccd_simulator() {
   static indigo_driver ccd_simulator = {
-    0, 0,
+    NULL,
     ccd_simulator_init,
     ccd_simulator_start,
     ccd_simulator_enumerate_properties,

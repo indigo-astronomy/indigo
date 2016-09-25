@@ -36,19 +36,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <syslog.h>
 
 #include "indigo_bus.h"
 #include "ccd_simulator.h"
 #include "indigo_driver_xml.h"
 
 int main(int argc, const char * argv[]) {
-  
+  indigo_client *protocol_adapter = xml_driver_adapter(0, 1);
   indigo_init();
-  indigo_register_driver(ccd_simulator);
-  indigo_register_client(xml_driver_parser);
+  indigo_register_driver(ccd_simulator());
+  indigo_register_client(protocol_adapter);
   indigo_start();
-  
-  indigo_xml_parse(0, NULL, xml_driver_parser(0, 1));
-  
+  indigo_xml_parse(0, NULL, protocol_adapter);
   return 0;
 }

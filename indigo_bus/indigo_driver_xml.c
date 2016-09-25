@@ -44,28 +44,45 @@
 #include "indigo_xml.h"
 #include "indigo_driver_xml.h"
 
-//#define INDIGO_TRACE(c) c
+typedef struct {
+  int input, output;
+} indigo_xml_driver_context;
 
 static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
 
+static char encoding_table[] =
+{ 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+  'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+  'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+  'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+  'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+  'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+  'w', 'x', 'y', 'z', '0', '1', '2', '3',
+  '4', '5', '6', '7', '8', '9', '+', '/'
+};
+
+static int mod_table[] = {0, 2, 1};
+
 static void xprintf(indigo_client *client, const char *format, ...) {
+  indigo_xml_driver_context *client_context = (indigo_xml_driver_context *)client->client_context;
   char buffer[1024];
   va_list args;
   va_start(args, format);
   int length = vsnprintf(buffer, 1024, format, args);
   va_end(args);
-  write(client->output, buffer, length);
+  write(client_context->output, buffer, length);
+  INDIGO_TRACE(indigo_trace("driver: %s", buffer));
 }
 
-static indigo_result xml_driver_parser_init(indigo_client *client) {
+static indigo_result xml_driver_adapter_init(indigo_client *client) {
   return INDIGO_OK;
 }
 
-static indigo_result xml_driver_parser_start(indigo_client *client) {
+static indigo_result xml_driver_adapter_start(indigo_client *client) {
   return INDIGO_OK;
 }
 
-static indigo_result xml_driver_parser_define_property(indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
+static indigo_result xml_driver_adapter_define_property(indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
   pthread_mutex_lock(&xmutex);
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
@@ -113,20 +130,7 @@ static indigo_result xml_driver_parser_define_property(indigo_client *client, st
   return INDIGO_OK;
 }
 
-static char encoding_table[] =
-{ 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-  'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-  'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-  'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-  'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-  'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-  'w', 'x', 'y', 'z', '0', '1', '2', '3',
-  '4', '5', '6', '7', '8', '9', '+', '/'
-};
-
-static int mod_table[] = {0, 2, 1};
-
-static indigo_result xml_driver_parser_update_property(indigo_client *client, indigo_driver *driver, indigo_property *property) {
+static indigo_result xml_driver_adapter_update_property(indigo_client *client, indigo_driver *driver, indigo_property *property) {
   pthread_mutex_lock(&xmutex);
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
@@ -205,28 +209,32 @@ static indigo_result xml_driver_parser_update_property(indigo_client *client, in
   return INDIGO_OK;
 }
 
-static indigo_result xml_driver_parser_delete_property(indigo_client *client, indigo_driver *driver, indigo_property *property) {
+static indigo_result xml_driver_adapter_delete_property(indigo_client *client, indigo_driver *driver, indigo_property *property) {
   pthread_mutex_lock(&xmutex);
   xprintf(client, "<delProperty device='%s' name='%s'>\n", property->device, property->name);
   pthread_mutex_unlock(&xmutex);
   return INDIGO_OK;
 }
 
-static indigo_result xml_driver_parser_stop(indigo_client *client) {
+static indigo_result xml_driver_adapter_stop(indigo_client *client) {
   return INDIGO_OK;
 }
 
-indigo_client *xml_driver_parser(int input, int ouput) {
-  static indigo_client client = {
-    0, 0,
-    xml_driver_parser_init,
-    xml_driver_parser_start,
-    xml_driver_parser_define_property,
-    xml_driver_parser_update_property,
-    xml_driver_parser_delete_property,
-    xml_driver_parser_stop
+indigo_client *xml_driver_adapter(int input, int ouput) {
+  static indigo_client client_template = {
+    NULL,
+    xml_driver_adapter_init,
+    xml_driver_adapter_start,
+    xml_driver_adapter_define_property,
+    xml_driver_adapter_update_property,
+    xml_driver_adapter_delete_property,
+    xml_driver_adapter_stop
   };
-  client.input = input;
-  client.output = ouput;
-  return &client;
+  indigo_client *client = malloc(sizeof(indigo_client));
+  memcpy(client, &client_template, sizeof(indigo_client));
+  indigo_xml_driver_context *client_context = malloc(sizeof(indigo_xml_driver_context));
+  client_context->input = input;
+  client_context->output = ouput;
+  client->client_context = client_context;
+  return client;
 }

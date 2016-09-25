@@ -44,17 +44,21 @@
 #include "indigo_xml.h"
 #include "indigo_client_xml.h"
 
-//#define INDIGO_TRACE(c) c
+typedef struct {
+  int input, output;
+} indigo_xml_client_context;
 
 static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void xprintf(indigo_driver *driver, const char *format, ...) {
+  indigo_xml_client_context *driver_context = (indigo_xml_client_context *)driver->driver_context;
   char buffer[1024];
   va_list args;
   va_start(args, format);
   int length = vsnprintf(buffer, 1024, format, args);
   va_end(args);
-  write(driver->output, buffer, length);
+  write(driver_context->output, buffer, length);
+  INDIGO_TRACE(indigo_trace("client: %s", buffer));
 }
 
 static indigo_result xml_client_parser_init(indigo_driver *driver) {
@@ -67,12 +71,18 @@ static indigo_result xml_client_parser_start(indigo_driver *driver) {
 
 static indigo_result xml_client_parser_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   pthread_mutex_lock(&xmutex);
-  if (*property->device && *property->name) {
-    xprintf(driver, "<getProperties version='%d.%d' device='%s' name='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->device, property->name);
-  } else if (*property->device) {
-    xprintf(driver, "<getProperties version='%d.%d' device='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->device);
-  } else if (*property->name) {
-    xprintf(driver, "<getProperties version='%d.%d' name='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->name);
+  if (property != NULL) {
+    if (*property->device && *property->name) {
+      xprintf(driver, "<getProperties version='%d.%d' device='%s' name='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->device, property->name);
+    } else if (*property->device) {
+      xprintf(driver, "<getProperties version='%d.%d' device='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->device);
+    } else if (*property->name) {
+      xprintf(driver, "<getProperties version='%d.%d' name='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->name);
+    } else {
+      xprintf(driver, "<getProperties version='%d.%d'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF);
+    }
+  } else {
+    xprintf(driver, "<getProperties version='1.7'/>\n");
   }
   pthread_mutex_unlock(&xmutex);
   return INDIGO_OK;
@@ -93,7 +103,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
       xprintf(driver, "<newNumberVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(driver, "<newNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
+        xprintf(driver, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
       }
       xprintf(driver, "</newNumberVector>\n");
       break;
@@ -101,7 +111,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
       xprintf(driver, "<newSwitchVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(driver, "<newSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
+        xprintf(driver, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
       }
       xprintf(driver, "</newSwitchVector>\n");
       break;
@@ -112,20 +122,27 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
   return INDIGO_OK;
 }
 
-static indigo_result xml_client_parser_stop(indigo_driver *drive) {
+static indigo_result xml_client_parser_stop(indigo_driver *driver) {
+  indigo_xml_client_context *driver_context = (indigo_xml_client_context *)driver->driver_context;
+  close(driver_context->input);
+  close(driver_context->output);
   return INDIGO_OK;
 }
 
-indigo_driver *xml_client_parser(int input, int ouput) {
-  static indigo_driver driver = {
-    0, 0,
+indigo_driver *xml_client_adapter(int input, int ouput) {
+  static indigo_driver driver_template = {
+    NULL,
     xml_client_parser_init,
     xml_client_parser_start,
     xml_client_parser_enumerate_properties,
     xml_client_parser_change_property,
     xml_client_parser_stop
   };
-  driver.input = input;
-  driver.output = ouput;
-  return &driver;
+  indigo_driver *driver = malloc(sizeof(indigo_driver));
+  memcpy(driver, &driver_template, sizeof(indigo_driver));
+  indigo_xml_client_context *driver_context = malloc(sizeof(indigo_xml_client_context));
+  driver_context->input = input;
+  driver_context->output = ouput;
+  driver->driver_context = driver_context;
+  return driver;
 }

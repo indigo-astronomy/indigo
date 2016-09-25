@@ -38,7 +38,7 @@
 #include <stdbool.h>
 
 #define INDIGO_TRACE(c)
-#define INDIGO_DEBUG(c) c
+#define INDIGO_DEBUG(c)
 #define INDIGO_ERROR(c) c
 #define INDIGO_LOG(c) c
 
@@ -121,7 +121,7 @@ typedef struct {
 struct indigo_client;
 
 typedef struct indigo_driver {
-  int input, output;
+  void *driver_context;
   indigo_result (*init)(struct indigo_driver *driver);
   indigo_result (*start)(struct indigo_driver *driver);
   indigo_result (*enumerate_properties)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
@@ -130,7 +130,7 @@ typedef struct indigo_driver {
 } indigo_driver;
 
 typedef struct indigo_client {
-  int input, output;
+  void *client_context;
   indigo_result (*init)(struct indigo_client *client);
   indigo_result (*start)(struct indigo_client *client);
   indigo_result (*define_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);
@@ -149,8 +149,8 @@ extern void indigo_log(const char *format, ...);
 extern void indigo_debug_property(const char *message, indigo_property *property, bool defs, bool items);
 
 extern indigo_result indigo_init();
-extern indigo_result indigo_register_driver(indigo_driver_entry_point entry_point);
-extern indigo_result indigo_register_client(indigo_client_entry_point entry_point);
+extern indigo_result indigo_register_driver(indigo_driver *driver);
+extern indigo_result indigo_register_client(indigo_client *client);
 extern indigo_result indigo_start();
 
 extern indigo_result indigo_define_property(indigo_driver *driver, indigo_property *property);

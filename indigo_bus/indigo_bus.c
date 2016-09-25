@@ -37,6 +37,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <time.h>
+#include <syslog.h>
 #include <sys/time.h>
 
 #include "indigo_bus.h"
@@ -87,6 +88,7 @@ static void log_message(const char *format, va_list args) {
   sprintf(buffer + 8, ".%06d ", tmnow.tv_usec);
   vsnprintf(buffer + 16, 240, format, args);
   fprintf(stderr, "%s\n", buffer);
+//  syslog (LOG_NOTICE, "%s", buffer);
 }
 
 void indigo_trace(const char *format, ...) {
@@ -172,8 +174,7 @@ indigo_result indigo_init() {
   return INDIGO_OK;
 }
 
-indigo_result indigo_register_driver(indigo_driver_entry_point entry_point) {
-  indigo_driver *driver = entry_point();
+indigo_result indigo_register_driver(indigo_driver *driver) {
   for (int i = 0; i < MAX_DRIVERS; i++) {
     if (drivers[i] == NULL) {
       drivers[i] = driver;
@@ -183,8 +184,7 @@ indigo_result indigo_register_driver(indigo_driver_entry_point entry_point) {
   return INDIGO_TOO_MANY_DRIVERS;
 }
 
-indigo_result indigo_register_client(indigo_client_entry_point entry_point) {
-  indigo_client *client = entry_point();
+indigo_result indigo_register_client(indigo_client *client) {
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (clients[i] == NULL) {
       clients[i] = client;

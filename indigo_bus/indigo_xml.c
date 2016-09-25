@@ -43,8 +43,6 @@
 
 #include "indigo_xml.h"
 
-//#define INDIGO_TRACE(c) c
-
 #define BUFFER_SIZE 4096
 #define PROPERTY_SIZE sizeof(indigo_property)+MAX_ITEMS*(sizeof(indigo_item))
 
@@ -59,10 +57,30 @@ typedef enum {
   ATTRIBUTE_VALUE,
   TEXT1,
   TEXT,
+  BLOB,
   END_TAG1,
   END_TAG2,
   END_TAG
 } parser_state;
+
+static unsigned char decoding_table[] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3e, 0x00, 0x00, 0x00, 0x3f,
+  0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+  0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+  0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0xf1, 0x36, 0xe5, 0xf7, 0xf3, 0x1d, 0x00, 0x6b, 0x98, 0xf8, 0xbf, 0x5f, 0xff, 0x7f, 0x00, 0x00,
+  0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x68, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x5f, 0x7c, 0xc2, 0x5f, 0xff, 0x7f, 0x00, 0x00,
+  0xa0, 0xf7, 0xbf, 0x5f, 0xff, 0x7f, 0x00, 0x00, 0x76, 0x12, 0xc0, 0x5f, 0xff, 0x7f, 0x00, 0x00,
+  0xb8, 0xf7, 0xbf, 0x5f, 0xff, 0x7f, 0x00, 0x00, 0xb8, 0xf7, 0xbf, 0x5f, 0xff, 0x7f, 0x00, 0x00,
+  0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd0, 0xf7, 0xbf, 0x5f, 0xff, 0x7f, 0x00, 0x00
+};
 
 static indigo_property_state parse_state(char *value) {
   if (!strcmp(value, "Ok"))
@@ -88,6 +106,28 @@ static indigo_rule parse_rule(char *value) {
   if (!strcmp(value, "AtMostOne"))
     return INDIGO_AT_MOST_ONE_RULE;
   return INDIGO_ANY_OF_MANY_RULE;
+}
+
+static int decode(char *data, unsigned char *decoded_data, int input_length) {
+  int output_length = input_length / 4 * 3;
+  if (data[input_length - 1] == '=')
+    output_length--;
+  if (data[input_length - 2] == '=')
+    output_length--;
+  for (int i = 0, j = 0; i < input_length;) {
+    uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+    uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+    uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+    uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+    uint32_t triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6) + (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
+    if (j < output_length)
+      decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
+    if (j < output_length)
+      decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
+    if (j < output_length)
+      decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
+  }
+  return output_length;
 }
 
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client);
@@ -169,7 +209,6 @@ void *new_text_vector_handler(parser_state state, char *name, char *value, indig
     return new_text_vector_handler;
   } else if (state == END_TAG) {
     if (property->version != INDIGO_VERSION_NONE) {
-      property->type = INDIGO_TEXT_VECTOR;
       indigo_change_property(client, property);
     } else {
       indigo_error("XML Parser error: unknown protocol version");
@@ -213,7 +252,6 @@ void *new_number_vector_handler(parser_state state, char *name, char *value, ind
     return new_number_vector_handler;
   } else if (state == END_TAG) {
     if (property->version != INDIGO_VERSION_NONE) {
-      property->type = INDIGO_NUMBER_VECTOR;
       indigo_change_property(client, property);
     } else {
       indigo_error("XML Parser error: unknown protocol version");
@@ -257,7 +295,6 @@ void *new_switch_vector_handler(parser_state state, char *name, char *value, ind
     return new_switch_vector_handler;
   } else if (state == END_TAG) {
     if (property->version != INDIGO_VERSION_NONE) {
-      property->type = INDIGO_SWITCH_VECTOR;
       indigo_change_property(client, property);
     } else {
       indigo_error("XML Parser error: unknown protocol version");
@@ -300,7 +337,6 @@ void *set_text_vector_handler(parser_state state, char *name, char *value, indig
   } else if (state == TEXT) {
     return set_text_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_TEXT_VECTOR;
     indigo_update_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -338,7 +374,6 @@ void *set_number_vector_handler(parser_state state, char *name, char *value, ind
   } else if (state == TEXT) {
     return set_number_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_NUMBER_VECTOR;
     indigo_update_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -376,7 +411,6 @@ void *set_switch_vector_handler(parser_state state, char *name, char *value, ind
   } else if (state == TEXT) {
     return set_switch_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_SWITCH_VECTOR;
     indigo_update_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -414,7 +448,6 @@ void *set_light_vector_handler(parser_state state, char *name, char *value, indi
   } else if (state == TEXT) {
     return set_light_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_LIGHT_VECTOR;
     indigo_update_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -435,10 +468,8 @@ void *set_one_blob_vector_handler(parser_state state, char *name, char *value, i
       property->items[property->count-1].blob_size = atol(value);
       return set_one_blob_vector_handler;
     }
-  } else if (state == TEXT) {
-    
-    // TBD
-    
+  } else if (state == BLOB) {
+    property->items[property->count-1].blob_value = value;
     return set_one_blob_vector_handler;
   }
   return set_blob_vector_handler;
@@ -462,7 +493,6 @@ void *set_blob_vector_handler(parser_state state, char *name, char *value, indig
   } else if (state == TEXT) {
     return set_blob_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_BLOB_VECTOR;
     indigo_update_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -510,7 +540,6 @@ void *def_text_vector_handler(parser_state state, char *name, char *value, indig
   } else if (state == TEXT) {
     return def_text_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_TEXT_VECTOR;
     indigo_define_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -570,7 +599,6 @@ void *def_number_vector_handler(parser_state state, char *name, char *value, ind
   } else if (state == TEXT) {
     return def_number_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_NUMBER_VECTOR;
     indigo_define_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -620,7 +648,6 @@ void *def_switch_vector_handler(parser_state state, char *name, char *value, ind
   } else if (state == TEXT) {
     return def_switch_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_SWITCH_VECTOR;
     indigo_define_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -666,7 +693,6 @@ void *def_light_vector_handler(parser_state state, char *name, char *value, indi
   } else if (state == TEXT) {
     return def_light_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_LIGHT_VECTOR;
     indigo_define_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -711,7 +737,6 @@ void *def_blob_vector_handler(parser_state state, char *name, char *value, indig
   } else if (state == TEXT) {
     return def_blob_vector_handler;
   } else if (state == END_TAG) {
-    property->type = INDIGO_BLOB_VECTOR;
     indigo_define_property(driver, property);
     memset(property, 0, PROPERTY_SIZE);
   }
@@ -739,32 +764,58 @@ void *top_level_handler(parser_state state, char *name, char *value, indigo_prop
   if (state == BEGIN_TAG) {
     if (!strcmp(name, "getProperties"))
       return get_properties_handler;
-    if (!strcmp(name, "newTextVector"))
+    if (!strcmp(name, "newTextVector")) {
+      property->type = INDIGO_TEXT_VECTOR;
       return new_text_vector_handler;
-    if (!strcmp(name, "newNumberVector"))
+    }
+    if (!strcmp(name, "newNumberVector")) {
+      property->type = INDIGO_NUMBER_VECTOR;
       return new_number_vector_handler;
-    if (!strcmp(name, "newSwitchVector"))
+    }
+    if (!strcmp(name, "newSwitchVector")) {
+      property->type = INDIGO_SWITCH_VECTOR;
       return new_switch_vector_handler;
-    if (!strcmp(name, "setTextVector"))
+    }
+    if (!strcmp(name, "setTextVector")) {
+      property->type = INDIGO_TEXT_VECTOR;
       return set_text_vector_handler;
-    if (!strcmp(name, "setNumberVector"))
+    }
+    if (!strcmp(name, "setNumberVector")) {
+      property->type = INDIGO_NUMBER_VECTOR;
       return set_number_vector_handler;
-    if (!strcmp(name, "setSwitchVector"))
+    }
+    if (!strcmp(name, "setSwitchVector")) {
+      property->type = INDIGO_SWITCH_VECTOR;
       return set_switch_vector_handler;
-    if (!strcmp(name, "setLightVector"))
+    }
+    if (!strcmp(name, "setLightVector")) {
+      property->type = INDIGO_LIGHT_VECTOR;
       return set_light_vector_handler;
-    if (!strcmp(name, "setBLOBVector"))
+    }
+    if (!strcmp(name, "setBLOBVector")) {
+      property->type = INDIGO_BLOB_VECTOR;
       return set_blob_vector_handler;
-    if (!strcmp(name, "defTextVector"))
+    }
+    if (!strcmp(name, "defTextVector")) {
+      property->type = INDIGO_TEXT_VECTOR;
       return def_text_vector_handler;
-    if (!strcmp(name, "defNumberVector"))
+    }
+    if (!strcmp(name, "defNumberVector")) {
+      property->type = INDIGO_NUMBER_VECTOR;
       return def_number_vector_handler;
-    if (!strcmp(name, "defSwitchVector"))
+    }
+    if (!strcmp(name, "defSwitchVector")) {
+      property->type = INDIGO_SWITCH_VECTOR;
       return def_switch_vector_handler;
-    if (!strcmp(name, "defLightVector"))
+    }
+    if (!strcmp(name, "defLightVector")) {
+      property->type = INDIGO_LIGHT_VECTOR;
       return def_light_vector_handler;
-    if (!strcmp(name, "defBLOBVector"))
+    }
+    if (!strcmp(name, "defBLOBVector")) {
+      property->type = INDIGO_BLOB_VECTOR;
       return def_blob_vector_handler;
+    }
     if (!strcmp(name, "delProperty"))
       return del_property_handler;
   }
@@ -776,17 +827,23 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
   char name_buffer[NAME_SIZE];
   char value_buffer[VALUE_SIZE];
   char property_buffer[PROPERTY_SIZE];
-
+  unsigned char *blob_buffer = NULL;
   char *pointer = buffer;
   char *name_pointer = name_buffer;
   char *value_pointer = value_buffer;
+  unsigned char *blob_pointer = NULL;
   parser_state state = IDLE;
   char q = '"';
   int depth = 0;
   char c;
+  
   parser_handler handler = top_level_handler;
   indigo_property *property = (indigo_property *)property_buffer;
   memset(property_buffer, 0, PROPERTY_SIZE);
+  
+  if (driver != NULL) {
+    driver->enumerate_properties(driver, client, NULL);
+  }
   
   while (true) {
     if (state == ERROR) {
@@ -795,6 +852,11 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
     }
     while ((c = *pointer++) == 0) {
       ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE);
+      if (count <= 0) {
+        if (blob_buffer != NULL)
+          free(blob_buffer);
+        return;
+      }
       pointer = buffer;
       buffer[count] = 0;
     }
@@ -832,7 +894,15 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
             state = END_TAG1;
             INDIGO_TRACE(indigo_trace("XML Parser: '%c' BEGIN_TAG -> END_TAG1", c));
           } else if (c == '>') {
-            state = TEXT;
+            if (property->type == INDIGO_BLOB_VECTOR) {
+              state = BLOB;
+              if (blob_buffer != NULL)
+                blob_buffer = realloc(blob_buffer, property->items[property->count-1].blob_size);
+              else
+                blob_buffer = malloc(property->items[property->count-1].blob_size);
+              blob_pointer = blob_buffer;
+            } else
+              state = TEXT;
             value_pointer = value_buffer;
             INDIGO_TRACE(indigo_trace("XML Parser: '%c' BEGIN_TAG -> TEXT", c));
           } else {
@@ -903,6 +973,29 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
           INDIGO_TRACE(indigo_trace("XML Parser: '%c' TEXT -> BEGIN_TAG", c));
         }
         break;
+      case BLOB:
+        if (c == '<') {
+          if (depth == 2) {
+            *value_pointer = 0;
+            blob_pointer += decode(value_buffer, blob_pointer, (int)(value_pointer-value_buffer));
+            handler = handler(BLOB, NULL, (char *)blob_buffer, property, driver, client);
+          }
+          state = TEXT1;
+          INDIGO_TRACE(indigo_trace("XML Parser: '%c' %d BLOB -> TEXT1", c, depth));
+          break;
+        } else if (c != '\n') {
+          if (depth == 2) {
+            if (value_pointer - value_buffer < 72) {
+              *value_pointer++ = c;
+            } else {
+              *value_pointer = 0;
+              blob_pointer += decode(value_buffer, blob_pointer, (int)(value_pointer-value_buffer));
+              value_pointer = value_buffer;
+            }
+          }
+          INDIGO_TRACE(indigo_trace("XML Parser: '%c' %d BLOB", c, depth));
+        }
+        break;
       case ATTRIBUTE_NAME1:
         if (isspace(c)) {
           INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1", c));
@@ -915,7 +1008,15 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
           state = END_TAG1;
         } else if (c == '>') {
           value_pointer = value_buffer;
-          state = TEXT;
+          if (property->type == INDIGO_BLOB_VECTOR) {
+            state = BLOB;
+            if (blob_buffer != NULL)
+              blob_buffer = realloc(blob_buffer, property->items[property->count-1].blob_size);
+            else
+              blob_buffer = malloc(property->items[property->count-1].blob_size);
+            blob_pointer = blob_buffer;
+          } else
+            state = TEXT;
           INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> TEXT", c));
         }
        break;

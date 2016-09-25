@@ -16,4 +16,6 @@ and then execute either (client and driver in single executable with direct comm
 
 or (client executing driver as child proces with the legacy INDI wire protocol)
 
-./client ./driver
+./client
+
+
