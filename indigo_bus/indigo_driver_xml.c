@@ -178,10 +178,10 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
           int j = 0;
           int i = 0;
           while (i < input_length) {
-            uint32_t octet_a = i < input_length ? (unsigned char)data[i++] : 0;
-            uint32_t octet_b = i < input_length ? (unsigned char)data[i++] : 0;
-            uint32_t octet_c = i < input_length ? (unsigned char)data[i++] : 0;
-            uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
+            unsigned int octet_a = i < input_length ? (unsigned char)data[i++] : 0;
+            unsigned int octet_b = i < input_length ? (unsigned char)data[i++] : 0;
+            unsigned int octet_c = i < input_length ? (unsigned char)data[i++] : 0;
+            unsigned int triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
             encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
             encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
             encoded_data[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];

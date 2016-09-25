@@ -39,7 +39,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>
-#include <pthread.h>
 
 #include "indigo_xml.h"
 
@@ -115,11 +114,11 @@ static int decode(char *data, unsigned char *decoded_data, int input_length) {
   if (data[input_length - 2] == '=')
     output_length--;
   for (int i = 0, j = 0; i < input_length;) {
-    uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-    uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-    uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-    uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
-    uint32_t triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6) + (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
+    unsigned int sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+    unsigned int sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+    unsigned int sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+    unsigned int sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+    unsigned int triple = (sextet_a << 3 * 6) + (sextet_b << 2 * 6) + (sextet_c << 1 * 6) + (sextet_d << 0 * 6);
     if (j < output_length)
       decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
     if (j < output_length)

@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -Iindigo_drivers/ccd_simulator
+CFLAGS=-Iindigo_bus -Iindigo_drivers -Iindigo_drivers/ccd_simulator -std=c99
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
