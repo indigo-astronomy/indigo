@@ -174,7 +174,7 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
           long output_length = 4 * ((input_length + 2) / 3);
           unsigned char *data = item->blob_value;
           char encoded_data[74];
-          xprintf(client, "<oneBLOB name='%s' format='%s' size='%ld'>\n", item->name, item->blob_format, output_length);
+          xprintf(client, "<oneBLOB name='%s' format='%s' size='%ld'>\n", item->name, item->blob_format, item->blob_size);
           int j = 0;
           int i = 0;
           while (i < input_length) {
