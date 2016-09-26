@@ -1,6 +1,8 @@
 CC=gcc
 CFLAGS=-Iindigo_bus -Iindigo_drivers -Iindigo_drivers/ccd_simulator -std=c99
 
+all: test driver client
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
@@ -12,9 +14,6 @@ driver: indigo_test/driver.o indigo_bus/indigo_bus.o indigo_bus/indigo_xml.o ind
 
 client: indigo_test/client.o indigo_bus/indigo_bus.o indigo_bus/indigo_xml.o indigo_bus/indigo_client_xml.o
 	$(CC) $(CFLAGS) -o $@ $^
-
-
-all: test driver client
 
 clean:
 	rm -f test driver client indigo_test/*.o indigo_bus/*.o indigo_drivers/*.o indigo_drivers/ccd_simulator/*.o
