@@ -42,9 +42,11 @@
 #define INDIGO_ERROR(c) c
 #define INDIGO_LOG(c) c
 
-#define NAME_SIZE   32
+//#define INDIG_USE_SYSLOG
+
+#define NAME_SIZE   128
 #define VALUE_SIZE  256
-#define MAX_ITEMS   32
+#define MAX_ITEMS   64
 
 #define INDIGO_VERSION_NONE    0x0000
 #define INDIGO_VERSION_LEGACY  0x0107
@@ -53,8 +55,11 @@
 
 typedef enum {
   INDIGO_OK = 0,
+  INDIGO_INIT_FAILED,
+  INDIGO_START_FAILED,
+  INDIGO_REQUEST_FAILED,
   INDIGO_PARTIALLY_FAILED,
-  INDIGO_TOO_MANY_DRIVERS
+  INDIGO_TOO_MANY_DRIVERS,
 } indigo_result;
 
 typedef enum {
@@ -122,6 +127,7 @@ struct indigo_client;
 
 typedef struct indigo_driver {
   void *driver_context;
+  indigo_result last_result;
   indigo_result (*init)(struct indigo_driver *driver);
   indigo_result (*start)(struct indigo_driver *driver);
   indigo_result (*enumerate_properties)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
@@ -131,6 +137,7 @@ typedef struct indigo_driver {
 
 typedef struct indigo_client {
   void *client_context;
+  indigo_result last_result;
   indigo_result (*init)(struct indigo_client *client);
   indigo_result (*start)(struct indigo_client *client);
   indigo_result (*define_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);
@@ -162,11 +169,11 @@ extern indigo_result indigo_change_property(indigo_client *client, indigo_proper
 
 extern indigo_result indigo_stop();
 
-extern indigo_property *indigo_allocate_text_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
-extern indigo_property *indigo_allocate_number_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
-extern indigo_property *indigo_allocate_switch_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, indigo_rule rule, int count);
-extern indigo_property *indigo_allocate_light_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
-extern indigo_property *indigo_allocate_blob_property(const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
+extern indigo_property *indigo_init_text_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
+extern indigo_property *indigo_init_number_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
+extern indigo_property *indigo_init_switch_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, indigo_rule rule, int count);
+extern indigo_property *indigo_init_light_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
+extern indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
 
 extern void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *value);
 extern void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value);

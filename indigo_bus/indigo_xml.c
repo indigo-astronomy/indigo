@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "indigo_xml.h"
 
@@ -822,6 +823,7 @@ void *top_level_handler(parser_state state, char *name, char *value, indigo_prop
 }
 
 void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) {
+  assert(driver != NULL || client != NULL);
   char buffer[BUFFER_SIZE] = { 0 };
   char name_buffer[NAME_SIZE];
   char value_buffer[VALUE_SIZE];

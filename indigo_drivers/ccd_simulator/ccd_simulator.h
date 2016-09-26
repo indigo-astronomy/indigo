@@ -37,6 +37,7 @@
 #define ccd_simulator_h
 
 #include "indigo_driver.h"
+#include "indigo_ccd_driver.h"
 
 extern indigo_driver *ccd_simulator();
 

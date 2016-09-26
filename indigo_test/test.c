@@ -45,13 +45,13 @@ static indigo_property *exposure_property;
 static indigo_property *ccd1_property;
 
 static indigo_result test_init(indigo_client *client) {
-  connection_property = indigo_allocate_switch_property("CCD Simulator", "CONNECTION", "Main", "Connection", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-  indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "Connected", false);
-  indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "Disconnected", true);
-  exposure_property = indigo_allocate_number_property("CCD Simulator", "CCD_EXPOSURE", "Main", "Expose", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
-  indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "Expose the CCD chip (seconds)", 0, 900, 1, 1);
-  ccd1_property = indigo_allocate_blob_property("CCD Simulator", "CCD1", "Main", "Image", INDIGO_IDLE_STATE, 1);
-  indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "Primary CCD image");
+  connection_property = indigo_init_switch_property(NULL, "CCD Simulator", "CONNECTION", "", "", 0, 0, 0, 2);
+  indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "", false);
+  indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "", true);
+  exposure_property = indigo_init_number_property(NULL, "CCD Simulator", "CCD_EXPOSURE", "", "", 0, 0, 1);
+  indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "", 0, 0, 0, 0);
+  ccd1_property = indigo_init_blob_property(NULL, "CCD Simulator", "CCD1", "", "", 0, 1);
+  indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "");
   indigo_log("Test: initialized...");
   return INDIGO_OK;
 }
@@ -117,7 +117,7 @@ static indigo_result test_stop(indigo_client *client) {
 }
 
 static indigo_client test = {
-  NULL,
+  NULL, INDIGO_OK,
   test_init,
   test_start,
   test_define_property,

@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include "indigo_xml.h"
 #include "indigo_driver_xml.h"
@@ -75,14 +76,19 @@ static void xprintf(indigo_client *client, const char *format, ...) {
 }
 
 static indigo_result xml_driver_adapter_init(indigo_client *client) {
+  assert(client != NULL);
   return INDIGO_OK;
 }
 
 static indigo_result xml_driver_adapter_start(indigo_client *client) {
+  assert(client != NULL);
   return INDIGO_OK;
 }
 
 static indigo_result xml_driver_adapter_define_property(indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
+  assert(driver != NULL);
+  assert(client != NULL);
+  assert(property != NULL);
   pthread_mutex_lock(&xmutex);
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
@@ -131,6 +137,9 @@ static indigo_result xml_driver_adapter_define_property(indigo_client *client, s
 }
 
 static indigo_result xml_driver_adapter_update_property(indigo_client *client, indigo_driver *driver, indigo_property *property) {
+  assert(driver != NULL);
+  assert(client != NULL);
+  assert(property != NULL);
   pthread_mutex_lock(&xmutex);
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
@@ -171,7 +180,6 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
         for (int i = 0; i < property->count; i++) {
           indigo_item *item = &property->items[i];
           long input_length = item->blob_size;
-          long output_length = 4 * ((input_length + 2) / 3);
           unsigned char *data = item->blob_value;
           char encoded_data[74];
           xprintf(client, "<oneBLOB name='%s' format='%s' size='%ld'>\n", item->name, item->blob_format, item->blob_size);
@@ -210,6 +218,9 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
 }
 
 static indigo_result xml_driver_adapter_delete_property(indigo_client *client, indigo_driver *driver, indigo_property *property) {
+  assert(driver != NULL);
+  assert(client != NULL);
+  assert(property != NULL);
   pthread_mutex_lock(&xmutex);
   xprintf(client, "<delProperty device='%s' name='%s'>\n", property->device, property->name);
   pthread_mutex_unlock(&xmutex);
@@ -217,12 +228,13 @@ static indigo_result xml_driver_adapter_delete_property(indigo_client *client, i
 }
 
 static indigo_result xml_driver_adapter_stop(indigo_client *client) {
+  assert(client != NULL);
   return INDIGO_OK;
 }
 
 indigo_client *xml_driver_adapter(int input, int ouput) {
   static indigo_client client_template = {
-    NULL,
+    NULL, INDIGO_OK,
     xml_driver_adapter_init,
     xml_driver_adapter_start,
     xml_driver_adapter_define_property,
@@ -231,10 +243,12 @@ indigo_client *xml_driver_adapter(int input, int ouput) {
     xml_driver_adapter_stop
   };
   indigo_client *client = malloc(sizeof(indigo_client));
-  memcpy(client, &client_template, sizeof(indigo_client));
-  indigo_xml_driver_context *client_context = malloc(sizeof(indigo_xml_driver_context));
-  client_context->input = input;
-  client_context->output = ouput;
-  client->client_context = client_context;
+  if (client != NULL) {
+    memcpy(client, &client_template, sizeof(indigo_client));
+    indigo_xml_driver_context *client_context = malloc(sizeof(indigo_xml_driver_context));
+    client_context->input = input;
+    client_context->output = ouput;
+    client->client_context = client_context;
+  }
   return client;
 }

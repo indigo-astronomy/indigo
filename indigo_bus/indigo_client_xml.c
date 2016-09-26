@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include "indigo_xml.h"
 #include "indigo_client_xml.h"
@@ -62,14 +63,17 @@ static void xprintf(indigo_driver *driver, const char *format, ...) {
 }
 
 static indigo_result xml_client_parser_init(indigo_driver *driver) {
+  assert(driver != NULL);
   return INDIGO_OK;
 }
 
 static indigo_result xml_client_parser_start(indigo_driver *driver) {
+  assert(driver != NULL);
   return INDIGO_OK;
 }
 
 static indigo_result xml_client_parser_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
+  assert(driver != NULL);
   pthread_mutex_lock(&xmutex);
   if (property != NULL) {
     if (*property->device && *property->name) {
@@ -89,6 +93,8 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_driver *drive
 }
 
 static indigo_result xml_client_parser_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
+  assert(driver != NULL);
+  assert(property != NULL);
   pthread_mutex_lock(&xmutex);
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
@@ -123,6 +129,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
 }
 
 static indigo_result xml_client_parser_stop(indigo_driver *driver) {
+  assert(driver != NULL);
   indigo_xml_client_context *driver_context = (indigo_xml_client_context *)driver->driver_context;
   close(driver_context->input);
   close(driver_context->output);
@@ -131,7 +138,7 @@ static indigo_result xml_client_parser_stop(indigo_driver *driver) {
 
 indigo_driver *xml_client_adapter(int input, int ouput) {
   static indigo_driver driver_template = {
-    NULL,
+    NULL, INDIGO_OK,
     xml_client_parser_init,
     xml_client_parser_start,
     xml_client_parser_enumerate_properties,
@@ -139,10 +146,12 @@ indigo_driver *xml_client_adapter(int input, int ouput) {
     xml_client_parser_stop
   };
   indigo_driver *driver = malloc(sizeof(indigo_driver));
-  memcpy(driver, &driver_template, sizeof(indigo_driver));
-  indigo_xml_client_context *driver_context = malloc(sizeof(indigo_xml_client_context));
-  driver_context->input = input;
-  driver_context->output = ouput;
-  driver->driver_context = driver_context;
+  if (driver != NULL) {
+    memcpy(driver, &driver_template, sizeof(indigo_driver));
+    indigo_xml_client_context *driver_context = malloc(sizeof(indigo_xml_client_context));
+    driver_context->input = input;
+    driver_context->output = ouput;
+    driver->driver_context = driver_context;
+  }
   return driver;
 }

@@ -22,6 +22,8 @@
 		59D382141D97345D00E87393 /* indigo_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381CD1D96AB9500E87393 /* indigo_xml.c */; };
 		59D382151D97345D00E87393 /* indigo_client_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382061D97314C00E87393 /* indigo_client_xml.c */; };
 		59D382171D97348500E87393 /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382161D97348500E87393 /* client.c */; };
+		9DF232A11D994C52000158B7 /* indigo_ccd_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DF2329F1D994C52000158B7 /* indigo_ccd_driver.c */; };
+		9DF232A21D994C52000158B7 /* indigo_ccd_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DF2329F1D994C52000158B7 /* indigo_ccd_driver.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -77,6 +79,8 @@
 		59D382071D97314C00E87393 /* indigo_client_xml.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_client_xml.h; sourceTree = "<group>"; };
 		59D3820C1D97343000E87393 /* client */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = client; sourceTree = BUILT_PRODUCTS_DIR; };
 		59D382161D97348500E87393 /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
+		9DF2329F1D994C52000158B7 /* indigo_ccd_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_driver.c; sourceTree = "<group>"; };
+		9DF232A01D994C52000158B7 /* indigo_ccd_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_driver.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -166,8 +170,10 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
-				59D381BF1D965FDA00E87393 /* indigo_driver.c */,
 				59D381C01D965FDA00E87393 /* indigo_driver.h */,
+				59D381BF1D965FDA00E87393 /* indigo_driver.c */,
+				9DF232A01D994C52000158B7 /* indigo_ccd_driver.h */,
+				9DF2329F1D994C52000158B7 /* indigo_ccd_driver.c */,
 				59D381AA1D95984D00E87393 /* ccd_simulator */,
 			);
 			path = indigo_drivers;
@@ -276,6 +282,7 @@
 			files = (
 				59D381CC1D96A8EA00E87393 /* indigo_bus.c in Sources */,
 				592662B11D9590630021746A /* test.c in Sources */,
+				9DF232A11D994C52000158B7 /* indigo_ccd_driver.c in Sources */,
 				59D381CB1D96A8E700E87393 /* ccd_simulator.c in Sources */,
 				5909FF851D97E13700812523 /* indigo_xml.c in Sources */,
 				59D381CA1D96A8E400E87393 /* indigo_driver.c in Sources */,
@@ -287,6 +294,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				59D381FE1D97085600E87393 /* indigo_driver.c in Sources */,
+				9DF232A21D994C52000158B7 /* indigo_ccd_driver.c in Sources */,
 				59D381FF1D97085600E87393 /* ccd_simulator.c in Sources */,
 				59D382001D97085600E87393 /* indigo_bus.c in Sources */,
 				59D382011D97085600E87393 /* indigo_xml.c in Sources */,

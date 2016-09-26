@@ -32,37 +32,20 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-#include <stdlib.h>
-#include <assert.h>
+#ifndef indigo_ccd_driver_h
+#define indigo_ccd_driver_h
 
+#include "indigo_bus.h"
 #include "indigo_driver.h"
 
-indigo_result indigo_init_driver(indigo_driver *driver, char *device) {
-  assert(driver != NULL);
-  assert(device != NULL);
-  if (driver->driver_context == NULL)
-    driver->driver_context = malloc(sizeof(indigo_driver_context));
-  indigo_driver_context *driver_context = driver->driver_context;
-  if (driver_context != NULL) {
-    indigo_property *connection_property = indigo_init_switch_property(NULL, device, "CONNECTION", "Main", "Connection", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-    if (connection_property == NULL)
-      return INDIGO_INIT_FAILED;
-    indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "Connected", false);
-    indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "Disconnected", true);
-    driver_context->connection_property = connection_property;
-    driver->driver_context = driver_context;
-    return INDIGO_OK;
-  }
-  return INDIGO_INIT_FAILED;
-}
+typedef struct {
+  void *private_data;
+  indigo_property *connection_property;
+  indigo_property *exposure_property;
+  indigo_property *ccd1_property;
+} indigo_ccd_driver_context;
 
-indigo_result indigo_enumerate_driver_properties(indigo_driver *driver, indigo_property *property) {
-  assert(driver != NULL);
-  assert(property != NULL);
-  indigo_driver_context *driver_context = driver->driver_context;
-  assert(driver_context != NULL);
-  if (indigo_property_match(driver_context->connection_property, property))
-    indigo_define_property(driver, driver_context->connection_property);
-  return INDIGO_OK;
-}
+extern indigo_result indigo_init_ccd_driver(indigo_driver *driver, char *device);
+extern indigo_result indigo_enumerate_ccd_driver_properties(indigo_driver *driver, indigo_property *property);
 
+#endif /* indigo_ccd_driver_h */
