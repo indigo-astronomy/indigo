@@ -102,9 +102,9 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
   return INDIGO_OK;
 }
 
-static indigo_result test_delete_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
-  return INDIGO_OK;
-}
+//static indigo_result test_delete_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
+//  return INDIGO_OK;
+//}
 
 static indigo_result test_disconnect(indigo_client *client) {
   indigo_log("Test: disconnected from INDI bus...");
@@ -117,7 +117,7 @@ static indigo_client test = {
   test_connect,
   test_define_property,
   test_update_property,
-  test_delete_property,
+  NULL, // test_delete_property,
   test_disconnect
 };
 

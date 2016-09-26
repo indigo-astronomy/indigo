@@ -62,10 +62,10 @@ static void xprintf(indigo_driver *driver, const char *format, ...) {
   INDIGO_TRACE(indigo_trace("client: %s", buffer));
 }
 
-static indigo_result xml_client_parser_connect(indigo_driver *driver) {
-  assert(driver != NULL);
-  return INDIGO_OK;
-}
+//static indigo_result xml_client_parser_connect(indigo_driver *driver) {
+//  assert(driver != NULL);
+//  return INDIGO_OK;
+//}
 
 static indigo_result xml_client_parser_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
@@ -134,7 +134,7 @@ static indigo_result xml_client_parser_disconnect(indigo_driver *driver) {
 indigo_driver *xml_client_adapter(int input, int ouput) {
   static indigo_driver driver_template = {
     NULL, INDIGO_OK,
-    xml_client_parser_connect,
+    NULL, // xml_client_parser_connect,
     xml_client_parser_enumerate_properties,
     xml_client_parser_change_property,
     xml_client_parser_disconnect

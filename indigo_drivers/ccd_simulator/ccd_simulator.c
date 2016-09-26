@@ -107,10 +107,10 @@ static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo
   return INDIGO_OK;
 }
 
-static indigo_result ccd_simulator_disconnect(indigo_driver *driver) {
-  assert(driver != NULL);
-  return INDIGO_OK;
-}
+//static indigo_result ccd_simulator_disconnect(indigo_driver *driver) {
+//  assert(driver != NULL);
+//  return INDIGO_OK;
+//}
 
 indigo_driver *ccd_simulator() {
   static indigo_driver driver_template = {
@@ -118,7 +118,7 @@ indigo_driver *ccd_simulator() {
     ccd_simulator_connect,
     ccd_simulator_enumerate_properties,
     ccd_simulator_change_property,
-    ccd_simulator_disconnect
+    NULL // ccd_simulator_disconnect
   };
   indigo_driver *driver = malloc(sizeof(indigo_driver));
   if (driver != NULL) {

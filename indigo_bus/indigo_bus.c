@@ -53,6 +53,7 @@
 static indigo_driver *drivers[MAX_DRIVERS];
 static indigo_client *clients[MAX_CLIENTS];
 static pthread_mutex_t bus_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+static bool is_started = false;
 
 char *indigo_property_type_text[] = {
   "UNDEFINED",
@@ -177,11 +178,14 @@ void indigo_log(const char *format, ...) {
 
 indigo_result indigo_start() {
   if (!INDIGO_LOCK(&bus_mutex)) {
-    memset(drivers, 0, MAX_DRIVERS * sizeof(indigo_driver *));
-    memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
-    memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
-    INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
-    INDIGO_UNLOCK(&bus_mutex);
+    if (!is_started) {
+      memset(drivers, 0, MAX_DRIVERS * sizeof(indigo_driver *));
+      memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
+      memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
+      INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
+      is_started = true;
+      INDIGO_UNLOCK(&bus_mutex);
+    }
     return INDIGO_OK;
   }
   return INDIGO_LOCK_ERROR;
@@ -194,8 +198,36 @@ indigo_result indigo_connect_driver(indigo_driver *driver) {
     for (int i = 0; i < MAX_DRIVERS; i++) {
       if (drivers[i] == NULL) {
         drivers[i] = driver;
-        result = driver->last_result = driver->connect(driver);
+        if (driver->connect == NULL)
+          result = INDIGO_OK;
+        else
+          result = driver->last_result = driver->connect(driver);
         break;
+      }
+    }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
+  }
+  return INDIGO_LOCK_ERROR;
+}
+
+indigo_result indigo_disconnect_driver(indigo_driver *driver) {
+  assert(driver != NULL);
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    indigo_result result = INDIGO_NOT_FOUND;
+    for (int i = 0; i < MAX_DRIVERS; i++) {
+      if (drivers[i] == NULL)
+        break;
+      if (drivers[i] == driver) {
+        if (driver->disconnect == NULL)
+          result = INDIGO_OK;
+        else
+          result = driver->last_result = driver->disconnect(driver);
+        for (int j = i + 1; j < MAX_DRIVERS; j++) {
+          drivers[j - 1] = drivers[j];
+          if (drivers[j] == NULL)
+            break;
+        }
       }
     }
     INDIGO_UNLOCK(&bus_mutex);
@@ -211,8 +243,36 @@ indigo_result indigo_connect_client(indigo_client *client) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (clients[i] == NULL) {
         clients[i] = client;
-        result = client->last_result = client->connect(client);
+        if (client->connect == NULL)
+          result = INDIGO_OK;
+        else
+          result = client->last_result = client->connect(client);
         break;
+      }
+    }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
+  }
+  return INDIGO_LOCK_ERROR;
+}
+
+indigo_result indigo_disconnect_client(indigo_client *client) {
+  assert(client != NULL);
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    indigo_result result = INDIGO_NOT_FOUND;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      if (clients[i] == NULL)
+        break;
+      if (clients[i] == client) {
+        if (client->disconnect == NULL)
+          result = INDIGO_OK;
+        else
+          result = client->last_result = client->disconnect(client);
+        for (int j = i + 1; j < MAX_CLIENTS; j++) {
+          clients[j - 1] = clients[j];
+          if (clients[j] == NULL)
+            break;
+        }
       }
     }
     INDIGO_UNLOCK(&bus_mutex);
@@ -229,7 +289,8 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
       indigo_driver *driver = drivers[i];
       if (driver == NULL)
         break;
-      driver->last_result = driver->enumerate_properties(driver, client, property);
+      if (driver->enumerate_properties != NULL)
+        driver->last_result = driver->enumerate_properties(driver, client, property);
     }
     INDIGO_UNLOCK(&bus_mutex);
     return INDIGO_OK;
@@ -246,7 +307,8 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
       indigo_driver *driver = drivers[i];
       if (driver == NULL)
         break;
-      driver->last_result = driver->change_property(driver, client, property);
+      if (driver->change_property != NULL)
+        driver->last_result = driver->change_property(driver, client, property);
     }
     INDIGO_UNLOCK(&bus_mutex);
     return INDIGO_OK;
@@ -263,7 +325,8 @@ indigo_result indigo_define_property(indigo_driver *driver, indigo_property *pro
       indigo_client *client = clients[i];
       if (client == NULL)
         break;
-      client->last_result = client->define_property(client, driver, property);
+      if (client->define_property != NULL)
+        client->last_result = client->define_property(client, driver, property);
     }
     INDIGO_UNLOCK(&bus_mutex);
     return INDIGO_OK;
@@ -280,7 +343,8 @@ indigo_result indigo_update_property(indigo_driver *driver, indigo_property *pro
       indigo_client *client = clients[i];
       if (client == NULL)
         break;
-      client->last_result = client->update_property(client, driver, property);
+      if (client->update_property != NULL)
+        client->last_result = client->update_property(client, driver, property);
     }
     INDIGO_UNLOCK(&bus_mutex);
     return INDIGO_OK;
@@ -297,7 +361,8 @@ indigo_result indigo_delete_property(indigo_driver *driver, indigo_property *pro
       indigo_client *client = clients[i];
       if (client == NULL)
         break;
-      client->last_result = client->delete_property(client, driver, property);
+      if (client->delete_property != NULL)
+        client->last_result = client->delete_property(client, driver, property);
     }
     INDIGO_UNLOCK(&bus_mutex);
     return INDIGO_OK;
@@ -307,19 +372,24 @@ indigo_result indigo_delete_property(indigo_driver *driver, indigo_property *pro
 
 indigo_result indigo_stop() {
   if (!INDIGO_LOCK(&bus_mutex)) {
-    for (int i = 0; i < MAX_DRIVERS; i++) {
-      indigo_driver *driver = drivers[i];
-      if (driver == NULL)
-        break;
-      driver->last_result = driver->disconnect(driver);
+    if (is_started) {
+      for (int i = 0; i < MAX_DRIVERS; i++) {
+        indigo_driver *driver = drivers[i];
+        if (driver == NULL)
+          break;
+        if (driver->disconnect != NULL)
+          driver->last_result = driver->disconnect(driver);
+      }
+      for (int i = 0; i < MAX_CLIENTS; i++) {
+        indigo_client *client = clients[i];
+        if (client == NULL)
+          break;
+        if (client->disconnect != NULL)
+          client->last_result = client->disconnect(client);
+      }
+      INDIGO_UNLOCK(&bus_mutex);
+      is_started = false;
     }
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      indigo_client *client = clients[i];
-      if (client == NULL)
-        break;
-      client->last_result = client->disconnect(client);
-    }
-    INDIGO_UNLOCK(&bus_mutex);
     return INDIGO_OK;
   }
   return INDIGO_LOCK_ERROR;

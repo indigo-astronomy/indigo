@@ -58,6 +58,7 @@ typedef enum {
   INDIGO_REQUEST_FAILED,
   INDIGO_TOO_MANY_DRIVERS,
   INDIGO_LOCK_ERROR,
+  INDIGO_NOT_FOUND
 } indigo_result;
 
 typedef enum {
