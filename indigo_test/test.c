@@ -44,7 +44,7 @@ static indigo_property *connection_property;
 static indigo_property *exposure_property;
 static indigo_property *ccd1_property;
 
-static indigo_result test_init(indigo_client *client) {
+static indigo_result test_connect(indigo_client *client) {
   connection_property = indigo_init_switch_property(NULL, "CCD Simulator", "CONNECTION", "", "", 0, 0, 0, 2);
   indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "", false);
   indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "", true);
@@ -52,12 +52,8 @@ static indigo_result test_init(indigo_client *client) {
   indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "", 0, 0, 0, 0);
   ccd1_property = indigo_init_blob_property(NULL, "CCD Simulator", "CCD1", "", "", 0, 1);
   indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "");
-  indigo_log("Test: initialized...");
-  return INDIGO_OK;
-}
-
-static indigo_result test_start(indigo_client *client) {
-  indigo_log("Test: started...");
+  indigo_log("Test: connected to INDI bus...");
+  indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
   return INDIGO_OK;
 }
 
@@ -110,30 +106,26 @@ static indigo_result test_delete_property(struct indigo_client *client, struct i
   return INDIGO_OK;
 }
 
-static indigo_result test_stop(indigo_client *client) {
-  indigo_log("Test: stopped...");
+static indigo_result test_disconnect(indigo_client *client) {
+  indigo_log("Test: disconnected from INDI bus...");
   exit(0);
   return INDIGO_OK;
 }
 
 static indigo_client test = {
   NULL, INDIGO_OK,
-  test_init,
-  test_start,
+  test_connect,
   test_define_property,
   test_update_property,
   test_delete_property,
-  test_stop
+  test_disconnect
 };
 
 int main(int argc, const char * argv[]) {
-  indigo_init();
-  indigo_register_driver(ccd_simulator());
-  indigo_register_client(&test);
   indigo_start();
-  
-  indigo_enumerate_properties(&test, &INDIGO_ALL_PROPERTIES);
-  
+  indigo_connect_driver(ccd_simulator());
+  indigo_connect_client(&test);
   sleep(10);
+  indigo_stop();
   return 0;
 }

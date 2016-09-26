@@ -44,10 +44,10 @@
 
 int main(int argc, const char * argv[]) {
   indigo_client *protocol_adapter = xml_driver_adapter(0, 1);
-  indigo_init();
-  indigo_register_driver(ccd_simulator());
-  indigo_register_client(protocol_adapter);
   indigo_start();
+  indigo_connect_driver(ccd_simulator());
+  indigo_connect_client(protocol_adapter);
   indigo_xml_parse(0, NULL, protocol_adapter);
+  indigo_stop();
   return 0;
 }

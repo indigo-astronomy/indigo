@@ -26,6 +26,16 @@
 		9DF232A21D994C52000158B7 /* indigo_ccd_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DF2329F1D994C52000158B7 /* indigo_ccd_driver.c */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		599C9A291D9993EB008BBCC1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 592662A51D9590630021746A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 59D381F61D97083A00E87393;
+			remoteInfo = driver;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		592662AB1D9590630021746A /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -229,6 +239,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				599C9A2A1D9993EB008BBCC1 /* PBXTargetDependency */,
 			);
 			name = client;
 			productName = client;
@@ -317,6 +328,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		599C9A2A1D9993EB008BBCC1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 59D381F61D97083A00E87393 /* driver */;
+			targetProxy = 599C9A291D9993EB008BBCC1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		592662B21D9590630021746A /* Debug */ = {

@@ -49,7 +49,7 @@ static indigo_property *ccd1_property;
 
 static int driver_pid;
 
-static indigo_result client_init(indigo_client *client) {
+static indigo_result client_connect(indigo_client *client) {
   connection_property = indigo_init_switch_property(NULL, "CCD Simulator", "CONNECTION", "", "", 0, 0, 0, 2);
   indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "", false);
   indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "", true);
@@ -57,12 +57,7 @@ static indigo_result client_init(indigo_client *client) {
   indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "", 0, 0, 0, 0);
   ccd1_property = indigo_init_blob_property(NULL, "CCD Simulator", "CCD1", "", "", 0, 1);
   indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "");
-  indigo_log("Client: initialized...");
-  return INDIGO_OK;
-}
-
-static indigo_result client_start(indigo_client *client) {
-  indigo_log("Client: started...");
+  indigo_log("Client: connected to INDI bus...");
   return INDIGO_OK;
 }
 
@@ -115,8 +110,8 @@ static indigo_result client_delete_property(struct indigo_client *client, struct
   return INDIGO_OK;
 }
 
-static indigo_result client_stop(indigo_client *client) {
-  indigo_log("Client: stopped...");
+static indigo_result client_disconnect(indigo_client *client) {
+  indigo_log("Client: disconnected from INDI bus...");
   kill(driver_pid, SIGKILL);
   exit(0);
   return INDIGO_OK;
@@ -124,12 +119,11 @@ static indigo_result client_stop(indigo_client *client) {
 
 static indigo_client client = {
   NULL, INDIGO_OK,
-  client_init,
-  client_start,
+  client_connect,
   client_define_property,
   client_update_property,
   client_delete_property,
-  client_stop
+  client_disconnect
 };
 
 int main(int argc, const char * argv[]) {
@@ -148,12 +142,12 @@ int main(int argc, const char * argv[]) {
   } else {
     close(input[1]);
     close(output[0]);
-    indigo_driver *protocol_adapter = xml_client_adapter(input[0], output[1]);
-    indigo_init();
-    indigo_register_driver(protocol_adapter);
-    indigo_register_client(&client);
     indigo_start();
+    indigo_driver *protocol_adapter = xml_client_adapter(input[0], output[1]);
+    indigo_connect_driver(protocol_adapter);
+    indigo_connect_client(&client);
     indigo_xml_parse(input[0], protocol_adapter, NULL);
+    indigo_stop();
   }
   return 0;
 }

@@ -41,7 +41,7 @@
 
 #ifdef INDIGO_USE_LOCKS
 #define INDIGO_LOCK(mutex) pthread_mutex_lock(mutex)
-#define INDIGO_UNLOCK(mutex) pthread_mutex_unlock(mutex)
+#define INDIGO_UNLOCK(mutex) assert(pthread_mutex_unlock(mutex) == 0)
 #else
 #define INDIGO_LOCK(mutex) 0
 #define INDIGO_UNLOCK(mutex)
@@ -56,7 +56,6 @@ typedef enum {
   INDIGO_INIT_FAILED,
   INDIGO_START_FAILED,
   INDIGO_REQUEST_FAILED,
-  INDIGO_PARTIALLY_FAILED,
   INDIGO_TOO_MANY_DRIVERS,
   INDIGO_LOCK_ERROR,
 } indigo_result;
@@ -127,22 +126,20 @@ struct indigo_client;
 typedef struct indigo_driver {
   void *driver_context;
   indigo_result last_result;
-  indigo_result (*init)(struct indigo_driver *driver);
-  indigo_result (*start)(struct indigo_driver *driver);
+  indigo_result (*connect)(struct indigo_driver *driver);
   indigo_result (*enumerate_properties)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
   indigo_result (*change_property)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
-  indigo_result (*stop)(struct indigo_driver *driver);
+  indigo_result (*disconnect)(struct indigo_driver *driver);
 } indigo_driver;
 
 typedef struct indigo_client {
   void *client_context;
   indigo_result last_result;
-  indigo_result (*init)(struct indigo_client *client);
-  indigo_result (*start)(struct indigo_client *client);
+  indigo_result (*connect)(struct indigo_client *client);
   indigo_result (*define_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);
   indigo_result (*update_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);
   indigo_result (*delete_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);
-  indigo_result (*stop)(struct indigo_client *client);
+  indigo_result (*disconnect)(struct indigo_client *client);
 } indigo_client;
 
 typedef indigo_driver *(*indigo_driver_entry_point)();
@@ -154,10 +151,12 @@ extern void indigo_error(const char *format, ...);
 extern void indigo_log(const char *format, ...);
 extern void indigo_debug_property(const char *message, indigo_property *property, bool defs, bool items);
 
-extern indigo_result indigo_init();
-extern indigo_result indigo_register_driver(indigo_driver *driver);
-extern indigo_result indigo_register_client(indigo_client *client);
 extern indigo_result indigo_start();
+extern indigo_result indigo_connect_driver(indigo_driver *driver);
+extern indigo_result indigo_disconnect_driver(indigo_driver *driver);
+extern indigo_result indigo_connect_client(indigo_client *client);
+extern indigo_result indigo_disconnect_client(indigo_client *client);
+extern indigo_result indigo_stop();
 
 extern indigo_result indigo_define_property(indigo_driver *driver, indigo_property *property);
 extern indigo_result indigo_update_property(indigo_driver *driver, indigo_property *property);

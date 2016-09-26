@@ -62,12 +62,7 @@ static void xprintf(indigo_driver *driver, const char *format, ...) {
   INDIGO_TRACE(indigo_trace("client: %s", buffer));
 }
 
-static indigo_result xml_client_parser_init(indigo_driver *driver) {
-  assert(driver != NULL);
-  return INDIGO_OK;
-}
-
-static indigo_result xml_client_parser_start(indigo_driver *driver) {
+static indigo_result xml_client_parser_connect(indigo_driver *driver) {
   assert(driver != NULL);
   return INDIGO_OK;
 }
@@ -128,7 +123,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
   return INDIGO_OK;
 }
 
-static indigo_result xml_client_parser_stop(indigo_driver *driver) {
+static indigo_result xml_client_parser_disconnect(indigo_driver *driver) {
   assert(driver != NULL);
   indigo_xml_client_context *driver_context = (indigo_xml_client_context *)driver->driver_context;
   close(driver_context->input);
@@ -139,11 +134,10 @@ static indigo_result xml_client_parser_stop(indigo_driver *driver) {
 indigo_driver *xml_client_adapter(int input, int ouput) {
   static indigo_driver driver_template = {
     NULL, INDIGO_OK,
-    xml_client_parser_init,
-    xml_client_parser_start,
+    xml_client_parser_connect,
     xml_client_parser_enumerate_properties,
     xml_client_parser_change_property,
-    xml_client_parser_stop
+    xml_client_parser_disconnect
   };
   indigo_driver *driver = malloc(sizeof(indigo_driver));
   if (driver != NULL) {
