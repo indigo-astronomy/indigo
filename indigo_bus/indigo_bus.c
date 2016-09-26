@@ -38,6 +38,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <assert.h>
+#include <pthread.h>
 #include <sys/time.h>
 
 #ifdef INDIGO_USE_SYSLOG
@@ -51,6 +52,7 @@
 
 static indigo_driver *drivers[MAX_DRIVERS];
 static indigo_client *clients[MAX_CLIENTS];
+static pthread_mutex_t bus_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
 
 char *indigo_property_type_text[] = {
   "UNDEFINED",
@@ -174,153 +176,197 @@ void indigo_log(const char *format, ...) {
 }
 
 indigo_result indigo_init() {
-  memset(drivers, 0, MAX_DRIVERS * sizeof(indigo_driver *));
-  memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
-  memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
-  INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
-  return INDIGO_OK;
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    memset(drivers, 0, MAX_DRIVERS * sizeof(indigo_driver *));
+    memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
+    memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
+    INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
+    INDIGO_UNLOCK(&bus_mutex);
+    return INDIGO_OK;
+  }
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_register_driver(indigo_driver *driver) {
   assert(driver != NULL);
-  for (int i = 0; i < MAX_DRIVERS; i++) {
-    if (drivers[i] == NULL) {
-      drivers[i] = driver;
-      return driver->last_result = driver->init(driver);
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    indigo_result result = INDIGO_TOO_MANY_DRIVERS;
+    for (int i = 0; i < MAX_DRIVERS; i++) {
+      if (drivers[i] == NULL) {
+        drivers[i] = driver;
+        result = driver->last_result = driver->init(driver);
+        break;
+      }
     }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
   }
-  return INDIGO_TOO_MANY_DRIVERS;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_register_client(indigo_client *client) {
   assert(client != NULL);
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (clients[i] == NULL) {
-      clients[i] = client;
-      return client->last_result = client->init(client);
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    indigo_result result = INDIGO_TOO_MANY_DRIVERS;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      if (clients[i] == NULL) {
+        clients[i] = client;
+        result = client->last_result = client->init(client);
+        break;
+      }
     }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
   }
-  return INDIGO_TOO_MANY_DRIVERS;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_start() {
-  bool result = INDIGO_OK;
-  for (int i = 0; i < MAX_DRIVERS; i++) {
-    indigo_driver *driver = drivers[i];
-    if (driver == NULL)
-      break;
-    if (driver->last_result == INDIGO_OK) {
-      if ((driver->last_result = driver->start(driver)) != INDIGO_OK)
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    indigo_result result = INDIGO_OK;
+    for (int i = 0; i < MAX_DRIVERS; i++) {
+      indigo_driver *driver = drivers[i];
+      if (driver == NULL)
+        break;
+      if (driver->last_result == INDIGO_OK) {
+        if ((driver->last_result = driver->start(driver)) != INDIGO_OK)
+          result = INDIGO_PARTIALLY_FAILED;
+      } else {
         result = INDIGO_PARTIALLY_FAILED;
-    } else {
-      result = INDIGO_PARTIALLY_FAILED;
+      }
     }
-  }
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    indigo_client *client = clients[i];
-    if (client == NULL)
-      break;
-    if (client->last_result == INDIGO_OK) {
-      if ((client->last_result = client->start(client)) != INDIGO_OK)
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client == NULL)
+        break;
+      if (client->last_result == INDIGO_OK) {
+        if ((client->last_result = client->start(client)) != INDIGO_OK)
+          result = INDIGO_PARTIALLY_FAILED;
+      } else {
         result = INDIGO_PARTIALLY_FAILED;
-    } else {
-      result = INDIGO_PARTIALLY_FAILED;
+      }
     }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
   }
-  return result;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
   assert(client != NULL);
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
-  indigo_result result = INDIGO_OK;
-  for (int i = 0; i < MAX_DRIVERS; i++) {
-    indigo_driver *driver = drivers[i];
-    if (driver == NULL)
-      break;
-    if ((driver->last_result = driver->enumerate_properties(driver, client, property)) != INDIGO_OK)
-      result = INDIGO_PARTIALLY_FAILED;
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
+    indigo_result result = INDIGO_OK;
+    for (int i = 0; i < MAX_DRIVERS; i++) {
+      indigo_driver *driver = drivers[i];
+      if (driver == NULL)
+        break;
+      if ((driver->last_result = driver->enumerate_properties(driver, client, property)) != INDIGO_OK)
+        result = INDIGO_PARTIALLY_FAILED;
+    }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
   }
-  return result;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
   assert(client != NULL);
   assert(property != NULL);
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
-  indigo_result result = INDIGO_OK;
-  for (int i = 0; i < MAX_DRIVERS; i++) {
-    indigo_driver *driver = drivers[i];
-    if (driver == NULL)
-      break;
-    if ((driver->last_result = driver->change_property(driver, client, property)) != INDIGO_OK)
-      result = INDIGO_PARTIALLY_FAILED;
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
+    indigo_result result = INDIGO_OK;
+    for (int i = 0; i < MAX_DRIVERS; i++) {
+      indigo_driver *driver = drivers[i];
+      if (driver == NULL)
+        break;
+      if ((driver->last_result = driver->change_property(driver, client, property)) != INDIGO_OK)
+        result = INDIGO_PARTIALLY_FAILED;
+    }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
   }
-  return result;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_define_property(indigo_driver *driver, indigo_property *property) {
   assert(driver != NULL);
   assert(property != NULL);
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
-  indigo_result result = INDIGO_OK;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    indigo_client *client = clients[i];
-    if (client == NULL)
-      break;
-    if ((client->last_result = client->define_property(client, driver, property)) != INDIGO_OK)
-      result = INDIGO_PARTIALLY_FAILED;
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
+    indigo_result result = INDIGO_OK;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client == NULL)
+        break;
+      if ((client->last_result = client->define_property(client, driver, property)) != INDIGO_OK)
+        result = INDIGO_PARTIALLY_FAILED;
+    }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
   }
-  return result;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_update_property(indigo_driver *driver, indigo_property *property) {
   assert(driver != NULL);
   assert(property != NULL);
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
-  indigo_result result = INDIGO_OK;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    indigo_client *client = clients[i];
-    if (client == NULL)
-      break;
-    if ((client->last_result = client->update_property(client, driver, property)) != INDIGO_OK)
-      result = INDIGO_PARTIALLY_FAILED;
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
+    indigo_result result = INDIGO_OK;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client == NULL)
+        break;
+      if ((client->last_result = client->update_property(client, driver, property)) != INDIGO_OK)
+        result = INDIGO_PARTIALLY_FAILED;
+    }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
   }
-  return result;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_delete_property(indigo_driver *driver, indigo_property *property) {
   assert(driver != NULL);
   assert(property != NULL);
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
-  indigo_result result = INDIGO_OK;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    indigo_client *client = clients[i];
-    if (client == NULL)
-      break;
-    if ((client->last_result = client->delete_property(client, driver, property)) != INDIGO_OK)
-      result = INDIGO_PARTIALLY_FAILED;
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
+    indigo_result result = INDIGO_OK;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client == NULL)
+        break;
+      if ((client->last_result = client->delete_property(client, driver, property)) != INDIGO_OK)
+        result = INDIGO_PARTIALLY_FAILED;
+    }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
   }
-  return result;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_stop() {
-  indigo_result result = INDIGO_OK;
-  for (int i = 0; i < MAX_DRIVERS; i++) {
-    indigo_driver *driver = drivers[i];
-    if (driver == NULL)
-      break;
-    if ((driver->last_result = driver->stop(driver)) != INDIGO_OK)
-      result = INDIGO_PARTIALLY_FAILED;
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    indigo_result result = INDIGO_OK;
+    for (int i = 0; i < MAX_DRIVERS; i++) {
+      indigo_driver *driver = drivers[i];
+      if (driver == NULL)
+        break;
+      if ((driver->last_result = driver->stop(driver)) != INDIGO_OK)
+        result = INDIGO_PARTIALLY_FAILED;
+    }
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client == NULL)
+        break;
+      if ((client->last_result = client->stop(client)) != INDIGO_OK)
+        result = INDIGO_PARTIALLY_FAILED;
+    }
+    INDIGO_UNLOCK(&bus_mutex);
+    return result;
   }
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    indigo_client *client = clients[i];
-    if (client == NULL)
-      break;
-    if ((client->last_result = client->stop(client)) != INDIGO_OK)
-      result = INDIGO_PARTIALLY_FAILED;
-  }
-  return result;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_property *indigo_init_text_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
@@ -329,10 +375,10 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
     property = malloc(size);
   }
   memset(property, 0, size);
-  strncpy(property->device, device, NAME_SIZE);
-  strncpy(property->name, name, NAME_SIZE);
-  strncpy(property->group, group, NAME_SIZE);
-  strncpy(property->label, label, VALUE_SIZE);
+  strncpy(property->device, device,INDIGO_NAME_SIZE);
+  strncpy(property->name, name,INDIGO_NAME_SIZE);
+  strncpy(property->group, group,INDIGO_NAME_SIZE);
+  strncpy(property->label, label, INDIGO_VALUE_SIZE);
   property->type = INDIGO_TEXT_VECTOR;
   property->state = state;
   property->perm = perm;
@@ -347,10 +393,10 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
     property = malloc(size);
   }
   memset(property, 0, size);
-  strncpy(property->device, device, NAME_SIZE);
-  strncpy(property->name, name, NAME_SIZE);
-  strncpy(property->group, group, NAME_SIZE);
-  strncpy(property->label, label, VALUE_SIZE);
+  strncpy(property->device, device,INDIGO_NAME_SIZE);
+  strncpy(property->name, name,INDIGO_NAME_SIZE);
+  strncpy(property->group, group,INDIGO_NAME_SIZE);
+  strncpy(property->label, label, INDIGO_VALUE_SIZE);
   property->type = INDIGO_NUMBER_VECTOR;
   property->state = state;
   property->perm = perm;
@@ -365,10 +411,10 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
     property = malloc(size);
   }
   memset(property, 0, size);
-  strncpy(property->device, device, NAME_SIZE);
-  strncpy(property->name, name, NAME_SIZE);
-  strncpy(property->group, group, NAME_SIZE);
-  strncpy(property->label, label, VALUE_SIZE);
+  strncpy(property->device, device,INDIGO_NAME_SIZE);
+  strncpy(property->name, name,INDIGO_NAME_SIZE);
+  strncpy(property->group, group,INDIGO_NAME_SIZE);
+  strncpy(property->label, label, INDIGO_VALUE_SIZE);
   property->type = INDIGO_SWITCH_VECTOR;
   property->state = state;
   property->perm = perm;
@@ -384,10 +430,10 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
     property = malloc(size);
   }
   memset(property, 0, size);
-  strncpy(property->device, device, NAME_SIZE);
-  strncpy(property->name, name, NAME_SIZE);
-  strncpy(property->group, group, NAME_SIZE);
-  strncpy(property->label, label, VALUE_SIZE);
+  strncpy(property->device, device,INDIGO_NAME_SIZE);
+  strncpy(property->name, name,INDIGO_NAME_SIZE);
+  strncpy(property->group, group,INDIGO_NAME_SIZE);
+  strncpy(property->label, label, INDIGO_VALUE_SIZE);
   property->type = INDIGO_LIGHT_VECTOR;
   property->perm = INDIGO_RO_PERM;
   property->state = state;
@@ -402,10 +448,10 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
     property = malloc(size);
   }
   memset(property, 0, size);
-  strncpy(property->device, device, NAME_SIZE);
-  strncpy(property->name, name, NAME_SIZE);
-  strncpy(property->group, group, NAME_SIZE);
-  strncpy(property->label, label, VALUE_SIZE);
+  strncpy(property->device, device,INDIGO_NAME_SIZE);
+  strncpy(property->name, name,INDIGO_NAME_SIZE);
+  strncpy(property->group, group,INDIGO_NAME_SIZE);
+  strncpy(property->label, label, INDIGO_VALUE_SIZE);
   property->type = INDIGO_BLOB_VECTOR;
   property->perm = INDIGO_RO_PERM;
   property->state = state;
@@ -416,15 +462,15 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 
 void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *value) {
   memset(item, 0, sizeof(indigo_item));
-  strncpy(item->name, name, NAME_SIZE);
-  strncpy(item->label, label, NAME_SIZE);
-  strncpy(item->text_value, value, VALUE_SIZE);
+  strncpy(item->name, name,INDIGO_NAME_SIZE);
+  strncpy(item->label, label,INDIGO_NAME_SIZE);
+  strncpy(item->text_value, value, INDIGO_VALUE_SIZE);
 }
 
 void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value) {
   memset(item, sizeof(indigo_item), 0);
-  strncpy(item->name, name, NAME_SIZE);
-  strncpy(item->label, label, VALUE_SIZE);
+  strncpy(item->name, name,INDIGO_NAME_SIZE);
+  strncpy(item->label, label, INDIGO_VALUE_SIZE);
   item->number_min = min;
   item->number_max = max;
   item->number_step = step;
@@ -433,22 +479,22 @@ void indigo_init_number_item(indigo_item *item, const char *name, const char *la
 
 void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value) {
   memset(item, sizeof(indigo_item), 0);
-  strncpy(item->name, name, NAME_SIZE);
-  strncpy(item->label, label, VALUE_SIZE);
+  strncpy(item->name, name,INDIGO_NAME_SIZE);
+  strncpy(item->label, label, INDIGO_VALUE_SIZE);
   item->switch_value = value;
 }
 
 void indigo_init_light_item(indigo_item *item, const char *name, const char *label, indigo_property_state value) {
   memset(item, sizeof(indigo_item), 0);
-  strncpy(item->name, name, NAME_SIZE);
-  strncpy(item->label, label, VALUE_SIZE);
+  strncpy(item->name, name,INDIGO_NAME_SIZE);
+  strncpy(item->label, label, INDIGO_VALUE_SIZE);
   item->light_value = value;
 }
 
 void indigo_init_blob_item(indigo_item *item, const char *name, const char *label) {
   memset(item, sizeof(indigo_item), 0);
-  strncpy(item->name, name, NAME_SIZE);
-  strncpy(item->label, label, VALUE_SIZE);
+  strncpy(item->name, name,INDIGO_NAME_SIZE);
+  strncpy(item->label, label, INDIGO_VALUE_SIZE);
 }
 
 bool indigo_property_match(indigo_property *property, indigo_property *other) {
@@ -466,7 +512,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
         if (!strcmp(property_item->name, other_item->name)) {
           switch (property->type) {
             case INDIGO_TEXT_VECTOR:
-              strncpy(property_item->text_value, other_item->text_value, VALUE_SIZE);
+              strncpy(property_item->text_value, other_item->text_value, INDIGO_VALUE_SIZE);
               break;
             case INDIGO_NUMBER_VECTOR:
               property_item->number_value = other_item->number_value;
@@ -478,7 +524,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
               property_item->light_value = other_item->light_value;
               break;
             case INDIGO_BLOB_VECTOR:
-              strncpy(property_item->blob_format, other_item->blob_format, NAME_SIZE);
+              strncpy(property_item->blob_format, other_item->blob_format,INDIGO_NAME_SIZE);
               property_item->blob_size = other_item->blob_size;
               property_item->blob_value = other_item->blob_value;
               break;

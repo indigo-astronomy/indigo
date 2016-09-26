@@ -89,7 +89,7 @@ static indigo_result xml_driver_adapter_define_property(indigo_client *client, s
   assert(driver != NULL);
   assert(client != NULL);
   assert(property != NULL);
-  pthread_mutex_lock(&xmutex);
+  INDIGO_LOCK(&xmutex);
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
       xprintf(client, "<defTextVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
@@ -132,7 +132,7 @@ static indigo_result xml_driver_adapter_define_property(indigo_client *client, s
       xprintf(client, "</defBLOBtVector>\n");
       break;
   }
-  pthread_mutex_unlock(&xmutex);
+  INDIGO_UNLOCK(&xmutex);
   return INDIGO_OK;
 }
 
@@ -140,7 +140,7 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
   assert(driver != NULL);
   assert(client != NULL);
   assert(property != NULL);
-  pthread_mutex_lock(&xmutex);
+  INDIGO_LOCK(&xmutex);
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
       xprintf(client, "<setTextVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
@@ -213,7 +213,7 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
       xprintf(client, "</setBLOBtVector>\n");
       break;
   }
-  pthread_mutex_unlock(&xmutex);
+  INDIGO_UNLOCK(&xmutex);
   return INDIGO_OK;
 }
 
@@ -221,9 +221,9 @@ static indigo_result xml_driver_adapter_delete_property(indigo_client *client, i
   assert(driver != NULL);
   assert(client != NULL);
   assert(property != NULL);
-  pthread_mutex_lock(&xmutex);
+  INDIGO_LOCK(&xmutex);
   xprintf(client, "<delProperty device='%s' name='%s'>\n", property->device, property->name);
-  pthread_mutex_unlock(&xmutex);
+  INDIGO_UNLOCK(&xmutex);
   return INDIGO_OK;
 }
 

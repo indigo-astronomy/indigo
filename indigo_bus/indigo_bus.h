@@ -37,21 +37,19 @@
 
 #include <stdbool.h>
 
-#define INDIGO_TRACE(c)
-#define INDIGO_DEBUG(c)
-#define INDIGO_ERROR(c) c
-#define INDIGO_LOG(c) c
+#include "indigo_config.h"
 
-//#define INDIG_USE_SYSLOG
-
-#define NAME_SIZE   128
-#define VALUE_SIZE  256
-#define MAX_ITEMS   64
+#ifdef INDIGO_USE_LOCKS
+#define INDIGO_LOCK(mutex) pthread_mutex_lock(mutex)
+#define INDIGO_UNLOCK(mutex) pthread_mutex_unlock(mutex)
+#else
+#define INDIGO_LOCK(mutex) 0
+#define INDIGO_UNLOCK(mutex)
+#endif
 
 #define INDIGO_VERSION_NONE    0x0000
 #define INDIGO_VERSION_LEGACY  0x0107
 #define INDIGO_VERSION_2_0     0x0200
-#define INDIGO_VERSION_CURRENT 0x0200
 
 typedef enum {
   INDIGO_OK = 0,
@@ -60,6 +58,7 @@ typedef enum {
   INDIGO_REQUEST_FAILED,
   INDIGO_PARTIALLY_FAILED,
   INDIGO_TOO_MANY_DRIVERS,
+  INDIGO_LOCK_ERROR,
 } indigo_result;
 
 typedef enum {
@@ -98,22 +97,22 @@ typedef enum {
 extern char *indigo_switch_rule_text[];
 
 typedef struct {
-  char name[NAME_SIZE];
-  char label[VALUE_SIZE];
-  char text_value[VALUE_SIZE];
+  char name[INDIGO_NAME_SIZE];
+  char label[INDIGO_VALUE_SIZE];
+  char text_value[INDIGO_VALUE_SIZE];
   double number_min, number_max, number_step, number_value;
   bool switch_value;
   indigo_property_state light_value;
-  char blob_format[NAME_SIZE];
+  char blob_format[INDIGO_NAME_SIZE];
   long blob_size;
   void *blob_value;
 } indigo_item;
 
 typedef struct {
-  char device[NAME_SIZE];
-  char name[NAME_SIZE];
-  char group[NAME_SIZE];
-  char label[VALUE_SIZE];
+  char device[INDIGO_NAME_SIZE];
+  char name[INDIGO_NAME_SIZE];
+  char group[INDIGO_NAME_SIZE];
+  char label[INDIGO_VALUE_SIZE];
   indigo_property_state state;
   indigo_property_type type;
   indigo_property_perm perm;

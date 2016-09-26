@@ -74,7 +74,7 @@ static indigo_result xml_client_parser_start(indigo_driver *driver) {
 
 static indigo_result xml_client_parser_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
-  pthread_mutex_lock(&xmutex);
+  INDIGO_LOCK(&xmutex);
   if (property != NULL) {
     if (*property->device && *property->name) {
       xprintf(driver, "<getProperties version='%d.%d' device='%s' name='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->device, property->name);
@@ -88,14 +88,14 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_driver *drive
   } else {
     xprintf(driver, "<getProperties version='1.7'/>\n");
   }
-  pthread_mutex_unlock(&xmutex);
+  INDIGO_UNLOCK(&xmutex);
   return INDIGO_OK;
 }
 
 static indigo_result xml_client_parser_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
   assert(property != NULL);
-  pthread_mutex_lock(&xmutex);
+  INDIGO_LOCK(&xmutex);
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
       xprintf(driver, "<newTextVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
@@ -124,7 +124,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
     default:
       break;
   }
-  pthread_mutex_unlock(&xmutex);
+  INDIGO_UNLOCK(&xmutex);
   return INDIGO_OK;
 }
 
