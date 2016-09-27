@@ -18,4 +18,7 @@ or (client executing driver as child proces with the legacy INDI wire protocol)
 
 ./client
 
+or (network server, which can be accessed by some INDI control panel)
+
+./server
 
