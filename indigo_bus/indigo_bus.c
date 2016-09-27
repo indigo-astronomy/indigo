@@ -486,11 +486,14 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
   return property;
 }
 
-void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *value) {
+void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *format, ...) {
   memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name,INDIGO_NAME_SIZE);
   strncpy(item->label, label,INDIGO_NAME_SIZE);
-  strncpy(item->text_value, value, INDIGO_VALUE_SIZE);
+  va_list args;
+  va_start(args, format);
+  vsnprintf(item->text_value, INDIGO_VALUE_SIZE, format, args);
+  va_end(args);
 }
 
 void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value) {

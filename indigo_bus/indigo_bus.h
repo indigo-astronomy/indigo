@@ -58,7 +58,8 @@ typedef enum {
   INDIGO_REQUEST_FAILED,
   INDIGO_TOO_MANY_DRIVERS,
   INDIGO_LOCK_ERROR,
-  INDIGO_NOT_FOUND
+  INDIGO_NOT_FOUND,
+  INDIGO_CANT_START_SERVER
 } indigo_result;
 
 typedef enum {
@@ -174,7 +175,7 @@ extern indigo_property *indigo_init_switch_property(indigo_property *property, c
 extern indigo_property *indigo_init_light_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
 extern indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
 
-extern void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *value);
+extern void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *format, ...);
 extern void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value);
 extern void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value);
 extern void indigo_init_light_item(indigo_item *item, const char *name, const char *label, indigo_property_state value);

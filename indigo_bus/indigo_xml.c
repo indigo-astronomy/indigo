@@ -150,7 +150,7 @@ void *set_blob_vector_handler(parser_state state, char *name, char *value, indig
 void *get_properties_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
   if (state == ATTRIBUTE_VALUE) {
     if (!strcmp(name, "version")) {
-      if (!strcmp(value, "1.7"))
+      if (!strncmp(value, "1.", 2))
         property->version = INDIGO_VERSION_LEGACY;
       else if (!strcmp(value, "2.0"))
         property->version = INDIGO_VERSION_2_0;
@@ -760,8 +760,16 @@ void *del_property_handler(parser_state state, char *name, char *value, indigo_p
   return top_level_handler;
 }
 
+void *enable_blob_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
+  if (state == END_TAG) {
+    return top_level_handler;
+  }
+  return enable_blob_handler;
+}
+
 void *top_level_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_driver *driver, indigo_client *client) {
   if (state == BEGIN_TAG) {
+    INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%s' top level", name));
     if (!strcmp(name, "getProperties"))
       return get_properties_handler;
     if (!strcmp(name, "newTextVector")) {
@@ -818,6 +826,8 @@ void *top_level_handler(parser_state state, char *name, char *value, indigo_prop
     }
     if (!strcmp(name, "delProperty"))
       return del_property_handler;
+    if (!strcmp(name, "enableBLOB"))
+      return enable_blob_handler;
   }
   return top_level_handler;
 }
@@ -861,12 +871,11 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
       pointer = buffer;
       buffer[count] = 0;
     }
-    
     switch (state) {
       case IDLE:
         if (c == '<') {
           state = BEGIN_TAG1;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' IDLE -> BEGIN_TAG1", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' IDLE -> BEGIN_TAG1", c));
         }
         break;
       case BEGIN_TAG1:
@@ -874,26 +883,26 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
         if (isalpha(c)) {
           *name_pointer++ = c;
           state = BEGIN_TAG;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' BEGIN_TAG1 -> BEGIN_TAG", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG1 -> BEGIN_TAG", c));
         } else if (c == '/') {
           state = END_TAG;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' BEGIN_TAG1 -> END_TAG", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG1 -> END_TAG", c));
         }
         break;
       case BEGIN_TAG:
         if (name_pointer - name_buffer <INDIGO_NAME_SIZE && isalpha(c)) {
           *name_pointer++ = c;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' BEGIN_TAG", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG", c));
         } else {
           *name_pointer = 0;
           depth++;
           handler = handler(BEGIN_TAG, name_buffer, NULL, property, driver, client);
           if (isblank(c)) {
             state = ATTRIBUTE_NAME1;
-            INDIGO_TRACE(indigo_trace("XML Parser: '%c' BEGIN_TAG -> ATTRIBUTE_NAME1", c));
+            INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> ATTRIBUTE_NAME1", c));
           } else if (c == '/') {
             state = END_TAG1;
-            INDIGO_TRACE(indigo_trace("XML Parser: '%c' BEGIN_TAG -> END_TAG1", c));
+            INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> END_TAG1", c));
           } else if (c == '>') {
             if (property->type == INDIGO_BLOB_VECTOR) {
               state = BLOB;
@@ -905,44 +914,44 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
             } else
               state = TEXT;
             value_pointer = value_buffer;
-            INDIGO_TRACE(indigo_trace("XML Parser: '%c' BEGIN_TAG -> TEXT", c));
+            INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> TEXT", c));
           } else {
             state = ERROR;
-            INDIGO_TRACE(indigo_trace("XML Parser: '%c' error BEGIN_TAG", c));
+            INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error BEGIN_TAG", c));
           }
         }
         break;
       case END_TAG1:
         if (c == '>') {
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' END_TAG1 -> END_TAG", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG1 -> IDLE", c));
           handler = handler(END_TAG, NULL, NULL, property, driver, client);
           depth--;
           state = IDLE;
         } else {
           state = ERROR;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' error END_TAG1", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error END_TAG1", c));
         }
         break;
       case END_TAG2:
         if (c == '/') {
           state = END_TAG;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' END_TAG2 -> END_TAG", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG2 -> END_TAG", c));
         } else {
           state = ERROR;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' error END_TAG2", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error END_TAG2", c));
         }
         break;
       case END_TAG:
         if (isalpha(c)) {
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' END_TAG", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG", c));
         } else if (c == '>') {
           handler = handler(END_TAG, NULL, NULL, property, driver, client);
           depth--;
           state = IDLE;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' END_TAG -> IDLE", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG -> IDLE", c));
         } else {
           state = ERROR;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' error END_TAG", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error END_TAG", c));
         }
         break;
       case TEXT:
@@ -952,7 +961,7 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
             handler = handler(TEXT, NULL, value_buffer, property, driver, client);
           }
           state = TEXT1;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' %d TEXT -> TEXT1", c, depth));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d TEXT -> TEXT1", c, depth));
           break;
         } else {
           if (depth == 2) {
@@ -960,18 +969,18 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
               *value_pointer++ = c;
             }
           }
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' %d TEXT", c, depth));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d TEXT", c, depth));
         }
         break;
       case TEXT1:
         if (c=='/') {
           state = END_TAG;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' TEXT -> END_TAG", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' TEXT -> END_TAG", c));
         } else if (isalpha(c)) {
           name_pointer = name_buffer;
           *name_pointer++ = c;
           state = BEGIN_TAG;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' TEXT -> BEGIN_TAG", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' TEXT -> BEGIN_TAG", c));
         }
         break;
       case BLOB:
@@ -982,7 +991,7 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
             handler = handler(BLOB, NULL, (char *)blob_buffer, property, driver, client);
           }
           state = TEXT1;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' %d BLOB -> TEXT1", c, depth));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d BLOB -> TEXT1", c, depth));
           break;
         } else if (c != '\n') {
           if (depth == 2) {
@@ -994,17 +1003,17 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
               value_pointer = value_buffer;
             }
           }
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' %d BLOB", c, depth));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d BLOB", c, depth));
         }
         break;
       case ATTRIBUTE_NAME1:
         if (isspace(c)) {
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1", c));
         } else if (isalpha(c)) {
           name_pointer = name_buffer;
           *name_pointer++ = c;
           state = ATTRIBUTE_NAME;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> ATTRIBUTE_NAME", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> ATTRIBUTE_NAME", c));
         } else if (c == '/') {
           state = END_TAG1;
         } else if (c == '>') {
@@ -1018,20 +1027,20 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
             blob_pointer = blob_buffer;
           } else
             state = TEXT;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> TEXT", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> TEXT", c));
         }
        break;
       case ATTRIBUTE_NAME:
         if (name_pointer - name_buffer <INDIGO_NAME_SIZE && isalpha(c)) {
           *name_pointer++ = c;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME", c));
         } else {
           *name_pointer = 0;
           if (c == '=') {
             state = ATTRIBUTE_VALUE1;
-            INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME -> ATTRIBUTE_VALUE1", c));
+            INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME -> ATTRIBUTE_VALUE1", c));
           } else {
-            INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME", c));
+            INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME", c));
           }
         }
         break;
@@ -1040,9 +1049,9 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
           q = c;
           value_pointer = value_buffer;
           state = ATTRIBUTE_VALUE;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE1 -> ATTRIBUTE_VALUE2", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE1 -> ATTRIBUTE_VALUE2", c));
         } else {
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE1", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE1", c));
         }
         break;
       case ATTRIBUTE_VALUE:
@@ -1050,10 +1059,10 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
           *value_pointer = 0;
           state = ATTRIBUTE_NAME1;
           handler = handler(ATTRIBUTE_VALUE, name_buffer, value_buffer, property, driver, client);
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE -> ATTRIBUTE_NAME1", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE -> ATTRIBUTE_NAME1", c));
         } else {
           *value_pointer++ = c;
-          INDIGO_TRACE(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE", c));
+          INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE", c));
         }
         break;
       default:

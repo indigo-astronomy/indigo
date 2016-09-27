@@ -41,11 +41,12 @@
 typedef struct {
   void *private_data;
   indigo_property *connection_property;
+  indigo_property *info_property;
   indigo_property *exposure_property;
   indigo_property *ccd1_property;
 } indigo_ccd_driver_context;
 
-extern indigo_result indigo_init_ccd_driver(indigo_driver *driver, char *device);
+extern indigo_result indigo_init_ccd_driver(indigo_driver *driver, char *device, int version);
 extern indigo_result indigo_enumerate_ccd_driver_properties(indigo_driver *driver, indigo_property *property);
 
 #endif /* indigo_ccd_driver_h */

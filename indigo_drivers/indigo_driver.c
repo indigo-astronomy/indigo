@@ -37,7 +37,7 @@
 
 #include "indigo_driver.h"
 
-indigo_result indigo_init_driver(indigo_driver *driver, char *device) {
+indigo_result indigo_init_driver(indigo_driver *driver, char *device, int version, int interface) {
   assert(driver != NULL);
   assert(device != NULL);
   if (driver->driver_context == NULL)
@@ -50,6 +50,15 @@ indigo_result indigo_init_driver(indigo_driver *driver, char *device) {
     indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "Connected", false);
     indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "Disconnected", true);
     driver_context->connection_property = connection_property;
+    indigo_property *info_property = indigo_init_text_property(NULL, device, "DRIVER_INFO", "Driver Info", "Options", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 5);
+    if (info_property == NULL)
+      return INDIGO_INIT_FAILED;
+    indigo_init_text_item(&info_property->items[0], "DRIVER_NAME", "Name", device);
+    indigo_init_text_item(&info_property->items[1], "DRIVER_VERSION", "Version", "%d.%d", (version >> 8) & 0xFF, version & 0xFF);
+    indigo_init_text_item(&info_property->items[2], "DRIVER_INTERFACE", "Interface", "%d", interface);
+    indigo_init_text_item(&info_property->items[3], "FRAMEWORK_NAME", "Framework name", "INDIGO PoC");
+    indigo_init_text_item(&info_property->items[4], "FRAMEWORK_VERSION", "Framework version", "%d.%d build %d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+    driver_context->info_property = info_property;
     driver->driver_context = driver_context;
     return INDIGO_OK;
   }
@@ -63,6 +72,8 @@ indigo_result indigo_enumerate_driver_properties(indigo_driver *driver, indigo_p
   assert(driver_context != NULL);
   if (indigo_property_match(driver_context->connection_property, property))
     indigo_define_property(driver, driver_context->connection_property);
+  if (indigo_property_match(driver_context->info_property, property))
+    indigo_define_property(driver, driver_context->info_property);
   return INDIGO_OK;
 }
 

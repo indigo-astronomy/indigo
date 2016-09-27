@@ -40,10 +40,11 @@
 #include "ccd_simulator.h"
 
 #define DEVICE "CCD Simulator"
+#define VERSION INDIGO_VERSION_CURRENT
 
 static indigo_result ccd_simulator_connect(indigo_driver *driver) {
   assert(driver != NULL);
-  if (indigo_init_ccd_driver(driver, DEVICE) == INDIGO_OK) {
+  if (indigo_init_ccd_driver(driver, DEVICE, VERSION) == INDIGO_OK) {
     indigo_ccd_driver_context *driver_context = driver->driver_context;
     int size = 2*4096*4096;
     char *blob = malloc(size);

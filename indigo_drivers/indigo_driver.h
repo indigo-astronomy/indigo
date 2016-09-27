@@ -40,9 +40,10 @@
 typedef struct {
   void *private_data;
   indigo_property *connection_property;
+  indigo_property *info_property;
 } indigo_driver_context;
 
-extern indigo_result indigo_init_driver(indigo_driver *driver, char *device);
+extern indigo_result indigo_init_driver(indigo_driver *driver, char *device, int version, int interface);
 extern indigo_result indigo_enumerate_driver_properties(indigo_driver *driver, indigo_property *property);
 
 #define indigo_is_connected(driver_context) driver_context->connection_property->items[0].switch_value

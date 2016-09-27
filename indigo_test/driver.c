@@ -41,6 +41,7 @@
 #include "indigo_bus.h"
 #include "ccd_simulator.h"
 #include "indigo_driver_xml.h"
+#include "indigo_server_xml.h"
 
 int main(int argc, const char * argv[]) {
   indigo_client *protocol_adapter = xml_driver_adapter(0, 1);

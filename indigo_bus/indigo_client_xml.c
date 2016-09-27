@@ -45,21 +45,17 @@
 #include "indigo_xml.h"
 #include "indigo_client_xml.h"
 
-typedef struct {
-  int input, output;
-} indigo_xml_client_context;
-
 static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void xprintf(indigo_driver *driver, const char *format, ...) {
-  indigo_xml_client_context *driver_context = (indigo_xml_client_context *)driver->driver_context;
+  indigo_xml_client_adapter_context *driver_context = (indigo_xml_client_adapter_context *)driver->driver_context;
   char buffer[1024];
   va_list args;
   va_start(args, format);
   int length = vsnprintf(buffer, 1024, format, args);
   va_end(args);
   write(driver_context->output, buffer, length);
-  INDIGO_TRACE(indigo_trace("client: %s", buffer));
+  INDIGO_DEBUG(indigo_debug("sent: %s", buffer));
 }
 
 //static indigo_result xml_client_parser_connect(indigo_driver *driver) {
@@ -125,7 +121,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
 
 static indigo_result xml_client_parser_disconnect(indigo_driver *driver) {
   assert(driver != NULL);
-  indigo_xml_client_context *driver_context = (indigo_xml_client_context *)driver->driver_context;
+  indigo_xml_client_adapter_context *driver_context = (indigo_xml_client_adapter_context *)driver->driver_context;
   close(driver_context->input);
   close(driver_context->output);
   return INDIGO_OK;
@@ -142,7 +138,7 @@ indigo_driver *xml_client_adapter(int input, int ouput) {
   indigo_driver *driver = malloc(sizeof(indigo_driver));
   if (driver != NULL) {
     memcpy(driver, &driver_template, sizeof(indigo_driver));
-    indigo_xml_client_context *driver_context = malloc(sizeof(indigo_xml_client_context));
+    indigo_xml_client_adapter_context *driver_context = malloc(sizeof(indigo_xml_client_adapter_context));
     driver_context->input = input;
     driver_context->output = ouput;
     driver->driver_context = driver_context;

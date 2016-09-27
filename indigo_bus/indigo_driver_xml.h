@@ -38,6 +38,10 @@
 #include "indigo_bus.h"
 #include "indigo_xml.h"
 
+typedef struct {
+  int input, output;
+} indigo_xml_driver_adapter_context;
+
 extern indigo_client *xml_driver_adapter(int input, int ouput);
 
 #endif /* indigo_driver_xml_h */

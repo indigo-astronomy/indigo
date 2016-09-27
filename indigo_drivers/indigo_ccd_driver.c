@@ -37,14 +37,14 @@
 
 #include "indigo_ccd_driver.h"
 
-indigo_result indigo_init_ccd_driver(indigo_driver *driver, char *device) {
+indigo_result indigo_init_ccd_driver(indigo_driver *driver, char *device, int version) {
   assert(driver != NULL);
   assert(device != NULL);
   if (driver->driver_context == NULL)
     driver->driver_context = malloc(sizeof(indigo_ccd_driver_context));
   indigo_ccd_driver_context *driver_context = driver->driver_context;
   if (driver_context != NULL) {
-    if (indigo_init_driver(driver, device) == INDIGO_OK) {
+    if (indigo_init_driver(driver, device, version, 2) == INDIGO_OK) {
       indigo_property *exposure_property = indigo_init_number_property(NULL, device, "CCD_EXPOSURE", "Main", "Expose", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
       if (exposure_property == NULL)
         return INDIGO_INIT_FAILED;

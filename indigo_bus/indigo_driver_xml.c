@@ -45,10 +45,6 @@
 #include "indigo_xml.h"
 #include "indigo_driver_xml.h"
 
-typedef struct {
-  int input, output;
-} indigo_xml_driver_context;
-
 static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
 
 static char encoding_table[] =
@@ -65,14 +61,14 @@ static char encoding_table[] =
 static int mod_table[] = {0, 2, 1};
 
 static void xprintf(indigo_client *client, const char *format, ...) {
-  indigo_xml_driver_context *client_context = (indigo_xml_driver_context *)client->client_context;
+  indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
   char buffer[1024];
   va_list args;
   va_start(args, format);
   int length = vsnprintf(buffer, 1024, format, args);
   va_end(args);
   write(client_context->output, buffer, length);
-  INDIGO_TRACE(indigo_trace("driver: %s", buffer));
+  INDIGO_DEBUG(indigo_debug("sent: %s", buffer));
 }
 
 //static indigo_result xml_driver_adapter_connect(indigo_client *client) {
@@ -124,7 +120,7 @@ static indigo_result xml_driver_adapter_define_property(indigo_client *client, s
         indigo_item *item = &property->items[i];
         xprintf(client, "<defBLOB name='%s' label='%s'/>\n", item->name, item->label);
       }
-      xprintf(client, "</defBLOBtVector>\n");
+      xprintf(client, "</defBLOBVector>\n");
       break;
   }
   INDIGO_UNLOCK(&xmutex);
@@ -205,7 +201,7 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
           xprintf(client, "</oneBLOB>\n");
         }
       }
-      xprintf(client, "</setBLOBtVector>\n");
+      xprintf(client, "</setBLOBVector>\n");
       break;
   }
   INDIGO_UNLOCK(&xmutex);
@@ -239,7 +235,7 @@ indigo_client *xml_driver_adapter(int input, int ouput) {
   indigo_client *client = malloc(sizeof(indigo_client));
   if (client != NULL) {
     memcpy(client, &client_template, sizeof(indigo_client));
-    indigo_xml_driver_context *client_context = malloc(sizeof(indigo_xml_driver_context));
+    indigo_xml_driver_adapter_context *client_context = malloc(sizeof(indigo_xml_driver_adapter_context));
     client_context->input = input;
     client_context->output = ouput;
     client->client_context = client_context;
