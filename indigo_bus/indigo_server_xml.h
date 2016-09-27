@@ -37,6 +37,8 @@
 
 #include "indigo_driver_xml.h"
 
+extern int indigo_server_xml_port;
+
 extern indigo_result indigo_server_xml();
 
 #endif /* indigo_server_xml_h */

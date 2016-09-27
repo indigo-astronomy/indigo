@@ -49,7 +49,7 @@ static indigo_property *ccd1_property;
 
 static int driver_pid;
 
-static indigo_result client_connect(indigo_client *client) {
+static indigo_result client_attach(indigo_client *client) {
   connection_property = indigo_init_switch_property(NULL, "CCD Simulator", "CONNECTION", "", "", 0, 0, 0, 2);
   indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "", false);
   indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "", true);
@@ -106,11 +106,7 @@ static indigo_result client_update_property(struct indigo_client *client, struct
   return INDIGO_OK;
 }
 
-//static indigo_result client_delete_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
-//  return INDIGO_OK;
-//}
-
-static indigo_result client_disconnect(indigo_client *client) {
+static indigo_result client_detach(indigo_client *client) {
   indigo_log("Client: disconnected from INDI bus...");
   kill(driver_pid, SIGKILL);
   exit(0);
@@ -119,11 +115,11 @@ static indigo_result client_disconnect(indigo_client *client) {
 
 static indigo_client client = {
   NULL, INDIGO_OK,
-  client_connect,
+  client_attach,
   client_define_property,
   client_update_property,
-  NULL, // client_delete_property,
-  client_disconnect
+  NULL,
+  client_detach
 };
 
 int main(int argc, const char * argv[]) {

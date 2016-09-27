@@ -49,10 +49,11 @@
 // Uncomment to write debug messages to syslog instead of stderr.
 // #define INDIG_USE_SYSLOG
 
-// Property/item string sizes, max number of items per property.
-#define INDIGO_NAME_SIZE   128
-#define INDIGO_VALUE_SIZE  256
-#define INDIGO_MAX_ITEMS   64
+// Property/item string sizes, max number of properties per driver, max number of items per property.
+#define INDIGO_NAME_SIZE      128
+#define INDIGO_VALUE_SIZE     256
+#define INDIGO_MAX_PROPERTIES 64
+#define INDIGO_MAX_ITEMS      64
 
 // Current version, also used for wire protocol, do not touch unless you know consequences!
 #define INDIGO_VERSION_CURRENT 0x0200

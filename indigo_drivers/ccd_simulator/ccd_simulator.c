@@ -42,14 +42,27 @@
 #define DEVICE "CCD Simulator"
 #define VERSION INDIGO_VERSION_CURRENT
 
-static indigo_result ccd_simulator_connect(indigo_driver *driver) {
+#define CCD_MAX_X         1600
+#define CCD_MAX_Y         1200
+#define CCD_PIXEL_SIZE    5
+#define CCD_BITSPERPIXEL  16
+
+static indigo_result ccd_simulator_attach(indigo_driver *driver) {
   assert(driver != NULL);
-  if (indigo_init_ccd_driver(driver, DEVICE, VERSION) == INDIGO_OK) {
+  if (indigo_ccd_driver_attach(driver, DEVICE, VERSION) == INDIGO_OK) {
     indigo_ccd_driver_context *driver_context = driver->driver_context;
+    // SIMULATION
+    driver_context->simulation_property->perm = INDIGO_RO_PERM;
+    driver_context->simulation_property->items[0].switch_value = true;
+    driver_context->simulation_property->items[1].switch_value = false;
+    // CCD_FRAME
+    driver_context->ccd_frame_property->items[2].number_max = driver_context->ccd_frame_property->items[2].number_value = CCD_MAX_X;
+    driver_context->ccd_frame_property->items[3].number_max = driver_context->ccd_frame_property->items[3].number_value = CCD_MAX_Y;
+    // CCD1
     int size = 2*4096*4096;
     char *blob = malloc(size);
     if (blob == NULL)
-      return INDIGO_INIT_FAILED;
+      return INDIGO_FAILED;
     for (int i = 0; i < size; i++)
       blob[i] = rand();
     driver_context->ccd1_property->items[0].blob_size = size;
@@ -57,14 +70,7 @@ static indigo_result ccd_simulator_connect(indigo_driver *driver) {
     strncpy(driver_context->ccd1_property->items[0].blob_format, ".bin",INDIGO_NAME_SIZE);
     return INDIGO_OK;
   }
-  return INDIGO_INIT_FAILED;
-}
-
-static indigo_result ccd_simulator_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
-  assert(driver != NULL);
-  assert(client != NULL);
-  assert(property != NULL);
-  return indigo_enumerate_ccd_driver_properties(driver, property);
+  return INDIGO_FAILED;
 }
 
 static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
@@ -74,52 +80,38 @@ static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo
   indigo_ccd_driver_context *driver_context = (indigo_ccd_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
   if (indigo_property_match(driver_context->connection_property, property)) {
-    driver_context->connection_property->items[0].switch_value = false;
-    driver_context->connection_property->items[1].switch_value = false;
+    // CONNECTION
     indigo_property_copy_values(driver_context->connection_property, property);
-    if (driver_context->connection_property->items[0].switch_value) {
-      indigo_define_property(driver, driver_context->exposure_property);
-      indigo_define_property(driver, driver_context->ccd1_property);
-    } else {
-      indigo_delete_property(driver, driver_context->exposure_property);
-      indigo_delete_property(driver, driver_context->ccd1_property);
-    }
-    driver_context->connection_property->state = INDIGO_OK_STATE;
-    indigo_update_property(driver, driver_context->connection_property);
-    return INDIGO_OK;
-  }
-  if (indigo_property_match(driver_context->exposure_property, property)) {
-    indigo_property_copy_values(driver_context->exposure_property, property);
+  } else if (indigo_property_match(driver_context->congfiguration_property, property)) {
+    // CONFIG_PROCESS
+    indigo_property_copy_values(driver_context->congfiguration_property, property);
+  } else if (indigo_property_match(driver_context->ccd_exposure_property, property)) {
+    // CCD_EXPOSURE
+    indigo_property_copy_values(driver_context->ccd_exposure_property, property);
     driver_context->ccd1_property->state = INDIGO_BUSY_STATE;
     indigo_update_property(driver, driver_context->ccd1_property);
-    while (driver_context->exposure_property->items[0].number_value > 0) {
-      driver_context->exposure_property->state = INDIGO_BUSY_STATE;
-      indigo_update_property(driver, driver_context->exposure_property);
+    while (driver_context->ccd_exposure_property->items[0].number_value > 0) {
+      driver_context->ccd_exposure_property->state = INDIGO_BUSY_STATE;
+      indigo_update_property(driver, driver_context->ccd_exposure_property);
       sleep(1);
-      driver_context->exposure_property->items[0].number_value -= 1;
+      driver_context->ccd_exposure_property->items[0].number_value -= 1;
     }
-    driver_context->exposure_property->items[0].number_value = 0;
-    driver_context->exposure_property->state = INDIGO_OK_STATE;
-    indigo_update_property(driver, driver_context->exposure_property);
+    driver_context->ccd_exposure_property->items[0].number_value = 0;
+    driver_context->ccd_exposure_property->state = INDIGO_OK_STATE;
+    indigo_update_property(driver, driver_context->ccd_exposure_property);
     driver_context->ccd1_property->state = INDIGO_OK_STATE;
     indigo_update_property(driver, driver_context->ccd1_property);
-    return INDIGO_OK;
   }
-  return INDIGO_OK;
+  return indigo_ccd_driver_change_property(driver, client, property);
 }
-
-//static indigo_result ccd_simulator_disconnect(indigo_driver *driver) {
-//  assert(driver != NULL);
-//  return INDIGO_OK;
-//}
 
 indigo_driver *ccd_simulator() {
   static indigo_driver driver_template = {
     NULL, INDIGO_OK,
-    ccd_simulator_connect,
-    ccd_simulator_enumerate_properties,
+    ccd_simulator_attach,
+    indigo_ccd_driver_enumerate_properties,
     ccd_simulator_change_property,
-    NULL // ccd_simulator_disconnect
+    indigo_ccd_driver_detach
   };
   indigo_driver *driver = malloc(sizeof(indigo_driver));
   if (driver != NULL) {

@@ -105,7 +105,6 @@
 		59D381C91D96A4E800E87393 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; usesTabs = 1; };
 		59D381CD1D96AB9500E87393 /* indigo_xml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_xml.c; sourceTree = "<group>"; };
 		59D381CE1D96AB9500E87393 /* indigo_xml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_xml.h; sourceTree = "<group>"; };
-		59D381F01D96F4D100E87393 /* XML.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = XML.txt; sourceTree = "<group>"; };
 		59D381F11D9705EF00E87393 /* driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = driver.c; sourceTree = "<group>"; };
 		59D381F71D97083A00E87393 /* driver */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = driver; sourceTree = BUILT_PRODUCTS_DIR; };
 		59D382031D9720C200E87393 /* indigo_driver_xml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_driver_xml.c; sourceTree = "<group>"; };
@@ -204,7 +203,6 @@
 				59D382061D97314C00E87393 /* indigo_client_xml.c */,
 				9D97F8071D9A89ED00582EAF /* indigo_server_xml.h */,
 				9D97F8061D9A89ED00582EAF /* indigo_server_xml.c */,
-				59D381F01D96F4D100E87393 /* XML.txt */,
 			);
 			path = indigo_bus;
 			sourceTree = "<group>";

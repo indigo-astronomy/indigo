@@ -53,9 +53,7 @@
 
 typedef enum {
   INDIGO_OK = 0,
-  INDIGO_INIT_FAILED,
-  INDIGO_START_FAILED,
-  INDIGO_REQUEST_FAILED,
+  INDIGO_FAILED,
   INDIGO_TOO_MANY_DRIVERS,
   INDIGO_LOCK_ERROR,
   INDIGO_NOT_FOUND,
@@ -128,20 +126,20 @@ struct indigo_client;
 typedef struct indigo_driver {
   void *driver_context;
   indigo_result last_result;
-  indigo_result (*connect)(struct indigo_driver *driver);
+  indigo_result (*attach)(struct indigo_driver *driver);
   indigo_result (*enumerate_properties)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
   indigo_result (*change_property)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
-  indigo_result (*disconnect)(struct indigo_driver *driver);
+  indigo_result (*detach)(struct indigo_driver *driver);
 } indigo_driver;
 
 typedef struct indigo_client {
   void *client_context;
   indigo_result last_result;
-  indigo_result (*connect)(struct indigo_client *client);
+  indigo_result (*attach)(struct indigo_client *client);
   indigo_result (*define_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);
   indigo_result (*update_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);
   indigo_result (*delete_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);
-  indigo_result (*disconnect)(struct indigo_client *client);
+  indigo_result (*detach)(struct indigo_client *client);
 } indigo_client;
 
 typedef indigo_driver *(*indigo_driver_entry_point)();

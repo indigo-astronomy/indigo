@@ -40,13 +40,34 @@
 
 typedef struct {
   void *private_data;
+  // indigo_driver_context
   indigo_property *connection_property;
   indigo_property *info_property;
-  indigo_property *exposure_property;
+  indigo_property *debug_property;
+  indigo_property *simulation_property;
+  indigo_property *congfiguration_property;
+  // indigo_ccd_driver_context
+  indigo_property *ccd_exposure_property;
+  indigo_property *ccd_frame_property;
+  indigo_property *ccd_binning_property;
+  indigo_property *ccd_frame_type_property;
   indigo_property *ccd1_property;
 } indigo_ccd_driver_context;
 
-extern indigo_result indigo_init_ccd_driver(indigo_driver *driver, char *device, int version);
-extern indigo_result indigo_enumerate_ccd_driver_properties(indigo_driver *driver, indigo_property *property);
+extern indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int version);
+extern indigo_result indigo_ccd_driver_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_ccd_driver_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_ccd_driver_detach(indigo_driver *driver);
+
+typedef struct {
+  char name[8];
+  enum { INDIGO_FITS_STRING, INDIGO_FITS_NUMBER } type;
+  union {
+  char string[70];
+    double number;
+  } value;
+} indigo_fits_header;
+
+extern void *indigo_make_fits(int naxis, int naxis1, int naxis2, int naxis3, int bitpix, indigo_fits_header* headers, void *data);
 
 #endif /* indigo_ccd_driver_h */

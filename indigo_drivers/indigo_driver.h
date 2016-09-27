@@ -41,11 +41,21 @@ typedef struct {
   void *private_data;
   indigo_property *connection_property;
   indigo_property *info_property;
+  indigo_property *debug_property;
+  indigo_property *simulation_property;
+  indigo_property *congfiguration_property;
 } indigo_driver_context;
 
-extern indigo_result indigo_init_driver(indigo_driver *driver, char *device, int version, int interface);
-extern indigo_result indigo_enumerate_driver_properties(indigo_driver *driver, indigo_property *property);
+extern indigo_result indigo_driver_attach(indigo_driver *driver, char *device, int version, int interface);
+extern indigo_result indigo_driver_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_driver_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_driver_detach(indigo_driver *driver);
 
 #define indigo_is_connected(driver_context) driver_context->connection_property->items[0].switch_value
+#define indigo_debug_enabled(driver_context) driver_context->debug_property->items[0].switch_value
+#define indigo_simulation_enabled(driver_context) driver_context->simulation_property->items[0].switch_value
+
+extern void indigo_save_property(indigo_property *property);
+extern indigo_result indigo_save_properties(indigo_driver *driver);
 
 #endif /* indigo_driver_h */

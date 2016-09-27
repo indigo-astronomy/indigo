@@ -198,10 +198,10 @@ indigo_result indigo_connect_driver(indigo_driver *driver) {
     for (int i = 0; i < MAX_DRIVERS; i++) {
       if (drivers[i] == NULL) {
         drivers[i] = driver;
-        if (driver->connect == NULL)
+        if (driver->attach == NULL)
           result = INDIGO_OK;
         else
-          result = driver->last_result = driver->connect(driver);
+          result = driver->last_result = driver->attach(driver);
         break;
       }
     }
@@ -219,10 +219,10 @@ indigo_result indigo_disconnect_driver(indigo_driver *driver) {
       if (drivers[i] == NULL)
         break;
       if (drivers[i] == driver) {
-        if (driver->disconnect == NULL)
+        if (driver->detach == NULL)
           result = INDIGO_OK;
         else
-          result = driver->last_result = driver->disconnect(driver);
+          result = driver->last_result = driver->detach(driver);
         for (int j = i + 1; j < MAX_DRIVERS; j++) {
           drivers[j - 1] = drivers[j];
           if (drivers[j] == NULL)
@@ -243,10 +243,10 @@ indigo_result indigo_connect_client(indigo_client *client) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (clients[i] == NULL) {
         clients[i] = client;
-        if (client->connect == NULL)
+        if (client->attach == NULL)
           result = INDIGO_OK;
         else
-          result = client->last_result = client->connect(client);
+          result = client->last_result = client->attach(client);
         break;
       }
     }
@@ -264,10 +264,10 @@ indigo_result indigo_disconnect_client(indigo_client *client) {
       if (clients[i] == NULL)
         break;
       if (clients[i] == client) {
-        if (client->disconnect == NULL)
+        if (client->detach == NULL)
           result = INDIGO_OK;
         else
-          result = client->last_result = client->disconnect(client);
+          result = client->last_result = client->detach(client);
         for (int j = i + 1; j < MAX_CLIENTS; j++) {
           clients[j - 1] = clients[j];
           if (clients[j] == NULL)
@@ -377,15 +377,15 @@ indigo_result indigo_stop() {
         indigo_driver *driver = drivers[i];
         if (driver == NULL)
           break;
-        if (driver->disconnect != NULL)
-          driver->last_result = driver->disconnect(driver);
+        if (driver->detach != NULL)
+          driver->last_result = driver->detach(driver);
       }
       for (int i = 0; i < MAX_CLIENTS; i++) {
         indigo_client *client = clients[i];
         if (client == NULL)
           break;
-        if (client->disconnect != NULL)
-          client->last_result = client->disconnect(client);
+        if (client->detach != NULL)
+          client->last_result = client->detach(client);
       }
       INDIGO_UNLOCK(&bus_mutex);
       is_started = false;
@@ -533,7 +533,11 @@ bool indigo_property_match(indigo_property *property, indigo_property *other) {
 
 void indigo_property_copy_values(indigo_property *property, indigo_property *other) {
   if (property->type == other->type) {
-    property->state = other->state;
+    if (property->type == INDIGO_SWITCH_VECTOR && property->rule != INDIGO_ANY_OF_MANY_RULE) {
+      for (int j = 0; j < property->count; j++) {
+        property->items[j].switch_value = false;
+      }
+    }
     for (int i = 0; i < other->count; i++) {
       indigo_item *other_item = &other->items[i];
       for (int j = 0; j < property->count; j++) {

@@ -58,11 +58,6 @@ static void xprintf(indigo_driver *driver, const char *format, ...) {
   INDIGO_DEBUG(indigo_debug("sent: %s", buffer));
 }
 
-//static indigo_result xml_client_parser_connect(indigo_driver *driver) {
-//  assert(driver != NULL);
-//  return INDIGO_OK;
-//}
-
 static indigo_result xml_client_parser_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
   INDIGO_LOCK(&xmutex);
@@ -89,7 +84,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
   INDIGO_LOCK(&xmutex);
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
-      xprintf(driver, "<newTextVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      xprintf(driver, "<newTextVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
         xprintf(driver, "<oneText name='%s'>%s</oneText>\n", item->name, item->text_value);
@@ -97,7 +92,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
       xprintf(driver, "</newTextVector>\n");
       break;
     case INDIGO_NUMBER_VECTOR:
-      xprintf(driver, "<newNumberVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      xprintf(driver, "<newNumberVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
         xprintf(driver, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
@@ -105,7 +100,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
       xprintf(driver, "</newNumberVector>\n");
       break;
     case INDIGO_SWITCH_VECTOR:
-      xprintf(driver, "<newSwitchVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      xprintf(driver, "<newSwitchVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
         xprintf(driver, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
@@ -119,7 +114,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
   return INDIGO_OK;
 }
 
-static indigo_result xml_client_parser_disconnect(indigo_driver *driver) {
+static indigo_result xml_client_parser_detach(indigo_driver *driver) {
   assert(driver != NULL);
   indigo_xml_client_adapter_context *driver_context = (indigo_xml_client_adapter_context *)driver->driver_context;
   close(driver_context->input);
@@ -130,10 +125,10 @@ static indigo_result xml_client_parser_disconnect(indigo_driver *driver) {
 indigo_driver *xml_client_adapter(int input, int ouput) {
   static indigo_driver driver_template = {
     NULL, INDIGO_OK,
-    NULL, // xml_client_parser_connect,
+    NULL,
     xml_client_parser_enumerate_properties,
     xml_client_parser_change_property,
-    xml_client_parser_disconnect
+    xml_client_parser_detach
   };
   indigo_driver *driver = malloc(sizeof(indigo_driver));
   if (driver != NULL) {

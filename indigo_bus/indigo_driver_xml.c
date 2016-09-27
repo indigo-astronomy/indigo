@@ -71,11 +71,6 @@ static void xprintf(indigo_client *client, const char *format, ...) {
   INDIGO_DEBUG(indigo_debug("sent: %s", buffer));
 }
 
-//static indigo_result xml_driver_adapter_connect(indigo_client *client) {
-//  assert(client != NULL);
-//  return INDIGO_OK;
-//}
-
 static indigo_result xml_driver_adapter_define_property(indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
   assert(driver != NULL);
   assert(client != NULL);
@@ -218,19 +213,14 @@ static indigo_result xml_driver_adapter_delete_property(indigo_client *client, i
   return INDIGO_OK;
 }
 
-//static indigo_result xml_driver_adapter_disconnect(indigo_client *client) {
-//  assert(client != NULL);
-//  return INDIGO_OK;
-//}
-
 indigo_client *xml_driver_adapter(int input, int ouput) {
   static indigo_client client_template = {
     NULL, INDIGO_OK,
-    NULL, // xml_driver_adapter_connect,
+    NULL,
     xml_driver_adapter_define_property,
     xml_driver_adapter_update_property,
     xml_driver_adapter_delete_property,
-    NULL, // xml_driver_adapter_disconnect
+    NULL
   };
   indigo_client *client = malloc(sizeof(indigo_client));
   if (client != NULL) {

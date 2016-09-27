@@ -31,4 +31,4 @@ server: indigo_test/server.o libindigo.a libindigosim.a
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f test driver client libindigo.a libindigosim.a indigo_test/*.o indigo_bus/*.o indigo_drivers/*.o indigo_drivers/ccd_simulator/*.o
+	rm -f test driver client server libindigo.a libindigosim.a indigo_test/*.o indigo_bus/*.o indigo_drivers/*.o indigo_drivers/ccd_simulator/*.o
