@@ -40,3 +40,6 @@ or (network server, which can be accessed by some INDI control panel)
 
 ./server
 
+------------------------------------------------------------------------------------------------
+
+![Logo](http://www.cloudmakers.eu/indigo/INDIGO.png)
