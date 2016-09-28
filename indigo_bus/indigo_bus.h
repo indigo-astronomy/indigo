@@ -182,7 +182,7 @@ extern void indigo_init_light_item(indigo_item *item, const char *name, const ch
 extern void indigo_init_blob_item(indigo_item *item, const char *name, const char *label);
 
 extern bool indigo_property_match(indigo_property *property, indigo_property *other);
-extern void indigo_property_copy_values(indigo_property *property, indigo_property *other);
+extern void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state);
 
 extern indigo_property INDIGO_ALL_PROPERTIES;
 

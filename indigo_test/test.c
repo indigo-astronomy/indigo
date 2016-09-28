@@ -69,7 +69,7 @@ static indigo_result test_define_property(struct indigo_client *client, struct i
 
 static indigo_result test_update_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
   if (indigo_property_match(connection_property, property)) {
-    indigo_property_copy_values(connection_property, property);
+    indigo_property_copy_values(connection_property, property, true);
     if (connection_property->items[0].switch_value) {
       indigo_log("Test: connected...");
       exposure_property->items[0].number_value = 3.0;
@@ -81,7 +81,7 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
     return INDIGO_OK;
   }
   if (indigo_property_match(exposure_property, property)) {
-    indigo_property_copy_values(exposure_property, property);
+    indigo_property_copy_values(exposure_property, property, true);
     if (exposure_property->state == INDIGO_BUSY_STATE) {
       indigo_log("Test: exposure %gs...", exposure_property->items[0].number_value);
     } else if (exposure_property->state == INDIGO_OK_STATE) {
@@ -90,9 +90,9 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
     return INDIGO_OK;
   }
   if (indigo_property_match(ccd1_property, property)) {
-    indigo_property_copy_values(ccd1_property, property);
+    indigo_property_copy_values(ccd1_property, property, true);
     if (ccd1_property->state == INDIGO_OK_STATE) {
-      indigo_log("Client: image received (%d bytes)...", ccd1_property->items[0].blob_size);
+      indigo_log("Test: image received (%d bytes)...", ccd1_property->items[0].blob_size);
       connection_property->items[0].switch_value = false;
       connection_property->items[1].switch_value = true;
       indigo_change_property(client, connection_property);

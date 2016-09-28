@@ -37,6 +37,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <errno.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <assert.h>
@@ -183,7 +184,7 @@ void *get_properties_handler(parser_state state, char *name, char *value, indigo
       if (version > client->version) {
         assert(client->client_context != NULL);
         int handle = ((indigo_xml_driver_adapter_context *)(client->client_context))->output;
-        xprintf(handle, "<switchProtocol version='%d.%d'>\n", (version >> 8) & 0xFF, version & 0xFF);
+        xprintf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
         client->version = version;
       }
     } else if (!strncmp(name, "device",INDIGO_NAME_SIZE)) {
@@ -880,6 +881,7 @@ void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client) 
       if (count <= 0) {
         if (blob_buffer != NULL)
           free(blob_buffer);
+        close(handle);
         return;
       }
       pointer = buffer;

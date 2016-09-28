@@ -132,11 +132,11 @@ indigo_result indigo_driver_change_property(indigo_driver *driver, indigo_client
     indigo_update_property(driver, driver_context->connection_property);
   } else if (indigo_property_match(driver_context->debug_property, property)) {
     // DEBUG
-    indigo_property_copy_values(driver_context->debug_property, property);
+    indigo_property_copy_values(driver_context->debug_property, property, false);
     indigo_update_property(driver, driver_context->debug_property);
   } else if (indigo_property_match(driver_context->simulation_property, property)) {
     // SIMULATION
-    indigo_property_copy_values(driver_context->simulation_property, property);
+    indigo_property_copy_values(driver_context->simulation_property, property, false);
     indigo_update_property(driver, driver_context->simulation_property);
   } else if (indigo_property_match(driver_context->congfiguration_property, property)) {
     // CONFIG_PROCESS

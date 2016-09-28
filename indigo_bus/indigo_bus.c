@@ -536,8 +536,10 @@ bool indigo_property_match(indigo_property *property, indigo_property *other) {
   return other == NULL || ((other->type == 0 || property->type == other->type) && (*other->device == 0 || !strcmp(property->device, other->device)) && (*other->name == 0 || !strcmp(property->name, other->name)));
 }
 
-void indigo_property_copy_values(indigo_property *property, indigo_property *other) {
+void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state) {
   if (property->type == other->type) {
+    if (with_state)
+      property->state = other->state;
     if (property->type == INDIGO_SWITCH_VECTOR && property->rule != INDIGO_ANY_OF_MANY_RULE) {
       for (int j = 0; j < property->count; j++) {
         property->items[j].switch_value = false;
