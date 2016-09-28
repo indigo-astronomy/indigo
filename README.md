@@ -42,4 +42,6 @@ or (network server, which can be accessed by some INDI control panel)
 
 ------------------------------------------------------------------------------------------------
 
+INDIGO logo proposal (indigo = #4B0082)
+
 ![Logo](http://www.cloudmakers.eu/indigo/INDIGO.png)
