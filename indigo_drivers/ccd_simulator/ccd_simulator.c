@@ -107,7 +107,7 @@ static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo
 
 indigo_driver *ccd_simulator() {
   static indigo_driver driver_template = {
-    NULL, INDIGO_OK,
+    NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
     ccd_simulator_attach,
     indigo_ccd_driver_enumerate_properties,
     ccd_simulator_change_property,

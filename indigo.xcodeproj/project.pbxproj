@@ -100,7 +100,7 @@
 		59D381AC1D95996100E87393 /* ccd_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ccd_simulator.h; sourceTree = "<group>"; };
 		59D381BF1D965FDA00E87393 /* indigo_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_driver.c; sourceTree = "<group>"; };
 		59D381C01D965FDA00E87393 /* indigo_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_driver.h; sourceTree = "<group>"; };
-		59D381C71D96A33D00E87393 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59D381C71D96A33D00E87393 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; wrapsLines = 1; };
 		59D381C81D96A39400E87393 /* LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.md; sourceTree = "<group>"; };
 		59D381C91D96A4E800E87393 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; usesTabs = 1; };
 		59D381CD1D96AB9500E87393 /* indigo_xml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_xml.c; sourceTree = "<group>"; };

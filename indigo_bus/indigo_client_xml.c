@@ -63,16 +63,16 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_driver *drive
   INDIGO_LOCK(&xmutex);
   if (property != NULL) {
     if (*property->device && *property->name) {
-      xprintf(driver, "<getProperties version='%d.%d' device='%s' name='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->device, property->name);
+      xprintf(driver, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF, property->device, property->name);
     } else if (*property->device) {
-      xprintf(driver, "<getProperties version='%d.%d' device='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->device);
+      xprintf(driver, "<getProperties version='1.7' switch='%d.%d' device='%s'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF, property->device);
     } else if (*property->name) {
-      xprintf(driver, "<getProperties version='%d.%d' name='%s'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF, property->name);
+      xprintf(driver, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF, property->name);
     } else {
-      xprintf(driver, "<getProperties version='%d.%d'/>\n", (property->version >> 8) & 0xFF, property->version & 0xFF);
+      xprintf(driver, "<getProperties version='1.7' switch='%d.%d'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF);
     }
   } else {
-    xprintf(driver, "<getProperties version='1.7'/>\n");
+    xprintf(driver, "<getProperties version='1.7' switch='%d.%d'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF);
   }
   INDIGO_UNLOCK(&xmutex);
   return INDIGO_OK;
@@ -124,7 +124,7 @@ static indigo_result xml_client_parser_detach(indigo_driver *driver) {
 
 indigo_driver *xml_client_adapter(int input, int ouput) {
   static indigo_driver driver_template = {
-    NULL, INDIGO_OK,
+    NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
     NULL,
     xml_client_parser_enumerate_properties,
     xml_client_parser_change_property,

@@ -126,6 +126,7 @@ struct indigo_client;
 typedef struct indigo_driver {
   void *driver_context;
   indigo_result last_result;
+  int version;
   indigo_result (*attach)(struct indigo_driver *driver);
   indigo_result (*enumerate_properties)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
   indigo_result (*change_property)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
@@ -135,6 +136,7 @@ typedef struct indigo_driver {
 typedef struct indigo_client {
   void *client_context;
   indigo_result last_result;
+  int version;
   indigo_result (*attach)(struct indigo_client *client);
   indigo_result (*define_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);
   indigo_result (*update_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property);

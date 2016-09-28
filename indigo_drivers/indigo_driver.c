@@ -36,8 +36,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <string.h>
 #include <pthread.h>
+#include <errno.h>
 #include <assert.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "indigo_driver.h"
 
@@ -167,14 +172,38 @@ static pthread_mutex_t save_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
 static indigo_property *save_properties[INDIGO_MAX_PROPERTIES];
 static int save_property_count = 0;
 
-static void xprintf(int output, const char *format, ...) {
+static void xprintf(int handle, const char *format, ...) {
   char buffer[1024];
   va_list args;
   va_start(args, format);
   int length = vsnprintf(buffer, 1024, format, args);
   va_end(args);
-  write(output, buffer, length);
+  write(handle, buffer, length);
   INDIGO_DEBUG(indigo_debug("saved: %s", buffer));
+}
+
+static int open_config_file(indigo_driver *driver, int mode) {
+  assert(driver != NULL);
+  indigo_driver_context *driver_context = (indigo_driver_context *)driver->driver_context;
+  assert(driver_context != NULL);
+  INDIGO_LOCK(&save_mutex);
+  static char path[128];
+  int path_end = snprintf(path, sizeof(path), "%s/.indigo", getenv("HOME"));
+  int handle = mkdir(path, 0777);
+  if (handle == 0 || errno == EEXIST) {
+    snprintf(path + path_end, sizeof(path) - path_end, "/%s.config", driver_context->info_property->items[0].text_value);
+    char *space = strchr(path, ' ');
+    while (space != NULL) {
+      *space = '_';
+      space = strchr(space+1, ' ');
+    }
+    handle = open(path, mode, 0644);
+    if (handle < 0)
+      indigo_error("Can't create %s (%s)", path, strerror(errno));
+  } else {
+    indigo_error("Can't create %s (%s)", path, strerror(errno));
+  }
+  return handle;
 }
 
 void indigo_save_property(indigo_property *property) {
@@ -185,41 +214,48 @@ void indigo_save_property(indigo_property *property) {
 }
 
 indigo_result indigo_save_properties(indigo_driver *driver) {
+  assert(driver != NULL);
+  indigo_driver_context *driver_context = (indigo_driver_context *)driver->driver_context;
+  assert(driver_context != NULL);
   INDIGO_LOCK(&save_mutex);
-  int output = 2;  
+  int handle = open_config_file(driver, O_WRONLY | O_CREAT | O_TRUNC);
   for (int i = 0; i < save_property_count; i++) {
-    indigo_property *property = save_properties[i];
-    switch (property->type) {
-      case INDIGO_TEXT_VECTOR:
-        xprintf(output, "<newTextVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
-        for (int i = 0; i < property->count; i++) {
-          indigo_item *item = &property->items[i];
-          xprintf(output, "<oneText name='%s'>%s</oneText>\n", item->name, item->text_value);
-        }
-        xprintf(output, "</newTextVector>\n");
-        break;
-      case INDIGO_NUMBER_VECTOR:
-        xprintf(output, "<newNumberVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
-        for (int i = 0; i < property->count; i++) {
-          indigo_item *item = &property->items[i];
-          xprintf(output, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
-        }
-        xprintf(output, "</newNumberVector>\n");
-        break;
-      case INDIGO_SWITCH_VECTOR:
-        xprintf(output, "<newSwitchVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
-        for (int i = 0; i < property->count; i++) {
-          indigo_item *item = &property->items[i];
-          xprintf(output, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
-        }
-        xprintf(output, "</newSwitchVector>\n");
-        break;
-      default:
-        break;
+    if (handle > 0) {
+      indigo_property *property = save_properties[i];
+      switch (property->type) {
+        case INDIGO_TEXT_VECTOR:
+          xprintf(handle, "<newTextVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+          for (int i = 0; i < property->count; i++) {
+            indigo_item *item = &property->items[i];
+            xprintf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, item->text_value);
+          }
+          xprintf(handle, "</newTextVector>\n");
+          break;
+        case INDIGO_NUMBER_VECTOR:
+          xprintf(handle, "<newNumberVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+          for (int i = 0; i < property->count; i++) {
+            indigo_item *item = &property->items[i];
+            xprintf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
+          }
+          xprintf(handle, "</newNumberVector>\n");
+          break;
+        case INDIGO_SWITCH_VECTOR:
+          xprintf(handle, "<newSwitchVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+          for (int i = 0; i < property->count; i++) {
+            indigo_item *item = &property->items[i];
+            xprintf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
+          }
+          xprintf(handle, "</newSwitchVector>\n");
+          break;
+        default:
+          break;
+      }
     }
     INDIGO_UNLOCK(&save_mutex);
   }
+  if (handle > 0)
+    close(handle);
   INDIGO_UNLOCK(&save_mutex);
-  return INDIGO_OK;
+  return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
 }
 
