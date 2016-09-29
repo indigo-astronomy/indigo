@@ -48,5 +48,5 @@ or (network server, which can be accessed by some INDI control panel)
 
 indigo = #4B0082 :)
 
-![Logo](http://www.cloudmakers.eu/indigo/logo.png)
+![Logo](http://www.indigo-astronomy.org/images/logo.png)
 

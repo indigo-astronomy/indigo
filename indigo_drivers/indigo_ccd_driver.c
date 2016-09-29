@@ -91,7 +91,6 @@ indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int 
 
 indigo_result indigo_ccd_driver_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
-  assert(client != NULL);
   assert(property != NULL);
   indigo_ccd_driver_context *driver_context = (indigo_ccd_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
@@ -99,15 +98,15 @@ indigo_result indigo_ccd_driver_enumerate_properties(indigo_driver *driver, indi
   if ((result = indigo_driver_enumerate_properties(driver, client, property)) == INDIGO_OK) {
     if (indigo_is_connected(driver_context)) {
       if (indigo_property_match(driver_context->ccd_exposure_property, property))
-        indigo_define_property(driver, driver_context->ccd_exposure_property);
+        indigo_define_property(driver, driver_context->ccd_exposure_property, NULL);
       if (indigo_property_match(driver_context->ccd_frame_property, property))
-        indigo_define_property(driver, driver_context->ccd_frame_property);
+        indigo_define_property(driver, driver_context->ccd_frame_property, NULL);
       if (indigo_property_match(driver_context->ccd_binning_property, property))
-        indigo_define_property(driver, driver_context->ccd_binning_property);
+        indigo_define_property(driver, driver_context->ccd_binning_property, NULL);
       if (indigo_property_match(driver_context->ccd_frame_type_property, property))
-        indigo_define_property(driver, driver_context->ccd_frame_type_property);
+        indigo_define_property(driver, driver_context->ccd_frame_type_property, NULL);
       if (indigo_property_match(driver_context->ccd1_property, property))
-        indigo_define_property(driver, driver_context->ccd1_property);
+        indigo_define_property(driver, driver_context->ccd1_property, NULL);
     }
   }
   return result;
@@ -115,25 +114,24 @@ indigo_result indigo_ccd_driver_enumerate_properties(indigo_driver *driver, indi
 
 indigo_result indigo_ccd_driver_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
-  assert(client != NULL);
   assert(property != NULL);
   indigo_ccd_driver_context *driver_context = (indigo_ccd_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
   if (indigo_property_match(driver_context->connection_property, property)) {
     // CONNECTION
     if (driver_context->connection_property->items[0].switch_value) {
-      indigo_define_property(driver, driver_context->ccd_exposure_property);
-      indigo_define_property(driver, driver_context->ccd_frame_property);
-      indigo_define_property(driver, driver_context->ccd_binning_property);
-      indigo_define_property(driver, driver_context->ccd_frame_type_property);
-      indigo_define_property(driver, driver_context->ccd1_property);
+      indigo_define_property(driver, driver_context->ccd_exposure_property, NULL);
+      indigo_define_property(driver, driver_context->ccd_frame_property, NULL);
+      indigo_define_property(driver, driver_context->ccd_binning_property, NULL);
+      indigo_define_property(driver, driver_context->ccd_frame_type_property, NULL);
+      indigo_define_property(driver, driver_context->ccd1_property, NULL);
       driver_context->connection_property->state = INDIGO_OK_STATE;
     } else {
-      indigo_delete_property(driver, driver_context->ccd_exposure_property);
-      indigo_delete_property(driver, driver_context->ccd_frame_property);
-      indigo_delete_property(driver, driver_context->ccd_binning_property);
-      indigo_delete_property(driver, driver_context->ccd_frame_type_property);
-      indigo_delete_property(driver, driver_context->ccd1_property);
+      indigo_delete_property(driver, driver_context->ccd_exposure_property, NULL);
+      indigo_delete_property(driver, driver_context->ccd_frame_property, NULL);
+      indigo_delete_property(driver, driver_context->ccd_binning_property, NULL);
+      indigo_delete_property(driver, driver_context->ccd_frame_type_property, NULL);
+      indigo_delete_property(driver, driver_context->ccd1_property, NULL);
       driver_context->connection_property->state = INDIGO_IDLE_STATE;
     }
   } else if (indigo_property_match(driver_context->congfiguration_property, property)) {

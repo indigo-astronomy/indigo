@@ -57,5 +57,6 @@ extern indigo_result indigo_driver_detach(indigo_driver *driver);
 
 extern void indigo_save_property(indigo_property *property);
 extern indigo_result indigo_save_properties(indigo_driver *driver);
+indigo_result indigo_load_properties(indigo_driver *driver, bool default_properties);
 
 #endif /* indigo_driver_h */

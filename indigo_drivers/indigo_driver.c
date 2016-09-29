@@ -45,6 +45,7 @@
 #include <sys/types.h>
 
 #include "indigo_driver.h"
+#include "indigo_xml.h"
 
 indigo_result indigo_driver_attach(indigo_driver *driver, char *device, int version, int interface) {
   assert(driver != NULL);
@@ -104,21 +105,20 @@ indigo_result indigo_driver_enumerate_properties(indigo_driver *driver, indigo_c
   indigo_driver_context *driver_context = driver->driver_context;
   assert(driver_context != NULL);
   if (indigo_property_match(driver_context->connection_property, property))
-    indigo_define_property(driver, driver_context->connection_property);
+    indigo_define_property(driver, driver_context->connection_property, NULL);
   if (indigo_property_match(driver_context->info_property, property))
-    indigo_define_property(driver, driver_context->info_property);
+    indigo_define_property(driver, driver_context->info_property, NULL);
   if (indigo_property_match(driver_context->debug_property, property))
-    indigo_define_property(driver, driver_context->debug_property);
+    indigo_define_property(driver, driver_context->debug_property, NULL);
   if (indigo_property_match(driver_context->simulation_property, property))
-    indigo_define_property(driver, driver_context->simulation_property);
+    indigo_define_property(driver, driver_context->simulation_property, NULL);
   if (indigo_property_match(driver_context->congfiguration_property, property))
-    indigo_define_property(driver, driver_context->congfiguration_property);
+    indigo_define_property(driver, driver_context->congfiguration_property, NULL);
   return INDIGO_OK;
 }
 
 indigo_result indigo_driver_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
-  assert(client != NULL);
   assert(property != NULL);
   indigo_driver_context *driver_context = (indigo_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
@@ -129,21 +129,25 @@ indigo_result indigo_driver_change_property(indigo_driver *driver, indigo_client
     } else {
       driver_context->connection_property->state = INDIGO_IDLE_STATE;
     }
-    indigo_update_property(driver, driver_context->connection_property);
+    indigo_update_property(driver, driver_context->connection_property, NULL);
   } else if (indigo_property_match(driver_context->debug_property, property)) {
     // DEBUG
     indigo_property_copy_values(driver_context->debug_property, property, false);
-    indigo_update_property(driver, driver_context->debug_property);
+    driver_context->debug_property->state = INDIGO_OK_STATE;
+    indigo_update_property(driver, driver_context->debug_property, NULL);
   } else if (indigo_property_match(driver_context->simulation_property, property)) {
     // SIMULATION
     indigo_property_copy_values(driver_context->simulation_property, property, false);
-    indigo_update_property(driver, driver_context->simulation_property);
+    driver_context->simulation_property->state = INDIGO_OK_STATE;
+    indigo_update_property(driver, driver_context->simulation_property, NULL);
   } else if (indigo_property_match(driver_context->congfiguration_property, property)) {
     // CONFIG_PROCESS
     if (driver_context->congfiguration_property->items[0].switch_value) {
-      // TBD
+      if (indigo_load_properties(driver, false) == INDIGO_OK)
+        driver_context->congfiguration_property->state = INDIGO_OK_STATE;
+      else
+        driver_context->congfiguration_property->state = INDIGO_ALERT_STATE;
       driver_context->congfiguration_property->items[0].switch_value = false;
-      driver_context->congfiguration_property->state = INDIGO_OK_STATE;
     } else if (driver_context->congfiguration_property->items[1].switch_value) {
       if (driver_context->debug_property->perm == INDIGO_RW_PERM)
         indigo_save_property(driver_context->debug_property);
@@ -155,11 +159,13 @@ indigo_result indigo_driver_change_property(indigo_driver *driver, indigo_client
         driver_context->congfiguration_property->state = INDIGO_ALERT_STATE;
       driver_context->congfiguration_property->items[1].switch_value = false;
     } else if (driver_context->congfiguration_property->items[2].switch_value) {
-      // TBD
+      if (indigo_load_properties(driver, true) == INDIGO_OK)
+        driver_context->congfiguration_property->state = INDIGO_OK_STATE;
+      else
+        driver_context->congfiguration_property->state = INDIGO_ALERT_STATE;
       driver_context->congfiguration_property->items[2].switch_value = false;
-      driver_context->congfiguration_property->state = INDIGO_OK_STATE;
     }
-    indigo_update_property(driver, driver_context->congfiguration_property);
+    indigo_update_property(driver, driver_context->congfiguration_property, NULL);
   }
   return INDIGO_OK;
 }
@@ -182,7 +188,7 @@ static void xprintf(int handle, const char *format, ...) {
   INDIGO_DEBUG(indigo_debug("saved: %s", buffer));
 }
 
-static int open_config_file(indigo_driver *driver, int mode) {
+static int open_config_file(indigo_driver *driver, int mode, const char *suffix) {
   assert(driver != NULL);
   indigo_driver_context *driver_context = (indigo_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
@@ -191,7 +197,7 @@ static int open_config_file(indigo_driver *driver, int mode) {
   int path_end = snprintf(path, sizeof(path), "%s/.indigo", getenv("HOME"));
   int handle = mkdir(path, 0777);
   if (handle == 0 || errno == EEXIST) {
-    snprintf(path + path_end, sizeof(path) - path_end, "/%s.config", driver_context->info_property->items[0].text_value);
+    snprintf(path + path_end, sizeof(path) - path_end, "/%s%s", driver_context->info_property->items[0].text_value, suffix);
     char *space = strchr(path, ' ');
     while (space != NULL) {
       *space = '_';
@@ -206,6 +212,22 @@ static int open_config_file(indigo_driver *driver, int mode) {
   return handle;
 }
 
+indigo_result indigo_load_properties(indigo_driver *driver, bool default_properties) {
+  assert(driver != NULL);
+  indigo_driver_context *driver_context = (indigo_driver_context *)driver->driver_context;
+  assert(driver_context != NULL);
+  INDIGO_LOCK(&save_mutex);
+  int handle = open_config_file(driver, O_RDONLY, default_properties ? ".default" : ".config");
+  if (handle > 0) {
+    
+    indigo_xml_parse(handle, NULL, NULL);
+    
+    close(handle);
+  }
+  INDIGO_UNLOCK(&save_mutex);
+  return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
+}
+
 void indigo_save_property(indigo_property *property) {
   if (save_property_count < INDIGO_MAX_PROPERTIES) {
     INDIGO_LOCK(&save_mutex);
@@ -218,7 +240,7 @@ indigo_result indigo_save_properties(indigo_driver *driver) {
   indigo_driver_context *driver_context = (indigo_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
   INDIGO_LOCK(&save_mutex);
-  int handle = open_config_file(driver, O_WRONLY | O_CREAT | O_TRUNC);
+  int handle = open_config_file(driver, O_WRONLY | O_CREAT | O_TRUNC, ".config");
   for (int i = 0; i < save_property_count; i++) {
     if (handle > 0) {
       indigo_property *property = save_properties[i];

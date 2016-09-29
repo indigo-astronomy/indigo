@@ -75,7 +75,6 @@ static indigo_result ccd_simulator_attach(indigo_driver *driver) {
 
 static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
-  assert(client != NULL);
   assert(property != NULL);
   indigo_ccd_driver_context *driver_context = (indigo_ccd_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
@@ -89,18 +88,18 @@ static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo
     // CCD_EXPOSURE
     indigo_property_copy_values(driver_context->ccd_exposure_property, property, false);
     driver_context->ccd1_property->state = INDIGO_BUSY_STATE;
-    indigo_update_property(driver, driver_context->ccd1_property);
+    indigo_update_property(driver, driver_context->ccd1_property, "Exposure initiated");
     while (driver_context->ccd_exposure_property->items[0].number_value > 0) {
       driver_context->ccd_exposure_property->state = INDIGO_BUSY_STATE;
-      indigo_update_property(driver, driver_context->ccd_exposure_property);
+      indigo_update_property(driver, driver_context->ccd_exposure_property, NULL);
       sleep(1);
       driver_context->ccd_exposure_property->items[0].number_value -= 1;
     }
     driver_context->ccd_exposure_property->items[0].number_value = 0;
     driver_context->ccd_exposure_property->state = INDIGO_OK_STATE;
-    indigo_update_property(driver, driver_context->ccd_exposure_property);
+    indigo_update_property(driver, driver_context->ccd_exposure_property, "Exposure done");
     driver_context->ccd1_property->state = INDIGO_OK_STATE;
-    indigo_update_property(driver, driver_context->ccd1_property);
+    indigo_update_property(driver, driver_context->ccd1_property, NULL);
   }
   return indigo_ccd_driver_change_property(driver, client, property);
 }

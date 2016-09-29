@@ -57,7 +57,9 @@ static indigo_result test_attach(indigo_client *client) {
   return INDIGO_OK;
 }
 
-static indigo_result test_define_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
+static indigo_result test_define_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message) {
+  if (message)
+    indigo_log("message: %s", message);
   if (indigo_property_match(connection_property, property)) {
     connection_property->items[0].switch_value = true;
     connection_property->items[1].switch_value = false;
@@ -67,7 +69,9 @@ static indigo_result test_define_property(struct indigo_client *client, struct i
   return INDIGO_OK;
 }
 
-static indigo_result test_update_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
+static indigo_result test_update_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message) {
+  if (message)
+    indigo_log("message: %s", message);
   if (indigo_property_match(connection_property, property)) {
     indigo_property_copy_values(connection_property, property, true);
     if (connection_property->items[0].switch_value) {
@@ -102,6 +106,11 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
   return INDIGO_OK;
 }
 
+static indigo_result test_send_message(struct indigo_client *client, struct indigo_driver *driver, const char *message) {
+  indigo_log("message: %s", message);
+  return INDIGO_OK;
+}
+
 static indigo_result test_detach(indigo_client *client) {
   indigo_log("disconnected from INDI bus...");
   exit(0);
@@ -114,6 +123,7 @@ static indigo_client test = {
   test_define_property,
   test_update_property,
   NULL,
+  test_send_message,
   test_detach
 };
 

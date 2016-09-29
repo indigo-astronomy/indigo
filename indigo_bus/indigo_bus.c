@@ -319,9 +319,8 @@ indigo_result indigo_disconnect_client(indigo_client *client) {
 }
 
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
-  assert(client != NULL);
   if (!INDIGO_LOCK(&bus_mutex)) {
-    property->version = client->version;
+    property->version = client ? client->version : INDIGO_VERSION_CURRENT;
     INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
     for (int i = 0; i < MAX_DRIVERS; i++) {
       indigo_driver *driver = drivers[i];
@@ -337,10 +336,9 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 }
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
-  assert(client != NULL);
   assert(property != NULL);
   if (!INDIGO_LOCK(&bus_mutex)) {
-    property->version = client->version;
+    property->version = client ? client->version : INDIGO_VERSION_CURRENT;
     INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
     for (int i = 0; i < MAX_DRIVERS; i++) {
       indigo_driver *driver = drivers[i];
@@ -355,18 +353,17 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
   return INDIGO_LOCK_ERROR;
 }
 
-indigo_result indigo_define_property(indigo_driver *driver, indigo_property *property) {
-  assert(driver != NULL);
+indigo_result indigo_define_property(indigo_driver *driver, indigo_property *property, const char *message) {
   assert(property != NULL);
   if (!INDIGO_LOCK(&bus_mutex)) {
-    property->version = driver->version;
+    property->version = driver ? driver->version : INDIGO_VERSION_CURRENT;
     INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
     for (int i = 0; i < MAX_CLIENTS; i++) {
       indigo_client *client = clients[i];
       if (client == NULL)
         break;
       if (client->define_property != NULL)
-        client->last_result = client->define_property(client, driver, property);
+        client->last_result = client->define_property(client, driver, property, message);
     }
     INDIGO_UNLOCK(&bus_mutex);
     return INDIGO_OK;
@@ -374,18 +371,17 @@ indigo_result indigo_define_property(indigo_driver *driver, indigo_property *pro
   return INDIGO_LOCK_ERROR;
 }
 
-indigo_result indigo_update_property(indigo_driver *driver, indigo_property *property) {
-  assert(driver != NULL);
+indigo_result indigo_update_property(indigo_driver *driver, indigo_property *property, const char *message) {
   assert(property != NULL);
   if (!INDIGO_LOCK(&bus_mutex)) {
-    property->version = driver->version;
+    property->version = driver ? driver->version : INDIGO_VERSION_CURRENT;
     INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
     for (int i = 0; i < MAX_CLIENTS; i++) {
       indigo_client *client = clients[i];
       if (client == NULL)
         break;
       if (client->update_property != NULL)
-        client->last_result = client->update_property(client, driver, property);
+        client->last_result = client->update_property(client, driver, property, message);
     }
     INDIGO_UNLOCK(&bus_mutex);
     return INDIGO_OK;
@@ -393,18 +389,33 @@ indigo_result indigo_update_property(indigo_driver *driver, indigo_property *pro
   return INDIGO_LOCK_ERROR;
 }
 
-indigo_result indigo_delete_property(indigo_driver *driver, indigo_property *property) {
-  assert(driver != NULL);
+indigo_result indigo_delete_property(indigo_driver *driver, indigo_property *property, const char *message) {
   assert(property != NULL);
   if (!INDIGO_LOCK(&bus_mutex)) {
-    property->version = driver->version;
+    property->version = driver ? driver->version : INDIGO_VERSION_CURRENT;
     INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
     for (int i = 0; i < MAX_CLIENTS; i++) {
       indigo_client *client = clients[i];
       if (client == NULL)
         break;
       if (client->delete_property != NULL)
-        client->last_result = client->delete_property(client, driver, property);
+        client->last_result = client->delete_property(client, driver, property, message);
+    }
+    INDIGO_UNLOCK(&bus_mutex);
+    return INDIGO_OK;
+  }
+  return INDIGO_LOCK_ERROR;
+}
+
+indigo_result indigo_send_message(indigo_driver *driver, const char *message) {
+  if (!INDIGO_LOCK(&bus_mutex)) {
+    INDIGO_DEBUG(indigo_debug("INDIGO Bus: message sent"));
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client == NULL)
+        break;
+      if (client->send_message != NULL)
+        client->last_result = client->send_message(client, driver, message);
     }
     INDIGO_UNLOCK(&bus_mutex);
     return INDIGO_OK;
