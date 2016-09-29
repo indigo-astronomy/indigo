@@ -73,7 +73,7 @@ static indigo_result xml_driver_adapter_define_property(indigo_client *client, s
   assert(driver != NULL);
   assert(client != NULL);
   assert(property != NULL);
-  INDIGO_LOCK(&xmutex);
+  pthread_mutex_lock(&xmutex);
   indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
   assert(client_context != NULL);
   int handle = client_context->output;
@@ -119,7 +119,7 @@ static indigo_result xml_driver_adapter_define_property(indigo_client *client, s
       indigo_xml_prinf(handle, "</defBLOBVector>\n");
       break;
   }
-  INDIGO_UNLOCK(&xmutex);
+  pthread_mutex_unlock(&xmutex);
   return INDIGO_OK;
 }
 
@@ -127,7 +127,7 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
   assert(driver != NULL);
   assert(client != NULL);
   assert(property != NULL);
-  INDIGO_LOCK(&xmutex);
+  pthread_mutex_lock(&xmutex);
   indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
   assert(client_context != NULL);
   int handle = client_context->output;
@@ -203,7 +203,7 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
       indigo_xml_prinf(handle, "</setBLOBVector>\n");
       break;
   }
-  INDIGO_UNLOCK(&xmutex);
+  pthread_mutex_unlock(&xmutex);
   return INDIGO_OK;
 }
 
@@ -211,25 +211,25 @@ static indigo_result xml_driver_adapter_delete_property(indigo_client *client, i
   assert(driver != NULL);
   assert(client != NULL);
   assert(property != NULL);
-  INDIGO_LOCK(&xmutex);
+  pthread_mutex_lock(&xmutex);
   indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
   assert(client_context != NULL);
   int handle = client_context->output;
   indigo_xml_prinf(handle, "<delProperty device='%s' name='%s'%s/>\n", property->device, property->name, message_attribute(message));
-  INDIGO_UNLOCK(&xmutex);
+  pthread_mutex_unlock(&xmutex);
   return INDIGO_OK;
 }
 
 static indigo_result xml_driver_adapter_send_message(indigo_client *client, indigo_driver *driver, const char *message) {
   assert(driver != NULL);
   assert(client != NULL);
-  INDIGO_LOCK(&xmutex);
+  pthread_mutex_lock(&xmutex);
   indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
   assert(client_context != NULL);
   int handle = client_context->output;
   if (message)
     indigo_xml_prinf(handle, "<message%s/>\n", message_attribute(message));
-  INDIGO_UNLOCK(&xmutex);
+  pthread_mutex_unlock(&xmutex);
   return INDIGO_OK;
 }
 

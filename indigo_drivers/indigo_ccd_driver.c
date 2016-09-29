@@ -36,6 +36,7 @@
 #include <assert.h>
 
 #include "indigo_ccd_driver.h"
+#include "indigo_timer.h"
 
 indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int version) {
   assert(driver != NULL);
@@ -46,11 +47,17 @@ indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int 
   if (driver_context != NULL) {
     if (indigo_driver_attach(driver, device, version, 2) == INDIGO_OK) {
       // CCD_EXPOSURE
-      indigo_property *exposure_property = indigo_init_number_property(NULL, device, "CCD_EXPOSURE", "Main", "Expose", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+      indigo_property *exposure_property = indigo_init_number_property(NULL, device, "CCD_EXPOSURE", "Main", "Start expose", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
       if (exposure_property == NULL)
         return INDIGO_FAILED;
-      indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "Expose the CCD chip (seconds)", 0, 900, 1, 1);
+      indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "Start exposure (seconds)", 0, 10000, 1, 0);
       driver_context->ccd_exposure_property = exposure_property;
+      // CCD_ABORT_EXPOSURE
+      indigo_property *ccd_abort_exposure_property = indigo_init_switch_property(NULL, device, "CCD_ABORT_EXPOSURE", "Main", "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+      if (ccd_abort_exposure_property == NULL)
+        return INDIGO_FAILED;
+      indigo_init_switch_item(&ccd_abort_exposure_property->items[0], "ABORT", "Abort exposure", false);
+      driver_context->ccd_abort_exposure_property = ccd_abort_exposure_property;
       // CCD_FRAME
       indigo_property *ccd_frame_property = indigo_init_number_property(NULL, device, "CCD_FRAME", "Main", "Frame size", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
       if (ccd_frame_property == NULL)
@@ -68,14 +75,14 @@ indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int 
       indigo_init_number_item(&binning_property->items[1], "VER_BIN", "Vertical binning", 0, 1, 1, 1);
       driver_context->ccd_binning_property = binning_property;
       // CCD_FRAME_TYPE
-      indigo_property *type_property = indigo_init_switch_property(NULL, device, "CCD_FRAME_TYPE", "Main", "Frame type", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-      if (type_property == NULL)
+      indigo_property *ccd_frame_type_property = indigo_init_switch_property(NULL, device, "CCD_FRAME_TYPE", "Main", "Frame type", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+      if (ccd_frame_type_property == NULL)
         return INDIGO_FAILED;
-      indigo_init_switch_item(&type_property->items[0], "FRAME_LIGHT", "Light frame exposure", true);
-      indigo_init_switch_item(&type_property->items[1], "FRAME_BIAS", "Bias frame exposure", false);
-      indigo_init_switch_item(&type_property->items[2], "FRAME_DARK", "Dark frame exposure", false);
-      indigo_init_switch_item(&type_property->items[3], "FRAME_FLAT", "Flat field frame exposure", false);
-      driver_context->ccd_frame_type_property = type_property;
+      indigo_init_switch_item(&ccd_frame_type_property->items[0], "FRAME_LIGHT", "Light frame exposure", true);
+      indigo_init_switch_item(&ccd_frame_type_property->items[1], "FRAME_BIAS", "Bias frame exposure", false);
+      indigo_init_switch_item(&ccd_frame_type_property->items[2], "FRAME_DARK", "Dark frame exposure", false);
+      indigo_init_switch_item(&ccd_frame_type_property->items[3], "FRAME_FLAT", "Flat field frame exposure", false);
+      driver_context->ccd_frame_type_property = ccd_frame_type_property;
       // CCD1
       indigo_property *ccd1_property = indigo_init_blob_property(NULL, device, "CCD1", "Image", "Image", INDIGO_IDLE_STATE, 1);
       if (ccd1_property == NULL)
@@ -99,6 +106,8 @@ indigo_result indigo_ccd_driver_enumerate_properties(indigo_driver *driver, indi
     if (indigo_is_connected(driver_context)) {
       if (indigo_property_match(driver_context->ccd_exposure_property, property))
         indigo_define_property(driver, driver_context->ccd_exposure_property, NULL);
+      if (indigo_property_match(driver_context->ccd_abort_exposure_property, property))
+        indigo_define_property(driver, driver_context->ccd_abort_exposure_property, NULL);
       if (indigo_property_match(driver_context->ccd_frame_property, property))
         indigo_define_property(driver, driver_context->ccd_frame_property, NULL);
       if (indigo_property_match(driver_context->ccd_binning_property, property))
@@ -112,6 +121,17 @@ indigo_result indigo_ccd_driver_enumerate_properties(indigo_driver *driver, indi
   return result;
 }
 
+static void countdown_timer_callback(indigo_driver *driver, int timer_id, void *data) {
+  indigo_ccd_driver_context *driver_context = (indigo_ccd_driver_context *)driver->driver_context;
+  if (driver_context->ccd_exposure_property->state == INDIGO_BUSY_STATE) {
+    driver_context->ccd_exposure_property->items[0].number_value -= 1;
+    if (driver_context->ccd_exposure_property->items[0].number_value >= 1) {
+      indigo_update_property(driver, driver_context->ccd_exposure_property, NULL);
+      indigo_set_timer(driver, 1, NULL, 1.0, countdown_timer_callback);
+    }
+  }
+}
+
 indigo_result indigo_ccd_driver_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
   assert(property != NULL);
@@ -121,18 +141,18 @@ indigo_result indigo_ccd_driver_change_property(indigo_driver *driver, indigo_cl
     // CONNECTION
     if (driver_context->connection_property->items[0].switch_value) {
       indigo_define_property(driver, driver_context->ccd_exposure_property, NULL);
+      indigo_define_property(driver, driver_context->ccd_abort_exposure_property, NULL);
       indigo_define_property(driver, driver_context->ccd_frame_property, NULL);
       indigo_define_property(driver, driver_context->ccd_binning_property, NULL);
       indigo_define_property(driver, driver_context->ccd_frame_type_property, NULL);
       indigo_define_property(driver, driver_context->ccd1_property, NULL);
-      driver_context->connection_property->state = INDIGO_OK_STATE;
     } else {
       indigo_delete_property(driver, driver_context->ccd_exposure_property, NULL);
+      indigo_delete_property(driver, driver_context->ccd_abort_exposure_property, NULL);
       indigo_delete_property(driver, driver_context->ccd_frame_property, NULL);
       indigo_delete_property(driver, driver_context->ccd_binning_property, NULL);
       indigo_delete_property(driver, driver_context->ccd_frame_type_property, NULL);
       indigo_delete_property(driver, driver_context->ccd1_property, NULL);
-      driver_context->connection_property->state = INDIGO_IDLE_STATE;
     }
   } else if (indigo_property_match(driver_context->congfiguration_property, property)) {
     // CONFIG_PROCESS
@@ -141,7 +161,46 @@ indigo_result indigo_ccd_driver_change_property(indigo_driver *driver, indigo_cl
         indigo_save_property(driver_context->ccd_frame_property);
       if (driver_context->ccd_binning_property->perm == INDIGO_RW_PERM)
         indigo_save_property(driver_context->ccd_binning_property);
+      if (driver_context->ccd_frame_type_property->perm == INDIGO_RW_PERM)
+        indigo_save_property(driver_context->ccd_frame_type_property);
     }
+  } else if (indigo_property_match(driver_context->ccd_exposure_property, property)) {
+    // CCD_EXPOSURE
+    if (driver_context->ccd_exposure_property->state == INDIGO_BUSY_STATE) {
+      if (driver_context->ccd_exposure_property->items[0].number_value >= 1) {
+        indigo_set_timer(driver, 1, NULL, 1.0, countdown_timer_callback);
+      }
+    }
+  } else if (indigo_property_match(driver_context->ccd_abort_exposure_property, property)) {
+    // CCD_ABORT_EXPOSURE
+    if (driver_context->ccd_exposure_property->state == INDIGO_BUSY_STATE) {
+      indigo_cancel_timer(driver, 1);
+      driver_context->ccd_exposure_property->state = INDIGO_ALERT_STATE;
+      driver_context->ccd_exposure_property->items[0].number_value = 0;
+      indigo_update_property(driver, driver_context->ccd_exposure_property, NULL);
+      driver_context->ccd1_property->state = INDIGO_ALERT_STATE;
+      indigo_update_property(driver, driver_context->ccd1_property, NULL);
+      driver_context->ccd_abort_exposure_property->state = INDIGO_OK_STATE;
+    } else {
+      driver_context->ccd_abort_exposure_property->state = INDIGO_ALERT_STATE;
+    }
+    driver_context->ccd_abort_exposure_property->items[0].switch_value = false;
+    indigo_update_property(driver, driver_context->ccd_abort_exposure_property, driver_context->ccd_abort_exposure_property->state == INDIGO_OK_STATE ? "Exposure canceled" : "Failed to cancel exposure");
+  } else if (indigo_property_match(driver_context->ccd_frame_property, property)) {
+    // CCD_CCD_FRAME
+    indigo_property_copy_values(driver_context->ccd_frame_property, property, false);
+    driver_context->ccd_frame_property->state = INDIGO_OK_STATE;
+    indigo_update_property(driver, driver_context->ccd_frame_property, NULL);
+  } else if (indigo_property_match(driver_context->ccd_binning_property, property)) {
+    // CCD_BINNING
+    indigo_property_copy_values(driver_context->ccd_binning_property, property, false);
+    driver_context->ccd_binning_property->state = INDIGO_OK_STATE;
+    indigo_update_property(driver, driver_context->ccd_binning_property, NULL);
+  } else if (indigo_property_match(driver_context->ccd_frame_type_property, property)) {
+    // CCD_CCD_FRAME_TYPE
+    indigo_property_copy_values(driver_context->ccd_frame_type_property, property, false);
+    driver_context->ccd_frame_type_property->state = INDIGO_OK_STATE;
+    indigo_update_property(driver, driver_context->ccd_frame_type_property, NULL);
   }
   return indigo_driver_change_property(driver, client, property);
 }

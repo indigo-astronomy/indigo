@@ -32,31 +32,14 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-#ifndef indigo_config_h
-#define indigo_config_h
+#ifndef indigo_timer_h
+#define indigo_timer_h
 
-#define INDIGO_BUILD           0
+#include "indigo_bus.h"
 
-// Wrappers for debug code inclusion, do not touch INDIGO_ERROR and INDIGO_LOG!
-#define INDIGO_TRACE(c)
-#define INDIGO_DEBUG(c)
-#define INDIGO_ERROR(c) c
-#define INDIGO_LOG(c) c
+typedef void (*indigo_timer_callback)(indigo_driver *driver, int timer_id, void *data);
 
-#define INDIGO_DEBUG_PROTOCOL(c)
-#define INDIGO_TRACE_PROTOCOL(c)
+extern indigo_result indigo_set_timer(indigo_driver *driver, int timer_id, void *data, double delay, indigo_timer_callback callback);
+extern indigo_result indigo_cancel_timer(indigo_driver *driver, int timer_id);
 
-// Uncomment to write debug messages to syslog instead of stderr.
-// #define INDIG_USE_SYSLOG
-
-// Property/item string sizes, max number of properties per driver, max number of items per property.
-#define INDIGO_NAME_SIZE      128
-#define INDIGO_VALUE_SIZE     256
-#define INDIGO_MAX_PROPERTIES 64
-#define INDIGO_MAX_ITEMS      64
-#define INDIGO_MAX_TIMERS     32
-
-// Current version, also used for wire protocol, do not touch unless you know consequences!
-#define INDIGO_VERSION_CURRENT 0x0200
-
-#endif /* indigo_config_h */
+#endif /* indigo_timer_h */

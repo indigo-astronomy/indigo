@@ -48,6 +48,7 @@ typedef struct {
   indigo_property *congfiguration_property;
   // indigo_ccd_driver_context
   indigo_property *ccd_exposure_property;
+  indigo_property *ccd_abort_exposure_property;
   indigo_property *ccd_frame_property;
   indigo_property *ccd_binning_property;
   indigo_property *ccd_frame_type_property;

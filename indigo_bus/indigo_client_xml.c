@@ -49,7 +49,7 @@ static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_result xml_client_parser_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
-  INDIGO_LOCK(&xmutex);
+  pthread_mutex_lock(&xmutex);
   indigo_xml_client_adapter_context *driver_context = (indigo_xml_client_adapter_context *)driver->driver_context;
   assert(driver_context != NULL);
   int handle = driver_context->output;
@@ -66,14 +66,14 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_driver *drive
   } else {
     indigo_xml_prinf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF);
   }
-  INDIGO_UNLOCK(&xmutex);
+  pthread_mutex_unlock(&xmutex);
   return INDIGO_OK;
 }
 
 static indigo_result xml_client_parser_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
   assert(property != NULL);
-  INDIGO_LOCK(&xmutex);
+  pthread_mutex_lock(&xmutex);
   indigo_xml_client_adapter_context *driver_context = (indigo_xml_client_adapter_context *)driver->driver_context;
   assert(driver_context != NULL);
   int handle = driver_context->output;
@@ -105,7 +105,7 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
     default:
       break;
   }
-  INDIGO_UNLOCK(&xmutex);
+  pthread_mutex_unlock(&xmutex);
   return INDIGO_OK;
 }
 

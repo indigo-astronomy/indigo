@@ -124,11 +124,6 @@ indigo_result indigo_driver_change_property(indigo_driver *driver, indigo_client
   assert(driver_context != NULL);
   if (indigo_property_match(driver_context->connection_property, property)) {
     // CONNECTION
-    if (driver_context->connection_property->items[0].switch_value) {
-      driver_context->connection_property->state = INDIGO_OK_STATE;
-    } else {
-      driver_context->connection_property->state = INDIGO_IDLE_STATE;
-    }
     indigo_update_property(driver, driver_context->connection_property, NULL);
   } else if (indigo_property_match(driver_context->debug_property, property)) {
     // DEBUG
@@ -192,7 +187,7 @@ static int open_config_file(indigo_driver *driver, int mode, const char *suffix)
   assert(driver != NULL);
   indigo_driver_context *driver_context = (indigo_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
-  INDIGO_LOCK(&save_mutex);
+  pthread_mutex_lock(&save_mutex);
   static char path[128];
   int path_end = snprintf(path, sizeof(path), "%s/.indigo", getenv("HOME"));
   int handle = mkdir(path, 0777);
@@ -216,7 +211,7 @@ indigo_result indigo_load_properties(indigo_driver *driver, bool default_propert
   assert(driver != NULL);
   indigo_driver_context *driver_context = (indigo_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
-  INDIGO_LOCK(&save_mutex);
+  pthread_mutex_lock(&save_mutex);
   int handle = open_config_file(driver, O_RDONLY, default_properties ? ".default" : ".config");
   if (handle > 0) {
     
@@ -224,13 +219,13 @@ indigo_result indigo_load_properties(indigo_driver *driver, bool default_propert
     
     close(handle);
   }
-  INDIGO_UNLOCK(&save_mutex);
+  pthread_mutex_unlock(&save_mutex);
   return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
 }
 
 void indigo_save_property(indigo_property *property) {
   if (save_property_count < INDIGO_MAX_PROPERTIES) {
-    INDIGO_LOCK(&save_mutex);
+    pthread_mutex_lock(&save_mutex);
     save_properties[save_property_count++] = property;
   }
 }
@@ -239,7 +234,7 @@ indigo_result indigo_save_properties(indigo_driver *driver) {
   assert(driver != NULL);
   indigo_driver_context *driver_context = (indigo_driver_context *)driver->driver_context;
   assert(driver_context != NULL);
-  INDIGO_LOCK(&save_mutex);
+  pthread_mutex_lock(&save_mutex);
   int handle = open_config_file(driver, O_WRONLY | O_CREAT | O_TRUNC, ".config");
   for (int i = 0; i < save_property_count; i++) {
     if (handle > 0) {
@@ -273,11 +268,11 @@ indigo_result indigo_save_properties(indigo_driver *driver) {
           break;
       }
     }
-    INDIGO_UNLOCK(&save_mutex);
+    pthread_mutex_unlock(&save_mutex);
   }
   if (handle > 0)
     close(handle);
-  INDIGO_UNLOCK(&save_mutex);
+  pthread_mutex_unlock(&save_mutex);
   return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
 }
 

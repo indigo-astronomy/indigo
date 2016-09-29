@@ -11,6 +11,7 @@ libindigo.a:\
 	indigo_bus/indigo_server_xml.o\
 	indigo_bus/indigo_driver_xml.o\
 	indigo_bus/indigo_client_xml.o\
+	indigo_bus/indigo_timer.o\
 	indigo_drivers/indigo_driver.o\
 	indigo_drivers/indigo_ccd_driver.o
 	$(AR) $(ARFLAGS) $@ $^

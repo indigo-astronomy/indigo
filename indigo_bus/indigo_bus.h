@@ -39,14 +39,6 @@
 
 #include "indigo_config.h"
 
-#ifdef INDIGO_USE_LOCKS
-#define INDIGO_LOCK(mutex) pthread_mutex_lock(mutex)
-#define INDIGO_UNLOCK(mutex) assert(pthread_mutex_unlock(mutex) == 0)
-#else
-#define INDIGO_LOCK(mutex) 0
-#define INDIGO_UNLOCK(mutex)
-#endif
-
 #define INDIGO_VERSION_NONE    0x0000
 #define INDIGO_VERSION_LEGACY  0x0107
 #define INDIGO_VERSION_2_0     0x0200
@@ -54,7 +46,7 @@
 typedef enum {
   INDIGO_OK = 0,
   INDIGO_FAILED,
-  INDIGO_TOO_MANY_DRIVERS,
+  INDIGO_TOO_MANY_ELEMENTS,
   INDIGO_LOCK_ERROR,
   INDIGO_NOT_FOUND,
   INDIGO_CANT_START_SERVER
@@ -162,15 +154,12 @@ extern indigo_result indigo_connect_driver(indigo_driver *driver);
 extern indigo_result indigo_disconnect_driver(indigo_driver *driver);
 extern indigo_result indigo_connect_client(indigo_client *client);
 extern indigo_result indigo_disconnect_client(indigo_client *client);
-
 extern indigo_result indigo_define_property(indigo_driver *driver, indigo_property *property, const char *message);
 extern indigo_result indigo_update_property(indigo_driver *driver, indigo_property *property, const char *message);
 extern indigo_result indigo_delete_property(indigo_driver *driver, indigo_property *property, const char *message);
 extern indigo_result indigo_send_message(indigo_driver *driver, const char *message);
-
 extern indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property);
 extern indigo_result indigo_change_property(indigo_client *client, indigo_property *property);
-
 extern indigo_result indigo_stop();
 
 extern indigo_property *indigo_init_text_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);

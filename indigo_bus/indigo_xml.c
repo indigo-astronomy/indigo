@@ -130,7 +130,7 @@ static indigo_rule parse_rule(char *value) {
 }
 
 static int decode(char *data, unsigned char *decoded_data, int input_length) {
-  int output_length = input_length / 4 * 3;
+  int output_length = input_length * 3 / 4;
   if (data[input_length - 1] == '=')
     output_length--;
   if (data[input_length - 2] == '=')
@@ -529,6 +529,7 @@ void *set_blob_vector_handler(parser_state state, char *name, char *value, indig
   if (state == BEGIN_TAG) {
     if (!strcmp(name, "oneBLOB")) {
       property->count++;
+      return set_one_blob_vector_handler;
     }
   } else if (state == ATTRIBUTE_VALUE) {
     if (!strcmp(name, "device")) {
