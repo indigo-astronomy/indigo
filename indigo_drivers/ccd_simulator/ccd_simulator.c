@@ -59,7 +59,7 @@ static indigo_result ccd_simulator_attach(indigo_driver *driver) {
     driver_context->ccd_frame_property->items[2].number_max = driver_context->ccd_frame_property->items[2].number_value = CCD_MAX_X;
     driver_context->ccd_frame_property->items[3].number_max = driver_context->ccd_frame_property->items[3].number_value = CCD_MAX_Y;
     // CCD1
-    int size = 2*96*96;
+    int size = 2*16*16;
     char *blob = malloc(size);
     if (blob == NULL)
       return INDIGO_FAILED;

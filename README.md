@@ -1,4 +1,4 @@
-INDIGO is a proof-of-concept of future INDI based on layered architecture and software bus.
+### INDIGO is a proof-of-concept of future INDI based on layered architecture and software bus.
 
 This is the list of requirements taken into the consideration:
 
@@ -10,39 +10,43 @@ This is the list of requirements taken into the consideration:
 
 ------------------------------------------------------------------------------------------------
 
-This is proposed extension of legacy XML protocol (compatible with INDI protocol 1.7):
+### Proposed extension of legacy XML protocol (compatible with INDI protocol 1.7):
 
 Communication is initiated from client side with message
 
-<getProperties version='1.7' switch='2.0'/>
+`<getProperties version='1.7' switch='2.0'/>`
 
 INDI driver/server will just send definition of properties, INDIGO driver/server will change protocol first by message
 
-<switchProtocol version='2.0'/>
+`<switchProtocol version='2.0'/>`
 
 Internaly, every property sent over INDI bus has version attribute set for correct semantical interpretation (property/item names are mapped by protocol adapters).
 
 ------------------------------------------------------------------------------------------------
 
+### How to use it
+
 To build PoC, use
 
-make all
+`make all`
 
 and then execute either (client and driver in single executable with direct communication over the bus)
 
-./test
+`./test`
 
 or (client executing driver as child proces with the legacy INDI wire protocol)
 
-./client
+`./client`
 
 or (network server, which can be accessed by some INDI control panel)
 
-./server
+`./server`
 
 ------------------------------------------------------------------------------------------------
 
-INDIGO logo proposal (indigo = #4B0082)
+### INDIGO logo proposal
+
+indigo = #4B0082 :)
 
 ![Logo](http://www.cloudmakers.eu/indigo/logo.png)
 

@@ -44,6 +44,8 @@
 #include "indigo_server_xml.h"
 
 int main(int argc, const char * argv[]) {
+  indigo_main_argc = argc;
+  indigo_main_argv = argv;
   indigo_client *protocol_adapter = xml_driver_adapter(0, 1);
   indigo_start();
   indigo_connect_driver(ccd_simulator());

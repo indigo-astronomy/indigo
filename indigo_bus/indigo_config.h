@@ -43,8 +43,8 @@
 #define INDIGO_ERROR(c) c
 #define INDIGO_LOG(c) c
 
-#define INDIGO_TRACE_PROTOCOL(c)
 #define INDIGO_DEBUG_PROTOCOL(c)
+#define INDIGO_TRACE_PROTOCOL(c)
 
 // Uncomment to write debug messages to syslog instead of stderr.
 // #define INDIG_USE_SYSLOG

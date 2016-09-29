@@ -57,7 +57,7 @@ static indigo_result client_attach(indigo_client *client) {
   indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "", 0, 0, 0, 0);
   ccd1_property = indigo_init_blob_property(NULL, "CCD Simulator", "CCD1", "", "", 0, 1);
   indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "");
-  indigo_log("Client: connected to INDI bus...");
+  indigo_log("connected to INDI bus...");
   return INDIGO_OK;
 }
 
@@ -75,11 +75,11 @@ static indigo_result client_update_property(struct indigo_client *client, struct
   if (indigo_property_match(connection_property, property)) {
     indigo_property_copy_values(connection_property, property, true);
     if (connection_property->items[0].switch_value) {
-      indigo_log("Client: connected...");
+      indigo_log("connected...");
       exposure_property->items[0].number_value = 3.0;
       indigo_change_property(client, exposure_property);
     } else {
-      indigo_log("Client: disconnected...");
+      indigo_log("disconnected...");
       indigo_stop();
     }
     return INDIGO_OK;
@@ -87,16 +87,16 @@ static indigo_result client_update_property(struct indigo_client *client, struct
   if (indigo_property_match(exposure_property, property)) {
     indigo_property_copy_values(exposure_property, property, true);
     if (exposure_property->state == INDIGO_BUSY_STATE) {
-      indigo_log("Client: exposure %gs...", exposure_property->items[0].number_value);
+      indigo_log("exposure %gs...", exposure_property->items[0].number_value);
     } else if (exposure_property->state == INDIGO_OK_STATE) {
-      indigo_log("Client: exposure done...");
+      indigo_log("exposure done...");
     }
     return INDIGO_OK;
   }
   if (indigo_property_match(ccd1_property, property)) {
     indigo_property_copy_values(ccd1_property, property, true);
     if (ccd1_property->state == INDIGO_OK_STATE) {
-      indigo_log("Client: image received (%d bytes)...", ccd1_property->items[0].blob_size);
+      indigo_log("image received (%d bytes)...", ccd1_property->items[0].blob_size);
       connection_property->items[0].switch_value = false;
       connection_property->items[1].switch_value = true;
       indigo_change_property(client, connection_property);
@@ -107,7 +107,7 @@ static indigo_result client_update_property(struct indigo_client *client, struct
 }
 
 static indigo_result client_detach(indigo_client *client) {
-  indigo_log("Client: disconnected from INDI bus...");
+  indigo_log("disconnected from INDI bus...");
   kill(driver_pid, SIGKILL);
   exit(0);
   return INDIGO_OK;
@@ -123,6 +123,8 @@ static indigo_client client = {
 };
 
 int main(int argc, const char * argv[]) {
+  indigo_main_argc = argc;
+  indigo_main_argv = argv;
   int input[2], output[2];
   if (pipe(input) < 0 || pipe(output) < 0) {
     indigo_log("Can't create local pipe for driver (%s)", strerror(errno));

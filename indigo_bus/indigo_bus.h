@@ -147,6 +147,9 @@ typedef struct indigo_client {
 typedef indigo_driver *(*indigo_driver_entry_point)();
 typedef indigo_client *(*indigo_client_entry_point)();
 
+extern const char **indigo_main_argv;
+extern int indigo_main_argc;
+
 extern void indigo_trace(const char *format, ...);
 extern void indigo_debug(const char *format, ...);
 extern void indigo_error(const char *format, ...);

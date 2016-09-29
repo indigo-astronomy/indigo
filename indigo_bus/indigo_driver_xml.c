@@ -60,16 +60,6 @@ static char encoding_table[] =
 
 static int mod_table[] = {0, 2, 1};
 
-static void xprintf(int handle, const char *format, ...) {
-  char buffer[1024];
-  va_list args;
-  va_start(args, format);
-  int length = vsnprintf(buffer, 1024, format, args);
-  va_end(args);
-  write(handle, buffer, length);
-  INDIGO_DEBUG(indigo_debug("sent: %s", buffer));
-}
-
 static indigo_result xml_driver_adapter_define_property(indigo_client *client, struct indigo_driver *driver, indigo_property *property) {
   assert(driver != NULL);
   assert(client != NULL);
@@ -80,44 +70,44 @@ static indigo_result xml_driver_adapter_define_property(indigo_client *client, s
   int handle = client_context->output;
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
-      xprintf(handle, "<defTextVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<defTextVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<defText name='%s' label='%s'>%s</defText>\n", item->name, item->label, item->text_value);
+        indigo_xml_prinf(handle, "<defText name='%s' label='%s'>%s</defText>\n", item->name, item->label, item->text_value);
       }
-      xprintf(handle, "</defTextVector>\n");
+      indigo_xml_prinf(handle, "</defTextVector>\n");
       break;
     case INDIGO_NUMBER_VECTOR:
-      xprintf(handle, "<defNumberVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<defNumberVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<defNumber name='%s' label='%s' min='%g' max='%g' step='%g'>%g</defNumber>\n", item->name, item->label, item->number_min, item->number_max, item->number_step, item->number_value);
+        indigo_xml_prinf(handle, "<defNumber name='%s' label='%s' min='%g' max='%g' step='%g'>%g</defNumber>\n", item->name, item->label, item->number_min, item->number_max, item->number_step, item->number_value);
       }
-      xprintf(handle, "</defNumberVector>\n");
+      indigo_xml_prinf(handle, "</defNumberVector>\n");
       break;
     case INDIGO_SWITCH_VECTOR:
-      xprintf(handle, "<defSwitchVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s' rule='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule]);
+      indigo_xml_prinf(handle, "<defSwitchVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s' rule='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<defSwitch name='%s' label='%s'>%s</defSwitch>\n", item->name, item->label, item->switch_value ? "On" : "Off");
+        indigo_xml_prinf(handle, "<defSwitch name='%s' label='%s'>%s</defSwitch>\n", item->name, item->label, item->switch_value ? "On" : "Off");
       }
-      xprintf(handle, "</defSwitchVector>\n");
+      indigo_xml_prinf(handle, "</defSwitchVector>\n");
       break;
     case INDIGO_LIGHT_VECTOR:
-      xprintf(handle, "<defLightVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<defLightVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, " <defLight name='%s' label='%s'>%s</defLight>\n", item->name, item->label, indigo_property_state_text[item->light_value]);
+        indigo_xml_prinf(handle, " <defLight name='%s' label='%s'>%s</defLight>\n", item->name, item->label, indigo_property_state_text[item->light_value]);
       }
-      xprintf(handle, "</defLightVector>\n");
+      indigo_xml_prinf(handle, "</defLightVector>\n");
       break;
     case INDIGO_BLOB_VECTOR:
-      xprintf(handle, "<defBLOBVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<defBLOBVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'>\n", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<defBLOB name='%s' label='%s'/>\n", item->name, item->label);
+        indigo_xml_prinf(handle, "<defBLOB name='%s' label='%s'/>\n", item->name, item->label);
       }
-      xprintf(handle, "</defBLOBVector>\n");
+      indigo_xml_prinf(handle, "</defBLOBVector>\n");
       break;
   }
   INDIGO_UNLOCK(&xmutex);
@@ -134,46 +124,46 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
   int handle = client_context->output;
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
-      xprintf(handle, "<setTextVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<setTextVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, item->text_value);
+        indigo_xml_prinf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, item->text_value);
       }
-      xprintf(handle, "</setTextVector>\n");
+      indigo_xml_prinf(handle, "</setTextVector>\n");
       break;
     case INDIGO_NUMBER_VECTOR:
-      xprintf(handle, "<setNumberVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<setNumberVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
+        indigo_xml_prinf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
       }
-      xprintf(handle, "</setNumberVector>\n");
+      indigo_xml_prinf(handle, "</setNumberVector>\n");
       break;
     case INDIGO_SWITCH_VECTOR:
-      xprintf(handle, "<setSwitchVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<setSwitchVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
+        indigo_xml_prinf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
       }
-      xprintf(handle, "</setSwitchVector>\n");
+      indigo_xml_prinf(handle, "</setSwitchVector>\n");
       break;
     case INDIGO_LIGHT_VECTOR:
-      xprintf(handle, "<setLightVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<setLightVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<oneLight name='%s'>%s</oneLight>\n", item->name, indigo_property_state_text[item->light_value]);
+        indigo_xml_prinf(handle, "<oneLight name='%s'>%s</oneLight>\n", item->name, indigo_property_state_text[item->light_value]);
       }
-      xprintf(handle, "</setLightVector>\n");
+      indigo_xml_prinf(handle, "</setLightVector>\n");
       break;
     case INDIGO_BLOB_VECTOR:
-      xprintf(handle, "<setBLOBVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<setBLOBVector device='%s' name='%s' state='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       if (property->state == INDIGO_OK_STATE) {
         for (int i = 0; i < property->count; i++) {
           indigo_item *item = &property->items[i];
           long input_length = item->blob_size;
           unsigned char *data = item->blob_value;
           char encoded_data[74];
-          xprintf(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", item->name, item->blob_format, item->blob_size);
+          indigo_xml_prinf(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", item->name, item->blob_format, item->blob_size);
           int j = 0;
           int i = 0;
           while (i < input_length) {
@@ -188,7 +178,7 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
             if (j == 72) {
               encoded_data[j++] = '\n';
               encoded_data[j++] = 0;
-              xprintf(handle, encoded_data);
+              indigo_xml_prinf(handle, encoded_data);
               j = 0;
             }
           }
@@ -197,11 +187,11 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
           }
           encoded_data[j++] = '\n';
           encoded_data[j++] = 0;
-          xprintf(handle, encoded_data);
-          xprintf(handle, "</oneBLOB>\n");
+          indigo_xml_prinf(handle, encoded_data);
+          indigo_xml_prinf(handle, "</oneBLOB>\n");
         }
       }
-      xprintf(handle, "</setBLOBVector>\n");
+      indigo_xml_prinf(handle, "</setBLOBVector>\n");
       break;
   }
   INDIGO_UNLOCK(&xmutex);
@@ -216,7 +206,7 @@ static indigo_result xml_driver_adapter_delete_property(indigo_client *client, i
   indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
   assert(client_context != NULL);
   int handle = client_context->output;
-  xprintf(handle, "<delProperty device='%s' name='%s'>\n", property->device, property->name);
+  indigo_xml_prinf(handle, "<delProperty device='%s' name='%s'/>\n", property->device, property->name);
   INDIGO_UNLOCK(&xmutex);
   return INDIGO_OK;
 }

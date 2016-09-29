@@ -86,19 +86,56 @@ char *indigo_switch_rule_text[] = {
 };
 
 indigo_property INDIGO_ALL_PROPERTIES;
+const char **indigo_main_argv;
+int indigo_main_argc;
 
 static void log_message(const char *format, va_list args) {
-  char buffer[256];
-  struct timeval tmnow;
-  gettimeofday(&tmnow, NULL);
-  strftime (buffer, 9, "%H:%M:%S", localtime(&tmnow.tv_sec));
-  sprintf(buffer + 8, ".%06d ", tmnow.tv_usec);
-  vsnprintf(buffer + 16, 240, format, args);
+  static char buffer[256];
+  static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;  
+  if (!INDIGO_LOCK(&log_mutex)) {
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    char *line = buffer;
 #ifdef INDIGO_USE_SYSLOG
-  syslog (LOG_NOTICE, "%s", buffer);
+    while (line) {
+      char *eol = strchr(line, '\n');
+      if (eol)
+        *eol = 0;
+      if (eol > line)
+        syslog (LOG_NOTICE, "%s", buffer);
+      fprintf(stderr, "%s: %s %s\n", log_executable_name, timestamp, line);
+      if (eol)
+        line = eol + 1;
+      else
+        line = NULL;
+    }
 #else
-  fprintf(stderr, "%s\n", buffer);
+    char timestamp[16];
+    struct timeval tmnow;
+    gettimeofday(&tmnow, NULL);
+    strftime (timestamp, 9, "%H:%M:%S", localtime(&tmnow.tv_sec));
+    snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d ", tmnow.tv_usec);
+    static const char *log_executable_name = NULL;
+    if (log_executable_name == NULL) {
+      log_executable_name = strrchr(indigo_main_argv[0], '/');
+      if (log_executable_name != NULL)
+        log_executable_name++;
+      else
+        log_executable_name = indigo_main_argv[0];
+    }
+    while (line) {
+      char *eol = strchr(line, '\n');
+      if (eol)
+        *eol = 0;
+      if (*line)
+        fprintf(stderr, "%s: %s %s\n", log_executable_name, timestamp, line);
+      if (eol)
+        line = eol + 1;
+      else
+        line = NULL;
+    }
 #endif
+  }
+  INDIGO_UNLOCK(&log_mutex);
 }
 
 void indigo_trace(const char *format, ...) {

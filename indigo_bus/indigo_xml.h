@@ -37,6 +37,7 @@
 
 #include "indigo_bus.h"
 
+extern void indigo_xml_prinf(int handle, const char *format, ...);
 extern void indigo_xml_parse(int handle, indigo_driver *driver, indigo_client *client);
 
 #endif /* indigo_xml_h */
