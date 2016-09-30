@@ -35,25 +35,27 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 #include <assert.h>
 
 #include "ccd_simulator.h"
 #include "indigo_timer.h"
 
 #define DEVICE "CCD Simulator"
-#define VERSION INDIGO_VERSION_CURRENT
+
+static int star_x[100], star_y[100], star_a[100];
 
 static indigo_result ccd_simulator_attach(indigo_driver *driver) {
   assert(driver != NULL);
-  if (indigo_ccd_driver_attach(driver, DEVICE, VERSION) == INDIGO_OK) {
+  if (indigo_ccd_driver_attach(driver, DEVICE, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     // -------------------------------------------------------------------------------- SIMULATION
     SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
-    SIMULATION_ENABLE_ITEM->switch_value = true;
-    SIMULATION_DISABLE_ITEM->switch_value = false;
+    SIMULATION_ENABLED_ITEM->switch_value = true;
+    SIMULATION_DISABLED_ITEM->switch_value = false;
     // -------------------------------------------------------------------------------- CCD_INFO
     CCD_INFO_WIDTH_ITEM->number_value = 1600;
     CCD_INFO_HEIGHT_ITEM->number_value = 1200;
-    CCD_INFO_MAX_HORIZONTAL_BIN_ITEM->number_value = 2;
+    CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number_value = 2;
     CCD_INFO_MAX_VERTICAL_BIN_ITEM->number_value = 2;
     CCD_INFO_PIXEL_SIZE_ITEM->number_value = 5.2;
     CCD_INFO_PIXEL_WIDTH_ITEM->number_value = 5.2;
@@ -63,27 +65,54 @@ static indigo_result ccd_simulator_attach(indigo_driver *driver) {
     CCD_FRAME_WIDTH_ITEM->number_max = CCD_FRAME_WIDTH_ITEM->number_value = CCD_INFO_WIDTH_ITEM->number_value;
     CCD_FRAME_HEIGHT_ITEM->number_max = CCD_FRAME_HEIGHT_ITEM->number_value = CCD_INFO_HEIGHT_ITEM->number_value;
     // -------------------------------------------------------------------------------- CCD_IMAGE
-    int blob_size = 2 * CCD_INFO_WIDTH_ITEM->number_value * CCD_INFO_HEIGHT_ITEM->number_value;
+    int width = CCD_INFO_WIDTH_ITEM->number_value;
+    int height = CCD_INFO_HEIGHT_ITEM->number_value;
+    int blob_size = FITS_HEADER_SIZE + 2 * width * height;
     char *blob = malloc(blob_size);
     if (blob == NULL)
       return INDIGO_FAILED;
     CCD_IMAGE_ITEM->blob_size = blob_size;
-    strncpy(CCD_IMAGE_ITEM->blob_format, ".bin", INDIGO_NAME_SIZE);
+    strncpy(CCD_IMAGE_ITEM->blob_format, ".fits", INDIGO_NAME_SIZE);
     CCD_IMAGE_ITEM->blob_value = blob;
+    for (int i = 0; i < 100; i++) {
+      star_x[i] = rand() % (width - 20) + 10;
+      star_y[i] = rand() % (height - 20) + 10;
+      star_a[i] = 1000 * (rand() % 60);
+    }
     return INDIGO_OK;
   }
   return INDIGO_FAILED;
 }
 
-static void exposure_timer_callback(indigo_driver *driver, int timer_id, void *data) {
+static void exposure_timer_callback(indigo_driver *driver, int timer_id, void *data, double delay) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
     CCD_EXPOSURE_ITEM->number_value = 0;
     indigo_update_property(driver, CCD_EXPOSURE_PROPERTY, "Exposure done");
-    long size = CCD_IMAGE_ITEM->blob_size;
-    char *blob = CCD_IMAGE_ITEM->blob_value;
+    short *raw = (short *)(CCD_IMAGE_ITEM->blob_value+FITS_HEADER_SIZE);
+    int width = CCD_INFO_WIDTH_ITEM->number_value;
+    int height = CCD_INFO_HEIGHT_ITEM->number_value;
+    int size = width * height;
     for (int i = 0; i < size; i++)
-      blob[i] = rand();
+      raw[i] = (rand() & 0xFF) - 0x8000; // noise
+    
+    for (int i = 0; i < 100; i++) {
+      double centerX = star_x[i]+rand()/(double)RAND_MAX/5-0.5;
+      double centerY = star_y[i]+rand()/(double)RAND_MAX/5-0.5;
+      int a = star_a[i];
+      int xMax = (int)round(centerX)+4;
+      int yMax = (int)round(centerY)+4;
+      for (int y = yMax-8; y <= yMax; y++) {
+        int yw = y*width;
+        for (int x = xMax-8; x <= xMax; x++) {
+          double xx = centerX-x;
+          double yy = centerY-y;
+          double v = a*exp(-(xx*xx/2.0+yy*yy/2.0));
+          raw[yw+x] += (unsigned short)v;
+        }
+      }
+    }
+    indigo_convert_to_fits(driver, delay);
     CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(driver, CCD_IMAGE_PROPERTY, NULL);
   }
@@ -97,9 +126,9 @@ static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo
     // -------------------------------------------------------------------------------- CONNECTION
     indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
     CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-  } else if (indigo_property_match(CONFIGURATION_PROPERTY, property)) {
-    // -------------------------------------------------------------------------------- CONFIG_PROCESS
-    indigo_property_copy_values(CONFIGURATION_PROPERTY, property, false);
+  } else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CONFIG
+    indigo_property_copy_values(CONFIG_PROPERTY, property, false);
   } else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_EXPOSURE
     indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);

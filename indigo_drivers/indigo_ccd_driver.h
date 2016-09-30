@@ -38,12 +38,14 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
-#define CCD_DRIVER_CONTEXT           ((indigo_ccd_driver_context *)driver->driver_context)
+#define CCD_DRIVER_CONTEXT                ((indigo_ccd_driver_context *)driver->driver_context)
+
+#define IMAGE_GROUP                       "Image"
 
 #define CCD_INFO_PROPERTY                 (CCD_DRIVER_CONTEXT->ccd_info_property)
 #define CCD_INFO_WIDTH_ITEM               (CCD_INFO_PROPERTY->items+0)
 #define CCD_INFO_HEIGHT_ITEM              (CCD_INFO_PROPERTY->items+1)
-#define CCD_INFO_MAX_HORIZONTAL_BIN_ITEM  (CCD_INFO_PROPERTY->items+2)
+#define CCD_INFO_MAX_HORIZONAL_BIN_ITEM   (CCD_INFO_PROPERTY->items+2)
 #define CCD_INFO_MAX_VERTICAL_BIN_ITEM    (CCD_INFO_PROPERTY->items+3)
 #define CCD_INFO_PIXEL_SIZE_ITEM          (CCD_INFO_PROPERTY->items+4)
 #define CCD_INFO_PIXEL_WIDTH_ITEM         (CCD_INFO_PROPERTY->items+5)
@@ -72,8 +74,25 @@
 #define CCD_FRAME_TYPE_DARK_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+2)
 #define CCD_FRAME_TYPE_FLAT_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+3)
 
+#define CCD_IMAGE_FORMAT_PROPERTY         (CCD_DRIVER_CONTEXT->ccd_frame_type_property)
+#define CCD_IMAGE_FORMAT_FITS_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+0)
+#define CCD_IMAGE_FORMAT_JPEG_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+1)
+#define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+2)
+
 #define CCD_IMAGE_PROPERTY                (CCD_DRIVER_CONTEXT->ccd_image_property)
 #define CCD_IMAGE_ITEM                    (CCD_IMAGE_PROPERTY->items+0)
+
+#define CCD_TEMPERATURE_PROPERTY          (CCD_DRIVER_CONTEXT->ccd_temperature_property)
+#define CCD_TEMPERATURE_ITEM              (CCD_TEMPERATURE_PROPERTY->items+0)
+
+#define CCD_COOLER_PROPERTY               (CCD_DRIVER_CONTEXT->ccd_cooler_property)
+#define CCD_COOLER_ON_ITEM                (CCD_COOLER_PROPERTY->items+0)
+#define CCD_COOLER_OFF_ITEM               (CCD_COOLER_PROPERTY->items+1)
+
+#define CCD_COOLER_POWER_PROPERTY         (CCD_DRIVER_CONTEXT->ccd_cooler_power_property)
+#define CCD_COOLER_POWER_ITEM             (CCD_COOLER_POWER_PROPERTY->items+0)
+
+#define FITS_HEADER_SIZE  2880
 
 typedef struct {
   void *private_data;
@@ -90,7 +109,11 @@ typedef struct {
   indigo_property *ccd_frame_property;
   indigo_property *ccd_binning_property;
   indigo_property *ccd_frame_type_property;
+  indigo_property *ccd_image_format;
   indigo_property *ccd_image_property;
+  indigo_property *ccd_temperature_property;
+  indigo_property *ccd_cooler_property;
+  indigo_property *ccd_cooler_power_property;
 } indigo_ccd_driver_context;
 
 extern indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int version);
@@ -107,6 +130,6 @@ typedef struct {
   } value;
 } indigo_fits_header;
 
-extern void *indigo_make_fits(int naxis, int naxis1, int naxis2, int naxis3, int bitpix, indigo_fits_header* headers, void *data);
+extern void *indigo_convert_to_fits(indigo_driver *driver, double exposure_time);
 
 #endif /* indigo_ccd_driver_h */

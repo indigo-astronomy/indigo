@@ -89,7 +89,7 @@ static void *thread_handler(timer_type *timer) {
       INDIGO_DEBUG(indigo_debug("timer %d wait canceled", timer->timer_id));
     } else {
       INDIGO_DEBUG(indigo_debug("timer %d wait finished", timer->timer_id));
-      timer->callback(timer->driver, timer->timer_id, timer->data);
+      timer->callback(timer->driver, timer->timer_id, timer->data, timer->delay);
     }
     //indigo_debug("timer thread suspend", timer->timer_id);
     pthread_mutex_lock(&timer->timer_mutex);

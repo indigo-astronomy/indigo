@@ -58,8 +58,9 @@ static void start_worker_thread(indigo_client *protocol_adapter) {
   indigo_log("INDI Go server: worker thread started", indigo_server_xml_port);
   assert(protocol_adapter != NULL);
   indigo_xml_driver_adapter_context *driver_context = protocol_adapter->client_context;
-  indigo_connect_client(protocol_adapter);
+  indigo_attach_client(protocol_adapter);
   indigo_xml_parse(driver_context->input, NULL, protocol_adapter);
+  indigo_detach_client(protocol_adapter);
   indigo_log("INDI Go server: worker thread finished", indigo_server_xml_port);
 }
 

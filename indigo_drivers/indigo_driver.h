@@ -39,6 +39,9 @@
 
 #define DRIVER_CONTEXT                ((indigo_driver_context *)driver->driver_context)
 
+#define MAIN_GROUP                    "Main"
+#define OPTIONS_GROUP                 "Options"
+
 #define CONNECTION_PROPERTY           (DRIVER_CONTEXT->connection_property)
 #define CONNECTION_CONNECTED_ITEM     (CONNECTION_PROPERTY->items+0)
 #define CONNECTION_DISCONNECTED_ITEM  (CONNECTION_PROPERTY->items+1)
@@ -51,17 +54,17 @@
 #define INFO_FRAMEWORK_VERSION_ITEM   (INFO_PROPERTY->items+4)
 
 #define DEBUG_PROPERTY                (DRIVER_CONTEXT->debug_property)
-#define DEBUG_ENABLE_ITEM             (DEBUG_PROPERTY->items+0)
-#define DEBUG_DISABLE_ITEM            (DEBUG_PROPERTY->items+1)
+#define DEBUG_ENABLED_ITEM            (DEBUG_PROPERTY->items+0)
+#define DEBUG_DISABLED_ITEM           (DEBUG_PROPERTY->items+1)
 
 #define SIMULATION_PROPERTY           (DRIVER_CONTEXT->simulation_property)
-#define SIMULATION_ENABLE_ITEM        (SIMULATION_PROPERTY->items+0)
-#define SIMULATION_DISABLE_ITEM       (SIMULATION_PROPERTY->items+1)
+#define SIMULATION_ENABLED_ITEM       (SIMULATION_PROPERTY->items+0)
+#define SIMULATION_DISABLED_ITEM      (SIMULATION_PROPERTY->items+1)
 
-#define CONFIGURATION_PROPERTY        (DRIVER_CONTEXT->congfiguration_property)
-#define CONFIGURATION_LOAD_ITEM       (CONFIGURATION_PROPERTY->items+0)
-#define CONFIGURATION_SAVE_ITEM       (CONFIGURATION_PROPERTY->items+1)
-#define CONFIGURATION_DEFAULT_ITEM    (CONFIGURATION_PROPERTY->items+2)
+#define CONFIG_PROPERTY               (DRIVER_CONTEXT->congfiguration_property)
+#define CONFIG_LOAD_ITEM              (CONFIG_PROPERTY->items+0)
+#define CONFIG_SAVE_ITEM              (CONFIG_PROPERTY->items+1)
+#define CONFIG_DEFAULT_ITEM           (CONFIG_PROPERTY->items+2)
 
 #define indigo_is_connected(driver_context) CONNECTION_CONNECTED_ITEM->switch_value
 #define indigo_debug_enabled(driver_context) DEBUG_ENABLE_ITEM->switch_value

@@ -44,19 +44,19 @@
 #include "indigo_client_xml.h"
 
 static indigo_property *connection_property;
-static indigo_property *exposure_property;
-static indigo_property *ccd1_property;
+static indigo_property *ccd_exposure_property;
+static indigo_property *ccd_image_property;
 
 static int driver_pid;
 
 static indigo_result client_attach(indigo_client *client) {
-  connection_property = indigo_init_switch_property(NULL, "CCD Simulator", "CONNECTION", "", "", 0, 0, 0, 2);
-  indigo_init_switch_item(&connection_property->items[0], "CONNECTED", "", false);
-  indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "", true);
-  exposure_property = indigo_init_number_property(NULL, "CCD Simulator", "CCD_EXPOSURE", "", "", 0, 0, 1);
-  indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "", 0, 0, 0, 0);
-  ccd1_property = indigo_init_blob_property(NULL, "CCD Simulator", "CCD_IMAGE", "", "", 0, 1);
-  indigo_init_blob_item(&ccd1_property->items[0], "CCD_IMAGE", "");
+  connection_property = indigo_init_switch_property(NULL, "CCD Simulator", "CONNECTION", NULL, NULL, 0, 0, 0, 2);
+  indigo_init_switch_item(&connection_property->items[0], "CONNECTED", NULL, false);
+  indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", NULL, true);
+  ccd_exposure_property = indigo_init_number_property(NULL, "CCD Simulator", "CCD_EXPOSURE", NULL, NULL, 0, 0, 1);
+  indigo_init_number_item(&ccd_exposure_property->items[0], "EXPOSURE", NULL, 0, 0, 0, 0);
+  ccd_image_property = indigo_init_blob_property(NULL, "CCD Simulator", "CCD_IMAGE", NULL, NULL, 0, 1);
+  indigo_init_blob_item(&ccd_image_property->items[0], "IMAGE", NULL);
   indigo_log("connected to INDI bus...");
   return INDIGO_OK;
 }
@@ -80,27 +80,27 @@ static indigo_result client_update_property(struct indigo_client *client, struct
     indigo_property_copy_values(connection_property, property, true);
     if (connection_property->items[0].switch_value) {
       indigo_log("connected...");
-      exposure_property->items[0].number_value = 3.0;
-      indigo_change_property(client, exposure_property);
+      ccd_exposure_property->items[0].number_value = 3.0;
+      indigo_change_property(client, ccd_exposure_property);
     } else {
       indigo_log("disconnected...");
       indigo_stop();
     }
     return INDIGO_OK;
   }
-  if (indigo_property_match(exposure_property, property)) {
-    indigo_property_copy_values(exposure_property, property, true);
-    if (exposure_property->state == INDIGO_BUSY_STATE) {
-      indigo_log("exposure %gs...", exposure_property->items[0].number_value);
-    } else if (exposure_property->state == INDIGO_OK_STATE) {
+  if (indigo_property_match(ccd_exposure_property, property)) {
+    indigo_property_copy_values(ccd_exposure_property, property, true);
+    if (ccd_exposure_property->state == INDIGO_BUSY_STATE) {
+      indigo_log("exposure %gs...", ccd_exposure_property->items[0].number_value);
+    } else if (ccd_exposure_property->state == INDIGO_OK_STATE) {
       indigo_log("exposure done...");
     }
     return INDIGO_OK;
   }
-  if (indigo_property_match(ccd1_property, property)) {
-    indigo_property_copy_values(ccd1_property, property, true);
-    if (ccd1_property->state == INDIGO_OK_STATE) {
-      indigo_log("image received (%d bytes)...", ccd1_property->items[0].blob_size);
+  if (indigo_property_match(ccd_image_property, property)) {
+    indigo_property_copy_values(ccd_image_property, property, true);
+    if (ccd_image_property->state == INDIGO_OK_STATE) {
+      indigo_log("image received (%d bytes)...", ccd_image_property->items[0].blob_size);
       connection_property->items[0].switch_value = false;
       connection_property->items[1].switch_value = true;
       indigo_change_property(client, connection_property);
@@ -153,8 +153,8 @@ int main(int argc, const char * argv[]) {
     close(output[0]);
     indigo_start();
     indigo_driver *protocol_adapter = xml_client_adapter(input[0], output[1]);
-    indigo_connect_driver(protocol_adapter);
-    indigo_connect_client(&client);
+    indigo_attach_driver(protocol_adapter);
+    indigo_attach_client(&client);
     indigo_xml_parse(input[0], protocol_adapter, NULL);
     indigo_stop();
   }

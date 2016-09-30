@@ -54,39 +54,37 @@ indigo_result indigo_driver_attach(indigo_driver *driver, char *device, int vers
     driver->driver_context = malloc(sizeof(indigo_driver_context));
   if (DRIVER_CONTEXT != NULL) {
     // -------------------------------------------------------------------------------- CONNECTION
-    CONNECTION_PROPERTY = indigo_init_switch_property(NULL, device, "CONNECTION", "Main", "Connection", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    CONNECTION_PROPERTY = indigo_init_switch_property(NULL, device, "CONNECTION", MAIN_GROUP, "Connection", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     if (CONNECTION_PROPERTY == NULL)
       return INDIGO_FAILED;
     indigo_init_switch_item(CONNECTION_CONNECTED_ITEM, "CONNECTED", "Connected", false);
     indigo_init_switch_item(CONNECTION_DISCONNECTED_ITEM, "DISCONNECTED", "Disconnected", true);
     // -------------------------------------------------------------------------------- DRIVER_INFO
-    INFO_PROPERTY = indigo_init_text_property(NULL, device, "DRIVER_INFO", "Options", "Driver Info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 5);
+    INFO_PROPERTY = indigo_init_text_property(NULL, device, "DRIVER_INFO", OPTIONS_GROUP, "Driver Info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
     if (INFO_PROPERTY == NULL)
       return INDIGO_FAILED;
-    indigo_init_text_item(INFO_DRIVER_NAME_ITEM, "DRIVER_NAME", "Name", device);
-    indigo_init_text_item(INFO_DRIVER_VERSION_ITEM, "DRIVER_VERSION", "Version", "%d.%d", (version >> 8) & 0xFF, version & 0xFF);
-    indigo_init_text_item(INFO_DRIVER_INTERFACE_ITEM, "DRIVER_INTERFACE", "Interface", "%d", interface);
-    indigo_init_text_item(INFO_FRAMEWORK_NAME_ITEM, "FRAMEWORK_NAME", "Framework name", "INDIGO PoC");
-    indigo_init_text_item(INFO_FRAMEWORK_VERSION_ITEM, "FRAMEWORK_VERSION", "Framework version", "%d.%d build %d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+    indigo_init_text_item(INFO_DRIVER_NAME_ITEM, "NAME", "Name", device);
+    indigo_init_text_item(INFO_DRIVER_VERSION_ITEM, "VERSION", "Version", "%d.%d", (version >> 8) & 0xFF, version & 0xFF);
+    indigo_init_text_item(INFO_DRIVER_INTERFACE_ITEM, "INTERFACE", "Interface", "%d", interface);
     // -------------------------------------------------------------------------------- DEBUG
-    DEBUG_PROPERTY = indigo_init_switch_property(NULL, device, "DEBUG", "Options", "Debug", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    DEBUG_PROPERTY = indigo_init_switch_property(NULL, device, "DEBUG", OPTIONS_GROUP, "Debug", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     if (DEBUG_PROPERTY == NULL)
       return INDIGO_FAILED;
-    indigo_init_switch_item(DEBUG_ENABLE_ITEM, "ENABLE", "Enable", false);
-    indigo_init_switch_item(DEBUG_DISABLE_ITEM, "DISABLE", "Disable", true);
+    indigo_init_switch_item(DEBUG_ENABLED_ITEM, "ENABLED", "Enabled", false);
+    indigo_init_switch_item(DEBUG_DISABLED_ITEM, "DISABLED", "Disabled", true);
     // -------------------------------------------------------------------------------- SIMULATION
-    SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device, "SIMULATION", "Options", "Simulation", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device, "SIMULATION", OPTIONS_GROUP, "Simulation", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     if (SIMULATION_PROPERTY == NULL)
       return INDIGO_FAILED;
-    indigo_init_switch_item(SIMULATION_ENABLE_ITEM, "ENABLE", "Enable", false);
-    indigo_init_switch_item(SIMULATION_DISABLE_ITEM, "DISABLE", "Disable", true);
-    // -------------------------------------------------------------------------------- CONFIGURATION
-    CONFIGURATION_PROPERTY = indigo_init_switch_property(NULL, device, "CONFIGURATION", "Options", "Configuration", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-    if (CONFIGURATION_PROPERTY == NULL)
+    indigo_init_switch_item(SIMULATION_ENABLED_ITEM, "ENABLED", "Enabled", false);
+    indigo_init_switch_item(SIMULATION_DISABLED_ITEM, "DISABLED", "Disabled", true);
+    // -------------------------------------------------------------------------------- CONFIG
+    CONFIG_PROPERTY = indigo_init_switch_property(NULL, device, "CONFIG", OPTIONS_GROUP, "Configuration", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+    if (CONFIG_PROPERTY == NULL)
       return INDIGO_FAILED;
-    indigo_init_switch_item(CONFIGURATION_LOAD_ITEM, "CONFIG_LOAD", "Load", false);
-    indigo_init_switch_item(CONFIGURATION_SAVE_ITEM, "CONFIG_SAVE", "Save", false);
-    indigo_init_switch_item(CONFIGURATION_DEFAULT_ITEM, "CONFIG_DEFAULT", "Default", false);
+    indigo_init_switch_item(CONFIG_LOAD_ITEM, "LOAD", "Load", false);
+    indigo_init_switch_item(CONFIG_SAVE_ITEM, "SAVE", "Save", false);
+    indigo_init_switch_item(CONFIG_DEFAULT_ITEM, "DEFAULT", "Default", false);
     return INDIGO_OK;
   }
   return INDIGO_FAILED;
@@ -104,8 +102,8 @@ indigo_result indigo_driver_enumerate_properties(indigo_driver *driver, indigo_c
     indigo_define_property(driver, DEBUG_PROPERTY, NULL);
   if (indigo_property_match(SIMULATION_PROPERTY, property))
     indigo_define_property(driver, SIMULATION_PROPERTY, NULL);
-  if (indigo_property_match(CONFIGURATION_PROPERTY, property))
-    indigo_define_property(driver, CONFIGURATION_PROPERTY, NULL);
+  if (indigo_property_match(CONFIG_PROPERTY, property))
+    indigo_define_property(driver, CONFIG_PROPERTY, NULL);
   return INDIGO_OK;
 }
 
@@ -126,32 +124,32 @@ indigo_result indigo_driver_change_property(indigo_driver *driver, indigo_client
     indigo_property_copy_values(SIMULATION_PROPERTY, property, false);
     SIMULATION_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(driver, SIMULATION_PROPERTY, NULL);
-  } else if (indigo_property_match(CONFIGURATION_PROPERTY, property)) {
-    // -------------------------------------------------------------------------------- CONFIGURATION
-    if (CONFIGURATION_LOAD_ITEM->switch_value) {
+  } else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CONFIG
+    if (CONFIG_LOAD_ITEM->switch_value) {
       if (indigo_load_properties(driver, false) == INDIGO_OK)
-        CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
+        CONFIG_PROPERTY->state = INDIGO_OK_STATE;
       else
-        CONFIGURATION_PROPERTY->state = INDIGO_ALERT_STATE;
-      CONFIGURATION_LOAD_ITEM->switch_value = false;
-    } else if (CONFIGURATION_SAVE_ITEM->switch_value) {
+        CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+      CONFIG_LOAD_ITEM->switch_value = false;
+    } else if (CONFIG_SAVE_ITEM->switch_value) {
       if (DEBUG_PROPERTY->perm == INDIGO_RW_PERM)
         indigo_save_property(DEBUG_PROPERTY);
       if (SIMULATION_PROPERTY->perm == INDIGO_RW_PERM)
         indigo_save_property(SIMULATION_PROPERTY);
       if (indigo_save_properties(driver) == INDIGO_OK)
-        CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
+        CONFIG_PROPERTY->state = INDIGO_OK_STATE;
       else
-        CONFIGURATION_PROPERTY->state = INDIGO_ALERT_STATE;
-      CONFIGURATION_SAVE_ITEM->switch_value = false;
-    } else if (CONFIGURATION_DEFAULT_ITEM->switch_value) {
+        CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+      CONFIG_SAVE_ITEM->switch_value = false;
+    } else if (CONFIG_DEFAULT_ITEM->switch_value) {
       if (indigo_load_properties(driver, true) == INDIGO_OK)
-        CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
+        CONFIG_PROPERTY->state = INDIGO_OK_STATE;
       else
-        CONFIGURATION_PROPERTY->state = INDIGO_ALERT_STATE;
-      CONFIGURATION_DEFAULT_ITEM->switch_value = false;
+        CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+      CONFIG_DEFAULT_ITEM->switch_value = false;
     }
-    indigo_update_property(driver, CONFIGURATION_PROPERTY, NULL);
+    indigo_update_property(driver, CONFIG_PROPERTY, NULL);
   }
   return INDIGO_OK;
 }

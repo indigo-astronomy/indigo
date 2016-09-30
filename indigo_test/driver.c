@@ -48,8 +48,8 @@ int main(int argc, const char * argv[]) {
   indigo_main_argv = argv;
   indigo_client *protocol_adapter = xml_driver_adapter(0, 1);
   indigo_start();
-  indigo_connect_driver(ccd_simulator());
-  indigo_connect_client(protocol_adapter);
+  indigo_attach_driver(ccd_simulator());
+  indigo_attach_client(protocol_adapter);
   indigo_xml_parse(0, NULL, protocol_adapter);
   indigo_stop();
   return 0;

@@ -150,10 +150,10 @@ extern void indigo_log(const char *format, ...);
 extern void indigo_debug_property(const char *message, indigo_property *property, bool defs, bool items);
 
 extern indigo_result indigo_start();
-extern indigo_result indigo_connect_driver(indigo_driver *driver);
-extern indigo_result indigo_disconnect_driver(indigo_driver *driver);
-extern indigo_result indigo_connect_client(indigo_client *client);
-extern indigo_result indigo_disconnect_client(indigo_client *client);
+extern indigo_result indigo_attach_driver(indigo_driver *driver);
+extern indigo_result indigo_detach_driver(indigo_driver *driver);
+extern indigo_result indigo_attach_client(indigo_client *client);
+extern indigo_result indigo_detach_client(indigo_client *client);
 extern indigo_result indigo_define_property(indigo_driver *driver, indigo_property *property, const char *message);
 extern indigo_result indigo_update_property(indigo_driver *driver, indigo_property *property, const char *message);
 extern indigo_result indigo_delete_property(indigo_driver *driver, indigo_property *property, const char *message);
@@ -175,6 +175,7 @@ extern void indigo_init_light_item(indigo_item *item, const char *name, const ch
 extern void indigo_init_blob_item(indigo_item *item, const char *name, const char *label);
 
 extern bool indigo_property_match(indigo_property *property, indigo_property *other);
+extern void indigo_set_switch(indigo_property *property, indigo_item *item, bool value);
 extern void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state);
 
 extern indigo_property INDIGO_ALL_PROPERTIES;

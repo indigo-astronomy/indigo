@@ -36,57 +36,163 @@
 
 #include "indigo_version.h"
 
+// <getProperties version='1.7' name='CONFIG'/>
+
+struct property_mapping {
+  char *legacy;
+  char *current;
+  struct item_mapping {
+    char *legacy;
+    char *current;
+  } items[10];
+};
+
+static struct property_mapping legacy[] = {
+  { "DEBUG", "DEBUG", {
+    { "ENABLE", "ENABLED" },
+    { "DISABLE", "DISABLED" },
+    NULL }
+  },
+  { "SIMULATION", "SIMULATION", {
+    { "ENABLE", "ENABLED" },
+    { "DISABLE", "DISABLED" },
+    NULL }
+  },
+  { "CONFIG_PROCESS", "CONFIG", {
+    { "CONFIG_LOAD", "LOAD" },
+    { "CONFIG_SAVE", "SAVE" },
+    { "CONFIG_DEFAULT", "DEFAULT" },
+    NULL }
+  },
+  { "DRIVER_INFO", "DRIVER_INFO", {
+    { "DRIVER_NAME", "NAME" },
+    { "DRIVER_VERSION", "VERSION" },
+    { "DRIVER_INTERFACE", "INTERFACE" },
+    NULL }
+  },
+  { "CCD_INFO", "CCD_INFO", {
+    { "CCD_MAX_X", "WIDTH" },
+    { "CCD_MAX_Y", "HEIGHT" },
+    { "CCD_MAX_BIN_X", "MAX_HORIZONAL_BIN" },
+    { "CCD_MAX_BIN_Y", "MAX_VERTICAL_BIN" },
+    { "CCD_PIXEL_SIZE", "PIXEL_SIZE" },
+    { "CCD_PIXEL_SIZE_X", "PIXEL_WIDTH" },
+    { "CCD_PIXEL_SIZE_Y", "PIXEL_HEIGHT" },
+    { "CCD_BITSPERPIXEL", "BITS_PER_PIXEL" },
+    NULL }
+  },
+  { "CCD_EXPOSURE", "CCD_EXPOSURE", {
+    { "CCD_EXPOSURE_VALUE", "EXPOSURE" },
+    NULL }
+  },
+  { "CCD_ABORT_EXPOSURE", "CCD_ABORT_EXPOSURE", {
+    { "ABORT", "ABORT_EXPOSURE" },
+    NULL }
+  },
+  { "CCD_FRAME", "CCD_FRAME", {
+    { "X", "LEFT" },
+    { "Y", "TOP" },
+    NULL }
+  },
+  { "CCD_BINNING", "CCD_BIN", {
+    { "VER_BIN", "HORIZONTAL" },
+    { "HOR_BIN", "VERTICAL" },
+    NULL }
+  },
+  { "CCD_FRAME_TYPE", "CCD_FRAME_TYPE", {
+    { "FRAME_LIGHT", "LIGHT" },
+    { "FRAME_BIAS", "BIAS" },
+    { "FRAME_DARK", "DARK" },
+    { "FRAME_FLAT", "FLAT" },
+    NULL }
+  },
+  { "CCD1", "CCD_IMAGE", {
+    { "CCD1", "IMAGE" },
+    NULL }
+  },
+  { "CCD_TEMPERATURE", "CCD_TEMPERATURE", {
+    { "CCD_TEMPERATURE_VALUE", "TEMPERATURE" },
+    NULL }
+  },
+  { "CCD_COOLER", "CCD_COOLER", {
+    { "COOLER_ON", "ON" },
+    { "COOLER_OFF", "OFF" },
+    NULL }
+  },
+  { "CCD_COOLER_POWER", "CCD_COOLER_POWER", {
+    { "CCD_COOLER_VALUE", "POWER" },
+    NULL }
+  },
+  NULL
+};
+
 void indigo_copy_property_name(int version, indigo_property *property, const char *name) {
   if (version == INDIGO_VERSION_LEGACY) {
-    if (!strcmp(name, "CONFIG_PROCESS")) {
-      INDIGO_LOG(indigo_trace("Version: CONFIG_PROCESS -> CONFIGURATION"));
-      strcpy(property->name, "CONFIGURATION");
-      return;
-    }
-    if (!strcmp(name, "CCD1")) {
-      INDIGO_LOG(indigo_trace("Version: CCD1 -> CCD_IMAGE"));
-      strcpy(property->name, "CCD_IMAGE");
-      return;
+    struct property_mapping *property_mapping = legacy;
+    while (property_mapping->legacy) {
+      if (!strcmp(name, property_mapping->legacy)) {
+        INDIGO_DEBUG(indigo_debug("version: %s -> %s (current)", property_mapping->legacy, property_mapping->current));
+        strcpy(property->name, property_mapping->current);
+        return;
+      }
+      property_mapping++;
     }
   }
   strncpy(property->name, name, INDIGO_NAME_SIZE);
 }
 
-const char *indigo_property_name(int version, indigo_property *property) {
-  if (version == INDIGO_VERSION_LEGACY) {
-    if (!strcmp(property->name, "CCD_IMAGE")) {
-      INDIGO_LOG(indigo_trace("Version: CCD_IMAGE -> CCD1"));
-      return "CCD1";
-    }
-    if (!strcmp(property->name, "CONFIGURATION")) {
-      INDIGO_LOG(indigo_trace("Version: CONFIGURATION -> CONFIG_PROCESS"));
-      return "CONFIG_PROCESS";
-    }
-  }
-  return property->name;
-}
-
-
 void indigo_copy_item_name(int version, indigo_property *property, indigo_item *item, const char *name) {
   if (version == INDIGO_VERSION_LEGACY) {
-    if (!strcmp(property->name, "CCD_IMAGE")) {
-      if (!strcmp(name, "CCD1")) {
-        INDIGO_LOG(indigo_trace("Version: CCD_IMAGE.CCD1 -> CCD_IMAGE.CCD_IMAGE"));
-        strcpy(item->name, "CCD_IMAGE");
+    struct property_mapping *property_mapping = legacy;
+    while (property_mapping->legacy) {
+      if (!strcmp(property->name, property_mapping->current)) {
+        struct item_mapping *item_mapping = property_mapping->items;
+        while (item_mapping->legacy) {
+          if (!strcmp(name, item_mapping->legacy)) {
+            INDIGO_DEBUG(indigo_debug("version: %s.%s -> %s.%s (current)", property_mapping->legacy, item_mapping->legacy, property_mapping->current, item_mapping->current));
+            strncpy(item->name, item_mapping->current, INDIGO_NAME_SIZE);
+            return;
+          }
+          item_mapping++;
+        }
         return;
       }
+      property_mapping++;
     }
   }
   strncpy(item->name, name, INDIGO_NAME_SIZE);
 }
 
+const char *indigo_property_name(int version, indigo_property *property) {
+  if (version == INDIGO_VERSION_LEGACY) {
+    struct property_mapping *property_mapping = legacy;
+    while (property_mapping->legacy) {
+      if (!strcmp(property->name, property_mapping->current)) {
+        INDIGO_DEBUG(indigo_debug("version: %s -> %s (legacy)", property_mapping->current, property_mapping->legacy));
+        return property_mapping->legacy;
+      }
+      property_mapping++;
+    }
+  }
+  return property->name;
+}
+
 const char *indigo_item_name(int version, indigo_property *property, indigo_item *item) {
   if (version == INDIGO_VERSION_LEGACY) {
-    if (!strcmp(property->name, "CCD_IMAGE")) {
-      if (!strcmp(item->name, "CCD_IMAGE")) {
-        INDIGO_LOG(indigo_trace("Version: CCD_IMAGE.CCD_IMAGE -> CCD_IMAGE.CCD1"));
-        return "CCD1";
+    struct property_mapping *property_mapping = legacy;
+    while (property_mapping->legacy) {
+      if (!strcmp(property->name, property_mapping->current)) {
+        struct item_mapping *item_mapping = property_mapping->items;
+        while (item_mapping->legacy) {
+          if (!strcmp(item->name, item_mapping->current)) {
+            INDIGO_DEBUG(indigo_debug("version: %s.%s -> %s.%s (legacy)", property_mapping->current, item_mapping->current, property_mapping->legacy, item_mapping->legacy));
+            return item_mapping->legacy;
+          }
+          item_mapping++;
+        }
+        return item->name;
       }
+      property_mapping++;
     }
   }
   return item->name;

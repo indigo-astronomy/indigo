@@ -225,8 +225,8 @@
 		59D381AA1D95984D00E87393 /* ccd_simulator */ = {
 			isa = PBXGroup;
 			children = (
-				59D381AB1D95996100E87393 /* ccd_simulator.c */,
 				59D381AC1D95996100E87393 /* ccd_simulator.h */,
+				59D381AB1D95996100E87393 /* ccd_simulator.c */,
 			);
 			path = ccd_simulator;
 			sourceTree = "<group>";
