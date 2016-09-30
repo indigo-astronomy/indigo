@@ -8,6 +8,7 @@ all: test driver client server
 libindigo.a:\
 	indigo_bus/indigo_bus.o\
 	indigo_bus/indigo_xml.o\
+	indigo_bus/indigo_version.o\
 	indigo_bus/indigo_server_xml.o\
 	indigo_bus/indigo_driver_xml.o\
 	indigo_bus/indigo_client_xml.o\

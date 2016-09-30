@@ -43,6 +43,7 @@
 #include <assert.h>
 
 #include "indigo_xml.h"
+#include "indigo_version.h"
 #include "indigo_client_xml.h"
 
 static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
@@ -54,12 +55,12 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_driver *drive
   assert(driver_context != NULL);
   int handle = driver_context->output;
   if (property != NULL) {
-    if (*property->device && *property->name) {
-      indigo_xml_prinf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF, property->device, property->name);
+    if (*property->device && *indigo_property_name(driver->version, property)) {
+      indigo_xml_prinf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF, property->device, indigo_property_name(driver->version, property));
     } else if (*property->device) {
       indigo_xml_prinf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF, property->device);
-    } else if (*property->name) {
-      indigo_xml_prinf(handle, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF, property->name);
+    } else if (*indigo_property_name(driver->version, property)) {
+      indigo_xml_prinf(handle, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF, indigo_property_name(driver->version, property));
     } else {
       indigo_xml_prinf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (driver->version >> 8) & 0xFF, driver->version & 0xFF);
     }
@@ -79,26 +80,26 @@ static indigo_result xml_client_parser_change_property(indigo_driver *driver, in
   int handle = driver_context->output;
   switch (property->type) {
     case INDIGO_TEXT_VECTOR:
-      indigo_xml_prinf(handle, "<newTextVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<newTextVector device='%s' name='%s'>\n", property->device, indigo_property_name(driver->version, property), indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        indigo_xml_prinf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, item->text_value);
+        indigo_xml_prinf(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(driver->version, property, item), item->text_value);
       }
       indigo_xml_prinf(handle, "</newTextVector>\n");
       break;
     case INDIGO_NUMBER_VECTOR:
-      indigo_xml_prinf(handle, "<newNumberVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<newNumberVector device='%s' name='%s'>\n", property->device, indigo_property_name(driver->version, property), indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        indigo_xml_prinf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
+        indigo_xml_prinf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", indigo_item_name(driver->version, property, item), item->number_value);
       }
       indigo_xml_prinf(handle, "</newNumberVector>\n");
       break;
     case INDIGO_SWITCH_VECTOR:
-      indigo_xml_prinf(handle, "<newSwitchVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+      indigo_xml_prinf(handle, "<newSwitchVector device='%s' name='%s'>\n", property->device, indigo_property_name(driver->version, property), indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        indigo_xml_prinf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
+        indigo_xml_prinf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", indigo_item_name(driver->version, property, item), item->switch_value ? "On" : "Off");
       }
       indigo_xml_prinf(handle, "</newSwitchVector>\n");
       break;

@@ -90,10 +90,10 @@ indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int 
       indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, "FRAME_DARK", "Dark frame exposure", false);
       indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, "FRAME_FLAT", "Flat field frame exposure", false);
       // -------------------------------------------------------------------------------- CCD_IMAGE
-      CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device, "CCD1", "Image", "Image", INDIGO_IDLE_STATE, 1);
+      CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device, "CCD_IMAGE", "Image", "Image", INDIGO_IDLE_STATE, 1);
       if (CCD_IMAGE_PROPERTY == NULL)
         return INDIGO_FAILED;
-      indigo_init_blob_item(CCD_IMAGE_ITEM, "CCD1", "Primary CCD image");
+      indigo_init_blob_item(CCD_IMAGE_ITEM, "CCD_IMAGE", "Primary CCD image");
       return INDIGO_OK;
     }
   }

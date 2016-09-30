@@ -50,8 +50,8 @@ static indigo_result test_attach(indigo_client *client) {
   indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", "", true);
   exposure_property = indigo_init_number_property(NULL, "CCD Simulator", "CCD_EXPOSURE", "", "", 0, 0, 1);
   indigo_init_number_item(&exposure_property->items[0], "CCD_EXPOSURE_VALUE", "", 0, 0, 0, 0);
-  ccd1_property = indigo_init_blob_property(NULL, "CCD Simulator", "CCD1", "", "", 0, 1);
-  indigo_init_blob_item(&ccd1_property->items[0], "CCD1", "");
+  ccd1_property = indigo_init_blob_property(NULL, "CCD Simulator", "CCD_IMAGE", "", "", 0, 1);
+  indigo_init_blob_item(&ccd1_property->items[0], "CCD_IMAGE", "");
   indigo_log("connected to INDI bus...");
   indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
   return INDIGO_OK;

@@ -81,7 +81,7 @@ indigo_result indigo_driver_attach(indigo_driver *driver, char *device, int vers
     indigo_init_switch_item(SIMULATION_ENABLE_ITEM, "ENABLE", "Enable", false);
     indigo_init_switch_item(SIMULATION_DISABLE_ITEM, "DISABLE", "Disable", true);
     // -------------------------------------------------------------------------------- CONFIGURATION
-    CONFIGURATION_PROPERTY = indigo_init_switch_property(NULL, device, "CONFIG_PROCESS", "Options", "Configuration", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+    CONFIGURATION_PROPERTY = indigo_init_switch_property(NULL, device, "CONFIGURATION", "Options", "Configuration", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
     if (CONFIGURATION_PROPERTY == NULL)
       return INDIGO_FAILED;
     indigo_init_switch_item(CONFIGURATION_LOAD_ITEM, "CONFIG_LOAD", "Load", false);
