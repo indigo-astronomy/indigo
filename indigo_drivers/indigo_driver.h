@@ -37,6 +37,36 @@
 
 #include "indigo_bus.h"
 
+#define DRIVER_CONTEXT                ((indigo_driver_context *)driver->driver_context)
+
+#define CONNECTION_PROPERTY           (DRIVER_CONTEXT->connection_property)
+#define CONNECTION_CONNECTED_ITEM     (CONNECTION_PROPERTY->items+0)
+#define CONNECTION_DISCONNECTED_ITEM  (CONNECTION_PROPERTY->items+1)
+
+#define INFO_PROPERTY                 (DRIVER_CONTEXT->info_property)
+#define INFO_DRIVER_NAME_ITEM         (INFO_PROPERTY->items+0)
+#define INFO_DRIVER_VERSION_ITEM      (INFO_PROPERTY->items+1)
+#define INFO_DRIVER_INTERFACE_ITEM    (INFO_PROPERTY->items+2)
+#define INFO_FRAMEWORK_NAME_ITEM      (INFO_PROPERTY->items+3)
+#define INFO_FRAMEWORK_VERSION_ITEM   (INFO_PROPERTY->items+4)
+
+#define DEBUG_PROPERTY                (DRIVER_CONTEXT->debug_property)
+#define DEBUG_ENABLE_ITEM             (DEBUG_PROPERTY->items+0)
+#define DEBUG_DISABLE_ITEM            (DEBUG_PROPERTY->items+1)
+
+#define SIMULATION_PROPERTY           (DRIVER_CONTEXT->simulation_property)
+#define SIMULATION_ENABLE_ITEM        (SIMULATION_PROPERTY->items+0)
+#define SIMULATION_DISABLE_ITEM       (SIMULATION_PROPERTY->items+1)
+
+#define CONFIGURATION_PROPERTY        (DRIVER_CONTEXT->congfiguration_property)
+#define CONFIGURATION_LOAD_ITEM       (CONFIGURATION_PROPERTY->items+0)
+#define CONFIGURATION_SAVE_ITEM       (CONFIGURATION_PROPERTY->items+1)
+#define CONFIGURATION_DEFAULT_ITEM    (CONFIGURATION_PROPERTY->items+2)
+
+#define indigo_is_connected(driver_context) CONNECTION_CONNECTED_ITEM->switch_value
+#define indigo_debug_enabled(driver_context) DEBUG_ENABLE_ITEM->switch_value
+#define indigo_simulation_enabled(driver_context) SIMULATION_ENABLE_ITEM->switch_value
+
 typedef struct {
   void *private_data;
   indigo_property *connection_property;
@@ -50,10 +80,6 @@ extern indigo_result indigo_driver_attach(indigo_driver *driver, char *device, i
 extern indigo_result indigo_driver_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property);
 extern indigo_result indigo_driver_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property);
 extern indigo_result indigo_driver_detach(indigo_driver *driver);
-
-#define indigo_is_connected(driver_context) driver_context->connection_property->items[0].switch_value
-#define indigo_debug_enabled(driver_context) driver_context->debug_property->items[0].switch_value
-#define indigo_simulation_enabled(driver_context) driver_context->simulation_property->items[0].switch_value
 
 extern void indigo_save_property(indigo_property *property);
 extern indigo_result indigo_save_properties(indigo_driver *driver);

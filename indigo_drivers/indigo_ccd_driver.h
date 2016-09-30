@@ -38,6 +38,43 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+#define CCD_DRIVER_CONTEXT           ((indigo_ccd_driver_context *)driver->driver_context)
+
+#define CCD_INFO_PROPERTY                 (CCD_DRIVER_CONTEXT->ccd_info_property)
+#define CCD_INFO_WIDTH_ITEM               (CCD_INFO_PROPERTY->items+0)
+#define CCD_INFO_HEIGHT_ITEM              (CCD_INFO_PROPERTY->items+1)
+#define CCD_INFO_MAX_HORIZONTAL_BIN_ITEM  (CCD_INFO_PROPERTY->items+2)
+#define CCD_INFO_MAX_VERTICAL_BIN_ITEM    (CCD_INFO_PROPERTY->items+3)
+#define CCD_INFO_PIXEL_SIZE_ITEM          (CCD_INFO_PROPERTY->items+4)
+#define CCD_INFO_PIXEL_WIDTH_ITEM         (CCD_INFO_PROPERTY->items+5)
+#define CCD_INFO_PIXEL_HEIGHT_ITEM        (CCD_INFO_PROPERTY->items+6)
+#define CCD_INFO_BITS_PER_PIXEL_ITEM      (CCD_INFO_PROPERTY->items+7)
+
+#define CCD_EXPOSURE_PROPERTY             (CCD_DRIVER_CONTEXT->ccd_exposure_property)
+#define CCD_EXPOSURE_ITEM                 (CCD_EXPOSURE_PROPERTY->items+0)
+
+#define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_DRIVER_CONTEXT->ccd_abort_exposure_property)
+#define CCD_ABORT_EXPOSURE_ITEM           (CCD_ABORT_EXPOSURE_PROPERTY->items+0)
+
+#define CCD_FRAME_PROPERTY                (CCD_DRIVER_CONTEXT->ccd_frame_property)
+#define CCD_FRAME_LEFT_ITEM               (CCD_FRAME_PROPERTY->items+0)
+#define CCD_FRAME_TOP_ITEM                (CCD_FRAME_PROPERTY->items+1)
+#define CCD_FRAME_WIDTH_ITEM              (CCD_FRAME_PROPERTY->items+2)
+#define CCD_FRAME_HEIGHT_ITEM             (CCD_FRAME_PROPERTY->items+3)
+
+#define CCD_BIN_PROPERTY                  (CCD_DRIVER_CONTEXT->ccd_frame_property)
+#define CCD_BIN_HORIZONTAL_ITEM           (CCD_BIN_PROPERTY->items+0)
+#define CCD_BIN_VERTICAL_ITEM             (CCD_BIN_PROPERTY->items+1)
+
+#define CCD_FRAME_TYPE_PROPERTY           (CCD_DRIVER_CONTEXT->ccd_frame_type_property)
+#define CCD_FRAME_TYPE_LIGHT_ITEM         (CCD_FRAME_TYPE_PROPERTY->items+0)
+#define CCD_FRAME_TYPE_BIAS_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+1)
+#define CCD_FRAME_TYPE_DARK_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+2)
+#define CCD_FRAME_TYPE_FLAT_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+3)
+
+#define CCD_IMAGE_PROPERTY                (CCD_DRIVER_CONTEXT->ccd_image_property)
+#define CCD_IMAGE_ITEM                    (CCD_IMAGE_PROPERTY->items+0)
+
 typedef struct {
   void *private_data;
   // indigo_driver_context
@@ -47,12 +84,13 @@ typedef struct {
   indigo_property *simulation_property;
   indigo_property *congfiguration_property;
   // indigo_ccd_driver_context
+  indigo_property *ccd_info_property;
   indigo_property *ccd_exposure_property;
   indigo_property *ccd_abort_exposure_property;
   indigo_property *ccd_frame_property;
   indigo_property *ccd_binning_property;
   indigo_property *ccd_frame_type_property;
-  indigo_property *ccd1_property;
+  indigo_property *ccd_image_property;
 } indigo_ccd_driver_context;
 
 extern indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int version);

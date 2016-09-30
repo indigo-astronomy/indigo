@@ -43,77 +43,77 @@
 #define DEVICE "CCD Simulator"
 #define VERSION INDIGO_VERSION_CURRENT
 
-#define CCD_MAX_X         1600
-#define CCD_MAX_Y         1200
-#define CCD_PIXEL_SIZE    5
-#define CCD_BITSPERPIXEL  16
-
 static indigo_result ccd_simulator_attach(indigo_driver *driver) {
   assert(driver != NULL);
   if (indigo_ccd_driver_attach(driver, DEVICE, VERSION) == INDIGO_OK) {
-    indigo_ccd_driver_context *driver_context = driver->driver_context;
-    // SIMULATION
-    driver_context->simulation_property->perm = INDIGO_RO_PERM;
-    driver_context->simulation_property->items[0].switch_value = true;
-    driver_context->simulation_property->items[1].switch_value = false;
-    // CCD_FRAME
-    driver_context->ccd_frame_property->items[2].number_max = driver_context->ccd_frame_property->items[2].number_value = CCD_MAX_X;
-    driver_context->ccd_frame_property->items[3].number_max = driver_context->ccd_frame_property->items[3].number_value = CCD_MAX_Y;
-    // CCD1
-    char *blob = malloc(2*CCD_MAX_X*CCD_MAX_Y);
+    // -------------------------------------------------------------------------------- SIMULATION
+    SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
+    SIMULATION_ENABLE_ITEM->switch_value = true;
+    SIMULATION_DISABLE_ITEM->switch_value = false;
+    // -------------------------------------------------------------------------------- CCD_INFO
+    CCD_INFO_WIDTH_ITEM->number_value = 1600;
+    CCD_INFO_HEIGHT_ITEM->number_value = 1200;
+    CCD_INFO_MAX_HORIZONTAL_BIN_ITEM->number_value = 2;
+    CCD_INFO_MAX_VERTICAL_BIN_ITEM->number_value = 2;
+    CCD_INFO_PIXEL_SIZE_ITEM->number_value = 5.2;
+    CCD_INFO_PIXEL_WIDTH_ITEM->number_value = 5.2;
+    CCD_INFO_PIXEL_HEIGHT_ITEM->number_value = 5.2;
+    CCD_INFO_BITS_PER_PIXEL_ITEM->number_value = 16;
+    // -------------------------------------------------------------------------------- CCD_FRAME
+    CCD_FRAME_WIDTH_ITEM->number_max = CCD_FRAME_WIDTH_ITEM->number_value = CCD_INFO_WIDTH_ITEM->number_value;
+    CCD_FRAME_HEIGHT_ITEM->number_max = CCD_FRAME_HEIGHT_ITEM->number_value = CCD_INFO_HEIGHT_ITEM->number_value;
+    // -------------------------------------------------------------------------------- CCD_IMAGE
+    int blob_size = 2 * CCD_INFO_WIDTH_ITEM->number_value * CCD_INFO_HEIGHT_ITEM->number_value;
+    char *blob = malloc(blob_size);
     if (blob == NULL)
       return INDIGO_FAILED;
-    driver_context->ccd1_property->items[0].blob_size = 2*CCD_MAX_X*CCD_MAX_Y;
-    driver_context->ccd1_property->items[0].blob_value = blob;
-    strncpy(driver_context->ccd1_property->items[0].blob_format, ".bin",INDIGO_NAME_SIZE);
+    CCD_IMAGE_ITEM->blob_size = blob_size;
+    strncpy(CCD_IMAGE_ITEM->blob_format, ".bin", INDIGO_NAME_SIZE);
+    CCD_IMAGE_ITEM->blob_value = blob;
     return INDIGO_OK;
   }
   return INDIGO_FAILED;
 }
 
 static void exposure_timer_callback(indigo_driver *driver, int timer_id, void *data) {
-  indigo_ccd_driver_context *driver_context = (indigo_ccd_driver_context *)driver->driver_context;
-  if (driver_context->ccd_exposure_property->state == INDIGO_BUSY_STATE) {
-    driver_context->ccd_exposure_property->state = INDIGO_OK_STATE;
-    driver_context->ccd_exposure_property->items[0].number_value = 0;
-    indigo_update_property(driver, driver_context->ccd_exposure_property, "Exposure done");
-
-    long size = driver_context->ccd1_property->items[0].blob_size;
-    char *blob = driver_context->ccd1_property->items[0].blob_value;
+  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+    CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+    CCD_EXPOSURE_ITEM->number_value = 0;
+    indigo_update_property(driver, CCD_EXPOSURE_PROPERTY, "Exposure done");
+    long size = CCD_IMAGE_ITEM->blob_size;
+    char *blob = CCD_IMAGE_ITEM->blob_value;
     for (int i = 0; i < size; i++)
       blob[i] = rand();
-    
-    driver_context->ccd1_property->state = INDIGO_OK_STATE;
-    indigo_update_property(driver, driver_context->ccd1_property, NULL);
+    CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+    indigo_update_property(driver, CCD_IMAGE_PROPERTY, NULL);
   }
 }
 
 static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
   assert(driver != NULL);
+  assert(driver->driver_context != NULL);
   assert(property != NULL);
-  indigo_ccd_driver_context *driver_context = (indigo_ccd_driver_context *)driver->driver_context;
-  assert(driver_context != NULL);
-  if (indigo_property_match(driver_context->connection_property, property)) {
-    // CONNECTION
-    indigo_property_copy_values(driver_context->connection_property, property, false);
-    driver_context->connection_property->state = INDIGO_OK_STATE;
-  } else if (indigo_property_match(driver_context->congfiguration_property, property)) {
-    // CONFIG_PROCESS
-    indigo_property_copy_values(driver_context->congfiguration_property, property, false);
-  } else if (indigo_property_match(driver_context->ccd_exposure_property, property)) {
-    // CCD_EXPOSURE
-    indigo_property_copy_values(driver_context->ccd_exposure_property, property, false);
-    driver_context->ccd_exposure_property->state = INDIGO_BUSY_STATE;
-    indigo_update_property(driver, driver_context->ccd_exposure_property, "Exposure initiated");
-    driver_context->ccd1_property->state = INDIGO_BUSY_STATE;
-    indigo_update_property(driver, driver_context->ccd1_property, NULL);
-    indigo_set_timer(driver, 2, NULL, driver_context->ccd_exposure_property->items[0].number_value, exposure_timer_callback);
-  } else if (indigo_property_match(driver_context->ccd_abort_exposure_property, property)) {
-    // CCD_ABORT_EXPOSURE
-    if (driver_context->ccd_exposure_property->state == INDIGO_BUSY_STATE) {
+  if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CONNECTION
+    indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+    CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+  } else if (indigo_property_match(CONFIGURATION_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CONFIG_PROCESS
+    indigo_property_copy_values(CONFIGURATION_PROPERTY, property, false);
+  } else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CCD_EXPOSURE
+    indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+    CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+    indigo_update_property(driver, CCD_EXPOSURE_PROPERTY, "Exposure initiated");
+    CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+    indigo_update_property(driver, CCD_IMAGE_PROPERTY, NULL);
+    indigo_set_timer(driver, 2, NULL, CCD_EXPOSURE_ITEM->number_value, exposure_timer_callback);
+  } else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
+    if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
       indigo_cancel_timer(driver, 2);
     }
-    indigo_property_copy_values(driver_context->ccd_abort_exposure_property, property, false);
+    indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
   }
   return indigo_ccd_driver_change_property(driver, client, property);
 }
