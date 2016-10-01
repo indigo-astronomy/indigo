@@ -39,6 +39,6 @@
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
 
-extern indigo_device *ccd_simulator();
+extern indigo_device *indigo_ccd_simulator();
 
 #endif /* ccd_simulator_h */

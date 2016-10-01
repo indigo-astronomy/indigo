@@ -39,14 +39,15 @@
 #include <syslog.h>
 
 #include "indigo_bus.h"
-#include "ccd_simulator.h"
 #include "indigo_server_xml.h"
+
+#include "indigo_ccd_simulator.h"
 
 int main(int argc, const char * argv[]) {
   indigo_main_argc = argc;
   indigo_main_argv = argv;
   indigo_start();
-  indigo_attach_device(ccd_simulator());
+  indigo_attach_device(indigo_ccd_simulator());
   indigo_server_xml();
   return 0;
 }

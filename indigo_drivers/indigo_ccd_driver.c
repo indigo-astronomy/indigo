@@ -275,7 +275,7 @@ indigo_result indigo_ccd_device_detach(indigo_device *device) {
   return indigo_device_detach(device);
 }
 
-void *indigo_convert_to_fits(indigo_device *device, double exposure_time) {
+void indigo_convert_to_fits(indigo_device *device, double exposure_time) {
   INDIGO_DEBUG(clock_t start = clock());
   time_t timer;
   struct tm* tm_info;
@@ -315,5 +315,4 @@ void *indigo_convert_to_fits(indigo_device *device, double exposure_time) {
     *data++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
   }
   INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
-  return INDIGO_OK;
 }

@@ -123,6 +123,6 @@ typedef struct {
   } value;
 } indigo_fits_header;
 
-extern void *indigo_convert_to_fits(indigo_device *device, double exposure_time);
+extern void indigo_convert_to_fits(indigo_device *device, double exposure_time);
 
 #endif /* indigo_ccd_device_h */

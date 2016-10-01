@@ -38,7 +38,7 @@
 #include <string.h>
 
 #include "indigo_bus.h"
-#include "ccd_simulator.h"
+#include "indigo_ccd_simulator.h"
 
 #define DEVICE_NAME "CCD Simulator"
 
@@ -133,7 +133,7 @@ int main(int argc, const char * argv[]) {
   indigo_main_argc = argc;
   indigo_main_argv = argv;
   indigo_start();
-  indigo_attach_device(ccd_simulator(DEVICE_NAME));
+  indigo_attach_device(indigo_ccd_simulator());
   indigo_attach_client(&test);
   sleep(10);
   indigo_stop();

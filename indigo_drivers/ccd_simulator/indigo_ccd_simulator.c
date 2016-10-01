@@ -38,20 +38,20 @@
 #include <math.h>
 #include <assert.h>
 
-#include "ccd_simulator.h"
+#include "indigo_ccd_simulator.h"
 #include "indigo_timer.h"
+#include "indigo_driver_xml.h"
 
 typedef struct {
   char name[INDIGO_NAME_SIZE];
   int star_x[100], star_y[100], star_a[100];
-} ccd_simulator_data;
+} private_data_type;
 
-
-static indigo_result ccd_simulator_attach(indigo_device *device) {
+static indigo_result attach(indigo_device *device) {
   assert(device != NULL);
   assert(device->device_context != NULL);
   
-  ccd_simulator_data *private_data = device->device_context;
+  private_data_type *private_data = device->device_context;
   device->device_context = NULL;
   
   if (indigo_ccd_device_attach(device, private_data->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
@@ -103,7 +103,7 @@ static void exposure_timer_callback(indigo_device *device, int timer_id, void *d
     int size = width * height;
     for (int i = 0; i < size; i++)
       raw[i] = (rand() & 0xFF); // noise
-    ccd_simulator_data *private_data = PRIVATE_DATA;
+    private_data_type *private_data = PRIVATE_DATA;
     for (int i = 0; i < 100; i++) {
       double centerX = private_data->star_x[i]+rand()/(double)RAND_MAX/5-0.5;
       double centerY = private_data->star_y[i]+rand()/(double)RAND_MAX/5-0.5;
@@ -126,7 +126,7 @@ static void exposure_timer_callback(indigo_device *device, int timer_id, void *d
   }
 }
 
-static indigo_result ccd_simulator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
   assert(device != NULL);
   assert(device->device_context != NULL);
   assert(property != NULL);
@@ -155,25 +155,25 @@ static indigo_result ccd_simulator_change_property(indigo_device *device, indigo
   return indigo_ccd_device_change_property(device, client, property);
 }
 
-indigo_result ccd_simulator_detach(indigo_device *device) {
+indigo_result detach(indigo_device *device) {
   assert(device != NULL);
   free(PRIVATE_DATA);
   return indigo_ccd_device_detach(device);
 }
 
-indigo_device *ccd_simulator(char *name) {
+indigo_device *indigo_ccd_simulator() {
   static indigo_device device_template = {
     NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-    ccd_simulator_attach,
+    attach,
     indigo_ccd_device_enumerate_properties,
-    ccd_simulator_change_property,
-    ccd_simulator_detach
+    change_property,
+    detach
   };
   indigo_device *device = malloc(sizeof(indigo_device));
   if (device != NULL) {
     memcpy(device, &device_template, sizeof(indigo_device));
-    ccd_simulator_data *private_data = malloc(sizeof(ccd_simulator_data));
-    strncpy(private_data->name, name, INDIGO_NAME_SIZE);
+    private_data_type *private_data = malloc(sizeof(private_data_type));
+    strncpy(private_data->name, "CCD Simulator", INDIGO_NAME_SIZE);
     device->device_context = private_data;
   }
   return device;

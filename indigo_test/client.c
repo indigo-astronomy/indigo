@@ -155,7 +155,7 @@ int main(int argc, const char * argv[]) {
     dup2(output[0], 0);
     close(1);
     dup2(input[1], 1);
-    execl("./driver", "driver", NULL);
+    execl("./indigo_ccd_simulator", "indigo_ccd_simulator", NULL);
   } else {
     close(input[1]);
     close(output[0]);
