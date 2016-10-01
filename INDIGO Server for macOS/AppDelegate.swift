@@ -34,17 +34,39 @@
 
 import Cocoa
 
-@NSApplicationMain
+func serverCallback(count: Int32) {
+  NSLog("%d clients", count)
+}
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+@NSApplicationMain class AppDelegate: NSObject, NSApplicationDelegate, NetServiceDelegate {
 
   @IBOutlet weak var window: NSWindow!
 
+  func netServiceWillPublish(_ sender: NetService) {
+    NSLog("INDIGO Service is ready to publish.")
+  }
+  
+  func netServiceDidPublish(_ sender: NetService) {
+    NSLog("INDIGO Service was successfully published.")
+  }
+  
+  func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
+    NSLog("INDIGO Service  could not be published.");
+    NSLog("%@", errorDict);
+  }
+  
+  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+    return true
+  }
+
   func applicationDidFinishLaunching(_ notification: Notification) {
     Thread() {
+      let service = NetService(domain: "", type: "_indi._tcp", name: "", port: 7624)
+      service.delegate = self
+      service.publish()
       indigo_start()
       indigo_attach_device(indigo_ccd_simulator())
-      indigo_server_xml()
+      indigo_server_xml(serverCallback)
     }.start()
   }
 }
