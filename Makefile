@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -Iindigo_drivers/ccd_simulator -std=gnu99 -lm
+CFLAGS=-Iindigo_bus -Iindigo_drivers -Iindigo_drivers/ccd_simulator -std=gnu99 -lm -pthread
 AR=ar
 ARFLAGS=-rv
 
