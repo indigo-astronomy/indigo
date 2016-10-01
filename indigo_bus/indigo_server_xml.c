@@ -57,9 +57,9 @@ int indigo_server_xml_port = 7624;
 static void start_worker_thread(indigo_client *protocol_adapter) {
   indigo_log("INDI Go server: worker thread started", indigo_server_xml_port);
   assert(protocol_adapter != NULL);
-  indigo_xml_driver_adapter_context *driver_context = protocol_adapter->client_context;
+  indigo_xml_device_adapter_context *device_context = protocol_adapter->client_context;
   indigo_attach_client(protocol_adapter);
-  indigo_xml_parse(driver_context->input, NULL, protocol_adapter);
+  indigo_xml_parse(device_context->input, NULL, protocol_adapter);
   indigo_detach_client(protocol_adapter);
   indigo_log("INDI Go server: worker thread finished", indigo_server_xml_port);
 }
@@ -98,7 +98,7 @@ indigo_result indigo_server_xml() {
     if (client_socket == -1) {
       indigo_error("INDI Go server: can't accept connection (%s)", strerror(errno));
     } else {
-      indigo_client *protocol_adapter = xml_driver_adapter(client_socket, client_socket);;
+      indigo_client *protocol_adapter = xml_device_adapter(client_socket, client_socket);;
       pthread_t thread;
       if (pthread_create(&thread , NULL, (void *(*)(void *))&start_worker_thread, protocol_adapter) != 0)
         indigo_error("INDI Go server: can't create worker thread for connection (%s)", strerror(errno));

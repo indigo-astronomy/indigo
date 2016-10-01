@@ -52,7 +52,7 @@ typedef struct {
   pthread_t thread;
   pthread_mutex_t timer_mutex;
   pthread_cond_t timer_cond;
-  indigo_driver *driver;
+  indigo_device *device;
   int timer_id;
   void *data;
   double delay;
@@ -89,7 +89,7 @@ static void *thread_handler(timer_type *timer) {
       INDIGO_DEBUG(indigo_debug("timer %d wait canceled", timer->timer_id));
     } else {
       INDIGO_DEBUG(indigo_debug("timer %d wait finished", timer->timer_id));
-      timer->callback(timer->driver, timer->timer_id, timer->data, timer->delay);
+      timer->callback(timer->device, timer->timer_id, timer->data, timer->delay);
     }
     //indigo_debug("timer thread suspend", timer->timer_id);
     pthread_mutex_lock(&timer->timer_mutex);
@@ -101,7 +101,7 @@ static void *thread_handler(timer_type *timer) {
   }
 }
 
-indigo_result indigo_set_timer(indigo_driver *driver, int timer_id, void *data, double delay, indigo_timer_callback callback) {
+indigo_result indigo_set_timer(indigo_device *device, int timer_id, void *data, double delay, indigo_timer_callback callback) {
   if (!pthread_mutex_lock(&timer_mutex)) {
     if (timers == NULL) {
       timers = malloc(INDIGO_MAX_TIMERS * sizeof(timer_type));
@@ -112,7 +112,7 @@ indigo_result indigo_set_timer(indigo_driver *driver, int timer_id, void *data, 
       if (!timer->in_use) {
         timer->in_use = true;
         timer->cancel = false;
-        timer->driver = driver;
+        timer->device = device;
         timer->timer_id = timer_id;
         timer->data = data;
         timer->delay = delay;
@@ -134,7 +134,7 @@ indigo_result indigo_set_timer(indigo_driver *driver, int timer_id, void *data, 
   return INDIGO_LOCK_ERROR;
 }
 
-indigo_result indigo_cancel_timer(indigo_driver *driver, int timer_id) {
+indigo_result indigo_cancel_timer(indigo_device *device, int timer_id) {
   if (!pthread_mutex_lock(&timer_mutex)) {
     if (timers == NULL) {
       timers = malloc(INDIGO_MAX_TIMERS * sizeof(timer_type));
@@ -142,7 +142,7 @@ indigo_result indigo_cancel_timer(indigo_driver *driver, int timer_id) {
     }
     for (int i = 0; i < INDIGO_MAX_TIMERS; i++) {
       timer_type *timer = &timers[i];
-      if (timer->in_use && timer->driver == driver && timer->timer_id == timer_id) {
+      if (timer->in_use && timer->device == device && timer->timer_id == timer_id) {
         pthread_mutex_lock(&timer->timer_mutex);
         timer->cancel = true;
         pthread_cond_signal(&timer->timer_cond);

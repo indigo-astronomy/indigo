@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -Iindigo_drivers/ccd_simulator -std=c99
+CFLAGS=-Iindigo_bus -Iindigo_devices -Iindigo_devices/ccd_simulator -std=c99
 AR=ar
 ARFLAGS=-rv
 
@@ -13,17 +13,17 @@ libindigo.a:\
 	indigo_bus/indigo_driver_xml.o\
 	indigo_bus/indigo_client_xml.o\
 	indigo_bus/indigo_timer.o\
-	indigo_drivers/indigo_driver.o\
-	indigo_drivers/indigo_ccd_driver.o
+	indigo_devices/indigo_driver.o\
+	indigo_devices/indigo_ccd_driver.o
 	$(AR) $(ARFLAGS) $@ $^
 
-libindigosim.a: indigo_drivers/ccd_simulator/ccd_simulator.o
+libindigosim.a: indigo_devices/ccd_simulator/ccd_simulator.o
 	$(AR) $(ARFLAGS) $@ $^
 
 test: indigo_test/test.o libindigo.a libindigosim.a
 	$(CC) $(CFLAGS) -o $@ $^
 
-driver: indigo_test/driver.o libindigo.a libindigosim.a
+device: indigo_test/device.o libindigo.a libindigosim.a
 	$(CC) $(CFLAGS) -o $@ $^
 
 client: indigo_test/client.o libindigo.a
@@ -33,4 +33,4 @@ server: indigo_test/server.o libindigo.a libindigosim.a
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f test driver client server libindigo.a libindigosim.a indigo_test/*.o indigo_bus/*.o indigo_drivers/*.o indigo_drivers/ccd_simulator/*.o
+	rm -f test device client server libindigo.a libindigosim.a indigo_test/*.o indigo_bus/*.o indigo_devices/*.o indigo_drivers/ccd_simulator/*.o

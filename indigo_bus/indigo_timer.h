@@ -37,9 +37,9 @@
 
 #include "indigo_bus.h"
 
-typedef void (*indigo_timer_callback)(indigo_driver *driver, int timer_id, void *data, double delay);
+typedef void (*indigo_timer_callback)(indigo_device *device, int timer_id, void *data, double delay);
 
-extern indigo_result indigo_set_timer(indigo_driver *driver, int timer_id, void *data, double delay, indigo_timer_callback callback);
-extern indigo_result indigo_cancel_timer(indigo_driver *driver, int timer_id);
+extern indigo_result indigo_set_timer(indigo_device *device, int timer_id, void *data, double delay, indigo_timer_callback callback);
+extern indigo_result indigo_cancel_timer(indigo_device *device, int timer_id);
 
 #endif /* indigo_timer_h */

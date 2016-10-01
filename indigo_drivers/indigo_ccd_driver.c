@@ -42,15 +42,15 @@
 #include "indigo_ccd_driver.h"
 #include "indigo_timer.h"
 
-indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int version) {
-  assert(driver != NULL);
+indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int version) {
   assert(device != NULL);
-  if (CCD_DRIVER_CONTEXT == NULL)
-    driver->driver_context = malloc(sizeof(indigo_ccd_driver_context));
-  if (CCD_DRIVER_CONTEXT != NULL) {
-    if (indigo_driver_attach(driver, device, version, 2) == INDIGO_OK) {
+  assert(device != NULL);
+  if (CCD_DEVICE_CONTEXT == NULL)
+    device->device_context = malloc(sizeof(indigo_ccd_device_context));
+  if (CCD_DEVICE_CONTEXT != NULL) {
+    if (indigo_device_attach(device, name, version, 2) == INDIGO_OK) {
       // -------------------------------------------------------------------------------- CCD_INFO
-      CCD_INFO_PROPERTY = indigo_init_number_property(NULL, device, "CCD_INFO", MAIN_GROUP, "CCD Info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 8);
+      CCD_INFO_PROPERTY = indigo_init_number_property(NULL, name, "CCD_INFO", MAIN_GROUP, "CCD Info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 8);
       if (CCD_INFO_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_number_item(CCD_INFO_WIDTH_ITEM, "WIDTH", "Horizontal resolution", 0, 0, 0, 0);
@@ -62,17 +62,17 @@ indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int 
       indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, "PIXEL_HEIGHT", "Pixel height", 0, 0, 0, 0);
       indigo_init_number_item(CCD_INFO_BITS_PER_PIXEL_ITEM, "BITS_PER_PIXEL", "Bits/pixel", 0, 0, 0, 0);
       // -------------------------------------------------------------------------------- CCD_EXPOSURE
-      CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device, "CCD_EXPOSURE", MAIN_GROUP, "Start exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+      CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, name, "CCD_EXPOSURE", MAIN_GROUP, "Start exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
       if (CCD_EXPOSURE_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_number_item(CCD_EXPOSURE_ITEM, "EXPOSURE", "Start exposure", 0, 10000, 1, 0);
       // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-      CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device, "CCD_ABORT_EXPOSURE", MAIN_GROUP, "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+      CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, name, "CCD_ABORT_EXPOSURE", MAIN_GROUP, "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
       if (CCD_ABORT_EXPOSURE_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_switch_item(CCD_ABORT_EXPOSURE_ITEM, "ABORT_EXPOSURE", "Abort exposure", false);
       // -------------------------------------------------------------------------------- CCD_FRAME
-      CCD_FRAME_PROPERTY = indigo_init_number_property(NULL, device, "CCD_FRAME", MAIN_GROUP, "Frame size", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
+      CCD_FRAME_PROPERTY = indigo_init_number_property(NULL, name, "CCD_FRAME", MAIN_GROUP, "Frame size", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
       if (CCD_FRAME_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_number_item(CCD_FRAME_LEFT_ITEM, "X", "Left", 0, 0, 1, 0);
@@ -80,13 +80,13 @@ indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int 
       indigo_init_number_item(CCD_FRAME_WIDTH_ITEM, "WIDTH", "Width", 0, 0, 1, 0);
       indigo_init_number_item(CCD_FRAME_HEIGHT_ITEM, "HEIGHT", "Height", 0, 0, 1, 0);
       // -------------------------------------------------------------------------------- CCD_BIN
-      CCD_BIN_PROPERTY = indigo_init_number_property(NULL, device, "CCD_BIN", MAIN_GROUP, "Binning", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
+      CCD_BIN_PROPERTY = indigo_init_number_property(NULL, name, "CCD_BIN", MAIN_GROUP, "Binning", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
       if (CCD_BIN_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_number_item(CCD_BIN_HORIZONTAL_ITEM, "HORIZONTAL", "Horizontal binning", 0, 1, 1, 1);
       indigo_init_number_item(CCD_BIN_VERTICAL_ITEM, "VERTICAL", "Vertical binning", 0, 1, 1, 1);
       // -------------------------------------------------------------------------------- CCD_FRAME_TYPE
-      CCD_FRAME_TYPE_PROPERTY = indigo_init_switch_property(NULL, device, "CCD_FRAME_TYPE", MAIN_GROUP, "Frame type", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+      CCD_FRAME_TYPE_PROPERTY = indigo_init_switch_property(NULL, name, "CCD_FRAME_TYPE", MAIN_GROUP, "Frame type", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
       if (CCD_FRAME_TYPE_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_switch_item(CCD_FRAME_TYPE_LIGHT_ITEM, "LIGHT", "Light frame exposure", true);
@@ -94,23 +94,23 @@ indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int 
       indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, "DARK", "Dark frame exposure", false);
       indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, "FLAT", "Flat field frame exposure", false);
       // -------------------------------------------------------------------------------- CCD_IMAGE
-      CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device, "CCD_IMAGE", IMAGE_GROUP, "Image", INDIGO_IDLE_STATE, 1);
+      CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, name, "CCD_IMAGE", IMAGE_GROUP, "Image", INDIGO_IDLE_STATE, 1);
       if (CCD_IMAGE_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_blob_item(CCD_IMAGE_ITEM, "IMAGE", "Primary CCD image");
       // -------------------------------------------------------------------------------- CCD_COOLER
-      CCD_COOLER_PROPERTY = indigo_init_switch_property(NULL, device, "CCD_COOLER", MAIN_GROUP, "Cooler control", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+      CCD_COOLER_PROPERTY = indigo_init_switch_property(NULL, name, "CCD_COOLER", MAIN_GROUP, "Cooler control", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
       if (CCD_COOLER_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_switch_item(CCD_COOLER_ON_ITEM, "ON", "On", false);
       indigo_init_switch_item(CCD_COOLER_OFF_ITEM, "OFF", "Off", true);
       // -------------------------------------------------------------------------------- CCD_COOLER_POWER
-      CCD_COOLER_POWER_PROPERTY = indigo_init_number_property(NULL, device, "CCD_COOLER_POWER", MAIN_GROUP, "Cooler power", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+      CCD_COOLER_POWER_PROPERTY = indigo_init_number_property(NULL, name, "CCD_COOLER_POWER", MAIN_GROUP, "Cooler power", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
       if (CCD_COOLER_POWER_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_number_item(CCD_COOLER_POWER_ITEM, "POWER", "Power (%)", 0, 0, 0, NAN);
       // -------------------------------------------------------------------------------- CCD_TEMPERATURE
-      CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device, "CCD_TEMPERATURE", MAIN_GROUP, "Temperature", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+      CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, name, "CCD_TEMPERATURE", MAIN_GROUP, "Temperature", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
       if (CCD_TEMPERATURE_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_number_item(CCD_TEMPERATURE_ITEM, "TEMPERATURE", "Temperature (C)", 0, 0, 0, NAN);
@@ -120,74 +120,74 @@ indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int 
   return INDIGO_FAILED;
 }
 
-indigo_result indigo_ccd_driver_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property) {
-  assert(driver != NULL);
-  assert(driver->driver_context != NULL);
+indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+  assert(device != NULL);
+  assert(device->device_context != NULL);
   assert(property != NULL);
   indigo_result result = INDIGO_OK;
-  if ((result = indigo_driver_enumerate_properties(driver, client, property)) == INDIGO_OK) {
-    if (indigo_is_connected(driver_context)) {
+  if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
+    if (indigo_is_connected(device_context)) {
       if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property))
-        indigo_define_property(driver, CCD_EXPOSURE_PROPERTY, NULL);
+        indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
       if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property))
-        indigo_define_property(driver, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+        indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
       if (indigo_property_match(CCD_FRAME_PROPERTY, property))
-        indigo_define_property(driver, CCD_FRAME_PROPERTY, NULL);
+        indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
       if (indigo_property_match(CCD_BIN_PROPERTY, property))
-        indigo_define_property(driver, CCD_BIN_PROPERTY, NULL);
+        indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
       if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property))
-        indigo_define_property(driver, CCD_FRAME_TYPE_PROPERTY, NULL);
+        indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
       if (indigo_property_match(CCD_IMAGE_PROPERTY, property))
-        indigo_define_property(driver, CCD_IMAGE_PROPERTY, NULL);
+        indigo_define_property(device, CCD_IMAGE_PROPERTY, NULL);
       if (indigo_property_match(CCD_COOLER_PROPERTY, property))
-        indigo_define_property(driver, CCD_COOLER_PROPERTY, NULL);
+        indigo_define_property(device, CCD_COOLER_PROPERTY, NULL);
       if (indigo_property_match(CCD_COOLER_POWER_PROPERTY, property))
-        indigo_define_property(driver, CCD_COOLER_POWER_PROPERTY, NULL);
+        indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
       if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property))
-        indigo_define_property(driver, CCD_TEMPERATURE_PROPERTY, NULL);
+        indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
     }
   }
   return result;
 }
 
-static void countdown_timer_callback(indigo_driver *driver, int timer_id, void *data, double delay) {
+static void countdown_timer_callback(indigo_device *device, int timer_id, void *data, double delay) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_ITEM->number_value -= 1;
     if (CCD_EXPOSURE_ITEM->number_value >= 1) {
-      indigo_update_property(driver, CCD_EXPOSURE_PROPERTY, NULL);
-      indigo_set_timer(driver, 1, NULL, 1.0, countdown_timer_callback);
+      indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+      indigo_set_timer(device, 1, NULL, 1.0, countdown_timer_callback);
     }
   }
 }
 
-indigo_result indigo_ccd_driver_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
-  assert(driver != NULL);
-  assert(driver->driver_context != NULL);
+indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+  assert(device != NULL);
+  assert(device->device_context != NULL);
   assert(property != NULL);
   if (indigo_property_match(CONNECTION_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CONNECTION
     if (CONNECTION_CONNECTED_ITEM->switch_value) {
-      indigo_define_property(driver, CCD_INFO_PROPERTY, NULL);
-      indigo_define_property(driver, CCD_EXPOSURE_PROPERTY, NULL);
-      indigo_define_property(driver, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-      indigo_define_property(driver, CCD_FRAME_PROPERTY, NULL);
-      indigo_define_property(driver, CCD_BIN_PROPERTY, NULL);
-      indigo_define_property(driver, CCD_FRAME_TYPE_PROPERTY, NULL);
-      indigo_define_property(driver, CCD_IMAGE_PROPERTY, NULL);
-      indigo_define_property(driver, CCD_COOLER_PROPERTY, NULL);
-      indigo_define_property(driver, CCD_COOLER_POWER_PROPERTY, NULL);
-      indigo_define_property(driver, CCD_TEMPERATURE_PROPERTY, NULL);
+      indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
+      indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+      indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+      indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
+      indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
+      indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
+      indigo_define_property(device, CCD_IMAGE_PROPERTY, NULL);
+      indigo_define_property(device, CCD_COOLER_PROPERTY, NULL);
+      indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+      indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
     } else {
-      indigo_delete_property(driver, CCD_INFO_PROPERTY, NULL);
-      indigo_delete_property(driver, CCD_EXPOSURE_PROPERTY, NULL);
-      indigo_delete_property(driver, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-      indigo_delete_property(driver, CCD_FRAME_PROPERTY, NULL);
-      indigo_delete_property(driver, CCD_BIN_PROPERTY, NULL);
-      indigo_delete_property(driver, CCD_FRAME_TYPE_PROPERTY, NULL);
-      indigo_delete_property(driver, CCD_IMAGE_PROPERTY, NULL);
-      indigo_delete_property(driver, CCD_COOLER_PROPERTY, NULL);
-      indigo_delete_property(driver, CCD_COOLER_POWER_PROPERTY, NULL);
-      indigo_delete_property(driver, CCD_TEMPERATURE_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_BIN_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_IMAGE_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_COOLER_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
     }
   } else if (indigo_property_match(CONFIG_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CONFIG
@@ -207,49 +207,49 @@ indigo_result indigo_ccd_driver_change_property(indigo_driver *driver, indigo_cl
     // -------------------------------------------------------------------------------- CCD_EXPOSURE
     if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
       if (CCD_EXPOSURE_ITEM->number_value >= 1) {
-        indigo_set_timer(driver, 1, NULL, 1.0, countdown_timer_callback);
+        indigo_set_timer(device, 1, NULL, 1.0, countdown_timer_callback);
       }
     }
   } else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
     if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-      indigo_cancel_timer(driver, 1);
+      indigo_cancel_timer(device, 1);
       CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
       CCD_EXPOSURE_ITEM->number_value = 0;
-      indigo_update_property(driver, CCD_EXPOSURE_PROPERTY, NULL);
+      indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
       CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-      indigo_update_property(driver, CCD_IMAGE_PROPERTY, NULL);
+      indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
       CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
     } else {
       CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
     }
     CCD_ABORT_EXPOSURE_ITEM->switch_value = false;
-    indigo_update_property(driver, CCD_ABORT_EXPOSURE_PROPERTY, CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_OK_STATE ? "Exposure canceled" : "Failed to cancel exposure");
+    indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_OK_STATE ? "Exposure canceled" : "Failed to cancel exposure");
   } else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_FRAME
     indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
     CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-    indigo_update_property(driver, CCD_FRAME_PROPERTY, NULL);
+    indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
   } else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_BIN
     indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
     CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
-    indigo_update_property(driver, CCD_BIN_PROPERTY, NULL);
+    indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
   } else if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_FRAME_TYPE
     indigo_property_copy_values(CCD_FRAME_TYPE_PROPERTY, property, false);
     CCD_FRAME_TYPE_PROPERTY->state = INDIGO_OK_STATE;
-    indigo_update_property(driver, CCD_FRAME_TYPE_PROPERTY, NULL);
+    indigo_update_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
   }
-  return indigo_driver_change_property(driver, client, property);
+  return indigo_device_change_property(device, client, property);
 }
 
-indigo_result indigo_ccd_driver_detach(indigo_driver *driver) {
-  assert(driver != NULL);
+indigo_result indigo_ccd_device_detach(indigo_device *device) {
+  assert(device != NULL);
   return INDIGO_OK;
 }
 
-void *indigo_convert_to_fits(indigo_driver *driver, double exposure_time) {
+void *indigo_convert_to_fits(indigo_device *device, double exposure_time) {
   INDIGO_DEBUG(clock_t start = clock());
   time_t timer;
   struct tm* tm_info;
@@ -278,8 +278,8 @@ void *indigo_convert_to_fits(indigo_driver *driver, double exposure_time) {
     t = sprintf(header += 80, "CCD-TEMP= %21.2g / CCD temperature in C", CCD_TEMPERATURE_ITEM->number_value); header[t] = ' ';
   }
   t = sprintf(header += 80, "DATE    = '%s' / UTC date that FITS file was created", now); header[t] = ' ';
-  t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", INFO_DRIVER_NAME_ITEM->text_value, (int)(19 - strlen(INFO_DRIVER_NAME_ITEM->text_value)), ' '); header[t] = ' ';
-  t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see http://www.indigo-astronomy.org", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF); header[t] = ' ';
+  t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", INFO_DEVICE_NAME_ITEM->text_value, (int)(19 - strlen(INFO_DEVICE_NAME_ITEM->text_value)), ' '); header[t] = ' ';
+  t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see www.indigo-astronomy.org", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF); header[t] = ' ';
   t = sprintf(header += 80, "END"); header[t] = ' ';
   
   short *data = (short *)(CCD_IMAGE_ITEM->blob_value + FITS_HEADER_SIZE);

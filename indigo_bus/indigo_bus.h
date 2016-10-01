@@ -115,29 +115,29 @@ typedef struct {
 
 struct indigo_client;
 
-typedef struct indigo_driver {
-  void *driver_context;
+typedef struct indigo_device {
+  void *device_context;
   indigo_result last_result;
   int version;
-  indigo_result (*attach)(struct indigo_driver *driver);
-  indigo_result (*enumerate_properties)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
-  indigo_result (*change_property)(struct indigo_driver *driver, struct indigo_client *client, indigo_property *property);
-  indigo_result (*detach)(struct indigo_driver *driver);
-} indigo_driver;
+  indigo_result (*attach)(struct indigo_device *device);
+  indigo_result (*enumerate_properties)(struct indigo_device *device, struct indigo_client *client, indigo_property *property);
+  indigo_result (*change_property)(struct indigo_device *device, struct indigo_client *client, indigo_property *property);
+  indigo_result (*detach)(struct indigo_device *device);
+} indigo_device;
 
 typedef struct indigo_client {
   void *client_context;
   indigo_result last_result;
   int version;
   indigo_result (*attach)(struct indigo_client *client);
-  indigo_result (*define_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message);
-  indigo_result (*update_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message);
-  indigo_result (*delete_property)(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message);
-  indigo_result (*send_message)(struct indigo_client *client, struct indigo_driver *driver, const char *message);
+  indigo_result (*define_property)(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
+  indigo_result (*update_property)(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
+  indigo_result (*delete_property)(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
+  indigo_result (*send_message)(struct indigo_client *client, struct indigo_device *device, const char *message);
   indigo_result (*detach)(struct indigo_client *client);
 } indigo_client;
 
-typedef indigo_driver *(*indigo_driver_entry_point)();
+typedef indigo_device *(*indigo_device_entry_point)();
 typedef indigo_client *(*indigo_client_entry_point)();
 
 extern const char **indigo_main_argv;
@@ -150,14 +150,14 @@ extern void indigo_log(const char *format, ...);
 extern void indigo_debug_property(const char *message, indigo_property *property, bool defs, bool items);
 
 extern indigo_result indigo_start();
-extern indigo_result indigo_attach_driver(indigo_driver *driver);
-extern indigo_result indigo_detach_driver(indigo_driver *driver);
+extern indigo_result indigo_attach_device(indigo_device *device);
+extern indigo_result indigo_detach_device(indigo_device *device);
 extern indigo_result indigo_attach_client(indigo_client *client);
 extern indigo_result indigo_detach_client(indigo_client *client);
-extern indigo_result indigo_define_property(indigo_driver *driver, indigo_property *property, const char *message);
-extern indigo_result indigo_update_property(indigo_driver *driver, indigo_property *property, const char *message);
-extern indigo_result indigo_delete_property(indigo_driver *driver, indigo_property *property, const char *message);
-extern indigo_result indigo_send_message(indigo_driver *driver, const char *message);
+extern indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *message);
+extern indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *message);
+extern indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *message);
+extern indigo_result indigo_send_message(indigo_device *device, const char *message);
 extern indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property);
 extern indigo_result indigo_change_property(indigo_client *client, indigo_property *property);
 extern indigo_result indigo_stop();

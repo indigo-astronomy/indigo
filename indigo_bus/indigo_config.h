@@ -39,7 +39,7 @@
 
 // Wrappers for debug code inclusion, do not touch INDIGO_ERROR and INDIGO_LOG!
 #define INDIGO_TRACE(c)
-#define INDIGO_DEBUG(c) c
+#define INDIGO_DEBUG(c)
 #define INDIGO_ERROR(c) c
 #define INDIGO_LOG(c) c
 
@@ -49,7 +49,7 @@
 // Uncomment to write debug messages to syslog instead of stderr.
 // #define INDIG_USE_SYSLOG
 
-// Property/item string sizes, max number of properties per driver, max number of items per property.
+// Property/item string sizes, max number of properties per device, max number of items per property.
 #define INDIGO_NAME_SIZE      128
 #define INDIGO_VALUE_SIZE     256
 #define INDIGO_MAX_PROPERTIES 64

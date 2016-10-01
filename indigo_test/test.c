@@ -57,7 +57,7 @@ static indigo_result test_attach(indigo_client *client) {
   return INDIGO_OK;
 }
 
-static indigo_result test_define_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message) {
+static indigo_result test_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
   if (message)
     indigo_log("message: %s", message);
   if (indigo_property_match(connection_property, property)) {
@@ -69,7 +69,7 @@ static indigo_result test_define_property(struct indigo_client *client, struct i
   return INDIGO_OK;
 }
 
-static indigo_result test_update_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message) {
+static indigo_result test_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
   if (message)
     indigo_log("message: %s", message);
   if (indigo_property_match(connection_property, property)) {
@@ -106,7 +106,7 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
   return INDIGO_OK;
 }
 
-static indigo_result test_send_message(struct indigo_client *client, struct indigo_driver *driver, const char *message) {
+static indigo_result test_send_message(struct indigo_client *client, struct indigo_device *device, const char *message) {
   indigo_log("message: %s", message);
   return INDIGO_OK;
 }
@@ -131,7 +131,7 @@ int main(int argc, const char * argv[]) {
   indigo_main_argc = argc;
   indigo_main_argv = argv;
   indigo_start();
-  indigo_attach_driver(ccd_simulator());
+  indigo_attach_device(ccd_simulator());
   indigo_attach_client(&test);
   sleep(10);
   indigo_stop();

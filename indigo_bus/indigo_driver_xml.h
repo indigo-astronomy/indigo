@@ -32,16 +32,16 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-#ifndef indigo_driver_xml_h
-#define indigo_driver_xml_h
+#ifndef indigo_device_xml_h
+#define indigo_device_xml_h
 
 #include "indigo_bus.h"
 #include "indigo_xml.h"
 
 typedef struct {
   int input, output;
-} indigo_xml_driver_adapter_context;
+} indigo_xml_device_adapter_context;
 
-extern indigo_client *xml_driver_adapter(int input, int ouput);
+extern indigo_client *xml_device_adapter(int input, int ouput);
 
-#endif /* indigo_driver_xml_h */
+#endif /* indigo_device_xml_h */

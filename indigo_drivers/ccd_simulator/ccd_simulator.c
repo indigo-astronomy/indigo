@@ -45,16 +45,16 @@
 
 static int star_x[100], star_y[100], star_a[100];
 
-static indigo_result ccd_simulator_attach(indigo_driver *driver) {
-  assert(driver != NULL);
-  if (indigo_ccd_driver_attach(driver, DEVICE, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+static indigo_result ccd_simulator_attach(indigo_device *device) {
+  assert(device != NULL);
+  if (indigo_ccd_device_attach(device, DEVICE, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     // -------------------------------------------------------------------------------- SIMULATION
     SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
     SIMULATION_ENABLED_ITEM->switch_value = true;
     SIMULATION_DISABLED_ITEM->switch_value = false;
     // -------------------------------------------------------------------------------- CCD_INFO
-    CCD_INFO_WIDTH_ITEM->number_value = 4096;
-    CCD_INFO_HEIGHT_ITEM->number_value = 4096;
+    CCD_INFO_WIDTH_ITEM->number_value = 64;
+    CCD_INFO_HEIGHT_ITEM->number_value = 64;
     CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number_value = 2;
     CCD_INFO_MAX_VERTICAL_BIN_ITEM->number_value = 2;
     CCD_INFO_PIXEL_SIZE_ITEM->number_value = 5.2;
@@ -84,11 +84,11 @@ static indigo_result ccd_simulator_attach(indigo_driver *driver) {
   return INDIGO_FAILED;
 }
 
-static void exposure_timer_callback(indigo_driver *driver, int timer_id, void *data, double delay) {
+static void exposure_timer_callback(indigo_device *device, int timer_id, void *data, double delay) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
     CCD_EXPOSURE_ITEM->number_value = 0;
-    indigo_update_property(driver, CCD_EXPOSURE_PROPERTY, "Exposure done");
+    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
     short *raw = (short *)(CCD_IMAGE_ITEM->blob_value+FITS_HEADER_SIZE);
     int width = CCD_FRAME_WIDTH_ITEM->number_value;
     int height = CCD_FRAME_HEIGHT_ITEM->number_value;
@@ -112,15 +112,15 @@ static void exposure_timer_callback(indigo_driver *driver, int timer_id, void *d
         }
       }
     }
-    indigo_convert_to_fits(driver, delay);
+    indigo_convert_to_fits(device, delay);
     CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
-    indigo_update_property(driver, CCD_IMAGE_PROPERTY, NULL);
+    indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
   }
 }
 
-static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property) {
-  assert(driver != NULL);
-  assert(driver->driver_context != NULL);
+static indigo_result ccd_simulator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+  assert(device != NULL);
+  assert(device->device_context != NULL);
   assert(property != NULL);
   if (indigo_property_match(CONNECTION_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CONNECTION
@@ -133,31 +133,31 @@ static indigo_result ccd_simulator_change_property(indigo_driver *driver, indigo
     // -------------------------------------------------------------------------------- CCD_EXPOSURE
     indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
     CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-    indigo_update_property(driver, CCD_EXPOSURE_PROPERTY, "Exposure initiated");
+    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure initiated");
     CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-    indigo_update_property(driver, CCD_IMAGE_PROPERTY, NULL);
-    indigo_set_timer(driver, 2, NULL, CCD_EXPOSURE_ITEM->number_value, exposure_timer_callback);
+    indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+    indigo_set_timer(device, 2, NULL, CCD_EXPOSURE_ITEM->number_value, exposure_timer_callback);
   } else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
     if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-      indigo_cancel_timer(driver, 2);
+      indigo_cancel_timer(device, 2);
     }
     indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
   }
-  return indigo_ccd_driver_change_property(driver, client, property);
+  return indigo_ccd_device_change_property(device, client, property);
 }
 
-indigo_driver *ccd_simulator() {
-  static indigo_driver driver_template = {
+indigo_device *ccd_simulator() {
+  static indigo_device device_template = {
     NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
     ccd_simulator_attach,
-    indigo_ccd_driver_enumerate_properties,
+    indigo_ccd_device_enumerate_properties,
     ccd_simulator_change_property,
-    indigo_ccd_driver_detach
+    indigo_ccd_device_detach
   };
-  indigo_driver *driver = malloc(sizeof(indigo_driver));
-  if (driver != NULL) {
-    memcpy(driver, &driver_template, sizeof(indigo_driver));
+  indigo_device *device = malloc(sizeof(indigo_device));
+  if (device != NULL) {
+    memcpy(device, &device_template, sizeof(indigo_device));
   }
-  return driver;
+  return device;
 }

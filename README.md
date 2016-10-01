@@ -16,7 +16,7 @@ Communication is initiated from client side with message
 
 `<getProperties version='1.7' switch='2.0'/>`
 
-INDI driver/server will just send definition of properties, INDIGO driver/server will change protocol first by message
+INDI driver/server will just send definition of properties, INDIGO device/server will change protocol first by message
 
 `<switchProtocol version='2.0'/>`
 

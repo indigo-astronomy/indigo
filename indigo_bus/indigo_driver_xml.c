@@ -70,12 +70,12 @@ static const char *message_attribute(const char *message) {
   return "";
 }
 
-static indigo_result xml_driver_adapter_define_property(indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message) {
-  assert(driver != NULL);
+static indigo_result xml_device_adapter_define_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+  assert(device != NULL);
   assert(client != NULL);
   assert(property != NULL);
   pthread_mutex_lock(&xmutex);
-  indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
+  indigo_xml_device_adapter_context *client_context = (indigo_xml_device_adapter_context *)client->client_context;
   assert(client_context != NULL);
   int handle = client_context->output;
   switch (property->type) {
@@ -124,12 +124,12 @@ static indigo_result xml_driver_adapter_define_property(indigo_client *client, s
   return INDIGO_OK;
 }
 
-static indigo_result xml_driver_adapter_update_property(indigo_client *client, indigo_driver *driver, indigo_property *property, const char *message) {
-  assert(driver != NULL);
+static indigo_result xml_device_adapter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+  assert(device != NULL);
   assert(client != NULL);
   assert(property != NULL);
   pthread_mutex_lock(&xmutex);
-  indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
+  indigo_xml_device_adapter_context *client_context = (indigo_xml_device_adapter_context *)client->client_context;
   assert(client_context != NULL);
   int handle = client_context->output;
   switch (property->type) {
@@ -209,12 +209,12 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
   return INDIGO_OK;
 }
 
-static indigo_result xml_driver_adapter_delete_property(indigo_client *client, indigo_driver *driver, indigo_property *property, const char *message) {
-  assert(driver != NULL);
+static indigo_result xml_device_adapter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+  assert(device != NULL);
   assert(client != NULL);
   assert(property != NULL);
   pthread_mutex_lock(&xmutex);
-  indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
+  indigo_xml_device_adapter_context *client_context = (indigo_xml_device_adapter_context *)client->client_context;
   assert(client_context != NULL);
   int handle = client_context->output;
   indigo_xml_prinf(handle, "<delProperty device='%s' name='%s'%s/>\n", property->device, indigo_property_name(client->version, property), message_attribute(message));
@@ -222,11 +222,11 @@ static indigo_result xml_driver_adapter_delete_property(indigo_client *client, i
   return INDIGO_OK;
 }
 
-static indigo_result xml_driver_adapter_send_message(indigo_client *client, indigo_driver *driver, const char *message) {
-  assert(driver != NULL);
+static indigo_result xml_device_adapter_send_message(indigo_client *client, indigo_device *device, const char *message) {
+  assert(device != NULL);
   assert(client != NULL);
   pthread_mutex_lock(&xmutex);
-  indigo_xml_driver_adapter_context *client_context = (indigo_xml_driver_adapter_context *)client->client_context;
+  indigo_xml_device_adapter_context *client_context = (indigo_xml_device_adapter_context *)client->client_context;
   assert(client_context != NULL);
   int handle = client_context->output;
   if (message)
@@ -235,20 +235,20 @@ static indigo_result xml_driver_adapter_send_message(indigo_client *client, indi
   return INDIGO_OK;
 }
 
-indigo_client *xml_driver_adapter(int input, int ouput) {
+indigo_client *xml_device_adapter(int input, int ouput) {
   static indigo_client client_template = {
     NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
     NULL,
-    xml_driver_adapter_define_property,
-    xml_driver_adapter_update_property,
-    xml_driver_adapter_delete_property,
-    xml_driver_adapter_send_message,
+    xml_device_adapter_define_property,
+    xml_device_adapter_update_property,
+    xml_device_adapter_delete_property,
+    xml_device_adapter_send_message,
     NULL
   };
   indigo_client *client = malloc(sizeof(indigo_client));
   if (client != NULL) {
     memcpy(client, &client_template, sizeof(indigo_client));
-    indigo_xml_driver_adapter_context *client_context = malloc(sizeof(indigo_xml_driver_adapter_context));
+    indigo_xml_device_adapter_context *client_context = malloc(sizeof(indigo_xml_device_adapter_context));
     client_context->input = input;
     client_context->output = ouput;
     client->client_context = client_context;

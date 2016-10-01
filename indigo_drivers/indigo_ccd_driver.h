@@ -32,17 +32,17 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-#ifndef indigo_ccd_driver_h
-#define indigo_ccd_driver_h
+#ifndef indigo_ccd_device_h
+#define indigo_ccd_device_h
 
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
-#define CCD_DRIVER_CONTEXT                ((indigo_ccd_driver_context *)driver->driver_context)
+#define CCD_DEVICE_CONTEXT                ((indigo_ccd_device_context *)device->device_context)
 
 #define IMAGE_GROUP                       "Image"
 
-#define CCD_INFO_PROPERTY                 (CCD_DRIVER_CONTEXT->ccd_info_property)
+#define CCD_INFO_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_info_property)
 #define CCD_INFO_WIDTH_ITEM               (CCD_INFO_PROPERTY->items+0)
 #define CCD_INFO_HEIGHT_ITEM              (CCD_INFO_PROPERTY->items+1)
 #define CCD_INFO_MAX_HORIZONAL_BIN_ITEM   (CCD_INFO_PROPERTY->items+2)
@@ -52,57 +52,57 @@
 #define CCD_INFO_PIXEL_HEIGHT_ITEM        (CCD_INFO_PROPERTY->items+6)
 #define CCD_INFO_BITS_PER_PIXEL_ITEM      (CCD_INFO_PROPERTY->items+7)
 
-#define CCD_EXPOSURE_PROPERTY             (CCD_DRIVER_CONTEXT->ccd_exposure_property)
+#define CCD_EXPOSURE_PROPERTY             (CCD_DEVICE_CONTEXT->ccd_exposure_property)
 #define CCD_EXPOSURE_ITEM                 (CCD_EXPOSURE_PROPERTY->items+0)
 
-#define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_DRIVER_CONTEXT->ccd_abort_exposure_property)
+#define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_DEVICE_CONTEXT->ccd_abort_exposure_property)
 #define CCD_ABORT_EXPOSURE_ITEM           (CCD_ABORT_EXPOSURE_PROPERTY->items+0)
 
-#define CCD_FRAME_PROPERTY                (CCD_DRIVER_CONTEXT->ccd_frame_property)
+#define CCD_FRAME_PROPERTY                (CCD_DEVICE_CONTEXT->ccd_frame_property)
 #define CCD_FRAME_LEFT_ITEM               (CCD_FRAME_PROPERTY->items+0)
 #define CCD_FRAME_TOP_ITEM                (CCD_FRAME_PROPERTY->items+1)
 #define CCD_FRAME_WIDTH_ITEM              (CCD_FRAME_PROPERTY->items+2)
 #define CCD_FRAME_HEIGHT_ITEM             (CCD_FRAME_PROPERTY->items+3)
 
-#define CCD_BIN_PROPERTY                  (CCD_DRIVER_CONTEXT->ccd_bin_property)
+#define CCD_BIN_PROPERTY                  (CCD_DEVICE_CONTEXT->ccd_bin_property)
 #define CCD_BIN_HORIZONTAL_ITEM           (CCD_BIN_PROPERTY->items+0)
 #define CCD_BIN_VERTICAL_ITEM             (CCD_BIN_PROPERTY->items+1)
 
-#define CCD_FRAME_TYPE_PROPERTY           (CCD_DRIVER_CONTEXT->ccd_frame_type_property)
+#define CCD_FRAME_TYPE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_frame_type_property)
 #define CCD_FRAME_TYPE_LIGHT_ITEM         (CCD_FRAME_TYPE_PROPERTY->items+0)
 #define CCD_FRAME_TYPE_BIAS_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+1)
 #define CCD_FRAME_TYPE_DARK_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+2)
 #define CCD_FRAME_TYPE_FLAT_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+3)
 
-#define CCD_IMAGE_FORMAT_PROPERTY         (CCD_DRIVER_CONTEXT->ccd_frame_type_property)
+#define CCD_IMAGE_FORMAT_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_frame_type_property)
 #define CCD_IMAGE_FORMAT_FITS_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+0)
 #define CCD_IMAGE_FORMAT_JPEG_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+1)
 #define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+2)
 
-#define CCD_IMAGE_PROPERTY                (CCD_DRIVER_CONTEXT->ccd_image_property)
+#define CCD_IMAGE_PROPERTY                (CCD_DEVICE_CONTEXT->ccd_image_property)
 #define CCD_IMAGE_ITEM                    (CCD_IMAGE_PROPERTY->items+0)
 
-#define CCD_TEMPERATURE_PROPERTY          (CCD_DRIVER_CONTEXT->ccd_temperature_property)
+#define CCD_TEMPERATURE_PROPERTY          (CCD_DEVICE_CONTEXT->ccd_temperature_property)
 #define CCD_TEMPERATURE_ITEM              (CCD_TEMPERATURE_PROPERTY->items+0)
 
-#define CCD_COOLER_PROPERTY               (CCD_DRIVER_CONTEXT->ccd_cooler_property)
+#define CCD_COOLER_PROPERTY               (CCD_DEVICE_CONTEXT->ccd_cooler_property)
 #define CCD_COOLER_ON_ITEM                (CCD_COOLER_PROPERTY->items+0)
 #define CCD_COOLER_OFF_ITEM               (CCD_COOLER_PROPERTY->items+1)
 
-#define CCD_COOLER_POWER_PROPERTY         (CCD_DRIVER_CONTEXT->ccd_cooler_power_property)
+#define CCD_COOLER_POWER_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_cooler_power_property)
 #define CCD_COOLER_POWER_ITEM             (CCD_COOLER_POWER_PROPERTY->items+0)
 
 #define FITS_HEADER_SIZE  2880
 
 typedef struct {
   void *private_data;
-  // indigo_driver_context
+  // indigo_device_context
   indigo_property *connection_property;
   indigo_property *info_property;
   indigo_property *debug_property;
   indigo_property *simulation_property;
   indigo_property *congfiguration_property;
-  // indigo_ccd_driver_context
+  // indigo_ccd_device_context
   indigo_property *ccd_info_property;
   indigo_property *ccd_exposure_property;
   indigo_property *ccd_abort_exposure_property;
@@ -114,12 +114,12 @@ typedef struct {
   indigo_property *ccd_temperature_property;
   indigo_property *ccd_cooler_property;
   indigo_property *ccd_cooler_power_property;
-} indigo_ccd_driver_context;
+} indigo_ccd_device_context;
 
-extern indigo_result indigo_ccd_driver_attach(indigo_driver *driver, char *device, int version);
-extern indigo_result indigo_ccd_driver_enumerate_properties(indigo_driver *driver, indigo_client *client, indigo_property *property);
-extern indigo_result indigo_ccd_driver_change_property(indigo_driver *driver, indigo_client *client, indigo_property *property);
-extern indigo_result indigo_ccd_driver_detach(indigo_driver *driver);
+extern indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int version);
+extern indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_ccd_device_detach(indigo_device *device);
 
 typedef struct {
   char name[8];
@@ -130,6 +130,6 @@ typedef struct {
   } value;
 } indigo_fits_header;
 
-extern void *indigo_convert_to_fits(indigo_driver *driver, double exposure_time);
+extern void *indigo_convert_to_fits(indigo_device *device, double exposure_time);
 
-#endif /* indigo_ccd_driver_h */
+#endif /* indigo_ccd_device_h */

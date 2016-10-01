@@ -64,7 +64,7 @@ static struct property_mapping legacy[] = {
     { "CONFIG_DEFAULT", "DEFAULT" },
     NULL }
   },
-  { "DRIVER_INFO", "DRIVER_INFO", {
+  { "DRIVER_INFO", "DEVICE_INFO", {
     { "DRIVER_NAME", "NAME" },
     { "DRIVER_VERSION", "VERSION" },
     { "DRIVER_INTERFACE", "INTERFACE" },

@@ -48,7 +48,7 @@ static indigo_property *connection_property;
 static indigo_property *ccd_exposure_property;
 static indigo_property *ccd_image_property;
 
-static int driver_pid;
+static int device_pid;
 
 static indigo_result client_attach(indigo_client *client) {
   connection_property = indigo_init_switch_property(NULL, "CCD Simulator", "CONNECTION", NULL, NULL, 0, 0, 0, 2);
@@ -62,7 +62,7 @@ static indigo_result client_attach(indigo_client *client) {
   return INDIGO_OK;
 }
 
-static indigo_result client_define_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message) {
+static indigo_result client_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
   if (message)
     indigo_log("message: %s", message);
   if (indigo_property_match(connection_property, property)) {
@@ -74,7 +74,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
   return INDIGO_OK;
 }
 
-static indigo_result client_update_property(struct indigo_client *client, struct indigo_driver *driver, indigo_property *property, const char *message) {
+static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
   if (message)
     indigo_log("message: %s", message);
   if (indigo_property_match(connection_property, property)) {
@@ -102,14 +102,11 @@ static indigo_result client_update_property(struct indigo_client *client, struct
     indigo_property_copy_values(ccd_image_property, property, true);
     if (ccd_image_property->state == INDIGO_OK_STATE) {
       indigo_log("image received (%d bytes)...", ccd_image_property->items[0].blob_size);
-      
-      int handle = open("client.fits", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-      if (handle) {
-        write(handle, ccd_image_property->items[0].blob_value, ccd_image_property->items[0].blob_size);
-        close(handle);
-      }
-      
-      
+//      int handle = open("client.fits", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+//      if (handle) {
+//        write(handle, ccd_image_property->items[0].blob_value, ccd_image_property->items[0].blob_size);
+//        close(handle);
+//      }
       connection_property->items[0].switch_value = false;
       connection_property->items[1].switch_value = true;
       indigo_change_property(client, connection_property);
@@ -120,14 +117,14 @@ static indigo_result client_update_property(struct indigo_client *client, struct
 }
 
 
-static indigo_result client_send_message(struct indigo_client *client, struct indigo_driver *driver, const char *message) {
+static indigo_result client_send_message(struct indigo_client *client, struct indigo_device *device, const char *message) {
   indigo_log("message: %s", message);
   return INDIGO_OK;
 }
 
 static indigo_result client_detach(indigo_client *client) {
   indigo_log("disconnected from INDI bus...");
-  kill(driver_pid, SIGKILL);
+  kill(device_pid, SIGKILL);
   exit(0);
   return INDIGO_OK;
 }
@@ -147,11 +144,11 @@ int main(int argc, const char * argv[]) {
   indigo_main_argv = argv;
   int input[2], output[2];
   if (pipe(input) < 0 || pipe(output) < 0) {
-    indigo_log("Can't create local pipe for driver (%s)", strerror(errno));
+    indigo_log("Can't create local pipe for device (%s)", strerror(errno));
     return 0;
   }
-  driver_pid = fork();
-  if (driver_pid == 0) {
+  device_pid = fork();
+  if (device_pid == 0) {
     close(0);
     dup2(output[0], 0);
     close(1);
@@ -161,8 +158,8 @@ int main(int argc, const char * argv[]) {
     close(input[1]);
     close(output[0]);
     indigo_start();
-    indigo_driver *protocol_adapter = xml_client_adapter(input[0], output[1]);
-    indigo_attach_driver(protocol_adapter);
+    indigo_device *protocol_adapter = xml_client_adapter(input[0], output[1]);
+    indigo_attach_device(protocol_adapter);
     indigo_attach_client(&client);
     indigo_xml_parse(input[0], protocol_adapter, NULL);
     indigo_stop();
