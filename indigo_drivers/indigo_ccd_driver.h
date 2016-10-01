@@ -40,7 +40,7 @@
 
 #define CCD_DEVICE_CONTEXT                ((indigo_ccd_device_context *)device->device_context)
 
-#define IMAGE_GROUP                       "Image"
+#define CCD_GROUP                       "CCD"
 
 #define CCD_INFO_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_info_property)
 #define CCD_INFO_WIDTH_ITEM               (CCD_INFO_PROPERTY->items+0)

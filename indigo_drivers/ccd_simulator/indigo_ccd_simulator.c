@@ -137,6 +137,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
   } else if (indigo_property_match(CONFIG_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CONFIG
     indigo_property_copy_values(CONFIG_PROPERTY, property, false);
+    indigo_save_init();
   } else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_EXPOSURE
     indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);

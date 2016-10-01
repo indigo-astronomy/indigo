@@ -44,7 +44,7 @@
 
 #include "indigo_timer.h"
 
-static pthread_mutex_t timer_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
   bool in_use;

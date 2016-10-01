@@ -60,7 +60,7 @@ static indigo_result client_attach(indigo_client *client) {
   indigo_init_number_item(&ccd_exposure_property->items[0], "EXPOSURE", NULL, 0, 0, 0, 0);
   ccd_image_property = indigo_init_blob_property(NULL, DEVICE_NAME, "CCD_IMAGE", NULL, NULL, 0, 1);
   indigo_init_blob_item(&ccd_image_property->items[0], "IMAGE", NULL);
-  indigo_log("connected to INDI bus...");
+  indigo_log("attached to INDI bus...");
   return INDIGO_OK;
 }
 
@@ -125,7 +125,7 @@ static indigo_result client_send_message(struct indigo_client *client, struct in
 }
 
 static indigo_result client_detach(indigo_client *client) {
-  indigo_log("disconnected from INDI bus...");
+  indigo_log("detached from INDI bus...");
   kill(device_pid, SIGKILL);
   exit(0);
   return INDIGO_OK;

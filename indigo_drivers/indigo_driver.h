@@ -40,7 +40,6 @@
 #define DEVICE_CONTEXT                ((indigo_device_context *)device->device_context)
 
 #define MAIN_GROUP                    "Main"
-#define OPTIONS_GROUP                 "Options"
 
 #define PRIVATE_DATA                  (DEVICE_CONTEXT->private_data)
 
@@ -86,8 +85,10 @@ extern indigo_result indigo_device_enumerate_properties(indigo_device *device, i
 extern indigo_result indigo_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 extern indigo_result indigo_device_detach(indigo_device *device);
 
+extern void indigo_save_init();
 extern void indigo_save_property(indigo_property *property);
-extern indigo_result indigo_save_properties(indigo_device *device);
+extern indigo_result indigo_save_properties();
+
 indigo_result indigo_load_properties(indigo_device *device, bool default_properties);
 
 #endif /* indigo_device_h */
