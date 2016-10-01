@@ -86,8 +86,8 @@ char *indigo_switch_rule_text[] = {
 };
 
 indigo_property INDIGO_ALL_PROPERTIES;
-const char **indigo_main_argv;
-int indigo_main_argc;
+const char **indigo_main_argv = NULL;
+int indigo_main_argc = 0;
 
 static void log_message(const char *format, va_list args) {
   static char buffer[256];
@@ -116,11 +116,15 @@ static void log_message(const char *format, va_list args) {
     snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d ", tmnow.tv_usec);
     static const char *log_executable_name = NULL;
     if (log_executable_name == NULL) {
-      log_executable_name = strrchr(indigo_main_argv[0], '/');
-      if (log_executable_name != NULL)
-        log_executable_name++;
-      else
-        log_executable_name = indigo_main_argv[0];
+      if (indigo_main_argc == 0) {
+        log_executable_name = "Application";
+      } else {
+        log_executable_name = strrchr(indigo_main_argv[0], '/');
+        if (log_executable_name != NULL)
+          log_executable_name++;
+        else
+          log_executable_name = indigo_main_argv[0];
+      }
     }
     while (line) {
       char *eol = strchr(line, '\n');
