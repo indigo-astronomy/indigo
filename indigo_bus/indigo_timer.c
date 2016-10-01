@@ -47,6 +47,7 @@
 static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
+  bool initialized;
   bool in_use;
   bool cancel;
   pthread_t thread;
@@ -117,12 +118,12 @@ indigo_result indigo_set_timer(indigo_device *device, int timer_id, void *data, 
         timer->data = data;
         timer->delay = delay;
         timer->callback = callback;
-        if (timer->thread == NULL) {
-          pthread_create(&timer->thread, NULL, (void*)(void *)thread_handler, timer);
-        } else {
+        if (timer->initialized) {
           pthread_mutex_lock(&timer->timer_mutex);
           pthread_cond_signal(&timer->timer_cond);
           pthread_mutex_unlock(&timer->timer_mutex);
+        } else {
+          pthread_create(&timer->thread, NULL, (void*)(void *)thread_handler, timer);
         }
         pthread_mutex_unlock(&timer_mutex);
         return INDIGO_OK;
