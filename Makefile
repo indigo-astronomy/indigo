@@ -23,13 +23,13 @@ indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
 indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o indigo_ccd_simulator.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^
 
-test: indigo_test/test.o libindigo.a indigo_ccd_simulator.a
+test: indigo_test/test.o indigo_ccd_simulator.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^
 
 client: indigo_test/client.o libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^
 
-server: indigo_test/server.o libindigo.a indigo_ccd_simulator.a
+server: indigo_test/server.o indigo_ccd_simulator.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
