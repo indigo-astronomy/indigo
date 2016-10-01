@@ -39,7 +39,7 @@
 
 // Wrappers for debug code inclusion, do not touch INDIGO_ERROR and INDIGO_LOG!
 #define INDIGO_TRACE(c)
-#define INDIGO_DEBUG(c)
+#define INDIGO_DEBUG(c) c
 #define INDIGO_ERROR(c) c
 #define INDIGO_LOG(c) c
 

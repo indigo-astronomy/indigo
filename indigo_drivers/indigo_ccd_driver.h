@@ -64,7 +64,7 @@
 #define CCD_FRAME_WIDTH_ITEM              (CCD_FRAME_PROPERTY->items+2)
 #define CCD_FRAME_HEIGHT_ITEM             (CCD_FRAME_PROPERTY->items+3)
 
-#define CCD_BIN_PROPERTY                  (CCD_DRIVER_CONTEXT->ccd_frame_property)
+#define CCD_BIN_PROPERTY                  (CCD_DRIVER_CONTEXT->ccd_bin_property)
 #define CCD_BIN_HORIZONTAL_ITEM           (CCD_BIN_PROPERTY->items+0)
 #define CCD_BIN_VERTICAL_ITEM             (CCD_BIN_PROPERTY->items+1)
 
@@ -107,7 +107,7 @@ typedef struct {
   indigo_property *ccd_exposure_property;
   indigo_property *ccd_abort_exposure_property;
   indigo_property *ccd_frame_property;
-  indigo_property *ccd_binning_property;
+  indigo_property *ccd_bin_property;
   indigo_property *ccd_frame_type_property;
   indigo_property *ccd_image_format;
   indigo_property *ccd_image_property;

@@ -39,6 +39,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
+#include <fcntl.h>
 
 #include "indigo_bus.h"
 #include "indigo_client_xml.h"
@@ -101,6 +102,14 @@ static indigo_result client_update_property(struct indigo_client *client, struct
     indigo_property_copy_values(ccd_image_property, property, true);
     if (ccd_image_property->state == INDIGO_OK_STATE) {
       indigo_log("image received (%d bytes)...", ccd_image_property->items[0].blob_size);
+      
+      int handle = open("client.fits", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      if (handle) {
+        write(handle, ccd_image_property->items[0].blob_value, ccd_image_property->items[0].blob_size);
+        close(handle);
+      }
+      
+      
       connection_property->items[0].switch_value = false;
       connection_property->items[1].switch_value = true;
       indigo_change_property(client, connection_property);

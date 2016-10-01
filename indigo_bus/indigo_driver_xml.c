@@ -192,11 +192,12 @@ static indigo_result xml_driver_adapter_update_property(indigo_client *client, i
               j = 0;
             }
           }
+          int output_length = 4 * ((input_length % 72 + 2) / 3);
           for (int i = 0; i < mod_table[input_length % 3]; i++) {
-            encoded_data[j++] = '=';
+            encoded_data[output_length - 1 - i] = '=';
           }
-          encoded_data[j++] = '\n';
-          encoded_data[j++] = 0;
+          encoded_data[output_length++] = '\n';
+          encoded_data[output_length] = 0;
           indigo_xml_prinf(handle, encoded_data);
           indigo_xml_prinf(handle, "</oneBLOB>\n");
         }

@@ -250,6 +250,7 @@ indigo_result indigo_ccd_driver_detach(indigo_driver *driver) {
 }
 
 void *indigo_convert_to_fits(indigo_driver *driver, double exposure_time) {
+  INDIGO_DEBUG(clock_t start = clock());
   time_t timer;
   struct tm* tm_info;
   char now[20];
@@ -258,31 +259,35 @@ void *indigo_convert_to_fits(indigo_driver *driver, double exposure_time) {
   strftime(now, 20, "%Y:%m:%dT%H:%M:%S", tm_info);
   char *header = CCD_IMAGE_ITEM->blob_value;
   memset(header, ' ', FITS_HEADER_SIZE);
-  int t = sprintf(header, "SIMPLE  =                     T / file conforms to FITS standard"); header[t] = 0;
-  t = sprintf(header += 80, "BITPIX  = %21d / number of bits per data pixel", (int)CCD_INFO_BITS_PER_PIXEL_ITEM->number_value); header[t] = 0;
-  t = sprintf(header += 80, "NAXIS   =                     2 / number of data axes"); header[t] = 0;
-  t = sprintf(header += 80, "NAXIS1  = %21d / length of data axis 1", (int)CCD_FRAME_WIDTH_ITEM->number_value); header[t] = 0;
-  t = sprintf(header += 80, "NAXIS2  = %21d / length of data axis 2", (int)CCD_FRAME_HEIGHT_ITEM->number_value); header[t] = 0;
-  t = sprintf(header += 80, "EXTEND  =                     T / FITS dataset may contain extensions"); header[t] = 0;
-  t = sprintf(header += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy"); header[t] = 0;
-  t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); header[t] = 0;
-  t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short"); header[t] = 0;
-  t = sprintf(header += 80, "BSCALE  =                     1 / default scaling factor"); header[t] = 0;
-  t = sprintf(header += 80, "XBINNING= %21d / horizontal binning mode", (int)CCD_BIN_HORIZONTAL_ITEM->number_value); header[t] = 0;
-  t = sprintf(header += 80, "YBINNING= %21d / vertical binning mode", (int)CCD_BIN_VERTICAL_ITEM->number_value); header[t] = 0;
-  t = sprintf(header += 80, "XPIXSZ  = %21.2g / pixel width in microns", CCD_INFO_PIXEL_WIDTH_ITEM->number_value); header[t] = 0;
-  t = sprintf(header += 80, "YPIXSZ  = %21.2g / pixel height in microns", CCD_INFO_PIXEL_HEIGHT_ITEM->number_value); header[t] = 0;
-  t = sprintf(header += 80, "EXPTIME = %21.2g / exposure time [s]", exposure_time); header[t] = 0;
+  int t = sprintf(header, "SIMPLE  =                     T / file conforms to FITS standard"); header[t] = ' ';
+  t = sprintf(header += 80, "BITPIX  = %21d / number of bits per data pixel", (int)CCD_INFO_BITS_PER_PIXEL_ITEM->number_value); header[t] = ' ';
+  t = sprintf(header += 80, "NAXIS   =                     2 / number of data axes"); header[t] = ' ';
+  t = sprintf(header += 80, "NAXIS1  = %21d / length of data axis 1", (int)CCD_FRAME_WIDTH_ITEM->number_value); header[t] = ' ';
+  t = sprintf(header += 80, "NAXIS2  = %21d / length of data axis 2", (int)CCD_FRAME_HEIGHT_ITEM->number_value); header[t] = ' ';
+  t = sprintf(header += 80, "EXTEND  =                     T / FITS dataset may contain extensions"); header[t] = ' ';
+  t = sprintf(header += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy"); header[t] = ' ';
+  t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); header[t] = ' ';
+  t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short"); header[t] = ' ';
+  t = sprintf(header += 80, "BSCALE  =                     1 / default scaling factor"); header[t] = ' ';
+  t = sprintf(header += 80, "XBINNING= %21d / horizontal binning mode", (int)CCD_BIN_HORIZONTAL_ITEM->number_value); header[t] = ' ';
+  t = sprintf(header += 80, "YBINNING= %21d / vertical binning mode", (int)CCD_BIN_VERTICAL_ITEM->number_value); header[t] = ' ';
+  t = sprintf(header += 80, "XPIXSZ  = %21.2g / pixel width in microns", CCD_INFO_PIXEL_WIDTH_ITEM->number_value); header[t] = ' ';
+  t = sprintf(header += 80, "YPIXSZ  = %21.2g / pixel height in microns", CCD_INFO_PIXEL_HEIGHT_ITEM->number_value); header[t] = ' ';
+  t = sprintf(header += 80, "EXPTIME = %21.2g / exposure time [s]", exposure_time); header[t] = ' ';
   if (!isnan(CCD_TEMPERATURE_ITEM->number_value)) {
-    t = sprintf(header += 80, "CCD-TEMP= %21.2g / CCD temperature in C", CCD_TEMPERATURE_ITEM->number_value); header[t] = 0;
+    t = sprintf(header += 80, "CCD-TEMP= %21.2g / CCD temperature in C", CCD_TEMPERATURE_ITEM->number_value); header[t] = ' ';
   }
-  t = sprintf(header += 80, "DATE    = '%s' / UTC date that FITS file was created", now); header[t] = 0;
-  t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", INFO_DRIVER_NAME_ITEM->text_value, (int)(19 - strlen(INFO_DRIVER_NAME_ITEM->text_value)), ' '); header[t] = 0;
-  t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see http://www.indigo-astronomy.org", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF); header[t] = 0;
-  t = sprintf(header += 80, "END"); header[t] = 0;
-  unsigned short *data = (unsigned short *)(CCD_IMAGE_ITEM->blob_value + FITS_HEADER_SIZE);
+  t = sprintf(header += 80, "DATE    = '%s' / UTC date that FITS file was created", now); header[t] = ' ';
+  t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", INFO_DRIVER_NAME_ITEM->text_value, (int)(19 - strlen(INFO_DRIVER_NAME_ITEM->text_value)), ' '); header[t] = ' ';
+  t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see http://www.indigo-astronomy.org", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF); header[t] = ' ';
+  t = sprintf(header += 80, "END"); header[t] = ' ';
+  
+  short *data = (short *)(CCD_IMAGE_ITEM->blob_value + FITS_HEADER_SIZE);
   int size = CCD_INFO_WIDTH_ITEM->number_value * CCD_INFO_HEIGHT_ITEM->number_value;
-  for (int i = 0; i < size; i++)
-    *data++ = (*data & 0xff) << 8 | (*data & 0xff00) >> 8;
+  for (int i = 0; i < size; i++) {
+    int value = *data - 32768;
+    *data++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+  }
+  INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
   return INDIGO_OK;
 }

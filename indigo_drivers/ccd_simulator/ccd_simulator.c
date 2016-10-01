@@ -53,8 +53,8 @@ static indigo_result ccd_simulator_attach(indigo_driver *driver) {
     SIMULATION_ENABLED_ITEM->switch_value = true;
     SIMULATION_DISABLED_ITEM->switch_value = false;
     // -------------------------------------------------------------------------------- CCD_INFO
-    CCD_INFO_WIDTH_ITEM->number_value = 1600;
-    CCD_INFO_HEIGHT_ITEM->number_value = 1200;
+    CCD_INFO_WIDTH_ITEM->number_value = 4096;
+    CCD_INFO_HEIGHT_ITEM->number_value = 4096;
     CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number_value = 2;
     CCD_INFO_MAX_VERTICAL_BIN_ITEM->number_value = 2;
     CCD_INFO_PIXEL_SIZE_ITEM->number_value = 5.2;
@@ -90,11 +90,11 @@ static void exposure_timer_callback(indigo_driver *driver, int timer_id, void *d
     CCD_EXPOSURE_ITEM->number_value = 0;
     indigo_update_property(driver, CCD_EXPOSURE_PROPERTY, "Exposure done");
     short *raw = (short *)(CCD_IMAGE_ITEM->blob_value+FITS_HEADER_SIZE);
-    int width = CCD_INFO_WIDTH_ITEM->number_value;
-    int height = CCD_INFO_HEIGHT_ITEM->number_value;
+    int width = CCD_FRAME_WIDTH_ITEM->number_value;
+    int height = CCD_FRAME_HEIGHT_ITEM->number_value;
     int size = width * height;
     for (int i = 0; i < size; i++)
-      raw[i] = (rand() & 0xFF) - 0x8000; // noise
+      raw[i] = (rand() & 0xFF); // noise
     
     for (int i = 0; i < 100; i++) {
       double centerX = star_x[i]+rand()/(double)RAND_MAX/5-0.5;
