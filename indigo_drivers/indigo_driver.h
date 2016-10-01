@@ -42,6 +42,8 @@
 #define MAIN_GROUP                    "Main"
 #define OPTIONS_GROUP                 "Options"
 
+#define PRIVATE_DATA                  (DEVICE_CONTEXT->private_data)
+
 #define CONNECTION_PROPERTY           (DEVICE_CONTEXT->connection_property)
 #define CONNECTION_CONNECTED_ITEM     (CONNECTION_PROPERTY->items+0)
 #define CONNECTION_DISCONNECTED_ITEM  (CONNECTION_PROPERTY->items+1)

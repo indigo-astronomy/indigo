@@ -43,12 +43,14 @@
 #include "indigo_driver_xml.h"
 #include "indigo_server_xml.h"
 
+#define DEVICE_NAME "CCD Simulator"
+
 int main(int argc, const char * argv[]) {
   indigo_main_argc = argc;
   indigo_main_argv = argv;
   indigo_client *protocol_adapter = xml_device_adapter(0, 1);
   indigo_start();
-  indigo_attach_device(ccd_simulator());
+  indigo_attach_device(ccd_simulator(DEVICE_NAME));
   indigo_attach_client(protocol_adapter);
   indigo_xml_parse(0, NULL, protocol_adapter);
   indigo_stop();

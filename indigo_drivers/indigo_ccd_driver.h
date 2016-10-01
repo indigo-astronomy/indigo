@@ -74,10 +74,10 @@
 #define CCD_FRAME_TYPE_DARK_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+2)
 #define CCD_FRAME_TYPE_FLAT_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+3)
 
-#define CCD_IMAGE_FORMAT_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_frame_type_property)
-#define CCD_IMAGE_FORMAT_FITS_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+0)
-#define CCD_IMAGE_FORMAT_JPEG_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+1)
-#define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+2)
+#define CCD_IMAGE_FORMAT_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_image_format_property)
+#define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+0)
+#define CCD_IMAGE_FORMAT_FITS_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+1)
+#define CCD_IMAGE_FORMAT_JPEG_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+2)
 
 #define CCD_IMAGE_PROPERTY                (CCD_DEVICE_CONTEXT->ccd_image_property)
 #define CCD_IMAGE_ITEM                    (CCD_IMAGE_PROPERTY->items+0)
@@ -95,21 +95,14 @@
 #define FITS_HEADER_SIZE  2880
 
 typedef struct {
-  void *private_data;
-  // indigo_device_context
-  indigo_property *connection_property;
-  indigo_property *info_property;
-  indigo_property *debug_property;
-  indigo_property *simulation_property;
-  indigo_property *congfiguration_property;
-  // indigo_ccd_device_context
+  indigo_device_context device_context;
   indigo_property *ccd_info_property;
   indigo_property *ccd_exposure_property;
   indigo_property *ccd_abort_exposure_property;
   indigo_property *ccd_frame_property;
   indigo_property *ccd_bin_property;
   indigo_property *ccd_frame_type_property;
-  indigo_property *ccd_image_format;
+  indigo_property *ccd_image_format_property;
   indigo_property *ccd_image_property;
   indigo_property *ccd_temperature_property;
   indigo_property *ccd_cooler_property;

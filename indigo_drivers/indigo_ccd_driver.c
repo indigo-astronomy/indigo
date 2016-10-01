@@ -45,8 +45,10 @@
 indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int version) {
   assert(device != NULL);
   assert(device != NULL);
-  if (CCD_DEVICE_CONTEXT == NULL)
+  if (CCD_DEVICE_CONTEXT == NULL) {
     device->device_context = malloc(sizeof(indigo_ccd_device_context));
+    PRIVATE_DATA = NULL;
+  }
   if (CCD_DEVICE_CONTEXT != NULL) {
     if (indigo_device_attach(device, name, version, 2) == INDIGO_OK) {
       // -------------------------------------------------------------------------------- CCD_INFO
@@ -93,6 +95,13 @@ indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int ve
       indigo_init_switch_item(CCD_FRAME_TYPE_BIAS_ITEM, "BIAS", "Bias frame exposure", false);
       indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, "DARK", "Dark frame exposure", false);
       indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, "FLAT", "Flat field frame exposure", false);
+      // -------------------------------------------------------------------------------- IMAGE_FORMAT
+      CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, name, "IMAGE_FORMAT", MAIN_GROUP, "Image format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+      if (CCD_IMAGE_FORMAT_PROPERTY == NULL)
+        return INDIGO_FAILED;
+      indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_ITEM, "RAW", "Raw data", false);
+      indigo_init_switch_item(CCD_IMAGE_FORMAT_FITS_ITEM, "FITS", "FITS format", true);
+      indigo_init_switch_item(CCD_IMAGE_FORMAT_JPEG_ITEM, "JPEG", "JPEG format", false);
       // -------------------------------------------------------------------------------- CCD_IMAGE
       CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, name, "CCD_IMAGE", IMAGE_GROUP, "Image", INDIGO_IDLE_STATE, 1);
       if (CCD_IMAGE_PROPERTY == NULL)
@@ -137,6 +146,8 @@ indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indi
         indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
       if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property))
         indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
+      if (indigo_property_match(CCD_IMAGE_FORMAT_PROPERTY, property))
+        indigo_define_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
       if (indigo_property_match(CCD_IMAGE_PROPERTY, property))
         indigo_define_property(device, CCD_IMAGE_PROPERTY, NULL);
       if (indigo_property_match(CCD_COOLER_PROPERTY, property))
@@ -173,6 +184,7 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
       indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
       indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
       indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
+      indigo_define_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
       indigo_define_property(device, CCD_IMAGE_PROPERTY, NULL);
       indigo_define_property(device, CCD_COOLER_PROPERTY, NULL);
       indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
@@ -184,6 +196,7 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
       indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
       indigo_delete_property(device, CCD_BIN_PROPERTY, NULL);
       indigo_delete_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
+      indigo_delete_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
       indigo_delete_property(device, CCD_IMAGE_PROPERTY, NULL);
       indigo_delete_property(device, CCD_COOLER_PROPERTY, NULL);
       indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
@@ -198,6 +211,8 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
         indigo_save_property(CCD_BIN_PROPERTY);
       if (CCD_FRAME_TYPE_PROPERTY->perm == INDIGO_RW_PERM)
         indigo_save_property(CCD_FRAME_TYPE_PROPERTY);
+      if (CCD_IMAGE_FORMAT_PROPERTY->perm == INDIGO_RW_PERM)
+        indigo_save_property(CCD_IMAGE_FORMAT_PROPERTY);
       if (CCD_COOLER_PROPERTY->perm == INDIGO_RW_PERM)
         indigo_save_property(CCD_COOLER_PROPERTY);
       if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM)
@@ -246,7 +261,18 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
 
 indigo_result indigo_ccd_device_detach(indigo_device *device) {
   assert(device != NULL);
-  return INDIGO_OK;
+  free(CCD_INFO_PROPERTY);
+  free(CCD_EXPOSURE_PROPERTY);
+  free(CCD_ABORT_EXPOSURE_PROPERTY);
+  free(CCD_FRAME_PROPERTY);
+  free(CCD_BIN_PROPERTY);
+  free(CCD_FRAME_TYPE_PROPERTY);
+  free(CCD_IMAGE_FORMAT_PROPERTY);
+  free(CCD_IMAGE_PROPERTY);
+  free(CCD_TEMPERATURE_PROPERTY);
+  free(CCD_COOLER_PROPERTY);
+  free(CCD_COOLER_POWER_PROPERTY);
+  return indigo_device_detach(device);
 }
 
 void *indigo_convert_to_fits(indigo_device *device, double exposure_time) {

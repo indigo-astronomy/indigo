@@ -50,8 +50,10 @@
 indigo_result indigo_device_attach(indigo_device *device, char *name, int version, int interface) {
   assert(device != NULL);
   assert(device != NULL);
-  if (DEVICE_CONTEXT == NULL)
+  if (DEVICE_CONTEXT == NULL) {
     device->device_context = malloc(sizeof(indigo_device_context));
+    PRIVATE_DATA = NULL;
+  }
   if (DEVICE_CONTEXT != NULL) {
     // -------------------------------------------------------------------------------- CONNECTION
     CONNECTION_PROPERTY = indigo_init_switch_property(NULL, name, "CONNECTION", MAIN_GROUP, "Connection", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -155,6 +157,13 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 }
 
 indigo_result indigo_device_detach(indigo_device *device) {
+  assert(device != NULL);  
+  free(CONNECTION_PROPERTY);
+  free(INFO_PROPERTY);
+  free(DEBUG_PROPERTY);
+  free(SIMULATION_PROPERTY);
+  free(CONFIG_PROPERTY);
+  free(DEVICE_CONTEXT);
   return INDIGO_OK;
 }
 
