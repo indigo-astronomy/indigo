@@ -39,72 +39,40 @@
 #include <assert.h>
 
 #include "indigo_ccd_simulator.h"
-#include "indigo_timer.h"
 #include "indigo_driver_xml.h"
+
+#define WIDTH               1600
+#define HEIGHT              1200
+
+#define STARS               100
+
+#define EXPOSURE_TIMER      10
+#define TEMPERATURE_TIMER   11
+
+#undef PRIVATE_DATA
+#define PRIVATE_DATA        ((private_data_type *)DEVICE_CONTEXT->private_data)
+
 
 typedef struct {
   char name[INDIGO_NAME_SIZE];
-  int star_x[100], star_y[100], star_a[100];
+  int star_x[STARS], star_y[STARS], star_a[STARS];
+  char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
+  double target_temperature, current_temperature;
 } private_data_type;
 
-static indigo_result attach(indigo_device *device) {
-  assert(device != NULL);
-  assert(device->device_context != NULL);
-  
-  private_data_type *private_data = device->device_context;
-  device->device_context = NULL;
-  
-  if (indigo_ccd_device_attach(device, private_data->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
-    PRIVATE_DATA = private_data;
-    // -------------------------------------------------------------------------------- SIMULATION
-    SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
-    SIMULATION_ENABLED_ITEM->switch_value = true;
-    SIMULATION_DISABLED_ITEM->switch_value = false;
-    // -------------------------------------------------------------------------------- CCD_INFO
-    CCD_INFO_WIDTH_ITEM->number_value = 1600;
-    CCD_INFO_HEIGHT_ITEM->number_value = 1200;
-    CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number_value = 2;
-    CCD_INFO_MAX_VERTICAL_BIN_ITEM->number_value = 2;
-    CCD_INFO_PIXEL_SIZE_ITEM->number_value = 5.2;
-    CCD_INFO_PIXEL_WIDTH_ITEM->number_value = 5.2;
-    CCD_INFO_PIXEL_HEIGHT_ITEM->number_value = 5.2;
-    CCD_INFO_BITS_PER_PIXEL_ITEM->number_value = 16;
-    // -------------------------------------------------------------------------------- CCD_FRAME
-    CCD_FRAME_WIDTH_ITEM->number_max = CCD_FRAME_WIDTH_ITEM->number_value = CCD_INFO_WIDTH_ITEM->number_value;
-    CCD_FRAME_HEIGHT_ITEM->number_max = CCD_FRAME_HEIGHT_ITEM->number_value = CCD_INFO_HEIGHT_ITEM->number_value;
-    // -------------------------------------------------------------------------------- CCD_IMAGE
-    int width = CCD_INFO_WIDTH_ITEM->number_value;
-    int height = CCD_INFO_HEIGHT_ITEM->number_value;
-    int blob_size = FITS_HEADER_SIZE + 2 * width * height;
-    char *blob = malloc(blob_size);
-    if (blob == NULL)
-      return INDIGO_FAILED;
-    CCD_IMAGE_ITEM->blob_size = blob_size;
-    strncpy(CCD_IMAGE_ITEM->blob_format, ".fits", INDIGO_NAME_SIZE);
-    CCD_IMAGE_ITEM->blob_value = blob;
-    for (int i = 0; i < 100; i++) {
-      private_data->star_x[i] = rand() % (width - 20) + 10;
-      private_data->star_y[i] = rand() % (height - 20) + 10;
-      private_data->star_a[i] = 1000 * (rand() % 60);
-    }
-    return INDIGO_OK;
-  }
-  return INDIGO_FAILED;
-}
-
-static void exposure_timer_callback(indigo_device *device, int timer_id, void *data, double delay) {
+static void exposure_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
     CCD_EXPOSURE_ITEM->number_value = 0;
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
-    short *raw = (short *)(CCD_IMAGE_ITEM->blob_value+FITS_HEADER_SIZE);
+    private_data_type *private_data = PRIVATE_DATA;
+    unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
     int width = CCD_FRAME_WIDTH_ITEM->number_value;
     int height = CCD_FRAME_HEIGHT_ITEM->number_value;
     int size = width * height;
     for (int i = 0; i < size; i++)
       raw[i] = (rand() & 0xFF); // noise
-    private_data_type *private_data = PRIVATE_DATA;
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < STARS; i++) {
       double centerX = private_data->star_x[i]+rand()/(double)RAND_MAX/5-0.5;
       double centerY = private_data->star_y[i]+rand()/(double)RAND_MAX/5-0.5;
       int a = private_data->star_a[i];
@@ -120,10 +88,83 @@ static void exposure_timer_callback(indigo_device *device, int timer_id, void *d
         }
       }
     }
-    indigo_convert_to_fits(device, delay);
-    CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
-    indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+    indigo_process_image(device, private_data->image, delay);
   }
+}
+
+static void ccd_temperature_callback(indigo_device *device, unsigned timer_id, double delay) {
+  double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
+  if (diff > 0) {
+    if (diff > 10) {
+      if (CCD_COOLER_ON_ITEM->switch_value && CCD_COOLER_POWER_ITEM->number_value != 100) {
+        CCD_COOLER_POWER_ITEM->number_value = 100;
+        indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+      }
+    } else if (diff > 5) {
+      if (CCD_COOLER_ON_ITEM->switch_value && CCD_COOLER_POWER_ITEM->number_value != 50) {
+        CCD_COOLER_POWER_ITEM->number_value = 50;
+        indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+      }
+    }
+    CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->switch_value ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+    CCD_TEMPERATURE_ITEM->number_value = --(PRIVATE_DATA->current_temperature);
+    indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+  } else if (diff < 0) {
+    if (CCD_COOLER_POWER_ITEM->number_value > 0) {
+      CCD_COOLER_POWER_ITEM->number_value = 0;
+      indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+    }
+    CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->switch_value ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+    CCD_TEMPERATURE_ITEM->number_value = ++(PRIVATE_DATA->current_temperature);
+    indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+  } else {
+    CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->switch_value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+    indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+  }
+  indigo_set_timer(device, TEMPERATURE_TIMER, delay, ccd_temperature_callback);
+}
+
+static indigo_result attach(indigo_device *device) {
+  assert(device != NULL);
+  assert(device->device_context != NULL);
+  
+  private_data_type *private_data = device->device_context;
+  device->device_context = NULL;
+  
+  if (indigo_ccd_device_attach(device, private_data->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+    DEVICE_CONTEXT->private_data = private_data;
+    // -------------------------------------------------------------------------------- SIMULATION
+    SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
+    SIMULATION_ENABLED_ITEM->switch_value = true;
+    SIMULATION_DISABLED_ITEM->switch_value = false;
+    // -------------------------------------------------------------------------------- CCD_INFO
+    CCD_INFO_WIDTH_ITEM->number_value = WIDTH;
+    CCD_INFO_HEIGHT_ITEM->number_value = HEIGHT;
+    CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number_value = 2;
+    CCD_INFO_MAX_VERTICAL_BIN_ITEM->number_value = 2;
+    CCD_INFO_PIXEL_SIZE_ITEM->number_value = 5.2;
+    CCD_INFO_PIXEL_WIDTH_ITEM->number_value = 5.2;
+    CCD_INFO_PIXEL_HEIGHT_ITEM->number_value = 5.2;
+    CCD_INFO_BITS_PER_PIXEL_ITEM->number_value = 16;
+    // -------------------------------------------------------------------------------- CCD_FRAME
+    CCD_FRAME_WIDTH_ITEM->number_max = CCD_FRAME_WIDTH_ITEM->number_value = WIDTH;
+    CCD_FRAME_HEIGHT_ITEM->number_max = CCD_FRAME_HEIGHT_ITEM->number_value = HEIGHT;
+    // -------------------------------------------------------------------------------- CCD_IMAGE
+    for (int i = 0; i < STARS; i++) {
+      private_data->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions
+      private_data->star_y[i] = rand() % (HEIGHT - 20) + 10;
+      private_data->star_a[i] = 1000 * (rand() % 60);       // and brightness
+    }
+    // -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
+    indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
+    private_data->target_temperature = private_data->current_temperature = CCD_TEMPERATURE_ITEM->number_value = 25;
+    CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+    CCD_COOLER_POWER_ITEM->number_value = 0;
+    indigo_set_timer(device, TEMPERATURE_TIMER, 5, ccd_temperature_callback);
+    // --------------------------------------------------------------------------------
+    return INDIGO_OK;
+  }
+  return INDIGO_FAILED;
 }
 
 static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -134,24 +175,49 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
     // -------------------------------------------------------------------------------- CONNECTION
     indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
     CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-  } else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-    // -------------------------------------------------------------------------------- CONFIG
-    indigo_property_copy_values(CONFIG_PROPERTY, property, false);
-    indigo_save_init();
   } else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_EXPOSURE
     indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
     CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure initiated");
-    CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-    indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-    indigo_set_timer(device, 2, NULL, CCD_EXPOSURE_ITEM->number_value, exposure_timer_callback);
+    if (CCD_UPLOAD_MODE_LOCAL_ITEM->switch_value) {
+      CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+      indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+    } else {
+      CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+      indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+    }
+    indigo_set_timer(device, EXPOSURE_TIMER, CCD_EXPOSURE_ITEM->number_value, exposure_timer_callback);
   } else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
     if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-      indigo_cancel_timer(device, 2);
+      indigo_cancel_timer(device, EXPOSURE_TIMER);
     }
     indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+  } else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CCD_COOLER
+    indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
+    if (CCD_COOLER_ON_ITEM->switch_value) {
+      CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+      CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+      PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number_value;
+    } else {
+      CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+      CCD_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+      CCD_COOLER_POWER_ITEM->number_value = 0;
+      PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number_value = 25;
+    }
+    indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+    indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+    indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+  } else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CCD_TEMPERATURE
+    indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
+    PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number_value;
+    CCD_TEMPERATURE_ITEM->number_value = PRIVATE_DATA->current_temperature;
+    CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+    indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
+    // --------------------------------------------------------------------------------
   }
   return indigo_ccd_device_change_property(device, client, property);
 }

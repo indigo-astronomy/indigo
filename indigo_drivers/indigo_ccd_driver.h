@@ -40,7 +40,9 @@
 
 #define CCD_DEVICE_CONTEXT                ((indigo_ccd_device_context *)device->device_context)
 
-#define CCD_GROUP                       "CCD"
+#define CCD_MAIN_GROUP                         "CCD main"
+#define CCD_IMAGE_GROUP                        "CCD image"
+#define CCD_COOLER_GROUP                       "CCD cooler"
 
 #define CCD_INFO_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_info_property)
 #define CCD_INFO_WIDTH_ITEM               (CCD_INFO_PROPERTY->items+0)
@@ -51,6 +53,15 @@
 #define CCD_INFO_PIXEL_WIDTH_ITEM         (CCD_INFO_PROPERTY->items+5)
 #define CCD_INFO_PIXEL_HEIGHT_ITEM        (CCD_INFO_PROPERTY->items+6)
 #define CCD_INFO_BITS_PER_PIXEL_ITEM      (CCD_INFO_PROPERTY->items+7)
+
+#define CCD_UPLOAD_MODE_PROPERTY          (CCD_DEVICE_CONTEXT->ccd_upload_mode_property)
+#define CCD_UPLOAD_MODE_CLIENT_ITEM       (CCD_UPLOAD_MODE_PROPERTY->items+0)
+#define CCD_UPLOAD_MODE_LOCAL_ITEM        (CCD_UPLOAD_MODE_PROPERTY->items+1)
+#define CCD_UPLOAD_MODE_BOTH_ITEM         (CCD_UPLOAD_MODE_PROPERTY->items+2)
+
+#define CCD_LOCAL_MODE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_local_mode_property)
+#define CCD_LOCAL_MODE_DIR_ITEM           (CCD_LOCAL_MODE_PROPERTY->items+0)
+#define CCD_LOCAL_MODE_PREFIX_ITEM        (CCD_LOCAL_MODE_PROPERTY->items+1)
 
 #define CCD_EXPOSURE_PROPERTY             (CCD_DEVICE_CONTEXT->ccd_exposure_property)
 #define CCD_EXPOSURE_ITEM                 (CCD_EXPOSURE_PROPERTY->items+0)
@@ -79,6 +90,9 @@
 #define CCD_IMAGE_FORMAT_FITS_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+1)
 #define CCD_IMAGE_FORMAT_JPEG_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+2)
 
+#define CCD_IMAGE_FILE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_image_file_property)
+#define CCD_IMAGE_FILE_ITEM               (CCD_IMAGE_FILE_PROPERTY->items+0)
+
 #define CCD_IMAGE_PROPERTY                (CCD_DEVICE_CONTEXT->ccd_image_property)
 #define CCD_IMAGE_ITEM                    (CCD_IMAGE_PROPERTY->items+0)
 
@@ -97,6 +111,8 @@
 typedef struct {
   indigo_device_context device_context;
   indigo_property *ccd_info_property;
+  indigo_property *ccd_upload_mode_property;
+  indigo_property *ccd_local_mode_property;
   indigo_property *ccd_exposure_property;
   indigo_property *ccd_abort_exposure_property;
   indigo_property *ccd_frame_property;
@@ -104,6 +120,7 @@ typedef struct {
   indigo_property *ccd_frame_type_property;
   indigo_property *ccd_image_format_property;
   indigo_property *ccd_image_property;
+  indigo_property *ccd_image_file_property;
   indigo_property *ccd_temperature_property;
   indigo_property *ccd_cooler_property;
   indigo_property *ccd_cooler_power_property;
@@ -123,6 +140,6 @@ typedef struct {
   } value;
 } indigo_fits_header;
 
-extern void indigo_convert_to_fits(indigo_device *device, double exposure_time);
+extern void indigo_process_image(indigo_device *device, void *data, double exposure_time);
 
 #endif /* indigo_ccd_device_h */

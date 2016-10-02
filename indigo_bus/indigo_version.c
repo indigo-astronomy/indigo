@@ -106,6 +106,21 @@ static struct property_mapping legacy[] = {
     { "FRAME_FLAT", "FLAT" },
     NULL }
   },
+  { "UPLOAD_MODE", "CCD_UPLOAD_MODE", {
+    { "UPLOAD_CLIENT", "CLIENT" },
+    { "UPLOAD_LOCAL", "LOCAL" },
+    { "UPLOAD_BOTH", "BOTH" },
+    NULL }
+  },
+  { "UPLOAD_SETTINGS", "CCD_LOCAL_MODE", {
+    { "UPLOAD_DIR", "DIR" },
+    { "UPLOAD_PREFIX", "PREFIX" },
+    NULL }
+  },
+  { "CCD_FILE_PATH", "CCD_IMAGE_FILE", {
+    { "FILE_PATH", "FILE" },
+    NULL }
+  },
   { "CCD1", "CCD_IMAGE", {
     { "CCD1", "IMAGE" },
     NULL }

@@ -109,6 +109,7 @@ typedef struct {
   indigo_property_perm perm;
   indigo_rule rule;
   short version;
+  bool hidden;
   int count;
   indigo_item items[];
 } indigo_property;
@@ -154,10 +155,10 @@ extern indigo_result indigo_attach_device(indigo_device *device);
 extern indigo_result indigo_detach_device(indigo_device *device);
 extern indigo_result indigo_attach_client(indigo_client *client);
 extern indigo_result indigo_detach_client(indigo_client *client);
-extern indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *message);
-extern indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *message);
-extern indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *message);
-extern indigo_result indigo_send_message(indigo_device *device, const char *message);
+extern indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...);
+extern indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...);
+extern indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...);
+extern indigo_result indigo_send_message(indigo_device *device, const char *format, ...);
 extern indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property);
 extern indigo_result indigo_change_property(indigo_client *client, indigo_property *property);
 extern indigo_result indigo_stop();
@@ -175,6 +176,7 @@ extern void indigo_init_light_item(indigo_item *item, const char *name, const ch
 extern void indigo_init_blob_item(indigo_item *item, const char *name, const char *label);
 
 extern bool indigo_property_match(indigo_property *property, indigo_property *other);
+extern bool indigo_switch_match(indigo_item *item, indigo_property *other);
 extern void indigo_set_switch(indigo_property *property, indigo_item *item, bool value);
 extern void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state);
 

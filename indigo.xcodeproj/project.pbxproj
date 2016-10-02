@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		599C9A311D9DA311008BBCC1 /* indigo_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A2E1D9D8C8C008BBCC1 /* indigo_timer.c */; };
 		599C9A3A1D9FF0A3008BBCC1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */; };
 		599C9A3C1D9FF0A3008BBCC1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */; };
 		599C9A3F1D9FF0A3008BBCC1 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3D1D9FF0A3008BBCC1 /* MainMenu.xib */; };
@@ -19,7 +18,6 @@
 		599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382031D9720C200E87393 /* indigo_driver_xml.c */; };
 		599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382061D97314C00E87393 /* indigo_client_xml.c */; };
 		599C9A531DA022E3008BBCC1 /* indigo_server_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F8061D9A89ED00582EAF /* indigo_server_xml.c */; };
-		599C9A541DA022E3008BBCC1 /* indigo_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A2E1D9D8C8C008BBCC1 /* indigo_timer.c */; };
 		599C9A551DA02303008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A581DA02797008BBCC1 /* indigo_ccd_simulator_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */; };
 		599C9A5C1DA028DF008BBCC1 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 592662B01D9590630021746A /* test.c */; };
@@ -115,8 +113,6 @@
 		592662AD1D9590630021746A /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
 		592662B01D9590630021746A /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
-		599C9A2E1D9D8C8C008BBCC1 /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_timer.c; sourceTree = "<group>"; };
-		599C9A2F1D9D8C8C008BBCC1 /* indigo_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_timer.h; sourceTree = "<group>"; };
 		599C9A371D9FF0A3008BBCC1 /* INDIGO Server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "INDIGO Server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -270,8 +266,6 @@
 				59D382061D97314C00E87393 /* indigo_client_xml.c */,
 				9D97F8071D9A89ED00582EAF /* indigo_server_xml.h */,
 				9D97F8061D9A89ED00582EAF /* indigo_server_xml.c */,
-				599C9A2F1D9D8C8C008BBCC1 /* indigo_timer.h */,
-				599C9A2E1D9D8C8C008BBCC1 /* indigo_timer.c */,
 			);
 			path = indigo_bus;
 			sourceTree = "<group>";
@@ -508,7 +502,6 @@
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				599C9A531DA022E3008BBCC1 /* indigo_server_xml.c in Sources */,
-				599C9A541DA022E3008BBCC1 /* indigo_timer.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -527,7 +520,6 @@
 			files = (
 				599C9A581DA02797008BBCC1 /* indigo_ccd_simulator_main.c in Sources */,
 				59D381FE1D97085600E87393 /* indigo_driver.c in Sources */,
-				599C9A311D9DA311008BBCC1 /* indigo_timer.c in Sources */,
 				9DF232A21D994C52000158B7 /* indigo_ccd_driver.c in Sources */,
 				59D381FF1D97085600E87393 /* indigo_ccd_simulator.c in Sources */,
 				59D382001D97085600E87393 /* indigo_bus.c in Sources */,
