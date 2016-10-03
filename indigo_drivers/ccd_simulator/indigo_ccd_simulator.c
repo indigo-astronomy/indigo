@@ -67,20 +67,22 @@ static void exposure_timer_callback(indigo_device *device, unsigned timer_id, do
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
     private_data_type *private_data = PRIVATE_DATA;
     unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
-    int width = CCD_FRAME_WIDTH_ITEM->number_value;
-    int height = CCD_FRAME_HEIGHT_ITEM->number_value;
+    int hbin = (int)CCD_BIN_HORIZONTAL_ITEM->number_value;
+    int vbin = (int)CCD_BIN_VERTICAL_ITEM->number_value;
+    int width = (int)CCD_FRAME_WIDTH_ITEM->number_value / hbin;
+    int height = (int)CCD_FRAME_HEIGHT_ITEM->number_value / vbin;
     int size = width * height;
     for (int i = 0; i < size; i++)
       raw[i] = (rand() & 0xFF); // noise
     for (int i = 0; i < STARS; i++) {
-      double centerX = private_data->star_x[i]+rand()/(double)RAND_MAX/5-0.5;
-      double centerY = private_data->star_y[i]+rand()/(double)RAND_MAX/5-0.5;
+      double centerX = (private_data->star_x[i]+rand()/(double)RAND_MAX/5-0.5)/hbin;
+      double centerY = (private_data->star_y[i]+rand()/(double)RAND_MAX/5-0.5)/vbin;
       int a = private_data->star_a[i];
-      int xMax = (int)round(centerX)+4;
-      int yMax = (int)round(centerY)+4;
-      for (int y = yMax-8; y <= yMax; y++) {
+      int xMax = (int)round(centerX)+4/hbin;
+      int yMax = (int)round(centerY)+4/vbin;
+      for (int y = yMax-8/vbin; y <= yMax; y++) {
         int yw = y*width;
-        for (int x = xMax-8; x <= xMax; x++) {
+        for (int x = xMax-8/hbin; x <= xMax; x++) {
           double xx = centerX-x;
           double yy = centerY-y;
           double v = a*exp(-(xx*xx/2.0+yy*yy/2.0));
@@ -149,6 +151,10 @@ static indigo_result attach(indigo_device *device) {
     // -------------------------------------------------------------------------------- CCD_FRAME
     CCD_FRAME_WIDTH_ITEM->number_max = CCD_FRAME_WIDTH_ITEM->number_value = WIDTH;
     CCD_FRAME_HEIGHT_ITEM->number_max = CCD_FRAME_HEIGHT_ITEM->number_value = HEIGHT;
+    // -------------------------------------------------------------------------------- CCD_BIN
+    CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+    CCD_BIN_HORIZONTAL_ITEM->number_max = 4;
+    CCD_BIN_VERTICAL_ITEM->number_max = 4;
     // -------------------------------------------------------------------------------- CCD_IMAGE
     for (int i = 0; i < STARS; i++) {
       private_data->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions

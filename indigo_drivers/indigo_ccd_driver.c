@@ -291,6 +291,8 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
   } else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_FRAME
     indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
+    CCD_FRAME_WIDTH_ITEM->number_value = ((int)CCD_FRAME_WIDTH_ITEM->number_value / (int)CCD_BIN_HORIZONTAL_ITEM->number_value) * (int)CCD_BIN_HORIZONTAL_ITEM->number_value;
+    CCD_FRAME_HEIGHT_ITEM->number_value = ((int)CCD_FRAME_HEIGHT_ITEM->number_value / (int)CCD_BIN_VERTICAL_ITEM->number_value) * (int)CCD_BIN_VERTICAL_ITEM->number_value;
     CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
     if (CONNECTION_CONNECTED_ITEM->switch_value)
       indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
@@ -300,6 +302,11 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
     CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
     if (CONNECTION_CONNECTED_ITEM->switch_value)
       indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+    CCD_FRAME_WIDTH_ITEM->number_value = ((int)CCD_FRAME_WIDTH_ITEM->number_value / (int)CCD_BIN_HORIZONTAL_ITEM->number_value) * (int)CCD_BIN_HORIZONTAL_ITEM->number_value;
+    CCD_FRAME_HEIGHT_ITEM->number_value = ((int)CCD_FRAME_HEIGHT_ITEM->number_value / (int)CCD_BIN_VERTICAL_ITEM->number_value) * (int)CCD_BIN_VERTICAL_ITEM->number_value;
+    CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+    if (CONNECTION_CONNECTED_ITEM->switch_value)
+      indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
   } else if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_FRAME_TYPE
     indigo_property_copy_values(CCD_FRAME_TYPE_PROPERTY, property, false);
@@ -347,8 +354,10 @@ void indigo_process_image(indigo_device *device, void *data, double exposure_tim
   assert(data != NULL);
   INDIGO_DEBUG(clock_t start = clock());
 
-  int width = CCD_FRAME_WIDTH_ITEM->number_value;
-  int height = CCD_FRAME_HEIGHT_ITEM->number_value;
+  int hbin = CCD_BIN_HORIZONTAL_ITEM->number_value;
+  int vbin = CCD_BIN_VERTICAL_ITEM->number_value;
+  int width = CCD_FRAME_WIDTH_ITEM->number_value / hbin;
+  int height = CCD_FRAME_HEIGHT_ITEM->number_value / vbin;
   int byte_per_pixel = CCD_INFO_BITS_PER_PIXEL_ITEM->number_value / 8;
   int size = width * height;
 
@@ -371,8 +380,8 @@ void indigo_process_image(indigo_device *device, void *data, double exposure_tim
     t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); header[t] = ' ';
     t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short"); header[t] = ' ';
     t = sprintf(header += 80, "BSCALE  =                     1 / default scaling factor"); header[t] = ' ';
-    t = sprintf(header += 80, "XBINNING= %21d / horizontal binning mode", (int)CCD_BIN_HORIZONTAL_ITEM->number_value); header[t] = ' ';
-    t = sprintf(header += 80, "YBINNING= %21d / vertical binning mode", (int)CCD_BIN_VERTICAL_ITEM->number_value); header[t] = ' ';
+    t = sprintf(header += 80, "XBINNING= %21d / horizontal binning mode", hbin); header[t] = ' ';
+    t = sprintf(header += 80, "YBINNING= %21d / vertical binning mode", vbin); header[t] = ' ';
     t = sprintf(header += 80, "XPIXSZ  = %21.2g / pixel width in microns", CCD_INFO_PIXEL_WIDTH_ITEM->number_value); header[t] = ' ';
     t = sprintf(header += 80, "YPIXSZ  = %21.2g / pixel height in microns", CCD_INFO_PIXEL_HEIGHT_ITEM->number_value); header[t] = ' ';
     t = sprintf(header += 80, "EXPTIME = %21.2g / exposure time [s]", exposure_time); header[t] = ' ';
