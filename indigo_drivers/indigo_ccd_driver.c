@@ -331,23 +331,25 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
 
 indigo_result indigo_ccd_device_detach(indigo_device *device) {
   assert(device != NULL);
-  indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_BIN_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-  indigo_delete_property(device, CCD_IMAGE_PROPERTY, NULL);
-  if (!CCD_COOLER_PROPERTY->hidden)
-    indigo_delete_property(device, CCD_COOLER_PROPERTY, NULL);
-  if (!CCD_COOLER_POWER_PROPERTY->hidden)
-    indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-  if (!CCD_TEMPERATURE_PROPERTY->hidden)
-    indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+  if (CONNECTION_CONNECTED_ITEM->switch_value) {
+    indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_BIN_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+    indigo_delete_property(device, CCD_IMAGE_PROPERTY, NULL);
+    if (!CCD_COOLER_PROPERTY->hidden)
+      indigo_delete_property(device, CCD_COOLER_PROPERTY, NULL);
+    if (!CCD_COOLER_POWER_PROPERTY->hidden)
+      indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+    if (!CCD_TEMPERATURE_PROPERTY->hidden)
+      indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+  }
   free(CCD_INFO_PROPERTY);
   free(CCD_UPLOAD_MODE_PROPERTY);
   free(CCD_LOCAL_MODE_PROPERTY);

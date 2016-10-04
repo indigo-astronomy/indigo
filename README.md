@@ -24,6 +24,12 @@ Internaly, every property sent over INDI bus has version attribute set for corre
 
 ------------------------------------------------------------------------------------------------
 
+### Proposed hot-plug behaviour:
+
+If hot-plug device is connected, driver should broadcast definition of the properties for disconnected state and if the device is disconnected, driver should broadcast removal of all defined properties depending on connection state. Driver XML protocol adapter should not forward such broadcasts over wire protocol until <getProperties/> message is received and protocol version negotiated.
+
+------------------------------------------------------------------------------------------------
+
 ### How to use it
 
 To build PoC, use

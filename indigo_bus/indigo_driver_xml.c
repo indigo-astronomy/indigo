@@ -74,6 +74,8 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, s
   assert(device != NULL);
   assert(client != NULL);
   assert(property != NULL);
+  if (client->version == INDIGO_VERSION_NONE)
+    return INDIGO_OK;
   pthread_mutex_lock(&xmutex);
   indigo_xml_device_adapter_context *client_context = (indigo_xml_device_adapter_context *)client->client_context;
   assert(client_context != NULL);
@@ -128,6 +130,8 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
   assert(device != NULL);
   assert(client != NULL);
   assert(property != NULL);
+  if (client->version == INDIGO_VERSION_NONE)
+    return INDIGO_OK;
   pthread_mutex_lock(&xmutex);
   indigo_xml_device_adapter_context *client_context = (indigo_xml_device_adapter_context *)client->client_context;
   assert(client_context != NULL);
@@ -213,6 +217,8 @@ static indigo_result xml_device_adapter_delete_property(indigo_client *client, i
   assert(device != NULL);
   assert(client != NULL);
   assert(property != NULL);
+  if (client->version == INDIGO_VERSION_NONE)
+    return INDIGO_OK;
   pthread_mutex_lock(&xmutex);
   indigo_xml_device_adapter_context *client_context = (indigo_xml_device_adapter_context *)client->client_context;
   assert(client_context != NULL);
@@ -225,6 +231,8 @@ static indigo_result xml_device_adapter_delete_property(indigo_client *client, i
 static indigo_result xml_device_adapter_send_message(indigo_client *client, indigo_device *device, const char *message) {
   assert(device != NULL);
   assert(client != NULL);
+  if (client->version == INDIGO_VERSION_NONE)
+    return INDIGO_OK;
   pthread_mutex_lock(&xmutex);
   indigo_xml_device_adapter_context *client_context = (indigo_xml_device_adapter_context *)client->client_context;
   assert(client_context != NULL);
@@ -237,7 +245,7 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 
 indigo_client *xml_device_adapter(int input, int ouput) {
   static indigo_client client_template = {
-    NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+    NULL, INDIGO_OK, INDIGO_VERSION_NONE,
     NULL,
     xml_device_adapter_define_property,
     xml_device_adapter_update_property,
