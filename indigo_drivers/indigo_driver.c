@@ -139,7 +139,6 @@ indigo_result indigo_device_attach(indigo_device *device, char *name, int versio
 indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
   assert(device != NULL);
   assert(device->device_context != NULL);
-  assert(property != NULL);
   if (indigo_property_match(CONNECTION_PROPERTY, property))
     indigo_define_property(device, CONNECTION_PROPERTY, NULL);
   if (indigo_property_match(INFO_PROPERTY, property))
@@ -210,6 +209,11 @@ indigo_result indigo_device_detach(indigo_device *device) {
   pthread_cond_signal(&DEVICE_CONTEXT->timer_cond);
   pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
   pthread_join(DEVICE_CONTEXT->timer_thread, NULL);
+  indigo_delete_property(device, CONNECTION_PROPERTY, NULL);
+  indigo_delete_property(device, INFO_PROPERTY, NULL);
+  indigo_delete_property(device, DEBUG_PROPERTY, NULL);
+  indigo_delete_property(device, SIMULATION_PROPERTY, NULL);
+  indigo_delete_property(device, CONFIG_PROPERTY, NULL);
   free(CONNECTION_PROPERTY);
   free(INFO_PROPERTY);
   free(DEBUG_PROPERTY);

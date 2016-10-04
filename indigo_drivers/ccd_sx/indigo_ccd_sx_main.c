@@ -32,43 +32,21 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-import Cocoa
+#include <stdio.h>
+#include <string.h>
 
-func serverCallback(count: Int32) {
-  NSLog("%d clients", count)
+#include "indigo_ccd_sx.h"
+#include "indigo_driver_xml.h"
+
+
+int main(int argc, const char * argv[]) {
+  indigo_main_argc = argc;
+  indigo_main_argv = argv;
+  indigo_client *protocol_adapter = xml_device_adapter(0, 1);
+  indigo_start();
+  indigo_ccd_sx_register();
+  indigo_attach_client(protocol_adapter);
+  indigo_xml_parse(0, NULL, protocol_adapter);
+  indigo_stop();
+  return 0;
 }
-
-@NSApplicationMain class AppDelegate: NSObject, NSApplicationDelegate, NetServiceDelegate {
-
-  @IBOutlet weak var window: NSWindow!
-
-  func netServiceWillPublish(_ sender: NetService) {
-    NSLog("INDIGO Service is ready to publish.")
-  }
-  
-  func netServiceDidPublish(_ sender: NetService) {
-    NSLog("INDIGO Service was successfully published.")
-  }
-  
-  func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
-    NSLog("INDIGO Service  could not be published.");
-    NSLog("%@", errorDict);
-  }
-  
-  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-    return true
-  }
-
-  func applicationDidFinishLaunching(_ notification: Notification) {
-    Thread() {
-      let service = NetService(domain: "", type: "_indi._tcp", name: "", port: 7624)
-      service.delegate = self
-      service.publish()
-      indigo_start()
-      indigo_attach_device(indigo_ccd_simulator())
-      indigo_ccd_sx_register()
-      indigo_server_xml(serverCallback)
-    }.start()
-  }
-}
-

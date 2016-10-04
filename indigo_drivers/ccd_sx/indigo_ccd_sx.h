@@ -32,43 +32,15 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-import Cocoa
 
-func serverCallback(count: Int32) {
-  NSLog("%d clients", count)
-}
+#ifndef ccd_sx_h
+#define ccd_sx_h
 
-@NSApplicationMain class AppDelegate: NSObject, NSApplicationDelegate, NetServiceDelegate {
+#include "indigo_driver.h"
+#include "indigo_ccd_driver.h"
+#include "indigo_usb.h"
 
-  @IBOutlet weak var window: NSWindow!
+extern indigo_result indigo_ccd_sx_register();
+extern indigo_device *indigo_ccd_sx(libusb_device *dev, const char *name);
 
-  func netServiceWillPublish(_ sender: NetService) {
-    NSLog("INDIGO Service is ready to publish.")
-  }
-  
-  func netServiceDidPublish(_ sender: NetService) {
-    NSLog("INDIGO Service was successfully published.")
-  }
-  
-  func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
-    NSLog("INDIGO Service  could not be published.");
-    NSLog("%@", errorDict);
-  }
-  
-  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-    return true
-  }
-
-  func applicationDidFinishLaunching(_ notification: Notification) {
-    Thread() {
-      let service = NetService(domain: "", type: "_indi._tcp", name: "", port: 7624)
-      service.delegate = self
-      service.publish()
-      indigo_start()
-      indigo_attach_device(indigo_ccd_simulator())
-      indigo_ccd_sx_register()
-      indigo_server_xml(serverCallback)
-    }.start()
-  }
-}
-
+#endif /* ccd_sx_h */

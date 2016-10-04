@@ -38,136 +38,110 @@
 #include <math.h>
 #include <assert.h>
 
-#include "indigo_ccd_simulator.h"
+#include "indigo_ccd_sx.h"
 #include "indigo_driver_xml.h"
 
-#define WIDTH               1600
-#define HEIGHT              1200
+#define SX_VENDOR_ID  0x1278
 
-#define STARS               100
+#define MAX_DEVICES         5
 
 #define EXPOSURE_TIMER      10
 #define TEMPERATURE_TIMER   11
 
 #undef PRIVATE_DATA
-#define PRIVATE_DATA        ((private_data_type *)DEVICE_CONTEXT->private_data)
-
+#define PRIVATE_DATA        ((sx_private_data *)DEVICE_CONTEXT->private_data)
 
 typedef struct {
+  libusb_device *dev;
+  libusb_device_handle *handle;
   char name[INDIGO_NAME_SIZE];
-  int star_x[STARS], star_y[STARS], star_a[STARS];
-  char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
   double target_temperature, current_temperature;
-} private_data_type;
+} sx_private_data;
+
+static struct {
+  int product;
+  const char *name;
+} SX_PRODUCTS[] = {
+  { 0x0105, "SXVF-M5" },
+  { 0x0305, "SXVF-M5C" },
+  { 0x0107, "SXVF-M7" },
+  { 0x0307, "SXVF-M7C" },
+  { 0x0308, "SXVF-M8C" },
+  { 0x0109, "SXVF-M9" },
+  { 0x0325, "SXVR-M25C" },
+  { 0x0326, "SXVR-M26C" },
+  { 0x0115, "SXVR-H5" },
+  { 0x0119, "SXVR-H9" },
+  { 0x0319, "SXVR-H9C" },
+  { 0x0100, "SXVR-H9" },
+  { 0x0300, "SXVR-H9C" },
+  { 0x0126, "SXVR-H16" },
+  { 0x0128, "SXVR-H18" },
+  { 0x0135, "SXVR-H35" },
+  { 0x0136, "SXVR-H36" },
+  { 0x0137, "SXVR-H360" },
+  { 0x0139, "SXVR-H390" },
+  { 0x0194, "SXVR-H694" },
+  { 0x0394, "SXVR-H694C" },
+  { 0x0174, "SXVR-H674" },
+  { 0x0374, "SXVR-H674C" },
+  { 0x0198, "SX-814" },
+  { 0x0398, "SX-814C" },
+  { 0x0189, "SX-825" },
+  { 0x0389, "SX-825C" },
+  { 0x0184, "SX-834" },
+  { 0x0384, "SX-834C" },
+  { 0x0507, "SX LodeStar" },
+  { 0x0517, "SX CoStar" },
+  { 0x0509, "SX SuperStar" },
+  { 0x0525, "SX UltraStar" },
+  { 0x0200, "SXMX Camera" },
+  { 0, NULL }
+};
+
+static indigo_device *devices[MAX_DEVICES] = { NULL, NULL, NULL, NULL, NULL };
 
 static void exposure_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
-  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-    CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-    CCD_EXPOSURE_ITEM->number_value = 0;
-    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
-    private_data_type *private_data = PRIVATE_DATA;
-    unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
-    int hbin = (int)CCD_BIN_HORIZONTAL_ITEM->number_value;
-    int vbin = (int)CCD_BIN_VERTICAL_ITEM->number_value;
-    int width = (int)CCD_FRAME_WIDTH_ITEM->number_value / hbin;
-    int height = (int)CCD_FRAME_HEIGHT_ITEM->number_value / vbin;
-    int size = width * height;
-    for (int i = 0; i < size; i++)
-      raw[i] = (rand() & 0xFF); // noise
-    for (int i = 0; i < STARS; i++) {
-      double centerX = (private_data->star_x[i]+rand()/(double)RAND_MAX/5-0.5)/hbin;
-      double centerY = (private_data->star_y[i]+rand()/(double)RAND_MAX/5-0.5)/vbin;
-      int a = private_data->star_a[i];
-      int xMax = (int)round(centerX)+4/hbin;
-      int yMax = (int)round(centerY)+4/vbin;
-      for (int y = yMax-8/vbin; y <= yMax; y++) {
-        int yw = y*width;
-        for (int x = xMax-8/hbin; x <= xMax; x++) {
-          double xx = centerX-x;
-          double yy = centerY-y;
-          double v = a*exp(-(xx*xx/2.0+yy*yy/2.0));
-          raw[yw+x] += (unsigned short)v;
-        }
-      }
-    }
-    indigo_process_image(device, private_data->image, delay);
-  }
+  // TBD
 }
 
 static void ccd_temperature_callback(indigo_device *device, unsigned timer_id, double delay) {
-  double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-  if (diff > 0) {
-    if (diff > 10) {
-      if (CCD_COOLER_ON_ITEM->switch_value && CCD_COOLER_POWER_ITEM->number_value != 100) {
-        CCD_COOLER_POWER_ITEM->number_value = 100;
-        indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-      }
-    } else if (diff > 5) {
-      if (CCD_COOLER_ON_ITEM->switch_value && CCD_COOLER_POWER_ITEM->number_value != 50) {
-        CCD_COOLER_POWER_ITEM->number_value = 50;
-        indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-      }
-    }
-    CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->switch_value ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-    CCD_TEMPERATURE_ITEM->number_value = --(PRIVATE_DATA->current_temperature);
-    indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-  } else if (diff < 0) {
-    if (CCD_COOLER_POWER_ITEM->number_value > 0) {
-      CCD_COOLER_POWER_ITEM->number_value = 0;
-      indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-    }
-    CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->switch_value ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-    CCD_TEMPERATURE_ITEM->number_value = ++(PRIVATE_DATA->current_temperature);
-    indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-  } else {
-    CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->switch_value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
-    indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-  }
-  indigo_set_timer(device, TEMPERATURE_TIMER, delay, ccd_temperature_callback);
+  // TBD
 }
 
 static indigo_result attach(indigo_device *device) {
   assert(device != NULL);
   assert(device->device_context != NULL);
   
-  private_data_type *private_data = device->device_context;
+  sx_private_data *private_data = device->device_context;
   device->device_context = NULL;
   
   if (indigo_ccd_device_attach(device, private_data->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     DEVICE_CONTEXT->private_data = private_data;
     // -------------------------------------------------------------------------------- SIMULATION
     SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
-    SIMULATION_ENABLED_ITEM->switch_value = true;
-    SIMULATION_DISABLED_ITEM->switch_value = false;
+    SIMULATION_ENABLED_ITEM->switch_value = false;
+    SIMULATION_DISABLED_ITEM->switch_value = true;
     // -------------------------------------------------------------------------------- CCD_INFO
-    CCD_INFO_WIDTH_ITEM->number_value = WIDTH;
-    CCD_INFO_HEIGHT_ITEM->number_value = HEIGHT;
-    CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number_value = 2;
-    CCD_INFO_MAX_VERTICAL_BIN_ITEM->number_value = 2;
-    CCD_INFO_PIXEL_SIZE_ITEM->number_value = 5.2;
-    CCD_INFO_PIXEL_WIDTH_ITEM->number_value = 5.2;
-    CCD_INFO_PIXEL_HEIGHT_ITEM->number_value = 5.2;
-    CCD_INFO_BITS_PER_PIXEL_ITEM->number_value = 16;
+    
+    // TBD
+    
     // -------------------------------------------------------------------------------- CCD_FRAME
-    CCD_FRAME_WIDTH_ITEM->number_max = CCD_FRAME_WIDTH_ITEM->number_value = WIDTH;
-    CCD_FRAME_HEIGHT_ITEM->number_max = CCD_FRAME_HEIGHT_ITEM->number_value = HEIGHT;
+
+    // TBD
+    
     // -------------------------------------------------------------------------------- CCD_BIN
-    CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-    CCD_BIN_HORIZONTAL_ITEM->number_max = 4;
-    CCD_BIN_VERTICAL_ITEM->number_max = 4;
+
+    // TBD
+    
     // -------------------------------------------------------------------------------- CCD_IMAGE
-    for (int i = 0; i < STARS; i++) {
-      private_data->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions
-      private_data->star_y[i] = rand() % (HEIGHT - 20) + 10;
-      private_data->star_a[i] = 1000 * (rand() % 60);       // and brightness
-    }
+
     // -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
-    indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
-    private_data->target_temperature = private_data->current_temperature = CCD_TEMPERATURE_ITEM->number_value = 25;
-    CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-    CCD_COOLER_POWER_ITEM->number_value = 0;
-    indigo_set_timer(device, TEMPERATURE_TIMER, 5, ccd_temperature_callback);
+    
+    // TBD
+    
     // --------------------------------------------------------------------------------
+    INDIGO_LOG(indigo_log("%s attached", PRIVATE_DATA->name));
     return indigo_ccd_device_enumerate_properties(device, NULL, NULL);
   }
   return INDIGO_FAILED;
@@ -230,11 +204,12 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 
 static indigo_result detach(indigo_device *device) {
   assert(device != NULL);
+  INDIGO_LOG(indigo_log("%s detached", PRIVATE_DATA->name));
   free(PRIVATE_DATA);
   return indigo_ccd_device_detach(device);
 }
 
-indigo_device *indigo_ccd_simulator() {
+indigo_device *indigo_ccd_sx(libusb_device *dev, const char *name) {
   static indigo_device device_template = {
     NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
     attach,
@@ -242,12 +217,55 @@ indigo_device *indigo_ccd_simulator() {
     change_property,
     detach
   };
+  libusb_device_descriptor descriptor;
+  libusb_get_device_descriptor(dev, &descriptor);
   indigo_device *device = malloc(sizeof(indigo_device));
   if (device != NULL) {
     memcpy(device, &device_template, sizeof(indigo_device));
-    private_data_type *private_data = malloc(sizeof(private_data_type));
-    strncpy(private_data->name, "CCD Simulator", INDIGO_NAME_SIZE);
+    sx_private_data *private_data = malloc(sizeof(sx_private_data));
+    private_data->dev = dev;
+    strncpy(private_data->name, name, INDIGO_NAME_SIZE);
     device->device_context = private_data;
   }
   return device;
 }
+
+static int indigo_ccd_sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+  libusb_device_descriptor descriptor;
+  switch (event) {
+    case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
+      libusb_get_device_descriptor(dev, &descriptor);
+      for (int i = 0; SX_PRODUCTS[i].name; i++) {
+        if (descriptor.idVendor == 0x1278 && SX_PRODUCTS[i].product == descriptor.idProduct) {
+          for (int j = 0; j < MAX_DEVICES; j++) {
+            if (devices[j] == NULL) {
+              indigo_attach_device(devices[j] = indigo_ccd_sx(dev, SX_PRODUCTS[i].name));
+              return 0;
+            }
+          }
+        }
+      }
+      break;
+    case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT:
+      for (int j = 0; j < MAX_DEVICES; j++) {
+        if (devices[j] != NULL) {
+          indigo_device *device = devices[j];
+          if (((sx_private_data*)PRIVATE_DATA)->dev == dev) {
+            indigo_detach_device(device);
+            free(device);
+            devices[j] = NULL;
+            return 0;
+          }
+        }
+      }
+      break;
+  }
+  return 0;
+};
+
+indigo_result indigo_ccd_sx_register() {
+  if (libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, indigo_ccd_sx_hotplug_callback, NULL, NULL) == 0)
+    return INDIGO_OK;
+  return INDIGO_FAILED;
+}
+
