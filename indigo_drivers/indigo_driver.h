@@ -69,10 +69,6 @@
 #define CONFIG_SAVE_ITEM              (CONFIG_PROPERTY->items+1)
 #define CONFIG_DEFAULT_ITEM           (CONFIG_PROPERTY->items+2)
 
-#define indigo_is_connected(device_context) CONNECTION_CONNECTED_ITEM->switch_value
-#define indigo_debug_enabled(device_context) DEBUG_ENABLE_ITEM->switch_value
-#define indigo_simulation_enabled(device_context) SIMULATION_ENABLE_ITEM->switch_value
-
 typedef void (*indigo_timer_callback)(indigo_device *device, unsigned timer_id, double delay);
 
 typedef struct {

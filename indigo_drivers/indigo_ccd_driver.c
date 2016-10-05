@@ -186,7 +186,7 @@ indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indi
   assert(device->device_context != NULL);
   indigo_result result = INDIGO_OK;
   if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
-    if (indigo_is_connected(device_context)) {
+    if (CONNECTION_CONNECTED_ITEM->switch_value) {
       if (indigo_property_match(CCD_INFO_PROPERTY, property))
         indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
       if (indigo_property_match(CCD_LOCAL_MODE_PROPERTY, property))

@@ -148,6 +148,7 @@ typedef struct {
   libusb_device *dev;
   libusb_device_handle *handle;
   char name[INDIGO_NAME_SIZE];
+  pthread_mutex_t mutex;
   unsigned char setup_data[22];
   int model;
   bool is_interlaced;
@@ -298,7 +299,7 @@ int sx_open(indigo_device *device) {
     rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
     INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
     if (rc >=0 && transferred == USB_REQ_DATA) {
-      rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, setup_data[USB_REQ_LENGTH_L], &transferred, BULK_COMMAND_TIMEOUT);
+      rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 2, &transferred, BULK_COMMAND_TIMEOUT);
       INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
       if (rc >=0 && transferred == 2) {
         int result=setup_data[0] | (setup_data[1] << 8);
@@ -325,7 +326,7 @@ int sx_open(indigo_device *device) {
     rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
     INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
     if (rc >=0 && transferred == USB_REQ_DATA) {
-      rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, setup_data[USB_REQ_LENGTH_L], &transferred, BULK_COMMAND_TIMEOUT);
+      rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 17, &transferred, BULK_COMMAND_TIMEOUT);
       INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
       if (rc >=0 && transferred == 17) {
         PRIVATE_DATA->ccd_width = setup_data[2] | (setup_data[3] << 8);
@@ -348,8 +349,8 @@ int sx_open(indigo_device *device) {
         INDIGO_DEBUG(indigo_debug("sxGetCameraParams: capabilities:%s%s%s%s", (PRIVATE_DATA->extra_caps & SXCCD_CAPS_GUIDER ? " GUIDER" : ""), (PRIVATE_DATA->extra_caps & SXCCD_CAPS_STAR2K ? " STAR2K" : ""), (PRIVATE_DATA->extra_caps & SXUSB_CAPS_COOLER ? " COOLER" : ""), (PRIVATE_DATA->extra_caps & SXUSB_CAPS_SHUTTER ? " SHUTTER" : "")));
       }
     }
-    
   }
+  pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
   return rc >= 0;
 }
 
@@ -358,6 +359,7 @@ unsigned short sx_start_exposure(indigo_device *device, double exposure, bool da
   unsigned char *setup_data = PRIVATE_DATA->setup_data;
   int rc = 0;
   int transferred;
+  pthread_mutex_lock(&PRIVATE_DATA->mutex);
   if (rc >= 0) {
     setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAOUT;
     setup_data[USB_REQ ] = SXUSB_CLEAR_PIXELS;
@@ -437,6 +439,7 @@ unsigned short sx_start_exposure(indigo_device *device, double exposure, bool da
   PRIVATE_DATA->horizontal_bin = horizontal_bin;
   PRIVATE_DATA->vertical_bin = vertical_bin;
   PRIVATE_DATA->exposure = exposure;
+  pthread_mutex_unlock(&PRIVATE_DATA->mutex);
   return rc >= 0;
 }
 
@@ -468,7 +471,7 @@ unsigned short sx_read_pixels(indigo_device *device) {
   int horizontal_bin = PRIVATE_DATA->horizontal_bin;
   int vertical_bin = PRIVATE_DATA->vertical_bin;
   int size = (frame_width/horizontal_bin)*(frame_height/vertical_bin);
-  
+  pthread_mutex_lock(&PRIVATE_DATA->mutex);
   if (PRIVATE_DATA->is_interlaced) {
     if (vertical_bin>1) {
       rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
@@ -501,6 +504,7 @@ unsigned short sx_read_pixels(indigo_device *device) {
   } else {
     rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
   }
+  pthread_mutex_unlock(&PRIVATE_DATA->mutex);
   return rc >= 0;
 }
 
@@ -509,6 +513,7 @@ unsigned short sx_abort_exposure(indigo_device *device) {
   unsigned char *setup_data = PRIVATE_DATA->setup_data;
   int rc = 0;
   int transferred;
+  pthread_mutex_lock(&PRIVATE_DATA->mutex);
   if (PRIVATE_DATA->extra_caps & SXUSB_CAPS_SHUTTER) {
     setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR;
     setup_data[USB_REQ ] = SXUSB_SHUTTER;
@@ -521,6 +526,39 @@ unsigned short sx_abort_exposure(indigo_device *device) {
     rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
     INDIGO_DEBUG(indigo_debug("sx_abort_exposure: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
   }
+  pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+  return rc >= 0;
+}
+
+unsigned short sx_set_cooler(indigo_device *device, bool status, double target, double *current) {
+  libusb_device_handle *handle = PRIVATE_DATA->handle;
+  unsigned char *setup_data = PRIVATE_DATA->setup_data;
+  int rc = 0;
+  int transferred;
+  pthread_mutex_lock(&PRIVATE_DATA->mutex);
+  if (PRIVATE_DATA->extra_caps & SXUSB_CAPS_COOLER) {
+    unsigned short setTemp = (unsigned short) (target * 10 + 2730);
+    setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR;
+    setup_data[USB_REQ ] = SXUSB_COOLER;
+    setup_data[USB_REQ_VALUE_L ] = setTemp & 0xFF;
+    setup_data[USB_REQ_VALUE_H ] = (setTemp >> 8) & 0xFF;
+    setup_data[USB_REQ_INDEX_L ] = status ? 1 : 0;
+    setup_data[USB_REQ_INDEX_H ] = 0;
+    setup_data[USB_REQ_LENGTH_L] = 0;
+    setup_data[USB_REQ_LENGTH_H] = 0;
+    rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+    INDIGO_DEBUG(indigo_debug("sx_set_cooler: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+    if (rc >=0 && transferred == USB_REQ_DATA) {
+      rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 3, &transferred, BULK_COMMAND_TIMEOUT);
+      INDIGO_DEBUG(indigo_debug("sx_set_cooler: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+      if (rc >=0 && transferred == 3) {
+        *current = ((setup_data[1]*256)+setup_data[0]-2730)/10.0;
+        INDIGO_DEBUG(indigo_debug("sx_set_cooler: cooler: %s, target: %gC, current: %gC", setup_data[2] ? "On" : "Off", target, *current));
+      }
+    }
+
+  }
+  pthread_mutex_unlock(&PRIVATE_DATA->mutex);
   return rc >= 0;
 }
 
@@ -539,7 +577,6 @@ void sx_close(indigo_device *device) {
 
 
 static void exposure_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
-  
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_ITEM->number_value = 0;
     if (sx_read_pixels(device)) {
@@ -554,7 +591,21 @@ static void exposure_timer_callback(indigo_device *device, unsigned timer_id, do
 }
 
 static void ccd_temperature_callback(indigo_device *device, unsigned timer_id, double delay) {
-  // TBD
+  if (sx_set_cooler(device, CCD_COOLER_ON_ITEM->switch_value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature)) {
+    double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
+    if (CCD_COOLER_ON_ITEM->switch_value)
+      CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+    else
+      CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+    CCD_TEMPERATURE_ITEM->number_value = PRIVATE_DATA->current_temperature;
+    CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+  } else {
+    CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+    CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+  }
+  indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+  indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+  indigo_set_timer(device, TEMPERATURE_TIMER, delay, ccd_temperature_callback);
 }
 
 static indigo_result attach(indigo_device *device) {
@@ -585,7 +636,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
   if (indigo_property_match(CONNECTION_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_GUIDE_DEC, CCD_GUIDE_RA, CCD_COOLER, CCD_TEMPERATURE
     indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-    if (indigo_is_connected(DEVICE_CONTEXT)) {
+    if (CONNECTION_CONNECTED_ITEM->switch_value) {
       if (sx_open(device)) {
         CCD_INFO_WIDTH_ITEM->number_value = CCD_FRAME_WIDTH_ITEM->number_value = CCD_FRAME_WIDTH_ITEM->number_max = PRIVATE_DATA->ccd_width;
         CCD_INFO_HEIGHT_ITEM->number_value = CCD_FRAME_HEIGHT_ITEM->number_value = CCD_FRAME_HEIGHT_ITEM->number_max = PRIVATE_DATA->ccd_height;
@@ -594,17 +645,19 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
         if (PRIVATE_DATA->extra_caps & SXUSB_CAPS_COOLER) {
           CCD_COOLER_PROPERTY->hidden = false;
           CCD_TEMPERATURE_PROPERTY->hidden = false;
+          PRIVATE_DATA->target_temperature = 0;
+          ccd_temperature_callback(device, TEMPERATURE_TIMER, 5);
         }
         if (PRIVATE_DATA->extra_caps & SXCCD_CAPS_STAR2K) {
           CCD_GUIDE_DEC_PROPERTY->hidden = false;
           CCD_GUIDE_RA_PROPERTY->hidden = false;
         }
-        
       } else {
         CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
         indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
       }
     } else {
+      indigo_cancel_timer(device, TEMPERATURE_TIMER);
       sx_close(device);
     }
     CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -632,26 +685,24 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
   } else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_COOLER
     indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
-    if (CCD_COOLER_ON_ITEM->switch_value) {
-      CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-      CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-      PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number_value;
-    } else {
-      CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-      CCD_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-      CCD_COOLER_POWER_ITEM->number_value = 0;
-      PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number_value = 25;
+    if (CONNECTION_CONNECTED_ITEM->switch_value && !CCD_COOLER_PROPERTY->hidden) {
+      CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
+      indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
     }
-    indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
-    indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-    indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
   } else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_TEMPERATURE
     indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
-    PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number_value;
-    CCD_TEMPERATURE_ITEM->number_value = PRIVATE_DATA->current_temperature;
-    CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-    indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
+    if (CONNECTION_CONNECTED_ITEM->switch_value && !CCD_COOLER_PROPERTY->hidden) {
+      PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number_value;
+      CCD_TEMPERATURE_ITEM->number_value = PRIVATE_DATA->current_temperature;
+      if (CCD_COOLER_OFF_ITEM->switch_value) {
+        indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+        CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
+        indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+      }
+      CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+      indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+    }
     // --------------------------------------------------------------------------------
   }
   return indigo_ccd_device_change_property(device, client, property);

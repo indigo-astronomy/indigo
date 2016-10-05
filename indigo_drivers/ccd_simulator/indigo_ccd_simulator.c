@@ -50,7 +50,7 @@
 #define TEMPERATURE_TIMER   11
 
 #undef PRIVATE_DATA
-#define PRIVATE_DATA        ((private_data_type *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA        ((simulator_private_data *)DEVICE_CONTEXT->private_data)
 
 
 typedef struct {
@@ -58,14 +58,14 @@ typedef struct {
   int star_x[STARS], star_y[STARS], star_a[STARS];
   char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
   double target_temperature, current_temperature;
-} private_data_type;
+} simulator_private_data;
 
 static void exposure_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
     CCD_EXPOSURE_ITEM->number_value = 0;
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
-    private_data_type *private_data = PRIVATE_DATA;
+    simulator_private_data *private_data = PRIVATE_DATA;
     unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
     int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number_value;
     int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number_value;
@@ -130,7 +130,7 @@ static indigo_result attach(indigo_device *device) {
   assert(device != NULL);
   assert(device->device_context != NULL);
   
-  private_data_type *private_data = device->device_context;
+  simulator_private_data *private_data = device->device_context;
   device->device_context = NULL;
   
   if (indigo_ccd_device_attach(device, private_data->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
@@ -178,7 +178,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
     // -------------------------------------------------------------------------------- CONNECTION
     indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
     CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-    if (indigo_is_connected(DEVICE_CONTEXT))
+    if (CONNECTION_CONNECTED_ITEM->switch_value)
       indigo_set_timer(device, TEMPERATURE_TIMER, 5, ccd_temperature_callback);
     else
       indigo_cancel_timer(device, TEMPERATURE_TIMER);
@@ -246,7 +246,7 @@ indigo_device *indigo_ccd_simulator() {
   indigo_device *device = malloc(sizeof(indigo_device));
   if (device != NULL) {
     memcpy(device, &device_template, sizeof(indigo_device));
-    private_data_type *private_data = malloc(sizeof(private_data_type));
+    simulator_private_data *private_data = malloc(sizeof(simulator_private_data));
     strncpy(private_data->name, "CCD Simulator", INDIGO_NAME_SIZE);
     device->device_context = private_data;
   }
