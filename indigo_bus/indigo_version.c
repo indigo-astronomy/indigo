@@ -138,6 +138,16 @@ static struct property_mapping legacy[] = {
     { "CCD_COOLER_VALUE", "POWER" },
     NULL }
   },
+  { "TELESCOPE_TIMED_GUIDE_NS", "TELESCOPE_GUIDE_DEC", {
+    { "TIMED_GUIDE_N", "TELESCOPE_GUIDE_NORTH" },
+    { "TIMED_GUIDE_S", "TELESCOPE_GUIDE_SOUTH" },
+    NULL }
+  },
+  { "TELESCOPE_TIMED_GUIDE_WE", "TELESCOPE_GUIDE_RA", {
+    { "TIMED_GUIDE_W", "TELESCOPE_GUIDE_WEST" },
+    { "TIMED_GUIDE_E", "TELESCOPE_GUIDE_EAST" },
+    NULL }
+  },
   NULL
 };
 

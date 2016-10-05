@@ -67,22 +67,22 @@ static void exposure_timer_callback(indigo_device *device, unsigned timer_id, do
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
     private_data_type *private_data = PRIVATE_DATA;
     unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
-    int hbin = (int)CCD_BIN_HORIZONTAL_ITEM->number_value;
-    int vbin = (int)CCD_BIN_VERTICAL_ITEM->number_value;
-    int width = (int)CCD_FRAME_WIDTH_ITEM->number_value / hbin;
-    int height = (int)CCD_FRAME_HEIGHT_ITEM->number_value / vbin;
-    int size = width * height;
+    int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number_value;
+    int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number_value;
+    int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number_value / horizontal_bin;
+    int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number_value / vertical_bin;
+    int size = frame_width * frame_height;
     for (int i = 0; i < size; i++)
       raw[i] = (rand() & 0xFF); // noise
     for (int i = 0; i < STARS; i++) {
-      double centerX = (private_data->star_x[i]+rand()/(double)RAND_MAX/5-0.5)/hbin;
-      double centerY = (private_data->star_y[i]+rand()/(double)RAND_MAX/5-0.5)/vbin;
+      double centerX = (private_data->star_x[i]+rand()/(double)RAND_MAX/5-0.5)/horizontal_bin;
+      double centerY = (private_data->star_y[i]+rand()/(double)RAND_MAX/5-0.5)/vertical_bin;
       int a = private_data->star_a[i];
-      int xMax = (int)round(centerX)+4/hbin;
-      int yMax = (int)round(centerY)+4/vbin;
-      for (int y = yMax-8/vbin; y <= yMax; y++) {
-        int yw = y*width;
-        for (int x = xMax-8/hbin; x <= xMax; x++) {
+      int xMax = (int)round(centerX)+4/horizontal_bin;
+      int yMax = (int)round(centerY)+4/vertical_bin;
+      for (int y = yMax-8/vertical_bin; y <= yMax; y++) {
+        int yw = y*frame_width;
+        for (int x = xMax-8/horizontal_bin; x <= xMax; x++) {
           double xx = centerX-x;
           double yy = centerY-y;
           double v = a*exp(-(xx*xx/2.0+yy*yy/2.0));
@@ -136,25 +136,20 @@ static indigo_result attach(indigo_device *device) {
   if (indigo_ccd_device_attach(device, private_data->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     DEVICE_CONTEXT->private_data = private_data;
     // -------------------------------------------------------------------------------- SIMULATION
+    SIMULATION_PROPERTY->hidden = false;
     SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
     SIMULATION_ENABLED_ITEM->switch_value = true;
     SIMULATION_DISABLED_ITEM->switch_value = false;
-    // -------------------------------------------------------------------------------- CCD_INFO
-    CCD_INFO_WIDTH_ITEM->number_value = WIDTH;
-    CCD_INFO_HEIGHT_ITEM->number_value = HEIGHT;
-    CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number_value = 2;
-    CCD_INFO_MAX_VERTICAL_BIN_ITEM->number_value = 2;
+    // -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_FRAME
+    CCD_INFO_WIDTH_ITEM->number_value = CCD_FRAME_WIDTH_ITEM->number_max = CCD_FRAME_WIDTH_ITEM->number_value = WIDTH;
+    CCD_INFO_HEIGHT_ITEM->number_value = CCD_FRAME_HEIGHT_ITEM->number_max = CCD_FRAME_HEIGHT_ITEM->number_value = HEIGHT;
+    CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number_value = CCD_BIN_HORIZONTAL_ITEM->number_max = 4;
+    CCD_INFO_MAX_VERTICAL_BIN_ITEM->number_value = CCD_BIN_VERTICAL_ITEM->number_max = 4;
     CCD_INFO_PIXEL_SIZE_ITEM->number_value = 5.2;
     CCD_INFO_PIXEL_WIDTH_ITEM->number_value = 5.2;
     CCD_INFO_PIXEL_HEIGHT_ITEM->number_value = 5.2;
     CCD_INFO_BITS_PER_PIXEL_ITEM->number_value = 16;
-    // -------------------------------------------------------------------------------- CCD_FRAME
-    CCD_FRAME_WIDTH_ITEM->number_max = CCD_FRAME_WIDTH_ITEM->number_value = WIDTH;
-    CCD_FRAME_HEIGHT_ITEM->number_max = CCD_FRAME_HEIGHT_ITEM->number_value = HEIGHT;
-    // -------------------------------------------------------------------------------- CCD_BIN
-    CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-    CCD_BIN_HORIZONTAL_ITEM->number_max = 4;
-    CCD_BIN_VERTICAL_ITEM->number_max = 4;
+    CCD_BIN_PROPERTY->hidden = false;
     // -------------------------------------------------------------------------------- CCD_IMAGE
     for (int i = 0; i < STARS; i++) {
       private_data->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions
@@ -162,11 +157,13 @@ static indigo_result attach(indigo_device *device) {
       private_data->star_a[i] = 1000 * (rand() % 60);       // and brightness
     }
     // -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
+    CCD_COOLER_PROPERTY->hidden = false;
+    CCD_TEMPERATURE_PROPERTY->hidden = false;
+    CCD_COOLER_POWER_PROPERTY->hidden = false;
     indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
     private_data->target_temperature = private_data->current_temperature = CCD_TEMPERATURE_ITEM->number_value = 25;
     CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
     CCD_COOLER_POWER_ITEM->number_value = 0;
-    indigo_set_timer(device, TEMPERATURE_TIMER, 5, ccd_temperature_callback);
     // --------------------------------------------------------------------------------
     return indigo_ccd_device_enumerate_properties(device, NULL, NULL);
   }
@@ -181,6 +178,10 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
     // -------------------------------------------------------------------------------- CONNECTION
     indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
     CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+    if (indigo_is_connected(DEVICE_CONTEXT))
+      indigo_set_timer(device, TEMPERATURE_TIMER, 5, ccd_temperature_callback);
+    else
+      indigo_cancel_timer(device, TEMPERATURE_TIMER);
   } else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_EXPOSURE
     indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);

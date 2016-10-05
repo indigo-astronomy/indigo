@@ -120,6 +120,7 @@ indigo_result indigo_device_attach(indigo_device *device, char *name, int versio
     SIMULATION_PROPERTY = indigo_init_switch_property(NULL, name, "SIMULATION", MAIN_GROUP, "Simulation status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     if (SIMULATION_PROPERTY == NULL)
       return INDIGO_FAILED;
+    SIMULATION_PROPERTY->hidden = true;
     indigo_init_switch_item(SIMULATION_ENABLED_ITEM, "ENABLED", "Enabled", false);
     indigo_init_switch_item(SIMULATION_DISABLED_ITEM, "DISABLED", "Disabled", true);
     // -------------------------------------------------------------------------------- CONFIG
@@ -145,7 +146,7 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
     indigo_define_property(device, INFO_PROPERTY, NULL);
   if (indigo_property_match(DEBUG_PROPERTY, property))
     indigo_define_property(device, DEBUG_PROPERTY, NULL);
-  if (indigo_property_match(SIMULATION_PROPERTY, property))
+  if (indigo_property_match(SIMULATION_PROPERTY, property) && !SIMULATION_PROPERTY->hidden)
     indigo_define_property(device, SIMULATION_PROPERTY, NULL);
   if (indigo_property_match(CONFIG_PROPERTY, property))
     indigo_define_property(device, CONFIG_PROPERTY, NULL);
@@ -212,7 +213,8 @@ indigo_result indigo_device_detach(indigo_device *device) {
   indigo_delete_property(device, CONNECTION_PROPERTY, NULL);
   indigo_delete_property(device, INFO_PROPERTY, NULL);
   indigo_delete_property(device, DEBUG_PROPERTY, NULL);
-  indigo_delete_property(device, SIMULATION_PROPERTY, NULL);
+  if (!SIMULATION_PROPERTY->hidden)
+    indigo_delete_property(device, SIMULATION_PROPERTY, NULL);
   indigo_delete_property(device, CONFIG_PROPERTY, NULL);
   free(CONNECTION_PROPERTY);
   free(INFO_PROPERTY);

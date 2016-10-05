@@ -43,6 +43,7 @@
 #define CCD_MAIN_GROUP                         "CCD main"
 #define CCD_IMAGE_GROUP                        "CCD image"
 #define CCD_COOLER_GROUP                       "CCD cooler"
+#define CCD_GUIDER_GROUP                       "CCD guider"
 
 #define CCD_INFO_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_info_property)
 #define CCD_INFO_WIDTH_ITEM               (CCD_INFO_PROPERTY->items+0)
@@ -106,6 +107,15 @@
 #define CCD_COOLER_POWER_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_cooler_power_property)
 #define CCD_COOLER_POWER_ITEM             (CCD_COOLER_POWER_PROPERTY->items+0)
 
+#define CCD_GUIDE_DEC_PROPERTY            (CCD_DEVICE_CONTEXT->ccd_guide_dec_property)
+#define CCD_GUIDE_NORTH_ITEM              (CCD_GUIDE_DEC_PROPERTY->items+0)
+#define CCD_GUIDE_SOUTH_ITEM              (CCD_GUIDE_DEC_PROPERTY->items+1)
+
+#define CCD_GUIDE_RA_PROPERTY             (CCD_DEVICE_CONTEXT->ccd_guide_ra_property)
+#define CCD_GUIDE_WEST_ITEM               (CCD_GUIDE_RA_PROPERTY->items+0)
+#define CCD_GUIDE_EAST_ITEM               (CCD_GUIDE_RA_PROPERTY->items+1)
+
+
 #define FITS_HEADER_SIZE  2880
 
 typedef struct {
@@ -124,6 +134,8 @@ typedef struct {
   indigo_property *ccd_temperature_property;
   indigo_property *ccd_cooler_property;
   indigo_property *ccd_cooler_power_property;
+  indigo_property *ccd_guide_dec_property;
+  indigo_property *ccd_guide_ra_property;
 } indigo_ccd_device_context;
 
 extern indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int version);

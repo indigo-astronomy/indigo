@@ -73,8 +73,8 @@ indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int ve
         return INDIGO_FAILED;
       indigo_init_number_item(CCD_INFO_WIDTH_ITEM, "WIDTH", "Horizontal resolution", 0, 0, 0, 0);
       indigo_init_number_item(CCD_INFO_HEIGHT_ITEM, "HEIGHT", "Vertical resolution", 0, 0, 0, 0);
-      indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, "MAX_HORIZONAL_BIN", "Max vertical binning", 0, 0, 0, 0);
-      indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, "MAX_VERTICAL_BIN", "Max horizontal binning", 0, 0, 0, 0);
+      indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, "MAX_HORIZONAL_BIN", "Max vertical binning", 0, 0, 0, 1);
+      indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, "MAX_VERTICAL_BIN", "Max horizontal binning", 0, 0, 0, 1);
       indigo_init_number_item(CCD_INFO_PIXEL_SIZE_ITEM, "PIXEL_SIZE", "Pixel size", 0, 0, 0, 0);
       indigo_init_number_item(CCD_INFO_PIXEL_WIDTH_ITEM, "PIXEL_WIDTH", "Pixel width", 0, 0, 0, 0);
       indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, "PIXEL_HEIGHT", "Pixel height", 0, 0, 0, 0);
@@ -111,9 +111,10 @@ indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int ve
       indigo_init_number_item(CCD_FRAME_WIDTH_ITEM, "WIDTH", "Width", 0, 0, 1, 0);
       indigo_init_number_item(CCD_FRAME_HEIGHT_ITEM, "HEIGHT", "Height", 0, 0, 1, 0);
       // -------------------------------------------------------------------------------- CCD_BIN
-      CCD_BIN_PROPERTY = indigo_init_number_property(NULL, name, "CCD_BIN", CCD_IMAGE_GROUP, "Binning setting", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
+      CCD_BIN_PROPERTY = indigo_init_number_property(NULL, name, "CCD_BIN", CCD_IMAGE_GROUP, "Binning setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
       if (CCD_BIN_PROPERTY == NULL)
         return INDIGO_FAILED;
+      CCD_BIN_PROPERTY->hidden = true;
       indigo_init_number_item(CCD_BIN_HORIZONTAL_ITEM, "HORIZONTAL", "Horizontal binning", 0, 1, 1, 1);
       indigo_init_number_item(CCD_BIN_VERTICAL_ITEM, "VERTICAL", "Vertical binning", 0, 1, 1, 1);
       // -------------------------------------------------------------------------------- CCD_FRAME_TYPE
@@ -144,18 +145,35 @@ indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int ve
       CCD_COOLER_PROPERTY = indigo_init_switch_property(NULL, name, "CCD_COOLER", CCD_COOLER_GROUP, "Cooler status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
       if (CCD_COOLER_PROPERTY == NULL)
         return INDIGO_FAILED;
+      CCD_COOLER_PROPERTY->hidden = true;
       indigo_init_switch_item(CCD_COOLER_ON_ITEM, "ON", "On", false);
       indigo_init_switch_item(CCD_COOLER_OFF_ITEM, "OFF", "Off", true);
       // -------------------------------------------------------------------------------- CCD_COOLER_POWER
       CCD_COOLER_POWER_PROPERTY = indigo_init_number_property(NULL, name, "CCD_COOLER_POWER", CCD_COOLER_GROUP, "Cooler power setting", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
       if (CCD_COOLER_POWER_PROPERTY == NULL)
         return INDIGO_FAILED;
+      CCD_COOLER_POWER_PROPERTY->hidden = true;
       indigo_init_number_item(CCD_COOLER_POWER_ITEM, "POWER", "Power (%)", 0, 100, 1, 0);
       // -------------------------------------------------------------------------------- CCD_TEMPERATURE
-      CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, name, "CCD_TEMPERATURE", CCD_COOLER_GROUP, "Temperature setting", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+      CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, name, "CCD_TEMPERATURE", CCD_COOLER_GROUP, "Temperature setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
       if (CCD_TEMPERATURE_PROPERTY == NULL)
         return INDIGO_FAILED;
+      CCD_TEMPERATURE_PROPERTY->hidden = true;
       indigo_init_number_item(CCD_TEMPERATURE_ITEM, "TEMPERATURE", "Temperature (C)", -50, 50, 1, 0);
+      // -------------------------------------------------------------------------------- CCD_GUIDE_DEC -> TELESCOPE_GUIDE_DEC
+      CCD_GUIDE_DEC_PROPERTY = indigo_init_switch_property(NULL, name, "TELESCOPE_GUIDE_DEC", CCD_GUIDER_GROUP, "DEC guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+      if (CCD_GUIDE_DEC_PROPERTY == NULL)
+        return INDIGO_FAILED;
+      CCD_GUIDE_DEC_PROPERTY->hidden = true;
+      indigo_init_switch_item(CCD_GUIDE_NORTH_ITEM, "TELESCOPE_GUIDE_NORTH", "Guide north", false);
+      indigo_init_switch_item(CCD_GUIDE_SOUTH_ITEM, "TELESCOPE_GUIDE_SOUTH", "Guide south", false);
+      // -------------------------------------------------------------------------------- CCD_GUIDE_RA -> TELESCOPE_GUIDE_RA
+      CCD_GUIDE_RA_PROPERTY = indigo_init_switch_property(NULL, name, "TELESCOPE_GUIDE_RA", CCD_GUIDER_GROUP, "RA guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+      if (CCD_GUIDE_RA_PROPERTY == NULL)
+        return INDIGO_FAILED;
+      CCD_GUIDE_RA_PROPERTY->hidden = true;
+      indigo_init_switch_item(CCD_GUIDE_WEST_ITEM, "TELESCOPE_GUIDE_WEST", "Guide west", false);
+      indigo_init_switch_item(CCD_GUIDE_EAST_ITEM, "TELESCOPE_GUIDE_EAST", "Guide east", false);
       // --------------------------------------------------------------------------------
       return INDIGO_OK;
     }
@@ -181,7 +199,7 @@ indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indi
         indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
       if (indigo_property_match(CCD_FRAME_PROPERTY, property))
         indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
-      if (indigo_property_match(CCD_BIN_PROPERTY, property))
+      if (indigo_property_match(CCD_BIN_PROPERTY, property) && !CCD_BIN_PROPERTY->hidden)
         indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
       if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property))
         indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
@@ -197,6 +215,10 @@ indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indi
         indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
       if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property) && !CCD_TEMPERATURE_PROPERTY->hidden)
         indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+      if (indigo_property_match(CCD_GUIDE_DEC_PROPERTY, property) && !CCD_GUIDE_DEC_PROPERTY->hidden)
+        indigo_define_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
+      if (indigo_property_match(CCD_GUIDE_RA_PROPERTY, property) && !CCD_GUIDE_RA_PROPERTY->hidden)
+        indigo_define_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
     }
   }
   return result;
@@ -215,7 +237,8 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
       indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
       indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
       indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
-      indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
+      if (!CCD_BIN_PROPERTY->hidden)
+        indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
       indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
       indigo_define_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
       indigo_define_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
@@ -226,6 +249,10 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
         indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
       if (!CCD_TEMPERATURE_PROPERTY->hidden)
         indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+      if (!CCD_GUIDE_DEC_PROPERTY->hidden)
+        indigo_define_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
+      if (!CCD_GUIDE_RA_PROPERTY->hidden)
+        indigo_define_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
     } else {
       indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
       indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
@@ -244,6 +271,10 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
         indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
       if (!CCD_TEMPERATURE_PROPERTY->hidden)
         indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+      if (!CCD_GUIDE_DEC_PROPERTY->hidden)
+        indigo_delete_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
+      if (!CCD_GUIDE_RA_PROPERTY->hidden)
+        indigo_delete_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
     }
   } else if (indigo_property_match(CONFIG_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CONFIG
@@ -349,6 +380,10 @@ indigo_result indigo_ccd_device_detach(indigo_device *device) {
       indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
     if (!CCD_TEMPERATURE_PROPERTY->hidden)
       indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+    if (!CCD_GUIDE_DEC_PROPERTY->hidden)
+      indigo_delete_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
+    if (!CCD_GUIDE_RA_PROPERTY->hidden)
+      indigo_delete_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
   }
   free(CCD_INFO_PROPERTY);
   free(CCD_UPLOAD_MODE_PROPERTY);
@@ -372,12 +407,12 @@ void indigo_process_image(indigo_device *device, void *data, double exposure_tim
   assert(data != NULL);
   INDIGO_DEBUG(clock_t start = clock());
 
-  int hbin = CCD_BIN_HORIZONTAL_ITEM->number_value;
-  int vbin = CCD_BIN_VERTICAL_ITEM->number_value;
-  int width = CCD_FRAME_WIDTH_ITEM->number_value / hbin;
-  int height = CCD_FRAME_HEIGHT_ITEM->number_value / vbin;
+  int horizontal_bin = CCD_BIN_HORIZONTAL_ITEM->number_value;
+  int vertical_bin = CCD_BIN_VERTICAL_ITEM->number_value;
+  int frame_width = CCD_FRAME_WIDTH_ITEM->number_value / horizontal_bin;
+  int frame_height = CCD_FRAME_HEIGHT_ITEM->number_value / vertical_bin;
   int byte_per_pixel = CCD_INFO_BITS_PER_PIXEL_ITEM->number_value / 8;
-  int size = width * height;
+  int size = frame_width * frame_height;
 
   if (CCD_IMAGE_FORMAT_FITS_ITEM->switch_value) {
     time_t timer;
@@ -391,19 +426,19 @@ void indigo_process_image(indigo_device *device, void *data, double exposure_tim
     int t = sprintf(header, "SIMPLE  =                     T / file conforms to FITS standard"); header[t] = ' ';
     t = sprintf(header += 80, "BITPIX  = %21d / number of bits per data pixel", (int)CCD_INFO_BITS_PER_PIXEL_ITEM->number_value); header[t] = ' ';
     t = sprintf(header += 80, "NAXIS   =                     2 / number of data axes"); header[t] = ' ';
-    t = sprintf(header += 80, "NAXIS1  = %21d / length of data axis 1", width); header[t] = ' ';
-    t = sprintf(header += 80, "NAXIS2  = %21d / length of data axis 2", height); header[t] = ' ';
+    t = sprintf(header += 80, "NAXIS1  = %21d / length of data axis 1", frame_width); header[t] = ' ';
+    t = sprintf(header += 80, "NAXIS2  = %21d / length of data axis 2", frame_height); header[t] = ' ';
     t = sprintf(header += 80, "EXTEND  =                     T / FITS dataset may contain extensions"); header[t] = ' ';
     t = sprintf(header += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy"); header[t] = ' ';
     t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); header[t] = ' ';
     t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short"); header[t] = ' ';
     t = sprintf(header += 80, "BSCALE  =                     1 / default scaling factor"); header[t] = ' ';
-    t = sprintf(header += 80, "XBINNING= %21d / horizontal binning mode", hbin); header[t] = ' ';
-    t = sprintf(header += 80, "YBINNING= %21d / vertical binning mode", vbin); header[t] = ' ';
+    t = sprintf(header += 80, "XBINNING= %21d / horizontal binning mode", horizontal_bin); header[t] = ' ';
+    t = sprintf(header += 80, "YBINNING= %21d / vertical binning mode", vertical_bin); header[t] = ' ';
     t = sprintf(header += 80, "XPIXSZ  = %21.2g / pixel width in microns", CCD_INFO_PIXEL_WIDTH_ITEM->number_value); header[t] = ' ';
     t = sprintf(header += 80, "YPIXSZ  = %21.2g / pixel height in microns", CCD_INFO_PIXEL_HEIGHT_ITEM->number_value); header[t] = ' ';
     t = sprintf(header += 80, "EXPTIME = %21.2g / exposure time [s]", exposure_time); header[t] = ' ';
-    if (!isnan(CCD_TEMPERATURE_ITEM->number_value)) {
+    if (!CCD_TEMPERATURE_PROPERTY->hidden) {
       t = sprintf(header += 80, "CCD-TEMP= %21.2g / CCD temperature in C", CCD_TEMPERATURE_ITEM->number_value); header[t] = ' ';
     }
     t = sprintf(header += 80, "DATE    = '%s' / UTC date that FITS file was created", now); header[t] = ' ';

@@ -344,7 +344,6 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
     if (client != NULL && client->define_property != NULL)
       client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
   }
-  pthread_mutex_unlock(&bus_mutex);
   return INDIGO_OK;
 }
 
@@ -364,7 +363,6 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
     if (client != NULL && client->update_property != NULL)
       client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
   }
-  pthread_mutex_unlock(&bus_mutex);
   return INDIGO_OK;
 }
 
@@ -384,7 +382,6 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
     if (client != NULL && client->delete_property != NULL)
       client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
   }
-  pthread_mutex_unlock(&bus_mutex);
   return INDIGO_OK;
 }
 
@@ -402,7 +399,6 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
     if (client != NULL && client->send_message != NULL)
       client->last_result = client->send_message(client, device, format != NULL ? message : NULL);
   }
-  pthread_mutex_unlock(&bus_mutex);
   return INDIGO_OK;
 }
 

@@ -41,6 +41,9 @@
 
 // Fake libusb API subset for macOS :)
 
+#define libusb_error_name(errcode) (errcode >=0 ? "OK" : "Failed!")
+#define LIBUSB_HOTPLUG_MATCH_ANY -1
+
 typedef struct libusb_context libusb_context;
 typedef struct libusb_device_handle libusb_device_handle;
 typedef struct libusb_device libusb_device;
@@ -66,7 +69,6 @@ typedef enum { LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED = 0x01, LIBUSB_HOTPLUG_EVENT_
 typedef enum { LIBUSB_HOTPLUG_NO_FLAGS = 0, LIBUSB_HOTPLUG_ENUMERATE = 1<<0 } libusb_hotplug_flag;
 typedef int libusb_hotplug_callback_handle;
 typedef int (*libusb_hotplug_callback_fn)(libusb_context *ctx, libusb_device *device, libusb_hotplug_event event, void *user_data);
-#define LIBUSB_HOTPLUG_MATCH_ANY -1
 
 int libusb_init(libusb_context **context);
 void libusb_exit(libusb_context *context);
