@@ -60,7 +60,7 @@ typedef struct {
   double target_temperature, current_temperature;
 } simulator_private_data;
 
-static void exposure_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
+static void exposure_timer_callback(indigo_device *device) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
     CCD_EXPOSURE_ITEM->number_value = 0;
@@ -90,11 +90,11 @@ static void exposure_timer_callback(indigo_device *device, unsigned timer_id, do
         }
       }
     }
-    indigo_process_image(device, private_data->image, delay);
+    indigo_process_image(device, private_data->image, CCD_EXPOSURE_ITEM->number_value);
   }
 }
 
-static void ccd_temperature_callback(indigo_device *device, unsigned timer_id, double delay) {
+static void ccd_temperature_callback(indigo_device *device) {
   double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
   if (diff > 0) {
     if (diff > 10) {
@@ -123,7 +123,7 @@ static void ccd_temperature_callback(indigo_device *device, unsigned timer_id, d
     CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->switch_value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
     indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
   }
-  indigo_set_timer(device, TEMPERATURE_TIMER, delay, ccd_temperature_callback);
+  indigo_set_timer(device, TEMPERATURE_TIMER, 5, ccd_temperature_callback);
 }
 
 static indigo_result attach(indigo_device *device) {

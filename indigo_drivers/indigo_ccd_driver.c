@@ -48,7 +48,7 @@
 
 #define EXPOSURE_TIMER      0
 
-static void countdown_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
+static void countdown_timer_callback(indigo_device *device) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_ITEM->number_value -= 1;
     if (CCD_EXPOSURE_ITEM->number_value >= 1) {
@@ -126,7 +126,7 @@ indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int ve
       indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, "DARK", "Dark frame exposure", false);
       indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, "FLAT", "Flat field frame exposure", false);
       // -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
-      CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, name, "CCD_IMAGE_FORMAT", CCD_IMAGE_GROUP, "Image format setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+      CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, name, "CCD_IMAGE_FORMAT", CCD_IMAGE_GROUP, "Image format setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
       if (CCD_IMAGE_FORMAT_PROPERTY == NULL)
         return INDIGO_FAILED;
       indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_ITEM, "RAW", "Raw data", false);
@@ -343,6 +343,12 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
     CCD_FRAME_TYPE_PROPERTY->state = INDIGO_OK_STATE;
     if (CONNECTION_CONNECTED_ITEM->switch_value)
       indigo_update_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
+  } else if (indigo_property_match(CCD_IMAGE_FORMAT_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
+    indigo_property_copy_values(CCD_IMAGE_FORMAT_PROPERTY, property, false);
+    CCD_IMAGE_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
+    if (CONNECTION_CONNECTED_ITEM->switch_value)
+      indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
   } else if (indigo_property_match(CCD_UPLOAD_MODE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_IMAGE_UPLOAD_MODE
     indigo_property_copy_values(CCD_UPLOAD_MODE_PROPERTY, property, false);

@@ -69,20 +69,23 @@
 #define CONFIG_SAVE_ITEM              (CONFIG_PROPERTY->items+1)
 #define CONFIG_DEFAULT_ITEM           (CONFIG_PROPERTY->items+2)
 
-typedef void (*indigo_timer_callback)(indigo_device *device, unsigned timer_id, double delay);
+typedef void (*indigo_timer_callback)(indigo_device *device);
+
+typedef struct indigo_timer {
+  int timer_id;
+  struct timespec time;
+  indigo_device *device;
+  indigo_timer_callback callback;
+  struct indigo_timer *next;
+} indigo_timer;
 
 typedef struct {
   void *private_data;
   int property_save_file_handle;
   pthread_t timer_thread;
   pthread_mutex_t timer_mutex;
-  pthread_cond_t timer_cond;
-  bool finish_timer_thread;
-  struct timer {
-    struct timespec time;
-    double delay;
-    indigo_timer_callback callback;
-  } timers[INDIGO_MAX_TIMERS];
+  int timer_pipe[2];
+  indigo_timer *timer_queue;
   indigo_property *connection_property;
   indigo_property *info_property;
   indigo_property *debug_property;
@@ -98,7 +101,7 @@ extern indigo_result indigo_device_detach(indigo_device *device);
 extern indigo_result indigo_load_properties(indigo_device *device, bool default_properties);
 extern indigo_result indigo_save_property(indigo_device*device, indigo_property *property);
 
-extern indigo_result indigo_set_timer(indigo_device *device, unsigned timer_id, double delay, indigo_timer_callback callback);
-extern indigo_result indigo_cancel_timer(indigo_device *device, unsigned timer_id);
+extern indigo_result indigo_set_timer(indigo_device *device, int timer_id, double delay, indigo_timer_callback callback);
+extern indigo_result indigo_cancel_timer(indigo_device *device, int timer_id);
 
 #endif /* indigo_device_h */

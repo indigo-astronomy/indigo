@@ -559,8 +559,7 @@ void sx_close(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO driver implementation
 
-
-static void exposure_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
+static void exposure_timer_callback(indigo_device *device) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_ITEM->number_value = 0;
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -575,14 +574,14 @@ static void exposure_timer_callback(indigo_device *device, unsigned timer_id, do
   }
 }
 
-static void clear_reg_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
+static void clear_reg_timer_callback(indigo_device *device) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     sx_clear_regs(device);
     indigo_set_timer(device, EXPOSURE_TIMER, 4, exposure_timer_callback);
   }
 }
 
-static void ccd_temperature_callback(indigo_device *device, unsigned timer_id, double delay) {
+static void ccd_temperature_callback(indigo_device *device) {
   if (sx_set_cooler(device, CCD_COOLER_ON_ITEM->switch_value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature)) {
     double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
     if (CCD_COOLER_ON_ITEM->switch_value)
@@ -597,7 +596,7 @@ static void ccd_temperature_callback(indigo_device *device, unsigned timer_id, d
   }
   indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
   indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-  indigo_set_timer(device, TEMPERATURE_TIMER, delay, ccd_temperature_callback);
+  indigo_set_timer(device, TEMPERATURE_TIMER, 5, ccd_temperature_callback);
 }
 
 static indigo_result attach(indigo_device *device) {
@@ -638,7 +637,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
           CCD_COOLER_PROPERTY->hidden = false;
           CCD_TEMPERATURE_PROPERTY->hidden = false;
           PRIVATE_DATA->target_temperature = 0;
-          ccd_temperature_callback(device, TEMPERATURE_TIMER, 5);
+          ccd_temperature_callback(device);
         }
         if (PRIVATE_DATA->extra_caps & SXCCD_CAPS_STAR2K) {
           CCD_GUIDE_DEC_PROPERTY->hidden = false;

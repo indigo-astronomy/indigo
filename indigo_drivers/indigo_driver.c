@@ -42,53 +42,141 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <poll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #include "indigo_driver.h"
 #include "indigo_xml.h"
 
+static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
+static indigo_timer *free_timers = NULL;
+
 static void *timer_thread(indigo_device *device) {
   pthread_mutex_init(&DEVICE_CONTEXT->timer_mutex, NULL);
-  pthread_cond_init(&DEVICE_CONTEXT->timer_cond, NULL);
-  struct timespec now, next_wakeup;
-  bool timed_next_wakeup;
-  while (!DEVICE_CONTEXT->finish_timer_thread) {
-    bool execute = true;
-    while (execute) {
-      clock_gettime(CLOCK_REALTIME, &now);
-      next_wakeup.tv_sec = INT_MAX;
-      next_wakeup.tv_nsec = 0;
-      timed_next_wakeup = false;
-      execute = false;
-      for (unsigned timer_id = 0; timer_id < INDIGO_MAX_TIMERS; timer_id++) {
-        struct timer *timer = &DEVICE_CONTEXT->timers[timer_id];
-        if (timer->callback) {
-          if ((timer->time.tv_sec == 0) || (timer->time.tv_sec < now.tv_sec) || (timer->time.tv_sec == now.tv_sec && timer->time.tv_nsec < now.tv_nsec)) {
-            INDIGO_LOG(indigo_debug("timer %d callback on %s fired", timer_id, INFO_DEVICE_NAME_ITEM->text_value));
-            indigo_timer_callback callback = timer->callback;
-            timer->callback = NULL;
-            callback(device, timer_id, timer->delay);
-            execute = true;
-            break;
-          } else {
-            if (timer->time.tv_sec < next_wakeup.tv_sec || (timer->time.tv_sec == next_wakeup.tv_sec && timer->time.tv_nsec < next_wakeup.tv_nsec)) {
-              next_wakeup = timer->time;
-              timed_next_wakeup = true;
-            }
-          }
-        }
+  struct timespec now;
+  indigo_timer *timer;
+  long milis;
+  struct pollfd pollfd;
+  pollfd.fd = DEVICE_CONTEXT->timer_pipe[0];
+  pollfd.events = POLLIN;
+  char execute = 1;
+  while (execute) {
+    while (true) {
+      pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
+      timer = DEVICE_CONTEXT->timer_queue;
+      if (timer == NULL) {
+        pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
+        milis = 100000;
+        break;
       }
+      clock_gettime(CLOCK_REALTIME, &now);
+      milis = (timer->time.tv_sec - now.tv_sec) * 1000L;
+      if (milis <= 0) {
+        DEVICE_CONTEXT->timer_queue = timer->next;
+        pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
+        indigo_log("timer fired id = %d", timer != NULL ? timer->timer_id : -1);
+        timer->callback(device);
+        pthread_mutex_lock(&timer_mutex);
+        timer->next = free_timers;
+        free_timers = timer;
+        pthread_mutex_unlock(&timer_mutex);
+        continue;
+      }
+      pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
+      break;
     }
-    pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
-    if (timed_next_wakeup) {
-      pthread_cond_timedwait(&DEVICE_CONTEXT->timer_cond, &DEVICE_CONTEXT->timer_mutex, &next_wakeup);
+    indigo_log("sleep for %ldms id = %d", milis, timer != NULL ? timer->timer_id : -1);
+    if (poll(&pollfd, 1, (int)milis)) {
+      read(DEVICE_CONTEXT->timer_pipe[0], &execute, 1);
+      indigo_log("wakeup %d", execute);
     } else {
-      pthread_cond_wait(&DEVICE_CONTEXT->timer_cond, &DEVICE_CONTEXT->timer_mutex);
+      indigo_log("timeout");
     }
-    pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
   }
+  while ((timer = DEVICE_CONTEXT->timer_queue) != NULL) {
+    DEVICE_CONTEXT->timer_queue = timer->next;
+    timer->next = free_timers;
+    free_timers = timer;
+  }
+  close(DEVICE_CONTEXT->timer_pipe[0]);
+  close(DEVICE_CONTEXT->timer_pipe[1]);
   return NULL;
+}
+
+indigo_result indigo_set_timer(indigo_device *device, int timer_id, double delay, indigo_timer_callback callback) {
+  assert(device != NULL);
+  
+  pthread_mutex_lock(&timer_mutex);
+  indigo_timer *timer = free_timers;
+  if (timer != NULL) {
+    free_timers = free_timers->next;
+  } else {
+    timer = malloc(sizeof(indigo_timer));
+  }
+  pthread_mutex_unlock(&timer_mutex);
+  
+  struct timespec now, time;
+  clock_gettime(CLOCK_REALTIME, &now);
+  time.tv_sec = now.tv_sec + (int)delay;
+  time.tv_nsec = 0;
+//  time.tv_nsec = now.tv_nsec + (long)((delay - (int)delay) * 1000000000L);
+//  if (time.tv_nsec > 1000000000L) {
+//    time.tv_sec++;
+//    time.tv_nsec -= 1000000000L;
+//  }
+  timer->timer_id = timer_id;
+  timer->time = time;
+  timer->device = device;
+  timer->callback = callback;
+
+  indigo_log("timer %d queued for %ldms", timer_id, (timer->time.tv_sec - now.tv_sec) * 1000L);
+  
+  pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
+  indigo_timer *queue = DEVICE_CONTEXT->timer_queue, *end = NULL;
+  while (queue != NULL && (timer->time.tv_sec > queue->time.tv_sec || (timer->time.tv_sec == queue->time.tv_sec && timer->time.tv_nsec > queue->time.tv_nsec))) {
+    end = queue;
+    queue = queue->next;
+  }
+  if (end == NULL) {
+    if (queue == NULL)
+      timer->next = NULL;
+    else
+      timer->next = queue;
+    DEVICE_CONTEXT->timer_queue = timer;
+  } else {
+    timer->next = queue;
+    end->next = timer;
+  }
+  pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
+  char data = 1;
+  write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
+  return INDIGO_OK;
+}
+
+indigo_result indigo_cancel_timer(indigo_device *device, int timer_id) {
+  assert(device != NULL);
+  
+  pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
+  indigo_timer *queue = DEVICE_CONTEXT->timer_queue, *end = NULL;
+  while (queue != NULL && queue->timer_id != timer_id) {
+    end = queue;
+    queue = queue->next;
+  }
+  if (queue != NULL) {
+    pthread_mutex_lock(&timer_mutex);
+    if (end == NULL) {
+      DEVICE_CONTEXT->timer_queue = queue->next;
+    } else {
+      end->next = queue->next;
+    }
+    queue->next = free_timers;
+    free_timers = queue;
+    pthread_mutex_unlock(&timer_mutex);
+  }
+  pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
+  
+  return INDIGO_OK;
 }
 
 indigo_result indigo_device_attach(indigo_device *device, char *name, int version, int interface) {
@@ -133,7 +221,10 @@ indigo_result indigo_device_attach(indigo_device *device, char *name, int versio
     indigo_init_switch_item(CONFIG_SAVE_ITEM, "SAVE", "Save", false);
     indigo_init_switch_item(CONFIG_DEFAULT_ITEM, "DEFAULT", "Default", false);
       // --------------------------------------------------------------------------------
-    pthread_create(&DEVICE_CONTEXT->timer_thread, NULL, (void*)(void *)timer_thread, device);
+    if (pipe(DEVICE_CONTEXT->timer_pipe) != 0)
+      return INDIGO_FAILED;
+    if (pthread_create(&DEVICE_CONTEXT->timer_thread, NULL, (void*)(void *)timer_thread, device) != 0)
+      return INDIGO_FAILED;
     return INDIGO_OK;
   }
   return INDIGO_FAILED;
@@ -207,10 +298,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 
 indigo_result indigo_device_detach(indigo_device *device) {
   assert(device != NULL);
-  DEVICE_CONTEXT->finish_timer_thread = true;
-  pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
-  pthread_cond_signal(&DEVICE_CONTEXT->timer_cond);
-  pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
+  char data = 0;
+  write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
   pthread_join(DEVICE_CONTEXT->timer_thread, NULL);
   indigo_delete_property(device, CONNECTION_PROPERTY, NULL);
   indigo_delete_property(device, INFO_PROPERTY, NULL);
@@ -302,46 +391,6 @@ indigo_result indigo_save_property(indigo_device*device, indigo_property *proper
     default:
       break;
   }
-  return INDIGO_OK;
-}
-
-indigo_result indigo_set_timer(indigo_device *device, unsigned timer_id, double delay, indigo_timer_callback callback) {
-  assert(device != NULL);
-  assert(timer_id < INDIGO_MAX_TIMERS);
-  struct timer *timer = &DEVICE_CONTEXT->timers[timer_id];
-    //pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
-  timer->callback = NULL;
-  if (delay > 0) {
-    struct timespec time;
-    clock_gettime(CLOCK_REALTIME, &time);
-    time.tv_sec += (int)delay;
-    time.tv_nsec += (long)((delay - (int)delay) * 1000000000L);
-    if (time.tv_nsec > 1000000000L) {
-      time.tv_sec++;
-      time.tv_nsec -= 1000000000L;
-    }
-    timer->time.tv_sec = time.tv_sec;
-    timer->time.tv_nsec = time.tv_nsec;
-  } else {
-    timer->time.tv_sec = timer->time.tv_nsec = 0;
-  }
-  timer->delay = delay;
-  timer->callback = callback;
-  pthread_cond_signal(&DEVICE_CONTEXT->timer_cond);
-    //pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
-  INDIGO_DEBUG(indigo_debug("timer %d (%gs) on %s set", timer_id, delay, INFO_DEVICE_NAME_ITEM->text_value));
-  return INDIGO_OK;
-}
-
-indigo_result indigo_cancel_timer(indigo_device *device, unsigned timer_id) {
-  assert(device != NULL);
-  assert(timer_id < INDIGO_MAX_TIMERS);
-  struct timer *timer = &DEVICE_CONTEXT->timers[timer_id];
-    //pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
-  timer->callback = NULL;
-  pthread_cond_signal(&DEVICE_CONTEXT->timer_cond);
-    //pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
-  INDIGO_DEBUG(indigo_debug("timer %d on %s canceled", timer_id, INFO_DEVICE_NAME_ITEM->text_value));
   return INDIGO_OK;
 }
 
