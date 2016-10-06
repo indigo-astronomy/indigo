@@ -148,7 +148,6 @@ typedef struct {
   libusb_device *dev;
   libusb_device_handle *handle;
   char name[INDIGO_NAME_SIZE];
-  pthread_mutex_t mutex;
   unsigned char setup_data[22];
   int model;
   bool is_interlaced;
@@ -157,10 +156,9 @@ typedef struct {
   unsigned short ccd_height;
   double pix_width;
   double pix_height;
+  unsigned short bits_per_pixel;
   unsigned short color_matrix;
   char extra_caps;
-  int wipe_delay;
-  long wipe_start;
   double exposure;
   unsigned short frame_left;
   unsigned short frame_top;
@@ -284,7 +282,7 @@ int sx_open(indigo_device *device) {
     setup_data[USB_REQ_LENGTH_L] = 0;
     setup_data[USB_REQ_LENGTH_H] = 0;
     rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-    INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+    INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
     usleep(1000);
   }
   if (rc >= 0) { // read camera model
@@ -297,10 +295,10 @@ int sx_open(indigo_device *device) {
     setup_data[USB_REQ_LENGTH_L] = 2;
     setup_data[USB_REQ_LENGTH_H] = 0;
     rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-    INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+    INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
     if (rc >=0 && transferred == USB_REQ_DATA) {
       rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 2, &transferred, BULK_COMMAND_TIMEOUT);
-      INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+      INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
       if (rc >=0 && transferred == 2) {
         int result=setup_data[0] | (setup_data[1] << 8);
         PRIVATE_DATA->model = result & 0x1F;
@@ -324,21 +322,21 @@ int sx_open(indigo_device *device) {
     setup_data[USB_REQ_LENGTH_L] = 17;
     setup_data[USB_REQ_LENGTH_H] = 0;
     rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-    INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+    INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
     if (rc >=0 && transferred == USB_REQ_DATA) {
       rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 17, &transferred, BULK_COMMAND_TIMEOUT);
-      INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+      INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
       if (rc >=0 && transferred == 17) {
         PRIVATE_DATA->ccd_width = setup_data[2] | (setup_data[3] << 8);
         PRIVATE_DATA->ccd_height = setup_data[6] | (setup_data[7] << 8);
         PRIVATE_DATA->pix_width = ((setup_data[8] | (setup_data[9] << 8)) / 256.0);
         PRIVATE_DATA->pix_height = ((setup_data[10] | (setup_data[11] << 8)) / 256.0);
+        PRIVATE_DATA->bits_per_pixel = setup_data[14];
         PRIVATE_DATA->color_matrix = setup_data[12] | (setup_data[13] << 8);
         PRIVATE_DATA->extra_caps = setup_data[16];
         if (PRIVATE_DATA->is_interlaced) {
           PRIVATE_DATA->ccd_height *= 2;
           PRIVATE_DATA->pix_height /= 2;
-          PRIVATE_DATA->wipe_delay = 150000;
         }
         PRIVATE_DATA->buffer = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + FITS_HEADER_SIZE);
         if (PRIVATE_DATA->is_interlaced) {
@@ -350,7 +348,6 @@ int sx_open(indigo_device *device) {
       }
     }
   }
-  pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
   return rc >= 0;
 }
 
@@ -359,28 +356,6 @@ unsigned short sx_start_exposure(indigo_device *device, double exposure, bool da
   unsigned char *setup_data = PRIVATE_DATA->setup_data;
   int rc = 0;
   int transferred;
-  pthread_mutex_lock(&PRIVATE_DATA->mutex);
-  if (rc >= 0) {
-    setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAOUT;
-    setup_data[USB_REQ ] = SXUSB_CLEAR_PIXELS;
-    setup_data[USB_REQ_VALUE_L ] = CCD_EXP_FLAGS_FIELD_BOTH;
-    setup_data[USB_REQ_VALUE_H ] = 0;
-    setup_data[USB_REQ_INDEX_L ] = 0;
-    setup_data[USB_REQ_INDEX_H ] = 0;
-    setup_data[USB_REQ_LENGTH_L] = 0;
-    setup_data[USB_REQ_LENGTH_H] = 0;
-    if (PRIVATE_DATA->extra_caps & SXUSB_CAPS_SHUTTER)
-      setup_data[USB_REQ_VALUE_H] = dark ? CCD_EXP_FLAGS_SHUTTER_CLOSE : CCD_EXP_FLAGS_SHUTTER_OPEN;
-    if (PRIVATE_DATA->is_interlaced && vertical_bin == 1) {
-      setup_data[USB_REQ_VALUE_L] = CCD_EXP_FLAGS_FIELD_EVEN | CCD_EXP_FLAGS_NOWIPE_FRAME;
-      rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-      INDIGO_DEBUG(indigo_debug("sx_start_exposure: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
-      usleep(PRIVATE_DATA->wipe_delay);
-      setup_data[USB_REQ_VALUE_L] = CCD_EXP_FLAGS_FIELD_ODD | CCD_EXP_FLAGS_NOWIPE_FRAME;
-    }
-    rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-    INDIGO_DEBUG(indigo_debug("sx_start_exposure: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
-  }
   if (rc >= 0) {
     int milis = (int)round(1000 * exposure);
     setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAOUT;
@@ -405,15 +380,17 @@ unsigned short sx_start_exposure(indigo_device *device, double exposure, bool da
     setup_data[USB_REQ_DATA + 11] = (milis>>8) & 0xFF;
     setup_data[USB_REQ_DATA + 12] = (milis>>16) & 0xFF;
     setup_data[USB_REQ_DATA + 13] = (milis>>24) & 0xFF;
+    if (PRIVATE_DATA->extra_caps & SXUSB_CAPS_SHUTTER)
+      setup_data[USB_REQ_VALUE_H] = dark ? CCD_EXP_FLAGS_SHUTTER_CLOSE : CCD_EXP_FLAGS_SHUTTER_OPEN;
     if (PRIVATE_DATA->is_interlaced) {
       if (setup_data[USB_REQ_DATA + 9] > 1) {
-        setup_data[USB_REQ_DATA + 2] = (frame_top/vertical_bin) & 0xFF;
-        setup_data[USB_REQ_DATA + 3] = (frame_top/vertical_bin) >> 8;
+        setup_data[USB_REQ_DATA + 2] = (frame_top/2) & 0xFF;
+        setup_data[USB_REQ_DATA + 3] = (frame_top/2) >> 8;
         setup_data[USB_REQ_DATA + 6] = (frame_height/2) & 0xFF;
         setup_data[USB_REQ_DATA + 7] = (frame_height/2) >> 8;
         setup_data[USB_REQ_DATA + 9] = vertical_bin/2;
         rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
-        INDIGO_DEBUG(indigo_debug("sx_start_exposure: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+        INDIGO_DEBUG(indigo_debug("sx_start_exposure: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
       } else {
         setup_data[USB_REQ_DATA + 2] = (frame_top/2) & 0xFF;
         setup_data[USB_REQ_DATA + 3] = (frame_top/2) >> 8;
@@ -421,15 +398,12 @@ unsigned short sx_start_exposure(indigo_device *device, double exposure, bool da
         setup_data[USB_REQ_DATA + 7] = (frame_height/2) >> 8;
         setup_data[USB_REQ_DATA + 9] = 1;
         setup_data[USB_REQ_VALUE_L ] = CCD_EXP_FLAGS_FIELD_EVEN | CCD_EXP_FLAGS_SPARE2;
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
-        PRIVATE_DATA->wipe_start = tv.tv_sec * 1000000 + tv.tv_usec;
         rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
-        INDIGO_DEBUG(indigo_debug("sx_start_exposure: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+        INDIGO_DEBUG(indigo_debug("sx_start_exposure: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
       }
     } else {
       rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
-      INDIGO_DEBUG(indigo_debug("sx_start_exposure: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+      INDIGO_DEBUG(indigo_debug("sx_start_exposure: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
     }
   }
   PRIVATE_DATA->frame_left = frame_left;
@@ -439,7 +413,27 @@ unsigned short sx_start_exposure(indigo_device *device, double exposure, bool da
   PRIVATE_DATA->horizontal_bin = horizontal_bin;
   PRIVATE_DATA->vertical_bin = vertical_bin;
   PRIVATE_DATA->exposure = exposure;
-  pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+  return rc >= 0;
+}
+
+
+unsigned short sx_clear_regs(indigo_device *device) {
+  libusb_device_handle *handle = PRIVATE_DATA->handle;
+  unsigned char *setup_data = PRIVATE_DATA->setup_data;
+  int rc = 0;
+  int transferred;
+  if (rc >= 0) {
+    setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAOUT;
+    setup_data[USB_REQ ] = SXUSB_CLEAR_PIXELS;
+    setup_data[USB_REQ_VALUE_L ] = CCD_EXP_FLAGS_NOWIPE_FRAME;
+    setup_data[USB_REQ_VALUE_H ] = 0;
+    setup_data[USB_REQ_INDEX_L ] = 0;
+    setup_data[USB_REQ_INDEX_H ] = 0;
+    setup_data[USB_REQ_LENGTH_L] = 0;
+    setup_data[USB_REQ_LENGTH_H] = 0;
+    rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+    INDIGO_DEBUG(indigo_debug("sx_clear_regs: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
+  }
   return rc >= 0;
 }
 
@@ -453,7 +447,7 @@ int sx_download_pixels(indigo_device *device, unsigned char *pixels, unsigned lo
     if (size > CHUNK_SIZE)
       size = CHUNK_SIZE;
     rc = libusb_bulk_transfer(handle, BULK_IN, pixels + read, size, &transferred, BULK_DATA_TIMEOUT);
-    INDIGO_DEBUG(indigo_debug("sx_download_pixels: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+    INDIGO_DEBUG(indigo_debug("sx_download_pixels: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
     if (transferred >= 0) {
       read += transferred;
     }
@@ -471,7 +465,6 @@ unsigned short sx_read_pixels(indigo_device *device) {
   int horizontal_bin = PRIVATE_DATA->horizontal_bin;
   int vertical_bin = PRIVATE_DATA->vertical_bin;
   int size = (frame_width/horizontal_bin)*(frame_height/vertical_bin);
-  pthread_mutex_lock(&PRIVATE_DATA->mutex);
   if (PRIVATE_DATA->is_interlaced) {
     if (vertical_bin>1) {
       rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
@@ -479,15 +472,11 @@ unsigned short sx_read_pixels(indigo_device *device) {
       unsigned char *even = PRIVATE_DATA->even;
       rc = sx_download_pixels(device, PRIVATE_DATA->even, size);
       if (rc >= 0) {
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
-        PRIVATE_DATA->wipe_delay = (unsigned int)(tv.tv_sec * 1000000+  tv.tv_usec - PRIVATE_DATA->wipe_start) - 1000000 * PRIVATE_DATA->exposure;
-        INDIGO_DEBUG(indigo_debug("sx_read_pixels: wipe delay: %i", PRIVATE_DATA->wipe_delay));
         setup_data[USB_REQ ] = SXUSB_READ_PIXELS;
         setup_data[USB_REQ_VALUE_L ] = CCD_EXP_FLAGS_FIELD_ODD | CCD_EXP_FLAGS_SPARE2;
         rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
         if (rc >= 0) {
-          INDIGO_DEBUG(indigo_debug("sx_read_pixels: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+          INDIGO_DEBUG(indigo_debug("sx_read_pixels: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
           unsigned char *odd = PRIVATE_DATA->odd;
           rc = sx_download_pixels(device, PRIVATE_DATA->odd, size);
           if (rc >= 0) {
@@ -504,7 +493,6 @@ unsigned short sx_read_pixels(indigo_device *device) {
   } else {
     rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
   }
-  pthread_mutex_unlock(&PRIVATE_DATA->mutex);
   return rc >= 0;
 }
 
@@ -513,7 +501,6 @@ unsigned short sx_abort_exposure(indigo_device *device) {
   unsigned char *setup_data = PRIVATE_DATA->setup_data;
   int rc = 0;
   int transferred;
-  pthread_mutex_lock(&PRIVATE_DATA->mutex);
   if (PRIVATE_DATA->extra_caps & SXUSB_CAPS_SHUTTER) {
     setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR;
     setup_data[USB_REQ ] = SXUSB_SHUTTER;
@@ -524,9 +511,8 @@ unsigned short sx_abort_exposure(indigo_device *device) {
     setup_data[USB_REQ_LENGTH_L] = 0;
     setup_data[USB_REQ_LENGTH_H] = 0;
     rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-    INDIGO_DEBUG(indigo_debug("sx_abort_exposure: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+    INDIGO_DEBUG(indigo_debug("sx_abort_exposure: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
   }
-  pthread_mutex_unlock(&PRIVATE_DATA->mutex);
   return rc >= 0;
 }
 
@@ -535,7 +521,6 @@ unsigned short sx_set_cooler(indigo_device *device, bool status, double target, 
   unsigned char *setup_data = PRIVATE_DATA->setup_data;
   int rc = 0;
   int transferred;
-  pthread_mutex_lock(&PRIVATE_DATA->mutex);
   if (PRIVATE_DATA->extra_caps & SXUSB_CAPS_COOLER) {
     unsigned short setTemp = (unsigned short) (target * 10 + 2730);
     setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR;
@@ -547,10 +532,10 @@ unsigned short sx_set_cooler(indigo_device *device, bool status, double target, 
     setup_data[USB_REQ_LENGTH_L] = 0;
     setup_data[USB_REQ_LENGTH_H] = 0;
     rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-    INDIGO_DEBUG(indigo_debug("sx_set_cooler: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+    INDIGO_DEBUG(indigo_debug("sx_set_cooler: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
     if (rc >=0 && transferred == USB_REQ_DATA) {
       rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 3, &transferred, BULK_COMMAND_TIMEOUT);
-      INDIGO_DEBUG(indigo_debug("sx_set_cooler: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+      INDIGO_DEBUG(indigo_debug("sx_set_cooler: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
       if (rc >=0 && transferred == 3) {
         *current = ((setup_data[1]*256)+setup_data[0]-2730)/10.0;
         INDIGO_DEBUG(indigo_debug("sx_set_cooler: cooler: %s, target: %gC, current: %gC", setup_data[2] ? "On" : "Off", target, *current));
@@ -558,7 +543,6 @@ unsigned short sx_set_cooler(indigo_device *device, bool status, double target, 
     }
 
   }
-  pthread_mutex_unlock(&PRIVATE_DATA->mutex);
   return rc >= 0;
 }
 
@@ -579,6 +563,7 @@ void sx_close(indigo_device *device) {
 static void exposure_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_ITEM->number_value = 0;
+    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
     if (sx_read_pixels(device)) {
       CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
       indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
@@ -587,6 +572,13 @@ static void exposure_timer_callback(indigo_device *device, unsigned timer_id, do
       CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
       indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
     }
+  }
+}
+
+static void clear_reg_timer_callback(indigo_device *device, unsigned timer_id, double delay) {
+  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+    sx_clear_regs(device);
+    indigo_set_timer(device, EXPOSURE_TIMER, 4, exposure_timer_callback);
   }
 }
 
@@ -674,7 +666,10 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
       CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
       indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
     }
-    indigo_set_timer(device, EXPOSURE_TIMER, CCD_EXPOSURE_ITEM->number_value-0.01, exposure_timer_callback);
+    if (CCD_EXPOSURE_ITEM->number_value > 4)
+      indigo_set_timer(device, EXPOSURE_TIMER, CCD_EXPOSURE_ITEM->number_value-4, clear_reg_timer_callback);
+    else
+      indigo_set_timer(device, EXPOSURE_TIMER, CCD_EXPOSURE_ITEM->number_value, exposure_timer_callback);
   } else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
     if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {

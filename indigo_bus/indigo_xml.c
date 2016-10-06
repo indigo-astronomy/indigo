@@ -159,7 +159,7 @@ void indigo_xml_prinf(int handle, const char *format, ...) {
   int length = vsnprintf(buffer, 1024, format, args);
   va_end(args);
   write(handle, buffer, length);
-  INDIGO_TRACE_PROTOCOL(indigo_debug("sent: %s", buffer));
+  INDIGO_DEBUG(indigo_debug("sent: %s", buffer));
 }
 
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);

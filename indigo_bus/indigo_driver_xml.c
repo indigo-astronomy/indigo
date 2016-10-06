@@ -176,7 +176,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
           indigo_item *item = &property->items[i];
           long input_length = item->blob_size;
           unsigned char *data = item->blob_value;
-          char encoded_data[74];
+          char encoded_data[100];
           indigo_xml_prinf(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob_format, item->blob_size);
           int j = 0;
           int i = 0;
@@ -189,14 +189,15 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
             encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
             encoded_data[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];
             encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
+            assert(j <= 72);
             if (j == 72) {
               encoded_data[j++] = '\n';
-              encoded_data[j++] = 0;
+              encoded_data[j] = 0;
               indigo_xml_prinf(handle, encoded_data);
               j = 0;
             }
           }
-          int output_length = 4 * ((input_length % 72 + 2) / 3);
+          int output_length = 4 * ((input_length % 54 + 2) / 3);
           for (int i = 0; i < mod_table[input_length % 3]; i++) {
             encoded_data[output_length - 1 - i] = '=';
           }
