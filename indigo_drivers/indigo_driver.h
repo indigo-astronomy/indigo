@@ -72,7 +72,6 @@
 typedef void (*indigo_timer_callback)(indigo_device *device);
 
 typedef struct indigo_timer {
-  int timer_id;
   struct timespec time;
   indigo_device *device;
   indigo_timer_callback callback;
@@ -101,7 +100,7 @@ extern indigo_result indigo_device_detach(indigo_device *device);
 extern indigo_result indigo_load_properties(indigo_device *device, bool default_properties);
 extern indigo_result indigo_save_property(indigo_device*device, indigo_property *property);
 
-extern indigo_result indigo_set_timer(indigo_device *device, int timer_id, double delay, indigo_timer_callback callback);
-extern indigo_result indigo_cancel_timer(indigo_device *device, int timer_id);
+extern indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback);
+extern void indigo_cancel_timer(indigo_device *device, indigo_timer *timer);
 
 #endif /* indigo_device_h */

@@ -51,8 +51,8 @@
 
 #define USE_POLL
 
-//#undef INDIGO_DEBUG(c)
-//#define INDIGO_DEBUG(c) c
+#undef INDIGO_DEBUG(c)
+#define INDIGO_DEBUG(c) c
 
 #define NANO 1000000000000L
 #define time_diff(later, earier) ((later.tv_sec - earier.tv_sec) * 1000L + (later.tv_nsec - earier.tv_nsec) / 1000000L)
@@ -99,7 +99,7 @@ static void *timer_thread(indigo_device *device) {
       pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
       break;
     }
-    INDIGO_DEBUG(indigo_debug("sleep for %ldms, next timer is %d", milis, timer != NULL ? timer->timer_id : -1));
+    INDIGO_DEBUG(indigo_debug("sleep for %ldms", milis));
     clock_gettime(CLOCK_MONOTONIC, &sleep_time);
 #ifdef USE_POLL
     if (poll(&pollfd, 1, (int)milis)) {
@@ -127,7 +127,7 @@ static void *timer_thread(indigo_device *device) {
   return NULL;
 }
 
-indigo_result indigo_set_timer(indigo_device *device, int timer_id, double delay, indigo_timer_callback callback) {
+indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback) {
   assert(device != NULL);
   
   pthread_mutex_lock(&timer_mutex);
@@ -147,12 +147,11 @@ indigo_result indigo_set_timer(indigo_device *device, int timer_id, double delay
     time.tv_sec++;
     time.tv_nsec -= NANO;
   }
-  timer->timer_id = timer_id;
   timer->time = time;
   timer->device = device;
   timer->callback = callback;
 
-  INDIGO_DEBUG(indigo_debug("timer %d queued to fire in %ldms", timer_id, time_diff(timer, now)));
+  INDIGO_DEBUG(indigo_debug("timer queued to fire in %ldms", time_diff(timer->time, now)));
   
   pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
   indigo_timer *queue = DEVICE_CONTEXT->timer_queue, *end = NULL;
@@ -173,15 +172,15 @@ indigo_result indigo_set_timer(indigo_device *device, int timer_id, double delay
   pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
   char data = 1;
   write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
-  return INDIGO_OK;
+  return timer;
 }
 
-indigo_result indigo_cancel_timer(indigo_device *device, int timer_id) {
+void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
   assert(device != NULL);
 
   pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
   indigo_timer *queue = DEVICE_CONTEXT->timer_queue, *end = NULL;
-  while (queue != NULL && queue->timer_id != timer_id) {
+  while (queue != NULL && queue != timer) {
     end = queue;
     queue = queue->next;
   }
@@ -195,11 +194,9 @@ indigo_result indigo_cancel_timer(indigo_device *device, int timer_id) {
     queue->next = free_timers;
     free_timers = queue;
     pthread_mutex_unlock(&timer_mutex);
-    INDIGO_DEBUG(indigo_debug("timer %d canceled", timer_id));
+    INDIGO_DEBUG(indigo_debug("timer canceled"));
   }
   pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
-  
-  return INDIGO_OK;
 }
 
 indigo_result indigo_device_attach(indigo_device *device, char *name, int version, int interface) {

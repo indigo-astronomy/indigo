@@ -44,16 +44,13 @@
 #include <sys/stat.h>
 
 #include "indigo_ccd_driver.h"
-//#include "indigo_timer.h"
-
-#define EXPOSURE_TIMER      0
 
 static void countdown_timer_callback(indigo_device *device) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-    CCD_EXPOSURE_ITEM->number_value -= 1;
-    if (CCD_EXPOSURE_ITEM->number_value >= 1) {
+    if (CCD_EXPOSURE_ITEM->number_value >= 0) {
+      CCD_EXPOSURE_ITEM->number_value -= 1;
       indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-      indigo_set_timer(device, EXPOSURE_TIMER, 1.0, countdown_timer_callback);
+      indigo_set_timer(device, 1.0, countdown_timer_callback);
     }
   }
 }
@@ -300,13 +297,12 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
     // -------------------------------------------------------------------------------- CCD_EXPOSURE
     if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
       if (CCD_EXPOSURE_ITEM->number_value >= 1) {
-        indigo_set_timer(device, EXPOSURE_TIMER, 1.0, countdown_timer_callback);
+        indigo_set_timer(device, 1.0, countdown_timer_callback);
       }
     }
   } else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
     if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-      indigo_cancel_timer(device, EXPOSURE_TIMER);
       CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
       CCD_EXPOSURE_ITEM->number_value = 0;
       indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);

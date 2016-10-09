@@ -49,9 +49,6 @@
 
 #define MAX_DEVICES         5
 
-#define EXPOSURE_TIMER      10
-#define TEMPERATURE_TIMER   11
-
 #define USB_REQ_TYPE                0
 #define USB_REQ                     1
 #define USB_REQ_VALUE_L             2
@@ -148,6 +145,7 @@ typedef struct {
   libusb_device *dev;
   libusb_device_handle *handle;
   char name[INDIGO_NAME_SIZE];
+  indigo_timer *exposure_timer, *temperture_timer;
   unsigned char setup_data[22];
   int model;
   bool is_interlaced;
@@ -577,7 +575,7 @@ static void exposure_timer_callback(indigo_device *device) {
 static void clear_reg_timer_callback(indigo_device *device) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     sx_clear_regs(device);
-    indigo_set_timer(device, EXPOSURE_TIMER, 4, exposure_timer_callback);
+    PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 4, exposure_timer_callback);
   }
 }
 
@@ -596,7 +594,7 @@ static void ccd_temperature_callback(indigo_device *device) {
   }
   indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
   indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-  indigo_set_timer(device, TEMPERATURE_TIMER, 5, ccd_temperature_callback);
+  PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
 }
 
 static indigo_result attach(indigo_device *device) {
@@ -648,7 +646,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
         indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
       }
     } else {
-      indigo_cancel_timer(device, TEMPERATURE_TIMER);
+      indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
       sx_close(device);
     }
     CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -666,14 +664,14 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
       indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
     }
     if (CCD_EXPOSURE_ITEM->number_value > 4)
-      indigo_set_timer(device, EXPOSURE_TIMER, CCD_EXPOSURE_ITEM->number_value-4, clear_reg_timer_callback);
+      PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number_value-4, clear_reg_timer_callback);
     else
-      indigo_set_timer(device, EXPOSURE_TIMER, CCD_EXPOSURE_ITEM->number_value, exposure_timer_callback);
+      PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number_value, exposure_timer_callback);
   } else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
     if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
       sx_abort_exposure(device);
-      indigo_cancel_timer(device, EXPOSURE_TIMER);
+      indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
     }
     indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
   } else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
