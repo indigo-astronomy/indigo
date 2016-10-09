@@ -539,7 +539,7 @@ void indigo_init_text_item(indigo_item *item, const char *name, const char *labe
 void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value) {
   assert(item != NULL);
   assert(name != NULL);
-  memset(item, sizeof(indigo_item), 0);
+  memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name, INDIGO_NAME_SIZE);
   strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
   item->number_min = min;
@@ -551,7 +551,7 @@ void indigo_init_number_item(indigo_item *item, const char *name, const char *la
 void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value) {
   assert(item != NULL);
   assert(name != NULL);
-  memset(item, sizeof(indigo_item), 0);
+  memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name, INDIGO_NAME_SIZE);
   strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
   item->switch_value = value;
@@ -560,7 +560,7 @@ void indigo_init_switch_item(indigo_item *item, const char *name, const char *la
 void indigo_init_light_item(indigo_item *item, const char *name, const char *label, indigo_property_state value) {
   assert(item != NULL);
   assert(name != NULL);
-  memset(item, sizeof(indigo_item), 0);
+  memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name, INDIGO_NAME_SIZE);
   strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
   item->light_value = value;
@@ -569,7 +569,7 @@ void indigo_init_light_item(indigo_item *item, const char *name, const char *lab
 void indigo_init_blob_item(indigo_item *item, const char *name, const char *label) {
   assert(item != NULL);
   assert(name != NULL);
-  memset(item, sizeof(indigo_item), 0);
+  memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name, INDIGO_NAME_SIZE);
   strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
 }

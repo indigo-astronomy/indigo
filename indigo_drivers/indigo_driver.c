@@ -51,12 +51,14 @@
 
 #define USE_POLL
 
-#undef INDIGO_DEBUG(c)
+#undef INDIGO_DEBUG
 #define INDIGO_DEBUG(c) c
 
-#define NANO 1000000000000L
-#define time_diff(later, earier) ((later.tv_sec - earier.tv_sec) * 1000L + (later.tv_nsec - earier.tv_nsec) / 1000000L)
+#define NANO 1000000000L
 
+#if defined(INDIGO_LINUX)
+
+#define time_diff(later, earier) ((later.tv_sec - earier.tv_sec) * 1000L + (later.tv_nsec - earier.tv_nsec) / 1000000L)
 
 static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_timer *free_timers = NULL;
@@ -198,6 +200,34 @@ void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
   }
   pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
 }
+  
+#elif defined(INDIGO_DARWIN)
+  
+void *dispatch_function(indigo_timer *timer) {
+  if (!timer->canceled) {
+    timer->callback(timer->device);
+  }
+  free(timer);
+  return NULL;
+}
+
+indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback) {
+  indigo_timer *timer = malloc(sizeof(indigo_timer));
+  timer->device = device;
+  timer->callback = callback;
+  timer->canceled = false;
+  long nanos = delay * NANO;
+  dispatch_after_f(dispatch_time(0, nanos), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), timer, (dispatch_function_t)dispatch_function);
+  INDIGO_DEBUG(indigo_debug("timer queued to fire in %ldms", nanos/1000000));
+  return timer;
+}
+
+void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
+  timer->canceled = true;
+  INDIGO_DEBUG(indigo_debug("timer canceled"));
+}
+
+#endif
 
 indigo_result indigo_device_attach(indigo_device *device, char *name, int version, int interface) {
   assert(device != NULL);
@@ -241,10 +271,12 @@ indigo_result indigo_device_attach(indigo_device *device, char *name, int versio
     indigo_init_switch_item(CONFIG_SAVE_ITEM, "SAVE", "Save", false);
     indigo_init_switch_item(CONFIG_DEFAULT_ITEM, "DEFAULT", "Default", false);
       // --------------------------------------------------------------------------------
+#if defined(INDIGO_LINUX)
     if (pipe(DEVICE_CONTEXT->timer_pipe) != 0)
       return INDIGO_FAILED;
     if (pthread_create(&DEVICE_CONTEXT->timer_thread, NULL, (void*)(void *)timer_thread, device) != 0)
       return INDIGO_FAILED;
+#endif
     return INDIGO_OK;
   }
   return INDIGO_FAILED;
@@ -318,9 +350,11 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 
 indigo_result indigo_device_detach(indigo_device *device) {
   assert(device != NULL);
+#if defined(INDIGO_LINUX)
   char data = 0;
   write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
   pthread_join(DEVICE_CONTEXT->timer_thread, NULL);
+#endif
   indigo_delete_property(device, CONNECTION_PROPERTY, NULL);
   indigo_delete_property(device, INFO_PROPERTY, NULL);
   indigo_delete_property(device, DEBUG_PROPERTY, NULL);
