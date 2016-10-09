@@ -41,7 +41,7 @@
 #include "indigo_bus.h"
 #include "indigo_server_xml.h"
 
-#include "indigo_ccd_simulator.h"
+#include "ccd_simulator/indigo_ccd_simulator.h"
 
 void server_callback(int count) {
   INDIGO_LOG(indigo_log("%d clients", count));

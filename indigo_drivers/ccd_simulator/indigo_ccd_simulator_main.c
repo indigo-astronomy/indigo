@@ -34,7 +34,7 @@
 
 #include <stdio.h>
 
-#include "indigo_ccd_simulator.h"
+#include "ccd_simulator/indigo_ccd_simulator.h"
 #include "indigo_driver_xml.h"
 
 int main(int argc, const char * argv[]) {

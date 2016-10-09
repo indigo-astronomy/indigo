@@ -49,7 +49,7 @@
 #include "indigo_driver.h"
 #include "indigo_xml.h"
 
-//#define USE_POLL
+#define USE_POLL
 
 //#undef INDIGO_DEBUG(c)
 //#define INDIGO_DEBUG(c) c

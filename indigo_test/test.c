@@ -38,7 +38,7 @@
 #include <string.h>
 
 #include "indigo_bus.h"
-#include "indigo_ccd_simulator.h"
+#include "ccd_simulator/indigo_ccd_simulator.h"
 
 #define DEVICE_NAME "CCD Simulator"
 
