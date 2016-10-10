@@ -101,7 +101,7 @@ int libusb_control_transfer(libusb_device_handle *handle, uint8_t bmRequestType,
 
 #else
 
-#include <libusb.h>
+#include <libusb-1.0/libusb.h>
 
 #endif
 

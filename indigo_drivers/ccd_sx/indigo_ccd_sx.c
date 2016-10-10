@@ -216,7 +216,7 @@ static struct {
 static indigo_device *devices[MAX_DEVICES] = { NULL, NULL, NULL, NULL, NULL };
 
 static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-  libusb_device_descriptor descriptor;
+  struct libusb_device_descriptor descriptor;
   switch (event) {
     case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
       libusb_get_device_descriptor(dev, &descriptor);
@@ -257,17 +257,17 @@ bool sx_open(indigo_device *device) {
     INDIGO_DEBUG(indigo_debug("sx_open: libusb_open [%d] -> %s", __LINE__, libusb_error_name(rc)));
 #ifdef LIBUSB_H // not implemented in fake libusb
     if (rc >= 0) {
-      if (libusb_kernel_driver_active(*sxHandle, 0) == 1) {
-        rc = libusb_detach_kernel_driver(*sxHandle, 0);
+      if (libusb_kernel_driver_active(handle, 0) == 1) {
+        rc = libusb_detach_kernel_driver(handle, 0);
         INDIGO_DEBUG(indigo_debug("sx_open: libusb_detach_kernel_driver [%d] -> %s", __LINE__, libusb_error_name(rc)));
       }
       if (rc >= 0) {
         struct libusb_config_descriptor *config;
-        rc = libusb_get_config_descriptor(sxDevice, 0, &config);
+        rc = libusb_get_config_descriptor(dev, 0, &config);
         INDIGO_DEBUG(indigo_debug("sx_open: libusb_get_config_descriptor [%d] -> %s", __LINE__, libusb_error_name(rc)));
         if (rc >= 0) {
           int interface = config->interface->altsetting->bInterfaceNumber;
-          rc = libusb_claim_interface(*sxHandle, interface);
+          rc = libusb_claim_interface(handle, interface);
           INDIGO_DEBUG(indigo_debug("sx_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, interface, libusb_error_name(rc)));
         }
       }
@@ -754,7 +754,7 @@ indigo_device *indigo_ccd_sx(libusb_device *dev, const char *name) {
     change_property,
     detach
   };
-  libusb_device_descriptor descriptor;
+  struct libusb_device_descriptor descriptor;
   libusb_get_device_descriptor(dev, &descriptor);
   indigo_device *device = malloc(sizeof(indigo_device));
   if (device != NULL) {

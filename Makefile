@@ -24,7 +24,7 @@ endif
 
 .PHONY: init clean
 
-all: init indigo_ccd_simulator test client server
+all: init indigo_ccd_simulator indigo_ccd_sx test client server
 
 init:
 	$(info -------------------- $(OS_detected) build --------------------)
@@ -46,14 +46,20 @@ indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
 indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o indigo_ccd_simulator.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^
 
+indigo_ccd_sx.a: indigo_drivers/ccd_sx/indigo_ccd_sx.o
+	$(AR) $(ARFLAGS) $@ $^
+
+indigo_ccd_sx: indigo_drivers/ccd_sx/indigo_ccd_sx_main.o indigo_ccd_sx.a libindigo.a
+	$(CC) $(CFLAGS) -o $@ $^
+
 test: indigo_test/test.o indigo_ccd_simulator.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^
 
 client: indigo_test/client.o libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^
 
-server: indigo_test/server.o indigo_ccd_simulator.a libindigo.a
+server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean: init
-	rm -f libindigo.a indigo_ccd_simulator indigo_ccd_simulator.a test client server indigo_test/*.o indigo_bus/*.o indigo_drivers/*.o indigo_drivers/ccd_simulator/*.o
+	rm -f libindigo.a indigo_ccd_simulator indigo_ccd_sx indigo_ccd_simulator.a indigo_ccd_sx.a test client server indigo_test/*.o indigo_bus/*.o indigo_drivers/*.o indigo_drivers/ccd_simulator/*.o indigo_drivers/ccd_sx/*.o
