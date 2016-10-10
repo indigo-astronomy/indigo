@@ -39,6 +39,7 @@
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
 
+extern void ccd_temperature_callback(indigo_device *device);
 extern indigo_device *indigo_ccd_simulator();
 
 #endif /* ccd_simulator_h */

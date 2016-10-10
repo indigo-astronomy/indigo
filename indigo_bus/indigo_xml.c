@@ -41,6 +41,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include "indigo_xml.h"
 #include "indigo_version.h"
@@ -153,13 +154,17 @@ static int decode(char *data, unsigned char *decoded_data, int input_length) {
 }
 
 void indigo_xml_prinf(int handle, const char *format, ...) {
-  char buffer[1024];
-  va_list args;
-  va_start(args, format);
-  int length = vsnprintf(buffer, 1024, format, args);
-  va_end(args);
-  write(handle, buffer, length);
-  INDIGO_DEBUG(indigo_debug("sent: %s", buffer));
+  static char buffer[1024];
+  static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+  if (!pthread_mutex_lock(&log_mutex)) {
+    va_list args;
+    va_start(args, format);
+    int length = vsnprintf(buffer, 1024, format, args);
+    va_end(args);
+    write(handle, buffer, length);
+    INDIGO_DEBUG(indigo_debug("sent: %s", buffer));
+    pthread_mutex_unlock(&log_mutex);
+  }
 }
 
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);

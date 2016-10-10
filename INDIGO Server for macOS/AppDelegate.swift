@@ -41,7 +41,9 @@ func serverCallback(count: Int32) {
 @NSApplicationMain class AppDelegate: NSObject, NSApplicationDelegate, NetServiceDelegate {
 
   @IBOutlet weak var window: NSWindow!
-
+  
+  var thread: Thread?
+  
   func netServiceWillPublish(_ sender: NetService) {
     NSLog("INDIGO Service is ready to publish.")
   }
@@ -59,16 +61,21 @@ func serverCallback(count: Int32) {
     return true
   }
 
+  func server() {
+    let service = NetService(domain: "", type: "_indi._tcp", name: "", port: 7624)
+    service.delegate = self
+    service.publish()
+    indigo_start()
+    indigo_attach_device(indigo_ccd_simulator())
+    indigo_ccd_sx_register()
+    indigo_server_xml(serverCallback)
+  }
+  
   func applicationDidFinishLaunching(_ notification: Notification) {
-    Thread() {
-      let service = NetService(domain: "", type: "_indi._tcp", name: "", port: 7624)
-      service.delegate = self
-      service.publish()
-      indigo_start()
-      indigo_attach_device(indigo_ccd_simulator())
-      indigo_ccd_sx_register()
-      indigo_server_xml(serverCallback)
-    }.start()
+    thread = Thread(target: self, selector: #selector(server), object: nil)
+    if let thread = thread {
+      thread.start();
+    }
   }
 }
 

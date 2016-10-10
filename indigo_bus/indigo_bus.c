@@ -52,7 +52,8 @@
 
 static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
-static pthread_mutex_t bus_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool is_started = false;
 
 char *indigo_property_type_text[] = {
@@ -90,7 +91,7 @@ const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
 
 static void log_message(const char *format, va_list args) {
-  static char buffer[256];
+  static char buffer[1024];
   static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;  
   if (!pthread_mutex_lock(&log_mutex)) {
     vsnprintf(buffer, sizeof(buffer), format, args);
@@ -138,8 +139,8 @@ static void log_message(const char *format, va_list args) {
         line = NULL;
     }
 #endif
+    pthread_mutex_unlock(&log_mutex);
   }
-  pthread_mutex_unlock(&log_mutex);
 }
 
 void indigo_trace(const char *format, ...) {
@@ -218,7 +219,7 @@ void indigo_log(const char *format, ...) {
 }
 
 indigo_result indigo_start() {
-  if (!pthread_mutex_lock(&bus_mutex)) {
+  if (!pthread_mutex_lock(&client_mutex)) {
     if (!is_started) {
       memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));
       memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
@@ -226,7 +227,7 @@ indigo_result indigo_start() {
       INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
       is_started = true;
     }
-    pthread_mutex_unlock(&bus_mutex);
+    pthread_mutex_unlock(&client_mutex);
     return INDIGO_OK;
   }
   return INDIGO_LOCK_ERROR;
@@ -234,17 +235,17 @@ indigo_result indigo_start() {
 
 indigo_result indigo_attach_device(indigo_device *device) {
   assert(device != NULL);
-  if (!pthread_mutex_lock(&bus_mutex)) {
+  if (!pthread_mutex_lock(&device_mutex)) {
     for (int i = 0; i < MAX_DEVICES; i++) {
       if (devices[i] == NULL) {
         devices[i] = device;
-        pthread_mutex_unlock(&bus_mutex);
+        pthread_mutex_unlock(&device_mutex);
         if (device->attach != NULL)
           device->last_result = device->attach(device);
         return INDIGO_OK;
       }
     }
-    pthread_mutex_unlock(&bus_mutex);
+    pthread_mutex_unlock(&device_mutex);
     return INDIGO_TOO_MANY_ELEMENTS;
   }
   return INDIGO_LOCK_ERROR;
@@ -252,17 +253,17 @@ indigo_result indigo_attach_device(indigo_device *device) {
 
 indigo_result indigo_attach_client(indigo_client *client) {
   assert(client != NULL);
-  if (!pthread_mutex_lock(&bus_mutex)) {
+  if (!pthread_mutex_lock(&client_mutex)) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (clients[i] == NULL) {
         clients[i] = client;
-        pthread_mutex_unlock(&bus_mutex);
+        pthread_mutex_unlock(&client_mutex);
         if (client->attach != NULL)
           client->last_result = client->attach(client);
         return INDIGO_OK;
       }
     }
-    pthread_mutex_unlock(&bus_mutex);
+    pthread_mutex_unlock(&client_mutex);
     return INDIGO_TOO_MANY_ELEMENTS;
   }
   return INDIGO_LOCK_ERROR;
@@ -270,17 +271,17 @@ indigo_result indigo_attach_client(indigo_client *client) {
 
 indigo_result indigo_detach_device(indigo_device *device) {
   assert(device != NULL);
-  if (!pthread_mutex_lock(&bus_mutex)) {
+  if (!pthread_mutex_lock(&device_mutex)) {
     for (int i = 0; i < MAX_DEVICES; i++) {
       if (devices[i] == device) {
         devices[i] = NULL;
-        pthread_mutex_unlock(&bus_mutex);
+        pthread_mutex_unlock(&device_mutex);
         if (device->detach != NULL)
           device->last_result = device->detach(device);
         return INDIGO_OK;
       }
     }
-    pthread_mutex_unlock(&bus_mutex);
+    pthread_mutex_unlock(&device_mutex);
     return INDIGO_OK;
   }
   return INDIGO_LOCK_ERROR;
@@ -288,122 +289,145 @@ indigo_result indigo_detach_device(indigo_device *device) {
 
 indigo_result indigo_detach_client(indigo_client *client) {
   assert(client != NULL);
-  if (!pthread_mutex_lock(&bus_mutex)) {
+  if (!pthread_mutex_lock(&client_mutex)) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (clients[i] == client) {
         clients[i] = NULL;
-        pthread_mutex_unlock(&bus_mutex);
+        pthread_mutex_unlock(&client_mutex);
         if (client->detach != NULL)
           client->last_result = client->detach(client);
         return INDIGO_OK;
       }
     }
-    pthread_mutex_unlock(&bus_mutex);
+    pthread_mutex_unlock(&client_mutex);
     return INDIGO_OK;
   }
   return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
-  property->version = client ? client->version : INDIGO_VERSION_CURRENT;
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
-  for (int i = 0; i < MAX_DEVICES; i++) {
-    indigo_device *device = devices[i];
-    if (device != NULL && device->enumerate_properties != NULL)
-      device->last_result = device->enumerate_properties(device, client, property);
+  if (!pthread_mutex_lock(&client_mutex)) {
+    property->version = client ? client->version : INDIGO_VERSION_CURRENT;
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
+    for (int i = 0; i < MAX_DEVICES; i++) {
+      indigo_device *device = devices[i];
+      if (device != NULL && device->enumerate_properties != NULL)
+        device->last_result = device->enumerate_properties(device, client, property);
+    }
+    pthread_mutex_unlock(&client_mutex);
+    return INDIGO_OK;
   }
-  return INDIGO_OK;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
   assert(property != NULL);
-  property->version = client ? client->version : INDIGO_VERSION_CURRENT;
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
-  for (int i = 0; i < MAX_DEVICES; i++) {
-    indigo_device *device = devices[i];
-    if (device != NULL && device->change_property != NULL)
-      device->last_result = device->change_property(device, client, property);
+  if (!pthread_mutex_lock(&client_mutex)) {
+    property->version = client ? client->version : INDIGO_VERSION_CURRENT;
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
+    for (int i = 0; i < MAX_DEVICES; i++) {
+      indigo_device *device = devices[i];
+      if (device != NULL && device->change_property != NULL)
+        device->last_result = device->change_property(device, client, property);
+    }
+    pthread_mutex_unlock(&client_mutex);
+    return INDIGO_OK;
   }
-  pthread_mutex_unlock(&bus_mutex);
-  return INDIGO_OK;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
   assert(property != NULL);
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
-  char message[INDIGO_VALUE_SIZE];
-  if (format != NULL) {
-    va_list args;
-    va_start(args, format);
-    vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-    va_end(args);
+  if (!pthread_mutex_lock(&device_mutex)) {
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
+    char message[INDIGO_VALUE_SIZE];
+    if (format != NULL) {
+      va_list args;
+      va_start(args, format);
+      vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+      va_end(args);
+    }
+    property->version = device ? device->version : INDIGO_VERSION_CURRENT;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client != NULL && client->define_property != NULL)
+        client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
+    }
+    pthread_mutex_unlock(&device_mutex);
+    return INDIGO_OK;
   }
-  property->version = device ? device->version : INDIGO_VERSION_CURRENT;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    indigo_client *client = clients[i];
-    if (client != NULL && client->define_property != NULL)
-      client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
-  }
-  return INDIGO_OK;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...) {
   assert(property != NULL);
-  char message[INDIGO_VALUE_SIZE];
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
-  if (format != NULL) {
-    va_list args;
-    va_start(args, format);
-    vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-    va_end(args);
+  if (!pthread_mutex_lock(&device_mutex)) {
+    char message[INDIGO_VALUE_SIZE];
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
+    if (format != NULL) {
+      va_list args;
+      va_start(args, format);
+      vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+      va_end(args);
+    }
+    property->version = device ? device->version : INDIGO_VERSION_CURRENT;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client != NULL && client->update_property != NULL)
+        client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
+    }
+    pthread_mutex_unlock(&device_mutex);
+    return INDIGO_OK;
   }
-  property->version = device ? device->version : INDIGO_VERSION_CURRENT;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    indigo_client *client = clients[i];
-    if (client != NULL && client->update_property != NULL)
-      client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
-  }
-  return INDIGO_OK;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...) {
   assert(property != NULL);
-  char message[INDIGO_VALUE_SIZE];
-  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
-  if (format != NULL) {
-    va_list args;
-    va_start(args, format);
-    vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-    va_end(args);
+  if (!pthread_mutex_lock(&device_mutex)) {
+    char message[INDIGO_VALUE_SIZE];
+    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
+    if (format != NULL) {
+      va_list args;
+      va_start(args, format);
+      vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+      va_end(args);
+    }
+    property->version = device ? device->version : INDIGO_VERSION_CURRENT;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client != NULL && client->delete_property != NULL)
+        client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
+    }
+    pthread_mutex_unlock(&device_mutex);
+    return INDIGO_OK;
   }
-  property->version = device ? device->version : INDIGO_VERSION_CURRENT;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    indigo_client *client = clients[i];
-    if (client != NULL && client->delete_property != NULL)
-      client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
-  }
-  return INDIGO_OK;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_send_message(indigo_device *device, const char *format, ...) {
   INDIGO_DEBUG(indigo_debug("INDIGO Bus: message sent"));
-  char message[INDIGO_VALUE_SIZE];
-  if (format != NULL) {
-    va_list args;
-    va_start(args, format);
-    vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-    va_end(args);
+  if (!pthread_mutex_lock(&device_mutex)) {
+    char message[INDIGO_VALUE_SIZE];
+    if (format != NULL) {
+      va_list args;
+      va_start(args, format);
+      vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+      va_end(args);
+    }
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+      indigo_client *client = clients[i];
+      if (client != NULL && client->send_message != NULL)
+        client->last_result = client->send_message(client, device, format != NULL ? message : NULL);
+    }
+    pthread_mutex_unlock(&device_mutex);
+    return INDIGO_OK;
   }
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    indigo_client *client = clients[i];
-    if (client != NULL && client->send_message != NULL)
-      client->last_result = client->send_message(client, device, format != NULL ? message : NULL);
-  }
-  return INDIGO_OK;
+  return INDIGO_LOCK_ERROR;
 }
 
 indigo_result indigo_stop() {
-  if (!pthread_mutex_lock(&bus_mutex)) {
+  if (!pthread_mutex_lock(&client_mutex)) {
     if (is_started) {
       for (int i = 0; i < MAX_DEVICES; i++) {
         indigo_device *device = devices[i];
@@ -415,7 +439,7 @@ indigo_result indigo_stop() {
         if (client != NULL && client->detach != NULL)
           client->last_result = client->detach(client);
       }
-      pthread_mutex_unlock(&bus_mutex);
+      pthread_mutex_unlock(&client_mutex);
       is_started = false;
     }
     return INDIGO_OK;

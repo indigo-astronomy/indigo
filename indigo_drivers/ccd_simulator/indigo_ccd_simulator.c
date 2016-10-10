@@ -44,6 +44,8 @@
 #define WIDTH               1600
 #define HEIGHT              1200
 
+#define TEMP_UPDATE         5.0
+
 #define STARS               100
 
 #undef PRIVATE_DATA
@@ -54,6 +56,7 @@ typedef struct {
   char name[INDIGO_NAME_SIZE];
   int star_x[STARS], star_y[STARS], star_a[STARS];
   char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
+  double exposure_time;
   double target_temperature, current_temperature;
   indigo_timer *exposure_timer, *temperture_timer;
 } simulator_private_data;
@@ -88,11 +91,11 @@ static void exposure_timer_callback(indigo_device *device) {
         }
       }
     }
-    indigo_process_image(device, private_data->image, CCD_EXPOSURE_ITEM->number_value);
+    indigo_process_image(device, private_data->image, private_data->exposure_time);
   }
 }
 
-static void ccd_temperature_callback(indigo_device *device) {
+void ccd_temperature_callback(indigo_device *device) {
   double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
   if (diff > 0) {
     if (diff > 10) {
@@ -121,7 +124,7 @@ static void ccd_temperature_callback(indigo_device *device) {
     CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->switch_value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
     indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
   }
-  PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
+  PRIVATE_DATA->temperture_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 }
 
 static indigo_result attach(indigo_device *device) {
@@ -177,12 +180,13 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
     indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
     CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
     if (CONNECTION_CONNECTED_ITEM->switch_value)
-      PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
+      PRIVATE_DATA->temperture_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
     else
       indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
   } else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_EXPOSURE
     indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+    PRIVATE_DATA->exposure_time = CCD_EXPOSURE_ITEM->number_value;
     CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure initiated");
     if (CCD_UPLOAD_MODE_LOCAL_ITEM->switch_value) {

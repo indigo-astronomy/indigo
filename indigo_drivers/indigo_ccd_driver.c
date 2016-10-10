@@ -428,20 +428,20 @@ void indigo_process_image(indigo_device *device, void *data, double exposure_tim
     int t = sprintf(header, "SIMPLE  =                     T / file conforms to FITS standard"); header[t] = ' ';
     t = sprintf(header += 80, "BITPIX  = %21d / number of bits per data pixel", (int)CCD_INFO_BITS_PER_PIXEL_ITEM->number_value); header[t] = ' ';
     t = sprintf(header += 80, "NAXIS   =                     2 / number of data axes"); header[t] = ' ';
-    t = sprintf(header += 80, "NAXIS1  = %21d / length of data axis 1", frame_width); header[t] = ' ';
-    t = sprintf(header += 80, "NAXIS2  = %21d / length of data axis 2", frame_height); header[t] = ' ';
+    t = sprintf(header += 80, "NAXIS1  = %21d / length of data axis 1 [pixels]", frame_width); header[t] = ' ';
+    t = sprintf(header += 80, "NAXIS2  = %21d / length of data axis 2 [pixels]", frame_height); header[t] = ' ';
     t = sprintf(header += 80, "EXTEND  =                     T / FITS dataset may contain extensions"); header[t] = ' ';
     t = sprintf(header += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy"); header[t] = ' ';
     t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); header[t] = ' ';
     t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short"); header[t] = ' ';
     t = sprintf(header += 80, "BSCALE  =                     1 / default scaling factor"); header[t] = ' ';
-    t = sprintf(header += 80, "XBINNING= %21d / horizontal binning mode", horizontal_bin); header[t] = ' ';
-    t = sprintf(header += 80, "YBINNING= %21d / vertical binning mode", vertical_bin); header[t] = ' ';
-    t = sprintf(header += 80, "XPIXSZ  = %21.2g / pixel width in microns", CCD_INFO_PIXEL_WIDTH_ITEM->number_value); header[t] = ' ';
-    t = sprintf(header += 80, "YPIXSZ  = %21.2g / pixel height in microns", CCD_INFO_PIXEL_HEIGHT_ITEM->number_value); header[t] = ' ';
+    t = sprintf(header += 80, "XBINNING= %21d / horizontal binning [pixels]", horizontal_bin); header[t] = ' ';
+    t = sprintf(header += 80, "YBINNING= %21d / vertical binning [pixels]", vertical_bin); header[t] = ' ';
+    t = sprintf(header += 80, "XPIXSZ  = %21.2g / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number_value); header[t] = ' ';
+    t = sprintf(header += 80, "YPIXSZ  = %21.2g / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number_value); header[t] = ' ';
     t = sprintf(header += 80, "EXPTIME = %21.2g / exposure time [s]", exposure_time); header[t] = ' ';
     if (!CCD_TEMPERATURE_PROPERTY->hidden) {
-      t = sprintf(header += 80, "CCD-TEMP= %21.2g / CCD temperature in C", CCD_TEMPERATURE_ITEM->number_value); header[t] = ' ';
+      t = sprintf(header += 80, "CCD-TEMP= %21.2g / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number_value); header[t] = ' ';
     }
     t = sprintf(header += 80, "DATE    = '%s' / UTC date that FITS file was created", now); header[t] = ' ';
     t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", INFO_DEVICE_NAME_ITEM->text_value, (int)(19 - strlen(INFO_DEVICE_NAME_ITEM->text_value)), ' '); header[t] = ' ';
