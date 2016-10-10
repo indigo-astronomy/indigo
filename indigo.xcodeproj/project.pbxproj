@@ -16,6 +16,7 @@
 		5999FB841DA414BE0084BBF8 /* indigo_ccd_sx_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB691DA40B380084BBF8 /* indigo_ccd_sx_main.c */; };
 		5999FB851DA414FD0084BBF8 /* indigo_usb.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB6B1DA40C820084BBF8 /* indigo_usb.c */; };
 		5999FB861DA447450084BBF8 /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
+		5999FBC61DAC33D90084BBF8 /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
 		599C9A3A1D9FF0A3008BBCC1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */; };
 		599C9A3C1D9FF0A3008BBCC1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */; };
 		599C9A3F1D9FF0A3008BBCC1 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3D1D9FF0A3008BBCC1 /* MainMenu.xib */; };
@@ -633,6 +634,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				599C9A661DA02A07008BBCC1 /* indigo_ccd_simulator.c in Sources */,
+				5999FBC61DAC33D90084BBF8 /* indigo_ccd_sx.c in Sources */,
 				9D97F81B1D9A8A5D00582EAF /* server.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

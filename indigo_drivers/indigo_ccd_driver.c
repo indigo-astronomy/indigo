@@ -46,12 +46,10 @@
 #include "indigo_ccd_driver.h"
 
 static void countdown_timer_callback(indigo_device *device) {
-  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-    if (CCD_EXPOSURE_ITEM->number_value >= 0) {
-      CCD_EXPOSURE_ITEM->number_value -= 1;
-      indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-      indigo_set_timer(device, 1.0, countdown_timer_callback);
-    }
+  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number_value >= 1) {
+    CCD_EXPOSURE_ITEM->number_value -= 1;
+    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+    indigo_set_timer(device, 1.0, countdown_timer_callback);
   }
 }
 
