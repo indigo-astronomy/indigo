@@ -153,10 +153,10 @@ static int decode(char *data, unsigned char *decoded_data, int input_length) {
   return output_length;
 }
 
-/* mutex used by writing indigo_xml_prinf(), indigo_xml_write() */
+/* mutex used by writing indigo_xml_printf(), indigo_xml_write() */
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void indigo_xml_prinf(int handle, const char *format, ...) {
+void indigo_xml_printf(int handle, const char *format, ...) {
   static char buffer[1024];
   if (!pthread_mutex_lock(&log_mutex)) {
     va_list args;
@@ -224,7 +224,7 @@ void *get_properties_handler(parser_state state, char *name, char *value, indigo
       if (version > client->version) {
         assert(client->client_context != NULL);
         int handle = ((indigo_xml_device_adapter_context *)(client->client_context))->output;
-        indigo_xml_prinf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
+        indigo_xml_printf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
         client->version = version;
       }
     } else if (!strncmp(name, "device",INDIGO_NAME_SIZE)) {
