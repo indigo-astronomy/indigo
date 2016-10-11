@@ -50,7 +50,7 @@ indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o i
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 indigo_ccd_sx.a: indigo_drivers/ccd_sx/indigo_ccd_sx.o
-	$(AR) $(ARFLAGS) $@ $^ $(LDFLAGS)
+	$(AR) $(ARFLAGS) $@ $^
 
 indigo_ccd_sx: indigo_drivers/ccd_sx/indigo_ccd_sx_main.o indigo_ccd_sx.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
