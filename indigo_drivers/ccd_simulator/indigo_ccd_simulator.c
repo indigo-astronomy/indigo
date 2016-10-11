@@ -43,9 +43,7 @@
 
 #define WIDTH               1600
 #define HEIGHT              1200
-
 #define TEMP_UPDATE         5.0
-
 #define STARS               100
 
 #undef PRIVATE_DATA
@@ -95,7 +93,7 @@ static void exposure_timer_callback(indigo_device *device) {
   }
 }
 
-void ccd_temperature_callback(indigo_device *device) {
+static void ccd_temperature_callback(indigo_device *device) {
   double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
   if (diff > 0) {
     if (diff > 10) {
