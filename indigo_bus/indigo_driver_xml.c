@@ -193,7 +193,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
             if (j == 72) {
               encoded_data[j++] = '\n';
               encoded_data[j] = 0;
-              indigo_xml_prinf(handle, encoded_data);
+              indigo_xml_write(handle, encoded_data, 73);
               j = 0;
             }
           }
