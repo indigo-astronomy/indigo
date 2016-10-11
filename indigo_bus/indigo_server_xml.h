@@ -37,10 +37,13 @@
 
 #include "indigo_driver_xml.h"
 
+// prototype of callback function for network server (providing number of active clients)
 typedef void (*indigo_server_xml_callback)(int);
 
+// TCP port to run on
 extern int indigo_server_xml_port;
 
+// start network server (function will block until server is active)
 extern indigo_result indigo_server_xml(indigo_server_xml_callback callback);
 
 #endif /* indigo_server_xml_h */

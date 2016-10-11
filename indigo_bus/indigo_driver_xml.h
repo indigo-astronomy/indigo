@@ -38,10 +38,12 @@
 #include "indigo_bus.h"
 #include "indigo_xml.h"
 
+// device adapter (client side code) private data definition
 typedef struct {
   int input, output;
 } indigo_xml_device_adapter_context;
 
+// create initialized instance of device XML wire protocol adapter
 extern indigo_client *xml_device_adapter(int input, int ouput);
 
 #endif /* indigo_device_xml_h */

@@ -37,8 +37,13 @@
 
 #include "indigo_bus.h"
 
+// print formatted output to the handle (synchronized)
 extern void indigo_xml_printf(int handle, const char *format, ...);
+
+// print unformatted output to the handle (synchronized)
 extern void indigo_xml_write(int handle, const char *buffer, int length);
+
+// XML wire protocol parser
 extern void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client);
 
 #endif /* indigo_xml_h */
