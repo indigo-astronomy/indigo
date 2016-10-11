@@ -64,7 +64,6 @@ static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_timer *free_timers = NULL;
 
 static void *timer_thread(indigo_device *device) {
-  pthread_mutex_init(&DEVICE_CONTEXT->timer_mutex, NULL);
   struct timespec now, sleep_time;
   indigo_timer *timer;
   long milis;
@@ -274,6 +273,8 @@ indigo_result indigo_device_attach(indigo_device *device, char *name, int versio
 #if defined(INDIGO_LINUX)
     if (pipe(DEVICE_CONTEXT->timer_pipe) != 0)
       return INDIGO_FAILED;
+    if (pthread_mutex_init(&DEVICE_CONTEXT->timer_mutex, NULL) != 0)
+      return INDIGO_FAILED;
     if (pthread_create(&DEVICE_CONTEXT->timer_thread, NULL, (void*)(void *)timer_thread, device) != 0)
       return INDIGO_FAILED;
 #endif
@@ -354,6 +355,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
   char data = 0;
   write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
   pthread_join(DEVICE_CONTEXT->timer_thread, NULL);
+  pthread_mutex_destroy(&DEVICE_CONTEXT->timer_mutex);
 #endif
   indigo_delete_property(device, CONNECTION_PROPERTY, NULL);
   indigo_delete_property(device, INFO_PROPERTY, NULL);
