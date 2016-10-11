@@ -1,36 +1,36 @@
-//  Copyright (c) 2016 CloudMakers, s. r. o.
-//  All rights reserved.
-//
-//  Redistribution and use in source and binary forms, with or without
-//  modification, are permitted provided that the following conditions
-//  are met:
-//
-//  1. Redistributions of source code must retain the above copyright
-//  notice, this list of conditions and the following disclaimer.
-//
-//  2. Redistributions in binary form must reproduce the above
-//  copyright notice, this list of conditions and the following
-//  disclaimer in the documentation and/or other materials provided
-//  with the distribution.
-//
-//  3. The name of the author may not be used to endorse or promote
-//  products derived from this software without specific prior
-//  written permission.
-//
-//  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
-//  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-//  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-//  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-//  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-//  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-//  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-//  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-//  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-//  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-//  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  //  Copyright (c) 2016 CloudMakers, s. r. o.
+  //  All rights reserved.
+  //
+  //  Redistribution and use in source and binary forms, with or without
+  //  modification, are permitted provided that the following conditions
+  //  are met:
+  //
+  //  1. Redistributions of source code must retain the above copyright
+  //  notice, this list of conditions and the following disclaimer.
+  //
+  //  2. Redistributions in binary form must reproduce the above
+  //  copyright notice, this list of conditions and the following
+  //  disclaimer in the documentation and/or other materials provided
+  //  with the distribution.
+  //
+  //  3. The name of the author may not be used to endorse or promote
+  //  products derived from this software without specific prior
+  //  written permission.
+  //
+  //  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+  //  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+  //  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  //  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+  //  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  //  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+  //  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  //  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+  //  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+  //  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  //  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//  version history
-//  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+  //  version history
+  //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,7 +92,7 @@ int indigo_main_argc = 0;
 
 static void log_message(const char *format, va_list args) {
   static char buffer[1024];
-  static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;  
+  static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
   if (!pthread_mutex_lock(&log_mutex)) {
     vsnprintf(buffer, sizeof(buffer), format, args);
     char *line = buffer;
@@ -306,124 +306,100 @@ indigo_result indigo_detach_client(indigo_client *client) {
 }
 
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
-  if (!pthread_mutex_lock(&client_mutex)) {
-    property->version = client ? client->version : INDIGO_VERSION_CURRENT;
-    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
-    for (int i = 0; i < MAX_DEVICES; i++) {
-      indigo_device *device = devices[i];
-      if (device != NULL && device->enumerate_properties != NULL)
-        device->last_result = device->enumerate_properties(device, client, property);
-    }
-    pthread_mutex_unlock(&client_mutex);
-    return INDIGO_OK;
+  property->version = client ? client->version : INDIGO_VERSION_CURRENT;
+  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
+  for (int i = 0; i < MAX_DEVICES; i++) {
+    indigo_device *device = devices[i];
+    if (device != NULL && device->enumerate_properties != NULL)
+      device->last_result = device->enumerate_properties(device, client, property);
   }
-  return INDIGO_LOCK_ERROR;
+  return INDIGO_OK;
 }
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
   assert(property != NULL);
-  if (!pthread_mutex_lock(&client_mutex)) {
-    property->version = client ? client->version : INDIGO_VERSION_CURRENT;
-    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
-    for (int i = 0; i < MAX_DEVICES; i++) {
-      indigo_device *device = devices[i];
-      if (device != NULL && device->change_property != NULL)
-        device->last_result = device->change_property(device, client, property);
-    }
-    pthread_mutex_unlock(&client_mutex);
-    return INDIGO_OK;
+  property->version = client ? client->version : INDIGO_VERSION_CURRENT;
+  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
+  for (int i = 0; i < MAX_DEVICES; i++) {
+    indigo_device *device = devices[i];
+    if (device != NULL && device->change_property != NULL)
+      device->last_result = device->change_property(device, client, property);
   }
-  return INDIGO_LOCK_ERROR;
+  return INDIGO_OK;
 }
 
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
   assert(property != NULL);
-  if (!pthread_mutex_lock(&device_mutex)) {
-    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
-    char message[INDIGO_VALUE_SIZE];
-    if (format != NULL) {
-      va_list args;
-      va_start(args, format);
-      vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-      va_end(args);
-    }
-    property->version = device ? device->version : INDIGO_VERSION_CURRENT;
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      indigo_client *client = clients[i];
-      if (client != NULL && client->define_property != NULL)
-        client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
-    }
-    pthread_mutex_unlock(&device_mutex);
-    return INDIGO_OK;
+  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
+  char message[INDIGO_VALUE_SIZE];
+  if (format != NULL) {
+    va_list args;
+    va_start(args, format);
+    vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+    va_end(args);
   }
-  return INDIGO_LOCK_ERROR;
+  property->version = device ? device->version : INDIGO_VERSION_CURRENT;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    indigo_client *client = clients[i];
+    if (client != NULL && client->define_property != NULL)
+      client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
+  }
+  return INDIGO_OK;
 }
 
 indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...) {
   assert(property != NULL);
-  if (!pthread_mutex_lock(&device_mutex)) {
-    char message[INDIGO_VALUE_SIZE];
-    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
-    if (format != NULL) {
-      va_list args;
-      va_start(args, format);
-      vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-      va_end(args);
-    }
-    property->version = device ? device->version : INDIGO_VERSION_CURRENT;
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      indigo_client *client = clients[i];
-      if (client != NULL && client->update_property != NULL)
-        client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
-    }
-    pthread_mutex_unlock(&device_mutex);
-    return INDIGO_OK;
+  char message[INDIGO_VALUE_SIZE];
+  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
+  if (format != NULL) {
+    va_list args;
+    va_start(args, format);
+    vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+    va_end(args);
   }
-  return INDIGO_LOCK_ERROR;
+  property->version = device ? device->version : INDIGO_VERSION_CURRENT;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    indigo_client *client = clients[i];
+    if (client != NULL && client->update_property != NULL)
+      client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
+  }
+  return INDIGO_OK;
 }
 
 indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...) {
   assert(property != NULL);
-  if (!pthread_mutex_lock(&device_mutex)) {
-    char message[INDIGO_VALUE_SIZE];
-    INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
-    if (format != NULL) {
-      va_list args;
-      va_start(args, format);
-      vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-      va_end(args);
-    }
-    property->version = device ? device->version : INDIGO_VERSION_CURRENT;
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      indigo_client *client = clients[i];
-      if (client != NULL && client->delete_property != NULL)
-        client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
-    }
-    pthread_mutex_unlock(&device_mutex);
-    return INDIGO_OK;
+  char message[INDIGO_VALUE_SIZE];
+  INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
+  if (format != NULL) {
+    va_list args;
+    va_start(args, format);
+    vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+    va_end(args);
   }
-  return INDIGO_LOCK_ERROR;
+  property->version = device ? device->version : INDIGO_VERSION_CURRENT;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    indigo_client *client = clients[i];
+    if (client != NULL && client->delete_property != NULL)
+      client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
+  }
+  return INDIGO_OK;
 }
 
 indigo_result indigo_send_message(indigo_device *device, const char *format, ...) {
   INDIGO_DEBUG(indigo_debug("INDIGO Bus: message sent"));
-  if (!pthread_mutex_lock(&device_mutex)) {
-    char message[INDIGO_VALUE_SIZE];
-    if (format != NULL) {
-      va_list args;
-      va_start(args, format);
-      vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-      va_end(args);
-    }
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-      indigo_client *client = clients[i];
-      if (client != NULL && client->send_message != NULL)
-        client->last_result = client->send_message(client, device, format != NULL ? message : NULL);
-    }
-    pthread_mutex_unlock(&device_mutex);
-    return INDIGO_OK;
+  char message[INDIGO_VALUE_SIZE];
+  if (format != NULL) {
+    va_list args;
+    va_start(args, format);
+    vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+    va_end(args);
   }
-  return INDIGO_LOCK_ERROR;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    indigo_client *client = clients[i];
+    if (client != NULL && client->send_message != NULL)
+      client->last_result = client->send_message(client, device, format != NULL ? message : NULL);
+  }
+  return INDIGO_OK;
 }
 
 indigo_result indigo_stop() {
