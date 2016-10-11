@@ -399,6 +399,8 @@ indigo_result indigo_ccd_device_detach(indigo_device *device) {
   free(CCD_TEMPERATURE_PROPERTY);
   free(CCD_COOLER_PROPERTY);
   free(CCD_COOLER_POWER_PROPERTY);
+  free(CCD_GUIDE_DEC_PROPERTY);
+  free(CCD_GUIDE_RA_PROPERTY);
   return indigo_device_detach(device);
 }
 
