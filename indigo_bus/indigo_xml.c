@@ -153,9 +153,11 @@ static int decode(char *data, unsigned char *decoded_data, int input_length) {
   return output_length;
 }
 
+/* mutex used by writing indigo_xml_prinf(), indigo_xml_write() */
+static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void indigo_xml_prinf(int handle, const char *format, ...) {
   static char buffer[1024];
-  static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
   if (!pthread_mutex_lock(&log_mutex)) {
     va_list args;
     va_start(args, format);
@@ -166,6 +168,15 @@ void indigo_xml_prinf(int handle, const char *format, ...) {
     pthread_mutex_unlock(&log_mutex);
   }
 }
+
+void indigo_xml_write(int handle, const char *buffer, int length) {
+  if (!pthread_mutex_lock(&log_mutex)) {
+    int written = write(handle, buffer, length);
+    INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
+    pthread_mutex_unlock(&log_mutex);
+  }
+}
+
 
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
 
