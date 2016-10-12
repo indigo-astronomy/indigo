@@ -32,6 +32,10 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO XML wire protocol server
+ \file indigo_server_xml.c
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -107,7 +111,7 @@ indigo_result indigo_server_xml(indigo_server_xml_callback callback) {
         break;
       indigo_error("INDI Go server: can't accept connection (%s)", strerror(errno));
     } else {
-      indigo_client *protocol_adapter = xml_device_adapter(client_socket, client_socket);;
+      indigo_client *protocol_adapter = indigo_xml_device_adapter(client_socket, client_socket);;
       pthread_t thread;
       if (pthread_create(&thread , NULL, (void *(*)(void *))&start_worker_thread, protocol_adapter) != 0)
         indigo_error("INDI Go server: can't create worker thread for connection (%s)", strerror(errno));

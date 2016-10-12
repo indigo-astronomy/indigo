@@ -32,6 +32,10 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO StarlighXpress CCD driver
+ \file indigo_ccd_sx.c
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -720,6 +724,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
       CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
       indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
     }
+    return INDIGO_OK;
   } else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_TEMPERATURE
     indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
@@ -733,6 +738,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
       }
       CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
       indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+      return INDIGO_OK;
     }
     // --------------------------------------------------------------------------------
   }

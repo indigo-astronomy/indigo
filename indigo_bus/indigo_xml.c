@@ -32,6 +32,9 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO XML wire protocol parser
+ \file indigo_xml.c
+ */
 
 #include <stdlib.h>
 #include <string.h>

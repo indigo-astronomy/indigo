@@ -32,126 +32,293 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO CCD Driver base
+ \file indigo_ccd_driver.h
+ */
+
 #ifndef indigo_ccd_device_h
 #define indigo_ccd_device_h
 
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+/** CCD Main group name string.
+ */
+#define CCD_MAIN_GROUP                    "CCD main"
+
+/** CCD Image group name string.
+ */
+#define CCD_IMAGE_GROUP                   "CCD image"
+
+/** CCD Cooler group name string.
+ */
+#define CCD_COOLER_GROUP                  "CCD cooler"
+
+/** CCD Guider group name string.
+ */
+#define CCD_GUIDER_GROUP                  "CCD guider"
+
+/** Device context pointer.
+ */
 #define CCD_DEVICE_CONTEXT                ((indigo_ccd_device_context *)device->device_context)
 
-#define CCD_MAIN_GROUP                         "CCD main"
-#define CCD_IMAGE_GROUP                        "CCD image"
-#define CCD_COOLER_GROUP                       "CCD cooler"
-#define CCD_GUIDER_GROUP                       "CCD guider"
-
+/** CCD_INFO property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+ */
 #define CCD_INFO_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_info_property)
+
+/** CCD_INFO.WIDTH property item pointer.
+ */
 #define CCD_INFO_WIDTH_ITEM               (CCD_INFO_PROPERTY->items+0)
+
+/** CCD_INFO.HEIGHT property item pointer.
+ */
 #define CCD_INFO_HEIGHT_ITEM              (CCD_INFO_PROPERTY->items+1)
+
+/** CCD_INFO.MAX_HORIZONAL_BIN property item pointer.
+ */
 #define CCD_INFO_MAX_HORIZONAL_BIN_ITEM   (CCD_INFO_PROPERTY->items+2)
+
+/** CCD_INFO.MAX_VERTICAL_BIN property item pointer.
+ */
 #define CCD_INFO_MAX_VERTICAL_BIN_ITEM    (CCD_INFO_PROPERTY->items+3)
+
+/** CCD_INFO.PIXEL_SIZE property item pointer.
+ */
 #define CCD_INFO_PIXEL_SIZE_ITEM          (CCD_INFO_PROPERTY->items+4)
+
+/** CCD_INFO.PIXEL_WIDTH property item pointer.
+ */
 #define CCD_INFO_PIXEL_WIDTH_ITEM         (CCD_INFO_PROPERTY->items+5)
+
+/** CCD_INFO.PIXEL_HEIGHT property item pointer.
+ */
 #define CCD_INFO_PIXEL_HEIGHT_ITEM        (CCD_INFO_PROPERTY->items+6)
+
+/** CCD_INFO.BITS_PER_PIXEL property item pointer.
+ */
 #define CCD_INFO_BITS_PER_PIXEL_ITEM      (CCD_INFO_PROPERTY->items+7)
 
+/** CCD_UPLOAD_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+ */
 #define CCD_UPLOAD_MODE_PROPERTY          (CCD_DEVICE_CONTEXT->ccd_upload_mode_property)
+
+/** CCD_UPLOAD_MODE.CLIENT property item pointer.
+ */
 #define CCD_UPLOAD_MODE_CLIENT_ITEM       (CCD_UPLOAD_MODE_PROPERTY->items+0)
+
+/** CCD_UPLOAD_MODE.LOCAL property item pointer.
+ */
 #define CCD_UPLOAD_MODE_LOCAL_ITEM        (CCD_UPLOAD_MODE_PROPERTY->items+1)
+
+/** CCD_UPLOAD_MODE.BOTH property item pointer.
+ */
 #define CCD_UPLOAD_MODE_BOTH_ITEM         (CCD_UPLOAD_MODE_PROPERTY->items+2)
 
+/** CCD_LOCAL_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+ */
 #define CCD_LOCAL_MODE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_local_mode_property)
+
+/** CCD_LOCAL_MODE.DIR property item pointer.
+ */
 #define CCD_LOCAL_MODE_DIR_ITEM           (CCD_LOCAL_MODE_PROPERTY->items+0)
+
+/** CCD_LOCAL_MODE.PREFIX property item pointer.
+ */
 #define CCD_LOCAL_MODE_PREFIX_ITEM        (CCD_LOCAL_MODE_PROPERTY->items+1)
 
+/** CCD_EXPOSURE property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_device_change_property().
+ */
 #define CCD_EXPOSURE_PROPERTY             (CCD_DEVICE_CONTEXT->ccd_exposure_property)
+
+/** CCD_EXPOSURE.EXPOSURE property item pointer.
+ */
 #define CCD_EXPOSURE_ITEM                 (CCD_EXPOSURE_PROPERTY->items+0)
 
+/** CCD_ABORT property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_device_change_property().
+ */
 #define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_DEVICE_CONTEXT->ccd_abort_exposure_property)
+
+/** CCD_EXPOSURE.ABORT_EXPOSURE property item pointer.
+ */
 #define CCD_ABORT_EXPOSURE_ITEM           (CCD_ABORT_EXPOSURE_PROPERTY->items+0)
 
+/** CCD_FRAME property pointer, property is mandatory, should be set read-only if subframe can't be set, property change request is fully handled by indigo_ccd_device_change_property().
+ */
 #define CCD_FRAME_PROPERTY                (CCD_DEVICE_CONTEXT->ccd_frame_property)
+
+/** CCD_FRAME.LEFT property item pointer.
+ */
 #define CCD_FRAME_LEFT_ITEM               (CCD_FRAME_PROPERTY->items+0)
+
+/** CCD_FRAME.TOP property item pointer.
+ */
 #define CCD_FRAME_TOP_ITEM                (CCD_FRAME_PROPERTY->items+1)
+
+/** CCD_FRAME.WIDTH property item pointer.
+ */
 #define CCD_FRAME_WIDTH_ITEM              (CCD_FRAME_PROPERTY->items+2)
+
+/** CCD_FRAME.HEIGHT property item pointer.
+ */
 #define CCD_FRAME_HEIGHT_ITEM             (CCD_FRAME_PROPERTY->items+3)
 
+/** CCD_BIN property pointer, property is mandatory, should be set read-only if binning can't be changed, property change request is fully handled by indigo_ccd_device_change_property().
+ */
 #define CCD_BIN_PROPERTY                  (CCD_DEVICE_CONTEXT->ccd_bin_property)
+
+/** CCD_BIN.HORIZONTAL property item pointer.
+ */
 #define CCD_BIN_HORIZONTAL_ITEM           (CCD_BIN_PROPERTY->items+0)
+
+/** CCD_BIN.VERTICAL property item pointer.
+ */
 #define CCD_BIN_VERTICAL_ITEM             (CCD_BIN_PROPERTY->items+1)
 
+/** CCD_FRAME_TYPE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+ */
 #define CCD_FRAME_TYPE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_frame_type_property)
+
+/** CCD_FRAME_TYPE.LIGHT property item pointer
+ */
 #define CCD_FRAME_TYPE_LIGHT_ITEM         (CCD_FRAME_TYPE_PROPERTY->items+0)
+
+/** CCD_FRAME_TYPE.BIAS property item pointer.
+ */
 #define CCD_FRAME_TYPE_BIAS_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+1)
+
+/** CCD_FRAME_TYPE.DARK property item pointer.
+ */
 #define CCD_FRAME_TYPE_DARK_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+2)
+
+/** CCD_FRAME_TYPE.FLAT property item pointer.
+ */
 #define CCD_FRAME_TYPE_FLAT_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+3)
 
+/** CCD_IMAGE_FORMAT property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+ */
 #define CCD_IMAGE_FORMAT_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_image_format_property)
+
+/** CCD_IMAGE_FORMAT.RAW property item pointer.
+ */
 #define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+0)
+
+/** CCD_IMAGE_FORMAT.FITS property item pointer.
+ */
 #define CCD_IMAGE_FORMAT_FITS_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+1)
+
+/** CCD_IMAGE_FORMAT.JPEG property item pointer.
+ */
 #define CCD_IMAGE_FORMAT_JPEG_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+2)
 
+/** CCD_IMAGE_FILE property pointer, property is mandatory, read-only property.
+ */
 #define CCD_IMAGE_FILE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_image_file_property)
+
+/** CCD_IMAGE_FILE.FILE property item pointer.
+ */
 #define CCD_IMAGE_FILE_ITEM               (CCD_IMAGE_FILE_PROPERTY->items+0)
 
+/** CCD_IMAGE property pointer, property is mandatory, read-only property.
+ */
 #define CCD_IMAGE_PROPERTY                (CCD_DEVICE_CONTEXT->ccd_image_property)
+
+/** CCD_IMAGE.IMAGE property item pointer.
+ */
 #define CCD_IMAGE_ITEM                    (CCD_IMAGE_PROPERTY->items+0)
 
+/** CCD_TEMPERATURE property pointer, property change request should be fully handled by device driver.
+ */
 #define CCD_TEMPERATURE_PROPERTY          (CCD_DEVICE_CONTEXT->ccd_temperature_property)
+
+/** CCD_TEMPERATURE.TEMPERATURE property item pointer, property is optional.
+ */
 #define CCD_TEMPERATURE_ITEM              (CCD_TEMPERATURE_PROPERTY->items+0)
 
+/** CCD_COOLER property pointer, property is optional, property change request should be fully handled by device driver.
+ */
 #define CCD_COOLER_PROPERTY               (CCD_DEVICE_CONTEXT->ccd_cooler_property)
+
+/** CCD_COOLER.ON property item pointer.
+ */
 #define CCD_COOLER_ON_ITEM                (CCD_COOLER_PROPERTY->items+0)
+
+/** CCD_COOLER.OFF property item pointer.
+ */
 #define CCD_COOLER_OFF_ITEM               (CCD_COOLER_PROPERTY->items+1)
 
+/** CCD_COOLER_POWER property pointer, property is optional, read-only property, should be set by device driver.
+ */
 #define CCD_COOLER_POWER_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_cooler_power_property)
+
+/** CCD_COOLER_POWER.POWER property item pointer.
+ */
 #define CCD_COOLER_POWER_ITEM             (CCD_COOLER_POWER_PROPERTY->items+0)
 
+/** CCD_GUIDE_DEC property pointer, property is optional, property change request should be fully handled by device driver.
+ */
 #define CCD_GUIDE_DEC_PROPERTY            (CCD_DEVICE_CONTEXT->ccd_guide_dec_property)
+
+/** CCD_GUIDE.NORTH property item pointer.
+ */
 #define CCD_GUIDE_NORTH_ITEM              (CCD_GUIDE_DEC_PROPERTY->items+0)
+
+/** CCD_GUIDE.SOUTH property item pointer.
+ */
 #define CCD_GUIDE_SOUTH_ITEM              (CCD_GUIDE_DEC_PROPERTY->items+1)
 
+/** CCD_GUIDE_RA property pointer, property is optional, property change request should be fully handled by device driver.
+ */
 #define CCD_GUIDE_RA_PROPERTY             (CCD_DEVICE_CONTEXT->ccd_guide_ra_property)
+
+/** CCD_GUIDE.WEST property item pointer.
+ */
 #define CCD_GUIDE_WEST_ITEM               (CCD_GUIDE_RA_PROPERTY->items+0)
+
+/** CCD_GUIDE.EAST property item pointer.
+ */
 #define CCD_GUIDE_EAST_ITEM               (CCD_GUIDE_RA_PROPERTY->items+1)
 
-
+/** FITS header size, it should be added to image buffer size, raw data should start at this offset.
+ */
 #define FITS_HEADER_SIZE  2880
 
+/** CCD device context structure.
+ */
 typedef struct {
-  indigo_device_context device_context;
-  indigo_property *ccd_info_property;
-  indigo_property *ccd_upload_mode_property;
-  indigo_property *ccd_local_mode_property;
-  indigo_property *ccd_exposure_property;
-  indigo_property *ccd_abort_exposure_property;
-  indigo_property *ccd_frame_property;
-  indigo_property *ccd_bin_property;
-  indigo_property *ccd_frame_type_property;
-  indigo_property *ccd_image_format_property;
-  indigo_property *ccd_image_property;
-  indigo_property *ccd_image_file_property;
-  indigo_property *ccd_temperature_property;
-  indigo_property *ccd_cooler_property;
-  indigo_property *ccd_cooler_power_property;
-  indigo_property *ccd_guide_dec_property;
-  indigo_property *ccd_guide_ra_property;
+  indigo_device_context device_context;         ///< device context base
+  indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
+  indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
+  indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer
+  indigo_property *ccd_exposure_property;       ///< CCD_EXPOSURE property pointer
+  indigo_property *ccd_abort_exposure_property; ///< CCD_ABORT_EXPOSURE property pointer
+  indigo_property *ccd_frame_property;          ///< CCD_FRAME property pointer
+  indigo_property *ccd_bin_property;            ///< CCD_BIN property pointer
+  indigo_property *ccd_frame_type_property;     ///< CCD_FRAME_TYPE property pointer
+  indigo_property *ccd_image_format_property;   ///< CCD_IMAGE_FORMAT property pointer
+  indigo_property *ccd_image_property;          ///< CCD_IMAGE property pointer
+  indigo_property *ccd_image_file_property;     ///< CCD_IMAGE_FILE property pointer
+  indigo_property *ccd_temperature_property;    ///< CCD_TEMPERATURE property pointer
+  indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
+  indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
+  indigo_property *ccd_guide_dec_property;      ///< CCD_GUIDE_DEC property pointer
+  indigo_property *ccd_guide_ra_property;       ///< CCD_GUIDE_RA property pointer
 } indigo_ccd_device_context;
 
+/** Attach callback function.
+ */
 extern indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, indigo_version version);
+/** Enumerate properties callback function.
+ */
 extern indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+/** Change property callback function.
+ */
 extern indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+/** Detach callback function.
+ */
 extern indigo_result indigo_ccd_device_detach(indigo_device *device);
 
-typedef struct {
-  char name[8];
-  enum { INDIGO_FITS_STRING, INDIGO_FITS_NUMBER } type;
-  union {
-  char string[70];
-    double number;
-  } value;
-} indigo_fits_header;
-
+/** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
+ */
 extern void indigo_process_image(indigo_device *device, void *data, double exposure_time);
 
 #endif /* indigo_ccd_device_h */

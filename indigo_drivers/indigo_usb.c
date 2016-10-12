@@ -32,9 +32,13 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** Non-LGPL libusb 1.0 replacement for macOS
+ \file indigo_usb.c
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 
 #include "indigo_usb.h"
@@ -376,20 +380,6 @@ static void device_added(struct libusb_callback_context *callback_context, io_it
 void *hotplug_thread(struct libusb_callback_context *callback_context) {
   kern_return_t kr;
   CFMutableDictionaryRef matching_dict = IOServiceMatching(kIOUSBDeviceClassName);
-
-//    CFNumberRef number_ref;
-//    if (callback_context->vendor_id != LIBUSB_HOTPLUG_MATCH_ANY) {
-//      number_ref = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &callback_context->vendor_id);
-//      CFDictionarySetValue(matching_dict, CFSTR(kUSBVendorID), number_ref);
-//      CFRelease(number_ref);
-//    }
-//  
-//    if (callback_context->product_id != LIBUSB_HOTPLUG_MATCH_ANY) {
-//      number_ref = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &callback_context->product_id);
-//      CFDictionarySetValue(matching_dict, CFSTR(kUSBProductID), number_ref);
-//      CFRelease(number_ref);
-//    }
-  
   if (matching_dict) {
     CFRunLoopSourceRef run_loop_source = IONotificationPortGetRunLoopSource(callback_context->notify_port = IONotificationPortCreate(kIOMasterPortDefault));
     CFRunLoopAddSource(callback_context->run_loop = CFRunLoopGetCurrent(), run_loop_source, kCFRunLoopDefaultMode);

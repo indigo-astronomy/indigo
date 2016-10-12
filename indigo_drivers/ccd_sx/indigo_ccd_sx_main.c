@@ -32,6 +32,10 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO StarlighXpress CCD driver main
+ \file indigo_ccd_sx_main.c
+ */
+
 #include <stdio.h>
 #include <string.h>
 
@@ -41,7 +45,7 @@
 int main(int argc, const char * argv[]) {
   indigo_main_argc = argc;
   indigo_main_argv = argv;
-  indigo_client *protocol_adapter = xml_device_adapter(0, 1);
+  indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
   indigo_start();
   indigo_ccd_sx_register();
   indigo_attach_client(protocol_adapter);

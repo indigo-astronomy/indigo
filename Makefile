@@ -10,7 +10,7 @@ endif
 
 ifeq ($(OS_detected),Darwin)
 CC=gcc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -std=gnu99 -DINDIGO_DARWIN
+CFLAGS=-Iindigo_bus -Iindigo_drivers -std=gnu11 -DINDIGO_DARWIN
 LDFLAGS=-framework CoreFoundation -framework IOKit
 AR=ar
 ARFLAGS=-rv
@@ -18,7 +18,7 @@ endif
 
 ifeq ($(OS_detected),Linux)
 CC=gcc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -std=gnu99 -pthread -DINDIGO_LINUX
+CFLAGS=-Iindigo_bus -Iindigo_drivers -std=gnu11 -pthread -DINDIGO_LINUX
 LDFLAGS=-lm -lrt -lusb-1.0
 AR=ar
 ARFLAGS=-rv

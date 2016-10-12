@@ -32,6 +32,10 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO CCD Simulator driver main
+ \file indigo_ccd_simulator_main.c
+ */
+
 #include <stdio.h>
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
@@ -40,7 +44,7 @@
 int main(int argc, const char * argv[]) {
   indigo_main_argc = argc;
   indigo_main_argv = argv;
-  indigo_client *protocol_adapter = xml_device_adapter(0, 1);
+  indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
   indigo_start();
   indigo_attach_device(indigo_ccd_simulator());
   indigo_attach_client(protocol_adapter);

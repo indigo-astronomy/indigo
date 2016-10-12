@@ -32,12 +32,18 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO CCD Simulator driver
+ \file indigo_ccd_simulator.h
+ */
 
 #ifndef ccd_simulator_h
 #define ccd_simulator_h
 
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
+
+/** Create CCD Simulator device instance
+ */
 
 extern indigo_device *indigo_ccd_simulator();
 
