@@ -171,12 +171,11 @@ void indigo_xml_printf(int handle, const char *format, ...) {
 
 void indigo_xml_write(int handle, const char *buffer, int length) {
   if (!pthread_mutex_lock(&log_mutex)) {
-    int written = write(handle, buffer, length);
+    INDIGO_DEBUG(int written =) write(handle, buffer, length);
     INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
     pthread_mutex_unlock(&log_mutex);
   }
 }
-
 
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
 
@@ -209,14 +208,14 @@ void *get_properties_handler(parser_state state, char *name, char *value, indigo
   INDIGO_DEBUG_PROTOCOL(indigo_trace("XML Parser: get_properties_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
   if (state == ATTRIBUTE_VALUE) {
     if (!strcmp(name, "version")) {
-      int version = INDIGO_VERSION_LEGACY;
+      indigo_version version = INDIGO_VERSION_LEGACY;
       if (!strncmp(value, "1.", 2))
         version = INDIGO_VERSION_LEGACY;
       else if (!strcmp(value, "2.0"))
         version = INDIGO_VERSION_2_0;
       client->version = version;
     } else if (!strcmp(name, "switch")) {
-      int version = INDIGO_VERSION_LEGACY;
+      indigo_version version = INDIGO_VERSION_LEGACY;
       if (!strncmp(value, "1.", 2))
         version = INDIGO_VERSION_LEGACY;
       else if (!strcmp(value, "2.0"))
@@ -247,7 +246,7 @@ void *new_one_text_vector_handler(parser_state state, char *name, char *value, i
       indigo_copy_item_name(client ? client->version : INDIGO_VERSION_CURRENT, property, property->items+property->count-1, value);
     }
   } else if (state == TEXT) {
-    strncat(property->items[property->count-1].text_value, value, INDIGO_VALUE_SIZE);
+    strncat(property->items[property->count-1].text.value, value, INDIGO_VALUE_SIZE);
   } else if (state == END_TAG) {
     return new_text_vector_handler;
   }
@@ -284,7 +283,7 @@ void *new_one_number_vector_handler(parser_state state, char *name, char *value,
       indigo_copy_item_name(client ? client->version : INDIGO_VERSION_CURRENT, property, property->items+property->count-1, value);
     }
   } else if (state == TEXT) {
-    property->items[property->count-1].number_value = atof(value);
+    property->items[property->count-1].number.value = atof(value);
   } else if (state == END_TAG) {
     return new_number_vector_handler;
   }
@@ -321,7 +320,7 @@ void *new_one_switch_vector_handler(parser_state state, char *name, char *value,
       indigo_copy_item_name(client ? client->version : INDIGO_VERSION_CURRENT, property, property->items+property->count-1, value);
     }
   } else if (state == TEXT) {
-    property->items[property->count-1].switch_value = !strcmp(value, "On");
+    property->items[property->count-1].sw.value = !strcmp(value, "On");
   } else if (state == END_TAG) {
     return new_switch_vector_handler;
   }
@@ -374,7 +373,7 @@ void *set_one_text_vector_handler(parser_state state, char *name, char *value, i
       indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
     }
   } else if (state == TEXT) {
-    strncat(property->items[property->count-1].text_value, value, INDIGO_VALUE_SIZE);
+    strncat(property->items[property->count-1].text.value, value, INDIGO_VALUE_SIZE);
   } else if (state == END_TAG) {
     return set_text_vector_handler;
   }
@@ -413,7 +412,7 @@ void *set_one_number_vector_handler(parser_state state, char *name, char *value,
       indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
     }
   } else if (state == TEXT) {
-    property->items[property->count-1].number_value = atof(value);
+    property->items[property->count-1].number.value = atof(value);
   } else if (state == END_TAG) {
     return set_number_vector_handler;
   }
@@ -453,7 +452,7 @@ void *set_one_switch_vector_handler(parser_state state, char *name, char *value,
       return set_one_switch_vector_handler;
     }
   } else if (state == TEXT) {
-    property->items[property->count-1].switch_value = !strcmp(value, "On");
+    property->items[property->count-1].sw.value = !strcmp(value, "On");
     return set_one_switch_vector_handler;
   }
   return set_switch_vector_handler;
@@ -491,7 +490,7 @@ void *set_one_light_vector_handler(parser_state state, char *name, char *value, 
       indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
     }
   } else if (state == TEXT) {
-    property->items[property->count-1].light_value = parse_state(value);
+    property->items[property->count-1].light.value = parse_state(value);
   } else if (state == END_TAG) {
     return set_light_vector_handler;
   }
@@ -529,12 +528,12 @@ void *set_one_blob_vector_handler(parser_state state, char *name, char *value, i
     if (!strcmp(name, "name")) {
       indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
     } else if (!strcmp(name, "format")) {
-      strncpy(property->items[property->count-1].blob_format, value,INDIGO_NAME_SIZE);
+      strncpy(property->items[property->count-1].blob.format, value,INDIGO_NAME_SIZE);
     } else if (!strcmp(name, "size")) {
-      property->items[property->count-1].blob_size = atol(value);
+      property->items[property->count-1].blob.size = atol(value);
     }
   } else if (state == BLOB) {
-    property->items[property->count-1].blob_value = value;
+    property->items[property->count-1].blob.value = value;
   } else if (state == END_TAG) {
     return set_blob_vector_handler;
   }
@@ -575,7 +574,7 @@ void *def_text_handler(parser_state state, char *name, char *value, indigo_prope
       strncpy(property->items[property->count-1].label, value, INDIGO_VALUE_SIZE);
     }
   } else if (state == TEXT) {
-    strncat(property->items[property->count-1].text_value, value, INDIGO_VALUE_SIZE);
+    strncat(property->items[property->count-1].text.value, value, INDIGO_VALUE_SIZE);
   } else if (state == END_TAG) {
     return def_text_vector_handler;
   }
@@ -621,14 +620,14 @@ void *def_number_handler(parser_state state, char *name, char *value, indigo_pro
     } else if (!strcmp(name, "label")) {
       strncpy(property->items[property->count-1].label, value, INDIGO_VALUE_SIZE);
     } else if (!strcmp(name, "min")) {
-      property->items[property->count-1].number_min = atof(value);
+      property->items[property->count-1].number.min = atof(value);
     } else if (!strcmp(name, "max")) {
-      property->items[property->count-1].number_max = atof(value);
+      property->items[property->count-1].number.max = atof(value);
     } else if (!strcmp(name, "step")) {
-      property->items[property->count-1].number_step = atof(value);
+      property->items[property->count-1].number.step = atof(value);
     }
   } else if (state == TEXT) {
-    property->items[property->count-1].number_value = atof(value);
+    property->items[property->count-1].number.value = atof(value);
   } else if (state == END_TAG) {
     return def_number_vector_handler;
   }
@@ -675,7 +674,7 @@ void *def_switch_handler(parser_state state, char *name, char *value, indigo_pro
       strncpy(property->items[property->count-1].label, value, INDIGO_VALUE_SIZE);
     }
   } else if (state == TEXT) {
-    property->items[property->count-1].switch_value = !strcmp(value, "On");
+    property->items[property->count-1].sw.value = !strcmp(value, "On");
   } else if (state == END_TAG) {
     return def_switch_vector_handler;
   }
@@ -724,7 +723,7 @@ void *def_light_handler(parser_state state, char *name, char *value, indigo_prop
       strncpy(property->items[property->count-1].label, value, INDIGO_VALUE_SIZE);
     }
   } else if (state == TEXT) {
-    property->items[property->count-1].light_value = parse_state(value);
+    property->items[property->count-1].light.value = parse_state(value);
   } else if (state == END_TAG) {
     return def_light_vector_handler;
   }
@@ -983,9 +982,9 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
             if (property->type == INDIGO_BLOB_VECTOR) {
               state = BLOB;
               if (blob_buffer != NULL)
-                blob_buffer = realloc(blob_buffer, property->items[property->count-1].blob_size);
+                blob_buffer = realloc(blob_buffer, property->items[property->count-1].blob.size);
               else
-                blob_buffer = malloc(property->items[property->count-1].blob_size);
+                blob_buffer = malloc(property->items[property->count-1].blob.size);
               blob_pointer = blob_buffer;
             } else
               state = TEXT;
@@ -1099,9 +1098,9 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
           if (property->type == INDIGO_BLOB_VECTOR) {
             state = BLOB;
             if (blob_buffer != NULL)
-              blob_buffer = realloc(blob_buffer, property->items[property->count-1].blob_size);
+              blob_buffer = realloc(blob_buffer, property->items[property->count-1].blob.size);
             else
-              blob_buffer = malloc(property->items[property->count-1].blob_size);
+              blob_buffer = malloc(property->items[property->count-1].blob.size);
             blob_pointer = blob_buffer;
           } else
             state = TEXT;

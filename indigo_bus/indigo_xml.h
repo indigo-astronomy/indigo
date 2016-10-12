@@ -32,18 +32,25 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO XML wire protocol parser
+ \file indigo_xml.h
+ */
+
 #ifndef indigo_xml_h
 #define indigo_xml_h
 
 #include "indigo_bus.h"
 
-// print formatted output to the handle (synchronized)
+/** Print formatted output to the handle (synchronized).
+ */
 extern void indigo_xml_printf(int handle, const char *format, ...);
 
-// print unformatted output to the handle (synchronized)
+/** Print unformatted output to the handle (synchronized).
+ */
 extern void indigo_xml_write(int handle, const char *buffer, int length);
 
-// XML wire protocol parser
+/** XML wire protocol parser.
+ */
 extern void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client);
 
 #endif /* indigo_xml_h */

@@ -32,31 +32,45 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO Build configuration
+ \file indigo_config.h
+ */
+
 #ifndef indigo_config_h
 #define indigo_config_h
 
+/** Current framework and protocol version
+ */
+#define INDIGO_VERSION_CURRENT 0x0200
+
+/** INDIGO Build number
+ */
 #define INDIGO_BUILD           0
 
-// Wrappers for debug code inclusion, do not touch INDIGO_ERROR and INDIGO_LOG!
+/** Conditional compilation wrapper for TRACE log level
+ */
 #define INDIGO_TRACE(c)
+
+/** Conditional compilation wrapper for DEBUG log level
+ */
 #define INDIGO_DEBUG(c)
+
+/** Conditional compilation wrapper for ERROR log level
+ */
 #define INDIGO_ERROR(c) c
+
+/** Conditional compilation wrapper for LOG log level
+ */
 #define INDIGO_LOG(c) c
 
-#define INDIGO_DEBUG_PROTOCOL(c)
+/** Conditional compilation wrapper for TRACE log level (for wire protocol adapters)
+ */
 #define INDIGO_TRACE_PROTOCOL(c)
 
-// Uncomment to write debug messages to syslog instead of stderr.
+/** Conditional compilation wrapper for DEBUG log level (for wire protocol adapters)
+ */
+#define INDIGO_DEBUG_PROTOCOL(c)
+
 // #define INDIG_USE_SYSLOG
-
-// Property/item string sizes, max number of properties per device, max number of items per property.
-#define INDIGO_NAME_SIZE      128
-#define INDIGO_VALUE_SIZE     256
-#define INDIGO_MAX_PROPERTIES 64
-#define INDIGO_MAX_ITEMS      64
-#define INDIGO_MAX_TIMERS     32
-
-// Current version, also used for wire protocol, do not touch unless you know consequences!
-#define INDIGO_VERSION_CURRENT 0x0200
 
 #endif /* indigo_config_h */

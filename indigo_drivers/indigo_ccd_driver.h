@@ -138,7 +138,7 @@ typedef struct {
   indigo_property *ccd_guide_ra_property;
 } indigo_ccd_device_context;
 
-extern indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, int version);
+extern indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, indigo_version version);
 extern indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 extern indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 extern indigo_result indigo_ccd_device_detach(indigo_device *device);

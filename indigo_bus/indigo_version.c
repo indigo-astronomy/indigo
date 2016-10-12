@@ -151,7 +151,7 @@ static struct property_mapping legacy[] = {
   NULL
 };
 
-void indigo_copy_property_name(int version, indigo_property *property, const char *name) {
+void indigo_copy_property_name(indigo_version version, indigo_property *property, const char *name) {
   if (version == INDIGO_VERSION_LEGACY) {
     struct property_mapping *property_mapping = legacy;
     while (property_mapping->legacy) {
@@ -166,7 +166,7 @@ void indigo_copy_property_name(int version, indigo_property *property, const cha
   strncpy(property->name, name, INDIGO_NAME_SIZE);
 }
 
-void indigo_copy_item_name(int version, indigo_property *property, indigo_item *item, const char *name) {
+void indigo_copy_item_name(indigo_version version, indigo_property *property, indigo_item *item, const char *name) {
   if (version == INDIGO_VERSION_LEGACY) {
     struct property_mapping *property_mapping = legacy;
     while (property_mapping->legacy) {
@@ -188,7 +188,7 @@ void indigo_copy_item_name(int version, indigo_property *property, indigo_item *
   strncpy(item->name, name, INDIGO_NAME_SIZE);
 }
 
-const char *indigo_property_name(int version, indigo_property *property) {
+const char *indigo_property_name(indigo_version version, indigo_property *property) {
   if (version == INDIGO_VERSION_LEGACY) {
     struct property_mapping *property_mapping = legacy;
     while (property_mapping->legacy) {
@@ -202,7 +202,7 @@ const char *indigo_property_name(int version, indigo_property *property) {
   return property->name;
 }
 
-const char *indigo_item_name(int version, indigo_property *property, indigo_item *item) {
+const char *indigo_item_name(indigo_version version, indigo_property *property, indigo_item *item) {
   if (version == INDIGO_VERSION_LEGACY) {
     struct property_mapping *property_mapping = legacy;
     while (property_mapping->legacy) {
