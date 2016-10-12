@@ -32,14 +32,16 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** Non-LGPL libusb 1.0 replacement for macOS
+ \file indigo_usb.h
+ */
+
 #ifndef indigo_usb_h
 #define indigo_usb_h
 
 #include <stdio.h>
 
 #ifdef __APPLE__
-
-// Fake libusb API subset for macOS :)
 
 #define libusb_error_name(errcode) (errcode >=0 ? "OK" : "Failed!")
 #define LIBUSB_HOTPLUG_MATCH_ANY -1

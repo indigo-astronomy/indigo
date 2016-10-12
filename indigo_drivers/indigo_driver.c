@@ -32,6 +32,10 @@
   //  version history
   //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO Driver base
+ \file indigo_driver.c
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

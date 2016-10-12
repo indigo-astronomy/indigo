@@ -32,6 +32,9 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO XML wire protocol client side adapter
+ \file indigo_driver_xml.c
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -244,7 +247,7 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
   return INDIGO_OK;
 }
 
-indigo_client *xml_device_adapter(int input, int ouput) {
+indigo_client *indigo_xml_device_adapter(int input, int ouput) {
   static indigo_client client_template = {
     NULL, INDIGO_OK, INDIGO_VERSION_NONE,
     NULL,

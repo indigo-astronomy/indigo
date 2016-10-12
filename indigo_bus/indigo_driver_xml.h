@@ -51,6 +51,6 @@ typedef struct {
 
 /** Create initialized instance of XML wire protocol client side adapter.
  */
-extern indigo_client *xml_device_adapter(int input, int ouput);
+extern indigo_client *indigo_xml_device_adapter(int input, int ouput);
 
 #endif /* indigo_device_xml_h */

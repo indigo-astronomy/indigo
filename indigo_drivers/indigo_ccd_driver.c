@@ -32,6 +32,10 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO CCD Driver base
+ \file indigo_ccd_driver.c
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

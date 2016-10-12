@@ -32,6 +32,9 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO StarlighXpress CCD driver
+ \file indigo_ccd_sx.h
+ */
 
 #ifndef ccd_sx_h
 #define ccd_sx_h
@@ -40,7 +43,12 @@
 #include "indigo_ccd_driver.h"
 #include "indigo_usb.h"
 
+/** Register StarlighXpress CCD hot-plug callback
+ */
 extern indigo_result indigo_ccd_sx_register();
+
+/** Create StarlighXpress CCD device instance
+ */
 extern indigo_device *indigo_ccd_sx(libusb_device *dev, const char *name);
 
 #endif /* ccd_sx_h */

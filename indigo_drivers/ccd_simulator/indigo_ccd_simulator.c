@@ -32,6 +32,10 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO CCD Simulator driver
+ \file indigo_ccd_simulator.c
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -48,7 +52,6 @@
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((simulator_private_data *)DEVICE_CONTEXT->private_data)
-
 
 typedef struct {
   char name[INDIGO_NAME_SIZE];
@@ -197,10 +200,10 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
     PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
   } else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
+    indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
     if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
       indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
     }
-    indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
   } else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_COOLER
     indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
@@ -217,6 +220,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
     indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
     indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
     indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+    return INDIGO_OK;
   } else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_TEMPERATURE
     indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
@@ -224,6 +228,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
     CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
     CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
     indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
+    return INDIGO_OK;
     // --------------------------------------------------------------------------------
   }
   return indigo_ccd_device_change_property(device, client, property);

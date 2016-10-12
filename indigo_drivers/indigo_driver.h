@@ -32,6 +32,10 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO Driver base
+ \file indigo_driver.h
+ */
+
 #ifndef indigo_device_h
 #define indigo_device_h
 
@@ -46,74 +50,159 @@
 
 #include "indigo_bus.h"
 
-#define DEVICE_CONTEXT                ((indigo_device_context *)device->device_context)
-
+/** Main group name string.
+ */
 #define MAIN_GROUP                    "Main"
 
+/** Device context pointer.
+ */
+#define DEVICE_CONTEXT                ((indigo_device_context *)device->device_context)
+
+/** Private data pointer.
+ */
 #define PRIVATE_DATA                  (DEVICE_CONTEXT->private_data)
 
+/** CONNECTION property pointer, property is mandatory, property change request handler should set property items and state and call indigo_device_change_property() on exit.
+ */
 #define CONNECTION_PROPERTY           (DEVICE_CONTEXT->connection_property)
+
+/** CONNECTION.CONNECTED property item pointer.
+ */
 #define CONNECTION_CONNECTED_ITEM     (CONNECTION_PROPERTY->items+0)
+
+/** CONNECTION.DISCONNECTED property item pointer.
+ */
 #define CONNECTION_DISCONNECTED_ITEM  (CONNECTION_PROPERTY->items+1)
 
+/** INFO property pointer, property is mandatory.
+ */
 #define INFO_PROPERTY                 (DEVICE_CONTEXT->info_property)
+
+/** INFO.DEVICE_NAME property item pointer.
+ */
 #define INFO_DEVICE_NAME_ITEM         (INFO_PROPERTY->items+0)
+
+/** INFO.DEVICE_VERSION property item pointer.
+ */
 #define INFO_DEVICE_VERSION_ITEM      (INFO_PROPERTY->items+1)
+
+/** INFO.DEVICE_INTERFACE property item pointer.
+ */
 #define INFO_DEVICE_INTERFACE_ITEM    (INFO_PROPERTY->items+2)
+
+/** INFO.FRAMEWORK_NAME property item pointer.
+ */
 #define INFO_FRAMEWORK_NAME_ITEM      (INFO_PROPERTY->items+3)
+
+/** INFO.FRAMEWORK_VERSION property item pointer.
+ */
 #define INFO_FRAMEWORK_VERSION_ITEM   (INFO_PROPERTY->items+4)
 
+/** DEBUG property pointer.
+ */
 #define DEBUG_PROPERTY                (DEVICE_CONTEXT->debug_property)
+
+/** DEBUG.ENABLED property item pointer, property is optional.
+ */
 #define DEBUG_ENABLED_ITEM            (DEBUG_PROPERTY->items+0)
+
+/** DEBUG.DISABLED property item pointer.
+ */
 #define DEBUG_DISABLED_ITEM           (DEBUG_PROPERTY->items+1)
 
+/** SIMULATION property pointer, property is optional.
+ */
 #define SIMULATION_PROPERTY           (DEVICE_CONTEXT->simulation_property)
+
+/** SIMULATION.DISABLED property item pointer.
+ */
 #define SIMULATION_ENABLED_ITEM       (SIMULATION_PROPERTY->items+0)
+
+/** SIMULATION.DISABLED property item pointer.
+ */
 #define SIMULATION_DISABLED_ITEM      (SIMULATION_PROPERTY->items+1)
 
+/** CONFIG property pointer, property is mandatory.
+ */
 #define CONFIG_PROPERTY               (DEVICE_CONTEXT->congfiguration_property)
+
+/** CONFIG.LOAD property item pointer.
+ */
 #define CONFIG_LOAD_ITEM              (CONFIG_PROPERTY->items+0)
+
+/** CONFIG.SAVE property item pointer.
+ */
 #define CONFIG_SAVE_ITEM              (CONFIG_PROPERTY->items+1)
+
+/** CONFIG.DEFAULT property item pointer.
+ */
 #define CONFIG_DEFAULT_ITEM           (CONFIG_PROPERTY->items+2)
 
+/** Timer callback function prototype.
+ */
 typedef void (*indigo_timer_callback)(indigo_device *device);
 
+/** Timer structure.
+ */
 typedef struct indigo_timer {
-  indigo_device *device;
-  indigo_timer_callback callback;
+  indigo_device *device;                    ///< device associated with timer
+  indigo_timer_callback callback;           ///< callback function pointer
 #if defined(INDIGO_LINUX)
-  struct timespec time;
-  struct indigo_timer *next;
+  struct timespec time;                     ///< time to fire (linux only)
+  struct indigo_timer *next;                ///< next timer in the queue (linux only)
 #elif defined(INDIGO_DARWIN)
-  bool canceled;
+  bool canceled;                            ///< timer is canceled (darwin only)
 #endif
 } indigo_timer;
 
+/** Device context structure.
+ */
 typedef struct {
-  void *private_data;
-  int property_save_file_handle;
+  void *private_data;                       ///< private data
+  int property_save_file_handle;            ///< handle for property save
 #if defined(INDIGO_LINUX)
-  pthread_t timer_thread;
-  pthread_mutex_t timer_mutex;
-  int timer_pipe[2];
-  indigo_timer *timer_queue;
+  pthread_t timer_thread;                   ///< timer thread (linux only)
+  pthread_mutex_t timer_mutex;              ///< timer mutex (linux only)
+  int timer_pipe[2];                        ///< timer pipe (linux only)
+  indigo_timer *timer_queue;                ///< timer queue (linux only)
 #endif
-  indigo_property *connection_property;
-  indigo_property *info_property;
-  indigo_property *debug_property;
-  indigo_property *simulation_property;
-  indigo_property *congfiguration_property;
+  indigo_property *connection_property;     ///< CONNECTION property pointer
+  indigo_property *info_property;           ///< INFO property pointer
+  indigo_property *debug_property;          ///< DEBUG property pointer
+  indigo_property *simulation_property;     ///< SIMULATION property pointer
+  indigo_property *congfiguration_property; ///< CONFIGURATION property pointer
 } indigo_device_context;
 
+/** Attach callback function.
+ */
 extern indigo_result indigo_device_attach(indigo_device *device, char *name, indigo_version version, int interface);
+
+/** Enumerate properties callback function.
+ */
 extern indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+/** Change property callback function.
+ */
 extern indigo_result indigo_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+
+/** Detach callback function.
+ */
 extern indigo_result indigo_device_detach(indigo_device *device);
 
+/** Load properties.
+ */
 extern indigo_result indigo_load_properties(indigo_device *device, bool default_properties);
+
+/** Save single property.
+ */
 extern indigo_result indigo_save_property(indigo_device*device, indigo_property *property);
 
+/** Set timer.
+ */
 extern indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback);
+
+/** Cancel timer.
+ */
 extern void indigo_cancel_timer(indigo_device *device, indigo_timer *timer);
 
 #endif /* indigo_device_h */
