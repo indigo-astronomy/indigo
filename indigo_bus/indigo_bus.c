@@ -170,33 +170,33 @@ void indigo_debug_property(const char *message, indigo_property *property, bool 
       switch (property->type) {
         case INDIGO_TEXT_VECTOR:
           if (defs)
-            indigo_debug("  '%s' = '%s' // %s", item->name, item->text_value, item->label);
+            indigo_debug("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
           else
-            indigo_debug("  '%s' = '%s' ",item->name, item->text_value);
+            indigo_debug("  '%s' = '%s' ",item->name, item->text.value);
           break;
         case INDIGO_NUMBER_VECTOR:
           if (defs)
-            indigo_debug("  '%s' = %g (%g, %g, %g) // %s", item->name, item->number_value, item->number_min, item->number_max, item->number_step, item->label);
+            indigo_debug("  '%s' = %g (%g, %g, %g) // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->label);
           else
-            indigo_debug("  '%s' = %g ",item->name, item->number_value);
+            indigo_debug("  '%s' = %g ",item->name, item->number.value);
           break;
         case INDIGO_SWITCH_VECTOR:
           if (defs)
-            indigo_debug("  '%s' = %s // %s", item->name, (item->switch_value ? "On" : "Off"), item->label);
+            indigo_debug("  '%s' = %s // %s", item->name, (item->sw.value ? "On" : "Off"), item->label);
           else
-            indigo_debug("  '%s' = %s ",item->name, (item->switch_value ? "On" : "Off"));
+            indigo_debug("  '%s' = %s ",item->name, (item->sw.value ? "On" : "Off"));
           break;
         case INDIGO_LIGHT_VECTOR:
           if (defs)
-            indigo_debug("  '%s' = %s // %s", item->name, indigo_property_state_text[item->light_value], item->label);
+            indigo_debug("  '%s' = %s // %s", item->name, indigo_property_state_text[item->light.value], item->label);
           else
-            indigo_debug("  '%s' = %s ",item->name, indigo_property_state_text[item->light_value]);
+            indigo_debug("  '%s' = %s ",item->name, indigo_property_state_text[item->light.value]);
           break;
         case INDIGO_BLOB_VECTOR:
           if (defs)
             indigo_debug("  '%s' // %s", item->name, item->label);
           else
-            indigo_debug("  '%s' (%ld bytes, '%s')",item->name, item->blob_size, item->blob_format);
+            indigo_debug("  '%s' (%ld bytes, '%s')",item->name, item->blob.size, item->blob.format);
           break;
       }
     }
@@ -532,7 +532,7 @@ void indigo_init_text_item(indigo_item *item, const char *name, const char *labe
   strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
   va_list args;
   va_start(args, format);
-  vsnprintf(item->text_value, INDIGO_VALUE_SIZE, format, args);
+  vsnprintf(item->text.value, INDIGO_VALUE_SIZE, format, args);
   va_end(args);
 }
 
@@ -542,10 +542,10 @@ void indigo_init_number_item(indigo_item *item, const char *name, const char *la
   memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name, INDIGO_NAME_SIZE);
   strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
-  item->number_min = min;
-  item->number_max = max;
-  item->number_step = step;
-  item->number_value = value;
+  item->number.min = min;
+  item->number.max = max;
+  item->number.step = step;
+  item->number.value = value;
 }
 
 void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value) {
@@ -554,7 +554,7 @@ void indigo_init_switch_item(indigo_item *item, const char *name, const char *la
   memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name, INDIGO_NAME_SIZE);
   strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
-  item->switch_value = value;
+  item->sw.value = value;
 }
 
 void indigo_init_light_item(indigo_item *item, const char *name, const char *label, indigo_property_state value) {
@@ -563,7 +563,7 @@ void indigo_init_light_item(indigo_item *item, const char *name, const char *lab
   memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name, INDIGO_NAME_SIZE);
   strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
-  item->light_value = value;
+  item->light.value = value;
 }
 
 void indigo_init_blob_item(indigo_item *item, const char *name, const char *label) {
@@ -586,7 +586,7 @@ bool indigo_switch_match(indigo_item *item, indigo_property *other) {
   for (int i = 0; i < other->count; i++) {
     indigo_item *other_item = other->items+i;
     if (!strcmp(item->name, other_item->name)) {
-      return other_item->switch_value;
+      return other_item->sw.value;
     }
   }
   return false;
@@ -597,10 +597,10 @@ void indigo_set_switch(indigo_property *property, indigo_item *item, bool value)
   assert(property->type == INDIGO_SWITCH_VECTOR);
   if (property->rule != INDIGO_ANY_OF_MANY_RULE) {
     for (int i = 0; i < property->count; i++) {
-      property->items[i].switch_value = false;
+      property->items[i].sw.value = false;
     }
   }
-  item->switch_value = value;
+  item->sw.value = value;
 }
 
 void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state) {
@@ -611,7 +611,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
       property->state = other->state;
     if (property->type == INDIGO_SWITCH_VECTOR && property->rule != INDIGO_ANY_OF_MANY_RULE) {
       for (int j = 0; j < property->count; j++) {
-        property->items[j].switch_value = false;
+        property->items[j].sw.value = false;
       }
     }
     for (int i = 0; i < other->count; i++) {
@@ -621,21 +621,21 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
         if (!strcmp(property_item->name, other_item->name)) {
           switch (property->type) {
             case INDIGO_TEXT_VECTOR:
-              strncpy(property_item->text_value, other_item->text_value, INDIGO_VALUE_SIZE);
+              strncpy(property_item->text.value, other_item->text.value, INDIGO_VALUE_SIZE);
               break;
             case INDIGO_NUMBER_VECTOR:
-              property_item->number_value = other_item->number_value;
+              property_item->number.value = other_item->number.value;
               break;
             case INDIGO_SWITCH_VECTOR:
-              property_item->switch_value = other_item->switch_value;
+              property_item->sw.value = other_item->sw.value;
               break;
             case INDIGO_LIGHT_VECTOR:
-              property_item->light_value = other_item->light_value;
+              property_item->light.value = other_item->light.value;
               break;
             case INDIGO_BLOB_VECTOR:
-              strncpy(property_item->blob_format, other_item->blob_format, INDIGO_NAME_SIZE);
-              property_item->blob_size = other_item->blob_size;
-              property_item->blob_value = other_item->blob_value;
+              strncpy(property_item->blob.format, other_item->blob.format, INDIGO_NAME_SIZE);
+              property_item->blob.size = other_item->blob.size;
+              property_item->blob.value = other_item->blob.value;
               break;
           }
           break;

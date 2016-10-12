@@ -32,21 +32,29 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO Version mapping
+ \file indigo_version.h
+ */
+
 #ifndef indigo_version_h
 #define indigo_version_h
 
 #include "indigo_bus.h"
 
-// copy name into property definition, translate if version doesn't match
-extern void indigo_copy_property_name(int version, indigo_property *property, const char *name);
+/** Copy name into property definition, translate if version doesn't match.
+ */
+extern void indigo_copy_property_name(indigo_version version, indigo_property *property, const char *name);
 
-// copy name into item definition, translate if version doesn't match
-extern void indigo_copy_item_name(int version, indigo_property *property, indigo_item *item, const char *name);
+/** Copy name into item definition, translate if version doesn't match.
+ */
+extern void indigo_copy_item_name(indigo_version version, indigo_property *property, indigo_item *item, const char *name);
 
-// get property name, translate if version doesn't match
-extern const char *indigo_property_name(int version, indigo_property *property);
+/** Get property name, translate if version doesn't match.
+ */
+extern const char *indigo_property_name(indigo_version version, indigo_property *property);
 
-// get item name, translate if version doesn't match
-extern const char *indigo_item_name(int version, indigo_property *property, indigo_item *item);
+/** Get item name, translate if version doesn't match.
+ */
+extern const char *indigo_item_name(indigo_version version, indigo_property *property, indigo_item *item);
 
 #endif /* indigo_version_h */

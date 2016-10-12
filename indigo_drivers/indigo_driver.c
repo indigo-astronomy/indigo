@@ -228,7 +228,7 @@ void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
 
 #endif
 
-indigo_result indigo_device_attach(indigo_device *device, char *name, int version, int interface) {
+indigo_result indigo_device_attach(indigo_device *device, char *name, indigo_version version, int interface) {
   assert(device != NULL);
   assert(device != NULL);
   if (DEVICE_CONTEXT == NULL) {
@@ -323,7 +323,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
         CONFIG_PROPERTY->state = INDIGO_OK_STATE;
       else
         CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
-      CONFIG_LOAD_ITEM->switch_value = false;
+      CONFIG_LOAD_ITEM->sw.value = false;
     } else if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
       if (DEBUG_PROPERTY->perm == INDIGO_RW_PERM)
         indigo_save_property(device, DEBUG_PROPERTY);
@@ -335,13 +335,13 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
       } else {
         CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
       }
-      CONFIG_SAVE_ITEM->switch_value = false;
+      CONFIG_SAVE_ITEM->sw.value = false;
     } else if (indigo_switch_match(CONFIG_DEFAULT_ITEM, property)) {
       if (indigo_load_properties(device, true) == INDIGO_OK)
         CONFIG_PROPERTY->state = INDIGO_OK_STATE;
       else
         CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
-      CONFIG_DEFAULT_ITEM->switch_value = false;
+      CONFIG_DEFAULT_ITEM->sw.value = false;
     }
     indigo_update_property(device, CONFIG_PROPERTY, NULL);
       // --------------------------------------------------------------------------------
@@ -404,7 +404,7 @@ static int open_config_file(char *device_name, int mode, const char *suffix) {
 
 indigo_result indigo_load_properties(indigo_device *device, bool default_properties) {
   assert(device != NULL);
-  int handle = open_config_file(INFO_DEVICE_NAME_ITEM->text_value, O_RDONLY, default_properties ? ".default" : ".config");
+  int handle = open_config_file(INFO_DEVICE_NAME_ITEM->text.value, O_RDONLY, default_properties ? ".default" : ".config");
   if (handle > 0) {
     indigo_xml_parse(handle, NULL, NULL);
     close(handle);
@@ -424,7 +424,7 @@ indigo_result indigo_save_property(indigo_device*device, indigo_property *proper
       xprintf(handle, "<newTextVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, item->text_value);
+        xprintf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, item->text.value);
       }
       xprintf(handle, "</newTextVector>\n");
       break;
@@ -432,7 +432,7 @@ indigo_result indigo_save_property(indigo_device*device, indigo_property *proper
       xprintf(handle, "<newNumberVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number_value);
+        xprintf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number.value);
       }
       xprintf(handle, "</newNumberVector>\n");
       break;
@@ -440,7 +440,7 @@ indigo_result indigo_save_property(indigo_device*device, indigo_property *proper
       xprintf(handle, "<newSwitchVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
       for (int i = 0; i < property->count; i++) {
         indigo_item *item = &property->items[i];
-        xprintf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->switch_value ? "On" : "Off");
+        xprintf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
       }
       xprintf(handle, "</newSwitchVector>\n");
       break;

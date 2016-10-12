@@ -63,8 +63,8 @@ static indigo_result test_define_property(struct indigo_client *client, struct i
   if (message)
     indigo_log("message: %s", message);
   if (indigo_property_match(connection_property, property)) {
-    connection_property->items[0].switch_value = true;
-    connection_property->items[1].switch_value = false;
+    connection_property->items[0].sw.value = true;
+    connection_property->items[1].sw.value = false;
     indigo_change_property(client, connection_property);
     return INDIGO_OK;
   }
@@ -76,9 +76,9 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
     indigo_log("message: %s", message);
   if (indigo_property_match(connection_property, property)) {
     indigo_property_copy_values(connection_property, property, true);
-    if (connection_property->items[0].switch_value) {
+    if (connection_property->items[0].sw.value) {
       indigo_log("connected...");
-      ccd_exposure_property->items[0].number_value = 10.0;
+      ccd_exposure_property->items[0].number.value = 10.0;
       indigo_change_property(client, ccd_exposure_property);
     } else {
       indigo_log("disconnected...");
@@ -89,7 +89,7 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
   if (indigo_property_match(ccd_exposure_property, property)) {
     indigo_property_copy_values(ccd_exposure_property, property, true);
     if (ccd_exposure_property->state == INDIGO_BUSY_STATE) {
-      indigo_log("exposure %gs...", ccd_exposure_property->items[0].number_value);
+      indigo_log("exposure %gs...", ccd_exposure_property->items[0].number.value);
     } else if (ccd_exposure_property->state == INDIGO_OK_STATE) {
       indigo_log("exposure done...");
     }
@@ -98,9 +98,9 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
   if (indigo_property_match(ccd_image_property, property)) {
     indigo_property_copy_values(ccd_image_property, property, true);
     if (ccd_image_property->state == INDIGO_OK_STATE) {
-      indigo_log("image received (%d bytes)...", ccd_image_property->items[0].blob_size);
-      connection_property->items[0].switch_value = false;
-      connection_property->items[1].switch_value = true;
+      indigo_log("image received (%d bytes)...", ccd_image_property->items[0].blob.size);
+      connection_property->items[0].sw.value = false;
+      connection_property->items[1].sw.value = true;
       indigo_change_property(client, connection_property);
     }
     return INDIGO_OK;

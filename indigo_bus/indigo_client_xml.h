@@ -32,18 +32,25 @@
 //  version history
 //  0.0 PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+/** INDIGO XML wire protocol driver side adapter
+ \file indigo_client_xml.h
+ */
+
 #ifndef indigo_client_xml_h
 #define indigo_client_xml_h
 
 #include "indigo_bus.h"
 #include "indigo_xml.h"
 
-// client adapter (device side code) private data definition
+/** XML wire protocol driver side adapter private data structure.
+ */
 typedef struct {
-  int input, output;
+  int input;  ///< input handle
+  int output; ///< output handle
 } indigo_xml_client_adapter_context;
 
-// create initialized instance of client XML wire protocol adapter
+/** Create initialized instance of XML wire protocol driver side adapter.
+ */
 extern indigo_device *xml_client_adapter(int input, int ouput);
 
 #endif /* indigo_client_xml_h */
