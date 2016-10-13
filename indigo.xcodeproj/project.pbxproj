@@ -156,7 +156,7 @@
 		5999FB6B1DA40C820084BBF8 /* indigo_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb.c; sourceTree = "<group>"; };
 		5999FB6C1DA40C820084BBF8 /* indigo_usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb.h; sourceTree = "<group>"; };
 		5999FB7E1DA414820084BBF8 /* indigo_ccd_sx */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_ccd_sx; sourceTree = BUILT_PRODUCTS_DIR; };
-		5999FBC71DB01F950084BBF8 /* indigo_base64.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_base64.c; sourceTree = "<group>"; };
+		5999FBC71DB01F950084BBF8 /* indigo_base64.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_base64.c; sourceTree = "<group>"; usesTabs = 0; };
 		5999FBCF1DB01FB70084BBF8 /* indigo_base64_luts.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_base64_luts.h; sourceTree = "<group>"; };
 		5999FBD01DB01FB70084BBF8 /* indigo_base64.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_base64.h; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
