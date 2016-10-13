@@ -52,6 +52,11 @@ struct property_mapping {
 };
 
 static struct property_mapping legacy[] = {
+  { "CONNECTION", "CONNECTION", {
+    { "CONNECT", "CONNECTED" },
+    { "DISCONNECT", "DISCONNECTED" },
+    NULL }
+  },
   { "DEBUG", "DEBUG", {
     { "ENABLE", "ENABLED" },
     { "DISABLE", "DISABLED" },
