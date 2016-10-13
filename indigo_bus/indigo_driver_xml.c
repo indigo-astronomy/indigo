@@ -173,9 +173,9 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
               #define RAW_BUF_SIZE 98304
               #define BASE64_BUF_SIZE 131072
               char encoded_data[BASE64_BUF_SIZE];
-              int len = (RAW_BUF_SIZE < input_length) ?  RAW_BUF_SIZE : input_length;
+              long len = (RAW_BUF_SIZE < input_length) ?  RAW_BUF_SIZE : input_length;
 
-              int enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
+              long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
               indigo_xml_write(handle, encoded_data, enclen);
 
               input_length -= len;
@@ -185,9 +185,9 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
             char encoded_data[73];
             while (input_length) {
               /* 54 raw = 72 encoded */
-              int len = (54 < input_length) ?  54 : input_length;
+              long len = (54 < input_length) ?  54 : input_length;
 
-              int enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
+              long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
               encoded_data[enclen] = '\n';
               indigo_xml_write(handle, encoded_data, enclen);
 

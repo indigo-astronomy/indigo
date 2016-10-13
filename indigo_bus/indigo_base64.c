@@ -72,13 +72,6 @@ int base64_encode(unsigned char *out, const unsigned char *in, int inlen) {
 
 
 /* base64 should not contain whitespaces.*/
-int base64_decode(unsigned char* out, const unsigned char* in) {
-	unsigned char* cp = (unsigned char*)in;
-	while (*cp != 0) cp += 4;
-	return base64_decode_fast(out, in, cp - in);
-}
-
-
 int base64_decode_fast(unsigned char* out, const unsigned char* in, int inlen) {
 	int outlen = 0;
 	uint8_t b1, b2, b3;
