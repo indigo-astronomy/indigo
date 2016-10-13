@@ -1036,7 +1036,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
               *value_pointer++ = c;
             } else {
               *value_pointer = 0;
-              blob_pointer += base64_decode_fast(value_buffer, blob_pointer, (int)(value_pointer-value_buffer));
+              blob_pointer += base64_decode_fast(blob_pointer, value_buffer, (int)(value_pointer-value_buffer));
               value_pointer = value_buffer;
               memset(value_buffer, 0, sizeof(value_buffer));
               *value_pointer++ = c;

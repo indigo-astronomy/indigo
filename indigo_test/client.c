@@ -104,11 +104,11 @@ static indigo_result client_update_property(struct indigo_client *client, struct
     indigo_property_copy_values(ccd_image_property, property, true);
     if (ccd_image_property->state == INDIGO_OK_STATE) {
       indigo_log("image received (%d bytes)...", ccd_image_property->items[0].blob.size);
-//      int handle = open("client.fits", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-//      if (handle) {
-//        write(handle, ccd_image_property->items[0].blob.value, ccd_image_property->items[0].blob.size);
-//        close(handle);
-//      }
+      int handle = open("client.fits", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      if (handle) {
+        write(handle, ccd_image_property->items[0].blob.value, ccd_image_property->items[0].blob.size);
+        close(handle);
+      }
       connection_property->items[0].sw.value = false;
       connection_property->items[1].sw.value = true;
       indigo_change_property(client, connection_property);
