@@ -42,6 +42,7 @@ extern "C" {
 extern int base64_encode(unsigned char *out, const unsigned char *in, int inlen);
 extern int base64_decode(unsigned char *out, const unsigned char *in);
 extern int base64_decode_fast(unsigned char *out, const unsigned char *in, int inlen);
+extern int base64_decode_fast_nl(unsigned char *out, const unsigned char *in, int inlen);
 
 #ifdef __cplusplus
 }

@@ -73,13 +73,65 @@ int base64_encode(unsigned char *out, const unsigned char *in, int inlen) {
 
 /* base64 should not contain whitespaces.*/
 int base64_decode(unsigned char* out, const unsigned char* in) {
-	unsigned char* cp = (char *) in;
+	unsigned char* cp = in;
 	while (*cp != 0) cp += 4;
 	return base64_decode_fast(out, in, cp - in);
 }
 
 
 int base64_decode_fast(unsigned char* out, const unsigned char* in, int inlen) {
+	int outlen = 0;
+	uint8_t b1, b2, b3;
+	uint16_t s1, s2;
+	uint32_t n32;
+	int j;
+	int n = (inlen/4)-1;
+	uint16_t* inp = (uint16_t*)in;
+
+	for( j = 0; j < n; j++ ) {
+		s1 = rbase64lut[ inp[0] ];
+		s2 = rbase64lut[ inp[1] ];
+
+		n32 = s1;
+		n32 <<= 10;
+		n32 |= s2 >> 2;
+
+		b3 = ( n32 & 0x00ff ); n32 >>= 8;
+		b2 = ( n32 & 0x00ff ); n32 >>= 8;
+		b1 = ( n32 & 0x00ff );
+
+		out[0] = b1;
+		out[1] = b2;
+		out[2] = b3;
+
+		inp += 2;
+		out += 3;
+	}
+	outlen = (inlen / 4 - 1) * 3;
+
+	s1 = rbase64lut[ inp[0] ];
+	s2 = rbase64lut[ inp[1] ];
+
+	n32 = s1;
+	n32 <<= 10;
+	n32 |= s2 >> 2;
+
+	b3 = ( n32 & 0x00ff ); n32 >>= 8;
+	b2 = ( n32 & 0x00ff ); n32 >>= 8;
+	b1 = ( n32 & 0x00ff );
+
+	*out++ = b1;  outlen++;
+	if ((inp[1] & 0x00FF) != 0x003D)  {
+		*out++ = b2;  outlen++;
+		if ((inp[1] & 0xFF00) != 0x3D00)  {
+			*out++ = b3;  outlen++;
+		}
+	}
+	return outlen;
+}
+
+
+int base64_decode_fast_nl(unsigned char* out, const unsigned char* in, int inlen) {
 	int outlen = 0;
 	uint8_t b1, b2, b3;
 	uint16_t s1, s2;
