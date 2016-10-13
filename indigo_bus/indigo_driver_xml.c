@@ -180,19 +180,33 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
           indigo_item *item = &property->items[i];
           long input_length = item->blob.size;
           unsigned char *data = item->blob.value;
-          char encoded_data[100];
           indigo_xml_printf(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob.format, item->blob.size);
+          if (property->version >= INDIGO_VERSION_2_0) {
+            while (input_length) {
+              #define RAW_BUF_SIZE 98304
+              #define BASE64_BUF_SIZE 131072
+              char encoded_data[BASE64_BUF_SIZE];
+              int len = (RAW_BUF_SIZE < input_length) ?  RAW_BUF_SIZE : input_length;
 
-          while (input_length) {
-            /* 54 raw = 72 encoded */
-            int len = (54 < input_length) ?  54 : input_length;
+              int enclen = base64_encode(encoded_data, data, len);
+              indigo_xml_write(handle, encoded_data, enclen);
 
-            int enclen = base64_encode(encoded_data, data, len);
-            encoded_data[enclen] = '\n';
-            indigo_xml_write(handle, encoded_data, enclen);
+              input_length -= len;
+              data += len;
+		    }
+          } else {
+            char encoded_data[73];
+            while (input_length) {
+              /* 54 raw = 72 encoded */
+              int len = (54 < input_length) ?  54 : input_length;
 
-            input_length -= len;
-            data += len;
+              int enclen = base64_encode(encoded_data, data, len);
+              encoded_data[enclen] = '\n';
+              indigo_xml_write(handle, encoded_data, enclen);
+
+              input_length -= len;
+              data += len;
+            }
           }
           indigo_xml_printf(handle, "</oneBLOB>\n");
         }
