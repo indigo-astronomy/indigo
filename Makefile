@@ -33,7 +33,7 @@ init:
 
 libindigo.a:\
 	indigo_bus/indigo_bus.o\
-	indigo_bus/base64.o\
+	indigo_bus/indigo_base64.o\
 	indigo_bus/indigo_xml.o\
 	indigo_bus/indigo_version.o\
 	indigo_bus/indigo_server_xml.o\
