@@ -934,7 +934,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
           *name_pointer = 0;
           depth++;
           handler = handler(BEGIN_TAG, name_buffer, NULL, property, device, client, message);
-          if (isblank(c)) {
+          if (isspace(c)) {
             state = ATTRIBUTE_NAME1;
             INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> ATTRIBUTE_NAME1", c));
           } else if (c == '/') {
