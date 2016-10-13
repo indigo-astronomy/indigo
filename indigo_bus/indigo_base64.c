@@ -41,9 +41,9 @@
 /* out size should be at least 4*inlen/3 + 4.
  * returns length of out (without trailing NULL).
  */
-int base64_encode(unsigned char *out, const unsigned char *in, int inlen) {
+long base64_encode(unsigned char *out, const unsigned char *in, long inlen) {
 	uint16_t* b64lut = (uint16_t*)base64lut;
-	int dlen = ((inlen+2)/3)*4; /* 4/3, rounded up */
+	long dlen = ((inlen+2)/3)*4; /* 4/3, rounded up */
 	uint16_t* wbuf = (uint16_t*)out;
 
 	for(; inlen > 2; inlen -= 3 ) {
@@ -72,13 +72,13 @@ int base64_encode(unsigned char *out, const unsigned char *in, int inlen) {
 
 
 /* base64 should not contain whitespaces.*/
-int base64_decode_fast(unsigned char* out, const unsigned char* in, int inlen) {
-	int outlen = 0;
+long base64_decode_fast(unsigned char* out, const unsigned char* in, long inlen) {
+	long outlen = 0;
 	uint8_t b1, b2, b3;
 	uint16_t s1, s2;
 	uint32_t n32;
 	int j;
-	int n = (inlen/4)-1;
+	long n = (inlen/4)-1;
 	uint16_t* inp = (uint16_t*)in;
 
 	for( j = 0; j < n; j++ ) {
@@ -124,13 +124,13 @@ int base64_decode_fast(unsigned char* out, const unsigned char* in, int inlen) {
 }
 
 
-int base64_decode_fast_nl(unsigned char* out, const unsigned char* in, int inlen) {
-	int outlen = 0;
+long base64_decode_fast_nl(unsigned char* out, const unsigned char* in, long inlen) {
+	long outlen = 0;
 	uint8_t b1, b2, b3;
 	uint16_t s1, s2;
 	uint32_t n32;
 	int j;
-	int n = (inlen/4)-1;
+	long n = (inlen/4)-1;
 	uint16_t* inp = (uint16_t*)in;
 
 	for( j = 0; j < n; j++ ) {

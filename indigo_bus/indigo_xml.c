@@ -131,7 +131,7 @@ void indigo_xml_printf(int handle, const char *format, ...) {
   }
 }
 
-void indigo_xml_write(int handle, const char *buffer, int length) {
+void indigo_xml_write(int handle, const char *buffer, long length) {
   if (!pthread_mutex_lock(&log_mutex)) {
     INDIGO_DEBUG(int written =) write(handle, buffer, length);
     INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));

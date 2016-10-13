@@ -47,7 +47,7 @@ extern void indigo_xml_printf(int handle, const char *format, ...);
 
 /** Print unformatted output to the handle (synchronized).
  */
-extern void indigo_xml_write(int handle, const char *buffer, int length);
+extern void indigo_xml_write(int handle, const char *buffer, long length);
 
 /** XML wire protocol parser.
  */
