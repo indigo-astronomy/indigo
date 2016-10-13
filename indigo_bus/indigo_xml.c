@@ -46,7 +46,7 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include "base64.h"
+#include "indigo_base64.h"
 #include "indigo_xml.h"
 #include "indigo_version.h"
 #include "indigo_driver_xml.h"
