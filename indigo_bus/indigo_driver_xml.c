@@ -46,6 +46,7 @@
 #include <assert.h>
 
 #include "indigo_xml.h"
+#include "base64.h"
 #include "indigo_version.h"
 #include "indigo_driver_xml.h"
 
@@ -181,32 +182,18 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
           unsigned char *data = item->blob.value;
           char encoded_data[100];
           indigo_xml_printf(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob.format, item->blob.size);
-          int j = 0;
-          int i = 0;
-          while (i < input_length) {
-            unsigned int octet_a = i < input_length ? (unsigned char)data[i++] : 0;
-            unsigned int octet_b = i < input_length ? (unsigned char)data[i++] : 0;
-            unsigned int octet_c = i < input_length ? (unsigned char)data[i++] : 0;
-            unsigned int triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
-            encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
-            encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
-            encoded_data[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];
-            encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
-            assert(j <= 72);
-            if (j == 72) {
-              encoded_data[j++] = '\n';
-              encoded_data[j] = 0;
-              indigo_xml_write(handle, encoded_data, 73);
-              j = 0;
-            }
+
+          while (input_length) {
+            /* 54 raw = 72 encoded */
+            int len = (54 < input_length) ?  54 : input_length;
+
+            int enclen = base64_encode(encoded_data, data, len);
+            encoded_data[enclen] = '\n';
+            indigo_xml_write(handle, encoded_data, enclen);
+
+            input_length -= len;
+            data += len;
           }
-          int output_length = 4 * ((input_length % 54 + 2) / 3);
-          for (int i = 0; i < mod_table[input_length % 3]; i++) {
-            encoded_data[output_length - 1 - i] = '=';
-          }
-          encoded_data[output_length++] = '\n';
-          encoded_data[output_length] = 0;
-          indigo_xml_printf(handle, encoded_data);
           indigo_xml_printf(handle, "</oneBLOB>\n");
         }
       }
