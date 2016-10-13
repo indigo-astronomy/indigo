@@ -1024,7 +1024,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
         if (c == '<') {
           if (depth == 2) {
             *value_pointer = 0;
-            blob_pointer += base64_decode_fast(value_buffer, blob_pointer, (int)(value_pointer-value_buffer));
+            blob_pointer += base64_decode_fast((unsigned char*)value_buffer, (unsigned char*)blob_pointer, (int)(value_pointer-value_buffer));
             handler = handler(BLOB, NULL, (char *)blob_buffer, property, device, client, message);
           }
           state = TEXT1;
@@ -1036,7 +1036,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
               *value_pointer++ = c;
             } else {
               *value_pointer = 0;
-              blob_pointer += base64_decode_fast(blob_pointer, value_buffer, (int)(value_pointer-value_buffer));
+              blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)value_buffer, (int)(value_pointer-value_buffer));
               value_pointer = value_buffer;
               memset(value_buffer, 0, sizeof(value_buffer));
               *value_pointer++ = c;
