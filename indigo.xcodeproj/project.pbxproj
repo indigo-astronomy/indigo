@@ -17,6 +17,13 @@
 		5999FB851DA414FD0084BBF8 /* indigo_usb.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB6B1DA40C820084BBF8 /* indigo_usb.c */; };
 		5999FB861DA447450084BBF8 /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
 		5999FBC61DAC33D90084BBF8 /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
+		5999FBC81DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
+		5999FBC91DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
+		5999FBCA1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
+		5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
+		5999FBCC1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
+		5999FBCD1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
+		5999FBCE1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
 		599C9A3A1D9FF0A3008BBCC1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */; };
 		599C9A3C1D9FF0A3008BBCC1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */; };
 		599C9A3F1D9FF0A3008BBCC1 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3D1D9FF0A3008BBCC1 /* MainMenu.xib */; };
@@ -149,6 +156,9 @@
 		5999FB6B1DA40C820084BBF8 /* indigo_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb.c; sourceTree = "<group>"; };
 		5999FB6C1DA40C820084BBF8 /* indigo_usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb.h; sourceTree = "<group>"; };
 		5999FB7E1DA414820084BBF8 /* indigo_ccd_sx */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_ccd_sx; sourceTree = BUILT_PRODUCTS_DIR; };
+		5999FBC71DB01F950084BBF8 /* indigo_base64.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_base64.c; sourceTree = "<group>"; };
+		5999FBCF1DB01FB70084BBF8 /* indigo_base64_luts.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_base64_luts.h; sourceTree = "<group>"; };
+		5999FBD01DB01FB70084BBF8 /* indigo_base64.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_base64.h; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
 		599C9A371D9FF0A3008BBCC1 /* INDIGO Server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "INDIGO Server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -322,6 +332,9 @@
 				59D382061D97314C00E87393 /* indigo_client_xml.c */,
 				9D97F8071D9A89ED00582EAF /* indigo_server_xml.h */,
 				9D97F8061D9A89ED00582EAF /* indigo_server_xml.c */,
+				5999FBCF1DB01FB70084BBF8 /* indigo_base64_luts.h */,
+				5999FBD01DB01FB70084BBF8 /* indigo_base64.h */,
+				5999FBC71DB01F950084BBF8 /* indigo_base64.c */,
 			);
 			path = indigo_bus;
 			sourceTree = "<group>";
@@ -566,6 +579,7 @@
 			files = (
 				5999FB741DA414820084BBF8 /* indigo_bus.c in Sources */,
 				5999FB831DA414BE0084BBF8 /* indigo_ccd_sx.c in Sources */,
+				5999FBCD1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				5999FB751DA414820084BBF8 /* indigo_xml.c in Sources */,
 				5999FB761DA414820084BBF8 /* indigo_driver_xml.c in Sources */,
 				5999FB841DA414BE0084BBF8 /* indigo_ccd_sx_main.c in Sources */,
@@ -579,6 +593,7 @@
 			files = (
 				599C9A6A1DA04E69008BBCC1 /* indigo_ccd_simulator.c in Sources */,
 				5999FB861DA447450084BBF8 /* indigo_ccd_sx.c in Sources */,
+				5999FBCE1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A3A1D9FF0A3008BBCC1 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -587,6 +602,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
 				5999FB851DA414FD0084BBF8 /* indigo_usb.c in Sources */,
 				599C9A4D1DA022E3008BBCC1 /* indigo_ccd_driver.c in Sources */,
@@ -604,6 +620,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				599C9A5E1DA0293A008BBCC1 /* indigo_ccd_simulator.c in Sources */,
+				5999FBC81DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A5C1DA028DF008BBCC1 /* test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -614,6 +631,7 @@
 			files = (
 				599C9A581DA02797008BBCC1 /* indigo_ccd_simulator_main.c in Sources */,
 				59D381FF1D97085600E87393 /* indigo_ccd_simulator.c in Sources */,
+				5999FBCC1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				59D382001D97085600E87393 /* indigo_bus.c in Sources */,
 				59D382011D97085600E87393 /* indigo_xml.c in Sources */,
 				59D382051D9720C200E87393 /* indigo_driver_xml.c in Sources */,
@@ -625,6 +643,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5999FBC91DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				59D382171D97348500E87393 /* client.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -635,6 +654,7 @@
 			files = (
 				599C9A661DA02A07008BBCC1 /* indigo_ccd_simulator.c in Sources */,
 				5999FBC61DAC33D90084BBF8 /* indigo_ccd_sx.c in Sources */,
+				5999FBCA1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				9D97F81B1D9A8A5D00582EAF /* server.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
