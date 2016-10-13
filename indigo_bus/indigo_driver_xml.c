@@ -46,24 +46,11 @@
 #include <assert.h>
 
 #include "indigo_xml.h"
-#include "base64.h"
+#include "indigo_base64.h"
 #include "indigo_version.h"
 #include "indigo_driver_xml.h"
 
 static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
-
-static char encoding_table[] =
-{ 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-  'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-  'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-  'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-  'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-  'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-  'w', 'x', 'y', 'z', '0', '1', '2', '3',
-  '4', '5', '6', '7', '8', '9', '+', '/'
-};
-
-static int mod_table[] = {0, 2, 1};
 
 static const char *message_attribute(const char *message) {
   if (message) {
