@@ -73,7 +73,7 @@ int base64_encode(unsigned char *out, const unsigned char *in, int inlen) {
 
 /* base64 should not contain whitespaces.*/
 int base64_decode(unsigned char* out, const unsigned char* in) {
-	unsigned char* cp = in;
+	unsigned char* cp = (unsigned char*)in;
 	while (*cp != 0) cp += 4;
 	return base64_decode_fast(out, in, cp - in);
 }
