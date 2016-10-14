@@ -69,7 +69,7 @@
 
 /** Conditional compilation wrapper for DEBUG log level (for wire protocol adapters)
  */
-#define INDIGO_DEBUG_PROTOCOL(c)
+#define INDIGO_DEBUG_PROTOCOL(c) c
 
 // #define INDIG_USE_SYSLOG
 

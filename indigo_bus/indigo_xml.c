@@ -161,6 +161,14 @@ void *enable_blob_handler(parser_state state, char *name, char *value, indigo_pr
   INDIGO_DEBUG_PROTOCOL(indigo_trace("XML Parser: enable_blob_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
   if (state == END_TAG) {
     return top_level_handler;
+  } else if (state == TEXT) {
+    if (!strcmp(value, "Also")) {
+      client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
+    } else if (!strcmp(value, "Also")) {
+      client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
+    } else if (!strcmp(value, "Also")) {
+      client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
+    }
   }
   return enable_blob_handler;
 }

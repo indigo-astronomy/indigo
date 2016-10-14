@@ -161,44 +161,46 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
       indigo_xml_printf(handle, "</setLightVector>\n");
       break;
     case INDIGO_BLOB_VECTOR:
-      indigo_xml_printf(handle, "<setBLOBVector device='%s' name='%s' state='%s'%s>\n", property->device, indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
-      if (property->state == INDIGO_OK_STATE) {
-        for (int i = 0; i < property->count; i++) {
-          indigo_item *item = &property->items[i];
-          long input_length = item->blob.size;
-          unsigned char *data = item->blob.value;
-          indigo_xml_printf(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob.format, item->blob.size);
-          if (property->version >= INDIGO_VERSION_2_0) {
-            while (input_length) {
-              #define RAW_BUF_SIZE 98304
-              #define BASE64_BUF_SIZE 131072
-              char encoded_data[BASE64_BUF_SIZE];
-              long len = (RAW_BUF_SIZE < input_length) ?  RAW_BUF_SIZE : input_length;
+      if (client->enable_blob != INDIGO_ENABLE_BLOB_NEVER) {
+        indigo_xml_printf(handle, "<setBLOBVector device='%s' name='%s' state='%s'%s>\n", property->device, indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
+        if (property->state == INDIGO_OK_STATE) {
+          for (int i = 0; i < property->count; i++) {
+            indigo_item *item = &property->items[i];
+            long input_length = item->blob.size;
+            unsigned char *data = item->blob.value;
+            indigo_xml_printf(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob.format, item->blob.size);
+            if (property->version >= INDIGO_VERSION_2_0) {
+              while (input_length) {
+                #define RAW_BUF_SIZE 98304
+                #define BASE64_BUF_SIZE 131072
+                static char encoded_data[BASE64_BUF_SIZE];
+                long len = (RAW_BUF_SIZE < input_length) ?  RAW_BUF_SIZE : input_length;
 
-              long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
-              indigo_xml_write(handle, encoded_data, enclen);
+                long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
+                indigo_xml_write(handle, encoded_data, enclen);
 
-              input_length -= len;
-              data += len;
+                input_length -= len;
+                data += len;
+              }
+            } else {
+              static char encoded_data[73];
+              while (input_length) {
+                /* 54 raw = 72 encoded */
+                long len = (54 < input_length) ?  54 : input_length;
+
+                long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
+                encoded_data[enclen] = '\n';
+                indigo_xml_write(handle, encoded_data, enclen);
+
+                input_length -= len;
+                data += len;
+              }
             }
-          } else {
-            char encoded_data[73];
-            while (input_length) {
-              /* 54 raw = 72 encoded */
-              long len = (54 < input_length) ?  54 : input_length;
-
-              long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
-              encoded_data[enclen] = '\n';
-              indigo_xml_write(handle, encoded_data, enclen);
-
-              input_length -= len;
-              data += len;
-            }
+            indigo_xml_printf(handle, "</oneBLOB>\n");
           }
-          indigo_xml_printf(handle, "</oneBLOB>\n");
         }
+        indigo_xml_printf(handle, "</setBLOBVector>\n");
       }
-      indigo_xml_printf(handle, "</setBLOBVector>\n");
       break;
   }
   pthread_mutex_unlock(&xmutex);
@@ -237,7 +239,7 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 
 indigo_client *indigo_xml_device_adapter(int input, int ouput) {
   static indigo_client client_template = {
-    NULL, INDIGO_OK, INDIGO_VERSION_NONE,
+    NULL, INDIGO_OK, INDIGO_VERSION_NONE, INDIGO_ENABLE_BLOB_ALSO,
     NULL,
     xml_device_adapter_define_property,
     xml_device_adapter_update_property,
