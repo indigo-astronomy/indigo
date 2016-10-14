@@ -131,6 +131,12 @@ typedef enum {
  */
 extern char *indigo_switch_rule_text[];
 
+typedef enum {
+  INDIGO_ENABLE_BLOB_ALSO,
+  INDIGO_ENABLE_BLOB_NEVER,
+  INDIGO_ENABLE_BLOB_ONLY
+} indigo_enable_blob;
+
 /** Property item definition.
  */
 typedef struct {
@@ -215,6 +221,7 @@ typedef struct indigo_client {
   void *client_context;               ///< any client specific data
   indigo_result last_result;          ///< result of last bus operation
   indigo_version version;             ///< client version
+  indigo_enable_blob enable_blob;     ///< enable blob mode
   
   /** callback called when client is attached to the bus
    */

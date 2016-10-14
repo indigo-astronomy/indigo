@@ -32,6 +32,9 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
+//  TODO:
+//    SXUSB_READ_PIXELS_DELAYED is actually not suitable for long exposures
+
 /** INDIGO StarlighXpress CCD driver
  \file indigo_ccd_sx.c
  */
@@ -573,6 +576,28 @@ bool sx_set_cooler(indigo_device *device, bool status, double target, double *cu
   }
   return false;
 }
+
+bool sx_guide_relays(indigo_device *device, unsigned short mask) {
+  if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
+    libusb_device_handle *handle = PRIVATE_DATA->handle;
+    unsigned char *setup_data = PRIVATE_DATA->setup_data;
+    int rc = 0;
+    int transferred;
+    setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAOUT;
+    setup_data[USB_REQ ] = SXUSB_SET_STAR2K;
+    setup_data[USB_REQ_VALUE_L ] = mask;
+    setup_data[USB_REQ_VALUE_H ] = 0;
+    setup_data[USB_REQ_INDEX_L ] = 0;
+    setup_data[USB_REQ_INDEX_H ] = 0;
+    setup_data[USB_REQ_LENGTH_L] = 0;
+    setup_data[USB_REQ_LENGTH_H] = 0;
+    rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+    pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+    return rc >= 0;
+  }
+  return false;
+}
+
 
 void sx_close(indigo_device *device) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {

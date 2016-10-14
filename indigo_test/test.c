@@ -120,7 +120,7 @@ static indigo_result test_detach(indigo_client *client) {
 }
 
 static indigo_client test = {
-  NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+  NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
   test_attach,
   test_define_property,
   test_update_property,
