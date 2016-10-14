@@ -39,6 +39,7 @@
 #ifndef indigo_xml_h
 #define indigo_xml_h
 
+#include <stdio.h>
 #include "indigo_bus.h"
 
 /** Print formatted output to the handle (synchronized).
@@ -48,6 +49,7 @@ extern void indigo_xml_printf(int handle, const char *format, ...);
 /** Print unformatted output to the handle (synchronized).
  */
 extern void indigo_xml_write(int handle, const char *buffer, long length);
+extern void indigo_xml_fwrite(FILE* fh, const char *buffer, long length);
 
 /** XML wire protocol parser.
  */

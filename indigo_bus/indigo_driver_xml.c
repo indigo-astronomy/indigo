@@ -118,6 +118,8 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, s
 }
 
 static indigo_result xml_device_adapter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+  FILE* fh;
+  int handle2;
   assert(device != NULL);
   assert(client != NULL);
   assert(property != NULL);
@@ -161,6 +163,8 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
       indigo_xml_printf(handle, "</setLightVector>\n");
       break;
     case INDIGO_BLOB_VECTOR:
+      handle2 = dup(handle);
+      fh = fdopen(handle2,"w");
       indigo_xml_printf(handle, "<setBLOBVector device='%s' name='%s' state='%s'%s>\n", property->device, indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
       if (property->state == INDIGO_OK_STATE) {
         for (int i = 0; i < property->count; i++) {
@@ -176,7 +180,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
               long len = (RAW_BUF_SIZE < input_length) ?  RAW_BUF_SIZE : input_length;
 
               long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
-              indigo_xml_write(handle, encoded_data, enclen);
+              indigo_xml_fwrite(fh, encoded_data, enclen);
 
               input_length -= len;
               data += len;
@@ -189,12 +193,14 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 
               long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
               encoded_data[enclen] = '\n';
-              indigo_xml_write(handle, encoded_data, enclen);
+              indigo_xml_fwrite(fh, encoded_data, enclen);
 
               input_length -= len;
               data += len;
             }
           }
+          fflush(fh);
+          fclose(fh);
           indigo_xml_printf(handle, "</oneBLOB>\n");
         }
       }
