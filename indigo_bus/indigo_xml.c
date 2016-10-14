@@ -126,7 +126,7 @@ void indigo_xml_printf(int handle, const char *format, ...) {
     int length = vsnprintf(buffer, 1024, format, args);
     va_end(args);
     write(handle, buffer, length);
-    INDIGO_DEBUG(indigo_debug("sent: %s", buffer));
+    INDIGO_DEBUG_PROTOCOL(indigo_debug("sent: %s", buffer));
     pthread_mutex_unlock(&log_mutex);
   }
 }
@@ -906,7 +906,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
       }
       pointer = buffer;
       buffer[count] = 0;
-      INDIGO_TRACE_PROTOCOL(indigo_debug("received: %s", buffer));
+      INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
     }
     switch (state) {
       case IDLE:
@@ -994,8 +994,13 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
       case TEXT:
         if (c == '<') {
           if (depth == 2) {
-            *value_pointer = 0;
-            handler = handler(TEXT, NULL, value_buffer, property, device, client, message);
+            *value_pointer-- = 0;
+            while (value_pointer >= value_buffer && isspace(*value_pointer))
+              *value_pointer-- = 0;
+            value_pointer = value_buffer;
+            while (*value_pointer && isspace(*value_pointer))
+              value_pointer++;
+            handler = handler(TEXT, NULL, value_pointer, property, device, client, message);
           }
           state = TEXT1;
           INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d TEXT -> TEXT1", c, depth));
