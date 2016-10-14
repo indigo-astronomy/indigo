@@ -546,6 +546,7 @@ void indigo_init_number_item(indigo_item *item, const char *name, const char *la
   memset(item, 0, sizeof(indigo_item));
   strncpy(item->name, name, INDIGO_NAME_SIZE);
   strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
+  strncpy(item->number.format, "%g", INDIGO_VALUE_SIZE);
   item->number.min = min;
   item->number.max = max;
   item->number.step = step;

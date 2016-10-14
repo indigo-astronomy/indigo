@@ -145,6 +145,7 @@ typedef struct {
     /** Number property item specific fields.
      */
     struct {
+      char format[INDIGO_VALUE_SIZE]; ///< item format (for number properties)
       double min;                     ///< item min value (for number properties)
       double max;                     ///< item max value (for number properties)
       double step;                    ///< item increment value (for number properties)
