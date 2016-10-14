@@ -52,61 +52,60 @@
 
 // -------------------------------------------------------------------------------- SX USB interface implementation
 
+#define SX_VENDOR_ID                    0x1278
 
-#define SX_VENDOR_ID  0x1278
+#define MAX_DEVICES                     5
 
-#define MAX_DEVICES         5
+#define USB_REQ_TYPE                    0
+#define USB_REQ                         1
+#define USB_REQ_VALUE_L                 2
+#define USB_REQ_VALUE_H                 3
+#define USB_REQ_INDEX_L                 4
+#define USB_REQ_INDEX_H                 5
+#define USB_REQ_LENGTH_L                6
+#define USB_REQ_LENGTH_H                7
+#define USB_REQ_DATA                    8
 
-#define USB_REQ_TYPE                0
-#define USB_REQ                     1
-#define USB_REQ_VALUE_L             2
-#define USB_REQ_VALUE_H             3
-#define USB_REQ_INDEX_L             4
-#define USB_REQ_INDEX_H             5
-#define USB_REQ_LENGTH_L            6
-#define USB_REQ_LENGTH_H            7
-#define USB_REQ_DATA                8
+#define USB_REQ_DIR(r)                  ((r)&(1<<7))
+#define USB_REQ_DATAOUT                 0x00
+#define USB_REQ_DATAIN                  0x80
+#define USB_REQ_KIND(r)                 ((r)&(3<<5))
+#define USB_REQ_VENDOR                  (2<<5)
+#define USB_REQ_STD                     0
+#define USB_REQ_RECIP(r)                ((r)&31)
+#define USB_REQ_DEVICE                  0x00
+#define USB_REQ_IFACE                   0x01
+#define USB_REQ_ENDPOINT                0x02
+#define USB_DATAIN                      0x80
+#define USB_DATAOUT                     0x00
 
-#define USB_REQ_DIR(r)              ((r)&(1<<7))
-#define USB_REQ_DATAOUT             0x00
-#define USB_REQ_DATAIN              0x80
-#define USB_REQ_KIND(r)             ((r)&(3<<5))
-#define USB_REQ_VENDOR              (2<<5)
-#define USB_REQ_STD                 0
-#define USB_REQ_RECIP(r)            ((r)&31)
-#define USB_REQ_DEVICE              0x00
-#define USB_REQ_IFACE               0x01
-#define USB_REQ_ENDPOINT            0x02
-#define USB_DATAIN                  0x80
-#define USB_DATAOUT                 0x00
-
-#define SXUSB_GET_FIRMWARE_VERSION  255
-#define SXUSB_ECHO                  0
-#define SXUSB_CLEAR_PIXELS          1
-#define SXUSB_READ_PIXELS_DELAYED   2
-#define SXUSB_READ_PIXELS           3
-#define SXUSB_SET_TIMER             4
-#define SXUSB_GET_TIMER             5
-#define SXUSB_RESET                 6
-#define SXUSB_SET_CCD               7
-#define SXUSB_GET_CCD               8
-#define SXUSB_SET_STAR2K            9
-#define SXUSB_WRITE_SERIAL_PORT     10
-#define SXUSB_READ_SERIAL_PORT      11
-#define SXUSB_SET_SERIAL            12
-#define SXUSB_GET_SERIAL            13
-#define SXUSB_CAMERA_MODEL          14
-#define SXUSB_LOAD_EEPROM           15
-#define SXUSB_SET_A2D               16
-#define SXUSB_RED_A2D               17
-#define SXUSB_READ_PIXELS_GATED     18
-#define SXUSB_BUILD_NUMBER          19
-#define SXUSB_COOLER_CONTROL        30
-#define SXUSB_COOLER                30
-#define SXUSB_COOLER_TEMPERATURE    31
-#define SXUSB_SHUTTER_CONTROL       32
-#define SXUSB_SHUTTER               32
-#define SXUSB_READ_I2CPORT          33
+#define SXUSB_GET_FIRMWARE_VERSION      255
+#define SXUSB_ECHO                      0
+#define SXUSB_CLEAR_PIXELS              1
+#define SXUSB_READ_PIXELS_DELAYED       2
+#define SXUSB_READ_PIXELS               3
+#define SXUSB_SET_TIMER                 4
+#define SXUSB_GET_TIMER                 5
+#define SXUSB_RESET                     6
+#define SXUSB_SET_CCD                   7
+#define SXUSB_GET_CCD                   8
+#define SXUSB_SET_STAR2K                9
+#define SXUSB_WRITE_SERIAL_PORT         10
+#define SXUSB_READ_SERIAL_PORT          11
+#define SXUSB_SET_SERIAL                12
+#define SXUSB_GET_SERIAL                13
+#define SXUSB_CAMERA_MODEL              14
+#define SXUSB_LOAD_EEPROM               15
+#define SXUSB_SET_A2D                   16
+#define SXUSB_RED_A2D                   17
+#define SXUSB_READ_PIXELS_GATED         18
+#define SXUSB_BUILD_NUMBER              19
+#define SXUSB_COOLER_CONTROL            30
+#define SXUSB_COOLER                    30
+#define SXUSB_COOLER_TEMPERATURE        31
+#define SXUSB_SHUTTER_CONTROL           32
+#define SXUSB_SHUTTER                   32
+#define SXUSB_READ_I2CPORT              33
 
 #define SXCCD_CAPS_STAR2K               0x01
 #define SXCCD_CAPS_COMPRESS             0x02
@@ -135,13 +134,18 @@
 #define CCD_EXP_FLAGS_SHUTTER_OPEN      0x40
 #define CCD_EXP_FLAGS_SHUTTER_CLOSE     0x80
 
-#define BULK_IN                     0x0082
-#define BULK_OUT                    0x0001
+#define BULK_IN                         0x0082
+#define BULK_OUT                        0x0001
 
-#define BULK_COMMAND_TIMEOUT        2000
-#define BULK_DATA_TIMEOUT           10000
+#define SX_GUIDE_EAST                   0x08     /* RA+ */
+#define SX_GUIDE_NORTH                  0x04     /* DEC+ */
+#define SX_GUIDE_SOUTH                  0x02     /* DEC- */
+#define SX_GUIDE_WEST                   0x01     /* RA- */
 
-#define CHUNK_SIZE                  (10*1024*1024)
+#define BULK_COMMAND_TIMEOUT            2000
+#define BULK_DATA_TIMEOUT               10000
+
+#define CHUNK_SIZE                      (10*1024*1024)
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((sx_private_data *)DEVICE_CONTEXT->private_data)
@@ -173,6 +177,7 @@ typedef struct {
   unsigned short horizontal_bin;
   unsigned short vertical_bin;
   double target_temperature, current_temperature;
+  unsigned short relay_mask;
   unsigned char *buffer;
   unsigned char *odd, *even;
   pthread_mutex_t usb_mutex;
@@ -577,27 +582,21 @@ bool sx_set_cooler(indigo_device *device, bool status, double target, double *cu
   return false;
 }
 
-bool sx_guide_relays(indigo_device *device, unsigned short mask) {
-  if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-    libusb_device_handle *handle = PRIVATE_DATA->handle;
-    unsigned char *setup_data = PRIVATE_DATA->setup_data;
-    int rc = 0;
-    int transferred;
-    setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAOUT;
-    setup_data[USB_REQ ] = SXUSB_SET_STAR2K;
-    setup_data[USB_REQ_VALUE_L ] = mask;
-    setup_data[USB_REQ_VALUE_H ] = 0;
-    setup_data[USB_REQ_INDEX_L ] = 0;
-    setup_data[USB_REQ_INDEX_H ] = 0;
-    setup_data[USB_REQ_LENGTH_L] = 0;
-    setup_data[USB_REQ_LENGTH_H] = 0;
-    rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-    pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-    return rc >= 0;
-  }
-  return false;
+bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
+  libusb_device_handle *handle = PRIVATE_DATA->handle;
+  unsigned char *setup_data = PRIVATE_DATA->setup_data;
+  int transferred;
+  setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAOUT;
+  setup_data[USB_REQ ] = SXUSB_SET_STAR2K;
+  setup_data[USB_REQ_VALUE_L ] = relay_mask;
+  setup_data[USB_REQ_VALUE_H ] = 0;
+  setup_data[USB_REQ_INDEX_L ] = 0;
+  setup_data[USB_REQ_INDEX_H ] = 0;
+  setup_data[USB_REQ_LENGTH_L] = 0;
+  setup_data[USB_REQ_LENGTH_H] = 0;
+  int rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+  return rc >= 0;
 }
-
 
 void sx_close(indigo_device *device) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
@@ -703,6 +702,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
         if (PRIVATE_DATA->extra_caps & SXCCD_CAPS_STAR2K) {
           CCD_GUIDE_DEC_PROPERTY->hidden = false;
           CCD_GUIDE_RA_PROPERTY->hidden = false;
+          sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
         }
         PRIVATE_DATA->can_check_temperature = true;
         CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -763,8 +763,38 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
       }
       CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
       indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-      return INDIGO_OK;
     }
+    return INDIGO_OK;
+  } else if (indigo_property_match(CCD_GUIDE_DEC_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- TELESCOPE_GUIDE_DEC
+    indigo_property_copy_values(CCD_GUIDE_DEC_PROPERTY, property, false);
+    if (CCD_GUIDE_NORTH_ITEM->sw.value)
+      PRIVATE_DATA->relay_mask |= SX_GUIDE_NORTH;
+    else
+      PRIVATE_DATA->relay_mask ^= SX_GUIDE_NORTH;
+    if (CCD_GUIDE_SOUTH_ITEM->sw.value)
+      PRIVATE_DATA->relay_mask |= SX_GUIDE_SOUTH;
+    else
+      PRIVATE_DATA->relay_mask ^= SX_GUIDE_SOUTH;
+    sx_guide_relays(device, PRIVATE_DATA->relay_mask);
+    CCD_GUIDE_DEC_PROPERTY->state = PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+    indigo_update_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
+    return INDIGO_OK;
+  } else if (indigo_property_match(CCD_GUIDE_RA_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- TELESCOPE_GUIDE_RA
+    indigo_property_copy_values(CCD_GUIDE_RA_PROPERTY, property, false);
+    if (CCD_GUIDE_WEST_ITEM->sw.value)
+      PRIVATE_DATA->relay_mask |= SX_GUIDE_WEST;
+    else
+      PRIVATE_DATA->relay_mask ^= SX_GUIDE_WEST;
+    if (CCD_GUIDE_EAST_ITEM->sw.value)
+      PRIVATE_DATA->relay_mask |= SX_GUIDE_EAST;
+    else
+      PRIVATE_DATA->relay_mask ^= SX_GUIDE_EAST;
+    sx_guide_relays(device, PRIVATE_DATA->relay_mask);
+    CCD_GUIDE_RA_PROPERTY->state = PRIVATE_DATA->relay_mask & (SX_GUIDE_WEST | SX_GUIDE_EAST) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+    indigo_update_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
+    return INDIGO_OK;
     // --------------------------------------------------------------------------------
   }
   return indigo_ccd_device_change_property(device, client, property);
