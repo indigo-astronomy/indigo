@@ -133,16 +133,18 @@ void indigo_xml_printf(int handle, const char *format, ...) {
 
 void indigo_xml_write(int handle, const char *buffer, long length) {
   if (!pthread_mutex_lock(&log_mutex)) {
-    INDIGO_DEBUG(int written =) write(handle, buffer, length);
-    INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
+//    INDIGO_DEBUG(int written =)
+    write(handle, buffer, length);
+//    INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
     pthread_mutex_unlock(&log_mutex);
   }
 }
 
 void indigo_xml_fwrite(FILE* fh, const char *buffer, long length) {
   if (!pthread_mutex_lock(&log_mutex)) {
-    INDIGO_DEBUG(int written =) fwrite(buffer, 1, length, fh);
-    INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
+//    INDIGO_DEBUG(int written =)
+    fwrite(buffer, 1, length, fh);
+//    INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
     pthread_mutex_unlock(&log_mutex);
   }
 }
