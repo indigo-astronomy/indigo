@@ -139,6 +139,14 @@ void indigo_xml_write(int handle, const char *buffer, long length) {
   }
 }
 
+void indigo_xml_fwrite(FILE* fh, const char *buffer, long length) {
+  if (!pthread_mutex_lock(&log_mutex)) {
+    INDIGO_DEBUG(int written =) fwrite(buffer, 1, length, fh);
+    INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
+    pthread_mutex_unlock(&log_mutex);
+  }
+}
+
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
 
 void *top_level_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
@@ -1037,7 +1045,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
         if (c == '<') {
           if (depth == 2) {
             *value_pointer = 0;
-            blob_pointer += base64_decode_fast((unsigned char*)value_buffer, (unsigned char*)blob_pointer, (int)(value_pointer-value_buffer));
+            blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)value_buffer, (int)(value_pointer-value_buffer));
             handler = handler(BLOB, NULL, (char *)blob_buffer, property, device, client, message);
           }
           state = TEXT1;
