@@ -885,9 +885,11 @@ void *top_level_handler(parser_state state, char *name, char *value, indigo_prop
 }
 
 void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) {
-  char buffer[BUFFER_SIZE] = { 0 };
+  char *buffer = malloc(BUFFER_SIZE);
+  memset(buffer, 0, BUFFER_SIZE);
+  char *value_buffer = malloc(BUFFER_SIZE);
+  memset(value_buffer, 0, BUFFER_SIZE);
   char name_buffer[INDIGO_NAME_SIZE];
-  char value_buffer[INDIGO_VALUE_SIZE];
   char property_buffer[PROPERTY_SIZE];
   unsigned char *blob_buffer = NULL;
   char *pointer = buffer;
@@ -898,8 +900,9 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
   parser_state state = IDLE;
   char q = '"';
   int depth = 0;
-  char c;  
+  char c = 0;
   (void)parser_state_name;
+  bool parser_loop = true;
 
   parser_handler handler = top_level_handler;
   indigo_property *property = (indigo_property *)property_buffer;
@@ -908,24 +911,25 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
   if (device != NULL) {
     device->enumerate_properties(device, client, NULL);
   }
-  
-  while (true) {
+
+  while (parser_loop) {
     if (state == ERROR) {
       indigo_error("XML Parser: syntax error");
-      return;
-    }
-    while ((c = *pointer++) == 0) {
-      ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE);
-      if (count <= 0) {
-        if (blob_buffer != NULL)
-          free(blob_buffer);
-        close(handle);
-        return;
+      parser_loop = false;
+    } else {
+      while ((c = *pointer++) == 0) {
+        ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE);
+        if (count <= 0) {
+          parser_loop = false;
+          break;
+        }
+        pointer = buffer;
+        buffer[count] = 0;
+        INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
       }
-      pointer = buffer;
-      buffer[count] = 0;
-      INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
     }
+    if (!parser_loop)
+      break;
     switch (state) {
       case IDLE:
         if (c == '<') {
@@ -1131,5 +1135,10 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
         break;
     }
   }
+  if (blob_buffer != NULL)
+    free(blob_buffer);
+  free(buffer);
+  free(value_buffer);
+  close(handle);
   INDIGO_DEBUG(indigo_debug("XML Parser: parser finished"));
 }
