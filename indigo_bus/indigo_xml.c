@@ -886,9 +886,7 @@ void *top_level_handler(parser_state state, char *name, char *value, indigo_prop
 
 void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) {
   char *buffer = malloc(BUFFER_SIZE);
-  memset(buffer, 0, BUFFER_SIZE);
   char *value_buffer = malloc(BUFFER_SIZE);
-  memset(value_buffer, 0, BUFFER_SIZE);
   char name_buffer[INDIGO_NAME_SIZE];
   char property_buffer[PROPERTY_SIZE];
   unsigned char *blob_buffer = NULL;
@@ -903,7 +901,6 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
   int depth = 0;
   char c = 0;
   (void)parser_state_name;
-  bool parser_loop = true;
 
   parser_handler handler = top_level_handler;
   indigo_property *property = (indigo_property *)property_buffer;
@@ -913,24 +910,25 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
     device->enumerate_properties(device, client, NULL);
   }
 
-  while (parser_loop) {
+  while (true) {
+    
+    assert(pointer - buffer < BUFFER_SIZE);
+    assert(value_pointer - value_buffer < BUFFER_SIZE);
+    assert(name_pointer - name_buffer < INDIGO_NAME_SIZE);
+    
     if (state == ERROR) {
       indigo_error("XML Parser: syntax error");
-      parser_loop = false;
-    } else {
-      while ((c = *pointer++) == 0) {
-        ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE);
-        if (count <= 0) {
-          parser_loop = false;
-          break;
-        }
-        pointer = buffer;
-        buffer[count] = 0;
-        INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
-      }
+      goto exit_loop;
     }
-    if (!parser_loop)
-      break;
+    while ((c = *pointer++) == 0) {
+      ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE-1);
+      if (count <= 0) {
+        goto exit_loop;
+      }
+      pointer = buffer;
+      buffer[count] = 0;
+      INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
+    }
     switch (state) {
       case IDLE:
         if (c == '<') {
@@ -966,11 +964,14 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
           } else if (c == '>') {
             if (property->type == INDIGO_BLOB_VECTOR) {
               state = BLOB;
-              if (blob_buffer != NULL)
-                blob_buffer = realloc(blob_buffer, property->items[property->count-1].blob.size);
-              else
-                blob_buffer = malloc(property->items[property->count-1].blob.size);
-              blob_pointer = blob_buffer;
+              blob_size = property->items[property->count-1].blob.size;
+              if (blob_size > 0) {
+                if (blob_buffer != NULL)
+                  blob_buffer = realloc(blob_buffer, blob_size);
+                else
+                  blob_buffer = malloc(blob_size);
+                blob_pointer = blob_buffer;
+              }
             } else
               state = TEXT;
             value_pointer = value_buffer;
@@ -1064,10 +1065,8 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
               *value_pointer++ = c;
             } else {
               *value_pointer = 0;
-              assert(blob_pointer - blob_buffer < BUFFER_SIZE);
               blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)value_buffer, (int)(value_pointer-value_buffer));
               value_pointer = value_buffer;
-              //memset(value_buffer, 0, BUFFER_SIZE);
               *value_pointer++ = c;
             }
           }
@@ -1088,11 +1087,14 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
           value_pointer = value_buffer;
           if (property->type == INDIGO_BLOB_VECTOR) {
             state = BLOB;
-            if (blob_buffer != NULL)
-              blob_buffer = realloc(blob_buffer, blob_size = property->items[property->count-1].blob.size);
-            else
-              blob_buffer = malloc(blob_size = property->items[property->count-1].blob.size);
-            blob_pointer = blob_buffer;
+            blob_size = property->items[property->count-1].blob.size;
+            if (blob_size > 0) {
+              if (blob_buffer != NULL)
+                blob_buffer = realloc(blob_buffer, blob_size);
+              else
+                blob_buffer = malloc(blob_size);
+              blob_pointer = blob_buffer;
+            }
           } else
             state = TEXT;
           INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> TEXT", c));
@@ -1137,6 +1139,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
         break;
     }
   }
+exit_loop:
   if (blob_buffer != NULL)
     free(blob_buffer);
   free(buffer);
