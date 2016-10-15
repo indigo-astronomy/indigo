@@ -134,7 +134,7 @@ static indigo_result attach(indigo_device *device) {
   simulator_private_data *private_data = device->device_context;
   device->device_context = NULL;
   
-  if (indigo_ccd_device_attach(device, device->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+  if (indigo_ccd_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     DEVICE_CONTEXT->private_data = private_data;
     // -------------------------------------------------------------------------------- SIMULATION
     SIMULATION_PROPERTY->hidden = false;

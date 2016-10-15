@@ -156,7 +156,7 @@
 typedef struct {
   libusb_device *dev;
   libusb_device_handle *handle;
-  char name[INDIGO_NAME_SIZE];
+//  char name[INDIGO_NAME_SIZE];
   int device_count;
   indigo_timer *exposure_timer, *temperture_timer;
   unsigned char setup_data[22];
@@ -633,9 +633,7 @@ static indigo_result ccd_attach(indigo_device *device) {
   assert(device->device_context != NULL);  
   sx_private_data *private_data = device->device_context;
   device->device_context = NULL;
-  char name[INDIGO_NAME_SIZE];
-  snprintf(name, INDIGO_NAME_SIZE, "%s CCD", PRIVATE_DATA->name);
-  if (indigo_guider_device_attach(device, name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+  if (indigo_ccd_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     DEVICE_CONTEXT->private_data = private_data;
     // -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN
     CCD_BIN_PROPERTY->hidden = false;
@@ -644,7 +642,7 @@ static indigo_result ccd_attach(indigo_device *device) {
     CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
     // --------------------------------------------------------------------------------
     pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
-    INDIGO_LOG(indigo_log("%s CCD attached", PRIVATE_DATA->name));
+    INDIGO_LOG(indigo_log("%s attached", device->name));
     return indigo_ccd_device_enumerate_properties(device, NULL, NULL);
   }
   return INDIGO_FAILED;
@@ -676,7 +674,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
         indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
       }
     } else {
-      indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
+      if (PRIVATE_DATA->temperture_timer != NULL)
+        indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
       sx_close(device);
       CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
     }
@@ -737,7 +736,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
   assert(device != NULL);
-  INDIGO_LOG(indigo_log("%s CCD detached", PRIVATE_DATA->name));
+  INDIGO_LOG(indigo_log("%s detached", device->name));
   free(PRIVATE_DATA);
   return indigo_ccd_device_detach(device);
 }
@@ -749,11 +748,9 @@ static indigo_result guider_attach(indigo_device *device) {
   assert(device->device_context != NULL);
   sx_private_data *private_data = device->device_context;
   device->device_context = NULL;
-  char name[INDIGO_NAME_SIZE];
-  snprintf(name, INDIGO_NAME_SIZE, "%s Guider", PRIVATE_DATA->name);
-  if (indigo_guider_device_attach(device, name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+  if (indigo_guider_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     DEVICE_CONTEXT->private_data = private_data;
-    INDIGO_LOG(indigo_log("%s guider attached", PRIVATE_DATA->name));
+    INDIGO_LOG(indigo_log("%s attached", device->name));
     return indigo_guider_device_enumerate_properties(device, NULL, NULL);
   }
   return INDIGO_FAILED;
@@ -816,7 +813,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
   assert(device != NULL);
-  INDIGO_LOG(indigo_log("%s guider detached", PRIVATE_DATA->name));
+  INDIGO_LOG(indigo_log("%s detached", device->name));
   return indigo_guider_device_detach(device);
 }
 
@@ -850,10 +847,10 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
           sx_private_data *private_data = malloc(sizeof(sx_private_data));
           memset(private_data, 0, sizeof(sx_private_data));
           private_data->dev = dev;
-          strncpy(private_data->name, SX_PRODUCTS[i].name, INDIGO_NAME_SIZE);
           indigo_device *device = malloc(sizeof(indigo_device));
           if (device != NULL) {
             memcpy(device, &ccd_template, sizeof(indigo_device));
+            strcpy(device->name, SX_PRODUCTS[i].name);
             device->device_context = private_data;
             for (int j = 0; j < MAX_DEVICES; j++) {
               if (devices[j] == NULL) {
@@ -865,6 +862,8 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
           device = malloc(sizeof(indigo_device));
           if (device != NULL) {
             memcpy(device, &guider_template, sizeof(indigo_device));
+            strcpy(device->name, SX_PRODUCTS[i].name);
+            strcat(device->name, " guider");
             device->device_context = private_data;
             for (int j = 0; j < MAX_DEVICES; j++) {
               if (devices[j] == NULL) {

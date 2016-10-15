@@ -49,7 +49,7 @@
 
 #include "indigo_guider_driver.h"
 
-indigo_result indigo_guider_device_attach(indigo_device *device, char *name, indigo_version version) {
+indigo_result indigo_guider_device_attach(indigo_device *device, indigo_version version) {
   assert(device != NULL);
   assert(device != NULL);
   if (GUIDER_DEVICE_CONTEXT == NULL) {
@@ -59,14 +59,14 @@ indigo_result indigo_guider_device_attach(indigo_device *device, char *name, ind
   if (GUIDER_DEVICE_CONTEXT != NULL) {
     if (indigo_device_attach(device, version, INDIGO_INTERFACE_GUIDER) == INDIGO_OK) {
       // -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-      GUIDER_GUIDE_DEC_PROPERTY = indigo_init_switch_property(NULL, name, "GUIDER_GUIDE_DEC", GUIDER_MAIN_GROUP, "DEC guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+      GUIDER_GUIDE_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, "GUIDER_GUIDE_DEC", GUIDER_MAIN_GROUP, "DEC guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
       if (GUIDER_GUIDE_DEC_PROPERTY == NULL)
         return INDIGO_FAILED;
       GUIDER_GUIDE_DEC_PROPERTY->hidden = true;
       indigo_init_switch_item(GUIDER_GUIDE_NORTH_ITEM, "GUIDER_GUIDE_NORTH", "Guide north", false);
       indigo_init_switch_item(GUIDER_GUIDE_SOUTH_ITEM, "GUIDER_GUIDE_SOUTH", "Guide south", false);
       // -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-      GUIDER_GUIDE_RA_PROPERTY = indigo_init_switch_property(NULL, name, "GUIDER_GUIDE_RA", GUIDER_MAIN_GROUP, "RA guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+      GUIDER_GUIDE_RA_PROPERTY = indigo_init_switch_property(NULL, device->name, "GUIDER_GUIDE_RA", GUIDER_MAIN_GROUP, "RA guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
       if (GUIDER_GUIDE_RA_PROPERTY == NULL)
         return INDIGO_FAILED;
       GUIDER_GUIDE_RA_PROPERTY->hidden = true;

@@ -84,7 +84,7 @@ typedef struct {
 
 /** Attach callback function.
  */
-extern indigo_result indigo_guider_device_attach(indigo_device *device, char *name, indigo_version version);
+extern indigo_result indigo_guider_device_attach(indigo_device *device, indigo_version version);
 /** Enumerate properties callback function.
  */
 extern indigo_result indigo_guider_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
