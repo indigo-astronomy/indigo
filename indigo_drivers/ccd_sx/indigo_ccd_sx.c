@@ -891,13 +891,26 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
   return 0;
 };
 
+#ifdef INDIGO_LINUX
+static void *hotplug_thread(void *arg) {
+  while (true) {
+    libusb_handle_events(NULL);
+  }
+  return NULL;
+}
+#endif
+
 indigo_result indigo_ccd_sx() {
   for (int i = 0; i < MAX_DEVICES; i++) {
     devices[i] = 0;
   }
   libusb_init(NULL);
-  if (libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, sx_hotplug_callback, NULL, NULL) == 0)
-    return INDIGO_OK;
-  return INDIGO_FAILED;
+  int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, sx_hotplug_callback, NULL, NULL);
+  INDIGO_DEBUG(indigo_debug("indigo_ccd_sx: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
+#ifdef INDIGO_LINUX
+  pthread_t hotplug_thread_handle;
+  pthread_create(&hotplug_thread_handle, NULL, hotplug_thread, NULL);
+#endif
+  return rc >= 0;
 }
 
