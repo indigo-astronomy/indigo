@@ -912,9 +912,9 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
 
   while (true) {
     
-    assert(pointer - buffer < BUFFER_SIZE);
-    assert(value_pointer - value_buffer < BUFFER_SIZE);
-    assert(name_pointer - name_buffer < INDIGO_NAME_SIZE);
+    assert(pointer - buffer <= BUFFER_SIZE);
+    assert(value_pointer - value_buffer <= BUFFER_SIZE);
+    assert(name_pointer - name_buffer <= INDIGO_NAME_SIZE);
     
     if (state == ERROR) {
       indigo_error("XML Parser: syntax error");
