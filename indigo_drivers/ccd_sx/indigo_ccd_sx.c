@@ -778,14 +778,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
   } else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
     indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-    if (GUIDER_GUIDE_NORTH_ITEM->sw.value)
+    PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_NORTH | SX_GUIDE_SOUTH);
+    if (GUIDER_GUIDE_NORTH_ITEM->sw.value) {
       PRIVATE_DATA->relay_mask |= SX_GUIDE_NORTH;
-    else
-      PRIVATE_DATA->relay_mask ^= SX_GUIDE_NORTH;
-    if (GUIDER_GUIDE_SOUTH_ITEM->sw.value)
+    } else if (GUIDER_GUIDE_SOUTH_ITEM->sw.value)
       PRIVATE_DATA->relay_mask |= SX_GUIDE_SOUTH;
-    else
-      PRIVATE_DATA->relay_mask ^= SX_GUIDE_SOUTH;
     sx_guide_relays(device, PRIVATE_DATA->relay_mask);
     GUIDER_GUIDE_DEC_PROPERTY->state = PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
     indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
@@ -793,14 +790,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
   } else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
     indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-    if (GUIDER_GUIDE_WEST_ITEM->sw.value)
-      PRIVATE_DATA->relay_mask |= SX_GUIDE_WEST;
-    else
-      PRIVATE_DATA->relay_mask ^= SX_GUIDE_WEST;
+    PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_EAST | SX_GUIDE_WEST);
     if (GUIDER_GUIDE_EAST_ITEM->sw.value)
       PRIVATE_DATA->relay_mask |= SX_GUIDE_EAST;
-    else
-      PRIVATE_DATA->relay_mask ^= SX_GUIDE_EAST;
+    else if (GUIDER_GUIDE_WEST_ITEM->sw.value)
+      PRIVATE_DATA->relay_mask |= SX_GUIDE_WEST;
     sx_guide_relays(device, PRIVATE_DATA->relay_mask);
     GUIDER_GUIDE_RA_PROPERTY->state = PRIVATE_DATA->relay_mask & (SX_GUIDE_WEST | SX_GUIDE_EAST) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
     indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);

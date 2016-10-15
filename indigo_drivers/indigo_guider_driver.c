@@ -70,8 +70,8 @@ indigo_result indigo_guider_device_attach(indigo_device *device, indigo_version 
       if (GUIDER_GUIDE_RA_PROPERTY == NULL)
         return INDIGO_FAILED;
       GUIDER_GUIDE_RA_PROPERTY->hidden = true;
-      indigo_init_switch_item(GUIDER_GUIDE_WEST_ITEM, "GUIDER_GUIDE_WEST", "Guide west", false);
       indigo_init_switch_item(GUIDER_GUIDE_EAST_ITEM, "GUIDER_GUIDE_EAST", "Guide east", false);
+      indigo_init_switch_item(GUIDER_GUIDE_WEST_ITEM, "GUIDER_GUIDE_WEST", "Guide west", false);
       // --------------------------------------------------------------------------------
       return INDIGO_OK;
     }
