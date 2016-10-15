@@ -896,6 +896,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
   char *name_pointer = name_buffer;
   char *value_pointer = value_buffer;
   unsigned char *blob_pointer = NULL;
+  long blob_size = 0;
   char message[INDIGO_VALUE_SIZE];
   parser_state state = IDLE;
   char q = '"';
@@ -1063,9 +1064,10 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
               *value_pointer++ = c;
             } else {
               *value_pointer = 0;
+              assert(blob_pointer - blob_buffer < BUFFER_SIZE);
               blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)value_buffer, (int)(value_pointer-value_buffer));
               value_pointer = value_buffer;
-//              memset(value_buffer, 0, sizeof(value_buffer));
+              //memset(value_buffer, 0, BUFFER_SIZE);
               *value_pointer++ = c;
             }
           }
@@ -1087,9 +1089,9 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
           if (property->type == INDIGO_BLOB_VECTOR) {
             state = BLOB;
             if (blob_buffer != NULL)
-              blob_buffer = realloc(blob_buffer, property->items[property->count-1].blob.size);
+              blob_buffer = realloc(blob_buffer, blob_size = property->items[property->count-1].blob.size);
             else
-              blob_buffer = malloc(property->items[property->count-1].blob.size);
+              blob_buffer = malloc(blob_size = property->items[property->count-1].blob.size);
             blob_pointer = blob_buffer;
           } else
             state = TEXT;
