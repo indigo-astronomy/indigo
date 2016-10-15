@@ -737,7 +737,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 static indigo_result ccd_detach(indigo_device *device) {
   assert(device != NULL);
   INDIGO_LOG(indigo_log("%s detached", device->name));
-  free(PRIVATE_DATA);
   return indigo_ccd_device_detach(device);
 }
 
@@ -838,7 +837,7 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
   };
   struct libusb_device_descriptor descriptor;
   switch (event) {
-    case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
+    case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
       libusb_get_device_descriptor(dev, &descriptor);
       for (int i = 0; SX_PRODUCTS[i].name; i++) {
         if (descriptor.idVendor == 0x1278 && SX_PRODUCTS[i].product == descriptor.idProduct) {
@@ -876,18 +875,24 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
         }
       }
       break;
-    case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT:
+    }
+    case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+      sx_private_data *private_data = NULL;
       for (int j = 0; j < MAX_DEVICES; j++) {
         if (devices[j] != NULL) {
           indigo_device *device = devices[j];
-          if (((sx_private_data*)PRIVATE_DATA)->dev == dev) {
+          if (PRIVATE_DATA->dev == dev) {
+            private_data = PRIVATE_DATA;
             indigo_detach_device(device);
             free(device);
             devices[j] = NULL;
           }
         }
       }
+      if (private_data != NULL)
+        free(private_data);
       break;
+    }
   }
   return 0;
 };

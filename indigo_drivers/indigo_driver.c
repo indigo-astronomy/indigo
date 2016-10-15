@@ -372,7 +372,9 @@ indigo_result indigo_device_detach(indigo_device *device) {
   free(DEBUG_PROPERTY);
   free(SIMULATION_PROPERTY);
   free(CONFIG_PROPERTY);
-  free(DEVICE_CONTEXT);
+  indigo_device_context *context = DEVICE_CONTEXT;
+  device->device_context = context->private_data;
+  free(context);
   return INDIGO_OK;
 }
 
