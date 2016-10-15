@@ -65,7 +65,7 @@ indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, indigo
     memset(device->device_context, 0, sizeof(indigo_ccd_device_context));
   }
   if (CCD_DEVICE_CONTEXT != NULL) {
-    if (indigo_device_attach(device, name, version, 2) == INDIGO_OK) {
+    if (indigo_device_attach(device, version, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
       // -------------------------------------------------------------------------------- CCD_INFO
       CCD_INFO_PROPERTY = indigo_init_number_property(NULL, name, "CCD_INFO", CCD_MAIN_GROUP, "CCD info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 8);
       if (CCD_INFO_PROPERTY == NULL)
@@ -159,20 +159,6 @@ indigo_result indigo_ccd_device_attach(indigo_device *device, char *name, indigo
         return INDIGO_FAILED;
       CCD_TEMPERATURE_PROPERTY->hidden = true;
       indigo_init_number_item(CCD_TEMPERATURE_ITEM, "TEMPERATURE", "Temperature (C)", -50, 50, 1, 0);
-      // -------------------------------------------------------------------------------- CCD_GUIDE_DEC -> TELESCOPE_GUIDE_DEC
-      CCD_GUIDE_DEC_PROPERTY = indigo_init_switch_property(NULL, name, "TELESCOPE_GUIDE_DEC", CCD_GUIDER_GROUP, "DEC guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-      if (CCD_GUIDE_DEC_PROPERTY == NULL)
-        return INDIGO_FAILED;
-      CCD_GUIDE_DEC_PROPERTY->hidden = true;
-      indigo_init_switch_item(CCD_GUIDE_NORTH_ITEM, "TELESCOPE_GUIDE_NORTH", "Guide north", false);
-      indigo_init_switch_item(CCD_GUIDE_SOUTH_ITEM, "TELESCOPE_GUIDE_SOUTH", "Guide south", false);
-      // -------------------------------------------------------------------------------- CCD_GUIDE_RA -> TELESCOPE_GUIDE_RA
-      CCD_GUIDE_RA_PROPERTY = indigo_init_switch_property(NULL, name, "TELESCOPE_GUIDE_RA", CCD_GUIDER_GROUP, "RA guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-      if (CCD_GUIDE_RA_PROPERTY == NULL)
-        return INDIGO_FAILED;
-      CCD_GUIDE_RA_PROPERTY->hidden = true;
-      indigo_init_switch_item(CCD_GUIDE_WEST_ITEM, "TELESCOPE_GUIDE_WEST", "Guide west", false);
-      indigo_init_switch_item(CCD_GUIDE_EAST_ITEM, "TELESCOPE_GUIDE_EAST", "Guide east", false);
       // --------------------------------------------------------------------------------
       return INDIGO_OK;
     }
@@ -214,10 +200,6 @@ indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indi
         indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
       if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property) && !CCD_TEMPERATURE_PROPERTY->hidden)
         indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-      if (indigo_property_match(CCD_GUIDE_DEC_PROPERTY, property) && !CCD_GUIDE_DEC_PROPERTY->hidden)
-        indigo_define_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
-      if (indigo_property_match(CCD_GUIDE_RA_PROPERTY, property) && !CCD_GUIDE_RA_PROPERTY->hidden)
-        indigo_define_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
     }
   }
   return result;
@@ -248,10 +230,6 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
         indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
       if (!CCD_TEMPERATURE_PROPERTY->hidden)
         indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-      if (!CCD_GUIDE_DEC_PROPERTY->hidden)
-        indigo_define_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
-      if (!CCD_GUIDE_RA_PROPERTY->hidden)
-        indigo_define_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
     } else {
       indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
       indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
@@ -270,10 +248,6 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
         indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
       if (!CCD_TEMPERATURE_PROPERTY->hidden)
         indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-      if (!CCD_GUIDE_DEC_PROPERTY->hidden)
-        indigo_delete_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
-      if (!CCD_GUIDE_RA_PROPERTY->hidden)
-        indigo_delete_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
     }
   } else if (indigo_property_match(CONFIG_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CONFIG
@@ -384,10 +358,6 @@ indigo_result indigo_ccd_device_detach(indigo_device *device) {
       indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
     if (!CCD_TEMPERATURE_PROPERTY->hidden)
       indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-    if (!CCD_GUIDE_DEC_PROPERTY->hidden)
-      indigo_delete_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
-    if (!CCD_GUIDE_RA_PROPERTY->hidden)
-      indigo_delete_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
   }
   free(CCD_INFO_PROPERTY);
   free(CCD_UPLOAD_MODE_PROPERTY);
@@ -403,8 +373,6 @@ indigo_result indigo_ccd_device_detach(indigo_device *device) {
   free(CCD_TEMPERATURE_PROPERTY);
   free(CCD_COOLER_PROPERTY);
   free(CCD_COOLER_POWER_PROPERTY);
-  free(CCD_GUIDE_DEC_PROPERTY);
-  free(CCD_GUIDE_RA_PROPERTY);
   return indigo_device_detach(device);
 }
 

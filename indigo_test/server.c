@@ -52,8 +52,8 @@ int main(int argc, const char * argv[]) {
   indigo_main_argc = argc;
   indigo_main_argv = argv;
   indigo_start();
-  indigo_attach_device(indigo_ccd_simulator());
-  indigo_ccd_sx_register();
+  indigo_ccd_simulator();
+  indigo_ccd_sx();
   indigo_server_xml(server_callback);
   return 0;
 }

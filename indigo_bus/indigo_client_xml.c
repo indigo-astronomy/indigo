@@ -123,7 +123,7 @@ static indigo_result xml_client_parser_detach(indigo_device *device) {
 
 indigo_device *indigo_xml_client_adapter(int input, int ouput) {
   static indigo_device device_template = {
-    NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+    "client protocol adapter", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
     NULL,
     xml_client_parser_enumerate_properties,
     xml_client_parser_change_property,

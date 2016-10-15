@@ -138,6 +138,23 @@
  */
 #define CONFIG_DEFAULT_ITEM           (CONFIG_PROPERTY->items+2)
 
+/** Device interface (value shout be used for INFO_DEVICE_INTERFACE_ITEM->number.value
+ */
+typedef enum {
+  INDIGO_INTERFACE_TELESCOPE = (1 << 0),    ///< Telescope interface
+  INDIGO_INTERFACE_CCD       = (1 << 1),    ///< CCD interface
+  INDIGO_INTERFACE_GUIDER    = (1 << 2),    ///< Guider interface
+  INDIGO_INTERFACE_FOCUSER   = (1 << 3),    ///< Focuser interface
+  INDIGO_INTERFACE_FILTER    = (1 << 4),    ///< Filter interface
+  INDIGO_INTERFACE_DOME      = (1 << 5),    ///< Dome interface
+  INDIGO_INTERFACE_GPS       = (1 << 6),    ///< GPS interface
+  INDIGO_INTERFACE_WEATHER   = (1 << 7),    ///< Weather interface
+  INDIGO_INTERFACE_AO        = (1 << 8),    ///< Adaptive Optics Interface
+  INDIGO_INTERFACE_DUSTCAP   = (1 << 9),    ///< Dust Cap Interface
+  INDIGO_INTERFACE_LIGHTBOX  = (1 << 10),   ///< Light Box Interface
+  INDIGO_INTERFACE_AUX       = (1 << 15)    ///< Auxiliary interface
+} indigo_device_interface;
+
 /** Timer callback function prototype.
  */
 typedef void (*indigo_timer_callback)(indigo_device *device);
@@ -175,7 +192,7 @@ typedef struct {
 
 /** Attach callback function.
  */
-extern indigo_result indigo_device_attach(indigo_device *device, char *name, indigo_version version, int interface);
+extern indigo_result indigo_device_attach(indigo_device *device, indigo_version version, int interface);
 
 /** Enumerate properties callback function.
  */

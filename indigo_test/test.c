@@ -120,7 +120,7 @@ static indigo_result test_detach(indigo_client *client) {
 }
 
 static indigo_client test = {
-  NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
+  "Test", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
   test_attach,
   test_define_property,
   test_update_property,
@@ -134,7 +134,7 @@ int main(int argc, const char * argv[]) {
   indigo_main_argc = argc;
   indigo_main_argv = argv;
   indigo_start();
-  indigo_attach_device(indigo_ccd_simulator());
+  indigo_ccd_simulator();
   indigo_attach_client(&test);
   sleep(1000);
   indigo_stop();

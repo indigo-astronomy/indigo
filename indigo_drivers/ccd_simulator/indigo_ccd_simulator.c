@@ -45,8 +45,8 @@
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "indigo_driver_xml.h"
 
-#define WIDTH               1600
-#define HEIGHT              1200
+#define WIDTH               5600
+#define HEIGHT              5200
 #define TEMP_UPDATE         5.0
 #define STARS               100
 
@@ -54,7 +54,6 @@
 #define PRIVATE_DATA        ((simulator_private_data *)DEVICE_CONTEXT->private_data)
 
 typedef struct {
-  char name[INDIGO_NAME_SIZE];
   int star_x[STARS], star_y[STARS], star_a[STARS];
   char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
   double exposure_time;
@@ -135,7 +134,7 @@ static indigo_result attach(indigo_device *device) {
   simulator_private_data *private_data = device->device_context;
   device->device_context = NULL;
   
-  if (indigo_ccd_device_attach(device, private_data->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+  if (indigo_ccd_device_attach(device, device->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     DEVICE_CONTEXT->private_data = private_data;
     // -------------------------------------------------------------------------------- SIMULATION
     SIMULATION_PROPERTY->hidden = false;
@@ -240,9 +239,9 @@ static indigo_result detach(indigo_device *device) {
   return indigo_ccd_device_detach(device);
 }
 
-indigo_device *indigo_ccd_simulator() {
+indigo_result indigo_ccd_simulator() {
   static indigo_device device_template = {
-    NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+    "CCD Simulator", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
     attach,
     indigo_ccd_device_enumerate_properties,
     change_property,
@@ -252,8 +251,9 @@ indigo_device *indigo_ccd_simulator() {
   if (device != NULL) {
     memcpy(device, &device_template, sizeof(indigo_device));
     simulator_private_data *private_data = malloc(sizeof(simulator_private_data));
-    strncpy(private_data->name, "CCD Simulator", INDIGO_NAME_SIZE);
     device->device_context = private_data;
+    indigo_attach_device(device);
+    return INDIGO_OK;
   }
-  return device;
+  return INDIGO_FAILED;
 }

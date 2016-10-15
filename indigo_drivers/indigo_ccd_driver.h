@@ -54,10 +54,6 @@
  */
 #define CCD_COOLER_GROUP                  "CCD cooler"
 
-/** CCD Guider group name string.
- */
-#define CCD_GUIDER_GROUP                  "CCD guider"
-
 /** Device context pointer.
  */
 #define CCD_DEVICE_CONTEXT                ((indigo_ccd_device_context *)device->device_context)
@@ -254,30 +250,6 @@
  */
 #define CCD_COOLER_POWER_ITEM             (CCD_COOLER_POWER_PROPERTY->items+0)
 
-/** CCD_GUIDE_DEC property pointer, property is optional, property change request should be fully handled by device driver.
- */
-#define CCD_GUIDE_DEC_PROPERTY            (CCD_DEVICE_CONTEXT->ccd_guide_dec_property)
-
-/** CCD_GUIDE.NORTH property item pointer.
- */
-#define CCD_GUIDE_NORTH_ITEM              (CCD_GUIDE_DEC_PROPERTY->items+0)
-
-/** CCD_GUIDE.SOUTH property item pointer.
- */
-#define CCD_GUIDE_SOUTH_ITEM              (CCD_GUIDE_DEC_PROPERTY->items+1)
-
-/** CCD_GUIDE_RA property pointer, property is optional, property change request should be fully handled by device driver.
- */
-#define CCD_GUIDE_RA_PROPERTY             (CCD_DEVICE_CONTEXT->ccd_guide_ra_property)
-
-/** CCD_GUIDE.WEST property item pointer.
- */
-#define CCD_GUIDE_WEST_ITEM               (CCD_GUIDE_RA_PROPERTY->items+0)
-
-/** CCD_GUIDE.EAST property item pointer.
- */
-#define CCD_GUIDE_EAST_ITEM               (CCD_GUIDE_RA_PROPERTY->items+1)
-
 /** FITS header size, it should be added to image buffer size, raw data should start at this offset.
  */
 #define FITS_HEADER_SIZE  2880
@@ -300,8 +272,6 @@ typedef struct {
   indigo_property *ccd_temperature_property;    ///< CCD_TEMPERATURE property pointer
   indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
   indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
-  indigo_property *ccd_guide_dec_property;      ///< CCD_GUIDE_DEC property pointer
-  indigo_property *ccd_guide_ra_property;       ///< CCD_GUIDE_RA property pointer
 } indigo_ccd_device_context;
 
 /** Attach callback function.
