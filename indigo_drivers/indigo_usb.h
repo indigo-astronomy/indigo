@@ -41,7 +41,7 @@
 
 #include <stdio.h>
 
-#ifdef __APPLE__
+#if defined(INDIGO_DARWIN)
 
 #define libusb_error_name(errcode) (errcode >=0 ? "OK" : "Failed!")
 #define LIBUSB_HOTPLUG_MATCH_ANY -1
@@ -101,7 +101,7 @@ int libusb_clear_halt(libusb_device_handle *dev,  unsigned char endpoint);
 int libusb_bulk_transfer(libusb_device_handle *handle, unsigned char endpoint, unsigned char *data, int length, int *transferred, unsigned int timeout);
 int libusb_control_transfer(libusb_device_handle *handle, uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex, unsigned char *data, uint16_t wLength, unsigned int timeout);
 
-#else
+#elif defined(INDIGO_LINUX)
 
 #include <libusb-1.0/libusb.h>
 

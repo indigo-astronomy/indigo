@@ -43,7 +43,7 @@
 
 #include "indigo_usb.h"
 
-#ifdef __APPLE__
+#if defined(INDIGO_DARWIN)
 
 // Fake libusb subset implementation for macOS :)
 
