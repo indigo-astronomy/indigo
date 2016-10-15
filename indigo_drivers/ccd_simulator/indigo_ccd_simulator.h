@@ -45,6 +45,6 @@
 /** Create CCD Simulator device instance
  */
 
-extern indigo_device *indigo_ccd_simulator();
+extern indigo_result indigo_ccd_simulator();
 
 #endif /* ccd_simulator_h */

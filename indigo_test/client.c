@@ -132,7 +132,7 @@ static indigo_result client_detach(indigo_client *client) {
 }
 
 static indigo_client client = {
-  NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
+  "Test", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
   client_attach,
   client_define_property,
   client_update_property,
@@ -163,7 +163,7 @@ int main(int argc, const char * argv[]) {
     indigo_device *protocol_adapter = indigo_xml_client_adapter(input[0], output[1]);
     indigo_attach_device(protocol_adapter);
     indigo_attach_client(&client);
-    indigo_xml_parse(input[0], protocol_adapter, NULL);
+    indigo_xml_parse(input[0], protocol_adapter, &client);
     indigo_stop();
   }
   return 0;

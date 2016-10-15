@@ -54,7 +54,7 @@
 
 #define SX_VENDOR_ID                    0x1278
 
-#define MAX_DEVICES                     5
+#define MAX_DEVICES                     10
 
 #define USB_REQ_TYPE                    0
 #define USB_REQ                         1
@@ -157,6 +157,7 @@ typedef struct {
   libusb_device *dev;
   libusb_device_handle *handle;
   char name[INDIGO_NAME_SIZE];
+  int device_count;
   indigo_timer *exposure_timer, *temperture_timer;
   unsigned char setup_data[22];
   int model;
@@ -187,178 +188,146 @@ typedef struct {
 static struct {
   int product;
   const char *name;
+  indigo_device_interface iface;
 } SX_PRODUCTS[] = {
-  { 0x0105, "SXVF-M5" },
-  { 0x0305, "SXVF-M5C" },
-  { 0x0107, "SXVF-M7" },
-  { 0x0307, "SXVF-M7C" },
-  { 0x0308, "SXVF-M8C" },
-  { 0x0109, "SXVF-M9" },
-  { 0x0325, "SXVR-M25C" },
-  { 0x0326, "SXVR-M26C" },
-  { 0x0115, "SXVR-H5" },
-  { 0x0119, "SXVR-H9" },
-  { 0x0319, "SXVR-H9C" },
-  { 0x0100, "SXVR-H9" },
-  { 0x0300, "SXVR-H9C" },
-  { 0x0126, "SXVR-H16" },
-  { 0x0128, "SXVR-H18" },
-  { 0x0135, "SXVR-H35" },
-  { 0x0136, "SXVR-H36" },
-  { 0x0137, "SXVR-H360" },
-  { 0x0139, "SXVR-H390" },
-  { 0x0194, "SXVR-H694" },
-  { 0x0394, "SXVR-H694C" },
-  { 0x0174, "SXVR-H674" },
-  { 0x0374, "SXVR-H674C" },
-  { 0x0198, "SX-814" },
-  { 0x0398, "SX-814C" },
-  { 0x0189, "SX-825" },
-  { 0x0389, "SX-825C" },
-  { 0x0184, "SX-834" },
-  { 0x0384, "SX-834C" },
-  { 0x0507, "SX LodeStar" },
-  { 0x0517, "SX CoStar" },
-  { 0x0509, "SX SuperStar" },
-  { 0x0525, "SX UltraStar" },
-  { 0x0200, "SXMX Camera" },
+  { 0x0105, "SXVF-M5", INDIGO_INTERFACE_CCD },
+  { 0x0305, "SXVF-M5C", INDIGO_INTERFACE_CCD },
+  { 0x0107, "SXVF-M7", INDIGO_INTERFACE_CCD },
+  { 0x0307, "SXVF-M7C", INDIGO_INTERFACE_CCD },
+  { 0x0308, "SXVF-M8C", INDIGO_INTERFACE_CCD },
+  { 0x0109, "SXVF-M9", INDIGO_INTERFACE_CCD },
+  { 0x0325, "SXVR-M25C", INDIGO_INTERFACE_CCD },
+  { 0x0326, "SXVR-M26C", INDIGO_INTERFACE_CCD },
+  { 0x0115, "SXVR-H5", INDIGO_INTERFACE_CCD },
+  { 0x0119, "SXVR-H9", INDIGO_INTERFACE_CCD },
+  { 0x0319, "SXVR-H9C", INDIGO_INTERFACE_CCD },
+  { 0x0100, "SXVR-H9", INDIGO_INTERFACE_CCD },
+  { 0x0300, "SXVR-H9C", INDIGO_INTERFACE_CCD },
+  { 0x0126, "SXVR-H16", INDIGO_INTERFACE_CCD },
+  { 0x0128, "SXVR-H18", INDIGO_INTERFACE_CCD },
+  { 0x0135, "SXVR-H35", INDIGO_INTERFACE_CCD },
+  { 0x0136, "SXVR-H36", INDIGO_INTERFACE_CCD },
+  { 0x0137, "SXVR-H360", INDIGO_INTERFACE_CCD },
+  { 0x0139, "SXVR-H390", INDIGO_INTERFACE_CCD },
+  { 0x0194, "SXVR-H694", INDIGO_INTERFACE_CCD },
+  { 0x0394, "SXVR-H694C", INDIGO_INTERFACE_CCD },
+  { 0x0174, "SXVR-H674", INDIGO_INTERFACE_CCD },
+  { 0x0374, "SXVR-H674C", INDIGO_INTERFACE_CCD },
+  { 0x0198, "SX-814", INDIGO_INTERFACE_CCD },
+  { 0x0398, "SX-814C", INDIGO_INTERFACE_CCD },
+  { 0x0189, "SX-825", INDIGO_INTERFACE_CCD },
+  { 0x0389, "SX-825C", INDIGO_INTERFACE_CCD },
+  { 0x0184, "SX-834", INDIGO_INTERFACE_CCD },
+  { 0x0384, "SX-834C", INDIGO_INTERFACE_CCD },
+  { 0x0507, "SX LodeStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
+  { 0x0517, "SX CoStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
+  { 0x0509, "SX SuperStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
+  { 0x0525, "SX UltraStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
   { 0, NULL }
-};
-
-static indigo_device *devices[MAX_DEVICES] = { NULL, NULL, NULL, NULL, NULL };
-
-static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-  struct libusb_device_descriptor descriptor;
-  switch (event) {
-    case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
-      libusb_get_device_descriptor(dev, &descriptor);
-      for (int i = 0; SX_PRODUCTS[i].name; i++) {
-        if (descriptor.idVendor == 0x1278 && SX_PRODUCTS[i].product == descriptor.idProduct) {
-          for (int j = 0; j < MAX_DEVICES; j++) {
-            if (devices[j] == NULL) {
-              indigo_attach_device(devices[j] = indigo_ccd_sx(dev, SX_PRODUCTS[i].name));
-              return 0;
-            }
-          }
-        }
-      }
-      break;
-    case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT:
-      for (int j = 0; j < MAX_DEVICES; j++) {
-        if (devices[j] != NULL) {
-          indigo_device *device = devices[j];
-          if (((sx_private_data*)PRIVATE_DATA)->dev == dev) {
-            indigo_detach_device(device);
-            free(device);
-            devices[j] = NULL;
-            return 0;
-          }
-        }
-      }
-      break;
-  }
-  return 0;
 };
 
 bool sx_open(indigo_device *device) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-    libusb_device *dev = PRIVATE_DATA->dev;
-    int rc = libusb_open(dev, &PRIVATE_DATA->handle);
-    libusb_device_handle *handle = PRIVATE_DATA->handle;
-    unsigned char *setup_data = PRIVATE_DATA->setup_data;
-    INDIGO_DEBUG(indigo_debug("sx_open: libusb_open [%d] -> %s", __LINE__, libusb_error_name(rc)));
-#ifdef LIBUSB_H // not implemented in fake libusb
-    if (rc >= 0) {
-      if (libusb_kernel_driver_active(handle, 0) == 1) {
-        rc = libusb_detach_kernel_driver(handle, 0);
-        INDIGO_DEBUG(indigo_debug("sx_open: libusb_detach_kernel_driver [%d] -> %s", __LINE__, libusb_error_name(rc)));
-      }
+    int rc = 0;
+    if (PRIVATE_DATA->device_count++ == 0) {
+      libusb_device *dev = PRIVATE_DATA->dev;
+      rc = libusb_open(dev, &PRIVATE_DATA->handle);
+      libusb_device_handle *handle = PRIVATE_DATA->handle;
+      unsigned char *setup_data = PRIVATE_DATA->setup_data;
+      INDIGO_DEBUG(indigo_debug("sx_open: libusb_open [%d] -> %s", __LINE__, libusb_error_name(rc)));
+  #ifdef LIBUSB_H // not implemented in fake libusb
       if (rc >= 0) {
-        struct libusb_config_descriptor *config;
-        rc = libusb_get_config_descriptor(dev, 0, &config);
-        INDIGO_DEBUG(indigo_debug("sx_open: libusb_get_config_descriptor [%d] -> %s", __LINE__, libusb_error_name(rc)));
+        if (libusb_kernel_driver_active(handle, 0) == 1) {
+          rc = libusb_detach_kernel_driver(handle, 0);
+          INDIGO_DEBUG(indigo_debug("sx_open: libusb_detach_kernel_driver [%d] -> %s", __LINE__, libusb_error_name(rc)));
+        }
         if (rc >= 0) {
-          int interface = config->interface->altsetting->bInterfaceNumber;
-          rc = libusb_claim_interface(handle, interface);
-          INDIGO_DEBUG(indigo_debug("sx_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, interface, libusb_error_name(rc)));
+          struct libusb_config_descriptor *config;
+          rc = libusb_get_config_descriptor(dev, 0, &config);
+          INDIGO_DEBUG(indigo_debug("sx_open: libusb_get_config_descriptor [%d] -> %s", __LINE__, libusb_error_name(rc)));
+          if (rc >= 0) {
+            int interface = config->interface->altsetting->bInterfaceNumber;
+            rc = libusb_claim_interface(handle, interface);
+            INDIGO_DEBUG(indigo_debug("sx_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, interface, libusb_error_name(rc)));
+          }
         }
       }
-    }
-#endif
-    int transferred;
-    if (rc >= 0) { // reset
-      setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAOUT;
-      setup_data[USB_REQ ] = SXUSB_RESET;
-      setup_data[USB_REQ_VALUE_L ] = 0;
-      setup_data[USB_REQ_VALUE_H ] = 0;
-      setup_data[USB_REQ_INDEX_L ] = 0;
-      setup_data[USB_REQ_INDEX_H ] = 0;
-      setup_data[USB_REQ_LENGTH_L] = 0;
-      setup_data[USB_REQ_LENGTH_H] = 0;
-      rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-      INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
-      usleep(1000);
-    }
-    if (rc >= 0) { // read camera model
-      setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAIN;
-      setup_data[USB_REQ ] = SXUSB_CAMERA_MODEL;
-      setup_data[USB_REQ_VALUE_L ] = 0;
-      setup_data[USB_REQ_VALUE_H ] = 0;
-      setup_data[USB_REQ_INDEX_L ] = 0;
-      setup_data[USB_REQ_INDEX_H ] = 0;
-      setup_data[USB_REQ_LENGTH_L] = 2;
-      setup_data[USB_REQ_LENGTH_H] = 0;
-      rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-      INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
-      if (rc >=0 && transferred == USB_REQ_DATA) {
-        rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 2, &transferred, BULK_COMMAND_TIMEOUT);
+  #endif
+      int transferred;
+      if (rc >= 0) { // reset
+        setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAOUT;
+        setup_data[USB_REQ ] = SXUSB_RESET;
+        setup_data[USB_REQ_VALUE_L ] = 0;
+        setup_data[USB_REQ_VALUE_H ] = 0;
+        setup_data[USB_REQ_INDEX_L ] = 0;
+        setup_data[USB_REQ_INDEX_H ] = 0;
+        setup_data[USB_REQ_LENGTH_L] = 0;
+        setup_data[USB_REQ_LENGTH_H] = 0;
+        rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
         INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
-        if (rc >=0 && transferred == 2) {
-          int result=setup_data[0] | (setup_data[1] << 8);
-          PRIVATE_DATA->model = result & 0x1F;
-          PRIVATE_DATA->is_color = result & 0x80;
-          PRIVATE_DATA->is_interlaced = result & 0x40;
-          if (result == 0x84)
-            PRIVATE_DATA->is_interlaced = true;
-          if (PRIVATE_DATA->model == 0x16 || PRIVATE_DATA->model == 0x17 || PRIVATE_DATA->model == 0x18 || PRIVATE_DATA->model == 0x19)
-            PRIVATE_DATA->is_interlaced =  false;
-          INDIGO_DEBUG(indigo_debug("sx_open: %s %s model %d\n", PRIVATE_DATA->is_interlaced ? "INTERLACED" : "NON-INTERLACED", PRIVATE_DATA->is_color ? "COLOR" : "MONO", PRIVATE_DATA->model));
+        usleep(1000);
+      }
+      if (rc >= 0) { // read camera model
+        setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAIN;
+        setup_data[USB_REQ ] = SXUSB_CAMERA_MODEL;
+        setup_data[USB_REQ_VALUE_L ] = 0;
+        setup_data[USB_REQ_VALUE_H ] = 0;
+        setup_data[USB_REQ_INDEX_L ] = 0;
+        setup_data[USB_REQ_INDEX_H ] = 0;
+        setup_data[USB_REQ_LENGTH_L] = 2;
+        setup_data[USB_REQ_LENGTH_H] = 0;
+        rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+        INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
+        if (rc >=0 && transferred == USB_REQ_DATA) {
+          rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 2, &transferred, BULK_COMMAND_TIMEOUT);
+          INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
+          if (rc >=0 && transferred == 2) {
+            int result=setup_data[0] | (setup_data[1] << 8);
+            PRIVATE_DATA->model = result & 0x1F;
+            PRIVATE_DATA->is_color = result & 0x80;
+            PRIVATE_DATA->is_interlaced = result & 0x40;
+            if (result == 0x84)
+              PRIVATE_DATA->is_interlaced = true;
+            if (PRIVATE_DATA->model == 0x16 || PRIVATE_DATA->model == 0x17 || PRIVATE_DATA->model == 0x18 || PRIVATE_DATA->model == 0x19)
+              PRIVATE_DATA->is_interlaced =  false;
+            INDIGO_DEBUG(indigo_debug("sx_open: %s %s model %d\n", PRIVATE_DATA->is_interlaced ? "INTERLACED" : "NON-INTERLACED", PRIVATE_DATA->is_color ? "COLOR" : "MONO", PRIVATE_DATA->model));
+          }
         }
       }
-    }
-    if (rc >= 0) { // read camera params
-      setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAIN;
-      setup_data[USB_REQ ] = SXUSB_GET_CCD;
-      setup_data[USB_REQ_VALUE_L ] = 0;
-      setup_data[USB_REQ_VALUE_H ] = 0;
-      setup_data[USB_REQ_INDEX_L ] = 0;
-      setup_data[USB_REQ_INDEX_H ] = 0;
-      setup_data[USB_REQ_LENGTH_L] = 17;
-      setup_data[USB_REQ_LENGTH_H] = 0;
-      rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-      INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
-      if (rc >=0 && transferred == USB_REQ_DATA) {
-        rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 17, &transferred, BULK_COMMAND_TIMEOUT);
+      if (rc >= 0) { // read camera params
+        setup_data[USB_REQ_TYPE ] = USB_REQ_VENDOR | USB_REQ_DATAIN;
+        setup_data[USB_REQ ] = SXUSB_GET_CCD;
+        setup_data[USB_REQ_VALUE_L ] = 0;
+        setup_data[USB_REQ_VALUE_H ] = 0;
+        setup_data[USB_REQ_INDEX_L ] = 0;
+        setup_data[USB_REQ_INDEX_H ] = 0;
+        setup_data[USB_REQ_LENGTH_L] = 17;
+        setup_data[USB_REQ_LENGTH_H] = 0;
+        rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, USB_REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
         INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
-        if (rc >=0 && transferred == 17) {
-          PRIVATE_DATA->ccd_width = setup_data[2] | (setup_data[3] << 8);
-          PRIVATE_DATA->ccd_height = setup_data[6] | (setup_data[7] << 8);
-          PRIVATE_DATA->pix_width = ((setup_data[8] | (setup_data[9] << 8)) / 256.0);
-          PRIVATE_DATA->pix_height = ((setup_data[10] | (setup_data[11] << 8)) / 256.0);
-          PRIVATE_DATA->bits_per_pixel = setup_data[14];
-          PRIVATE_DATA->color_matrix = setup_data[12] | (setup_data[13] << 8);
-          PRIVATE_DATA->extra_caps = setup_data[16];
-          if (PRIVATE_DATA->is_interlaced) {
-            PRIVATE_DATA->ccd_height *= 2;
-            PRIVATE_DATA->pix_height /= 2;
+        if (rc >=0 && transferred == USB_REQ_DATA) {
+          rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 17, &transferred, BULK_COMMAND_TIMEOUT);
+          INDIGO_DEBUG(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, libusb_error_name(rc)));
+          if (rc >=0 && transferred == 17) {
+            PRIVATE_DATA->ccd_width = setup_data[2] | (setup_data[3] << 8);
+            PRIVATE_DATA->ccd_height = setup_data[6] | (setup_data[7] << 8);
+            PRIVATE_DATA->pix_width = ((setup_data[8] | (setup_data[9] << 8)) / 256.0);
+            PRIVATE_DATA->pix_height = ((setup_data[10] | (setup_data[11] << 8)) / 256.0);
+            PRIVATE_DATA->bits_per_pixel = setup_data[14];
+            PRIVATE_DATA->color_matrix = setup_data[12] | (setup_data[13] << 8);
+            PRIVATE_DATA->extra_caps = setup_data[16];
+            if (PRIVATE_DATA->is_interlaced) {
+              PRIVATE_DATA->ccd_height *= 2;
+              PRIVATE_DATA->pix_height /= 2;
+            }
+            PRIVATE_DATA->buffer = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + FITS_HEADER_SIZE);
+            if (PRIVATE_DATA->is_interlaced) {
+              PRIVATE_DATA->even = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+              PRIVATE_DATA->odd = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+            }
+            INDIGO_DEBUG(indigo_debug("sxGetCameraParams: chip size: %d x %d, pixel size: %4.2f x %4.2f, matrix type: %x", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height, PRIVATE_DATA->pix_width, PRIVATE_DATA->pix_height, PRIVATE_DATA->color_matrix));
+            INDIGO_DEBUG(indigo_debug("sxGetCameraParams: capabilities:%s%s%s%s", (PRIVATE_DATA->extra_caps & SXCCD_CAPS_GUIDER ? " GUIDER" : ""), (PRIVATE_DATA->extra_caps & SXCCD_CAPS_STAR2K ? " STAR2K" : ""), (PRIVATE_DATA->extra_caps & SXUSB_CAPS_COOLER ? " COOLER" : ""), (PRIVATE_DATA->extra_caps & SXUSB_CAPS_SHUTTER ? " SHUTTER" : "")));
           }
-          PRIVATE_DATA->buffer = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + FITS_HEADER_SIZE);
-          if (PRIVATE_DATA->is_interlaced) {
-            PRIVATE_DATA->even = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
-            PRIVATE_DATA->odd = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
-          }
-          INDIGO_DEBUG(indigo_debug("sxGetCameraParams: chip size: %d x %d, pixel size: %4.2f x %4.2f, matrix type: %x", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height, PRIVATE_DATA->pix_width, PRIVATE_DATA->pix_height, PRIVATE_DATA->color_matrix));
-          INDIGO_DEBUG(indigo_debug("sxGetCameraParams: capabilities:%s%s%s%s", (PRIVATE_DATA->extra_caps & SXCCD_CAPS_GUIDER ? " GUIDER" : ""), (PRIVATE_DATA->extra_caps & SXCCD_CAPS_STAR2K ? " STAR2K" : ""), (PRIVATE_DATA->extra_caps & SXUSB_CAPS_COOLER ? " COOLER" : ""), (PRIVATE_DATA->extra_caps & SXUSB_CAPS_SHUTTER ? " SHUTTER" : "")));
         }
       }
     }
@@ -600,19 +569,20 @@ bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
 
 void sx_close(indigo_device *device) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-    libusb_close(PRIVATE_DATA->handle);
-    free(PRIVATE_DATA->buffer);
-    if (PRIVATE_DATA->is_interlaced) {
-      free(PRIVATE_DATA->even);
-      free(PRIVATE_DATA->odd);
+    if (--PRIVATE_DATA->device_count == 0) {
+      libusb_close(PRIVATE_DATA->handle);
+      free(PRIVATE_DATA->buffer);
+      if (PRIVATE_DATA->is_interlaced) {
+        free(PRIVATE_DATA->even);
+        free(PRIVATE_DATA->odd);
+      }
     }
     INDIGO_DEBUG(indigo_debug("sx_close: libusb_close"));
     pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
   }
 }
 
-
-// -------------------------------------------------------------------------------- INDIGO driver implementation
+// -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -658,14 +628,14 @@ static void ccd_temperature_callback(indigo_device *device) {
   PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
 }
 
-static indigo_result attach(indigo_device *device) {
+static indigo_result ccd_attach(indigo_device *device) {
   assert(device != NULL);
-  assert(device->device_context != NULL);
-  
+  assert(device->device_context != NULL);  
   sx_private_data *private_data = device->device_context;
   device->device_context = NULL;
-  
-  if (indigo_ccd_device_attach(device, private_data->name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+  char name[INDIGO_NAME_SIZE];
+  snprintf(name, INDIGO_NAME_SIZE, "%s CCD", PRIVATE_DATA->name);
+  if (indigo_guider_device_attach(device, name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     DEVICE_CONTEXT->private_data = private_data;
     // -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN
     CCD_BIN_PROPERTY->hidden = false;
@@ -674,18 +644,18 @@ static indigo_result attach(indigo_device *device) {
     CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
     // --------------------------------------------------------------------------------
     pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
-    INDIGO_LOG(indigo_log("%s attached", PRIVATE_DATA->name));
+    INDIGO_LOG(indigo_log("%s CCD attached", PRIVATE_DATA->name));
     return indigo_ccd_device_enumerate_properties(device, NULL, NULL);
   }
   return INDIGO_FAILED;
 }
 
-static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
   assert(device != NULL);
   assert(device->device_context != NULL);
   assert(property != NULL);
   if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-    // -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_GUIDE_DEC, CCD_GUIDE_RA, CCD_COOLER, CCD_TEMPERATURE
+    // -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
     indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
     if (CONNECTION_CONNECTED_ITEM->sw.value) {
       if (sx_open(device)) {
@@ -698,11 +668,6 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
           CCD_TEMPERATURE_PROPERTY->hidden = false;
           PRIVATE_DATA->target_temperature = 0;
           ccd_temperature_callback(device);
-        }
-        if (PRIVATE_DATA->extra_caps & SXCCD_CAPS_STAR2K) {
-          CCD_GUIDE_DEC_PROPERTY->hidden = false;
-          CCD_GUIDE_RA_PROPERTY->hidden = false;
-          sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
         }
         PRIVATE_DATA->can_check_temperature = true;
         CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -765,70 +730,173 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
       indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
     }
     return INDIGO_OK;
-  } else if (indigo_property_match(CCD_GUIDE_DEC_PROPERTY, property)) {
-    // -------------------------------------------------------------------------------- TELESCOPE_GUIDE_DEC
-    indigo_property_copy_values(CCD_GUIDE_DEC_PROPERTY, property, false);
-    if (CCD_GUIDE_NORTH_ITEM->sw.value)
-      PRIVATE_DATA->relay_mask |= SX_GUIDE_NORTH;
-    else
-      PRIVATE_DATA->relay_mask ^= SX_GUIDE_NORTH;
-    if (CCD_GUIDE_SOUTH_ITEM->sw.value)
-      PRIVATE_DATA->relay_mask |= SX_GUIDE_SOUTH;
-    else
-      PRIVATE_DATA->relay_mask ^= SX_GUIDE_SOUTH;
-    sx_guide_relays(device, PRIVATE_DATA->relay_mask);
-    CCD_GUIDE_DEC_PROPERTY->state = PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-    indigo_update_property(device, CCD_GUIDE_DEC_PROPERTY, NULL);
-    return INDIGO_OK;
-  } else if (indigo_property_match(CCD_GUIDE_RA_PROPERTY, property)) {
-    // -------------------------------------------------------------------------------- TELESCOPE_GUIDE_RA
-    indigo_property_copy_values(CCD_GUIDE_RA_PROPERTY, property, false);
-    if (CCD_GUIDE_WEST_ITEM->sw.value)
-      PRIVATE_DATA->relay_mask |= SX_GUIDE_WEST;
-    else
-      PRIVATE_DATA->relay_mask ^= SX_GUIDE_WEST;
-    if (CCD_GUIDE_EAST_ITEM->sw.value)
-      PRIVATE_DATA->relay_mask |= SX_GUIDE_EAST;
-    else
-      PRIVATE_DATA->relay_mask ^= SX_GUIDE_EAST;
-    sx_guide_relays(device, PRIVATE_DATA->relay_mask);
-    CCD_GUIDE_RA_PROPERTY->state = PRIVATE_DATA->relay_mask & (SX_GUIDE_WEST | SX_GUIDE_EAST) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-    indigo_update_property(device, CCD_GUIDE_RA_PROPERTY, NULL);
-    return INDIGO_OK;
     // --------------------------------------------------------------------------------
   }
   return indigo_ccd_device_change_property(device, client, property);
 }
 
-static indigo_result detach(indigo_device *device) {
+static indigo_result ccd_detach(indigo_device *device) {
   assert(device != NULL);
-  INDIGO_LOG(indigo_log("%s detached", PRIVATE_DATA->name));
+  INDIGO_LOG(indigo_log("%s CCD detached", PRIVATE_DATA->name));
   free(PRIVATE_DATA);
   return indigo_ccd_device_detach(device);
 }
 
-indigo_device *indigo_ccd_sx(libusb_device *dev, const char *name) {
-  static indigo_device device_template = {
-    NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-    attach,
-    indigo_ccd_device_enumerate_properties,
-    change_property,
-    detach
-  };
-  struct libusb_device_descriptor descriptor;
-  libusb_get_device_descriptor(dev, &descriptor);
-  indigo_device *device = malloc(sizeof(indigo_device));
-  if (device != NULL) {
-    memcpy(device, &device_template, sizeof(indigo_device));
-    sx_private_data *private_data = malloc(sizeof(sx_private_data));
-    private_data->dev = dev;
-    strncpy(private_data->name, name, INDIGO_NAME_SIZE);
-    device->device_context = private_data;
+// -------------------------------------------------------------------------------- INDIGO guider device implementation
+
+static indigo_result guider_attach(indigo_device *device) {
+  assert(device != NULL);
+  assert(device->device_context != NULL);
+  sx_private_data *private_data = device->device_context;
+  device->device_context = NULL;
+  char name[INDIGO_NAME_SIZE];
+  snprintf(name, INDIGO_NAME_SIZE, "%s Guider", PRIVATE_DATA->name);
+  if (indigo_guider_device_attach(device, name, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+    DEVICE_CONTEXT->private_data = private_data;
+    INDIGO_LOG(indigo_log("%s guider attached", PRIVATE_DATA->name));
+    return indigo_guider_device_enumerate_properties(device, NULL, NULL);
   }
-  return device;
+  return INDIGO_FAILED;
 }
 
-indigo_result indigo_ccd_sx_register() {
+static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+  assert(device != NULL);
+  assert(device->device_context != NULL);
+  assert(property != NULL);
+  if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CONNECTION
+    indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+    if (CONNECTION_CONNECTED_ITEM->sw.value) {
+      if (sx_open(device)) {
+        assert(PRIVATE_DATA->extra_caps & SXCCD_CAPS_STAR2K);
+        sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
+        CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+      } else {
+        CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+        indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+      }
+    } else {
+      sx_close(device);
+      CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+    }
+  } else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
+    indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
+    if (GUIDER_GUIDE_NORTH_ITEM->sw.value)
+      PRIVATE_DATA->relay_mask |= SX_GUIDE_NORTH;
+    else
+      PRIVATE_DATA->relay_mask ^= SX_GUIDE_NORTH;
+    if (GUIDER_GUIDE_SOUTH_ITEM->sw.value)
+      PRIVATE_DATA->relay_mask |= SX_GUIDE_SOUTH;
+    else
+      PRIVATE_DATA->relay_mask ^= SX_GUIDE_SOUTH;
+    sx_guide_relays(device, PRIVATE_DATA->relay_mask);
+    GUIDER_GUIDE_DEC_PROPERTY->state = PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+    indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+    return INDIGO_OK;
+  } else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
+    indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
+    if (GUIDER_GUIDE_WEST_ITEM->sw.value)
+      PRIVATE_DATA->relay_mask |= SX_GUIDE_WEST;
+    else
+      PRIVATE_DATA->relay_mask ^= SX_GUIDE_WEST;
+    if (GUIDER_GUIDE_EAST_ITEM->sw.value)
+      PRIVATE_DATA->relay_mask |= SX_GUIDE_EAST;
+    else
+      PRIVATE_DATA->relay_mask ^= SX_GUIDE_EAST;
+    sx_guide_relays(device, PRIVATE_DATA->relay_mask);
+    GUIDER_GUIDE_RA_PROPERTY->state = PRIVATE_DATA->relay_mask & (SX_GUIDE_WEST | SX_GUIDE_EAST) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+    indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+    return INDIGO_OK;
+    // --------------------------------------------------------------------------------
+  }
+  return indigo_guider_device_change_property(device, client, property);
+}
+
+static indigo_result guider_detach(indigo_device *device) {
+  assert(device != NULL);
+  INDIGO_LOG(indigo_log("%s guider detached", PRIVATE_DATA->name));
+  return indigo_guider_device_detach(device);
+}
+
+// -------------------------------------------------------------------------------- INDIGO SX driver implementation
+
+static indigo_device *devices[MAX_DEVICES];
+
+static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+  static indigo_device ccd_template = {
+    "", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+    ccd_attach,
+    indigo_ccd_device_enumerate_properties,
+    ccd_change_property,
+    ccd_detach
+  };
+  static indigo_device guider_template = {
+    "", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+    guider_attach,
+    indigo_guider_device_enumerate_properties,
+    guider_change_property,
+    guider_detach
+  };
+  struct libusb_device_descriptor descriptor;
+  switch (event) {
+    case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
+      libusb_get_device_descriptor(dev, &descriptor);
+      for (int i = 0; SX_PRODUCTS[i].name; i++) {
+        if (descriptor.idVendor == 0x1278 && SX_PRODUCTS[i].product == descriptor.idProduct) {
+          struct libusb_device_descriptor descriptor;
+          libusb_get_device_descriptor(dev, &descriptor);
+          sx_private_data *private_data = malloc(sizeof(sx_private_data));
+          memset(private_data, 0, sizeof(sx_private_data));
+          private_data->dev = dev;
+          strncpy(private_data->name, SX_PRODUCTS[i].name, INDIGO_NAME_SIZE);
+          indigo_device *device = malloc(sizeof(indigo_device));
+          if (device != NULL) {
+            memcpy(device, &ccd_template, sizeof(indigo_device));
+            device->device_context = private_data;
+            for (int j = 0; j < MAX_DEVICES; j++) {
+              if (devices[j] == NULL) {
+                indigo_attach_device(devices[j] = device);
+                break;
+              }
+            }
+          }
+          device = malloc(sizeof(indigo_device));
+          if (device != NULL) {
+            memcpy(device, &guider_template, sizeof(indigo_device));
+            device->device_context = private_data;
+            for (int j = 0; j < MAX_DEVICES; j++) {
+              if (devices[j] == NULL) {
+                indigo_attach_device(devices[j] = device);
+                break;
+              }
+            }
+          }
+          return 0;
+        }
+      }
+      break;
+    case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT:
+      for (int j = 0; j < MAX_DEVICES; j++) {
+        if (devices[j] != NULL) {
+          indigo_device *device = devices[j];
+          if (((sx_private_data*)PRIVATE_DATA)->dev == dev) {
+            indigo_detach_device(device);
+            free(device);
+            devices[j] = NULL;
+          }
+        }
+      }
+      break;
+  }
+  return 0;
+};
+
+indigo_result indigo_ccd_sx() {
+  for (int i = 0; i < MAX_DEVICES; i++) {
+    devices[i] = 0;
+  }
   libusb_init(NULL);
   if (libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, sx_hotplug_callback, NULL, NULL) == 0)
     return INDIGO_OK;

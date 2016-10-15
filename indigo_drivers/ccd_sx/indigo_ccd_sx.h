@@ -40,15 +40,13 @@
 #define ccd_sx_h
 
 #include "indigo_driver.h"
-#include "indigo_ccd_driver.h"
 #include "indigo_usb.h"
+#include "indigo_ccd_driver.h"
+#include "indigo_guider_driver.h"
 
 /** Register StarlighXpress CCD hot-plug callback
  */
-extern indigo_result indigo_ccd_sx_register();
 
-/** Create StarlighXpress CCD device instance
- */
-extern indigo_device *indigo_ccd_sx(libusb_device *dev, const char *name);
+extern indigo_result indigo_ccd_sx();
 
 #endif /* ccd_sx_h */

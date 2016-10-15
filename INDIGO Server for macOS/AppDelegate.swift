@@ -66,7 +66,7 @@ func serverCallback(count: Int32) {
     service.delegate = self
     service.publish()
     indigo_start()
-    indigo_attach_device(indigo_ccd_simulator())
+    indigo_ccd_simulator();
     indigo_ccd_sx_register()
     indigo_server_xml(serverCallback)
   }

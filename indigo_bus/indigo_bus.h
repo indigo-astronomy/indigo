@@ -197,6 +197,7 @@ typedef struct {
 /** Device structure definition
  */
 typedef struct indigo_device {
+  char name[INDIGO_NAME_SIZE];        ///< device name
   void *device_context;               ///< any device specific data
   indigo_result last_result;          ///< result of last bus operation
   indigo_version version;             ///< device version
@@ -218,6 +219,7 @@ typedef struct indigo_device {
 /** Client structure definition
  */
 typedef struct indigo_client {
+  char name[INDIGO_NAME_SIZE];        ///< client name
   void *client_context;               ///< any client specific data
   indigo_result last_result;          ///< result of last bus operation
   indigo_version version;             ///< client version
