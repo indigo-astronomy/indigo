@@ -66,13 +66,13 @@
  */
 #define GUIDER_GUIDE_RA_PROPERTY             (GUIDER_DEVICE_CONTEXT->guider_guide_ra_property)
 
-/** GUIDER_GUIDE.WEST property item pointer.
- */
-#define GUIDER_GUIDE_WEST_ITEM               (GUIDER_GUIDE_RA_PROPERTY->items+0)
-
 /** GUIDER_GUIDE.EAST property item pointer.
  */
-#define GUIDER_GUIDE_EAST_ITEM               (GUIDER_GUIDE_RA_PROPERTY->items+1)
+#define GUIDER_GUIDE_EAST_ITEM               (GUIDER_GUIDE_RA_PROPERTY->items+0)
+
+/** GUIDER_GUIDE.WEST property item pointer.
+ */
+#define GUIDER_GUIDE_WEST_ITEM               (GUIDER_GUIDE_RA_PROPERTY->items+1)
 
 /** Guider device context structure.
  */
