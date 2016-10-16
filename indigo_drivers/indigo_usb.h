@@ -105,6 +105,10 @@ int libusb_control_transfer(libusb_device_handle *handle, uint8_t bmRequestType,
 
 #include <libusb-1.0/libusb.h>
 
+#elif defined(INDIGO_FREEBSD)
+
+#include <libusb.h>
+
 #endif
 
 #endif /* indigo_usb_h */

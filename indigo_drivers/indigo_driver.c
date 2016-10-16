@@ -60,7 +60,7 @@
 
 #define NANO 1000000000L
 
-#if defined(INDIGO_LINUX)
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 
 #define time_diff(later, earier) ((later.tv_sec - earier.tv_sec) * 1000L + (later.tv_nsec - earier.tv_nsec) / 1000000L)
 
@@ -274,7 +274,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
     indigo_init_switch_item(CONFIG_SAVE_ITEM, "SAVE", "Save", false);
     indigo_init_switch_item(CONFIG_DEFAULT_ITEM, "DEFAULT", "Default", false);
       // --------------------------------------------------------------------------------
-#if defined(INDIGO_LINUX)
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
     if (pipe(DEVICE_CONTEXT->timer_pipe) != 0)
       return INDIGO_FAILED;
     if (pthread_mutex_init(&DEVICE_CONTEXT->timer_mutex, NULL) != 0)
@@ -355,7 +355,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 
 indigo_result indigo_device_detach(indigo_device *device) {
   assert(device != NULL);
-#if defined(INDIGO_LINUX)
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
   char data = 0;
   write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
   pthread_join(DEVICE_CONTEXT->timer_thread, NULL);

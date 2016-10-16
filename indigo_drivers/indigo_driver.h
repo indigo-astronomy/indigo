@@ -42,7 +42,7 @@
 //#define INDIGO_LINUX
 //#undef INDIGO_DARWIN
 
-#if defined(INDIGO_LINUX)
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 #include <pthread.h>
 #elif defined(INDIGO_DARWIN)
 #include <dispatch/dispatch.h>
@@ -164,7 +164,7 @@ typedef void (*indigo_timer_callback)(indigo_device *device);
 typedef struct indigo_timer {
   indigo_device *device;                    ///< device associated with timer
   indigo_timer_callback callback;           ///< callback function pointer
-#if defined(INDIGO_LINUX)
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
   struct timespec time;                     ///< time to fire (linux only)
   struct indigo_timer *next;                ///< next timer in the queue (linux only)
 #elif defined(INDIGO_DARWIN)
@@ -177,7 +177,7 @@ typedef struct indigo_timer {
 typedef struct {
   void *private_data;                       ///< private data
   int property_save_file_handle;            ///< handle for property save
-#if defined(INDIGO_LINUX)
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
   pthread_t timer_thread;                   ///< timer thread (linux only)
   pthread_mutex_t timer_mutex;              ///< timer mutex (linux only)
   int timer_pipe[2];                        ///< timer pipe (linux only)
