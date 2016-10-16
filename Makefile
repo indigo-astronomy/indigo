@@ -24,6 +24,14 @@ AR=ar
 ARFLAGS=-rv
 endif
 
+ifeq ($(OS_detected),FreeBSD)
+CC=cc
+CFLAGS=-Iindigo_bus -Iindigo_drivers -std=gnu11 -pthread -DINDIGO_FREEBSD
+LDFLAGS=-lm -lrt -lusb
+AR=ar
+ARFLAGS=-rv
+endif
+
 .PHONY: init clean
 
 all: init indigo_ccd_simulator indigo_ccd_sx test client server
