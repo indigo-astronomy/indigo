@@ -1137,10 +1137,14 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
             blob_size = property->items[property->count-1].blob.size;
             if (blob_size > 0) {
               state = BLOB;
-              if (blob_buffer != NULL)
-                blob_buffer = realloc(blob_buffer, blob_size);
-              else
+              if (blob_buffer != NULL) {
+                char *ptmp = realloc(blob_buffer, blob_size);
+                if (ptmp) blob_buffer = ptmp;
+                else goto exit_loop;
+              } else {
                 blob_buffer = malloc(blob_size);
+                if(blob_buffer == NULL) goto exit_loop;
+			  }
               blob_pointer = blob_buffer;
             } else {
               state = TEXT;
