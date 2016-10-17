@@ -891,7 +891,7 @@ void *top_level_handler(parser_state state, char *name, char *value, indigo_prop
 
 void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) {
   char *buffer = malloc(BUFFER_SIZE+3); /* BUFFER_SIZE % 4 == 0 and keep always +3 for base64 alignmet */
-  char *value_buffer = malloc(BUFFER_SIZE);
+  char *value_buffer = malloc(BUFFER_SIZE+1); /* +1 to accomodate \0" */
   char name_buffer[INDIGO_NAME_SIZE];
   char property_buffer[PROPERTY_SIZE];
   unsigned char *blob_buffer = NULL;
@@ -927,7 +927,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
       goto exit_loop;
     }
     while ((c = *pointer++) == 0) {
-      ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE-1);
+      ssize_t count = (int)read(handle, (void *)buffer, (ssize_t)BUFFER_SIZE);
       if (count <= 0) {
         goto exit_loop;
       }
@@ -1053,7 +1053,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
         *name_pointer++ = c;
          break;
       case BLOB:
-        if (device->version >= INDIGO_VERSION_2_0) {
+        if (device->version < INDIGO_VERSION_2_0) {
           ssize_t count;
           pointer--;
           while (isspace(*pointer)) pointer++;
