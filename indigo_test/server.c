@@ -43,6 +43,7 @@
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "ccd_sx/indigo_ccd_sx.h"
+#include "ccd_ssag/indigo_ccd_ssag.h"
 
 void server_callback(int count) {
   INDIGO_LOG(indigo_log("%d clients", count));
@@ -54,6 +55,7 @@ int main(int argc, const char * argv[]) {
   indigo_start();
   indigo_ccd_simulator();
   indigo_ccd_sx();
+  indigo_ccd_ssag();
   indigo_server_xml(server_callback);
   return 0;
 }
