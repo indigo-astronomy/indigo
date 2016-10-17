@@ -53,7 +53,7 @@
 #include "indigo_version.h"
 #include "indigo_driver_xml.h"
 
-#define BUFFER_SIZE 524288
+#define BUFFER_SIZE 524288  /* BUFFER_SIZE % 4 == 0, inportant for base64 */
 
 #define PROPERTY_SIZE sizeof(indigo_property)+INDIGO_MAX_ITEMS*(sizeof(indigo_item))
 
@@ -890,7 +890,7 @@ void *top_level_handler(parser_state state, char *name, char *value, indigo_prop
 }
 
 void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) {
-  char *buffer = malloc(BUFFER_SIZE+3);
+  char *buffer = malloc(BUFFER_SIZE+3); /* BUFFER_SIZE % 4 == 0 and keep always +3 for base64 alignmet */
   char *value_buffer = malloc(BUFFER_SIZE);
   char name_buffer[INDIGO_NAME_SIZE];
   char property_buffer[PROPERTY_SIZE];
@@ -1060,12 +1060,15 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
           unsigned long blob_len = (blob_size + 2) / 3 * 4;
           unsigned long len = (long)(buffer_end - pointer);
           len = (len < blob_len) ? len : blob_len;
-          int bytes_left = len % 4;
-          if (bytes_left) {
-            count = (int)read(handle, (void *)buffer_end, 4 - bytes_left);
+          ssize_t bytes_needed = len % 4;
+          if(bytes_needed) bytes_needed = 4 - bytes_needed;
+          while (bytes_needed) {
+            count = (int)read(handle, (void *)buffer_end, bytes_needed);
             if (count <= 0)
               goto exit_loop;
-            len+=count;
+            len += count;
+            bytes_needed -= count;
+            buffer_end += count;
           }
 
           blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)pointer, len);
