@@ -50,6 +50,9 @@
 #include "indigo_version.h"
 #include "indigo_driver_xml.h"
 
+#define RAW_BUF_SIZE 98304
+#define BASE64_BUF_SIZE 131072  /* BASE64_BUF_SIZE >= (RAW_BUF_SIZE + 2) / 3 * 4 */
+
 static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char *message_attribute(const char *message) {
@@ -175,8 +178,6 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
             fh = fdopen(handle2, "w");
             if (property->version >= INDIGO_VERSION_2_0) {
               while (input_length) {
-                #define RAW_BUF_SIZE 98304
-                #define BASE64_BUF_SIZE 131072
                 char encoded_data[BASE64_BUF_SIZE];
                 long len = (RAW_BUF_SIZE < input_length) ?  RAW_BUF_SIZE : input_length;
                 long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
