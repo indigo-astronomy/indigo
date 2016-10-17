@@ -1053,7 +1053,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
         *name_pointer++ = c;
          break;
       case BLOB:
-        if (device->version < INDIGO_VERSION_2_0) {
+        if (device->version >= INDIGO_VERSION_2_0) {
           ssize_t count;
           pointer--;
           while (isspace(*pointer)) pointer++;
@@ -1070,11 +1070,9 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
             bytes_needed -= count;
             buffer_end += count;
           }
-
           blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)pointer, len);
           pointer += len;
           blob_len -= len;
-
           while(blob_len) {
             len = ((BUFFER_SIZE) < blob_len) ? (BUFFER_SIZE) : blob_len;
             ssize_t to_read = len;
