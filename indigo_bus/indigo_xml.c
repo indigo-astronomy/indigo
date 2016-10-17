@@ -1071,25 +1071,20 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
           blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)pointer, len);
           pointer += len;
           blob_len -= len;
+
           while(blob_len) {
             len = ((BUFFER_SIZE) < blob_len) ? (BUFFER_SIZE) : blob_len;
-            count = (int)read(handle, (void *)buffer, len);
-            if (count <= 0)
-              goto exit_loop;
-            /* TODO HANDLE PARTIAL READS! */
-            /*
+            ssize_t to_read = len;
             char *ptr = buffer;
-            do {
-              count = (int)read(handle, (void *)ptr, len);
+            while(to_read) {
+              count = (int)read(handle, (void *)ptr, to_read);
               if (count <= 0)
                 goto exit_loop;
               ptr += count;
-              len -= count;
-              blob_len -= count;
-            } while(len && blob_len);
-            */
-            blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)buffer, count);
-            blob_len -= count;
+              to_read -= count;
+            }
+            blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)buffer, len);
+            blob_len -= len;
           }
 
           handler = handler(BLOB, NULL, (char *)blob_buffer, property, device, client, message);

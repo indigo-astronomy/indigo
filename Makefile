@@ -18,7 +18,7 @@ endif
 
 ifeq ($(OS_detected),Linux)
 CC=gcc
-CFLAGS= -O3 -Iindigo_bus -Iindigo_drivers -std=gnu11 -pthread -DINDIGO_LINUX
+CFLAGS=-Iindigo_bus -Iindigo_drivers -std=gnu11 -pthread -DINDIGO_LINUX
 LDFLAGS=-lm -lrt -lusb-1.0
 AR=ar
 ARFLAGS=-rv

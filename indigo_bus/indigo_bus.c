@@ -118,7 +118,7 @@ static void log_message(const char *format, va_list args) {
     struct timeval tmnow;
     gettimeofday(&tmnow, NULL);
     strftime (timestamp, 9, "%H:%M:%S", localtime(&tmnow.tv_sec));
-    snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
+    snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
     static const char *log_executable_name = NULL;
     if (log_executable_name == NULL) {
       if (indigo_main_argc == 0) {
