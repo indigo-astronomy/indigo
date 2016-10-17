@@ -906,7 +906,7 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
   char q = '"';
   int depth = 0;
   char c = 0;
-  (void)parser_state_name;
+  /* (void)parser_state_name; */
 
   parser_handler handler = top_level_handler;
   indigo_property *property = (indigo_property *)property_buffer;
