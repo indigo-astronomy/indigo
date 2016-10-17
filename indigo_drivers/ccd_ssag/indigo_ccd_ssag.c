@@ -48,10 +48,14 @@
 #include <sys/time.h>
 
 #include "indigo_ccd_ssag.h"
+#include "openssag_firmware.h"
 #include "indigo_driver_xml.h"
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((ssag_private_data *)DEVICE_CONTEXT->private_data)
+
+#undef INDIGO_DEBUG
+#define INDIGO_DEBUG(c) c
 
 // -------------------------------------------------------------------------------- SX USB interface implementation
 
@@ -71,27 +75,85 @@ typedef enum {
   guide_west  = 0x80,
 } guide_direction;
 
-bool ssag_open(indigo_device *device) {
+#define CPUCS_ADDRESS 0xe600
+
+enum USB_REQUEST {
+  USB_RQ_LOAD_FIRMWARE      = 0xa0,
+  USB_RQ_WRITE_SMALL_EEPROM = 0xa2
+};
+
+static unsigned char bootloader[] = { SSAG_BOOTLOADER };
+static unsigned char firmware[] = { SSAG_FIRMWARE };
+
+static int ssag_reset_mode(libusb_device_handle *handle, unsigned char data) {
+  int rc;
+  rc = libusb_control_transfer(handle, 0x40, USB_RQ_LOAD_FIRMWARE, 0x7f92, 0, &data, 1, 5000);
+  INDIGO_DEBUG(indigo_debug("ssag_reset_mode: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+  if (rc >= 0) {
+    rc = libusb_control_transfer(handle, 0x40, USB_RQ_LOAD_FIRMWARE, CPUCS_ADDRESS, 0, &data, 1, 5000);
+    INDIGO_DEBUG(indigo_debug("ssag_reset_mode: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+  }
+  return rc;
+}
+
+static int ssag_upload(libusb_device_handle *handle, unsigned char *data) {
+  int rc = 0;
+  for (;;) {
+    unsigned char byte_count = *data;
+    if (byte_count == 0)
+      break;
+    unsigned short address = *(unsigned int *)(data+1);
+    rc = libusb_control_transfer(handle, 0x40, USB_RQ_LOAD_FIRMWARE, address, 0, (unsigned char *)(data+3), byte_count, 5000);
+    if (rc != byte_count) {
+      INDIGO_DEBUG(indigo_debug("ssag_upload: libusb_control_transfer [%d] -> %s", __LINE__, libusb_error_name(rc)));
+      return rc;
+    }
+    data += byte_count + 3;
+  }
+  return rc;
+}
+
+static void ssag_firmware(libusb_device *dev) {
+  libusb_device_handle *handle;
+  int rc = libusb_open(dev, &handle);
+  INDIGO_DEBUG(indigo_debug("ssag_firmware: libusb_open [%d] -> %s", __LINE__, libusb_error_name(rc)));
+  if (rc >= 0) {
+    rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
+    rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
+    rc = rc < 0 ? rc : ssag_upload(handle, bootloader);
+    rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x00);
+    if (rc >=0)
+      sleep(1);
+    rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
+    rc = rc < 0 ? rc : ssag_upload(handle, firmware);
+    rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
+    rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x00);
+    libusb_close(handle);
+    INDIGO_DEBUG(indigo_debug("ssag_firmware: libusb_close [%d]", __LINE__));
+  }
+}
+
+static bool ssag_open(indigo_device *device) {
   return false;
 }
 
-bool ssag_start_exposure(indigo_device *device, double exposure) {
+static bool ssag_start_exposure(indigo_device *device, double exposure) {
   return false;
 }
 
-bool ssag_abort_exposure(indigo_device *device) {
+static bool ssag_abort_exposure(indigo_device *device) {
   return false;
 }
 
-bool ssag_read_pixels(indigo_device *device) {
+static bool ssag_read_pixels(indigo_device *device) {
   return false;
 }
 
-bool ssag_guide(indigo_device *device, guide_direction direction, int duration) {
+static bool ssag_guide(indigo_device *device, guide_direction direction, int duration) {
   return false;
 }
 
-bool ssag_close(indigo_device *device) {
+static bool ssag_close(indigo_device *device) {
   return false;
 }
 
@@ -263,6 +325,18 @@ static indigo_result guider_detach(indigo_device *device) {
 
 #define MAX_DEVICES 10
 
+/* Orion Telescopes SSAG VID/PID */
+#define SSAG_VENDOR_ID 0x1856
+#define SSAG_PRODUCT_ID 0x0012
+
+/* uninitialized SSAG VID/PID */
+#define SSAG_LOADER_VENDOR_ID 0x1856
+#define SSAG_LOADER_PRODUCT_ID 0x0011
+
+/* uninitialized QHY5 VID/PID */
+#define QHY5_LOADER_VENDOR_ID 0x1618
+#define QHY5_LOADER_PRODUCT_ID 0x0901
+
 static indigo_device *devices[MAX_DEVICES];
 
 static int ssag_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
@@ -283,40 +357,40 @@ static int ssag_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb
   struct libusb_device_descriptor descriptor;
   switch (event) {
     case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-      libusb_get_device_descriptor(dev, &descriptor);
-      for (int i = 0; SX_PRODUCTS[i].name; i++) {
-        if (descriptor.idVendor == 0x1278 && SX_PRODUCTS[i].product == descriptor.idProduct) {
-          struct libusb_device_descriptor descriptor;
-          libusb_get_device_descriptor(dev, &descriptor);
-          ssag_private_data *private_data = malloc(sizeof(ssag_private_data));
-          memset(private_data, 0, sizeof(ssag_private_data));
-          private_data->dev = dev;
-          indigo_device *device = malloc(sizeof(indigo_device));
-          if (device != NULL) {
-            memcpy(device, &ccd_template, sizeof(indigo_device));
-            strcpy(device->name, SX_PRODUCTS[i].name);
-            device->device_context = private_data;
-            for (int j = 0; j < MAX_DEVICES; j++) {
-              if (devices[j] == NULL) {
-                indigo_attach_device(devices[j] = device);
-                break;
-              }
+      int rc = libusb_get_device_descriptor(dev, &descriptor);
+      INDIGO_DEBUG(indigo_debug("ssag_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s (0x%04x, 0x%04x)", __LINE__, libusb_error_name(rc), descriptor.idVendor, descriptor.idProduct));
+
+      if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID)) {
+        ssag_firmware(dev);
+      } else if (descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) {
+        struct libusb_device_descriptor descriptor;
+        libusb_get_device_descriptor(dev, &descriptor);
+        ssag_private_data *private_data = malloc(sizeof(ssag_private_data));
+        memset(private_data, 0, sizeof(ssag_private_data));
+        private_data->dev = dev;
+        indigo_device *device = malloc(sizeof(indigo_device));
+        if (device != NULL) {
+          memcpy(device, &ccd_template, sizeof(indigo_device));
+          strcpy(device->name, "SSAG");
+          device->device_context = private_data;
+          for (int j = 0; j < MAX_DEVICES; j++) {
+            if (devices[j] == NULL) {
+              indigo_attach_device(devices[j] = device);
+              break;
             }
           }
-          device = malloc(sizeof(indigo_device));
-          if (device != NULL) {
-            memcpy(device, &guider_template, sizeof(indigo_device));
-            strcpy(device->name, SX_PRODUCTS[i].name);
-            strcat(device->name, " guider");
-            device->device_context = private_data;
-            for (int j = 0; j < MAX_DEVICES; j++) {
-              if (devices[j] == NULL) {
-                indigo_attach_device(devices[j] = device);
-                break;
-              }
+        }
+        device = malloc(sizeof(indigo_device));
+        if (device != NULL) {
+          memcpy(device, &guider_template, sizeof(indigo_device));
+          strcpy(device->name, "SSAG guider");
+          device->device_context = private_data;
+          for (int j = 0; j < MAX_DEVICES; j++) {
+            if (devices[j] == NULL) {
+              indigo_attach_device(devices[j] = device);
+              break;
             }
           }
-          return 0;
         }
       }
       break;
@@ -351,7 +425,7 @@ static void *hotplug_thread(void *arg) {
 }
 #endif
 
-indigo_result indigo_ccd_sx() {
+indigo_result indigo_ccd_ssag() {
   for (int i = 0; i < MAX_DEVICES; i++) {
     devices[i] = 0;
   }

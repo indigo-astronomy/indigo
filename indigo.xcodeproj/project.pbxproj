@@ -51,6 +51,7 @@
 		59D382011D97085600E87393 /* indigo_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381CD1D96AB9500E87393 /* indigo_xml.c */; };
 		59D382051D9720C200E87393 /* indigo_driver_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382031D9720C200E87393 /* indigo_driver_xml.c */; };
 		59D382171D97348500E87393 /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382161D97348500E87393 /* client.c */; };
+		9D8C9FD61DB5256A00AA86BD /* indigo_ccd_ssag.c in Sources */ = {isa = PBXBuildFile; fileRef = 59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */; };
 		9D97F81B1D9A8A5D00582EAF /* server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* server.c */; };
 		9D97F8211D9E9E4F00582EAF /* indigo_version.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81E1D9E9E4F00582EAF /* indigo_version.c */; };
 /* End PBXBuildFile section */
@@ -675,6 +676,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				599C9A661DA02A07008BBCC1 /* indigo_ccd_simulator.c in Sources */,
+				9D8C9FD61DB5256A00AA86BD /* indigo_ccd_ssag.c in Sources */,
 				5999FBC61DAC33D90084BBF8 /* indigo_ccd_sx.c in Sources */,
 				5999FBCA1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				9D97F81B1D9A8A5D00582EAF /* server.c in Sources */,

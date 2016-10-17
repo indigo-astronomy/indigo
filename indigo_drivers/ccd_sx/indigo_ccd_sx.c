@@ -178,7 +178,7 @@ typedef struct {
   bool can_check_temperature;
 } sx_private_data;
 
-bool sx_open(indigo_device *device) {
+static bool sx_open(indigo_device *device) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
     int rc = 0;
     if (PRIVATE_DATA->device_count++ == 0) {
@@ -289,7 +289,7 @@ bool sx_open(indigo_device *device) {
   return false;
 }
 
-bool sx_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
+static bool sx_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
     libusb_device_handle *handle = PRIVATE_DATA->handle;
     unsigned char *setup_data = PRIVATE_DATA->setup_data;
@@ -358,7 +358,7 @@ bool sx_start_exposure(indigo_device *device, double exposure, bool dark, int fr
   return false;
 }
 
-bool sx_clear_regs(indigo_device *device) {
+static bool sx_clear_regs(indigo_device *device) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
     libusb_device_handle *handle = PRIVATE_DATA->handle;
     unsigned char *setup_data = PRIVATE_DATA->setup_data;
@@ -382,7 +382,7 @@ bool sx_clear_regs(indigo_device *device) {
   return false;
 }
 
-bool sx_download_pixels(indigo_device *device, unsigned char *pixels, unsigned long count) {
+static bool sx_download_pixels(indigo_device *device, unsigned char *pixels, unsigned long count) {
   libusb_device_handle *handle = PRIVATE_DATA->handle;
   int transferred;
   unsigned long read = 0;
@@ -400,7 +400,7 @@ bool sx_download_pixels(indigo_device *device, unsigned char *pixels, unsigned l
   return rc >= 0;
 }
 
-bool sx_read_pixels(indigo_device *device) {
+static bool sx_read_pixels(indigo_device *device) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
     libusb_device_handle *handle = PRIVATE_DATA->handle;
     unsigned char *setup_data = PRIVATE_DATA->setup_data;
@@ -445,7 +445,7 @@ bool sx_read_pixels(indigo_device *device) {
   return false;
 }
 
-bool sx_abort_exposure(indigo_device *device) {
+static bool sx_abort_exposure(indigo_device *device) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
     libusb_device_handle *handle = PRIVATE_DATA->handle;
     unsigned char *setup_data = PRIVATE_DATA->setup_data;
@@ -469,7 +469,7 @@ bool sx_abort_exposure(indigo_device *device) {
   return false;
 }
 
-bool sx_set_cooler(indigo_device *device, bool status, double target, double *current) {
+static bool sx_set_cooler(indigo_device *device, bool status, double target, double *current) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
     libusb_device_handle *handle = PRIVATE_DATA->handle;
     unsigned char *setup_data = PRIVATE_DATA->setup_data;
@@ -502,7 +502,7 @@ bool sx_set_cooler(indigo_device *device, bool status, double target, double *cu
   return false;
 }
 
-bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
+static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
   libusb_device_handle *handle = PRIVATE_DATA->handle;
   unsigned char *setup_data = PRIVATE_DATA->setup_data;
   int transferred;
@@ -518,17 +518,17 @@ bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
   return rc >= 0;
 }
 
-void sx_close(indigo_device *device) {
+static void sx_close(indigo_device *device) {
   if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
     if (--PRIVATE_DATA->device_count == 0) {
       libusb_close(PRIVATE_DATA->handle);
+      INDIGO_DEBUG(indigo_debug("sx_close: libusb_close [%d]", __LINE__));
       free(PRIVATE_DATA->buffer);
       if (PRIVATE_DATA->is_interlaced) {
         free(PRIVATE_DATA->even);
         free(PRIVATE_DATA->odd);
       }
     }
-    INDIGO_DEBUG(indigo_debug("sx_close: libusb_close"));
     pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
   }
 }
@@ -860,7 +860,8 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
   struct libusb_device_descriptor descriptor;
   switch (event) {
     case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-      libusb_get_device_descriptor(dev, &descriptor);
+      int rc = libusb_get_device_descriptor(dev, &descriptor);
+      INDIGO_DEBUG(indigo_debug("sx_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s", __LINE__, libusb_error_name(rc)));
       for (int i = 0; SX_PRODUCTS[i].name; i++) {
         if (descriptor.idVendor == 0x1278 && SX_PRODUCTS[i].product == descriptor.idProduct) {
           struct libusb_device_descriptor descriptor;

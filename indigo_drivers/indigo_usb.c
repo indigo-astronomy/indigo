@@ -301,7 +301,7 @@ int libusb_control_transfer(libusb_device_handle *handle, uint8_t bmRequestType,
   req.noDataTimeout = timeout;
   req.completionTimeout = timeout;
   if ((*interface)->ControlRequestTO(interface, 0, &req) == 0)
-    return 0;
+    return req.wLenDone;
   return -1;
 }
 
