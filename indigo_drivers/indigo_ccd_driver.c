@@ -113,7 +113,6 @@ indigo_result indigo_ccd_device_attach(indigo_device *device, indigo_version ver
       CCD_BIN_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_BIN", CCD_IMAGE_GROUP, "Binning setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
       if (CCD_BIN_PROPERTY == NULL)
         return INDIGO_FAILED;
-      CCD_BIN_PROPERTY->hidden = true;
       indigo_init_number_item(CCD_BIN_HORIZONTAL_ITEM, "HORIZONTAL", "Horizontal binning", 0, 1, 1, 1);
       indigo_init_number_item(CCD_BIN_VERTICAL_ITEM, "VERTICAL", "Vertical binning", 0, 1, 1, 1);
       // -------------------------------------------------------------------------------- CCD_FRAME_TYPE
@@ -184,7 +183,7 @@ indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indi
         indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
       if (indigo_property_match(CCD_FRAME_PROPERTY, property))
         indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
-      if (indigo_property_match(CCD_BIN_PROPERTY, property) && !CCD_BIN_PROPERTY->hidden)
+      if (indigo_property_match(CCD_BIN_PROPERTY, property))
         indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
       if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property))
         indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
@@ -218,8 +217,7 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
       indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
       indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
       indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
-      if (!CCD_BIN_PROPERTY->hidden)
-        indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
+      indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
       indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
       indigo_define_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
       indigo_define_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);

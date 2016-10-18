@@ -150,7 +150,6 @@ static indigo_result attach(indigo_device *device) {
     CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 5.2;
     CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 5.2;
     CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
-    CCD_BIN_PROPERTY->hidden = false;
     // -------------------------------------------------------------------------------- CCD_IMAGE
     for (int i = 0; i < STARS; i++) {
       private_data->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions

@@ -154,7 +154,7 @@
 		592662B01D9590630021746A /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssag.c; sourceTree = "<group>"; };
 		59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag.h; sourceTree = "<group>"; };
-		59519D461DB423E0008BAF29 /* openssag_firmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = openssag_firmware.h; sourceTree = "<group>"; };
+		59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag_firmware.h; sourceTree = "<group>"; };
 		59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssag_main.c; sourceTree = "<group>"; };
 		5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sx.c; sourceTree = "<group>"; };
 		5999FB671DA40B380084BBF8 /* indigo_ccd_sx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sx.h; sourceTree = "<group>"; };
@@ -305,7 +305,7 @@
 		59519D421DB422E3008BAF29 /* ccd_ssag */ = {
 			isa = PBXGroup;
 			children = (
-				59519D461DB423E0008BAF29 /* openssag_firmware.h */,
+				59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */,
 				59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */,
 				59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */,
 				59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */,
