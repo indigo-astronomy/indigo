@@ -1,5 +1,5 @@
 /*
- * File: firmware.h
+
  *
  * Copyright (c) 2011 Eric J. Holmes, Orion Telescopes & Binoculars
  *

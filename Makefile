@@ -65,14 +65,20 @@ indigo_ccd_sx.a: indigo_drivers/ccd_sx/indigo_ccd_sx.o
 indigo_ccd_sx: indigo_drivers/ccd_sx/indigo_ccd_sx_main.o indigo_ccd_sx.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+indigo_ccd_ssag.a: indigo_drivers/ccd_ssag/indigo_ccd_ssag.o
+	$(AR) $(ARFLAGS) $@ $^
+
+indigo_ccd_ssag: indigo_drivers/ccd_ssag/indigo_ccd_ssag_main.o indigo_ccd_ssag.a libindigo.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
 test: indigo_test/test.o indigo_ccd_simulator.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 client: indigo_test/client.o libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a libindigo.a
+server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_ssag.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean: init
-	rm -f libindigo.a indigo_ccd_simulator indigo_ccd_sx indigo_ccd_simulator.a indigo_ccd_sx.a test client server indigo_test/*.o indigo_bus/*.o indigo_drivers/*.o indigo_drivers/ccd_simulator/*.o indigo_drivers/ccd_sx/*.o
+	rm -f libindigo.a indigo_ccd_simulator indigo_ccd_sx indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_ssag.a test client server indigo_test/*.o indigo_bus/*.o indigo_drivers/*.o indigo_drivers/ccd_simulator/*.o indigo_drivers/ccd_sx/*.o  indigo_drivers/ccd_ssag/*.o

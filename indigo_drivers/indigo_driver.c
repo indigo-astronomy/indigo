@@ -456,3 +456,23 @@ indigo_result indigo_save_property(indigo_device*device, indigo_property *proper
   return INDIGO_OK;
 }
 
+#ifdef INDIGO_LINUX
+  static void *hotplug_thread(void *arg) {
+    while (true) {
+      libusb_handle_events(NULL);
+    }
+    return NULL;
+  }
+#endif
+
+void indigo_start_usb_even_handler() {
+#ifdef INDIGO_LINUX
+  static bool thread_started = false;
+  if (!thread_started) {
+    pthread_t hotplug_thread_handle;
+    pthread_create(&hotplug_thread_handle, NULL, hotplug_thread, NULL);
+    thread_started = true;
+  }
+#endif
+}
+

@@ -601,7 +601,6 @@ static indigo_result ccd_attach(indigo_device *device) {
   if (indigo_ccd_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
     DEVICE_CONTEXT->private_data = private_data;
     // -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN
-    CCD_BIN_PROPERTY->hidden = false;
     CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 4;
     CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 4;
     CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
@@ -647,7 +646,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
   } else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_EXPOSURE
     indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-    sx_start_exposure(device, CCD_EXPOSURE_ITEM->number.value, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
+    PRIVATE_DATA->exposure = CCD_EXPOSURE_ITEM->number.value;
+    sx_start_exposure(device, PRIVATE_DATA->exposure, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
     CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure initiated");
     if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
@@ -657,15 +657,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
       CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
       indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
     }
-    if (CCD_EXPOSURE_ITEM->number.value > 4)
-      PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value-4, clear_reg_timer_callback);
+    if (PRIVATE_DATA->exposure > 4)
+      PRIVATE_DATA->exposure_timer = indigo_set_timer(device, PRIVATE_DATA->exposure - 4, clear_reg_timer_callback);
     else {
       PRIVATE_DATA->can_check_temperature = false;
-      PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
+      PRIVATE_DATA->exposure_timer = indigo_set_timer(device, PRIVATE_DATA->exposure, exposure_timer_callback);
     }
   } else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-    if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+    if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
       sx_abort_exposure(device);
       indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
     }
@@ -920,15 +920,6 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
   return 0;
 };
 
-#ifdef INDIGO_LINUX
-static void *hotplug_thread(void *arg) {
-  while (true) {
-    libusb_handle_events(NULL);
-  }
-  return NULL;
-}
-#endif
-
 indigo_result indigo_ccd_sx() {
   for (int i = 0; i < MAX_DEVICES; i++) {
     devices[i] = 0;
@@ -936,10 +927,7 @@ indigo_result indigo_ccd_sx() {
   libusb_init(NULL);
   int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, sx_hotplug_callback, NULL, NULL);
   INDIGO_DEBUG(indigo_debug("indigo_ccd_sx: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
-#ifdef INDIGO_LINUX
-  pthread_t hotplug_thread_handle;
-  pthread_create(&hotplug_thread_handle, NULL, hotplug_thread, NULL);
-#endif
+  indigo_start_usb_even_handler();
   return rc >= 0;
 }
 

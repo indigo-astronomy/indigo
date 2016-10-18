@@ -339,7 +339,10 @@ static void device_notification(struct libusb_device_context *device_context, io
   }
 }
 
+static pthread_mutex_t usb_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static void device_added(struct libusb_callback_context *callback_context, io_iterator_t iterator) {
+  pthread_mutex_lock(&usb_mutex);
   kern_return_t kr;
   io_service_t usb_device;
   IOCFPlugInInterface **plugin = NULL;
@@ -375,6 +378,7 @@ static void device_added(struct libusb_callback_context *callback_context, io_it
     }
     IOObjectRelease(usb_device);
   }
+  pthread_mutex_unlock(&usb_mutex);
 }
 
 void *hotplug_thread(struct libusb_callback_context *callback_context) {

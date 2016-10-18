@@ -69,6 +69,9 @@ typedef struct libusb_device_descriptor {
 
 typedef enum { LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED = 0x01, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT = 0x02 } libusb_hotplug_event;
 typedef enum { LIBUSB_HOTPLUG_NO_FLAGS = 0, LIBUSB_HOTPLUG_ENUMERATE = 1<<0 } libusb_hotplug_flag;
+
+enum libusb_endpoint_direction { LIBUSB_ENDPOINT_IN = 0x80, LIBUSB_ENDPOINT_OUT = 0x00 };
+
 typedef int libusb_hotplug_callback_handle;
 typedef int (*libusb_hotplug_callback_fn)(libusb_context *ctx, libusb_device *device, libusb_hotplug_event event, void *user_data);
 
