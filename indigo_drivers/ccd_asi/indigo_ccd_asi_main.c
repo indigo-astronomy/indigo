@@ -32,7 +32,7 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress CCD driver main
+/** INDIGO ZWO ASI CCD driver main
  \file indigo_ccd_asi_main.c
  */
 
