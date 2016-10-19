@@ -170,6 +170,30 @@
  */
 #define CCD_BIN_VERTICAL_ITEM             (CCD_BIN_PROPERTY->items+1)
 
+/** CCD_OFFSET property pointer, property is optional, property change request is fully handled by indigo_ccd_device_change_property().
+ */
+#define CCD_OFFSET_PROPERTY               (CCD_DEVICE_CONTEXT->ccd_offset_property)
+
+/** CCD_OFFSET.OFFSET property item pointer.
+ */
+#define CCD_OFFSET_ITEM                   (CCD_OFFSET_PROPERTY->items+0)
+
+/** CCD_GAIN property pointer, property is optional, property change request is fully handled by indigo_ccd_device_change_property().
+ */
+#define CCD_GAIN_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_gain_property)
+
+/** CCD_GAIN.GAIN property item pointer.
+ */
+#define CCD_GAIN_ITEM                     (CCD_GAIN_PROPERTY->items+0)
+
+/** CCD_GAMMA property pointer, property is optional, property change request is fully handled by indigo_ccd_device_change_property().
+ */
+#define CCD_GAMMA_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_gain_property)
+
+/** CCD_GAMMA.GAMMA property item pointer.
+ */
+#define CCD_GAMMA_ITEM                     (CCD_GAMMA_PROPERTY->items+0)
+
 /** CCD_FRAME_TYPE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
  */
 #define CCD_FRAME_TYPE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_frame_type_property)
@@ -265,6 +289,9 @@ typedef struct {
   indigo_property *ccd_abort_exposure_property; ///< CCD_ABORT_EXPOSURE property pointer
   indigo_property *ccd_frame_property;          ///< CCD_FRAME property pointer
   indigo_property *ccd_bin_property;            ///< CCD_BIN property pointer
+  indigo_property *ccd_offset_property;         ///< CCD_OFFSET property pointer
+  indigo_property *ccd_gain_property;           ///< CCD_GAIN property pointer
+  indigo_property *ccd_gamma_property;          ///< CCD_GAMMA property pointer
   indigo_property *ccd_frame_type_property;     ///< CCD_FRAME_TYPE property pointer
   indigo_property *ccd_image_format_property;   ///< CCD_IMAGE_FORMAT property pointer
   indigo_property *ccd_image_property;          ///< CCD_IMAGE property pointer
