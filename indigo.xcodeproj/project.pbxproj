@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		590A86421DB80A04002F12FB /* indigo_ccd_asi_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */; };
+		590A86431DB80A04002F12FB /* indigo_ccd_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 590A86401DB80A04002F12FB /* indigo_ccd_asi.c */; };
 		5999FB741DA414820084BBF8 /* indigo_bus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381A81D9592A400E87393 /* indigo_bus.c */; };
 		5999FB751DA414820084BBF8 /* indigo_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381CD1D96AB9500E87393 /* indigo_xml.c */; };
 		5999FB761DA414820084BBF8 /* indigo_driver_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382031D9720C200E87393 /* indigo_driver_xml.c */; };
@@ -150,6 +152,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi_main.c; sourceTree = "<group>"; };
+		590A86401DB80A04002F12FB /* indigo_ccd_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi.c; sourceTree = "<group>"; };
+		590A86411DB80A04002F12FB /* indigo_ccd_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_asi.h; sourceTree = "<group>"; };
 		592662AD1D9590630021746A /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
 		592662B01D9590630021746A /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssag.c; sourceTree = "<group>"; };
@@ -263,6 +268,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		590A863E1DB8096A002F12FB /* ccd_asi */ = {
+			isa = PBXGroup;
+			children = (
+				590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */,
+				590A86401DB80A04002F12FB /* indigo_ccd_asi.c */,
+				590A86411DB80A04002F12FB /* indigo_ccd_asi.h */,
+			);
+			path = ccd_asi;
+			sourceTree = "<group>";
+		};
 		592662A41D9590630021746A = {
 			isa = PBXGroup;
 			children = (
@@ -382,6 +397,7 @@
 				59D381AA1D95984D00E87393 /* ccd_simulator */,
 				5999FB651DA40B380084BBF8 /* ccd_sx */,
 				59519D421DB422E3008BAF29 /* ccd_ssag */,
+				590A863E1DB8096A002F12FB /* ccd_asi */,
 			);
 			path = indigo_drivers;
 			sourceTree = "<group>";
@@ -680,6 +696,8 @@
 				5999FBC61DAC33D90084BBF8 /* indigo_ccd_sx.c in Sources */,
 				5999FBCA1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				9D97F81B1D9A8A5D00582EAF /* server.c in Sources */,
+				590A86431DB80A04002F12FB /* indigo_ccd_asi.c in Sources */,
+				590A86421DB80A04002F12FB /* indigo_ccd_asi_main.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

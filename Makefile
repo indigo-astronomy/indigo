@@ -71,13 +71,19 @@ indigo_ccd_ssag.a: indigo_drivers/ccd_ssag/indigo_ccd_ssag.o
 indigo_ccd_ssag: indigo_drivers/ccd_ssag/indigo_ccd_ssag_main.o indigo_ccd_ssag.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+indigo_ccd_asi.a: indigo_drivers/ccd_asi/indigo_ccd_asi.o
+	$(AR) $(ARFLAGS) $@ $^
+
+indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o indigo_ccd_asi.a libindigo.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
 test: indigo_test/test.o indigo_ccd_simulator.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 client: indigo_test/client.o libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_ssag.a libindigo.a
+server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_ssag.a indigo_ccd_asi.a libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean: init
