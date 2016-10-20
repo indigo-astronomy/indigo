@@ -50,6 +50,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "indigo_usb.h"
 #include "indigo_driver.h"
 #include "indigo_xml.h"
 
