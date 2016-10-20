@@ -141,18 +141,18 @@
 /** Device interface (value shout be used for INFO_DEVICE_INTERFACE_ITEM->number.value
  */
 typedef enum {
-  INDIGO_INTERFACE_TELESCOPE = (1 << 0),    ///< Telescope interface
-  INDIGO_INTERFACE_CCD       = (1 << 1),    ///< CCD interface
-  INDIGO_INTERFACE_GUIDER    = (1 << 2),    ///< Guider interface
-  INDIGO_INTERFACE_FOCUSER   = (1 << 3),    ///< Focuser interface
-  INDIGO_INTERFACE_FILTER    = (1 << 4),    ///< Filter interface
-  INDIGO_INTERFACE_DOME      = (1 << 5),    ///< Dome interface
-  INDIGO_INTERFACE_GPS       = (1 << 6),    ///< GPS interface
-  INDIGO_INTERFACE_WEATHER   = (1 << 7),    ///< Weather interface
-  INDIGO_INTERFACE_AO        = (1 << 8),    ///< Adaptive Optics Interface
-  INDIGO_INTERFACE_DUSTCAP   = (1 << 9),    ///< Dust Cap Interface
-  INDIGO_INTERFACE_LIGHTBOX  = (1 << 10),   ///< Light Box Interface
-  INDIGO_INTERFACE_AUX       = (1 << 15)    ///< Auxiliary interface
+	INDIGO_INTERFACE_TELESCOPE = (1 << 0),    ///< Telescope interface
+	INDIGO_INTERFACE_CCD       = (1 << 1),    ///< CCD interface
+	INDIGO_INTERFACE_GUIDER    = (1 << 2),    ///< Guider interface
+	INDIGO_INTERFACE_FOCUSER   = (1 << 3),    ///< Focuser interface
+	INDIGO_INTERFACE_FILTER    = (1 << 4),    ///< Filter interface
+	INDIGO_INTERFACE_DOME      = (1 << 5),    ///< Dome interface
+	INDIGO_INTERFACE_GPS       = (1 << 6),    ///< GPS interface
+	INDIGO_INTERFACE_WEATHER   = (1 << 7),    ///< Weather interface
+	INDIGO_INTERFACE_AO        = (1 << 8),    ///< Adaptive Optics Interface
+	INDIGO_INTERFACE_DUSTCAP   = (1 << 9),    ///< Dust Cap Interface
+	INDIGO_INTERFACE_LIGHTBOX  = (1 << 10),   ///< Light Box Interface
+	INDIGO_INTERFACE_AUX       = (1 << 15)    ///< Auxiliary interface
 } indigo_device_interface;
 
 /** Timer callback function prototype.
@@ -162,32 +162,32 @@ typedef void (*indigo_timer_callback)(indigo_device *device);
 /** Timer structure.
  */
 typedef struct indigo_timer {
-  indigo_device *device;                    ///< device associated with timer
-  indigo_timer_callback callback;           ///< callback function pointer
+	indigo_device *device;                    ///< device associated with timer
+	indigo_timer_callback callback;           ///< callback function pointer
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-  struct timespec time;                     ///< time to fire (linux only)
-  struct indigo_timer *next;                ///< next timer in the queue (linux only)
+	struct timespec time;                     ///< time to fire (linux only)
+	struct indigo_timer *next;                ///< next timer in the queue (linux only)
 #elif defined(INDIGO_DARWIN)
-  bool canceled;                            ///< timer is canceled (darwin only)
+	bool canceled;                            ///< timer is canceled (darwin only)
 #endif
 } indigo_timer;
 
 /** Device context structure.
  */
 typedef struct {
-  void *private_data;                       ///< private data
-  int property_save_file_handle;            ///< handle for property save
+	void *private_data;                       ///< private data
+	int property_save_file_handle;            ///< handle for property save
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-  pthread_t timer_thread;                   ///< timer thread (linux only)
-  pthread_mutex_t timer_mutex;              ///< timer mutex (linux only)
-  int timer_pipe[2];                        ///< timer pipe (linux only)
-  indigo_timer *timer_queue;                ///< timer queue (linux only)
+	pthread_t timer_thread;                   ///< timer thread (linux only)
+	pthread_mutex_t timer_mutex;              ///< timer mutex (linux only)
+	int timer_pipe[2];                        ///< timer pipe (linux only)
+	indigo_timer *timer_queue;                ///< timer queue (linux only)
 #endif
-  indigo_property *connection_property;     ///< CONNECTION property pointer
-  indigo_property *info_property;           ///< INFO property pointer
-  indigo_property *debug_property;          ///< DEBUG property pointer
-  indigo_property *simulation_property;     ///< SIMULATION property pointer
-  indigo_property *congfiguration_property; ///< CONFIGURATION property pointer
+	indigo_property *connection_property;     ///< CONNECTION property pointer
+	indigo_property *info_property;           ///< INFO property pointer
+	indigo_property *debug_property;          ///< DEBUG property pointer
+	indigo_property *simulation_property;     ///< SIMULATION property pointer
+	indigo_property *congfiguration_property; ///< CONFIGURATION property pointer
 } indigo_device_context;
 
 /** Attach callback function.
@@ -227,3 +227,4 @@ extern void indigo_cancel_timer(indigo_device *device, indigo_timer *timer);
 extern void indigo_start_usb_even_handler();
 
 #endif /* indigo_device_h */
+

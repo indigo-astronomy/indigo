@@ -56,3 +56,4 @@ extern void indigo_xml_fwrite(FILE* fh, const char *buffer, long length);
 extern void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client);
 
 #endif /* indigo_xml_h */
+

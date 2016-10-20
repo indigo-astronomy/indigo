@@ -53,3 +53,4 @@
 extern indigo_result indigo_ccd_ssag();
 
 #endif /* indigo_ccd_ssag_h */
+

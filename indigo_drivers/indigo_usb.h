@@ -51,20 +51,20 @@ typedef struct libusb_device_handle libusb_device_handle;
 typedef struct libusb_device libusb_device;
 
 typedef struct libusb_device_descriptor {
-  uint8_t  bLength;
-  uint8_t  bDescriptorType;
-  uint16_t bcdUSB;
-  uint8_t  bDeviceClass;
-  uint8_t  bDeviceSubClass;
-  uint8_t  bDeviceProtocol;
-  uint8_t  bMaxPacketSize0;
-  uint16_t idVendor;
-  uint16_t idProduct;
-  uint16_t bcdDevice;
-  uint8_t  iManufacturer;
-  uint8_t  iProduct;
-  uint8_t  iSerialNumber;
-  uint8_t  bNumConfigurations;
+	uint8_t  bLength;
+	uint8_t  bDescriptorType;
+	uint16_t bcdUSB;
+	uint8_t  bDeviceClass;
+	uint8_t  bDeviceSubClass;
+	uint8_t  bDeviceProtocol;
+	uint8_t  bMaxPacketSize0;
+	uint16_t idVendor;
+	uint16_t idProduct;
+	uint16_t bcdDevice;
+	uint8_t  iManufacturer;
+	uint8_t  iProduct;
+	uint8_t  iSerialNumber;
+	uint8_t  bNumConfigurations;
 } libusb_device_descriptor;
 
 typedef enum { LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED = 0x01, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT = 0x02 } libusb_hotplug_event;
@@ -115,3 +115,4 @@ int libusb_control_transfer(libusb_device_handle *handle, uint8_t bmRequestType,
 #endif
 
 #endif /* indigo_usb_h */
+

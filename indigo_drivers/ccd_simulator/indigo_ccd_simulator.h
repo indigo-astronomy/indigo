@@ -48,3 +48,4 @@
 extern indigo_result indigo_ccd_simulator();
 
 #endif /* ccd_simulator_h */
+

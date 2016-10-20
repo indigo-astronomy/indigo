@@ -281,24 +281,24 @@
 /** CCD device context structure.
  */
 typedef struct {
-  indigo_device_context device_context;         ///< device context base
-  indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
-  indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
-  indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer
-  indigo_property *ccd_exposure_property;       ///< CCD_EXPOSURE property pointer
-  indigo_property *ccd_abort_exposure_property; ///< CCD_ABORT_EXPOSURE property pointer
-  indigo_property *ccd_frame_property;          ///< CCD_FRAME property pointer
-  indigo_property *ccd_bin_property;            ///< CCD_BIN property pointer
-  indigo_property *ccd_offset_property;         ///< CCD_OFFSET property pointer
-  indigo_property *ccd_gain_property;           ///< CCD_GAIN property pointer
-  indigo_property *ccd_gamma_property;          ///< CCD_GAMMA property pointer
-  indigo_property *ccd_frame_type_property;     ///< CCD_FRAME_TYPE property pointer
-  indigo_property *ccd_image_format_property;   ///< CCD_IMAGE_FORMAT property pointer
-  indigo_property *ccd_image_property;          ///< CCD_IMAGE property pointer
-  indigo_property *ccd_image_file_property;     ///< CCD_IMAGE_FILE property pointer
-  indigo_property *ccd_temperature_property;    ///< CCD_TEMPERATURE property pointer
-  indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
-  indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
+	indigo_device_context device_context;         ///< device context base
+	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
+	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
+	indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer
+	indigo_property *ccd_exposure_property;       ///< CCD_EXPOSURE property pointer
+	indigo_property *ccd_abort_exposure_property; ///< CCD_ABORT_EXPOSURE property pointer
+	indigo_property *ccd_frame_property;          ///< CCD_FRAME property pointer
+	indigo_property *ccd_bin_property;            ///< CCD_BIN property pointer
+	indigo_property *ccd_offset_property;         ///< CCD_OFFSET property pointer
+	indigo_property *ccd_gain_property;           ///< CCD_GAIN property pointer
+	indigo_property *ccd_gamma_property;          ///< CCD_GAMMA property pointer
+	indigo_property *ccd_frame_type_property;     ///< CCD_FRAME_TYPE property pointer
+	indigo_property *ccd_image_format_property;   ///< CCD_IMAGE_FORMAT property pointer
+	indigo_property *ccd_image_property;          ///< CCD_IMAGE property pointer
+	indigo_property *ccd_image_file_property;     ///< CCD_IMAGE_FILE property pointer
+	indigo_property *ccd_temperature_property;    ///< CCD_TEMPERATURE property pointer
+	indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
+	indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
 } indigo_ccd_device_context;
 
 /** Attach callback function.
@@ -319,3 +319,4 @@ extern indigo_result indigo_ccd_device_detach(indigo_device *device);
 extern void indigo_process_image(indigo_device *device, void *data, double exposure_time);
 
 #endif /* indigo_ccd_device_h */
+

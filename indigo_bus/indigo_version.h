@@ -58,3 +58,4 @@ extern const char *indigo_property_name(indigo_version version, indigo_property 
 extern const char *indigo_item_name(indigo_version version, indigo_property *property, indigo_item *item);
 
 #endif /* indigo_version_h */
+

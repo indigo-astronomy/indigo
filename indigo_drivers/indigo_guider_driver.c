@@ -50,75 +50,76 @@
 #include "indigo_guider_driver.h"
 
 indigo_result indigo_guider_device_attach(indigo_device *device, indigo_version version) {
-  assert(device != NULL);
-  assert(device != NULL);
-  if (GUIDER_DEVICE_CONTEXT == NULL) {
-    device->device_context = malloc(sizeof(indigo_guider_device_context));
-    memset(device->device_context, 0, sizeof(indigo_guider_device_context));
-  }
-  if (GUIDER_DEVICE_CONTEXT != NULL) {
-    if (indigo_device_attach(device, version, INDIGO_INTERFACE_GUIDER) == INDIGO_OK) {
-      // -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-      GUIDER_GUIDE_DEC_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_GUIDE_DEC", GUIDER_MAIN_GROUP, "DEC guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
-      if (GUIDER_GUIDE_DEC_PROPERTY == NULL)
-        return INDIGO_FAILED;
-      GUIDER_GUIDE_DEC_PROPERTY->hidden = true;
-      indigo_init_number_item(GUIDER_GUIDE_NORTH_ITEM, "GUIDER_GUIDE_NORTH", "Guide north", 0, 10000, 0, 0);
-      indigo_init_number_item(GUIDER_GUIDE_SOUTH_ITEM, "GUIDER_GUIDE_SOUTH", "Guide south", 0, 10000, 0, 0);
-      // -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-      GUIDER_GUIDE_RA_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_GUIDE_RA", GUIDER_MAIN_GROUP, "RA guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
-      if (GUIDER_GUIDE_RA_PROPERTY == NULL)
-        return INDIGO_FAILED;
-      GUIDER_GUIDE_RA_PROPERTY->hidden = true;
-      indigo_init_number_item(GUIDER_GUIDE_EAST_ITEM, "GUIDER_GUIDE_EAST", "Guide east", 0, 10000, 0, 0);
-      indigo_init_number_item(GUIDER_GUIDE_WEST_ITEM, "GUIDER_GUIDE_WEST", "Guide west", 0, 10000, 0, 0);
-      // --------------------------------------------------------------------------------
-      return INDIGO_OK;
-    }
-  }
-  return INDIGO_FAILED;
+	assert(device != NULL);
+	assert(device != NULL);
+	if (GUIDER_DEVICE_CONTEXT == NULL) {
+		device->device_context = malloc(sizeof(indigo_guider_device_context));
+		memset(device->device_context, 0, sizeof(indigo_guider_device_context));
+	}
+	if (GUIDER_DEVICE_CONTEXT != NULL) {
+		if (indigo_device_attach(device, version, INDIGO_INTERFACE_GUIDER) == INDIGO_OK) {
+			// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
+			GUIDER_GUIDE_DEC_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_GUIDE_DEC", GUIDER_MAIN_GROUP, "DEC guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+			if (GUIDER_GUIDE_DEC_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			GUIDER_GUIDE_DEC_PROPERTY->hidden = true;
+			indigo_init_number_item(GUIDER_GUIDE_NORTH_ITEM, "GUIDER_GUIDE_NORTH", "Guide north", 0, 10000, 0, 0);
+			indigo_init_number_item(GUIDER_GUIDE_SOUTH_ITEM, "GUIDER_GUIDE_SOUTH", "Guide south", 0, 10000, 0, 0);
+			// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
+			GUIDER_GUIDE_RA_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_GUIDE_RA", GUIDER_MAIN_GROUP, "RA guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+			if (GUIDER_GUIDE_RA_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			GUIDER_GUIDE_RA_PROPERTY->hidden = true;
+			indigo_init_number_item(GUIDER_GUIDE_EAST_ITEM, "GUIDER_GUIDE_EAST", "Guide east", 0, 10000, 0, 0);
+			indigo_init_number_item(GUIDER_GUIDE_WEST_ITEM, "GUIDER_GUIDE_WEST", "Guide west", 0, 10000, 0, 0);
+			// --------------------------------------------------------------------------------
+			return INDIGO_OK;
+		}
+	}
+	return INDIGO_FAILED;
 }
 
 indigo_result indigo_guider_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-  assert(device != NULL);
-  assert(device->device_context != NULL);
-  indigo_result result = INDIGO_OK;
-  if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
-    if (CONNECTION_CONNECTED_ITEM->sw.value) {
-      if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property))
-        indigo_define_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-      if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property))
-        indigo_define_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-    }
-  }
-  return result;
+	assert(device != NULL);
+	assert(device->device_context != NULL);
+	indigo_result result = INDIGO_OK;
+	if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property))
+				indigo_define_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+			if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property))
+				indigo_define_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		}
+	}
+	return result;
 }
 
 indigo_result indigo_guider_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-  assert(device != NULL);
-  assert(device->device_context != NULL);
-  assert(property != NULL);
-  if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-    // -------------------------------------------------------------------------------- CONNECTION
-    if (CONNECTION_CONNECTED_ITEM->sw.value) {
-      indigo_define_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-      indigo_define_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-    } else {
-      indigo_delete_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-      indigo_delete_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-    }
-    // --------------------------------------------------------------------------------
-  }
-  return indigo_device_change_property(device, client, property);
+	assert(device != NULL);
+	assert(device->device_context != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			indigo_define_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+			indigo_define_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		} else {
+			indigo_delete_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+			indigo_delete_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		}
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_device_change_property(device, client, property);
 }
 
 indigo_result indigo_guider_device_detach(indigo_device *device) {
-  assert(device != NULL);
-  if (CONNECTION_CONNECTED_ITEM->sw.value) {
-    indigo_delete_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-    indigo_delete_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-  }
-  free(GUIDER_GUIDE_DEC_PROPERTY);
-  free(GUIDER_GUIDE_RA_PROPERTY);
-  return indigo_device_detach(device);
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_delete_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		indigo_delete_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	}
+	free(GUIDER_GUIDE_DEC_PROPERTY);
+	free(GUIDER_GUIDE_RA_PROPERTY);
+	return indigo_device_detach(device);
 }
+

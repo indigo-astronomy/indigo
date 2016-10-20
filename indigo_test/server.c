@@ -46,16 +46,17 @@
 #include "ccd_ssag/indigo_ccd_ssag.h"
 
 void server_callback(int count) {
-  INDIGO_LOG(indigo_log("%d clients", count));
+	INDIGO_LOG(indigo_log("%d clients", count));
 }
 
 int main(int argc, const char * argv[]) {
-  indigo_main_argc = argc;
-  indigo_main_argv = argv;
-  indigo_start();
-  indigo_ccd_simulator();
-  indigo_ccd_sx();
-  indigo_ccd_ssag();
-  indigo_server_xml(server_callback);
-  return 0;
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_start();
+	indigo_ccd_simulator();
+	indigo_ccd_sx();
+	indigo_ccd_ssag();
+	indigo_server_xml(server_callback);
+	return 0;
 }
+
