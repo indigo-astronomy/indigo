@@ -89,8 +89,10 @@ long base64_decode_fast(unsigned char* out, const unsigned char* in, long inlen)
 		n32 <<= 10;
 		n32 |= s2 >> 2;
 
-		b3 = ( n32 & 0x00ff ); n32 >>= 8;
-		b2 = ( n32 & 0x00ff ); n32 >>= 8;
+		b3 = ( n32 & 0x00ff );
+		n32 >>= 8;
+		b2 = ( n32 & 0x00ff );
+		n32 >>= 8;
 		b1 = ( n32 & 0x00ff );
 
 		out[0] = b1;
@@ -109,15 +111,20 @@ long base64_decode_fast(unsigned char* out, const unsigned char* in, long inlen)
 	n32 <<= 10;
 	n32 |= s2 >> 2;
 
-	b3 = ( n32 & 0x00ff ); n32 >>= 8;
-	b2 = ( n32 & 0x00ff ); n32 >>= 8;
+	b3 = ( n32 & 0x00ff );
+	n32 >>= 8;
+	b2 = ( n32 & 0x00ff );
+	n32 >>= 8;
 	b1 = ( n32 & 0x00ff );
 
-	*out++ = b1;  outlen++;
+	*out++ = b1;
+	outlen++;
 	if ((inp[1] & 0x00FF) != 0x003D)  {
-		*out++ = b2;  outlen++;
+		*out++ = b2;
+		outlen++;
 		if ((inp[1] & 0xFF00) != 0x3D00)  {
-			*out++ = b3;  outlen++;
+			*out++ = b3;
+			outlen++;
 		}
 	}
 	return outlen;
@@ -144,8 +151,10 @@ long base64_decode_fast_nl(unsigned char* out, const unsigned char* in, long inl
 		n32 <<= 10;
 		n32 |= s2 >> 2;
 
-		b3 = ( n32 & 0x00ff ); n32 >>= 8;
-		b2 = ( n32 & 0x00ff ); n32 >>= 8;
+		b3 = ( n32 & 0x00ff );
+		n32 >>= 8;
+		b2 = ( n32 & 0x00ff );
+		n32 >>= 8;
 		b1 = ( n32 & 0x00ff );
 
 		out[0] = b1;
@@ -166,17 +175,23 @@ long base64_decode_fast_nl(unsigned char* out, const unsigned char* in, long inl
 	n32 <<= 10;
 	n32 |= s2 >> 2;
 
-	b3 = ( n32 & 0x00ff ); n32 >>= 8;
-	b2 = ( n32 & 0x00ff ); n32 >>= 8;
+	b3 = ( n32 & 0x00ff );
+	n32 >>= 8;
+	b2 = ( n32 & 0x00ff );
+	n32 >>= 8;
 	b1 = ( n32 & 0x00ff );
 
-	*out++ = b1;  outlen++;
+	*out++ = b1;
+	outlen++;
 	if ((inp[1] & 0x00FF) != 0x003D)  {
-		*out++ = b2;  outlen++;
+		*out++ = b2;
+		outlen++;
 		if ((inp[1] & 0xFF00) != 0x3D00)  {
-			*out++ = b3;  outlen++;
+			*out++ = b3;
+			outlen++;
 		}
 	}
 	return outlen;
 }
+
 

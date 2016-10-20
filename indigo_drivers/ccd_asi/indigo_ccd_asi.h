@@ -50,3 +50,4 @@
 extern indigo_result indigo_ccd_asi();
 
 #endif /* ccd_asi_h */
+

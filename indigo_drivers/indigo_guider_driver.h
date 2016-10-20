@@ -77,9 +77,9 @@
 /** Guider device context structure.
  */
 typedef struct {
-  indigo_device_context device_context;         ///< device context base
-  indigo_property *guider_guide_dec_property;   ///< GUIDER_GUIDE_DEC property pointer
-  indigo_property *guider_guide_ra_property;    ///< GUIDER_GUIDE_RA property pointer
+	indigo_device_context device_context;         ///< device context base
+	indigo_property *guider_guide_dec_property;   ///< GUIDER_GUIDE_DEC property pointer
+	indigo_property *guider_guide_ra_property;    ///< GUIDER_GUIDE_RA property pointer
 } indigo_guider_device_context;
 
 /** Attach callback function.
@@ -96,3 +96,4 @@ extern indigo_result indigo_guider_device_change_property(indigo_device *device,
 extern indigo_result indigo_guider_device_detach(indigo_device *device);
 
 #endif /* indigo_guider_device_h */
+

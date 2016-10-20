@@ -54,3 +54,4 @@ extern int indigo_server_xml_port;
 extern indigo_result indigo_server_xml(indigo_server_xml_callback callback);
 
 #endif /* indigo_server_xml_h */
+

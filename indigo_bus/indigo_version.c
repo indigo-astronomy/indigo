@@ -43,192 +43,213 @@
 // <getProperties version='1.7' name='CONFIG'/>
 
 struct property_mapping {
-  char *legacy;
-  char *current;
-  struct item_mapping {
-    char *legacy;
-    char *current;
-  } items[10];
+	char *legacy;
+	char *current;
+	struct item_mapping {
+		char *legacy;
+		char *current;
+	} items[10];
 };
 
 static struct property_mapping legacy[] = {
-  { "CONNECTION", "CONNECTION", {
-    { "CONNECT", "CONNECTED" },
-    { "DISCONNECT", "DISCONNECTED" },
-    NULL }
-  },
-  { "DEBUG", "DEBUG", {
-    { "ENABLE", "ENABLED" },
-    { "DISABLE", "DISABLED" },
-    NULL }
-  },
-  { "SIMULATION", "SIMULATION", {
-    { "ENABLE", "ENABLED" },
-    { "DISABLE", "DISABLED" },
-    NULL }
-  },
-  { "CONFIG_PROCESS", "CONFIG", {
-    { "CONFIG_LOAD", "LOAD" },
-    { "CONFIG_SAVE", "SAVE" },
-    { "CONFIG_DEFAULT", "DEFAULT" },
-    NULL }
-  },
-  { "DRIVER_INFO", "DEVICE_INFO", {
-    { "DRIVER_NAME", "NAME" },
-    { "DRIVER_VERSION", "VERSION" },
-    { "DRIVER_INTERFACE", "INTERFACE" },
-    NULL }
-  },
-  { "CCD_INFO", "CCD_INFO", {
-    { "CCD_MAX_X", "WIDTH" },
-    { "CCD_MAX_Y", "HEIGHT" },
-    { "CCD_MAX_BIN_X", "MAX_HORIZONAL_BIN" },
-    { "CCD_MAX_BIN_Y", "MAX_VERTICAL_BIN" },
-    { "CCD_PIXEL_SIZE", "PIXEL_SIZE" },
-    { "CCD_PIXEL_SIZE_X", "PIXEL_WIDTH" },
-    { "CCD_PIXEL_SIZE_Y", "PIXEL_HEIGHT" },
-    { "CCD_BITSPERPIXEL", "BITS_PER_PIXEL" },
-    NULL }
-  },
-  { "CCD_EXPOSURE", "CCD_EXPOSURE", {
-    { "CCD_EXPOSURE_VALUE", "EXPOSURE" },
-    NULL }
-  },
-  { "CCD_ABORT_EXPOSURE", "CCD_ABORT_EXPOSURE", {
-    { "ABORT", "ABORT_EXPOSURE" },
-    NULL }
-  },
-  { "CCD_FRAME", "CCD_FRAME", {
-    { "X", "LEFT" },
-    { "Y", "TOP" },
-    NULL }
-  },
-  { "CCD_BINNING", "CCD_BIN", {
-    { "VER_BIN", "HORIZONTAL" },
-    { "HOR_BIN", "VERTICAL" },
-    NULL }
-  },
-  { "CCD_FRAME_TYPE", "CCD_FRAME_TYPE", {
-    { "FRAME_LIGHT", "LIGHT" },
-    { "FRAME_BIAS", "BIAS" },
-    { "FRAME_DARK", "DARK" },
-    { "FRAME_FLAT", "FLAT" },
-    NULL }
-  },
-  { "UPLOAD_MODE", "CCD_UPLOAD_MODE", {
-    { "UPLOAD_CLIENT", "CLIENT" },
-    { "UPLOAD_LOCAL", "LOCAL" },
-    { "UPLOAD_BOTH", "BOTH" },
-    NULL }
-  },
-  { "UPLOAD_SETTINGS", "CCD_LOCAL_MODE", {
-    { "UPLOAD_DIR", "DIR" },
-    { "UPLOAD_PREFIX", "PREFIX" },
-    NULL }
-  },
-  { "CCD_FILE_PATH", "CCD_IMAGE_FILE", {
-    { "FILE_PATH", "FILE" },
-    NULL }
-  },
-  { "CCD1", "CCD_IMAGE", {
-    { "CCD1", "IMAGE" },
-    NULL }
-  },
-  { "CCD_TEMPERATURE", "CCD_TEMPERATURE", {
-    { "CCD_TEMPERATURE_VALUE", "TEMPERATURE" },
-    NULL }
-  },
-  { "CCD_COOLER", "CCD_COOLER", {
-    { "COOLER_ON", "ON" },
-    { "COOLER_OFF", "OFF" },
-    NULL }
-  },
-  { "CCD_COOLER_POWER", "CCD_COOLER_POWER", {
-    { "CCD_COOLER_VALUE", "POWER" },
-    NULL }
-  },
-  { "TELESCOPE_TIMED_GUIDE_NS", "GUIDER_GUIDE_DEC", {
-    { "TIMED_GUIDE_N", "GUIDER_GUIDE_NORTH" },
-    { "TIMED_GUIDE_S", "GUIDER_GUIDE_SOUTH" },
-    NULL }
-  },
-  { "TELESCOPE_TIMED_GUIDE_WE", "GUIDER_GUIDE_RA", {
-    { "TIMED_GUIDE_W", "GUIDER_GUIDE_WEST" },
-    { "TIMED_GUIDE_E", "GUIDER_GUIDE_EAST" },
-    NULL }
-  },
-  NULL
+	{	"CONNECTION", "CONNECTION", {
+			{ "CONNECT", "CONNECTED" },
+			{ "DISCONNECT", "DISCONNECTED" },
+			NULL
+		}
+	},
+	{	"DEBUG", "DEBUG", {
+			{ "ENABLE", "ENABLED" },
+			{ "DISABLE", "DISABLED" },
+			NULL
+		}
+	},
+	{	"SIMULATION", "SIMULATION", {
+			{ "ENABLE", "ENABLED" },
+			{ "DISABLE", "DISABLED" },
+			NULL
+		}
+	},
+	{	"CONFIG_PROCESS", "CONFIG", {
+			{ "CONFIG_LOAD", "LOAD" },
+			{ "CONFIG_SAVE", "SAVE" },
+			{ "CONFIG_DEFAULT", "DEFAULT" },
+			NULL
+		}
+	},
+	{	"DRIVER_INFO", "DEVICE_INFO", {
+			{ "DRIVER_NAME", "NAME" },
+			{ "DRIVER_VERSION", "VERSION" },
+			{ "DRIVER_INTERFACE", "INTERFACE" },
+			NULL
+		}
+	},
+	{	"CCD_INFO", "CCD_INFO", {
+			{ "CCD_MAX_X", "WIDTH" },
+			{ "CCD_MAX_Y", "HEIGHT" },
+			{ "CCD_MAX_BIN_X", "MAX_HORIZONAL_BIN" },
+			{ "CCD_MAX_BIN_Y", "MAX_VERTICAL_BIN" },
+			{ "CCD_PIXEL_SIZE", "PIXEL_SIZE" },
+			{ "CCD_PIXEL_SIZE_X", "PIXEL_WIDTH" },
+			{ "CCD_PIXEL_SIZE_Y", "PIXEL_HEIGHT" },
+			{ "CCD_BITSPERPIXEL", "BITS_PER_PIXEL" },
+			NULL
+		}
+	},
+	{	"CCD_EXPOSURE", "CCD_EXPOSURE", {
+			{ "CCD_EXPOSURE_VALUE", "EXPOSURE" },
+			NULL
+		}
+	},
+	{	"CCD_ABORT_EXPOSURE", "CCD_ABORT_EXPOSURE", {
+			{ "ABORT", "ABORT_EXPOSURE" },
+			NULL
+		}
+	},
+	{	"CCD_FRAME", "CCD_FRAME", {
+			{ "X", "LEFT" },
+			{ "Y", "TOP" },
+			NULL
+		}
+	},
+	{	"CCD_BINNING", "CCD_BIN", {
+			{ "VER_BIN", "HORIZONTAL" },
+			{ "HOR_BIN", "VERTICAL" },
+			NULL
+		}
+	},
+	{	"CCD_FRAME_TYPE", "CCD_FRAME_TYPE", {
+			{ "FRAME_LIGHT", "LIGHT" },
+			{ "FRAME_BIAS", "BIAS" },
+			{ "FRAME_DARK", "DARK" },
+			{ "FRAME_FLAT", "FLAT" },
+			NULL
+		}
+	},
+	{	"UPLOAD_MODE", "CCD_UPLOAD_MODE", {
+			{ "UPLOAD_CLIENT", "CLIENT" },
+			{ "UPLOAD_LOCAL", "LOCAL" },
+			{ "UPLOAD_BOTH", "BOTH" },
+			NULL
+		}
+	},
+	{	"UPLOAD_SETTINGS", "CCD_LOCAL_MODE", {
+			{ "UPLOAD_DIR", "DIR" },
+			{ "UPLOAD_PREFIX", "PREFIX" },
+			NULL
+		}
+	},
+	{	"CCD_FILE_PATH", "CCD_IMAGE_FILE", {
+			{ "FILE_PATH", "FILE" },
+			NULL
+		}
+	},
+	{	"CCD1", "CCD_IMAGE", {
+			{ "CCD1", "IMAGE" },
+			NULL
+		}
+	},
+	{	"CCD_TEMPERATURE", "CCD_TEMPERATURE", {
+			{ "CCD_TEMPERATURE_VALUE", "TEMPERATURE" },
+			NULL
+		}
+	},
+	{	"CCD_COOLER", "CCD_COOLER", {
+			{ "COOLER_ON", "ON" },
+			{ "COOLER_OFF", "OFF" },
+			NULL
+		}
+	},
+	{	"CCD_COOLER_POWER", "CCD_COOLER_POWER", {
+			{ "CCD_COOLER_VALUE", "POWER" },
+			NULL
+		}
+	},
+	{	"TELESCOPE_TIMED_GUIDE_NS", "GUIDER_GUIDE_DEC", {
+			{ "TIMED_GUIDE_N", "GUIDER_GUIDE_NORTH" },
+			{ "TIMED_GUIDE_S", "GUIDER_GUIDE_SOUTH" },
+			NULL
+		}
+	},
+	{	"TELESCOPE_TIMED_GUIDE_WE", "GUIDER_GUIDE_RA", {
+			{ "TIMED_GUIDE_W", "GUIDER_GUIDE_WEST" },
+			{ "TIMED_GUIDE_E", "GUIDER_GUIDE_EAST" },
+			NULL
+		}
+	},
+	NULL
 };
 
 void indigo_copy_property_name(indigo_version version, indigo_property *property, const char *name) {
-  if (version == INDIGO_VERSION_LEGACY) {
-    struct property_mapping *property_mapping = legacy;
-    while (property_mapping->legacy) {
-      if (!strcmp(name, property_mapping->legacy)) {
-        INDIGO_DEBUG(indigo_debug("version: %s -> %s (current)", property_mapping->legacy, property_mapping->current));
-        strcpy(property->name, property_mapping->current);
-        return;
-      }
-      property_mapping++;
-    }
-  }
-  strncpy(property->name, name, INDIGO_NAME_SIZE);
+	if (version == INDIGO_VERSION_LEGACY) {
+		struct property_mapping *property_mapping = legacy;
+		while (property_mapping->legacy) {
+			if (!strcmp(name, property_mapping->legacy)) {
+				INDIGO_DEBUG(indigo_debug("version: %s -> %s (current)", property_mapping->legacy, property_mapping->current));
+				strcpy(property->name, property_mapping->current);
+				return;
+			}
+			property_mapping++;
+		}
+	}
+	strncpy(property->name, name, INDIGO_NAME_SIZE);
 }
 
 void indigo_copy_item_name(indigo_version version, indigo_property *property, indigo_item *item, const char *name) {
-  if (version == INDIGO_VERSION_LEGACY) {
-    struct property_mapping *property_mapping = legacy;
-    while (property_mapping->legacy) {
-      if (!strcmp(property->name, property_mapping->current)) {
-        struct item_mapping *item_mapping = property_mapping->items;
-        while (item_mapping->legacy) {
-          if (!strcmp(name, item_mapping->legacy)) {
-            INDIGO_DEBUG(indigo_debug("version: %s.%s -> %s.%s (current)", property_mapping->legacy, item_mapping->legacy, property_mapping->current, item_mapping->current));
-            strncpy(item->name, item_mapping->current, INDIGO_NAME_SIZE);
-            return;
-          }
-          item_mapping++;
-        }
-        return;
-      }
-      property_mapping++;
-    }
-  }
-  strncpy(item->name, name, INDIGO_NAME_SIZE);
+	if (version == INDIGO_VERSION_LEGACY) {
+		struct property_mapping *property_mapping = legacy;
+		while (property_mapping->legacy) {
+			if (!strcmp(property->name, property_mapping->current)) {
+				struct item_mapping *item_mapping = property_mapping->items;
+				while (item_mapping->legacy) {
+					if (!strcmp(name, item_mapping->legacy)) {
+						INDIGO_DEBUG(indigo_debug("version: %s.%s -> %s.%s (current)", property_mapping->legacy, item_mapping->legacy, property_mapping->current, item_mapping->current));
+						strncpy(item->name, item_mapping->current, INDIGO_NAME_SIZE);
+						return;
+					}
+					item_mapping++;
+				}
+				return;
+			}
+			property_mapping++;
+		}
+	}
+	strncpy(item->name, name, INDIGO_NAME_SIZE);
 }
 
 const char *indigo_property_name(indigo_version version, indigo_property *property) {
-  if (version == INDIGO_VERSION_LEGACY) {
-    struct property_mapping *property_mapping = legacy;
-    while (property_mapping->legacy) {
-      if (!strcmp(property->name, property_mapping->current)) {
-        INDIGO_DEBUG(indigo_debug("version: %s -> %s (legacy)", property_mapping->current, property_mapping->legacy));
-        return property_mapping->legacy;
-      }
-      property_mapping++;
-    }
-  }
-  return property->name;
+	if (version == INDIGO_VERSION_LEGACY) {
+		struct property_mapping *property_mapping = legacy;
+		while (property_mapping->legacy) {
+			if (!strcmp(property->name, property_mapping->current)) {
+				INDIGO_DEBUG(indigo_debug("version: %s -> %s (legacy)", property_mapping->current, property_mapping->legacy));
+				return property_mapping->legacy;
+			}
+			property_mapping++;
+		}
+	}
+	return property->name;
 }
 
 const char *indigo_item_name(indigo_version version, indigo_property *property, indigo_item *item) {
-  if (version == INDIGO_VERSION_LEGACY) {
-    struct property_mapping *property_mapping = legacy;
-    while (property_mapping->legacy) {
-      if (!strcmp(property->name, property_mapping->current)) {
-        struct item_mapping *item_mapping = property_mapping->items;
-        while (item_mapping->legacy) {
-          if (!strcmp(item->name, item_mapping->current)) {
-            INDIGO_DEBUG(indigo_debug("version: %s.%s -> %s.%s (legacy)", property_mapping->current, item_mapping->current, property_mapping->legacy, item_mapping->legacy));
-            return item_mapping->legacy;
-          }
-          item_mapping++;
-        }
-        return item->name;
-      }
-      property_mapping++;
-    }
-  }
-  return item->name;
+	if (version == INDIGO_VERSION_LEGACY) {
+		struct property_mapping *property_mapping = legacy;
+		while (property_mapping->legacy) {
+			if (!strcmp(property->name, property_mapping->current)) {
+				struct item_mapping *item_mapping = property_mapping->items;
+				while (item_mapping->legacy) {
+					if (!strcmp(item->name, item_mapping->current)) {
+						INDIGO_DEBUG(indigo_debug("version: %s.%s -> %s.%s (legacy)", property_mapping->current, item_mapping->current, property_mapping->legacy, item_mapping->legacy));
+						return item_mapping->legacy;
+					}
+					item_mapping++;
+				}
+				return item->name;
+			}
+			property_mapping++;
+		}
+	}
+	return item->name;
 }
+
 

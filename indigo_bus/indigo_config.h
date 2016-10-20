@@ -74,3 +74,4 @@
 // #define INDIG_USE_SYSLOG
 
 #endif /* indigo_config_h */
+

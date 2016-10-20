@@ -64,30 +64,30 @@ typedef struct indigo_device indigo_device;
  Version value is used to map property or item names correctly or to trigger for version specific property handling. Do not use other than defined values!
  */
 typedef enum {
-  INDIGO_VERSION_NONE   = 0x0000, ///< undefined version
-  INDIGO_VERSION_LEGACY = 0x0107, ///< INDI compatible version
-  INDIGO_VERSION_2_0    = 0x0200  ///< INDIGO version
+	INDIGO_VERSION_NONE   = 0x0000, ///< undefined version
+	INDIGO_VERSION_LEGACY = 0x0107, ///< INDI compatible version
+	INDIGO_VERSION_2_0    = 0x0200  ///< INDIGO version
 } indigo_version;
 
 /** Bus operation return status.
  */
 typedef enum {
-  INDIGO_OK = 0,              ///< success
-  INDIGO_FAILED,              ///< unspecified error
-  INDIGO_TOO_MANY_ELEMENTS,   ///< too many clients/devices/properties/items etc.
-  INDIGO_LOCK_ERROR,          ///< mutex lock error
-  INDIGO_NOT_FOUND,           ///< unknown client/device/property/item etc.
-  INDIGO_CANT_START_SERVER    ///< network server start failure
+	INDIGO_OK = 0,              ///< success
+	INDIGO_FAILED,              ///< unspecified error
+	INDIGO_TOO_MANY_ELEMENTS,   ///< too many clients/devices/properties/items etc.
+	INDIGO_LOCK_ERROR,          ///< mutex lock error
+	INDIGO_NOT_FOUND,           ///< unknown client/device/property/item etc.
+	INDIGO_CANT_START_SERVER    ///< network server start failure
 } indigo_result;
 
 /** Property data type.
  */
 typedef enum {
-  INDIGO_TEXT_VECTOR = 1,     ///< strings of limited width
-  INDIGO_NUMBER_VECTOR,       ///< float numbers with defined min, max values and increment
-  INDIGO_SWITCH_VECTOR,       ///< logical values representing “on” and “off” state
-  INDIGO_LIGHT_VECTOR,        ///< status values with four possible values INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE and INDIGO_ALERT_STATE
-  INDIGO_BLOB_VECTOR          ///< binary data of any type and any length
+	INDIGO_TEXT_VECTOR = 1,     ///< strings of limited width
+	INDIGO_NUMBER_VECTOR,       ///< float numbers with defined min, max values and increment
+	INDIGO_SWITCH_VECTOR,       ///< logical values representing “on” and “off” state
+	INDIGO_LIGHT_VECTOR,        ///< status values with four possible values INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE and INDIGO_ALERT_STATE
+	INDIGO_BLOB_VECTOR          ///< binary data of any type and any length
 } indigo_property_type;
 
 /** Textual representations of indigo_property_type values.
@@ -97,10 +97,10 @@ extern char *indigo_property_type_text[];
 /** Property state.
  */
 typedef enum {
-  INDIGO_IDLE_STATE = 0,      ///< property is passive or unused
-  INDIGO_OK_STATE,            ///< property is in correct state or if operation on property was successful
-  INDIGO_BUSY_STATE,          ///< property is transient state or if operation on property is pending
-  INDIGO_ALERT_STATE          ///< property is in incorrect state or if operation on property failed
+	INDIGO_IDLE_STATE = 0,      ///< property is passive or unused
+	INDIGO_OK_STATE,            ///< property is in correct state or if operation on property was successful
+	INDIGO_BUSY_STATE,          ///< property is transient state or if operation on property is pending
+	INDIGO_ALERT_STATE          ///< property is in incorrect state or if operation on property failed
 } indigo_property_state;
 
 /** Textual representations of indigo_property_state values.
@@ -110,9 +110,9 @@ extern char *indigo_property_state_text[];
 /** Property access permission.
  */
 typedef enum {
-  INDIGO_RO_PERM = 1,         ///< read-only
-  INDIGO_RW_PERM,             ///< read-write
-  INDIGO_WO_PERM              ///< write-only
+	INDIGO_RO_PERM = 1,         ///< read-only
+	INDIGO_RW_PERM,             ///< read-write
+	INDIGO_WO_PERM              ///< write-only
 } indigo_property_perm;
 
 /** Textual representation of indigo_property_perm values.
@@ -122,9 +122,9 @@ extern char *indigo_property_perm_text[];
 /** Switch behaviour rule.
  */
 typedef enum {
-  INDIGO_ONE_OF_MANY_RULE = 1,///< radio button group like behaviour with one switch in "on" state
-  INDIGO_AT_MOST_ONE_RULE,    ///< radio button group like behaviour with none or one switch in "on" state
-  INDIGO_ANY_OF_MANY_RULE     ///< checkbox button group like behaviour
+	INDIGO_ONE_OF_MANY_RULE = 1,///< radio button group like behaviour with one switch in "on" state
+	INDIGO_AT_MOST_ONE_RULE,    ///< radio button group like behaviour with none or one switch in "on" state
+	INDIGO_ANY_OF_MANY_RULE     ///< checkbox button group like behaviour
 } indigo_rule;
 
 /** Textual representation of indigo_rule values.
@@ -132,117 +132,117 @@ typedef enum {
 extern char *indigo_switch_rule_text[];
 
 typedef enum {
-  INDIGO_ENABLE_BLOB_ALSO,
-  INDIGO_ENABLE_BLOB_NEVER,
-  INDIGO_ENABLE_BLOB_ONLY
+	INDIGO_ENABLE_BLOB_ALSO,
+	INDIGO_ENABLE_BLOB_NEVER,
+	INDIGO_ENABLE_BLOB_ONLY
 } indigo_enable_blob;
 
 /** Property item definition.
  */
 typedef struct {
-  char name[INDIGO_NAME_SIZE];        ///< property wide unique item name
-  char label[INDIGO_VALUE_SIZE];      ///< item description in human readable form
-  union {
-    /** Text property item specific fields.
-     */
-    struct {
-      char value[INDIGO_VALUE_SIZE];  ///< item value (for text properties)
-    } text;
-    /** Number property item specific fields.
-     */
-    struct {
-      char format[INDIGO_VALUE_SIZE]; ///< item format (for number properties)
-      double min;                     ///< item min value (for number properties)
-      double max;                     ///< item max value (for number properties)
-      double step;                    ///< item increment value (for number properties)
-      double value;                   ///< item values (for number properties)
-    } number;
-    /** Switch property item specific fields.
-     */
-    struct {
-      bool value;                     ///< item value (for switch properties)
-    } sw;
-    /** Light property item specific fields.
-     */
-    struct {
-      indigo_property_state value;    ///< item value (for light properties)
-    } light;
-    /** BLOB property item specific fields.
-     */
-    struct {
-      char format[INDIGO_NAME_SIZE];  ///< item format (for blob properties), known file type suffix like ".fits" or ".jpeg"
-      long size;                      ///< item size (for blob properties) in bytes
-      void *value;                    ///< item value (for blob properties)
-    } blob;
-  };
+	char name[INDIGO_NAME_SIZE];        ///< property wide unique item name
+	char label[INDIGO_VALUE_SIZE];      ///< item description in human readable form
+	union {
+		/** Text property item specific fields.
+		 */
+		struct {
+			char value[INDIGO_VALUE_SIZE];  ///< item value (for text properties)
+		} text;
+		/** Number property item specific fields.
+		 */
+		struct {
+			char format[INDIGO_VALUE_SIZE]; ///< item format (for number properties)
+			double min;                     ///< item min value (for number properties)
+			double max;                     ///< item max value (for number properties)
+			double step;                    ///< item increment value (for number properties)
+			double value;                   ///< item values (for number properties)
+		} number;
+		/** Switch property item specific fields.
+		 */
+		struct {
+			bool value;                     ///< item value (for switch properties)
+		} sw;
+		/** Light property item specific fields.
+		 */
+		struct {
+			indigo_property_state value;    ///< item value (for light properties)
+		} light;
+		/** BLOB property item specific fields.
+		 */
+		struct {
+			char format[INDIGO_NAME_SIZE];  ///< item format (for blob properties), known file type suffix like ".fits" or ".jpeg"
+			long size;                      ///< item size (for blob properties) in bytes
+			void *value;                    ///< item value (for blob properties)
+		} blob;
+	};
 } indigo_item;
 
 /** Property definition.
  */
 typedef struct {
-  char device[INDIGO_NAME_SIZE];      ///< system wide unique device name
-  char name[INDIGO_NAME_SIZE];        ///< device wide unique property name
-  char group[INDIGO_NAME_SIZE];       ///< property group in human readable form (presented as a tab or a subtree in GUI
-  char label[INDIGO_VALUE_SIZE];      ///< property description in human readable form
-  indigo_property_state state;        ///< property state
-  indigo_property_type type;          ///< property type
-  indigo_property_perm perm;          ///< property access permission
-  indigo_rule rule;                   ///< switch behaviour rule (for switch properties)
-  short version;                      ///< property version INDIGO_VERSION_NONE, INDIGO_VERSION_LEGACY or INDIGO_VERSION_2_0
-  bool hidden;                        ///< property is hidden/unused by  driver (for optional properties)
-  int count;                          ///< number of property items
-  indigo_item items[];                ///< property items
+	char device[INDIGO_NAME_SIZE];      ///< system wide unique device name
+	char name[INDIGO_NAME_SIZE];        ///< device wide unique property name
+	char group[INDIGO_NAME_SIZE];       ///< property group in human readable form (presented as a tab or a subtree in GUI
+	char label[INDIGO_VALUE_SIZE];      ///< property description in human readable form
+	indigo_property_state state;        ///< property state
+	indigo_property_type type;          ///< property type
+	indigo_property_perm perm;          ///< property access permission
+	indigo_rule rule;                   ///< switch behaviour rule (for switch properties)
+	short version;                      ///< property version INDIGO_VERSION_NONE, INDIGO_VERSION_LEGACY or INDIGO_VERSION_2_0
+	bool hidden;                        ///< property is hidden/unused by  driver (for optional properties)
+	int count;                          ///< number of property items
+	indigo_item items[];                ///< property items
 } indigo_property;
 
 /** Device structure definition
  */
 typedef struct indigo_device {
-  char name[INDIGO_NAME_SIZE];        ///< device name
-  void *device_context;               ///< any device specific data
-  indigo_result last_result;          ///< result of last bus operation
-  indigo_version version;             ///< device version
-  
-  /** callback called when device is attached to bus
-   */
-  indigo_result (*attach)(indigo_device *device);
-  /** callback called when client broadcast enumerate properties request on bus, device and name elements of property can be set NULL to address all
-   */
-  indigo_result (*enumerate_properties)(indigo_device *device, indigo_client *client, indigo_property *property);
-  /** callback called when client broadcast property change request
-   */
-  indigo_result (*change_property)(indigo_device *device, indigo_client *client, indigo_property *property);
-  /** callback called when device is detached from the bus
-   */
-  indigo_result (*detach)(indigo_device *device);
+	char name[INDIGO_NAME_SIZE];        ///< device name
+	void *device_context;               ///< any device specific data
+	indigo_result last_result;          ///< result of last bus operation
+	indigo_version version;             ///< device version
+
+	/** callback called when device is attached to bus
+	 */
+	indigo_result (*attach)(indigo_device *device);
+	/** callback called when client broadcast enumerate properties request on bus, device and name elements of property can be set NULL to address all
+	 */
+	indigo_result (*enumerate_properties)(indigo_device *device, indigo_client *client, indigo_property *property);
+	/** callback called when client broadcast property change request
+	 */
+	indigo_result (*change_property)(indigo_device *device, indigo_client *client, indigo_property *property);
+	/** callback called when device is detached from the bus
+	 */
+	indigo_result (*detach)(indigo_device *device);
 } indigo_device;
 
 /** Client structure definition
  */
 typedef struct indigo_client {
-  char name[INDIGO_NAME_SIZE];        ///< client name
-  void *client_context;               ///< any client specific data
-  indigo_result last_result;          ///< result of last bus operation
-  indigo_version version;             ///< client version
-  indigo_enable_blob enable_blob;     ///< enable blob mode
-  
-  /** callback called when client is attached to the bus
-   */
-  indigo_result (*attach)(indigo_client *client);
-  /** callback called when device broadcast property definition
-   */
-  indigo_result (*define_property)(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
-  /** callback called when device broadcast property value change
-   */
-  indigo_result (*update_property)(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
-  /** callback called when device broadcast property definition
-   */
-  indigo_result (*delete_property)(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
-  /** callback called when device broadcast property removal
-   */
-  indigo_result (*send_message)(indigo_client *client, struct indigo_device *device, const char *message);
-  /** callback called when client is detached from the bus
-   */
-  indigo_result (*detach)(indigo_client *client);
+	char name[INDIGO_NAME_SIZE];        ///< client name
+	void *client_context;               ///< any client specific data
+	indigo_result last_result;          ///< result of last bus operation
+	indigo_version version;             ///< client version
+	indigo_enable_blob enable_blob;     ///< enable blob mode
+
+	/** callback called when client is attached to the bus
+	 */
+	indigo_result (*attach)(indigo_client *client);
+	/** callback called when device broadcast property definition
+	 */
+	indigo_result (*define_property)(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
+	/** callback called when device broadcast property value change
+	 */
+	indigo_result (*update_property)(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
+	/** callback called when device broadcast property definition
+	 */
+	indigo_result (*delete_property)(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
+	/** callback called when device broadcast property removal
+	 */
+	indigo_result (*send_message)(indigo_client *client, struct indigo_device *device, const char *message);
+	/** callback called when client is detached from the bus
+	 */
+	indigo_result (*detach)(indigo_client *client);
 } indigo_client;
 
 
@@ -377,3 +377,4 @@ extern void indigo_property_copy_values(indigo_property *property, indigo_proper
 extern indigo_property INDIGO_ALL_PROPERTIES;
 
 #endif /* indigo_bus_h */
+
