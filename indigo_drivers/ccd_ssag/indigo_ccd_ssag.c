@@ -213,7 +213,7 @@ static bool ssag_open(indigo_device *device) {
     }
     if (rc >= 0) {
       rc = libusb_claim_interface(handle, 0);
-      INDIGO_DEBUG(indigo_debug("ssag_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, interface, libusb_error_name(rc)));
+      INDIGO_DEBUG(indigo_debug("ssag_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, handle, libusb_error_name(rc)));
     }
 #endif
     if (rc >= 0) {
