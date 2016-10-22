@@ -47,6 +47,14 @@
 #include <pthread.h>
 #include <sys/time.h>
 
+#if defined(INDIGO_DARWIN)
+#include "libusb.h"
+#elif defined(INDIGO_FREEBSD)
+#include <libusb.h>
+#else
+#include <libusb-1.0/libusb.h>
+#endif
+
 #include "indigo_ccd_sx.h"
 #include "indigo_driver_xml.h"
 
