@@ -489,12 +489,11 @@ static int ssag_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb
 	switch (event) {
 	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 		int rc = libusb_get_device_descriptor(dev, &descriptor);
-		INDIGO_DEBUG(indigo_debug("ssag_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s (0x%04x, 0x%04x)", __LINE__, libusb_error_name(rc), descriptor.idVendor, descriptor.idProduct));
 		if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID)) {
+			INDIGO_DEBUG(indigo_debug("ssag_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s (0x%04x, 0x%04x)", __LINE__, libusb_error_name(rc), descriptor.idVendor, descriptor.idProduct));
 			ssag_firmware(dev);
 		} else if (descriptor.idVendor == SSAG_VENDOR_ID && descriptor.idProduct == SSAG_PRODUCT_ID) {
-			struct libusb_device_descriptor descriptor;
-			libusb_get_device_descriptor(dev, &descriptor);
+			INDIGO_DEBUG(indigo_debug("ssag_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s (0x%04x, 0x%04x)", __LINE__, libusb_error_name(rc), descriptor.idVendor, descriptor.idProduct));
 			ssag_private_data *private_data = malloc(sizeof(ssag_private_data));
 			memset(private_data, 0, sizeof(ssag_private_data));
 			private_data->dev = dev;

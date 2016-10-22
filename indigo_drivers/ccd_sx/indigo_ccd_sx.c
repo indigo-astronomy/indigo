@@ -579,20 +579,6 @@ static void ccd_temperature_callback(indigo_device *device) {
 	PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
 }
 
-static void guider_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->guider_timer = NULL;
-	sx_guide_relays(device, 0);
-	if (PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH)) {
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-	}
-	if (PRIVATE_DATA->relay_mask & (SX_GUIDE_WEST | SX_GUIDE_EAST)) {
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-	}
-	PRIVATE_DATA->relay_mask = 0;
-}
-
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
@@ -706,6 +692,20 @@ static indigo_result ccd_detach(indigo_device *device) {
 }
 
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
+
+static void guider_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->guider_timer = NULL;
+	sx_guide_relays(device, 0);
+	if (PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH)) {
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+	}
+	if (PRIVATE_DATA->relay_mask & (SX_GUIDE_WEST | SX_GUIDE_EAST)) {
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	}
+	PRIVATE_DATA->relay_mask = 0;
+}
 
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);

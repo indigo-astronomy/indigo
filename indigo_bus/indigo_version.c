@@ -177,6 +177,24 @@ static struct property_mapping legacy[] = {
 			NULL
 		}
 	},
+	{	"FILTER_SLOT", "WHEEL_SLOT", {
+			{ "FILTER_SLOT_VALUE", "SLOT" },
+			NULL
+		}
+	},
+	{	"FILTER_NAME_VALUE", "WHEEL_SLOT", {
+			{ "FILTER_SLOT_NAME_1", "SLOT_NAME_1" },
+			{ "FILTER_SLOT_NAME_2", "SLOT_NAME_2" },
+			{ "FILTER_SLOT_NAME_3", "SLOT_NAME_3" },
+			{ "FILTER_SLOT_NAME_4", "SLOT_NAME_4" },
+			{ "FILTER_SLOT_NAME_5", "SLOT_NAME_5" },
+			{ "FILTER_SLOT_NAME_6", "SLOT_NAME_6" },
+			{ "FILTER_SLOT_NAME_7", "SLOT_NAME_7" },
+			{ "FILTER_SLOT_NAME_8", "SLOT_NAME_8" },
+			{ "FILTER_SLOT_NAME_9", "SLOT_NAME_9" },
+			NULL
+		}
+	},
 	NULL
 };
 
