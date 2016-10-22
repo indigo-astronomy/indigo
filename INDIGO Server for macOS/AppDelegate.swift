@@ -67,7 +67,9 @@ func serverCallback(count: Int32) {
     service.publish()
     indigo_start()
     indigo_ccd_simulator();
-    indigo_ccd_sx_register()
+    indigo_ccd_sx()
+		indigo_ccd_ssag()
+		indigo_ccd_asi()
     indigo_server_xml(serverCallback)
   }
   

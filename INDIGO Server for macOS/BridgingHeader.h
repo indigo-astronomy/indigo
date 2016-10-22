@@ -37,7 +37,9 @@
 
 #include "indigo_bus.h"
 #include "indigo_server_xml.h"
-#include "ccd_simulator/indigo_ccd_simulator.h"
+#include "indigo_ccd_simulator.h"
 #include "indigo_ccd_sx.h"
+#include "indigo_ccd_ssag.h"
+#include "indigo_ccd_asi.h"
 
 #endif /* BridgingHeader_h */
