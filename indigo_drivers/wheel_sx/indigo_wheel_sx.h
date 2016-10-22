@@ -32,39 +32,20 @@
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <syslog.h>
+/** INDIGO StarlighXpress filter wheel driver
+ \file indigo_wheel_sx.h
+ */
 
-#include "indigo_bus.h"
-#include "indigo_server_xml.h"
+#ifndef ccd_wheel_h
+#define ccd_wheel_h
 
-#include "ccd_simulator/indigo_ccd_simulator.h"
-#include "ccd_sx/indigo_ccd_sx.h"
-#include "ccd_ssag/indigo_ccd_ssag.h"
-#include "ccd_asi/indigo_ccd_asi.h"
+#include "indigo_driver.h"
+#include "indigo_wheel_driver.h"
 
-#include "wheel_sx/indigo_wheel_sx.h"
+/** Register StarlighXpress filter wheel hot-plug callback
+ */
 
-void server_callback(int count) {
-	INDIGO_LOG(indigo_log("%d clients", count));
-}
+extern indigo_result indigo_wheel_sx();
 
-int main(int argc, const char * argv[]) {
-	indigo_main_argc = argc;
-	indigo_main_argv = argv;
-	indigo_start();
-	
-	indigo_ccd_simulator();
-	indigo_ccd_sx();
-	indigo_ccd_ssag();
-	indigo_ccd_asi();
-
-	indigo_wheel_sx();
-
-	indigo_server_xml(server_callback);
-	return 0;
-}
+#endif /* ccd_wheel_h */
 

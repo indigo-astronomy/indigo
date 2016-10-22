@@ -47,6 +47,8 @@
 		59C8E7EF1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7EE1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules */; };
 		59C8E7F11DBBD91400AA3F0A /* indigo_ccd_ssag.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */; };
 		59C8E7F31DBBD98900AA3F0A /* indigo_ccd_asi.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */; };
+		59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */; };
+		59C8E8011DBBEAB300AA3F0A /* hid.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8E7F61DBBDE8D00AA3F0A /* hid.c */; };
 		59D382171D97348500E87393 /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382161D97348500E87393 /* client.c */; };
 		9D97F81B1D9A8A5D00582EAF /* server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* server.c */; };
 /* End PBXBuildFile section */
@@ -184,6 +186,16 @@
 		59C8E7EE1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_sx.rules; sourceTree = "<group>"; };
 		59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_ssag.rules; sourceTree = "<group>"; };
 		59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_asi.rules; sourceTree = "<group>"; };
+		59C8E7F51DBBDE8200AA3F0A /* hidapi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = hidapi.h; path = hidapi/hidapi.h; sourceTree = "<group>"; };
+		59C8E7F61DBBDE8D00AA3F0A /* hid.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = hid.c; path = mac/hid.c; sourceTree = "<group>"; };
+		59C8E7F81DBBDF7400AA3F0A /* indigo_wheel_sx_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_sx_main.c; sourceTree = "<group>"; };
+		59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_sx.c; sourceTree = "<group>"; };
+		59C8E7FA1DBBDF7400AA3F0A /* indigo_wheel_sx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_sx.h; sourceTree = "<group>"; };
+		59C8E7FC1DBBE2B600AA3F0A /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
+		59C8E7FD1DBBE2B600AA3F0A /* libusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libusb.h; sourceTree = "<group>"; };
+		59C8E7FE1DBBE2B600AA3F0A /* libusbi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libusbi.h; sourceTree = "<group>"; };
+		59C8E7FF1DBBE2B600AA3F0A /* version_nano.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = version_nano.h; sourceTree = "<group>"; };
+		59C8E8001DBBE2B600AA3F0A /* version.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = version.h; sourceTree = "<group>"; };
 		59D381A71D95926E00E87393 /* indigo_bus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = indigo_bus.h; path = indigo_bus/indigo_bus.h; sourceTree = SOURCE_ROOT; wrapsLines = 0; };
 		59D381A81D9592A400E87393 /* indigo_bus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = indigo_bus.c; path = indigo_bus/indigo_bus.c; sourceTree = SOURCE_ROOT; };
 		59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator.c; sourceTree = "<group>"; };
@@ -362,6 +374,7 @@
 		59C8E7CC1DBBC00000AA3F0A /* externals */ = {
 			isa = PBXGroup;
 			children = (
+				59C8E7F41DBBDE5600AA3F0A /* hidapi */,
 				59C8E7CD1DBBC82200AA3F0A /* libusb */,
 			);
 			path = externals;
@@ -370,6 +383,11 @@
 		59C8E7CD1DBBC82200AA3F0A /* libusb */ = {
 			isa = PBXGroup;
 			children = (
+				59C8E7FC1DBBE2B600AA3F0A /* config.h */,
+				59C8E7FD1DBBE2B600AA3F0A /* libusb.h */,
+				59C8E7FE1DBBE2B600AA3F0A /* libusbi.h */,
+				59C8E7FF1DBBE2B600AA3F0A /* version_nano.h */,
+				59C8E8001DBBE2B600AA3F0A /* version.h */,
 				59C8E7CF1DBBC85300AA3F0A /* core.c */,
 				59C8E7D01DBBC85300AA3F0A /* descriptor.c */,
 				59C8E7D11DBBC85300AA3F0A /* hotplug.c */,
@@ -390,6 +408,25 @@
 				59C8E7D71DBBC87700AA3F0A /* threads_posix.c */,
 			);
 			path = os;
+			sourceTree = "<group>";
+		};
+		59C8E7F41DBBDE5600AA3F0A /* hidapi */ = {
+			isa = PBXGroup;
+			children = (
+				59C8E7F51DBBDE8200AA3F0A /* hidapi.h */,
+				59C8E7F61DBBDE8D00AA3F0A /* hid.c */,
+			);
+			path = hidapi;
+			sourceTree = "<group>";
+		};
+		59C8E7F71DBBDF2200AA3F0A /* wheel_sx */ = {
+			isa = PBXGroup;
+			children = (
+				59C8E7F81DBBDF7400AA3F0A /* indigo_wheel_sx_main.c */,
+				59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */,
+				59C8E7FA1DBBDF7400AA3F0A /* indigo_wheel_sx.h */,
+			);
+			path = wheel_sx;
 			sourceTree = "<group>";
 		};
 		59D381A61D9590EA00E87393 /* indigo_bus */ = {
@@ -438,6 +475,7 @@
 				59C8E7BA1DBBA1D600AA3F0A /* indigo_wheel_driver.c */,
 				59D381AA1D95984D00E87393 /* ccd_simulator */,
 				5999FB651DA40B380084BBF8 /* ccd_sx */,
+				59C8E7F71DBBDF2200AA3F0A /* wheel_sx */,
 				59519D421DB422E3008BAF29 /* ccd_ssag */,
 				590A863E1DB8096A002F12FB /* ccd_asi */,
 			);
@@ -684,6 +722,7 @@
 			files = (
 				59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
+				59C8E8011DBBEAB300AA3F0A /* hid.c in Sources */,
 				59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */,
 				59C8E7C41DBBB05500AA3F0A /* indigo_ccd_asi.c in Sources */,
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
@@ -692,6 +731,7 @@
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
 				599C9A4F1DA022E3008BBCC1 /* indigo_version.c in Sources */,
 				5999FBD41DB244930084BBF8 /* indigo_guider_driver.c in Sources */,
+				59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */,
 				59C8E7BD1DBBA1D600AA3F0A /* indigo_wheel_driver.c in Sources */,
 				599C9A501DA022E3008BBCC1 /* indigo_xml.c in Sources */,
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,
