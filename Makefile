@@ -46,7 +46,8 @@ drivers:\
 	indigo_ccd_simulator\
 	indigo_ccd_sx\
 	indigo_ccd_ssag\
-	indigo_ccd_asi
+	indigo_ccd_asi\
+	indigo_wheel_sx
 
 init:
 	$(info -------------------- $(OS_detected) build --------------------)
@@ -105,13 +106,19 @@ indigo_ccd_asi.a: indigo_drivers/ccd_asi/indigo_ccd_asi.o
 indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o indigo_ccd_asi.a libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
+	$(AR) $(ARFLAGS) $@ $^
+
+indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o indigo_wheel_sx.a libindigo.a $(LIBUSB) $(HIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
 test: indigo_test/test.o indigo_ccd_simulator.a libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 client: indigo_test/client.o libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_ssag.a indigo_ccd_asi.a libindigo.a $(LIBUSB)
+server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_ssag.a indigo_ccd_asi.a indigo_wheel_sx.a libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 rules:
@@ -129,4 +136,5 @@ clean: init
 	rm -f indigo_ccd_sx indigo_ccd_sx.a indigo_drivers/ccd_sx/*.o
 	rm -f indigo_ccd_ssag indigo_ccd_ssag.a indigo_drivers/ccd_ssag/*.o
 	rm -f indigo_ccd_asi indigo_ccd_asi.a indigo_drivers/ccd_asi/*.o
+	rm -f indigo_wheel_sx indigo_wheel_sx.a indigo_drivers/wheel_sx/*.o
 	rm -f test client server indigo_test/*.o

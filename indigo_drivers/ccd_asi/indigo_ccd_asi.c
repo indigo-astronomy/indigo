@@ -464,8 +464,6 @@ static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_
 		INDIGO_DEBUG(indigo_debug("asi_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s", __LINE__, libusb_error_name(rc)));
 		for (int i = 0; ASI_PRODUCTS[i].name; i++) {
 			if (descriptor.idVendor == 0x1278 && ASI_PRODUCTS[i].product == descriptor.idProduct) {
-				struct libusb_device_descriptor descriptor;
-				libusb_get_device_descriptor(dev, &descriptor);
 				asi_private_data *private_data = malloc(sizeof(asi_private_data));
 				memset(private_data, 0, sizeof(asi_private_data));
 				private_data->dev = dev;
@@ -512,8 +510,10 @@ static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_
 				}
 			}
 		}
-		if (private_data != NULL)
+		if (private_data != NULL) {
+			free(private_data->dev);
 			free(private_data);
+		}
 		break;
 	}
 	}

@@ -545,8 +545,10 @@ static int ssag_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb
 				}
 			}
 		}
-		if (private_data != NULL)
+		if (private_data != NULL) {
+			free(private_data->dev);
 			free(private_data);
+		}
 		break;
 	}
 	}

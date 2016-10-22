@@ -871,9 +871,7 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
 		int rc = libusb_get_device_descriptor(dev, &descriptor);
 		INDIGO_DEBUG(indigo_debug("sx_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s", __LINE__, libusb_error_name(rc)));
 		for (int i = 0; SX_PRODUCTS[i].name; i++) {
-			if (descriptor.idVendor == 0x1278 && SX_PRODUCTS[i].product == descriptor.idProduct) {
-				struct libusb_device_descriptor descriptor;
-				libusb_get_device_descriptor(dev, &descriptor);
+			if (descriptor.idVendor == SX_VENDOR_ID && SX_PRODUCTS[i].product == descriptor.idProduct) {
 				sx_private_data *private_data = malloc(sizeof(sx_private_data));
 				memset(private_data, 0, sizeof(sx_private_data));
 				private_data->dev = dev;
@@ -920,8 +918,10 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
 				}
 			}
 		}
-		if (private_data != NULL)
+		if (private_data != NULL) {
+			free(private_data->dev);
 			free(private_data);
+		}
 		break;
 	}
 	}
@@ -933,7 +933,7 @@ indigo_result indigo_ccd_sx() {
 		devices[i] = 0;
 	}
 	libusb_init(NULL);
-	int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, sx_hotplug_callback, NULL, NULL);
+	int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, sx_hotplug_callback, NULL, NULL);
 	INDIGO_DEBUG(indigo_debug("indigo_ccd_sx: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
 	indigo_start_usb_even_handler();
 	return rc >= 0;
