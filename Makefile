@@ -21,7 +21,7 @@ endif
 ifeq ($(OS_detected),Linux)
 CC=gcc
 CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/hidapi/hidapi -std=gnu11 -pthread -DINDIGO_LINUX
-LDFLAGS=-lm -lrt -lusb-1.0
+LDFLAGS=-lm -lrt -lusb-1.0 -ludev
 LIBUSB=
 HIDAPI=externals/hidapi/linux/hid.o
 AR=ar
