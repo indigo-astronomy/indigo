@@ -115,10 +115,10 @@ server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_s
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 rules:
-ifeq ($(OS_detected),Darwin)
+ifeq ($(OS_detected),Linux)
 	sudo cp indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-sx.rules
-	sudo cp indigo_drivers/ccd_sx/indigo_ccd_ssag.rules /lib/udev/rules.d/99-ssag.rules
-	sudo cp indigo_drivers/ccd_sx/indigo_ccd_asi.rules /lib/udev/rules.d/99-asi.rules
+	sudo cp indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-ssag.rules
+	sudo cp indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-asi.rules
 endif
 
 clean: init
