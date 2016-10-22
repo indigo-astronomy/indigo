@@ -126,6 +126,7 @@ ifeq ($(OS_detected),Linux)
 	sudo cp indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-sx.rules
 	sudo cp indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-ssag.rules
 	sudo cp indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-asi.rules
+	sudo udevadm control --reload-rules
 endif
 
 clean: init
