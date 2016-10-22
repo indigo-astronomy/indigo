@@ -41,6 +41,8 @@
 
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
+#include "indigo_guider_driver.h"
+#include "indigo_wheel_driver.h"
 
 /** Create CCD Simulator device instance
  */

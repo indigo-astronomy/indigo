@@ -145,7 +145,7 @@ typedef enum {
 	INDIGO_INTERFACE_CCD       = (1 << 1),    ///< CCD interface
 	INDIGO_INTERFACE_GUIDER    = (1 << 2),    ///< Guider interface
 	INDIGO_INTERFACE_FOCUSER   = (1 << 3),    ///< Focuser interface
-	INDIGO_INTERFACE_FILTER    = (1 << 4),    ///< Filter interface
+	INDIGO_INTERFACE_WHEEL     = (1 << 4),    ///< Filter wheel interface
 	INDIGO_INTERFACE_DOME      = (1 << 5),    ///< Dome interface
 	INDIGO_INTERFACE_GPS       = (1 << 6),    ///< GPS interface
 	INDIGO_INTERFACE_WEATHER   = (1 << 7),    ///< Weather interface

@@ -58,8 +58,11 @@ typedef struct {
 	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
 	double exposure_time;
 	double target_temperature, current_temperature;
-	indigo_timer *exposure_timer, *temperture_timer;
+	int target_slot, current_slot;
+	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 } simulator_private_data;
+
+// -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -127,7 +130,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 	PRIVATE_DATA->temperture_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 }
 
-static indigo_result attach(indigo_device *device) {
+static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 
@@ -165,12 +168,13 @@ static indigo_result attach(indigo_device *device) {
 		CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_COOLER_POWER_ITEM->number.value = 0;
 		// --------------------------------------------------------------------------------
+		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_ccd_device_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
 
-static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
@@ -232,28 +236,215 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	return indigo_ccd_device_change_property(device, client, property);
 }
 
-static indigo_result detach(indigo_device *device) {
+static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	free(PRIVATE_DATA);
 	return indigo_ccd_device_detach(device);
 }
 
-indigo_result indigo_ccd_simulator() {
-	static indigo_device device_template = {
-		"CCD Simulator", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-		attach,
-		indigo_ccd_device_enumerate_properties,
-		change_property,
-		detach
-	};
-	indigo_device *device = malloc(sizeof(indigo_device));
-	if (device != NULL) {
-		memcpy(device, &device_template, sizeof(indigo_device));
-		simulator_private_data *private_data = malloc(sizeof(simulator_private_data));
-		device->device_context = private_data;
-		indigo_attach_device(device);
-		return INDIGO_OK;
+// -------------------------------------------------------------------------------- INDIGO guider device implementation
+
+static void guider_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->guider_timer = NULL;
+	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
+		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+	}
+	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
+		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	}
+}
+
+static indigo_result guider_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(device->device_context != NULL);
+	simulator_private_data *private_data = device->device_context;
+	device->device_context = NULL;
+	if (indigo_guider_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+		DEVICE_CONTEXT->private_data = private_data;
+		INDIGO_LOG(indigo_log("%s attached", device->name));
+		return indigo_guider_device_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
+}
+
+static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(device->device_context != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
+		if (PRIVATE_DATA->guider_timer != NULL)
+			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
+		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);		
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		if (duration > 0) {
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+		} else {
+			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			if (duration > 0) {
+				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+				PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+			}
+		}
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
+		if (PRIVATE_DATA->guider_timer != NULL)
+			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
+		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		if (duration > 0) {
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+		} else {
+			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			if (duration > 0) {
+				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+				PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+			}
+		}
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_guider_device_change_property(device, client, property);
+}
+
+static indigo_result guider_detach(indigo_device *device) {
+	assert(device != NULL);
+	INDIGO_LOG(indigo_log("%s detached", device->name));
+	return indigo_guider_device_detach(device);
+}
+
+// -------------------------------------------------------------------------------- INDIGO wheel device implementation
+
+#define FILTER_COUNT	5
+
+static void wheel_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->current_slot = (PRIVATE_DATA->current_slot) % (int)WHEEL_SLOT_ITEM->number.max + 1;
+	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		indigo_set_timer(device, 0.5, wheel_timer_callback);
+	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
+
+static indigo_result wheel_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(device->device_context != NULL);
+	simulator_private_data *private_data = device->device_context;
+	device->device_context = NULL;
+	if (indigo_wheel_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+		DEVICE_CONTEXT->private_data = private_data;
+		// -------------------------------------------------------------------------------- WHEEL_SLOT, WHEEL_SLOT_NAME
+		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = FILTER_COUNT;
+		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot = 1;
+		// --------------------------------------------------------------------------------
+		INDIGO_LOG(indigo_log("%s attached", device->name));
+		return indigo_wheel_device_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(device->device_context != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- WHEEL_SLOT
+		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
+		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+			indigo_set_timer(device, 0.5, wheel_timer_callback);
+		}
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_wheel_device_change_property(device, client, property);
+}
+
+static indigo_result wheel_detach(indigo_device *device) {
+	assert(device != NULL);
+	INDIGO_LOG(indigo_log("%s detached", device->name));
+	return indigo_wheel_device_detach(device);
+}
+
+// --------------------------------------------------------------------------------
+
+indigo_result indigo_ccd_simulator() {
+	static indigo_device ccd_template = {
+		"CCD Simulator", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		ccd_attach,
+		indigo_ccd_device_enumerate_properties,
+		ccd_change_property,
+		ccd_detach
+	};
+	static indigo_device guider_template = {
+		"CCD Simulator guider", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		guider_attach,
+		indigo_guider_device_enumerate_properties,
+		guider_change_property,
+		guider_detach
+	};
+	static indigo_device wheel_template = {
+		"CCD Simulator wheel", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		wheel_attach,
+		indigo_wheel_device_enumerate_properties,
+		wheel_change_property,
+		wheel_detach
+	};
+
+	simulator_private_data *private_data = malloc(sizeof(simulator_private_data));
+	if (private_data == NULL)
+		return INDIGO_FAILED;
+
+	indigo_device *device;
+
+	if ((device = malloc(sizeof(indigo_device))) == NULL)
+		return INDIGO_FAILED;
+	memcpy(device, &ccd_template, sizeof(indigo_device));
+	device->device_context = private_data;
+	indigo_attach_device(device);
+
+	if ((device = malloc(sizeof(indigo_device))) == NULL)
+		return INDIGO_FAILED;
+	memcpy(device, &guider_template, sizeof(indigo_device));
+	device->device_context = private_data;
+	indigo_attach_device(device);
+	
+	if ((device = malloc(sizeof(indigo_device))) == NULL)
+		return INDIGO_FAILED;
+	memcpy(device, &wheel_template, sizeof(indigo_device));
+	device->device_context = private_data;
+	indigo_attach_device(device);
+
+	return INDIGO_OK;
 }
 

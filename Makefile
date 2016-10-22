@@ -50,7 +50,8 @@ libindigo.a:\
 	indigo_drivers/indigo_usb.o\
 	indigo_drivers/indigo_driver.o\
 	indigo_drivers/indigo_ccd_driver.o\
-	indigo_drivers/indigo_guider_driver.o
+	indigo_drivers/indigo_guider_driver.o\
+	indigo_drivers/indigo_wheel_driver.o
 	$(AR) $(ARFLAGS) $@ $^
 
 indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
