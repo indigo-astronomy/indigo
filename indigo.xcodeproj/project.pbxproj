@@ -44,6 +44,9 @@
 		59C8E7E81DBBCDB400AA3F0A /* threads_posix.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8E7D71DBBC87700AA3F0A /* threads_posix.c */; };
 		59C8E7E91DBBCDC700AA3F0A /* libusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59C8E7DC1DBBCD9500AA3F0A /* libusb.a */; };
 		59C8E7EB1DBBCDD600AA3F0A /* libusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59C8E7DC1DBBCD9500AA3F0A /* libusb.a */; };
+		59C8E7EF1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7EE1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules */; };
+		59C8E7F11DBBD91400AA3F0A /* indigo_ccd_ssag.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */; };
+		59C8E7F31DBBD98900AA3F0A /* indigo_ccd_asi.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */; };
 		59D382171D97348500E87393 /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382161D97348500E87393 /* client.c */; };
 		9D97F81B1D9A8A5D00582EAF /* server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* server.c */; };
 /* End PBXBuildFile section */
@@ -178,6 +181,9 @@
 		59C8E7D61DBBC87700AA3F0A /* poll_posix.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = poll_posix.c; sourceTree = "<group>"; };
 		59C8E7D71DBBC87700AA3F0A /* threads_posix.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = threads_posix.c; sourceTree = "<group>"; };
 		59C8E7DC1DBBCD9500AA3F0A /* libusb.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libusb.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		59C8E7EE1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_sx.rules; sourceTree = "<group>"; };
+		59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_ssag.rules; sourceTree = "<group>"; };
+		59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_asi.rules; sourceTree = "<group>"; };
 		59D381A71D95926E00E87393 /* indigo_bus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = indigo_bus.h; path = indigo_bus/indigo_bus.h; sourceTree = SOURCE_ROOT; wrapsLines = 0; };
 		59D381A81D9592A400E87393 /* indigo_bus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = indigo_bus.c; path = indigo_bus/indigo_bus.c; sourceTree = SOURCE_ROOT; };
 		59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator.c; sourceTree = "<group>"; };
@@ -272,6 +278,7 @@
 				590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */,
 				590A86401DB80A04002F12FB /* indigo_ccd_asi.c */,
 				590A86411DB80A04002F12FB /* indigo_ccd_asi.h */,
+				59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */,
 			);
 			path = ccd_asi;
 			sourceTree = "<group>";
@@ -324,6 +331,7 @@
 				59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */,
 				59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */,
 				59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */,
+				59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */,
 			);
 			path = ccd_ssag;
 			sourceTree = "<group>";
@@ -334,6 +342,7 @@
 				5999FB671DA40B380084BBF8 /* indigo_ccd_sx.h */,
 				5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */,
 				5999FB691DA40B380084BBF8 /* indigo_ccd_sx_main.c */,
+				59C8E7EE1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules */,
 			);
 			path = ccd_sx;
 			sourceTree = "<group>";
@@ -650,8 +659,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59C8E7EF1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules in Resources */,
 				599C9A3C1D9FF0A3008BBCC1 /* Assets.xcassets in Resources */,
+				59C8E7F11DBBD91400AA3F0A /* indigo_ccd_ssag.rules in Resources */,
 				599C9A3F1D9FF0A3008BBCC1 /* MainMenu.xib in Resources */,
+				59C8E7F31DBBD98900AA3F0A /* indigo_ccd_asi.rules in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
