@@ -1,0 +1,3 @@
+ATTR{product}=="SSAG uninitialized", ATTRS{idVendor}=="1856", ATTRS{idProduct}=="0011", MODE="0666"
+ATTR{product}=="SSAG", ATTRS{idVendor}=="1856", ATTRS{idProduct}=="0012", MODE="0666"
+ATTR{product}=="QHY5", ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0901", MODE="0666"
