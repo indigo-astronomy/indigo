@@ -40,7 +40,6 @@
 #define ccd_asi_h
 
 #include "indigo_driver.h"
-#include "indigo_usb.h"
 #include "indigo_ccd_driver.h"
 #include "indigo_guider_driver.h"
 
