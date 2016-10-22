@@ -10,7 +10,7 @@ endif
 
 ifeq ($(OS_detected),Darwin)
 CC=gcc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/libusb/libusb -Iexternals/hidapi -std=gnu11 -DINDIGO_DARWIN
+CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/libusb/libusb -Iexternals/hidapi/hidapi -std=gnu11 -DINDIGO_DARWIN
 LDFLAGS=-framework CoreFoundation -framework IOKit
 LIBUSB=libusb.a
 HIDAPI=externals/hidapi/mac/hid.o
@@ -20,7 +20,7 @@ endif
 
 ifeq ($(OS_detected),Linux)
 CC=gcc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/hidapi -std=gnu11 -pthread -DINDIGO_LINUX
+CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/hidapi/hidapi -std=gnu11 -pthread -DINDIGO_LINUX
 LDFLAGS=-lm -lrt -lusb-1.0
 LIBUSB=
 HIDAPI=externals/hidapi/linux/hid.o
@@ -30,7 +30,7 @@ endif
 
 ifeq ($(OS_detected),FreeBSD)
 CC=cc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/hidapi -std=gnu11 -pthread -DINDIGO_FREEBSD
+CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/hidapi/hidapi -std=gnu11 -pthread -DINDIGO_FREEBSD
 LDFLAGS=-lm -lrt -lusb
 LIBUSB=
 HIDAPI=
@@ -112,13 +112,13 @@ indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
 indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o indigo_wheel_sx.a libindigo.a $(LIBUSB) $(HIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-test: indigo_test/test.o indigo_ccd_simulator.a libindigo.a $(LIBUSB)
+test: indigo_test/test.o indigo_ccd_simulator.a libindigo.a $(LIBUSB) $(HIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 client: indigo_test/client.o libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_ssag.a indigo_ccd_asi.a indigo_wheel_sx.a libindigo.a $(LIBUSB)
+server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_ssag.a indigo_ccd_asi.a indigo_wheel_sx.a libindigo.a $(LIBUSB) $(HIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 rules:
