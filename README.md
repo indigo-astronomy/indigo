@@ -34,6 +34,9 @@ If hot-plug device is connected, driver should broadcast definition of the prope
 
 To build PoC, use
 
+`git clone https://github.com/polakovic/indigo.git`
+`cd indigo`
+`git submodule update --init --recursive`
 `make all`
 
 and then execute either (client and driver in single executable with direct communication over the bus)
