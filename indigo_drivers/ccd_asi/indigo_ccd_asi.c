@@ -404,39 +404,6 @@ static struct {
 	const char *name;
 	indigo_device_interface iface;
 } ASI_PRODUCTS[] = {
-	{ 0x0105, "SXVF-M5", INDIGO_INTERFACE_CCD }, // to be changed for ASI models
-	{ 0x0305, "SXVF-M5C", INDIGO_INTERFACE_CCD },
-	{ 0x0107, "SXVF-M7", INDIGO_INTERFACE_CCD },
-	{ 0x0307, "SXVF-M7C", INDIGO_INTERFACE_CCD },
-	{ 0x0308, "SXVF-M8C", INDIGO_INTERFACE_CCD },
-	{ 0x0109, "SXVF-M9", INDIGO_INTERFACE_CCD },
-	{ 0x0325, "SXVR-M25C", INDIGO_INTERFACE_CCD },
-	{ 0x0326, "SXVR-M26C", INDIGO_INTERFACE_CCD },
-	{ 0x0115, "SXVR-H5", INDIGO_INTERFACE_CCD },
-	{ 0x0119, "SXVR-H9", INDIGO_INTERFACE_CCD },
-	{ 0x0319, "SXVR-H9C", INDIGO_INTERFACE_CCD },
-	{ 0x0100, "SXVR-H9", INDIGO_INTERFACE_CCD },
-	{ 0x0300, "SXVR-H9C", INDIGO_INTERFACE_CCD },
-	{ 0x0126, "SXVR-H16", INDIGO_INTERFACE_CCD },
-	{ 0x0128, "SXVR-H18", INDIGO_INTERFACE_CCD },
-	{ 0x0135, "SXVR-H35", INDIGO_INTERFACE_CCD },
-	{ 0x0136, "SXVR-H36", INDIGO_INTERFACE_CCD },
-	{ 0x0137, "SXVR-H360", INDIGO_INTERFACE_CCD },
-	{ 0x0139, "SXVR-H390", INDIGO_INTERFACE_CCD },
-	{ 0x0194, "SXVR-H694", INDIGO_INTERFACE_CCD },
-	{ 0x0394, "SXVR-H694C", INDIGO_INTERFACE_CCD },
-	{ 0x0174, "SXVR-H674", INDIGO_INTERFACE_CCD },
-	{ 0x0374, "SXVR-H674C", INDIGO_INTERFACE_CCD },
-	{ 0x0198, "SX-814", INDIGO_INTERFACE_CCD },
-	{ 0x0398, "SX-814C", INDIGO_INTERFACE_CCD },
-	{ 0x0189, "SX-825", INDIGO_INTERFACE_CCD },
-	{ 0x0389, "SX-825C", INDIGO_INTERFACE_CCD },
-	{ 0x0184, "SX-834", INDIGO_INTERFACE_CCD },
-	{ 0x0384, "SX-834C", INDIGO_INTERFACE_CCD },
-	{ 0x0507, "SX LodeStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
-	{ 0x0517, "SX CoStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
-	{ 0x0509, "SX SuperStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
-	{ 0x0525, "SX UltraStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
 	{ 0, NULL }
 };
 
@@ -466,6 +433,7 @@ static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_
 			if (descriptor.idVendor == 0x1278 && ASI_PRODUCTS[i].product == descriptor.idProduct) {
 				asi_private_data *private_data = malloc(sizeof(asi_private_data));
 				memset(private_data, 0, sizeof(asi_private_data));
+				libusb_ref_device(dev);
 				private_data->dev = dev;
 				indigo_device *device = malloc(sizeof(indigo_device));
 				if (device != NULL) {
@@ -474,7 +442,7 @@ static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_
 					device->device_context = private_data;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						if (devices[j] == NULL) {
-							indigo_attach_device(devices[j] = device);
+							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
 							break;
 						}
 					}
@@ -487,7 +455,7 @@ static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_
 					device->device_context = private_data;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						if (devices[j] == NULL) {
-							indigo_attach_device(devices[j] = device);
+							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
 							break;
 						}
 					}
@@ -511,7 +479,7 @@ static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_
 			}
 		}
 		if (private_data != NULL) {
-			free(private_data->dev);
+			libusb_unref_device(dev);
 			free(private_data);
 		}
 		break;
