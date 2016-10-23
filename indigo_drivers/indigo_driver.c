@@ -479,5 +479,11 @@ void indigo_start_usb_even_handler() {
 		thread_started = true;
 	}
 }
+	
+void indigo_async(void *fun(void *data), void *data) {
+	pthread_t async_thread;
+	pthread_create(&async_thread, NULL, fun, data);
+}
+
 
 

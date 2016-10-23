@@ -226,5 +226,9 @@ extern void indigo_cancel_timer(indigo_device *device, indigo_timer *timer);
  */
 extern void indigo_start_usb_even_handler();
 
+/** Asynchronous execution in thread.
+ */
+extern void indigo_async(void *fun(void *data), void *data);
+
 #endif /* indigo_device_h */
 
