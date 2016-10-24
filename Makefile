@@ -11,7 +11,7 @@ endif
 ifeq ($(OS_detected),Darwin)
 CC=gcc
 CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/libusb/libusb -Iexternals/hidapi/hidapi -std=gnu11 -DINDIGO_DARWIN
-LDFLAGS=-framework CoreFoundation -framework IOKit
+LDFLAGS=-framework CoreFoundation -framework IOKit -lobjc
 LIBUSB=libusb.a
 HIDAPI=externals/hidapi/mac/hid.o
 AR=ar
