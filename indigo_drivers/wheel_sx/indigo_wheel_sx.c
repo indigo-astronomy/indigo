@@ -195,13 +195,13 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			if (device != NULL)
 				return 0;
-			if ((device = malloc(sizeof(indigo_device))) != NULL) {
-				memcpy(device, &wheel_template, sizeof(indigo_device));
-				if ((device->device_context = malloc(sizeof(sx_private_data))) != NULL) {
-					memset(device->device_context, 0, sizeof(sx_private_data));
-					indigo_attach_device(device);
-				}
-			}
+			device = malloc(sizeof(indigo_device));
+			assert(device != NULL);
+			memcpy(device, &wheel_template, sizeof(indigo_device));
+			device->device_context = malloc(sizeof(sx_private_data));
+			assert(device->device_context);
+			memset(device->device_context, 0, sizeof(sx_private_data));
+			indigo_attach_device(device);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {

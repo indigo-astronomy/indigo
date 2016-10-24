@@ -149,6 +149,7 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 		free_timers = free_timers->next;
 	} else {
 		timer = malloc(sizeof(indigo_timer));
+		assert(timer != NULL);
 	}
 	pthread_mutex_unlock(&timer_mutex);
 
@@ -224,6 +225,7 @@ void *dispatch_function(indigo_timer *timer) {
 
 indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback) {
 	indigo_timer *timer = malloc(sizeof(indigo_timer));
+	assert(timer != NULL);
 	timer->device = device;
 	timer->callback = callback;
 	timer->canceled = false;
@@ -245,6 +247,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 	assert(device != NULL);
 	if (DEVICE_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_device_context));
+		assert(device->device_context != NULL);
 		memset(device->device_context, 0, sizeof(indigo_device_context));
 	}
 	if (DEVICE_CONTEXT != NULL) {

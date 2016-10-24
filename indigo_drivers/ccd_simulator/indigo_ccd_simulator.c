@@ -422,25 +422,22 @@ indigo_result indigo_ccd_simulator() {
 	};
 
 	simulator_private_data *private_data = malloc(sizeof(simulator_private_data));
-	if (private_data == NULL)
-		return INDIGO_FAILED;
-
-	indigo_device *device;
-
-	if ((device = malloc(sizeof(indigo_device))) == NULL)
-		return INDIGO_FAILED;
+	assert(private_data != NULL);
+	
+	indigo_device *device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
 	device->device_context = private_data;
 	indigo_attach_device(device);
 
-	if ((device = malloc(sizeof(indigo_device))) == NULL)
-		return INDIGO_FAILED;
+	device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
 	memcpy(device, &guider_template, sizeof(indigo_device));
 	device->device_context = private_data;
 	indigo_attach_device(device);
 	
-	if ((device = malloc(sizeof(indigo_device))) == NULL)
-		return INDIGO_FAILED;
+	device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
 	memcpy(device, &wheel_template, sizeof(indigo_device));
 	device->device_context = private_data;
 	indigo_attach_device(device);

@@ -62,6 +62,7 @@ indigo_result indigo_ccd_device_attach(indigo_device *device, indigo_version ver
 	assert(device != NULL);
 	if (CCD_DEVICE_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_ccd_device_context));
+		assert(device->device_context != NULL);
 		memset(device->device_context, 0, sizeof(indigo_ccd_device_context));
 	}
 	if (CCD_DEVICE_CONTEXT != NULL) {

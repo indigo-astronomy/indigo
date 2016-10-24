@@ -432,35 +432,34 @@ static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_
 		for (int i = 0; ASI_PRODUCTS[i].name; i++) {
 			if (descriptor.idVendor == 0x1278 && ASI_PRODUCTS[i].product == descriptor.idProduct) {
 				asi_private_data *private_data = malloc(sizeof(asi_private_data));
+				assert(private_data != NULL);
 				memset(private_data, 0, sizeof(asi_private_data));
 				libusb_ref_device(dev);
 				private_data->dev = dev;
 				indigo_device *device = malloc(sizeof(indigo_device));
-				if (device != NULL) {
-					memcpy(device, &ccd_template, sizeof(indigo_device));
-					strcpy(device->name, ASI_PRODUCTS[i].name);
-					device->device_context = private_data;
-					for (int j = 0; j < MAX_DEVICES; j++) {
-						if (devices[j] == NULL) {
-							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-							break;
-						}
+				assert(device != NULL);
+				memcpy(device, &ccd_template, sizeof(indigo_device));
+				strcpy(device->name, ASI_PRODUCTS[i].name);
+				device->device_context = private_data;
+				for (int j = 0; j < MAX_DEVICES; j++) {
+					if (devices[j] == NULL) {
+						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+						break;
 					}
 				}
 				device = malloc(sizeof(indigo_device));
-				if (device != NULL) {
-					memcpy(device, &guider_template, sizeof(indigo_device));
-					strcpy(device->name, ASI_PRODUCTS[i].name);
-					strcat(device->name, " guider");
-					device->device_context = private_data;
-					for (int j = 0; j < MAX_DEVICES; j++) {
-						if (devices[j] == NULL) {
-							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-							break;
-						}
+				assert(device != NULL);
+				memcpy(device, &guider_template, sizeof(indigo_device));
+				strcpy(device->name, ASI_PRODUCTS[i].name);
+				strcat(device->name, " guider");
+				device->device_context = private_data;
+				for (int j = 0; j < MAX_DEVICES; j++) {
+					if (devices[j] == NULL) {
+						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+						break;
 					}
 				}
-				return 0;
+				break;
 			}
 		}
 		break;

@@ -234,6 +234,7 @@ static bool ssag_open(indigo_device *device) {
 		rc = rc < 0 ? rc : ssag_init_sequence(device);
 	}
 	PRIVATE_DATA->buffer = (unsigned char *)malloc(FITS_HEADER_SIZE + BUFFER_SIZE);
+	assert(PRIVATE_DATA->buffer != NULL);
 	return rc >= 0;
 }
 
@@ -505,31 +506,30 @@ static int ssag_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb
 		} else if (descriptor.idVendor == SSAG_VENDOR_ID && descriptor.idProduct == SSAG_PRODUCT_ID) {
 			INDIGO_DEBUG(indigo_debug("ssag_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s (0x%04x, 0x%04x)", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct));
 			ssag_private_data *private_data = malloc(sizeof(ssag_private_data));
+			assert(private_data != NULL);
 			memset(private_data, 0, sizeof(ssag_private_data));
 			libusb_ref_device(dev);
 			private_data->dev = dev;
 			indigo_device *device = malloc(sizeof(indigo_device));
-			if (device != NULL) {
-				memcpy(device, &ccd_template, sizeof(indigo_device));
-				strcpy(device->name, "SSAG");
-				device->device_context = private_data;
-				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-						break;
-					}
+			assert(device != NULL);
+			memcpy(device, &ccd_template, sizeof(indigo_device));
+			strcpy(device->name, "SSAG");
+			device->device_context = private_data;
+			for (int j = 0; j < MAX_DEVICES; j++) {
+				if (devices[j] == NULL) {
+					indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+					break;
 				}
 			}
 			device = malloc(sizeof(indigo_device));
-			if (device != NULL) {
-				memcpy(device, &guider_template, sizeof(indigo_device));
-				strcpy(device->name, "SSAG guider");
-				device->device_context = private_data;
-				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-						break;
-					}
+			assert(device != NULL);
+			memcpy(device, &guider_template, sizeof(indigo_device));
+			strcpy(device->name, "SSAG guider");
+			device->device_context = private_data;
+			for (int j = 0; j < MAX_DEVICES; j++) {
+				if (devices[j] == NULL) {
+					indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+					break;
 				}
 			}
 		}
