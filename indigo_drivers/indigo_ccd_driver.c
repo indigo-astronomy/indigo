@@ -439,15 +439,15 @@ indigo_result indigo_ccd_device_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-void indigo_process_image(indigo_device *device, void *data, double exposure_time) {
+void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time) {
 	assert(device != NULL);
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
 
 	int horizontal_bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
-	int frame_width = CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
-	int frame_height = CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
+//	int frame_width = CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
+//	int frame_height = CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
 	int byte_per_pixel = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value / 8;
 	int size = frame_width * frame_height;
 

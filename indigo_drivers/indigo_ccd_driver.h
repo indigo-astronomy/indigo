@@ -316,7 +316,7 @@ extern indigo_result indigo_ccd_device_detach(indigo_device *device);
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
-extern void indigo_process_image(indigo_device *device, void *data, double exposure_time);
+extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time);
 
 #endif /* indigo_ccd_device_h */
 

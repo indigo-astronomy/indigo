@@ -94,7 +94,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				}
 			}
 		}
-		indigo_process_image(device, private_data->image, private_data->exposure_time);
+		indigo_process_image(device, private_data->image, frame_width, frame_height, private_data->exposure_time);
 	}
 }
 
