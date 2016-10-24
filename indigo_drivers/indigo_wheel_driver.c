@@ -54,6 +54,7 @@ indigo_result indigo_wheel_device_attach(indigo_device *device, indigo_version v
 	assert(device != NULL);
 	if (WHEEL_DEVICE_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_wheel_device_context));
+		assert(device->device_context);
 		memset(device->device_context, 0, sizeof(indigo_wheel_device_context));
 	}
 	if (WHEEL_DEVICE_CONTEXT != NULL) {

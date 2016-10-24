@@ -130,13 +130,13 @@ indigo_device *indigo_xml_client_adapter(int input, int ouput) {
 		xml_client_parser_detach
 	};
 	indigo_device *device = malloc(sizeof(indigo_device));
-	if (device != NULL) {
-		memcpy(device, &device_template, sizeof(indigo_device));
-		indigo_xml_client_adapter_context *device_context = malloc(sizeof(indigo_xml_client_adapter_context));
-		device_context->input = input;
-		device_context->output = ouput;
-		device->device_context = device_context;
-	}
+	assert(device != NULL);
+	memcpy(device, &device_template, sizeof(indigo_device));
+	indigo_xml_client_adapter_context *device_context = malloc(sizeof(indigo_xml_client_adapter_context));
+	assert(device_context != NULL);
+	device_context->input = input;
+	device_context->output = ouput;
+	device->device_context = device_context;
 	return device;
 }
 

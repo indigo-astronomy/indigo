@@ -279,9 +279,12 @@ static bool sx_open(indigo_device *device) {
 							PRIVATE_DATA->pix_height /= 2;
 						}
 						PRIVATE_DATA->buffer = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + FITS_HEADER_SIZE);
+						assert(PRIVATE_DATA->buffer != NULL);
 						if (PRIVATE_DATA->is_interlaced) {
 							PRIVATE_DATA->even = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+							assert(PRIVATE_DATA->even != NULL);
 							PRIVATE_DATA->odd = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+							assert(PRIVATE_DATA->odd != NULL);
 						}
 						INDIGO_DEBUG(indigo_debug("sxGetCameraParams: chip size: %d x %d, pixel size: %4.2f x %4.2f, matrix type: %x", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height, PRIVATE_DATA->pix_width, PRIVATE_DATA->pix_height, PRIVATE_DATA->color_matrix));
 						INDIGO_DEBUG(indigo_debug("sxGetCameraParams: capabilities:%s%s%s%s", (PRIVATE_DATA->extra_caps & CAPS_GUIDER ? " GUIDER" : ""), (PRIVATE_DATA->extra_caps & CAPS_STAR2K ? " STAR2K" : ""), (PRIVATE_DATA->extra_caps & CAPS_COOLER ? " COOLER" : ""), (PRIVATE_DATA->extra_caps & CAPS_SHUTTER ? " SHUTTER" : "")));
@@ -871,35 +874,34 @@ static int sx_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_h
 		for (int i = 0; SX_PRODUCTS[i].name; i++) {
 			if (descriptor.idVendor == SX_VENDOR_ID && SX_PRODUCTS[i].product == descriptor.idProduct) {
 				sx_private_data *private_data = malloc(sizeof(sx_private_data));
+				assert(private_data != NULL);
 				memset(private_data, 0, sizeof(sx_private_data));
 				private_data->dev = dev;
 				libusb_ref_device(dev);
 				indigo_device *device = malloc(sizeof(indigo_device));
-				if (device != NULL) {
-					memcpy(device, &ccd_template, sizeof(indigo_device));
-					strcpy(device->name, SX_PRODUCTS[i].name);
-					device->device_context = private_data;
-					for (int j = 0; j < MAX_DEVICES; j++) {
-						if (devices[j] == NULL) {
-							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-							break;
-						}
+				assert(device != NULL);
+				memcpy(device, &ccd_template, sizeof(indigo_device));
+				strcpy(device->name, SX_PRODUCTS[i].name);
+				device->device_context = private_data;
+				for (int j = 0; j < MAX_DEVICES; j++) {
+					if (devices[j] == NULL) {
+						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+						break;
 					}
 				}
 				device = malloc(sizeof(indigo_device));
-				if (device != NULL) {
-					memcpy(device, &guider_template, sizeof(indigo_device));
-					strcpy(device->name, SX_PRODUCTS[i].name);
-					strcat(device->name, " guider");
-					device->device_context = private_data;
-					for (int j = 0; j < MAX_DEVICES; j++) {
-						if (devices[j] == NULL) {
-							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-							break;
-						}
+				assert(device != NULL);
+				memcpy(device, &guider_template, sizeof(indigo_device));
+				strcpy(device->name, SX_PRODUCTS[i].name);
+				strcat(device->name, " guider");
+				device->device_context = private_data;
+				for (int j = 0; j < MAX_DEVICES; j++) {
+					if (devices[j] == NULL) {
+						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+						break;
 					}
 				}
-				return 0;
+				break;
 			}
 		}
 		break;
