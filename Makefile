@@ -112,7 +112,7 @@ externals/hidapi/Makefile: externals/hidapi/configure
 	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT); cd ../..
 
 lib/libhidapi.a: externals/hidapi/Makefile
-	cd externals/hidapi; make install; cd ../..
+	cd externals/hidapi; make; make install; cd ../..
 
 #---------------------------------------------------------------------
 #
@@ -151,6 +151,9 @@ lib/libatik.a: include/libatik/libatik.h
 init:
 	$(info -------------------- $(OS_DETECTED) build --------------------)
 	git submodule update --init --recursive
+	mkdir bin
+	mkdir lib
+	mkdir include
 
 #---------------------------------------------------------------------
 #
