@@ -61,7 +61,7 @@ endif
 
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
-	CFLAGS=Iindigo -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
+	CFLAGS=-Iindigo -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
 	LDFLAGS=-lm -lrt -lusb-1.0 -ludev
 	LIBUSB=
 	LIBHIDAPI=lib/libhidapi.a
