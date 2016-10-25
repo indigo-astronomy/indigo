@@ -106,7 +106,7 @@ lib/libusb-1.0.a: externals/libusb/Makefile
 #---------------------------------------------------------------------
 
 externals/hidapi/configure: externals/hidapi/configure.ac
-	cd externals/hidapi; autoreconf -i; cd ../..
+	cd externals/hidapi; ./bootstrap; cd ../..
 
 externals/hidapi/Makefile: externals/hidapi/configure
 	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT); cd ../..
