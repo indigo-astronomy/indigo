@@ -1,4 +1,11 @@
 indigo.xcodeproj/project.xcworkspace/
 indigo.xcodeproj/xcuserdata/
 
+lib/*
+bin/*
+include/*
+
 **/*.o
+
+**/.hg
+**/.hgignore

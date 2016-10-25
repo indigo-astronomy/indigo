@@ -50,8 +50,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#if defined(INDIGO_DARWIN)
-#include "libusb.h"
+#if defined(INDIGO_MACOS)
+#include <libusb-1.0/libusb.h>
 #elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
@@ -213,7 +213,7 @@ void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
 	pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
 }
 
-#elif defined(INDIGO_DARWIN)
+#elif defined(INDIGO_MACOS)
 
 void *dispatch_function(indigo_timer *timer) {
 	if (!timer->canceled) {

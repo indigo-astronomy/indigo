@@ -44,18 +44,17 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_DARWIN)
-#include "libusb.h"
-#elif defined(INDIGO_FREEBSD)
+#if defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "hidapi.h"
+#include <hidapi/hidapi.h>
+
+#include "indigo_driver_xml.h"
 
 #include "indigo_wheel_sx.h"
-#include "indigo_driver_xml.h"
 
 // -------------------------------------------------------------------------------- SX USB interface implementation
 

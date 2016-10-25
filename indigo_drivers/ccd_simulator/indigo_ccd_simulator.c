@@ -42,8 +42,9 @@
 #include <math.h>
 #include <assert.h>
 
-#include "ccd_simulator/indigo_ccd_simulator.h"
 #include "indigo_driver_xml.h"
+
+#include "indigo_ccd_simulator.h"
 
 #define WIDTH               5600
 #define HEIGHT              5200

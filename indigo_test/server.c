@@ -45,7 +45,7 @@
 #include "ccd_sx/indigo_ccd_sx.h"
 #include "ccd_ssag/indigo_ccd_ssag.h"
 #include "ccd_asi/indigo_ccd_asi.h"
-//#include "ccd_atik/indigo_ccd_atik.h"
+#include "ccd_atik/indigo_ccd_atik.h"
 
 #include "wheel_sx/indigo_wheel_sx.h"
 
@@ -62,7 +62,7 @@ int main(int argc, const char * argv[]) {
 	indigo_ccd_sx();
 	indigo_ccd_ssag();
 	indigo_ccd_asi();
-	//indigo_ccd_atik();
+	indigo_ccd_atik();
 
 	indigo_wheel_sx();
 

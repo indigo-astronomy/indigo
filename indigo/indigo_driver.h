@@ -40,11 +40,11 @@
 #define indigo_device_h
 
 //#define INDIGO_LINUX
-//#undef INDIGO_DARWIN
+//#undef INDIGO_MACOS
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 #include <pthread.h>
-#elif defined(INDIGO_DARWIN)
+#elif defined(INDIGO_MACOS)
 #include <dispatch/dispatch.h>
 #endif
 
@@ -167,7 +167,7 @@ typedef struct indigo_timer {
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 	struct timespec time;                     ///< time to fire (linux only)
 	struct indigo_timer *next;                ///< next timer in the queue (linux only)
-#elif defined(INDIGO_DARWIN)
+#elif defined(INDIGO_MACOS)
 	bool canceled;                            ///< timer is canceled (darwin only)
 #endif
 } indigo_timer;
