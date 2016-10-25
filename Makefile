@@ -50,7 +50,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBHIDAPI=lib/libhidapi.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=lib/libusb-1.0.a lib/libhidapi.a lib/libdc1394.a lib/libatik.a
+	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a
 endif
 
 #---------------------------------------------------------------------
@@ -64,10 +64,10 @@ ifeq ($(OS_DETECTED),Linux)
 	CFLAGS=-Iindigo -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
 	LDFLAGS=-lm -lrt -lusb-1.0 -ludev
 	LIBUSB=
-	LIBHIDAPI=lib/libhidapi.a
+	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=lib/libhidapi.a lib/libdc1394.a lib/libatik.a
+	DEPENDENCIES=$(LIBHIDAPI) lib/libatik.a
 endif
 
 #---------------------------------------------------------------------
@@ -151,9 +151,9 @@ lib/libatik.a: include/libatik/libatik.h
 init:
 	$(info -------------------- $(OS_DETECTED) build --------------------)
 	git submodule update --init --recursive
-	mkdir bin
-	mkdir lib
-	mkdir include
+	mkdir -p bin
+	mkdir -p lib
+	mkdir -p include
 
 #---------------------------------------------------------------------
 #
