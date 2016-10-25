@@ -80,6 +80,16 @@ ifeq ($(OS_DETECTED),Windows)
 #	Windows - TBD
 endif
 
+
+DRIVERS=\
+	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*))) \
+	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))
+
+DRIVER_LIBS=\
+	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
+	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))))
+
+
 .PHONY: init clean
 
 all: init $(DEPENDENCIES) lib/libindigo.a drivers bin/test bin/client bin/server
@@ -136,7 +146,7 @@ lib/libdc1394.a: externals/libdc1394/Makefile
 #---------------------------------------------------------------------
 
 include/libatik/libatik.h:
-	mkdir -p include/libatik
+	install -d include/libatik
 	cp indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik/libatik.h include/libatik
 
 lib/libatik.a: include/libatik/libatik.h
@@ -150,10 +160,11 @@ lib/libatik.a: include/libatik/libatik.h
 
 init:
 	$(info -------------------- $(OS_DETECTED) build --------------------)
+	$(info drivers: $(notdir $(DRIVERS)))
 	git submodule update --init --recursive
-	mkdir -p bin
-	mkdir -p lib
-	mkdir -p include
+	install -d bin
+	install -d lib
+	install -d include
 
 #---------------------------------------------------------------------
 #
@@ -170,11 +181,7 @@ lib/libindigo.a: $(addsuffix .o, $(basename $(wildcard indigo/*.c)))
 #
 #---------------------------------------------------------------------
 
-drivers:\
-	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*))) \
-	$(addsufix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
-	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))) \
-	$(addsufix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))))
+drivers: $(DRIVER_LIBS) $(DRIVERS)
 
 #---------------------------------------------------------------------
 #
@@ -260,7 +267,7 @@ bin/test: indigo_test/test.o lib/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB
 bin/client: indigo_test/client.o lib/libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-bin/server: indigo_test/server.o $(wildcard lib/indigo_ccd_*.a) $(wildcard lib/indigo_wheel_*.a) lib/libindigo.a $(DEPENDENCIES)
+bin/server: indigo_test/server.o $(DRIVER_LIBS) lib/libindigo.a $(DEPENDENCIES)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 rules:
