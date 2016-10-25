@@ -106,7 +106,7 @@ externals/libusb/configure: externals/libusb/configure.ac
 externals/libusb/Makefile: externals/libusb/configure
 	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT); cd ../..
 
-lib/libusb-1.0.a: externals/libusb/Makefile
+$(LIBUSB): externals/libusb/Makefile
 	cd externals/libusb; make; make install; cd ../..
 
 #---------------------------------------------------------------------
@@ -121,7 +121,7 @@ externals/hidapi/configure: externals/hidapi/configure.ac
 externals/hidapi/Makefile: externals/hidapi/configure
 	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT); cd ../..
 
-lib/libhidapi.a: externals/hidapi/Makefile
+$(LIBHIDAPI): externals/hidapi/Makefile
 	cd externals/hidapi; make; make install; cd ../..
 
 #---------------------------------------------------------------------
