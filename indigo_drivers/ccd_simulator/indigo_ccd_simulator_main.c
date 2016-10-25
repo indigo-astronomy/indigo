@@ -38,8 +38,9 @@
 
 #include <stdio.h>
 
-#include "ccd_simulator/indigo_ccd_simulator.h"
 #include "indigo_driver_xml.h"
+
+#include "indigo_ccd_simulator.h"
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;

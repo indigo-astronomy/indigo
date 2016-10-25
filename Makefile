@@ -1,128 +1,267 @@
+#---------------------------------------------------------------------
+#
+#	Platform detection
+#
+#---------------------------------------------------------------------
+
+INDIGO_VERSION := 2.0
+INDIGO_ROOT := $(shell pwd)
+
 ifeq ($(OS),Windows_NT)
-OS_detected := Windows
+	OS_DETECTED := Windows
 else
-OS_detected := $(shell uname -s)
+	OS_DETECTED := $(shell uname -s)
+	ARCH_DETECTED=$(shell uname -m)
+	ifeq ($(ARCH_DETECTED),armv7l)
+		ARCH_DETECTED=arm
+	endif
+	ifeq ($(ARCH_DETECTED),i686)
+		ARCH_DETECTED=x86
+	endif
+	ifeq ($(ARCH_DETECTED),x86_64)
+		ARCH_DETECTED=x64
+	endif
 endif
 
-ifeq ($(OS_detected),Windows)
+#---------------------------------------------------------------------
+#
+#	External helpers
+#
+#---------------------------------------------------------------------
+
+ifeq ($(OS_DETECTED),Darwin)
+	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS/libatik.a
+endif
+ifeq ($(OS_DETECTED),Linux)
+	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
+endif
+
+#---------------------------------------------------------------------
+#
+#	Darwin/macOS parameters
+#
+#---------------------------------------------------------------------
+
+ifeq ($(OS_DETECTED),Darwin)
+	CC=gcc
+	CFLAGS=-Iindigo -Iindigo_drivers -Iinclude -std=gnu11 -DINDIGO_MACOS
+	LDFLAGS=-framework CoreFoundation -framework IOKit -lobjc
+	LIBUSB=lib/libusb-1.0.a
+	LIBHIDAPI=lib/libhidapi.a
+	AR=ar
+	ARFLAGS=-rv
+	DEPENDENCIES=lib/libusb-1.0.a lib/libhidapi.a lib/libdc1394.a lib/libatik.a
+endif
+
+#---------------------------------------------------------------------
+#
+#	Linux parameters
+#
+#---------------------------------------------------------------------
+
+ifeq ($(OS_DETECTED),Linux)
+	CC=gcc
+	CFLAGS=Iindigo -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
+	LDFLAGS=-lm -lrt -lusb-1.0 -ludev
+	LIBUSB=
+	LIBHIDAPI=lib/libhidapi.a
+	AR=ar
+	ARFLAGS=-rv
+	DEPENDENCIES=lib/libhidapi.a lib/libdc1394.a lib/libatik.a
+endif
+
+#---------------------------------------------------------------------
+#
+#	Windows build parameters
+#
+#---------------------------------------------------------------------
+
+ifeq ($(OS_DETECTED),Windows)
 #	Windows - TBD
-endif
-
-ifeq ($(OS_detected),Darwin)
-CC=gcc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/libusb/libusb -Iexternals/hidapi/hidapi -std=gnu11 -DINDIGO_DARWIN
-LDFLAGS=-framework CoreFoundation -framework IOKit -lobjc
-LIBUSB=libusb.a
-HIDAPI=externals/hidapi/mac/hid.o
-AR=ar
-ARFLAGS=-rv
-endif
-
-ifeq ($(OS_detected),Linux)
-CC=gcc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/hidapi/hidapi -std=gnu11 -pthread -DINDIGO_LINUX
-LDFLAGS=-lm -lrt -lusb-1.0 -ludev
-LIBUSB=
-HIDAPI=externals/hidapi/linux/hid.o
-AR=ar
-ARFLAGS=-rv
-endif
-
-ifeq ($(OS_detected),FreeBSD)
-CC=cc
-CFLAGS=-Iindigo_bus -Iindigo_drivers -Iexternals/hidapi/hidapi -std=gnu11 -pthread -DINDIGO_FREEBSD
-LDFLAGS=-lm -lrt -lusb
-LIBUSB=
-HIDAPI=
-AR=ar
-ARFLAGS=-rv
 endif
 
 .PHONY: init clean
 
-all: init test client server drivers
+all: init $(DEPENDENCIES) lib/libindigo.a drivers bin/test bin/client bin/server
 
-drivers:\
-	indigo_ccd_simulator\
-	indigo_ccd_sx\
-	indigo_ccd_ssag\
-	indigo_ccd_asi\
-	indigo_wheel_sx
+#---------------------------------------------------------------------
+#
+#	Build libusb-1.0 for macOS
+#
+#---------------------------------------------------------------------
+
+externals/libusb/configure: externals/libusb/configure.ac
+	cd externals/libusb; autoreconf -i; cd ../..
+
+externals/libusb/Makefile: externals/libusb/configure
+	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT); cd ../..
+
+lib/libusb-1.0.a: externals/libusb/Makefile
+	cd externals/libusb; make; make install; cd ../..
+
+#---------------------------------------------------------------------
+#
+#	Build libhidapi
+#
+#---------------------------------------------------------------------
+
+externals/hidapi/configure: externals/hidapi/configure.ac
+	cd externals/hidapi; autoreconf -i; cd ../..
+
+externals/hidapi/Makefile: externals/hidapi/configure
+	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT); cd ../..
+
+lib/libhidapi.a: externals/hidapi/Makefile
+	cd externals/hidapi; make install; cd ../..
+
+#---------------------------------------------------------------------
+#
+#	Build libdc1394
+#
+#---------------------------------------------------------------------
+
+externals/libdc1394/configure: externals/libdc1394/configure.ac
+	cd externals/libdc1394; autoreconf -i; cd ../..
+
+externals/libdc1394/Makefile: externals/libdc1394/configure
+	cd externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT) CFLAGS="-Duint=unsigned" LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/include/libusb-1.0" LIBUSB_LIBS="-L$(INDIGO_ROOT)/lib -lusb-1.0"; cd ../..
+
+lib/libdc1394.a: externals/libdc1394/Makefile
+	cd externals/libdc1394; make install; cd ../..
+
+#---------------------------------------------------------------------
+#
+#	Install libatik
+#
+#---------------------------------------------------------------------
+
+include/libatik/libatik.h:
+	mkdir -p include/libatik
+	cp indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik/libatik.h include/libatik
+
+lib/libatik.a: include/libatik/libatik.h
+	cp $(LIBATIK) lib
+
+#---------------------------------------------------------------------
+#
+#	Initialize
+#
+#---------------------------------------------------------------------
 
 init:
-	$(info -------------------- $(OS_detected) build --------------------)
-ifeq ($(OS_detected),Darwin)
-	printf "#define DEFAULT_VISIBILITY\n#define ENABLE_LOGGING 1\n#define HAVE_GETTIMEOFDAY 1\n#define HAVE_POLL_H 1\n#define HAVE_SYS_TIME_H 1\n#define OS_DARWIN 1\n#define POLL_NFDS_TYPE nfds_t\n#define THREADS_POSIX 1\n#define _GNU_SOURCE 1\n" >externals/libusb/libusb/config.h
-endif
+	$(info -------------------- $(OS_DETECTED) build --------------------)
+	git submodule update --init --recursive
 
-libusb.a:\
-	externals/libusb/libusb/core.o\
-	externals/libusb/libusb/descriptor.o\
-	externals/libusb/libusb/hotplug.o\
-	externals/libusb/libusb/io.o\
-	externals/libusb/libusb/strerror.o\
-	externals/libusb/libusb/sync.o\
-	externals/libusb/libusb/os/darwin_usb.o\
-	externals/libusb/libusb/os/poll_posix.o\
-	externals/libusb/libusb/os/threads_posix.o
+#---------------------------------------------------------------------
+#
+#	Build libindigo
+#
+#---------------------------------------------------------------------
+
+lib/libindigo.a: $(addsuffix .o, $(basename $(wildcard indigo/*.c)))
 	$(AR) $(ARFLAGS) $@ $^
 
+#---------------------------------------------------------------------
+#
+#	Build drivers
+#
+#---------------------------------------------------------------------
 
-libindigo.a:\
-	indigo_bus/indigo_bus.o\
-	indigo_bus/indigo_base64.o\
-	indigo_bus/indigo_xml.o\
-	indigo_bus/indigo_version.o\
-	indigo_bus/indigo_server_xml.o\
-	indigo_bus/indigo_driver_xml.o\
-	indigo_bus/indigo_client_xml.o\
-	indigo_drivers/indigo_driver.o\
-	indigo_drivers/indigo_ccd_driver.o\
-	indigo_drivers/indigo_guider_driver.o\
-	indigo_drivers/indigo_wheel_driver.o
+drivers:\
+	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*))) \
+	$(addsufix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
+	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))) \
+	$(addsufix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))))
+
+#---------------------------------------------------------------------
+#
+#	Build CCD simulator driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
 	$(AR) $(ARFLAGS) $@ $^
 
-indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
+bin/indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o lib/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+#---------------------------------------------------------------------
+#
+#	Build SX CCD driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_ccd_sx.a: indigo_drivers/ccd_sx/indigo_ccd_sx.o
 	$(AR) $(ARFLAGS) $@ $^
 
-indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o indigo_ccd_simulator.a libindigo.a $(LIBUSB)
+bin/indigo_ccd_sx: indigo_drivers/ccd_sx/indigo_ccd_sx_main.o lib/indigo_ccd_sx.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-indigo_ccd_sx.a: indigo_drivers/ccd_sx/indigo_ccd_sx.o
+#---------------------------------------------------------------------
+#
+#	Build SSAG/QHY5 CCD driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_ccd_ssag.a: indigo_drivers/ccd_ssag/indigo_ccd_ssag.o
 	$(AR) $(ARFLAGS) $@ $^
 
-indigo_ccd_sx: indigo_drivers/ccd_sx/indigo_ccd_sx_main.o indigo_ccd_sx.a libindigo.a $(LIBUSB)
+bin/indigo_ccd_ssag: indigo_drivers/ccd_ssag/indigo_ccd_ssag_main.o lib/indigo_ccd_ssag.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-indigo_ccd_ssag.a: indigo_drivers/ccd_ssag/indigo_ccd_ssag.o
+#---------------------------------------------------------------------
+#
+#	Build ASI CCD driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_ccd_asi.a: indigo_drivers/ccd_asi/indigo_ccd_asi.o
 	$(AR) $(ARFLAGS) $@ $^
 
-indigo_ccd_ssag: indigo_drivers/ccd_ssag/indigo_ccd_ssag_main.o indigo_ccd_ssag.a libindigo.a $(LIBUSB)
+bin/indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o lib/indigo_ccd_asi.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-indigo_ccd_asi.a: indigo_drivers/ccd_asi/indigo_ccd_asi.o
+#---------------------------------------------------------------------
+#
+#	Build ASI CCD driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_ccd_atik.a: indigo_drivers/ccd_atik/indigo_ccd_atik.o
 	$(AR) $(ARFLAGS) $@ $^
 
-indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o indigo_ccd_asi.a libindigo.a $(LIBUSB)
+bin/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o lib/indigo_ccd_atik.a lib/libindigo.a  lib/libatik.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
+#---------------------------------------------------------------------
+#
+#	Build SX filter wheel driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
 	$(AR) $(ARFLAGS) $@ $^
 
-indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o indigo_wheel_sx.a libindigo.a $(LIBUSB) $(HIDAPI)
+bin/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o lib/indigo_wheel_sx.a lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-test: indigo_test/test.o indigo_ccd_simulator.a libindigo.a $(LIBUSB) $(HIDAPI)
+#---------------------------------------------------------------------
+#
+#	Build tests
+#
+#---------------------------------------------------------------------
+
+bin/test: indigo_test/test.o lib/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-client: indigo_test/client.o libindigo.a
+bin/client: indigo_test/client.o lib/libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-server: indigo_test/server.o indigo_ccd_simulator.a indigo_ccd_sx.a indigo_ccd_ssag.a indigo_ccd_asi.a indigo_wheel_sx.a libindigo.a $(LIBUSB) $(HIDAPI)
+bin/server: indigo_test/server.o $(wildcard lib/indigo_ccd_*.a) $(wildcard lib/indigo_wheel_*.a) lib/libindigo.a $(DEPENDENCIES)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 rules:
-ifeq ($(OS_detected),Linux)
+ifeq ($(OS_DETECTED),Linux)
 	sudo cp indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-sx.rules
 	sudo cp indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-ssag.rules
 	sudo cp indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-asi.rules
@@ -130,12 +269,8 @@ ifeq ($(OS_detected),Linux)
 endif
 
 clean: init
-	rm -f $(LIBUSB) externals/libusb/libusb/config.h externals/libusb/libusb/*.o externals/libusb/libusb/os/*.o
-	rm -f $(HIDAPI)
-	rm -f libindigo.a indigo_bus/*.o indigo_drivers/*.o
-	rm -f indigo_ccd_simulator indigo_ccd_simulator.a indigo_drivers/ccd_simulator/*.o
-	rm -f indigo_ccd_sx indigo_ccd_sx.a indigo_drivers/ccd_sx/*.o
-	rm -f indigo_ccd_ssag indigo_ccd_ssag.a indigo_drivers/ccd_ssag/*.o
-	rm -f indigo_ccd_asi indigo_ccd_asi.a indigo_drivers/ccd_asi/*.o
-	rm -f indigo_wheel_sx indigo_wheel_sx.a indigo_drivers/wheel_sx/*.o
-	rm -f test client server indigo_test/*.o
+	rm bin/*
+	rm lib/libindigo.a indigo/*.o
+	rm $(wildcard indigo_drivers/*/*.o)
+	rm $(wildcard lib/indigo_ccd_*.a)
+	rm $(wildcard lib/indigo_wheel_*.a)

@@ -47,8 +47,8 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_DARWIN)
-#include "libusb.h"
+#if defined(INDIGO_MACOS)
+#include <libusb-1.0/libusb.h>
 #elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else

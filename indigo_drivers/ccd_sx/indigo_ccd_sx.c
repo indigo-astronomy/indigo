@@ -47,16 +47,17 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_DARWIN)
-#include "libusb.h"
+#if defined(INDIGO_MACOS)
+#include <libusb-1.0/libusb.h>
 #elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "indigo_ccd_sx.h"
 #include "indigo_driver_xml.h"
+
+#include "indigo_ccd_sx.h"
 
 // -------------------------------------------------------------------------------- SX USB interface implementation
 

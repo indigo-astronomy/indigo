@@ -1,9 +1,9 @@
+[submodule "externals/libdc1394"]
+	path = externals/libdc1394
+	url = https://github.com/indigo-astronomy/libdc1394.git
 [submodule "externals/libusb"]
 	path = externals/libusb
 	url = https://github.com/indigo-astronomy/libusb.git
 [submodule "externals/hidapi"]
 	path = externals/hidapi
 	url = https://github.com/indigo-astronomy/hidapi.git
-[submodule "externals/libdc1394"]
-	path = externals/libdc1394
-	url = https://github.com/indigo-astronomy/libdc1394.git

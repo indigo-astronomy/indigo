@@ -44,18 +44,18 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_DARWIN)
-#include "libusb.h"
-#elif defined(INDIGO_FREEBSD)
+#if defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "indigo_ccd_atik.h"
+#include <libatik/libatik.h>
+
 #include "indigo_driver_xml.h"
 
-#include "bin_externals/libatik/libatik.h"
+#include "indigo_ccd_atik.h"
+
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((atik_private_data *)DEVICE_CONTEXT->private_data)

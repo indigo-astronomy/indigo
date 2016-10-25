@@ -39,8 +39,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "indigo_ccd_sx.h"
 #include "indigo_driver_xml.h"
+
+#include "indigo_ccd_sx.h"
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
