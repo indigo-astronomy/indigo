@@ -223,7 +223,7 @@ bin/indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o lib/indigo_ccd_
 
 #---------------------------------------------------------------------
 #
-#	Build ASI CCD driver
+#	Build ATIK CCD driver
 #
 #---------------------------------------------------------------------
 
