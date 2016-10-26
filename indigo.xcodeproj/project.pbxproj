@@ -25,6 +25,8 @@
 		599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A691DA04E5E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
+		59A7D3831DC125010027DE5A /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
+		59A7D3841DC125110027DE5A /* libhidapi.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */; };
 		59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */; };
 		59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
 		59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */ = {isa = PBXBuildFile; fileRef = 59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */; };
@@ -217,6 +219,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				599C9A5D1DA028E4008BBCC1 /* libindigo.a in Frameworks */,
+				59A7D3831DC125010027DE5A /* libusb-1.0.0.dylib in Frameworks */,
+				59A7D3841DC125110027DE5A /* libhidapi.0.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -874,6 +878,10 @@
 		592662B51D9590630021746A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -881,6 +889,10 @@
 		592662B61D9590630021746A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
