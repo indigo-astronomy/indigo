@@ -7,6 +7,9 @@
 INDIGO_VERSION := 2.0
 INDIGO_ROOT := $(shell pwd)
 
+ENABLE_STATIC=yes
+ENABLE_SHARED=no
+
 ifeq ($(OS),Windows_NT)
 	OS_DETECTED := Windows
 else
@@ -44,7 +47,7 @@ endif
 
 ifeq ($(OS_DETECTED),Darwin)
 	CC=gcc
-	CFLAGS=-Iindigo -Iindigo_drivers -Iinclude -std=gnu11 -DINDIGO_MACOS
+	CFLAGS=-Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -DINDIGO_MACOS
 	LDFLAGS=-framework CoreFoundation -framework IOKit -lobjc
 	LIBUSB=lib/libusb-1.0.a
 	LIBHIDAPI=lib/libhidapi.a
@@ -61,7 +64,7 @@ endif
 
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
-	CFLAGS=-Iindigo -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
+	CFLAGS=-Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
 	LDFLAGS=-lm -lrt -lusb-1.0 -ludev
 	LIBUSB=
 	LIBHIDAPI=lib/libhidapi-hidraw.a
@@ -92,7 +95,7 @@ DRIVER_LIBS=\
 
 .PHONY: init clean
 
-all: init $(DEPENDENCIES) lib/libindigo.a drivers bin/test bin/client bin/server
+all: init $(DEPENDENCIES) lib/libindigo.a drivers bin/test bin/client bin/indigo_server
 
 #---------------------------------------------------------------------
 #
@@ -104,7 +107,7 @@ externals/libusb/configure: externals/libusb/configure.ac
 	cd externals/libusb; autoreconf -i; cd ../..
 
 externals/libusb/Makefile: externals/libusb/configure
-	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT); cd ../..
+	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC); cd ../..
 
 $(LIBUSB): externals/libusb/Makefile
 	cd externals/libusb; make; make install; cd ../..
@@ -119,7 +122,7 @@ externals/hidapi/configure: externals/hidapi/configure.ac
 	cd externals/hidapi; ./bootstrap; cd ../..
 
 externals/hidapi/Makefile: externals/hidapi/configure
-	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT); cd ../..
+	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC); cd ../..
 
 $(LIBHIDAPI): externals/hidapi/Makefile
 	cd externals/hidapi; make; make install; cd ../..
@@ -134,7 +137,7 @@ externals/libdc1394/configure: externals/libdc1394/configure.ac
 	cd externals/libdc1394; autoreconf -i; cd ../..
 
 externals/libdc1394/Makefile: externals/libdc1394/configure
-	cd externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT) CFLAGS="-Duint=unsigned" LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/include/libusb-1.0" LIBUSB_LIBS="-L$(INDIGO_ROOT)/lib -lusb-1.0"; cd ../..
+	cd externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="-Duint=unsigned" LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/include/libusb-1.0" LIBUSB_LIBS="-L$(INDIGO_ROOT)/lib -lusb-1.0"; cd ../..
 
 lib/libdc1394.a: externals/libdc1394/Makefile
 	cd externals/libdc1394; make install; cd ../..
@@ -172,7 +175,7 @@ init:
 #
 #---------------------------------------------------------------------
 
-lib/libindigo.a: $(addsuffix .o, $(basename $(wildcard indigo/*.c)))
+lib/libindigo.a: $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c)))
 	$(AR) $(ARFLAGS) $@ $^
 
 #---------------------------------------------------------------------
@@ -267,7 +270,7 @@ bin/test: indigo_test/test.o lib/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB
 bin/client: indigo_test/client.o lib/libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-bin/server: indigo_test/server.o $(DRIVER_LIBS) lib/libindigo.a $(DEPENDENCIES)
+bin/indigo_server: indigo_libs/indigo_server.o $(DRIVER_LIBS) lib/libindigo.a $(DEPENDENCIES)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 rules:
@@ -280,6 +283,6 @@ endif
 
 clean: init
 	rm bin/*
-	rm -rf lib/* indigo/*.o
+	rm -rf lib/* indigo_libs/*.o
 	rm $(wildcard indigo_drivers/*/*.o)
 	rm $(wildcard indigo_test/*.o)
