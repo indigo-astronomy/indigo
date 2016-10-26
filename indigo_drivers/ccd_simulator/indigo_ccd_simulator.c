@@ -60,6 +60,7 @@ typedef struct {
 	double exposure_time;
 	double target_temperature, current_temperature;
 	int target_slot, current_slot;
+	int target_position, current_position;
 	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 } simulator_private_data;
 
@@ -397,6 +398,102 @@ static indigo_result wheel_detach(indigo_device *device) {
 	return indigo_wheel_device_detach(device);
 }
 
+// -------------------------------------------------------------------------------- INDIGO focuser device implementation
+
+static void focuser_timer_callback(indigo_device *device) {
+	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else {
+		if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value && PRIVATE_DATA->current_position < PRIVATE_DATA->target_position) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			FOCUSER_POSITION_ITEM->number.value = (PRIVATE_DATA->current_position += FOCUSER_SPEED_ITEM->number.value);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			indigo_set_timer(device, 0.1, focuser_timer_callback);
+		} else if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value && PRIVATE_DATA->current_position > PRIVATE_DATA->target_position) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			FOCUSER_POSITION_ITEM->number.value = (PRIVATE_DATA->current_position -= FOCUSER_SPEED_ITEM->number.value);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			indigo_set_timer(device, 0.1, focuser_timer_callback);
+		} else {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+	}
+}
+
+static indigo_result focuser_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(device->device_context != NULL);
+	simulator_private_data *private_data = device->device_context;
+	device->device_context = NULL;
+	if (indigo_focuser_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+		DEVICE_CONTEXT->private_data = private_data;
+		// -------------------------------------------------------------------------------- FOCUSER_SPEED
+		FOCUSER_SPEED_ITEM->number.value = 1;
+		// --------------------------------------------------------------------------------
+		INDIGO_LOG(indigo_log("%s attached", device->name));
+		return indigo_focuser_device_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(device->device_context != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_STEPS
+		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
+			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+		}
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_set_timer(device, 0.5, focuser_timer_callback);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.value;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_set_timer(device, 0.5, focuser_timer_callback);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
+		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
+		if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_focuser_device_change_property(device, client, property);
+}
+
+static indigo_result focuser_detach(indigo_device *device) {
+	assert(device != NULL);
+	INDIGO_LOG(indigo_log("%s detached", device->name));
+	return indigo_focuser_device_detach(device);
+}
+
 // --------------------------------------------------------------------------------
 
 indigo_result indigo_ccd_simulator() {
@@ -413,6 +510,13 @@ indigo_result indigo_ccd_simulator() {
 		indigo_wheel_device_enumerate_properties,
 		wheel_change_property,
 		wheel_detach
+	};
+	static indigo_device imager_focuser_template = {
+		CCD_SIMULATOR_FOCUSER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		focuser_attach,
+		indigo_focuser_device_enumerate_properties,
+		focuser_change_property,
+		focuser_detach
 	};
 
 	static indigo_device guider_camera_template = {
@@ -444,7 +548,13 @@ indigo_result indigo_ccd_simulator() {
 	memcpy(device, &imager_wheel_template, sizeof(indigo_device));
 	device->device_context = private_data;
 	indigo_attach_device(device);
-
+	
+	device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
+	memcpy(device, &imager_focuser_template, sizeof(indigo_device));
+	device->device_context = private_data;
+	indigo_attach_device(device);
+	
 	device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &guider_camera_template, sizeof(indigo_device));

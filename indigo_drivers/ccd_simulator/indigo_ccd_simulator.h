@@ -43,6 +43,7 @@
 #include "indigo_ccd_driver.h"
 #include "indigo_guider_driver.h"
 #include "indigo_wheel_driver.h"
+#include "indigo_focuser_driver.h"
 
 #define CCD_SIMULATOR_IMAGER_CAMERA_NAME	"CCD Imager Simulator"
 #define CCD_SIMULATOR_WHEEL_NAME					"CCD Imager Simulator (wheel)"
