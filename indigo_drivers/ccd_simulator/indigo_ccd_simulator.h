@@ -44,6 +44,14 @@
 #include "indigo_guider_driver.h"
 #include "indigo_wheel_driver.h"
 
+#define CCD_SIMULATOR_IMAGER_CAMERA_NAME	"CCD Imager Simulator"
+#define CCD_SIMULATOR_WHEEL_NAME					"CCD Imager Simulator (wheel)"
+#define CCD_SIMULATOR_FOCUSER_NAME				"CCD Imager Simulator (focuser)"
+
+#define CCD_SIMULATOR_GUIDER_CAMERA_NAME	"CCD Guider Simulator"
+#define CCD_SIMULATOR_GUIDER_NAME					"CCD Guider Simulator (guider)"
+
+
 /** Create CCD Simulator device instance
  */
 
