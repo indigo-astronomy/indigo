@@ -43,6 +43,7 @@
 
 #include "indigo_bus.h"
 #include "indigo_client_xml.h"
+#include "ccd_simulator/indigo_ccd_simulator.h"
 
 static indigo_property *connection_property;
 static indigo_property *ccd_exposure_property;
