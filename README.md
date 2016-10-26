@@ -18,14 +18,6 @@ To build PoC, use
 
 `make all`
 
-and then execute either (client and driver in single executable with direct communication over the bus)
+`bin/indigo_server`
 
-`bin/test`
-
-or (client executing driver as child proces with the legacy INDI wire protocol)
-
-`bin/client`
-
-or (network server, which can be accessed by some INDI control panel)
-
-`bin/server`
+and connect from any INDI client to port 7624...

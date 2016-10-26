@@ -8,7 +8,7 @@ INDIGO_VERSION := 2.0
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
-ENABLE_SHARED=no
+ENABLE_SHARED=yes
 
 ifeq ($(OS),Windows_NT)
 	OS_DETECTED := Windows
