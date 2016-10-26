@@ -400,26 +400,34 @@ static indigo_result wheel_detach(indigo_device *device) {
 // --------------------------------------------------------------------------------
 
 indigo_result indigo_ccd_simulator() {
-	static indigo_device ccd_template = {
-		"CCD Simulator", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device imager_camera_template = {
+		CCD_SIMULATOR_IMAGER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		ccd_attach,
+		indigo_ccd_device_enumerate_properties,
+		ccd_change_property,
+		ccd_detach
+	};
+	static indigo_device imager_wheel_template = {
+		CCD_SIMULATOR_WHEEL_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		wheel_attach,
+		indigo_wheel_device_enumerate_properties,
+		wheel_change_property,
+		wheel_detach
+	};
+
+	static indigo_device guider_camera_template = {
+		CCD_SIMULATOR_GUIDER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_device_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		"CCD Simulator guider", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_device_enumerate_properties,
 		guider_change_property,
 		guider_detach
-	};
-	static indigo_device wheel_template = {
-		"CCD Simulator wheel", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-		wheel_attach,
-		indigo_wheel_device_enumerate_properties,
-		wheel_change_property,
-		wheel_detach
 	};
 
 	simulator_private_data *private_data = malloc(sizeof(simulator_private_data));
@@ -427,19 +435,25 @@ indigo_result indigo_ccd_simulator() {
 	
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
-	memcpy(device, &ccd_template, sizeof(indigo_device));
-	device->device_context = private_data;
-	indigo_attach_device(device);
-
-	device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &guider_template, sizeof(indigo_device));
+	memcpy(device, &imager_camera_template, sizeof(indigo_device));
 	device->device_context = private_data;
 	indigo_attach_device(device);
 	
 	device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
-	memcpy(device, &wheel_template, sizeof(indigo_device));
+	memcpy(device, &imager_wheel_template, sizeof(indigo_device));
+	device->device_context = private_data;
+	indigo_attach_device(device);
+
+	device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
+	memcpy(device, &guider_camera_template, sizeof(indigo_device));
+	device->device_context = private_data;
+	indigo_attach_device(device);
+	
+	device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
+	memcpy(device, &guider_template, sizeof(indigo_device));
 	device->device_context = private_data;
 	indigo_attach_device(device);
 

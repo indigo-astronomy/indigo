@@ -40,19 +40,17 @@
 #include "indigo_bus.h"
 #include "ccd_simulator/indigo_ccd_simulator.h"
 
-#define DEVICE_NAME "CCD Simulator"
-
 static indigo_property *connection_property;
 static indigo_property *ccd_exposure_property;
 static indigo_property *ccd_image_property;
 
 static indigo_result test_attach(indigo_client *client) {
-	connection_property = indigo_init_switch_property(NULL, DEVICE_NAME, "CONNECTION", NULL, NULL, 0, 0, 0, 2);
+	connection_property = indigo_init_switch_property(NULL, CCD_SIMULATOR_IMAGER_CAMERA_NAME, "CONNECTION", NULL, NULL, 0, 0, 0, 2);
 	indigo_init_switch_item(&connection_property->items[0], "CONNECTED", NULL, false);
 	indigo_init_switch_item(&connection_property->items[1], "DISCONNECTED", NULL, true);
-	ccd_exposure_property = indigo_init_number_property(NULL, DEVICE_NAME, "CCD_EXPOSURE", NULL, NULL, 0, 0, 1);
+	ccd_exposure_property = indigo_init_number_property(NULL, CCD_SIMULATOR_IMAGER_CAMERA_NAME, "CCD_EXPOSURE", NULL, NULL, 0, 0, 1);
 	indigo_init_number_item(&ccd_exposure_property->items[0], "EXPOSURE", NULL, 0, 0, 0, 0);
-	ccd_image_property = indigo_init_blob_property(NULL, DEVICE_NAME, "CCD_IMAGE", NULL, NULL, 0, 1);
+	ccd_image_property = indigo_init_blob_property(NULL, CCD_SIMULATOR_IMAGER_CAMERA_NAME, "CCD_IMAGE", NULL, NULL, 0, 1);
 	indigo_init_blob_item(&ccd_image_property->items[0], "IMAGE", NULL);
 	indigo_log("attached to INDI bus...");
 	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);

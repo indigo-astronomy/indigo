@@ -195,6 +195,32 @@ static struct property_mapping legacy[] = {
 			NULL
 		}
 	},
+	{	"FOCUS_SPEED", "FOCUSER_SPEED", {
+			{ "FOCUS_SPEED_VALUE", "SPEED" },
+			NULL
+		}
+	},
+	{	"FOCUS_MOTION", "FOCUSER_DIRECTION", {
+			{ "FOCUS_INWARD", "MOVE_INWARD" },
+			{ "FOCUS_OUTWARD", "MOVE_OUTWARD" },
+			NULL
+		}
+	},
+	{	"REL_FOCUS_POSITION", "FOCUSER_STEPS", {
+			{ "FOCUS_RELATIVE_POSITION", "STEPS" },
+			NULL
+		}
+	},
+	{	"ABS_FOCUS_POSITION", "FOCUSER_POSITION", {
+			{ "FOCUS_ABSOLUTE_POSITION", "POSITION" },
+			NULL
+		}
+	},
+	{	"FOCUS_ABORT_MOTION", "FOCUSER_ABORT_MOTION", {
+			{ "ABORT", "ABORT_MOTION" },
+			NULL
+		}
+	},
 	NULL
 };
 
