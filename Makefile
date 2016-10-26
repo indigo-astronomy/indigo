@@ -280,7 +280,6 @@ endif
 
 clean: init
 	rm bin/*
-	rm lib/libindigo.a indigo/*.o
+	rm -rf lib/* indigo/*.o
 	rm $(wildcard indigo_drivers/*/*.o)
-	rm $(wildcard lib/indigo_ccd_*.a)
-	rm $(wildcard lib/indigo_wheel_*.a)
+	rm $(wildcard indigo_test/*.o)
