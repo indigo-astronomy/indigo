@@ -79,9 +79,9 @@ indigo_result indigo_focuser_device_attach(indigo_device *device, indigo_version
 			FOCUSER_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, "FOCUSER_POSITION", FOCUSER_MAIN_GROUP, "Absolute position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(FOCUSER_STEPS_ITEM, "POSITION", "Absolute position", -10000, 10000, 1, 0);
+			indigo_init_number_item(FOCUSER_POSITION_ITEM, "POSITION", "Absolute position", -10000, 10000, 1, 0);
 			// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-			FOCUSER_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, "FOCUSER_ABORT_MOTION", FOCUSER_MAIN_GROUP, "Movement direction", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			FOCUSER_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, "FOCUSER_ABORT_MOTION", FOCUSER_MAIN_GROUP, "Abort motion", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			if (FOCUSER_ABORT_MOTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(FOCUSER_ABORT_MOTION_ITEM, "ABORT_MOTION", "Abort motion", false);

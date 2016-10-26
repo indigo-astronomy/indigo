@@ -335,6 +335,13 @@
 			path = ccd_ssag;
 			sourceTree = "<group>";
 		};
+		5981C8D51DC14DB900C7705F /* focuser_fcusb */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = focuser_fcusb;
+			sourceTree = "<group>";
+		};
 		5999FB651DA40B380084BBF8 /* ccd_sx */ = {
 			isa = PBXGroup;
 			children = (
@@ -440,6 +447,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
 				59D381AA1D95984D00E87393 /* ccd_simulator */,
 				5999FB651DA40B380084BBF8 /* ccd_sx */,
 				9D9EA69F1DBE1F5000E11841 /* ccd_atik */,
