@@ -53,6 +53,9 @@
 		9DAC59D01DC0A7B400AE410D /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9EA6A81DBE21DE00E11841 /* libatik.a */; };
 		9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */; };
 		9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAC59D21DC0A8AD00AE410D /* indigo_focuser_driver.h */; };
+		9DAC59D81DC24E1400AE410D /* indigo_focuser_fcusb_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */; };
+		9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */; };
+		9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -211,6 +214,9 @@
 		9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "lib/libusb-1.0.0.dylib"; sourceTree = SOURCE_ROOT; };
 		9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_driver.c; sourceTree = "<group>"; };
 		9DAC59D21DC0A8AD00AE410D /* indigo_focuser_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_driver.h; sourceTree = "<group>"; };
+		9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fcusb_main.c; sourceTree = "<group>"; };
+		9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fcusb.c; sourceTree = "<group>"; };
+		9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_fcusb.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -338,8 +344,11 @@
 		5981C8D51DC14DB900C7705F /* focuser_fcusb */ = {
 			isa = PBXGroup;
 			children = (
+				9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */,
+				9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */,
+				9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */,
 			);
-			name = focuser_fcusb;
+			path = focuser_fcusb;
 			sourceTree = "<group>";
 		};
 		5999FB651DA40B380084BBF8 /* ccd_sx */ = {
@@ -489,6 +498,7 @@
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
 				9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */,
 				9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */,
+				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
 				9D9EA6B31DBFA30600E11841 /* indigo_ccd_driver.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -695,6 +705,7 @@
 				59C8E7C41DBBB05500AA3F0A /* indigo_ccd_asi.c in Sources */,
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
+				9DAC59D81DC24E1400AE410D /* indigo_focuser_fcusb_main.c in Sources */,
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
 				599C9A4F1DA022E3008BBCC1 /* indigo_version.c in Sources */,
 				59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */,
@@ -707,6 +718,7 @@
 				9D9EA6B41DBFA30600E11841 /* indigo_guider_driver.c in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				599C9A531DA022E3008BBCC1 /* indigo_server_xml.c in Sources */,
+				9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */,
 				9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -962,6 +974,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/externals/libatik",
+					"$(PROJECT_DIR)/externals/libfcusb",
 					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -976,6 +989,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/externals/libatik",
+					"$(PROJECT_DIR)/externals/libfcusb",
 					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";

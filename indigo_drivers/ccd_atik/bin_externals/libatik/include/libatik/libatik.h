@@ -12,6 +12,9 @@
 #include <stdbool.h>
 #include <pthread.h>
 
+#define ATIK_VID1	0x20E7
+#define ATIK_VID2 0x04b4
+
 #define ATIK_GUIDE_EAST             0x04     /* RA+ */
 #define ATIK_GUIDE_NORTH            0x01     /* DEC+ */
 #define ATIK_GUIDE_SOUTH            0x02     /* DEC- */
