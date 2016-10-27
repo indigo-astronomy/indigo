@@ -34,9 +34,11 @@ endif
 
 ifeq ($(OS_DETECTED),Darwin)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS/libatik.a
+	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
 endif
 ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
+	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
 endif
 
 #---------------------------------------------------------------------
@@ -84,6 +86,12 @@ ifeq ($(OS_DETECTED),Windows)
 endif
 
 
+#---------------------------------------------------------------------
+#
+#	Driver targets
+#
+#---------------------------------------------------------------------
+
 DRIVERS=\
 	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*))) \
 	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))
@@ -94,6 +102,12 @@ DRIVER_LIBS=\
 
 
 .PHONY: init clean
+
+#---------------------------------------------------------------------
+#
+#	Default target
+#
+#---------------------------------------------------------------------
 
 all: init $(DEPENDENCIES) lib/libindigo.a drivers bin/test bin/client bin/indigo_server
 
@@ -148,12 +162,25 @@ lib/libdc1394.a: externals/libdc1394/Makefile
 #
 #---------------------------------------------------------------------
 
-include/libatik/libatik.h:
+include/libatik/libatik.h: indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik/libatik.h
 	install -d include/libatik
 	cp indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik/libatik.h include/libatik
 
 lib/libatik.a: include/libatik/libatik.h
 	cp $(LIBATIK) lib
+
+#---------------------------------------------------------------------
+#
+#	Install libfcusb
+#
+#---------------------------------------------------------------------
+
+include/libfcusb/libfcusb.h: indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb/libfcusb.h
+	install -d include/libfcusb
+	cp indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb/libfcusb.h include/libfcusb
+
+lib/libfcusb.a: include/libfcusb/libfcusb.h
+	cp $(LIBFCUSB) lib
 
 #---------------------------------------------------------------------
 #
@@ -260,6 +287,18 @@ bin/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o lib/indigo_w
 
 #---------------------------------------------------------------------
 #
+#	Build Shoestring FCUSB focuser driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_focuser_fcusb.a: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.o
+	$(AR) $(ARFLAGS) $@ $^
+
+bin/indigo_focuser_fcusb: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb_main.o lib/indigo_focuser_fcusba lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------
@@ -273,13 +312,23 @@ bin/client: indigo_test/client.o lib/libindigo.a
 bin/indigo_server: indigo_libs/indigo_server.o $(DRIVER_LIBS) lib/libindigo.a $(DEPENDENCIES)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+#---------------------------------------------------------------------
+#
+#	Install rules
+#
+#---------------------------------------------------------------------
+
 rules:
-ifeq ($(OS_DETECTED),Linux)
 	sudo cp indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-sx.rules
 	sudo cp indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-ssag.rules
 	sudo cp indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-asi.rules
 	sudo udevadm control --reload-rules
-endif
+
+#---------------------------------------------------------------------
+#
+#	Clean
+#
+#---------------------------------------------------------------------
 
 clean: init
 	rm bin/*

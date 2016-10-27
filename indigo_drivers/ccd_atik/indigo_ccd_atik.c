@@ -376,11 +376,7 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-#define ATIK_VID1                  0x20E7
-#define ATIK_VID2                  0x04b4
-
 #define MAX_DEVICES                   10
-
 
 static indigo_device *devices[MAX_DEVICES];
 
