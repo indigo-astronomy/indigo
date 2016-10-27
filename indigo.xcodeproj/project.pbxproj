@@ -155,6 +155,7 @@
 		59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssag_main.c; sourceTree = "<group>"; };
 		5981C8DC1DC291A500C7705F /* libfcusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libfcusb.h; path = include/libfcusb/libfcusb.h; sourceTree = "<group>"; };
 		5981C8DE1DC291AF00C7705F /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfcusb.a; path = lib/macOS/libfcusb.a; sourceTree = "<group>"; };
+		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
 		5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sx.c; sourceTree = "<group>"; };
 		5999FB671DA40B380084BBF8 /* indigo_ccd_sx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sx.h; sourceTree = "<group>"; };
 		5999FB691DA40B380084BBF8 /* indigo_ccd_sx_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sx_main.c; sourceTree = "<group>"; };
@@ -299,6 +300,7 @@
 				59D381C91D96A4E800E87393 /* Makefile */,
 				59D381C81D96A39400E87393 /* LICENSE.md */,
 				59D381C71D96A33D00E87393 /* README.md */,
+				5981C8E21DC2A2D300C7705F /* TODO.md */,
 				59D381AF1D95998300E87393 /* indigo_drivers */,
 				59D381A61D9590EA00E87393 /* indigo_libs */,
 				592662AF1D9590630021746A /* indigo_test */,
