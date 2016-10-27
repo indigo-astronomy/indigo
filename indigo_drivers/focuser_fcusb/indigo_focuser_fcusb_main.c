@@ -41,14 +41,14 @@
 
 #include "indigo_driver_xml.h"
 
-#include "indigo_wheel_sx.h"
+#include "indigo_focuser_fcusb.h"
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
-	indigo_wheel_sx();
+	indigo_focuser_fcusb();
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(0, NULL, protocol_adapter);
 	indigo_stop();

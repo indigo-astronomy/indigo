@@ -55,7 +55,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBHIDAPI=lib/libhidapi.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a
+	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a lib/libfcusb.a
 endif
 
 #---------------------------------------------------------------------
@@ -72,7 +72,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=$(LIBHIDAPI) lib/libatik.a
+	DEPENDENCIES=$(LIBHIDAPI) lib/libatik.a lib/libfcusb.a
 endif
 
 #---------------------------------------------------------------------
@@ -94,11 +94,13 @@ endif
 
 DRIVERS=\
 	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*))) \
-	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))
+	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))) \
+	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))
 
 DRIVER_LIBS=\
 	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
-	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))))
+	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))) \
+	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*))))
 
 
 .PHONY: init clean
@@ -167,6 +169,7 @@ include/libatik/libatik.h: indigo_drivers/ccd_atik/bin_externals/libatik/include
 	cp indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik/libatik.h include/libatik
 
 lib/libatik.a: include/libatik/libatik.h
+	install -d lib
 	cp $(LIBATIK) lib
 
 #---------------------------------------------------------------------
@@ -180,6 +183,7 @@ include/libfcusb/libfcusb.h: indigo_drivers/focuser_fcusb/bin_externals/libfcusb
 	cp indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb/libfcusb.h include/libfcusb
 
 lib/libfcusb.a: include/libfcusb/libfcusb.h
+	install -d lib
 	cp $(LIBFCUSB) lib
 
 #---------------------------------------------------------------------
@@ -294,7 +298,7 @@ bin/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o lib/indigo_w
 lib/indigo_focuser_fcusb.a: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_focuser_fcusb: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb_main.o lib/indigo_focuser_fcusba lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
+bin/indigo_focuser_fcusb: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb_main.o lib/indigo_focuser_fcusb.a lib/libindigo.a lib/libfcusb.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
@@ -331,7 +335,8 @@ rules:
 #---------------------------------------------------------------------
 
 clean: init
-	rm bin/*
-	rm -rf lib/* indigo_libs/*.o
-	rm $(wildcard indigo_drivers/*/*.o)
-	rm $(wildcard indigo_test/*.o)
+	rm -f bin/*
+	rm -rf lib/*
+	rm -f indigo_libs/*.o
+	rm -f $(wildcard indigo_drivers/*/*.o)
+	rm -f $(wildcard indigo_test/*.o)
