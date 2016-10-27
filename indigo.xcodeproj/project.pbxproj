@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5981C8DE1DC291AF00C7705F /* libfcusb.a */; };
 		5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
 		599C9A3A1D9FF0A3008BBCC1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */; };
 		599C9A3C1D9FF0A3008BBCC1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */; };
@@ -152,6 +153,8 @@
 		59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag.h; sourceTree = "<group>"; };
 		59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag_firmware.h; sourceTree = "<group>"; };
 		59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssag_main.c; sourceTree = "<group>"; };
+		5981C8DC1DC291A500C7705F /* libfcusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libfcusb.h; path = include/libfcusb/libfcusb.h; sourceTree = "<group>"; };
+		5981C8DE1DC291AF00C7705F /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfcusb.a; path = lib/macOS/libfcusb.a; sourceTree = "<group>"; };
 		5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sx.c; sourceTree = "<group>"; };
 		5999FB671DA40B380084BBF8 /* indigo_ccd_sx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sx.h; sourceTree = "<group>"; };
 		5999FB691DA40B380084BBF8 /* indigo_ccd_sx_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sx_main.c; sourceTree = "<group>"; };
@@ -269,6 +272,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9DAC59CF1DC0A7B200AE410D /* libatik.a in Frameworks */,
+				5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */,
 				599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */,
 				9DAC59CB1DC0A6A800AE410D /* libhidapi.0.dylib in Frameworks */,
 				9DAC59CD1DC0A6AE00AE410D /* libusb-1.0.0.dylib in Frameworks */,
@@ -344,11 +348,29 @@
 		5981C8D51DC14DB900C7705F /* focuser_fcusb */ = {
 			isa = PBXGroup;
 			children = (
+				5981C8DA1DC2918300C7705F /* bin_externals */,
 				9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */,
 				9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */,
 				9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */,
 			);
 			path = focuser_fcusb;
+			sourceTree = "<group>";
+		};
+		5981C8DA1DC2918300C7705F /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				5981C8DB1DC2919100C7705F /* libfcusb */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		5981C8DB1DC2919100C7705F /* libfcusb */ = {
+			isa = PBXGroup;
+			children = (
+				5981C8DE1DC291AF00C7705F /* libfcusb.a */,
+				5981C8DC1DC291A500C7705F /* libfcusb.h */,
+			);
+			path = libfcusb;
 			sourceTree = "<group>";
 		};
 		5999FB651DA40B380084BBF8 /* ccd_sx */ = {
@@ -976,6 +998,7 @@
 					"$(PROJECT_DIR)/externals/libatik",
 					"$(PROJECT_DIR)/externals/libfcusb",
 					"$(PROJECT_DIR)/lib",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -991,6 +1014,7 @@
 					"$(PROJECT_DIR)/externals/libatik",
 					"$(PROJECT_DIR)/externals/libfcusb",
 					"$(PROJECT_DIR)/lib",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1034,6 +1058,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1047,6 +1072,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

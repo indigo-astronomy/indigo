@@ -49,6 +49,8 @@
 
 #include "wheel_sx/indigo_wheel_sx.h"
 
+#include "focuser_fcusb/indigo_focuser_fcusb.h"
+
 void server_callback(int count) {
 	INDIGO_LOG(indigo_log("%d clients", count));
 }
@@ -65,6 +67,8 @@ int main(int argc, const char * argv[]) {
 	indigo_ccd_atik();
 
 	indigo_wheel_sx();
+	
+	indigo_focuser_fcusb();
 
 	indigo_server_xml(server_callback);
 	return 0;
