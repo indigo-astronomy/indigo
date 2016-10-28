@@ -25,7 +25,6 @@
 		599C9A5D1DA028E4008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
-		599C9A691DA04E5E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		59A7D3831DC125010027DE5A /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
 		59A7D3841DC125110027DE5A /* libhidapi.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */; };
 		59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */; };
@@ -51,12 +50,14 @@
 		9DAC59CD1DC0A6AE00AE410D /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
 		9DAC59CE1DC0A6AE00AE410D /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
 		9DAC59CF1DC0A7B200AE410D /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9EA6A81DBE21DE00E11841 /* libatik.a */; };
-		9DAC59D01DC0A7B400AE410D /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9EA6A81DBE21DE00E11841 /* libatik.a */; };
 		9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */; };
 		9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAC59D21DC0A8AD00AE410D /* indigo_focuser_driver.h */; };
 		9DAC59D81DC24E1400AE410D /* indigo_focuser_fcusb_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */; };
 		9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */; };
 		9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */; };
+		9DE2A1241DC3A325008E8375 /* indigo_server in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D97F8171D9A8A1900582EAF /* indigo_server */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9DE2A1261DC3A342008E8375 /* libhidapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9DE2A1271DC3A342008E8375 /* libusb-1.0.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -95,12 +96,12 @@
 			remoteGlobalIDString = 599C9A471DA022C0008BBCC1;
 			remoteInfo = indigo;
 		};
-		59C8E7C51DBBB07500AA3F0A /* PBXContainerItemProxy */ = {
+		9DE2A1211DC3A309008E8375 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 592662A51D9590630021746A /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 599C9A471DA022C0008BBCC1;
-			remoteInfo = indigo;
+			remoteGlobalIDString = 9D97F8091D9A8A1900582EAF;
+			remoteInfo = indigo_server;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -140,6 +141,27 @@
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 1;
+		};
+		9DE2A1231DC3A317008E8375 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				9DE2A1241DC3A325008E8375 /* indigo_server in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9DE2A1251DC3A336008E8375 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				9DE2A1261DC3A342008E8375 /* libhidapi.0.dylib in CopyFiles */,
+				9DE2A1271DC3A342008E8375 /* libusb-1.0.0.dylib in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
@@ -238,8 +260,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9DAC59D01DC0A7B400AE410D /* libatik.a in Frameworks */,
-				599C9A691DA04E5E008BBCC1 /* libindigo.a in Frameworks */,
 				9DAC59CC1DC0A6A900AE410D /* libhidapi.0.dylib in Frameworks */,
 				9DAC59CE1DC0A6AE00AE410D /* libusb-1.0.0.dylib in Frameworks */,
 			);
@@ -555,11 +575,13 @@
 				599C9A331D9FF0A3008BBCC1 /* Sources */,
 				599C9A341D9FF0A3008BBCC1 /* Frameworks */,
 				599C9A351D9FF0A3008BBCC1 /* Resources */,
+				9DE2A1231DC3A317008E8375 /* CopyFiles */,
+				9DE2A1251DC3A336008E8375 /* CopyFiles */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				59C8E7C61DBBB07500AA3F0A /* PBXTargetDependency */,
+				9DE2A1221DC3A309008E8375 /* PBXTargetDependency */,
 			);
 			name = "INDIGO Server";
 			productName = "INDIGO Server";
@@ -807,10 +829,10 @@
 			target = 599C9A471DA022C0008BBCC1 /* indigo */;
 			targetProxy = 599C9A621DA02974008BBCC1 /* PBXContainerItemProxy */;
 		};
-		59C8E7C61DBBB07500AA3F0A /* PBXTargetDependency */ = {
+		9DE2A1221DC3A309008E8375 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 599C9A471DA022C0008BBCC1 /* indigo */;
-			targetProxy = 59C8E7C51DBBB07500AA3F0A /* PBXContainerItemProxy */;
+			target = 9D97F8091D9A8A1900582EAF /* indigo_server */;
+			targetProxy = 9DE2A1211DC3A309008E8375 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 

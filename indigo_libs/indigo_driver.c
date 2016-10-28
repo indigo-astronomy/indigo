@@ -301,15 +301,15 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property))
+	if (indigo_property_match(CONNECTION_PROPERTY, property) && !CONNECTION_PROPERTY->hidden)
 		indigo_define_property(device, CONNECTION_PROPERTY, NULL);
-	if (indigo_property_match(INFO_PROPERTY, property))
+	if (indigo_property_match(INFO_PROPERTY, property) && !INFO_PROPERTY->hidden)
 		indigo_define_property(device, INFO_PROPERTY, NULL);
-	if (indigo_property_match(DEBUG_PROPERTY, property))
+	if (indigo_property_match(DEBUG_PROPERTY, property) && !DEBUG_PROPERTY->hidden)
 		indigo_define_property(device, DEBUG_PROPERTY, NULL);
 	if (indigo_property_match(SIMULATION_PROPERTY, property) && !SIMULATION_PROPERTY->hidden)
 		indigo_define_property(device, SIMULATION_PROPERTY, NULL);
-	if (indigo_property_match(CONFIG_PROPERTY, property))
+	if (indigo_property_match(CONFIG_PROPERTY, property) && !CONFIG_PROPERTY->hidden)
 		indigo_define_property(device, CONFIG_PROPERTY, NULL);
 	return INDIGO_OK;
 }
@@ -372,12 +372,16 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	pthread_join(DEVICE_CONTEXT->timer_thread, NULL);
 	pthread_mutex_destroy(&DEVICE_CONTEXT->timer_mutex);
 #endif
-	indigo_delete_property(device, CONNECTION_PROPERTY, NULL);
-	indigo_delete_property(device, INFO_PROPERTY, NULL);
-	indigo_delete_property(device, DEBUG_PROPERTY, NULL);
+	if (!CONNECTION_PROPERTY->hidden)
+		indigo_delete_property(device, CONNECTION_PROPERTY, NULL);
+	if (!INFO_PROPERTY->hidden)
+		indigo_delete_property(device, INFO_PROPERTY, NULL);
+	if (!DEBUG_PROPERTY->hidden)
+		indigo_delete_property(device, DEBUG_PROPERTY, NULL);
 	if (!SIMULATION_PROPERTY->hidden)
 		indigo_delete_property(device, SIMULATION_PROPERTY, NULL);
-	indigo_delete_property(device, CONFIG_PROPERTY, NULL);
+	if (!CONFIG_PROPERTY->hidden)
+		indigo_delete_property(device, CONFIG_PROPERTY, NULL);
 	free(CONNECTION_PROPERTY);
 	free(INFO_PROPERTY);
 	free(DEBUG_PROPERTY);
