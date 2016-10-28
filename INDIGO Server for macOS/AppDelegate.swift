@@ -33,6 +33,7 @@
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 import Cocoa
+import ServiceManagement
 
 func serverCallback(count: Int32) {
   NSLog("%d clients", count)
@@ -41,8 +42,6 @@ func serverCallback(count: Int32) {
 @NSApplicationMain class AppDelegate: NSObject, NSApplicationDelegate, NetServiceDelegate {
 
   @IBOutlet weak var window: NSWindow!
-  
-  var thread: Thread?
   
   func netServiceWillPublish(_ sender: NetService) {
     NSLog("INDIGO Service is ready to publish.")
@@ -61,23 +60,29 @@ func serverCallback(count: Int32) {
     return true
   }
 
-  func server() {
-    let service = NetService(domain: "", type: "_indi._tcp", name: "", port: 7624)
-    service.delegate = self
-    service.publish()
-    indigo_start()
-    indigo_ccd_simulator();
-    indigo_ccd_sx()
-		indigo_ccd_ssag()
-		indigo_ccd_asi()
-    indigo_server_xml(serverCallback)
-  }
-  
+	let serverId = "eu.cloudmakers.indi.indigo_server"
+	let service = NetService(domain: "", type: "_indi._tcp", name: "", port: 7624)
+	
   func applicationDidFinishLaunching(_ notification: Notification) {
-    thread = Thread(target: self, selector: #selector(server), object: nil)
-    if let thread = thread {
-      thread.start();
-    }
+		var error: Unmanaged<CFError>? = nil
+		if SMJobRemove(kSMDomainUserLaunchd, serverId as CFString, nil, false, &error)  {
+			let plist: [String:Any] = [ "Label": serverId, "KeepAlive": true, "Program": Bundle.main.path(forAuxiliaryExecutable: "indigo_server")]
+			if SMJobSubmit(kSMDomainUserLaunchd, plist as CFDictionary, nil, &error) {				
+				service.delegate = self
+				service.publish()
+			} else {
+				NSLog("Failed to install server job! \(error)")
+			}
+		} else {
+			NSLog("Failed to remove server job! \(error)")
+		}
   }
+	
+	func applicationWillTerminate(_ notification: Notification) {
+		var error: Unmanaged<CFError>? = nil
+		if !SMJobRemove(kSMDomainUserLaunchd, serverId as CFString, nil, false, &error)  {
+			NSLog("Failed to remove server job! \(error)")
+		}
+	}
 }
 
