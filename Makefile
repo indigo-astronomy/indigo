@@ -5,6 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
+INDIGO_BUILD := 0
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -17,12 +18,15 @@ else
 	ARCH_DETECTED=$(shell uname -m)
 	ifeq ($(ARCH_DETECTED),armv7l)
 		ARCH_DETECTED=arm
+		DEBIAN_ARCH=arm
 	endif
 	ifeq ($(ARCH_DETECTED),i686)
 		ARCH_DETECTED=x86
+		DEBIAN_ARCH=i386
 	endif
 	ifeq ($(ARCH_DETECTED),x86_64)
 		ARCH_DETECTED=x64
+		DEBIAN_ARCH=amd64
 	endif
 endif
 
@@ -35,10 +39,14 @@ endif
 ifeq ($(OS_DETECTED),Darwin)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS/libatik.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
+	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
+	PACKAGE_TYPE=dmg
 endif
 ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
+	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
+	PACKAGE_TYPE=deb
 endif
 
 #---------------------------------------------------------------------
@@ -327,6 +335,33 @@ rules:
 	sudo cp indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-ssag.rules
 	sudo cp indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-asi.rules
 	sudo udevadm control --reload-rules
+
+#---------------------------------------------------------------------
+#
+#	Build packages
+#
+#---------------------------------------------------------------------
+
+
+package: $(PACKAGE_NAME).$(PACKAGE_TYPE)
+
+$(PACKAGE_NAME).deb: all
+	install -d /tmp/$(PACKAGE_NAME)/usr/local/bin
+	install bin/indigo_server /tmp/$(PACKAGE_NAME)/usr/local/bin
+	install $(DRIVERS) /tmp/$(PACKAGE_NAME)/usr/local/bin
+	install -d /tmp/$(PACKAGE_NAME)/usr/local/lib
+	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
+	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
+	install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_ssag.rules
+	install -D -m 0644 indigo_drivers/ccd_asi/indigo_ccd_asi.rules debian/lib/udev/rules.d/99-indigo_ccd_asi.rules
+	cp -r share /tmp/$(PACKAGE_NAME)
+	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
+	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	cat /tmp/indigo-2.0-0-i386/DEBIAN/control
+	sudo chown root /tmp/$(PACKAGE_NAME)
+	dpkg --build /tmp/$(PACKAGE_NAME)
+	mv /tmp/$(PACKAGE_NAME).deb .
+	sudo rm -rf /tmp/$(PACKAGE_NAME)
 
 #---------------------------------------------------------------------
 #
