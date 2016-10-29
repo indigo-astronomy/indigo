@@ -103,12 +103,14 @@ endif
 DRIVERS=\
 	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*))) \
 	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))) \
-	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))
+	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*))) \
+	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))
 
 DRIVER_LIBS=\
 	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
 	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))) \
-	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*))))
+	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
+	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))))
 
 
 .PHONY: init clean
@@ -235,6 +237,18 @@ lib/indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
 	$(AR) $(ARFLAGS) $@ $^
 
 bin/indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o lib/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+#---------------------------------------------------------------------
+#
+#	Build mount simulator driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_mount_simulator.a: indigo_drivers/mount_simulator/indigo_mount_simulator.o
+	$(AR) $(ARFLAGS) $@ $^
+
+bin/indigo_mount_simulator: indigo_drivers/mount_simulator/indigo_mount_simulator_main.o lib/indigo_mount_simulator.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
