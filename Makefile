@@ -63,7 +63,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBHIDAPI=lib/libhidapi.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a lib/libfcusb.a
+	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a lib/libfcusb.a lib/libnovas.a
 endif
 
 #---------------------------------------------------------------------
@@ -80,7 +80,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=$(LIBHIDAPI) lib/libatik.a lib/libfcusb.a
+	DEPENDENCIES=$(LIBHIDAPI) lib/libatik.a lib/libfcusb.a lib/libnovas.a
 endif
 
 #---------------------------------------------------------------------
@@ -167,6 +167,16 @@ externals/libdc1394/Makefile: externals/libdc1394/configure
 
 lib/libdc1394.a: externals/libdc1394/Makefile
 	cd externals/libdc1394; make install; cd ../..
+
+#---------------------------------------------------------------------
+#
+#	Build libnovas
+#
+#---------------------------------------------------------------------
+
+lib/libnovas.a: externals/novas/novas.o externals/novas/eph_manager.o externals/novas/novascon.o externals/novas/nutation.o externals/novas/readeph0.o  externals/novas/solsys1.o  externals/novas/solsys3.o
+	$(AR) $(ARFLAGS) $@ $^
+	install externals/novas/JPLEPH.421 lib
 
 #---------------------------------------------------------------------
 #

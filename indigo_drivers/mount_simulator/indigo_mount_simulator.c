@@ -39,7 +39,9 @@
 
 typedef struct {
 	bool parked;
-	indigo_timer *guider_timer;
+	double currentRA, requestedRA, rateRA;
+	double currentDec, requestedDec, rateDec;
+	indigo_timer *slew_timer, *guider_timer;
 } simulator_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -97,6 +99,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
 			PRIVATE_DATA->parked = false;
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
+		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+		if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM) {
+		} else if (MOUNT_ON_COORDINATES_SET_SLEW_ITEM) {
+		} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM) {
+			PRIVATE_DATA->currentRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+			PRIVATE_DATA->currentDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
