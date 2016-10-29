@@ -66,9 +66,10 @@ static struct {
 	{ NULL, NULL }
 };
 
+static int first_driver = 1;
 static indigo_property *driver_property;
 
-void server_callback(int count) {
+static void server_callback(int count) {
 	INDIGO_LOG(indigo_log("%d clients", count));
 }
 
@@ -77,9 +78,9 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
 	driver_property = indigo_init_switch_property(NULL, "INDIGO Server", "DRIVERS", "Main", "Active drivers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_DRIVERS);
-	for (int i = 0; i < MAX_DRIVERS && drivers[i].name; i++) {
-		indigo_init_switch_item(&driver_property->items[i], drivers[i].name, drivers[i].name, true);
-		driver_property->count = i+1;
+	driver_property->count = 0;
+	for (int i = first_driver; i < MAX_DRIVERS && drivers[i].name; i++) {
+		indigo_init_switch_item(&driver_property->items[driver_property->count++], drivers[i].name, drivers[i].name, true);
 	}
 	if (indigo_load_properties(device, false) == INDIGO_FAILED)
 		change_property(device, NULL, driver_property);
@@ -100,7 +101,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	// -------------------------------------------------------------------------------- DRIVERS
 		indigo_property_copy_values(driver_property, property, false);
 		for (int i = 0; i < driver_property->count; i++)
-			drivers[i].driver(driver_property->items[i].sw.value);
+			drivers[i + first_driver].driver(driver_property->items[i].sw.value);
 		driver_property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, driver_property, NULL);
 		int handle = 0;
@@ -120,6 +121,19 @@ static indigo_result detach(indigo_device *device) {
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
+	
+	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
+	
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators"))
+			first_driver = 0;
+		else if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1)
+			indigo_server_xml_port = atoi(argv[i+1]);
+		else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-h|--help]\n\n", argv[0]);
+			exit(0);
+		}
+	}
 	
 	static indigo_device device = {
 		SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
