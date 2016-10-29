@@ -42,18 +42,18 @@ func serverCallback(count: Int32) {
 @NSApplicationMain class AppDelegate: NSObject, NSApplicationDelegate, NetServiceDelegate {
 
   @IBOutlet weak var window: NSWindow!
-  
+	
   func netServiceWillPublish(_ sender: NetService) {
-    NSLog("INDIGO Service is ready to publish.")
+    NSLog("Bonjour service is ready to publish.")
   }
   
   func netServiceDidPublish(_ sender: NetService) {
-    NSLog("INDIGO Service was successfully published.")
+    NSLog("Bonjour service was successfully published.")
   }
   
   func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
-    NSLog("INDIGO Service  could not be published.");
-    NSLog("%@", errorDict);
+    NSLog("Bonjour service could not be published.");
+    NSLog("\(errorDict)");
   }
   
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -66,12 +66,15 @@ func serverCallback(count: Int32) {
   func applicationDidFinishLaunching(_ notification: Notification) {
 		var error: Unmanaged<CFError>? = nil
 		if SMJobRemove(kSMDomainUserLaunchd, serverId as CFString, nil, false, &error)  {
-			let plist: [String:Any] = [ "Label": serverId, "KeepAlive": true, "Program": Bundle.main.path(forAuxiliaryExecutable: "indigo_server")]
-			if SMJobSubmit(kSMDomainUserLaunchd, plist as CFDictionary, nil, &error) {				
-				service.delegate = self
-				service.publish()
-			} else {
-				NSLog("Failed to install server job! \(error)")
+			if let executable = Bundle.main.path(forAuxiliaryExecutable: "indigo_server") {
+				let plist: [String:Any] = [ "Label": serverId, "KeepAlive": true, "Program": executable]
+				if SMJobSubmit(kSMDomainUserLaunchd, plist as CFDictionary, nil, &error) {				
+					NSLog("Server job was successfully installed!")
+					service.delegate = self
+					service.publish()
+				} else {
+					NSLog("Failed to install server job! \(error)")
+				}
 			}
 		} else {
 			NSLog("Failed to remove server job! \(error)")
@@ -80,7 +83,9 @@ func serverCallback(count: Int32) {
 	
 	func applicationWillTerminate(_ notification: Notification) {
 		var error: Unmanaged<CFError>? = nil
-		if !SMJobRemove(kSMDomainUserLaunchd, serverId as CFString, nil, false, &error)  {
+		if SMJobRemove(kSMDomainUserLaunchd, serverId as CFString, nil, false, &error)  {
+			NSLog("Server job was successfully removed!")
+		} else {
 			NSLog("Failed to remove server job! \(error)")
 		}
 	}

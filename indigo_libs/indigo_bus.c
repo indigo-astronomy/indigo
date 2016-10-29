@@ -44,10 +44,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <sys/time.h>
-
-#ifdef INDIGO_USE_SYSLOG
 #include <syslog.h>
-#endif
 
 #include "indigo_bus.h"
 
@@ -91,6 +88,11 @@ char *indigo_switch_rule_text[] = {
 };
 
 indigo_property INDIGO_ALL_PROPERTIES;
+
+bool indigo_debug_level = true;
+bool indigo_trace_level = false;
+bool indigo_use_syslog = false;
+
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
 
@@ -100,116 +102,125 @@ static void log_message(const char *format, va_list args) {
 	if (!pthread_mutex_lock(&log_mutex)) {
 		vsnprintf(buffer, sizeof(buffer), format, args);
 		char *line = buffer;
-#ifdef INDIGO_USE_SYSLOG
-		while (line) {
-			char *eol = strchr(line, '\n');
-			if (eol)
-				*eol = 0;
-			if (eol > line)
-				syslog (LOG_NOTICE, "%s", buffer);
-			fprintf(stderr, "%s: %s\n", log_executable_name, line);
-			if (eol)
-				line = eol + 1;
-			else
-				line = NULL;
-		}
-#else
-		char timestamp[16];
-		struct timeval tmnow;
-		gettimeofday(&tmnow, NULL);
-		strftime (timestamp, 9, "%H:%M:%S", localtime(&tmnow.tv_sec));
-#ifdef INDIGO_MACOS
-		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
-#else
-		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
-#endif
-		static const char *log_executable_name = NULL;
-		if (log_executable_name == NULL) {
-			if (indigo_main_argc == 0) {
-				log_executable_name = "Application";
-			} else {
-				log_executable_name = strrchr(indigo_main_argv[0], '/');
-				if (log_executable_name != NULL)
-					log_executable_name++;
+		if (indigo_use_syslog) {
+			static bool initialize = true;
+			if (initialize)
+				openlog("INDIGO", LOG_NDELAY, LOG_USER | LOG_PERROR);
+			while (line) {
+				char *eol = strchr(line, '\n');
+				if (eol)
+					*eol = 0;
+				if (eol > line)
+					syslog (LOG_NOTICE, "%s", buffer);
+				syslog (LOG_NOTICE, "%s\n", line);
+				if (eol)
+					line = eol + 1;
 				else
-					log_executable_name = indigo_main_argv[0];
+					line = NULL;
+			}
+		} else {
+			char timestamp[16];
+			struct timeval tmnow;
+			gettimeofday(&tmnow, NULL);
+			strftime (timestamp, 9, "%H:%M:%S", localtime(&tmnow.tv_sec));
+#ifdef INDIGO_MACOS
+			snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
+#else
+			snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
+#endif
+			static const char *log_executable_name = NULL;
+			if (log_executable_name == NULL) {
+				if (indigo_main_argc == 0) {
+					log_executable_name = "Application";
+				} else {
+					log_executable_name = strrchr(indigo_main_argv[0], '/');
+					if (log_executable_name != NULL)
+						log_executable_name++;
+					else
+						log_executable_name = indigo_main_argv[0];
+				}
+			}
+			while (line) {
+				char *eol = strchr(line, '\n');
+				if (eol)
+					*eol = 0;
+				if (*line)
+					fprintf(stderr, "%s %s: %s\n", timestamp, log_executable_name, line);
+				if (eol)
+					line = eol + 1;
+				else
+					line = NULL;
 			}
 		}
-		while (line) {
-			char *eol = strchr(line, '\n');
-			if (eol)
-				*eol = 0;
-			if (*line)
-				fprintf(stderr, "%s %s: %s\n", timestamp, log_executable_name, line);
-			if (eol)
-				line = eol + 1;
-			else
-				line = NULL;
-		}
-#endif
 		pthread_mutex_unlock(&log_mutex);
 	}
 }
 
 void indigo_trace(const char *format, ...) {
-	va_list argList;
-	va_start(argList, format);
-	log_message(format, argList);
-	va_end(argList);
+	if (indigo_trace_level) {
+		va_list argList;
+		va_start(argList, format);
+		log_message(format, argList);
+		va_end(argList);
+	}
 }
 
 void indigo_debug(const char *format, ...) {
-	va_list argList;
-	va_start(argList, format);
-	log_message(format, argList);
-	va_end(argList);
+	if (indigo_debug_level) {
+		va_list argList;
+		va_start(argList, format);
+		log_message(format, argList);
+		va_end(argList);
+	}
 }
 
 void indigo_debug_property(const char *message, indigo_property *property, bool defs, bool items) {
-	if (message != NULL)
-		indigo_debug(message);
-	if (defs)
-		indigo_debug("'%s'.'%s' %s %s %s %d.%d %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
-	else
-		indigo_debug("'%s'.'%s' %s %s %s %d.%d %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
-	if (items) {
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = &property->items[i];
-			switch (property->type) {
-			case INDIGO_TEXT_VECTOR:
-				if (defs)
-					indigo_debug("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
-				else
-					indigo_debug("  '%s' = '%s' ",item->name, item->text.value);
-				break;
-			case INDIGO_NUMBER_VECTOR:
-				if (defs)
-					indigo_debug("  '%s' = %g (%g, %g, %g) // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->label);
-				else
-					indigo_debug("  '%s' = %g ",item->name, item->number.value);
-				break;
-			case INDIGO_SWITCH_VECTOR:
-				if (defs)
-					indigo_debug("  '%s' = %s // %s", item->name, (item->sw.value ? "On" : "Off"), item->label);
-				else
-					indigo_debug("  '%s' = %s ",item->name, (item->sw.value ? "On" : "Off"));
-				break;
-			case INDIGO_LIGHT_VECTOR:
-				if (defs)
-					indigo_debug("  '%s' = %s // %s", item->name, indigo_property_state_text[item->light.value], item->label);
-				else
-					indigo_debug("  '%s' = %s ",item->name, indigo_property_state_text[item->light.value]);
-				break;
-			case INDIGO_BLOB_VECTOR:
-				if (defs)
-					indigo_debug("  '%s' // %s", item->name, item->label);
-				else
-					indigo_debug("  '%s' (%ld bytes, '%s')",item->name, item->blob.size, item->blob.format);
-				break;
+	if (indigo_debug_level) {
+		if (message != NULL)
+			indigo_debug(message);
+		if (defs)
+			indigo_debug("'%s'.'%s' %s %s %s %d.%d %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
+		else
+			indigo_debug("'%s'.'%s' %s %s %s %d.%d %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
+		if (items) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = &property->items[i];
+				switch (property->type) {
+				case INDIGO_TEXT_VECTOR:
+					if (defs)
+						indigo_debug("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
+					else
+						indigo_debug("  '%s' = '%s' ",item->name, item->text.value);
+					break;
+				case INDIGO_NUMBER_VECTOR:
+					if (defs)
+						indigo_debug("  '%s' = %g (%g, %g, %g) // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->label);
+					else
+						indigo_debug("  '%s' = %g ",item->name, item->number.value);
+					break;
+				case INDIGO_SWITCH_VECTOR:
+					if (defs)
+						indigo_debug("  '%s' = %s // %s", item->name, (item->sw.value ? "On" : "Off"), item->label);
+					else
+						indigo_debug("  '%s' = %s ",item->name, (item->sw.value ? "On" : "Off"));
+					break;
+				case INDIGO_LIGHT_VECTOR:
+					if (defs)
+						indigo_debug("  '%s' = %s // %s", item->name, indigo_property_state_text[item->light.value], item->label);
+					else
+						indigo_debug("  '%s' = %s ",item->name, indigo_property_state_text[item->light.value]);
+					break;
+				case INDIGO_BLOB_VECTOR:
+					if (defs)
+						indigo_debug("  '%s' // %s", item->name, item->label);
+					else
+						indigo_debug("  '%s' (%ld bytes, '%s')",item->name, item->blob.size, item->blob.format);
+					break;
+				}
 			}
 		}
+		indigo_debug("}");
 	}
-	indigo_debug("}");
 }
 
 void indigo_error(const char *format, ...) {

@@ -59,8 +59,8 @@
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((asi_private_data *)DEVICE_CONTEXT->private_data)
 
-#undef INDIGO_DEBUG
-#define INDIGO_DEBUG(c) c
+#undef INDIGO_DEBUG_DRIVER
+#define INDIGO_DEBUG_DRIVER(c) c
 
 // -------------------------------------------------------------------------------- ZWO ASI USB interface implementation
 
@@ -428,7 +428,7 @@ static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_
 	switch (event) {
 	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 		int rc = libusb_get_device_descriptor(dev, &descriptor);
-		INDIGO_DEBUG(indigo_debug("asi_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s", __LINE__, libusb_error_name(rc)));
+		INDIGO_DEBUG_DRIVER(indigo_debug("asi_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s", __LINE__, libusb_error_name(rc)));
 		for (int i = 0; ASI_PRODUCTS[i].name; i++) {
 			if (descriptor.idVendor == 0x1278 && ASI_PRODUCTS[i].product == descriptor.idProduct) {
 				asi_private_data *private_data = malloc(sizeof(asi_private_data));
@@ -493,7 +493,7 @@ indigo_result indigo_ccd_asi() {
 	}
 	libusb_init(NULL);
 	int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, asi_hotplug_callback, NULL, NULL);
-	INDIGO_DEBUG(indigo_debug("indigo_ccd_asi: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
+	INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_asi: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
 	indigo_start_usb_even_handler();
 	return rc >= 0;
 }

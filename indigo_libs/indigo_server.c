@@ -58,6 +58,10 @@ void server_callback(int count) {
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
+	
+	if (!strstr(argv[0], "macOS"))
+		indigo_use_syslog = true; // embeded into INDIGO Server for macOS
+	
 	indigo_start();
 	
 	indigo_ccd_simulator();

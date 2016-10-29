@@ -102,8 +102,8 @@ extern bool lf_set_cooler(libatik_device_context *context, bool status, double t
 extern bool lf_check_cooler(libatik_device_context *device_context, bool *status, double *power, double *temperature);
 extern void lf_close(libatik_device_context *context);
 
-extern bool libatik_debug;
-extern bool libatik_syslog;
+extern bool libatik_debug_level;
+extern bool libatik_use_syslog;
 
 extern const char *libatik_version;
 extern const char *libatik_os;

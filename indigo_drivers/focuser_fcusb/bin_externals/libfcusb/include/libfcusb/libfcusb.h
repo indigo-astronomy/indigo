@@ -47,8 +47,8 @@ extern bool libfcusb_move_in(libfcusb_device_context *device_context);
 extern bool libfcusb_stop(libfcusb_device_context *device_context);
 extern void libfcusb_close(libfcusb_device_context *context);
 
-extern bool libfcusb_debug;
-extern bool libfcusb_syslog;
+extern bool libfcusb_debug_level;
+extern bool libfcusb_use_syslog;
 
 extern const char *libfcusb_version;
 extern const char *libfcusb_os;

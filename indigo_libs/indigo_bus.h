@@ -246,13 +246,6 @@ typedef struct indigo_client {
 } indigo_client;
 
 
-/** Variable used to store main() argc argument for loging purposes.
- */
-extern int indigo_main_argc;
-/** Variable used to store main() argv argument for loging purposes.
- */
-extern const char **indigo_main_argv;
-
 /** Print diagnostic messages on trace level, wrap calls to INDIGO_TRACE() macro.
  */
 extern void indigo_trace(const char *format, ...);
@@ -375,6 +368,26 @@ extern void indigo_property_copy_values(indigo_property *property, indigo_proper
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
 extern indigo_property INDIGO_ALL_PROPERTIES;
+
+/** Variable used to store main() argc argument for loging purposes.
+ */
+extern int indigo_main_argc;
+
+/** Variable used to store main() argv argument for loging purposes.
+ */
+extern const char **indigo_main_argv;
+
+/** Show debug messages.
+ */
+extern bool indigo_debug_level;
+
+/** Show trace messages.
+ */
+extern bool indigo_trace_level;
+
+/** Send logging messages to syslog instead of stderr.
+ */
+extern bool indigo_use_syslog;
 
 #endif /* indigo_bus_h */
 
