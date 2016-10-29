@@ -42,6 +42,7 @@ typedef struct {
 	bool has_8bit_mode;
 	bool pc_cds;
 	int precharge_offset;
+	int filter_count;
 	short mask;
 	int width, height;
 	double pixel_width, pixel_height;
@@ -51,7 +52,7 @@ typedef struct {
 	pthread_mutex_t lock;
 } libatik_device_context;
 
-extern bool libatik_camera(libusb_device *device, libatik_camera_type *type, const char **name, bool *is_guider);
+extern bool libatik_camera(libusb_device *device, libatik_camera_type *type, const char **name, bool *is_guider, bool *has_filterwheel);
 extern bool libatik_open(libusb_device *device, libatik_device_context **context);
 extern bool libatik_reset(libatik_device_context *context);
 extern bool libatik_start_exposure(libatik_device_context *context, bool dark);
