@@ -72,15 +72,17 @@ void server_callback(int count) {
 	INDIGO_LOG(indigo_log("%d clients", count));
 }
 
+static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
 	driver_property = indigo_init_switch_property(NULL, "INDIGO Server", "DRIVERS", "Main", "Active drivers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_DRIVERS);
 	for (int i = 0; i < MAX_DRIVERS && drivers[i].name; i++) {
-		indigo_init_switch_item(&driver_property->items[i], drivers[i].name, drivers[i].name, false);
-		drivers[i].driver(driver_property->items[i].sw.value);
+		indigo_init_switch_item(&driver_property->items[i], drivers[i].name, drivers[i].name, true);
 		driver_property->count = i+1;
 	}
-	indigo_load_properties(device, false);
+	if (indigo_load_properties(device, false) == INDIGO_FAILED)
+		change_property(device, NULL, driver_property);
 	INDIGO_LOG(indigo_log("%s attached", device->name));
 	return INDIGO_OK;
 }
