@@ -288,27 +288,27 @@ indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_cl
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			if (CCD_UPLOAD_MODE_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_UPLOAD_MODE_PROPERTY);
+				indigo_save_property(device, NULL, CCD_UPLOAD_MODE_PROPERTY);
 			if (CCD_LOCAL_MODE_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_LOCAL_MODE_PROPERTY);
+				indigo_save_property(device, NULL, CCD_LOCAL_MODE_PROPERTY);
 			if (CCD_FRAME_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_FRAME_PROPERTY);
+				indigo_save_property(device, NULL, CCD_FRAME_PROPERTY);
 			if (CCD_BIN_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_BIN_PROPERTY);
+				indigo_save_property(device, NULL, CCD_BIN_PROPERTY);
 			if (!CCD_OFFSET_PROPERTY->hidden && CCD_OFFSET_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_OFFSET_PROPERTY);
+				indigo_save_property(device, NULL, CCD_OFFSET_PROPERTY);
 			if (!CCD_GAMMA_PROPERTY->hidden && CCD_GAMMA_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_GAMMA_PROPERTY);
+				indigo_save_property(device, NULL, CCD_GAMMA_PROPERTY);
 			if (!CCD_GAIN_PROPERTY->hidden && CCD_GAIN_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_GAIN_PROPERTY);
+				indigo_save_property(device, NULL, CCD_GAIN_PROPERTY);
 			if (CCD_FRAME_TYPE_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_FRAME_TYPE_PROPERTY);
+				indigo_save_property(device, NULL, CCD_FRAME_TYPE_PROPERTY);
 			if (CCD_IMAGE_FORMAT_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_IMAGE_FORMAT_PROPERTY);
+				indigo_save_property(device, NULL, CCD_IMAGE_FORMAT_PROPERTY);
 			if (CCD_COOLER_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_COOLER_PROPERTY);
+				indigo_save_property(device, NULL, CCD_COOLER_PROPERTY);
 			if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, CCD_TEMPERATURE_PROPERTY);
+				indigo_save_property(device, NULL, CCD_TEMPERATURE_PROPERTY);
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -496,7 +496,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		t = sprintf(header += 80, "DATE    = '%s' / UTC date that FITS file was created", now);
 		header[t] = ' ';
-		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", INFO_DEVICE_NAME_ITEM->text.value, (int)(19 - strlen(INFO_DEVICE_NAME_ITEM->text.value)), ' ');
+		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		header[t] = ' ';
 		t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see www.indigo-astronomy.org", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 		header[t] = ' ';

@@ -56,7 +56,7 @@
 /** Create CCD Simulator device instance
  */
 
-extern indigo_result indigo_ccd_simulator();
+extern indigo_result indigo_ccd_simulator(bool state);
 
 #endif /* ccd_simulator_h */
 

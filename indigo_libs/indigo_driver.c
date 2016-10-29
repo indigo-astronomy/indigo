@@ -341,9 +341,9 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			CONFIG_LOAD_ITEM->sw.value = false;
 		} else if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			if (DEBUG_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, DEBUG_PROPERTY);
+				indigo_save_property(device, NULL, DEBUG_PROPERTY);
 			if (SIMULATION_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, SIMULATION_PROPERTY);
+				indigo_save_property(device, NULL, SIMULATION_PROPERTY);
 			if (DEVICE_CONTEXT->property_save_file_handle) {
 				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 				close(DEVICE_CONTEXT->property_save_file_handle);
@@ -393,6 +393,19 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
+indigo_result indigo_device_connect(indigo_device *device) {
+	indigo_property *property = indigo_init_switch_property(NULL, device->name, "CONNECTION", NULL, NULL, 0, 0, 0, 1);
+	indigo_init_switch_item(property->items, "CONNECTED", NULL, true);
+	return device->change_property(device, NULL, property);
+}
+
+indigo_result indigo_device_disconnect(indigo_device *device) {
+	indigo_property *property = indigo_init_switch_property(NULL, device->name, "CONNECTION", NULL, NULL, 0, 0, 0, 1);
+	indigo_init_switch_item(property->items, "DISCONNECTED", NULL, true);
+	return device->change_property(device, NULL, property);
+}
+
+	
 static void xprintf(int handle, const char *format, ...) {
 	char buffer[1024];
 	va_list args;
@@ -425,7 +438,7 @@ static int open_config_file(char *device_name, int mode, const char *suffix) {
 
 indigo_result indigo_load_properties(indigo_device *device, bool default_properties) {
 	assert(device != NULL);
-	int handle = open_config_file(INFO_DEVICE_NAME_ITEM->text.value, O_RDONLY, default_properties ? ".default" : ".config");
+	int handle = open_config_file(device->name, O_RDONLY, default_properties ? ".default" : ".config");
 	if (handle > 0) {
 		indigo_xml_parse(handle, NULL, NULL);
 		close(handle);
@@ -433,10 +446,12 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
 }
 
-indigo_result indigo_save_property(indigo_device*device, indigo_property *property) {
-	int handle = DEVICE_CONTEXT->property_save_file_handle;
+indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property) {
+	if (file_handle == NULL)
+		file_handle = &DEVICE_CONTEXT->property_save_file_handle;
+	int handle = *file_handle;
 	if (handle == 0) {
-		DEVICE_CONTEXT->property_save_file_handle = handle = open_config_file(property->device, O_WRONLY | O_CREAT | O_TRUNC, ".config");
+		*file_handle = handle = open_config_file(property->device, O_WRONLY | O_CREAT | O_TRUNC, ".config");
 		if (handle == 0)
 			return INDIGO_FAILED;
 	}

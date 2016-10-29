@@ -48,9 +48,10 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
-	indigo_focuser_fcusb();
+	indigo_focuser_fcusb(true);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(0, NULL, protocol_adapter);
+	indigo_focuser_fcusb(false);
 	indigo_stop();
 	return 0;
 }

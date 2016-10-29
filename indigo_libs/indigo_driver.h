@@ -206,13 +206,21 @@ extern indigo_result indigo_device_change_property(indigo_device *device, indigo
  */
 extern indigo_result indigo_device_detach(indigo_device *device);
 
+/** Send connect message.
+ */
+extern indigo_result indigo_device_connect(indigo_device *device);
+
+/** Send disconnect message.
+ */
+extern indigo_result indigo_device_disconnect(indigo_device *device);
+
 /** Load properties.
  */
 extern indigo_result indigo_load_properties(indigo_device *device, bool default_properties);
 
 /** Save single property.
  */
-extern indigo_result indigo_save_property(indigo_device*device, indigo_property *property);
+extern indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property);
 
 /** Set timer.
  */

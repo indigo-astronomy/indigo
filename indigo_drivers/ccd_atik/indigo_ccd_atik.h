@@ -47,7 +47,7 @@
 /** Register Atik CCD hot-plug callback
  */
 
-extern indigo_result indigo_ccd_atik();
+extern indigo_result indigo_ccd_atik(bool state);
 
 #endif /* ccd_atik_h */
 

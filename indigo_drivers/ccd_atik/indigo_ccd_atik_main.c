@@ -48,9 +48,10 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
-	indigo_ccd_atik();
+	indigo_ccd_atik(true);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(0, NULL, protocol_adapter);
+	indigo_ccd_atik(false);
 	indigo_stop();
 	return 0;
 }
