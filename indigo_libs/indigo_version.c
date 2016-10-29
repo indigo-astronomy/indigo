@@ -208,6 +208,18 @@ static struct property_mapping legacy[] = {
 			NULL
 		}
 	},
+	{	"GEOGRAPHIC_COORD", "MOUNT_GEOGRAPHIC_COORDINATES", {
+			{ "LAT", "LATITUDE" },
+			{ "LONG", "LONGITUDE" },
+			{ "ELEV", "ELEVATION" },
+			NULL
+		}
+	},
+	{	"TIME_LST", "MOUNT_LST_TIME", {
+			{ "LST", "TIME" },
+			NULL
+		}
+	},
 	{	"TELESCOPE_PARK", "MOUNT_PARK", {
 			{ "PARK", "PARKED" },
 			{ "UNPARK", "UNPARKED" },
@@ -230,6 +242,14 @@ static struct property_mapping legacy[] = {
 			{ "SLEW", "SLEW" },
 			{ "TRACK", "TRACK" },
 			{ "SYNC", "SYNC" },
+			NULL
+		}
+	},
+	{	"TELESCOPE_SLEW_RATE", "MOUNT_SLEW_RATE", {
+			{ "SLEW_GUIDE", "GUIDE" },
+			{ "SLEW_CENTERING", "CENTERING" },
+			{ "SLEW_FIND", "FIND" },
+			{ "SLEW_MAX", "MAX" },
 			NULL
 		}
 	},

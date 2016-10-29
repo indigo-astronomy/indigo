@@ -7,3 +7,6 @@
 [submodule "externals/hidapi"]
 	path = externals/hidapi
 	url = https://github.com/indigo-astronomy/hidapi.git
+[submodule "externals/novas"]
+	path = externals/novas
+	url = https://github.com/indigo-astronomy/novas.git

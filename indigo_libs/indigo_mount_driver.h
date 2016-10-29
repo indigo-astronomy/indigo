@@ -31,72 +31,123 @@
 
 /** Main mount group name string.
  */
-#define MOUNT_MAIN_GROUP												"Mount main"
+#define MOUNT_MAIN_GROUP															"Mount main"
+
+/** Main site group name string.
+ */
+#define MOUNT_SITE_GROUP															"Mount site"
 
 /** Device context pointer.
  */
-#define MOUNT_DEVICE_CONTEXT										((indigo_mount_device_context *)device->device_context)
+#define MOUNT_DEVICE_CONTEXT													((indigo_mount_device_context *)device->device_context)
+
+/** MOUNT_GEOGRAPHIC_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
+ */
+#define MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY					(MOUNT_DEVICE_CONTEXT->mount_geographic_coordinates_property)
+
+/** MOUNT_GEOGRAPHIC_COORDINATES.LATITUDE property item pointer.
+ */
+#define MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM		(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->items+0)
+
+/** MOUNT_GEOGRAPHIC_COORDINATES.LONGITUDE property item pointer.
+ */
+#define MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM		(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->items+1)
+
+/** MOUNT_GEOGRAPHIC_COORDINATES.ELEVATION property item pointer.
+ */
+#define MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM		(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->items+3)
+
+/** MOUNT_LST_TIME property pointer, property is optional, property change request should be fully handled by device driver.
+ */
+#define MOUNT_LST_TIME_PROPERTY												(MOUNT_DEVICE_CONTEXT->mount_lst_time_property)
+
+/** MOUNT_TIME.TIME property item pointer.
+ */
+#define MOUNT_LST_TIME_ITEM														(MOUNT_LST_TIME_PROPERTY->items+0)
 
 /** MOUNT_PARK property pointer, property is mandatory, property change request should be fully handled by device driver.
  */
-#define MOUNT_PARK_PROPERTY											(MOUNT_DEVICE_CONTEXT->mount_park_property)
+#define MOUNT_PARK_PROPERTY														(MOUNT_DEVICE_CONTEXT->mount_park_property)
 
 /** MOUNT_PARK.PARKED property item pointer.
  */
-#define MOUNT_PARK_PARKED_ITEM									(MOUNT_PARK_PROPERTY->items+0)
+#define MOUNT_PARK_PARKED_ITEM												(MOUNT_PARK_PROPERTY->items+0)
 
 /** MOUNT_PARK.UNPARKED property item pointer.
  */
-#define MOUNT_PARK_UNPARKED_ITEM								(MOUNT_PARK_PROPERTY->items+1)
-
-/** MOUNT_EQUATORIAL_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
- */
-#define MOUNT_EQUATORIAL_COORDINATES_PROPERTY		(MOUNT_DEVICE_CONTEXT->mount_equatorial_coordinates_property)
-
-/** MOUNT_EQUATORIAL_COORDINATES.RA property item pointer.
- */
-#define MOUNT_EQUATORIAL_COORDINATES_RA_ITEM		(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->items+0)
-
-/** MOUNT_EQUATORIAL_COORDINATES.DEC property item pointer.
- */
-#define MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM		(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->items+1)
-
-/** MOUNT_HORIZONTAL_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
- */
-#define MOUNT_HORIZONTAL_COORDINATES_PROPERTY		(MOUNT_DEVICE_CONTEXT->mount_horizontal_coordinates_property)
-
-/** MOUNT_HORIZONTAL_COORDINATES.ALT property item pointer.
- */
-#define MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM		(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+0)
-
-/** MOUNT_HORIZONTAL_COORDINATES.AZ property item pointer.
- */
-#define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM		(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+1)
+#define MOUNT_PARK_UNPARKED_ITEM											(MOUNT_PARK_PROPERTY->items+1)
 
 /** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_device_change_property.
  */
-#define MOUNT_ON_COORDINATES_SET_PROPERTY				(MOUNT_DEVICE_CONTEXT->mount_on_coordinates_set_property)
+#define MOUNT_ON_COORDINATES_SET_PROPERTY							(MOUNT_DEVICE_CONTEXT->mount_on_coordinates_set_property)
 
 /** MOUNT_ON_COORDINATES_SET.TRACK property item pointer.
  */
-#define MOUNT_ON_COORDINATES_SET_TRACK_ITEM			(MOUNT_ON_COORDINATES_SET_PROPERTY->items+0)
+#define MOUNT_ON_COORDINATES_SET_TRACK_ITEM						(MOUNT_ON_COORDINATES_SET_PROPERTY->items+0)
 
 /** MOUNT_ON_COORDINATES_SET.SLEW property item pointer.
  */
-#define MOUNT_ON_COORDINATES_SET_SLEW_ITEM			(MOUNT_ON_COORDINATES_SET_PROPERTY->items+1)
+#define MOUNT_ON_COORDINATES_SET_SLEW_ITEM						(MOUNT_ON_COORDINATES_SET_PROPERTY->items+1)
 
 /** MOUNT_ON_COORDINATES_SET.SYNC property item pointer.
  */
-#define MOUNT_ON_COORDINATES_SET_SYNC_ITEM			(MOUNT_ON_COORDINATES_SET_PROPERTY->items+2)
+#define MOUNT_ON_COORDINATES_SET_SYNC_ITEM						(MOUNT_ON_COORDINATES_SET_PROPERTY->items+2)
+
+/** MOUNT_SLEW_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_device_change_property.
+ */
+#define MOUNT_SLEW_RATE_PROPERTY											(MOUNT_DEVICE_CONTEXT->mount_slew_rate_property)
+
+/** MOUNT_SLEW_RATE.GUIDE property item pointer.
+ */
+#define MOUNT_SLEW_RATE_GUIDE_ITEM										(MOUNT_SLEW_RATE_PROPERTY->items+0)
+
+/** MOUNT_SLEW_RATE.CENTERING property item pointer.
+ */
+#define MOUNT_SLEW_RATE_CENTERING_ITEM								(MOUNT_SLEW_RATE_PROPERTY->items+1)
+
+/** MOUNT_SLEW_RATE.FIND property item pointer.
+ */
+#define MOUNT_SLEW_RATE_FIND_ITEM											(MOUNT_SLEW_RATE_PROPERTY->items+2)
+
+/** MOUNT_SLEW_RATE.MAX property item pointer.
+ */
+#define MOUNT_SLEW_RATE_MAX_ITEM											(MOUNT_SLEW_RATE_PROPERTY->items+3)
+
+/** MOUNT_EQUATORIAL_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
+ */
+#define MOUNT_EQUATORIAL_COORDINATES_PROPERTY					(MOUNT_DEVICE_CONTEXT->mount_equatorial_coordinates_property)
+
+/** MOUNT_EQUATORIAL_COORDINATES.RA property item pointer.
+ */
+#define MOUNT_EQUATORIAL_COORDINATES_RA_ITEM					(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->items+0)
+
+/** MOUNT_EQUATORIAL_COORDINATES.DEC property item pointer.
+ */
+#define MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM					(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->items+1)
+
+/** MOUNT_HORIZONTAL_COORDINATES property pointer, property is optional, property change request should be fully handled by device driver.
+ */
+#define MOUNT_HORIZONTAL_COORDINATES_PROPERTY					(MOUNT_DEVICE_CONTEXT->mount_horizontal_coordinates_property)
+
+/** MOUNT_HORIZONTAL_COORDINATES.ALT property item pointer.
+ */
+#define MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+0)
+
+/** MOUNT_HORIZONTAL_COORDINATES.AZ property item pointer.
+ */
+#define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+1)
 
 /** Wheel device context structure.
  */
 typedef struct {
 	indigo_device_context device_context;										///< device context base
+	indigo_property *mount_geographic_coordinates_property;	///< MOUNT_GEOGRAPHIC_COORDINATES property pointer
+	indigo_property *mount_lst_time_property;								///< MOUNT_LST_TIME property pointer
 	indigo_property *mount_park_property;										///< MOUNT_PARK property pointer
+	indigo_property *mount_on_coordinates_set_property;			///< MOUNT_ON_COORDINATES_SET property pointer
+	indigo_property *mount_slew_rate_property;							///< MOUNT_SLEW_RATE property pointer
 	indigo_property *mount_equatorial_coordinates_property;	///< MOUNT_EQUATORIAL_COORDINATES property pointer
 	indigo_property *mount_horizontal_coordinates_property;	///< MOUNT_HORIZONTAL_COORDINATES property pointer
-	indigo_property *mount_on_coordinates_set_property;			///< MOUNT_ON_COORDINATES_SET property pointer
 } indigo_mount_device_context;
 
 /** Attach callback function.
