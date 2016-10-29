@@ -60,9 +60,6 @@
 #undef PRIVATE_DATA
 #define PRIVATE_DATA													((fcusb_private_data *)DEVICE_CONTEXT->private_data)
 
-#undef INDIGO_DEBUG
-#define INDIGO_DEBUG(c) c
-
 #define X_FOCUSER_FREQUENCY_PROPERTY					(PRIVATE_DATA->focuser_abort_motion_property)
 #define X_FOCUSER_FREQUENCY_1_ITEM						(X_FOCUSER_FREQUENCY_PROPERTY->items+0)
 #define X_FOCUSER_FREQUENCY_4_ITEM						(X_FOCUSER_FREQUENCY_PROPERTY->items+1)
@@ -251,9 +248,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 }
 
 indigo_result indigo_focuser_fcusb() {
+	libfcusb_use_syslog = indigo_use_syslog;
 	libusb_init(NULL);
 	int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FCUSB_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, NULL);
-	INDIGO_DEBUG(indigo_debug("indigo_focuser_fcusb: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DEBUG_DRIVER(indigo_debug("indigo_focuser_fcusb: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 	indigo_start_usb_even_handler();
 	return rc >= 0;
 }

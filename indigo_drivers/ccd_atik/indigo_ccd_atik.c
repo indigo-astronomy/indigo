@@ -60,9 +60,6 @@
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((atik_private_data *)DEVICE_CONTEXT->private_data)
 
-#undef INDIGO_DEBUG
-#define INDIGO_DEBUG(c) c
-
 typedef struct {
 	libatik_device_context *device_context;
 	libusb_device *dev;
@@ -457,6 +454,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 }
 
 indigo_result indigo_ccd_atik() {
+	libatik_use_syslog = indigo_use_syslog;
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		devices[i] = 0;
 	}
@@ -464,7 +462,7 @@ indigo_result indigo_ccd_atik() {
 	int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID1, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, NULL);
 	if (rc >= 0)
 		rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID2, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, NULL);
-	INDIGO_DEBUG(indigo_debug("indigo_ccd_atik: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_atik: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 	indigo_start_usb_even_handler();
 	return rc >= 0;
 }

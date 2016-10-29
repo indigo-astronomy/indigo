@@ -71,7 +71,13 @@
  */
 #define INDIGO_DEBUG_PROTOCOL(c)
 
-// #define INDIG_USE_SYSLOG
+/** Conditional compilation wrapper for TRACE log level (for drivers)
+ */
+#define INDIGO_TRACE_DRIVER(c)
+
+/** Conditional compilation wrapper for DEBUG log level (for drivers)
+ */
+#define INDIGO_DEBUG_DRIVER(c) c
 
 #endif /* indigo_config_h */
 

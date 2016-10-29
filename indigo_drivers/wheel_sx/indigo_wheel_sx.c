@@ -64,9 +64,6 @@
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((sx_private_data *)DEVICE_CONTEXT->private_data)
 
-#undef INDIGO_DEBUG
-#define INDIGO_DEBUG(c) c
-
 typedef struct {
 	hid_device *handle;
 	int current_slot, target_slot;
@@ -76,12 +73,12 @@ typedef struct {
 static bool sx_message(indigo_device *device, int a, int b) {
 	unsigned char buf[2] = { a, b };
 	int rc = hid_write(PRIVATE_DATA->handle, buf, 2);
-	INDIGO_DEBUG(indigo_debug("sx_message: hid_write( { %02x, %02x }) [%d] ->  %d", buf[0], buf[1], __LINE__, rc));
+	INDIGO_DEBUG_DRIVER(indigo_debug("sx_message: hid_write( { %02x, %02x }) [%d] ->  %d", buf[0], buf[1], __LINE__, rc));
 	if (rc != 2)
 		return false;
 	usleep(100);
 	rc = hid_read(PRIVATE_DATA->handle, buf, 2);
-	INDIGO_DEBUG(indigo_debug("sx_message: hid_read() [%d] ->  %d, { %02x, %02x }", __LINE__, rc, buf[0], buf[1]));
+	INDIGO_DEBUG_DRIVER(indigo_debug("sx_message: hid_read() [%d] ->  %d, { %02x, %02x }", __LINE__, rc, buf[0], buf[1]));
 	PRIVATE_DATA->current_slot = buf[0];
 	PRIVATE_DATA->count = buf[1];
 	return rc == 2;
@@ -89,11 +86,11 @@ static bool sx_message(indigo_device *device, int a, int b) {
 
 static bool sx_open(indigo_device *device) {
 	if ((PRIVATE_DATA->handle = hid_open(SX_VENDOR_ID, SX_PRODUC_ID, NULL)) != NULL) {
-		INDIGO_DEBUG(indigo_debug("sx_open: hid_open [%d] ->  ok", __LINE__));
+		INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: hid_open [%d] ->  ok", __LINE__));
 		sx_message(device, 0x81, 0);
 		return true;
 	}
-	INDIGO_DEBUG(indigo_debug("sx_open: hid_open [%d] ->  failed", __LINE__));
+	INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: hid_open [%d] ->  failed", __LINE__));
 	return false;
 }
 
@@ -219,7 +216,7 @@ indigo_result indigo_wheel_sx() {
 	libusb_init(NULL);
 	hid_init();
 	int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, SX_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, sx_hotplug_callback, NULL, NULL);
-	INDIGO_DEBUG(indigo_debug("indigo_ccd_sx: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
+	INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sx: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
 	indigo_start_usb_even_handler();
 	return rc >= 0;
 }
