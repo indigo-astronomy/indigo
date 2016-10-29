@@ -208,6 +208,31 @@ static struct property_mapping legacy[] = {
 			NULL
 		}
 	},
+	{	"TELESCOPE_PARK", "MOUNT_PARK", {
+			{ "PARK", "PARKED" },
+			{ "UNPARK", "UNPARKED" },
+			NULL
+		}
+	},
+	{	"EQUATORIAL_EOD_COORD", "MOUNT_EQUATORIAL_COORDINATES", {
+			{ "RA", "RA" },
+			{ "DEC", "DEC" },
+			NULL
+		}
+	},
+	{	"HORIZONTAL_COORD", "MOUNT_HORIZONTAL_COORDINATES", {
+			{ "ALT", "ALT" },
+			{ "AZ", "AZ" },
+			NULL
+		}
+	},
+	{	"ON_COORD_SET", "MOUNT_ON_COORDINATES_SET", {
+			{ "SLEW", "SLEW" },
+			{ "TRACK", "TRACK" },
+			{ "SYNC", "SYNC" },
+			NULL
+		}
+	},
 	NULL
 };
 

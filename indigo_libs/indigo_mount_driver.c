@@ -52,6 +52,25 @@ indigo_result indigo_mount_device_attach(indigo_device *device, indigo_version v
 				return INDIGO_FAILED;
 			indigo_init_switch_item(MOUNT_PARK_PARKED_ITEM, "PARKED", "Mount parked", true);
 			indigo_init_switch_item(MOUNT_PARK_UNPARKED_ITEM, "UNPARKED", "Mount unparked", false);
+			// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, "MOUNT_EQUATORIAL_COORDINATES", MOUNT_MAIN_GROUP, "Equatorial EOD coordinates", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM, "RA", "Right ascension", 0, 24, 0, 0);
+			indigo_init_number_item(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM, "DEC", "Declination", -180, 180, 0, 0);
+			// -------------------------------------------------------------------------------- MOUNT_HORIZONTAL_COORDINATES
+			MOUNT_HORIZONTAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, "MOUNT_HORIZONTAL_COORDINATES", MOUNT_MAIN_GROUP, "Horizontal coordinates", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+			if (MOUNT_HORIZONTAL_COORDINATES_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM, "ALT", "Altitude", 0, 24, 0, 0);
+			indigo_init_number_item(MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM, "AZ", "Azimuth", -180, 180, 0, 0);
+			// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
+			MOUNT_ON_COORDINATES_SET_PROPERTY = indigo_init_switch_property(NULL, device->name, "MOUNT_ON_COORDINATES_SET", MOUNT_MAIN_GROUP, "On coordinates set", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+			if (MOUNT_ON_COORDINATES_SET_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_switch_item(MOUNT_ON_COORDINATES_SET_SLEW_ITEM, "TRACK", "Slew to target and track", true);
+			indigo_init_switch_item(MOUNT_ON_COORDINATES_SET_SLEW_ITEM, "SLEW", "Slew to target and stop", false);
+			indigo_init_switch_item(MOUNT_ON_COORDINATES_SET_SYNC_ITEM, "SYNC", "Sync to target", false);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -83,6 +102,11 @@ indigo_result indigo_mount_device_change_property(indigo_device *device, indigo_
 		} else {
 			indigo_delete_property(device, MOUNT_PARK_PROPERTY, NULL);
 		}
+	} else if (indigo_property_match(MOUNT_ON_COORDINATES_SET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
+		indigo_property_copy_values(MOUNT_ON_COORDINATES_SET_PROPERTY, property, false);
+		MOUNT_ON_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_ON_COORDINATES_SET_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_device_change_property(device, client, property);
