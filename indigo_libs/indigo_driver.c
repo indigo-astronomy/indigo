@@ -112,7 +112,7 @@ static void *timer_thread(indigo_device *device) {
 			pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
 			break;
 		}
-		INDIGO_DEBUG(indigo_debug("sleep for %ldms", milis));
+		INDIGO_TRACE(indigo_trace("sleep for %ldms", milis));
 		clock_gettime(CLOCK_MONOTONIC, &sleep_time);
 #ifdef USE_POLL
 		if (poll(&pollfd, 1, (int)milis)) {
@@ -165,7 +165,7 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 	timer->device = device;
 	timer->callback = callback;
 
-	INDIGO_DEBUG(indigo_debug("timer queued to fire in %ldms", time_diff(timer->time, now)));
+	INDIGO_TRACE(indigo_trace("timer queued to fire in %ldms", time_diff(timer->time, now)));
 
 	pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
 	indigo_timer *queue = DEVICE_CONTEXT->timer_queue, *end = NULL;
@@ -208,7 +208,7 @@ void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
 		queue->next = free_timers;
 		free_timers = queue;
 		pthread_mutex_unlock(&timer_mutex);
-		INDIGO_DEBUG(indigo_debug("timer canceled"));
+		INDIGO_TRACE(indigo_trace("timer canceled"));
 	}
 	pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
 }
@@ -231,13 +231,13 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 	timer->canceled = false;
 	long nanos = delay * NANO;
 	dispatch_after_f(dispatch_time(0, nanos), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), timer, (dispatch_function_t)dispatch_function);
-	INDIGO_DEBUG(indigo_debug("timer queued to fire in %ldms", nanos/1000000));
+	INDIGO_TRACE(indigo_trace("timer queued to fire in %ldms", nanos/1000000));
 	return timer;
 }
 
 void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
 	timer->canceled = true;
-	INDIGO_DEBUG(indigo_debug("timer canceled"));
+	INDIGO_TRACE(indigo_trace("timer canceled"));
 }
 
 #endif

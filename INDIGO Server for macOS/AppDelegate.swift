@@ -52,7 +52,7 @@ func serverCallback(count: Int32) {
   }
   
   func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
-    NSLog("Bonjour service could not be published.");
+    NSLog("Bonjour service   could not be published.");
     NSLog("\(errorDict)");
   }
   
