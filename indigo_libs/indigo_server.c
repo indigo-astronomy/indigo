@@ -1,33 +1,20 @@
 //  Copyright (c) 2016 CloudMakers, s. r. o.
 //  All rights reserved.
 //
-//  Redistribution and use in source and binary forms, with or without
-//  modification, are permitted provided that the following conditions
-//  are met:
+//	You can use this software under the terms of 'INDIGO Astronomy
+//  open-source license' (see LICENSE.md).
 //
-//  1. Redistributions of source code must retain the above copyright
-//  notice, this list of conditions and the following disclaimer.
-//
-//  2. Redistributions in binary form must reproduce the above
-//  copyright notice, this list of conditions and the following
-//  disclaimer in the documentation and/or other materials provided
-//  with the distribution.
-//
-//  3. The name of the author may not be used to endorse or promote
-//  products derived from this software without specific prior
-//  written permission.
-//
-//  THIS SOFTWARE IS PROVIDED BY THE AUTHOR 'AS IS' AND ANY EXPRESS
-//  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-//  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-//  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-//  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-//  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-//  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-//  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-//  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-//  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-//  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//	THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+//	OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+//	ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+//	DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+//	DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+//	GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+//	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+//	WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+//	NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+//	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -43,11 +30,12 @@
 #include "indigo_server_xml.h"
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
+#include "mount_simulator/indigo_mount_simulator.h"
 #include "ccd_sx/indigo_ccd_sx.h"
+#include "wheel_sx/indigo_wheel_sx.h"
 #include "ccd_ssag/indigo_ccd_ssag.h"
 #include "ccd_asi/indigo_ccd_asi.h"
 #include "ccd_atik/indigo_ccd_atik.h"
-#include "wheel_sx/indigo_wheel_sx.h"
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
 
 #define MAX_DRIVERS	100
@@ -57,7 +45,8 @@ static struct {
 	const char *name;
 	indigo_result (*driver)(bool state);
 } drivers[] = {
-	{ "Simulator", indigo_ccd_simulator },
+	{ "CCD Simulator", indigo_ccd_simulator },
+	{ "Mount Simulator", indigo_mount_simulator },
 	{ "SX CCD", indigo_ccd_sx },
 	{ "SX Filter Wheel", indigo_wheel_sx },
 	{ "Atik CCD", indigo_ccd_atik },
@@ -66,7 +55,7 @@ static struct {
 	{ NULL, NULL }
 };
 
-static int first_driver = 1;
+static int first_driver = 2;
 static indigo_property *driver_property;
 
 static void server_callback(int count) {

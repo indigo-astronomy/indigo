@@ -1,9 +1,6 @@
 //  Copyright (c) 2016 CloudMakers, s. r. o.
 //  All rights reserved.
 //
-//  Code is based on OpenSSAG library
-//  Copyright (c) 2011 Eric J. Holmes, Orion Telescopes & Binoculars
-//
 //	You can use this software under the terms of 'INDIGO Astronomy
 //  open-source license' (see LICENSE.md).
 //
@@ -19,31 +16,29 @@
 //	NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
 //  version history
 //  2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Orion StarShoot AutoGuider driver
- \file indigo_ccd_ssag.c
+/** INDIGO mount Mount driver main
+ \file indigo_mount_simulator_main.c
  */
 
 #include <stdio.h>
 
-
-#include <stdio.h>
-#include <string.h>
-
-#include "indigo_ccd_ssag.h"
 #include "indigo_driver_xml.h"
+
+#include "indigo_mount_simulator.h"
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
-	indigo_ccd_ssag(true);
+	indigo_mount_simulator(true);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(0, NULL, protocol_adapter);
-	indigo_ccd_ssag(false);
+	indigo_mount_simulator(false);
 	indigo_stop();
 	return 0;
 }

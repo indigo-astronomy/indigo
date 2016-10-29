@@ -1,5 +1,8 @@
+							INDIGO Astronomy open-source license
+                  Version 1.0, October 2016
+
 Copyright (c) 2016 CloudMakers, s. r. o.
-All rights reserved.
+Copyright (C) 2016 Rumen G.Bogdanovski
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -13,14 +16,23 @@ copyright notice, this list of conditions and the following
 disclaimer in the documentation and/or other materials provided
 with the distribution.
 
-3. The name of the author may not be used to endorse or promote
+3. All advertising materials mentioning features or use of this
+software must display the following acknowledgement: 'This product
+includes INDIGO framework, see http://www.indigo-astronomy.org
+for more information.'
+
+4. The names of the authors may not be used to endorse or promote
 products derived from this software without specific prior
 written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE AUTHOR 'AS IS' AND ANY EXPRESS
+5. Redistribution in source or binary form for profit is permitted
+only as a part of a product derived from this software with added
+value.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
 GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
