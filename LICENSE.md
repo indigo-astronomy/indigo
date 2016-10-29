@@ -1,5 +1,5 @@
-<p style="text-align: center;">INDIGO Astronomy open-source license</p>
-<p style="text-align: center;">Version 1.0, October 2016</p>
+->INDIGO Astronomy open-source license<-
+->Version 1.0, October 2016<-
 
 Copyright (c) 2016 CloudMakers, s. r. o.
 
