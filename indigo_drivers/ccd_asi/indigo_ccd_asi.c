@@ -313,6 +313,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_ccd_device_detach(device);
 }
@@ -389,6 +390,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_guider_device_detach(device);
 }
@@ -409,7 +411,7 @@ static struct {
 
 static indigo_device *devices[MAX_DEVICES];
 
-static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = {
 		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -487,15 +489,32 @@ static int asi_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_
 	return 0;
 };
 
-indigo_result indigo_ccd_asi() {
-	for (int i = 0; i < MAX_DEVICES; i++) {
-		devices[i] = 0;
+static libusb_hotplug_callback_handle callback_handle;
+
+indigo_result indigo_ccd_asi(bool state) {
+	static bool current_state = false;
+	if (state == current_state)
+		return INDIGO_OK;
+	if ((current_state = state)) {
+		for (int i = 0; i < MAX_DEVICES; i++) {
+			devices[i] = 0;
+		}
+		libusb_init(NULL);
+		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, NULL);
+		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_asi: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
+		indigo_start_usb_even_handler();
+		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
+	} else {
+		libusb_hotplug_deregister_callback(NULL, callback_handle);
+		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_asi: libusb_hotplug_deregister_callback [%d]", __LINE__));
+		for (int j = 0; j < MAX_DEVICES; j++) {
+			if (devices[j] != NULL) {
+				indigo_device *device = devices[j];
+				hotplug_callback(NULL, PRIVATE_DATA->dev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+			}
+		}
+		return INDIGO_OK;
 	}
-	libusb_init(NULL);
-	int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, asi_hotplug_callback, NULL, NULL);
-	INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_asi: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
-	indigo_start_usb_even_handler();
-	return rc >= 0;
 }
 
 

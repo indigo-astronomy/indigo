@@ -112,7 +112,7 @@ static void log_message(const char *format, va_list args) {
 					*eol = 0;
 				if (eol > line)
 					syslog (LOG_NOTICE, "%s", buffer);
-				syslog (LOG_NOTICE, "%s\n", line);
+				syslog (LOG_NOTICE, "%s", line);
 				if (eol)
 					line = eol + 1;
 				else

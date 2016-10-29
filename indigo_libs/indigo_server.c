@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <syslog.h>
+#include <assert.h>
 
 #include "indigo_bus.h"
 #include "indigo_server_xml.h"
@@ -46,33 +47,91 @@
 #include "ccd_ssag/indigo_ccd_ssag.h"
 #include "ccd_asi/indigo_ccd_asi.h"
 #include "ccd_atik/indigo_ccd_atik.h"
-
 #include "wheel_sx/indigo_wheel_sx.h"
-
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
+
+#define MAX_DRIVERS	100
+#define SERVER_NAME	"INDIGO Server"
+
+static struct {
+	const char *name;
+	indigo_result (*driver)(bool state);
+} drivers[] = {
+	{ "Simulator", indigo_ccd_simulator },
+	{ "SX CCD", indigo_ccd_sx },
+	{ "SX Filter Wheel", indigo_wheel_sx },
+	{ "Atik CCD", indigo_ccd_atik },
+	{ "SSAG/QHY5 CCD", indigo_ccd_ssag },
+	{ "Shoestring FCUSB Focuser", indigo_focuser_fcusb },
+	{ NULL, NULL }
+};
+
+static indigo_property *driver_property;
 
 void server_callback(int count) {
 	INDIGO_LOG(indigo_log("%d clients", count));
+}
+
+static indigo_result attach(indigo_device *device) {
+	assert(device != NULL);
+	driver_property = indigo_init_switch_property(NULL, "INDIGO Server", "DRIVERS", "Main", "Active drivers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_DRIVERS);
+	for (int i = 0; i < MAX_DRIVERS && drivers[i].name; i++) {
+		indigo_init_switch_item(&driver_property->items[i], drivers[i].name, drivers[i].name, false);
+		drivers[i].driver(driver_property->items[i].sw.value);
+		driver_property->count = i+1;
+	}
+	indigo_load_properties(device, false);
+	INDIGO_LOG(indigo_log("%s attached", device->name));
+	return INDIGO_OK;
+}
+
+static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	indigo_define_property(device, driver_property, NULL);
+	return INDIGO_OK;
+}
+
+static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(driver_property, property)) {
+	// -------------------------------------------------------------------------------- DRIVERS
+		indigo_property_copy_values(driver_property, property, false);
+		for (int i = 0; i < driver_property->count; i++)
+			drivers[i].driver(driver_property->items[i].sw.value);
+		driver_property->state = INDIGO_OK_STATE;
+		indigo_update_property(device, driver_property, NULL);
+		int handle = 0;
+		indigo_save_property(device, &handle, driver_property);
+		close(handle);
+	// --------------------------------------------------------------------------------
+	}
+	return INDIGO_OK;
+}
+
+static indigo_result detach(indigo_device *device) {
+	assert(device != NULL);
+	INDIGO_LOG(indigo_log("%s detached", device->name));
+	return INDIGO_OK;
 }
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	
-	if (!strstr(argv[0], "macOS"))
+	static indigo_device device = {
+		SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		attach,
+		enumerate_properties,
+		change_property,
+		detach
+	};
+
+	if (strstr(argv[0], "macOS"))
 		indigo_use_syslog = true; // embeded into INDIGO Server for macOS
 	
 	indigo_start();
-	
-	indigo_ccd_simulator();
-	indigo_ccd_sx();
-	indigo_ccd_ssag();
-	indigo_ccd_asi();
-	indigo_ccd_atik();
-
-	indigo_wheel_sx();
-	
-	indigo_focuser_fcusb();
+	indigo_attach_device(&device);
 
 	indigo_server_xml(server_callback);
 	return 0;

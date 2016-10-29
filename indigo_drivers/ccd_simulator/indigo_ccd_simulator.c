@@ -186,8 +186,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (CONNECTION_CONNECTED_ITEM->sw.value)
 			PRIVATE_DATA->temperture_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
-		else
-			indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
+		else {
+			if (PRIVATE_DATA->temperture_timer) {
+				indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
+				PRIVATE_DATA->temperture_timer = NULL;
+			}
+		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
@@ -240,7 +244,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	free(PRIVATE_DATA);
+	indigo_device_disconnect(device);
+	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_ccd_device_detach(device);
 }
 
@@ -328,6 +333,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_guider_device_detach(device);
 }
@@ -394,6 +400,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_wheel_device_detach(device);
 }
@@ -490,13 +497,23 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_focuser_device_detach(device);
 }
 
 // --------------------------------------------------------------------------------
 
-indigo_result indigo_ccd_simulator() {
+simulator_private_data *private_data = NULL;
+
+static indigo_device *imager_ccd = NULL;
+static indigo_device *imager_wheel = NULL;
+static indigo_device *imager_focuser = NULL;
+
+static indigo_device *guider_ccd = NULL;
+static indigo_device *guider_guider = NULL;
+
+indigo_result indigo_ccd_simulator(bool state) {
 	static indigo_device imager_camera_template = {
 		CCD_SIMULATOR_IMAGER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -518,7 +535,6 @@ indigo_result indigo_ccd_simulator() {
 		focuser_change_property,
 		focuser_detach
 	};
-
 	static indigo_device guider_camera_template = {
 		CCD_SIMULATOR_GUIDER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -533,40 +549,68 @@ indigo_result indigo_ccd_simulator() {
 		guider_change_property,
 		guider_detach
 	};
-
-	simulator_private_data *private_data = malloc(sizeof(simulator_private_data));
-	assert(private_data != NULL);
-	
-	indigo_device *device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &imager_camera_template, sizeof(indigo_device));
-	device->device_context = private_data;
-	indigo_attach_device(device);
-	
-	device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &imager_wheel_template, sizeof(indigo_device));
-	device->device_context = private_data;
-	indigo_attach_device(device);
-	
-	device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &imager_focuser_template, sizeof(indigo_device));
-	device->device_context = private_data;
-	indigo_attach_device(device);
-	
-	device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &guider_camera_template, sizeof(indigo_device));
-	device->device_context = private_data;
-	indigo_attach_device(device);
-	
-	device = malloc(sizeof(indigo_device));
-	assert(device != NULL);
-	memcpy(device, &guider_template, sizeof(indigo_device));
-	device->device_context = private_data;
-	indigo_attach_device(device);
-
+	static bool current_state = false;
+	if (state == current_state)
+		return INDIGO_OK;
+	if ((current_state = state)) {
+		private_data = malloc(sizeof(simulator_private_data));
+		assert(private_data != NULL);
+		imager_ccd = malloc(sizeof(indigo_device));
+		assert(imager_ccd != NULL);
+		memcpy(imager_ccd, &imager_camera_template, sizeof(indigo_device));
+		imager_ccd->device_context = private_data;
+		indigo_attach_device(imager_ccd);
+		imager_wheel = malloc(sizeof(indigo_device));
+		assert(imager_wheel != NULL);
+		memcpy(imager_wheel, &imager_wheel_template, sizeof(indigo_device));
+		imager_wheel->device_context = private_data;
+		indigo_attach_device(imager_wheel);
+		imager_focuser = malloc(sizeof(indigo_device));
+		assert(imager_focuser != NULL);
+		memcpy(imager_focuser, &imager_focuser_template, sizeof(indigo_device));
+		imager_focuser->device_context = private_data;
+		indigo_attach_device(imager_focuser);
+		guider_ccd = malloc(sizeof(indigo_device));
+		assert(guider_ccd != NULL);
+		memcpy(guider_ccd, &guider_camera_template, sizeof(indigo_device));
+		guider_ccd->device_context = private_data;
+		indigo_attach_device(guider_ccd);		
+		guider_guider = malloc(sizeof(indigo_device));
+		assert(guider_guider != NULL);
+		memcpy(guider_guider, &guider_template, sizeof(indigo_device));
+		guider_guider->device_context = private_data;
+		indigo_attach_device(guider_guider);
+	} else {
+		if (imager_ccd != NULL) {
+			indigo_detach_device(imager_ccd);
+			free(imager_ccd);
+			imager_ccd = NULL;
+		}
+		if (imager_wheel != NULL) {
+			indigo_detach_device(imager_wheel);
+			free(imager_wheel);
+			imager_wheel = NULL;
+		}
+		if (imager_focuser != NULL) {
+			indigo_detach_device(imager_focuser);
+			free(imager_focuser);
+			imager_focuser = NULL;
+		}
+		if (guider_ccd != NULL) {
+			indigo_detach_device(guider_ccd);
+			free(guider_ccd);
+			guider_ccd = NULL;
+		}
+		if (guider_guider != NULL) {
+			indigo_detach_device(guider_guider);
+			free(guider_guider);
+			guider_guider = NULL;
+		}
+		if (private_data != NULL) {
+			free(private_data);
+			private_data = NULL;
+		}
+	}
 	return INDIGO_OK;
 }
 

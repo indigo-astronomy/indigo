@@ -76,7 +76,7 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
 		indigo_property_copy_values(connection_property, property, true);
 		if (connection_property->items[0].sw.value) {
 			indigo_log("connected...");
-			ccd_exposure_property->items[0].number.value = 10.0;
+			ccd_exposure_property->items[0].number.value = 3.0;
 			indigo_change_property(client, ccd_exposure_property);
 		} else {
 			indigo_log("disconnected...");
@@ -132,9 +132,10 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_start();
-	indigo_ccd_simulator();
+	indigo_ccd_simulator(true);
 	indigo_attach_client(&test);
 	sleep(1000);
+	indigo_ccd_simulator(false);
 	indigo_stop();
 	return 0;
 }

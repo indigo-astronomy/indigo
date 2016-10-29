@@ -26,7 +26,6 @@
 		599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		59A7D3831DC125010027DE5A /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
-		59A7D3841DC125110027DE5A /* libhidapi.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */; };
 		59BE87141DC49C28001775F0 /* libhidapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59BE87151DC49C28001775F0 /* libusb-1.0.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */; };
@@ -37,6 +36,8 @@
 		59C8E7F11DBBD91400AA3F0A /* indigo_ccd_ssag.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */; };
 		59C8E7F31DBBD98900AA3F0A /* indigo_ccd_asi.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */; };
 		59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */; };
+		59D277D51DC4E70D0080BDC3 /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
+		59D277D61DC4E7410080BDC3 /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
 		59D382171D97348500E87393 /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382161D97348500E87393 /* client.c */; };
 		9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* indigo_server.c */; };
 		9D9EA6A41DBE1F7300E11841 /* indigo_ccd_atik_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */; };
@@ -243,7 +244,6 @@
 			files = (
 				599C9A5D1DA028E4008BBCC1 /* libindigo.a in Frameworks */,
 				59A7D3831DC125010027DE5A /* libusb-1.0.0.dylib in Frameworks */,
-				59A7D3841DC125110027DE5A /* libhidapi.0.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -268,6 +268,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				599C9A551DA02303008BBCC1 /* libindigo.a in Frameworks */,
+				59D277D61DC4E7410080BDC3 /* libusb-1.0.0.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -276,6 +277,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */,
+				59D277D51DC4E70D0080BDC3 /* libusb-1.0.0.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1057,6 +1059,10 @@
 		59D381FC1D97083A00E87393 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				OTHER_CFLAGS = "-DINDIGO_EXECUTABLE";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1065,6 +1071,10 @@
 		59D381FD1D97083A00E87393 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				OTHER_CFLAGS = "-DINDIGO_EXECUTABLE";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1073,6 +1083,10 @@
 		59D382111D97343000E87393 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -1080,6 +1094,10 @@
 		59D382121D97343000E87393 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

@@ -46,7 +46,7 @@
 /** Register StarlighXpress CCD hot-plug callback
  */
 
-extern indigo_result indigo_ccd_sx();
+extern indigo_result indigo_ccd_sx(bool state);
 
 #endif /* ccd_sx_h */
 
