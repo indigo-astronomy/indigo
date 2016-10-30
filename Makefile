@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 1
+INDIGO_BUILD := 2
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -18,7 +18,7 @@ else
 	ARCH_DETECTED=$(shell uname -m)
 	ifeq ($(ARCH_DETECTED),armv7l)
 		ARCH_DETECTED=arm
-		DEBIAN_ARCH=arm
+		DEBIAN_ARCH=armhf
 	endif
 	ifeq ($(ARCH_DETECTED),i686)
 		ARCH_DETECTED=x86
