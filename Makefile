@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 0
+INDIGO_BUILD := 1
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -381,7 +381,6 @@ $(PACKAGE_NAME).deb: all
 	cp -r share /tmp/$(PACKAGE_NAME)
 	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
 	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
-	cat /tmp/indigo-2.0-0-i386/DEBIAN/control
 	sudo chown root /tmp/$(PACKAGE_NAME)
 	dpkg --build /tmp/$(PACKAGE_NAME)
 	mv /tmp/$(PACKAGE_NAME).deb .
