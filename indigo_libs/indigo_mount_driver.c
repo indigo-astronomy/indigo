@@ -50,8 +50,8 @@ indigo_result indigo_mount_device_attach(indigo_device *device, indigo_version v
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, "MOUNT_GEOGRAPHIC_COORDINATES", MOUNT_SITE_GROUP, "Geographical coordinates", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 3);
 			if (MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM, "LATITUDE", "Site latitude (-90 to +90), degrees +N", -90, 90, 0, 0);
-			indigo_init_number_item(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM, "LONGITUDE", "Site longitude (0 to 360), degrees +E", 0, 360, 0, 0);
+			indigo_init_number_item(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM, "LATITUDE", "Site latitude (-90 to +90° +N)", -90, 90, 0, 0);
+			indigo_init_number_item(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM, "LONGITUDE", "Site longitude (0 to 360° +E)", 0, 360, 0, 0);
 			indigo_init_number_item(MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM, "ELEVATION", "Site elevation, meters", 0, 8000, 0, 0);
 			// -------------------------------------------------------------------------------- MOUNT_LST_TIME
 			MOUNT_LST_TIME_PROPERTY = indigo_init_number_property(NULL, device->name, "MOUNT_LST_TIME", MOUNT_SITE_GROUP, "Local sidereal time", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 3);
@@ -70,8 +70,8 @@ indigo_result indigo_mount_device_attach(indigo_device *device, indigo_version v
 			if (MOUNT_ON_COORDINATES_SET_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(MOUNT_ON_COORDINATES_SET_TRACK_ITEM, "TRACK", "Slew to target and track", true);
-			indigo_init_switch_item(MOUNT_ON_COORDINATES_SET_SLEW_ITEM, "SLEW", "Slew to target and stop", false);
 			indigo_init_switch_item(MOUNT_ON_COORDINATES_SET_SYNC_ITEM, "SYNC", "Sync to target", false);
+			indigo_init_switch_item(MOUNT_ON_COORDINATES_SET_SLEW_ITEM, "SLEW", "Slew to target and stop", false);
 			// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
 			MOUNT_SLEW_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, "MOUNT_SLEW_RATE", MOUNT_MAIN_GROUP, "Slew rate", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 			if (MOUNT_SLEW_RATE_PROPERTY == NULL)
@@ -84,15 +84,20 @@ indigo_result indigo_mount_device_attach(indigo_device *device, indigo_version v
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, "MOUNT_EQUATORIAL_COORDINATES", MOUNT_MAIN_GROUP, "Equatorial EOD coordinates", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM, "RA", "Right ascension", 0, 24, 0, 0);
-			indigo_init_number_item(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM, "DEC", "Declination", -180, 180, 0, 0);
+			indigo_init_number_item(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM, "RA", "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
+			indigo_init_number_item(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM, "DEC", "Declination (-180 to 180°)", -180, 180, 0, 90);
 			// -------------------------------------------------------------------------------- MOUNT_HORIZONTAL_COORDINATES
 			MOUNT_HORIZONTAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, "MOUNT_HORIZONTAL_COORDINATES", MOUNT_MAIN_GROUP, "Horizontal coordinates", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (MOUNT_HORIZONTAL_COORDINATES_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden = true;
-			indigo_init_number_item(MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM, "ALT", "Altitude", 0, 24, 0, 0);
-			indigo_init_number_item(MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM, "AZ", "Azimuth", -180, 180, 0, 0);
+			indigo_init_number_item(MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM, "ALT", "Altitude (0 to 90°)", 0, 90, 0, 0);
+			indigo_init_number_item(MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM, "AZ", "Azimuth (0 to 360°)", 0, 360, 0, 0);
+			// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
+			MOUNT_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, "MOUNT_ABORT_MOTION", MOUNT_MAIN_GROUP, "Abort motion", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			if (MOUNT_ABORT_MOTION_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_switch_item(MOUNT_ABORT_MOTION_ITEM, "ABORT_MOTION", "Abort motion", false);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -120,6 +125,8 @@ indigo_result indigo_mount_device_enumerate_properties(indigo_device *device, in
 				indigo_define_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_HORIZONTAL_COORDINATES_PROPERTY, property) && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden)
 				indigo_define_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property) && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden)
+				indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -141,6 +148,7 @@ indigo_result indigo_mount_device_change_property(indigo_device *device, indigo_
 			indigo_define_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden)
 				indigo_define_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 		} else {
 			indigo_delete_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			if (!MOUNT_LST_TIME_PROPERTY->hidden)
@@ -151,6 +159,7 @@ indigo_result indigo_mount_device_change_property(indigo_device *device, indigo_
 			indigo_delete_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden)
 				indigo_delete_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(MOUNT_ON_COORDINATES_SET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
@@ -174,6 +183,7 @@ indigo_result indigo_mount_device_detach(indigo_device *device) {
 		indigo_delete_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden)
 			indigo_delete_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 	}
 	free(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	free(MOUNT_LST_TIME_PROPERTY);
@@ -182,6 +192,7 @@ indigo_result indigo_mount_device_detach(indigo_device *device) {
 	free(MOUNT_SLEW_RATE_PROPERTY);
 	free(MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
 	free(MOUNT_HORIZONTAL_COORDINATES_PROPERTY);
+	free(MOUNT_ABORT_MOTION_PROPERTY);
 	return indigo_device_detach(device);
 }
 

@@ -253,6 +253,11 @@ static struct property_mapping legacy[] = {
 			NULL
 		}
 	},
+	{	"TELESCOPE_ABORT_MOTION", "FOCUSER_ABORT_MOTION", {
+			{ "ABORT_MOTION", "ABORT_MOTION" },
+			NULL
+		}
+	},
 	NULL
 };
 

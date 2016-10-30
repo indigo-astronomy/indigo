@@ -55,7 +55,7 @@
 
 /** MOUNT_GEOGRAPHIC_COORDINATES.ELEVATION property item pointer.
  */
-#define MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM		(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->items+3)
+#define MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM		(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->items+2)
 
 /** MOUNT_LST_TIME property pointer, property is optional, property change request should be fully handled by device driver.
  */
@@ -85,13 +85,13 @@
  */
 #define MOUNT_ON_COORDINATES_SET_TRACK_ITEM						(MOUNT_ON_COORDINATES_SET_PROPERTY->items+0)
 
-/** MOUNT_ON_COORDINATES_SET.SLEW property item pointer.
- */
-#define MOUNT_ON_COORDINATES_SET_SLEW_ITEM						(MOUNT_ON_COORDINATES_SET_PROPERTY->items+1)
-
 /** MOUNT_ON_COORDINATES_SET.SYNC property item pointer.
  */
-#define MOUNT_ON_COORDINATES_SET_SYNC_ITEM						(MOUNT_ON_COORDINATES_SET_PROPERTY->items+2)
+#define MOUNT_ON_COORDINATES_SET_SYNC_ITEM						(MOUNT_ON_COORDINATES_SET_PROPERTY->items+1)
+
+/** MOUNT_ON_COORDINATES_SET.SLEW property item pointer.
+ */
+#define MOUNT_ON_COORDINATES_SET_SLEW_ITEM						(MOUNT_ON_COORDINATES_SET_PROPERTY->items+2)
 
 /** MOUNT_SLEW_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_device_change_property.
  */
@@ -137,6 +137,14 @@
  */
 #define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+1)
 
+/** MOUNT_ABORT_MOTION property pointer, property is mandatory, property change request should be fully handled by focuser driver
+ */
+#define MOUNT_ABORT_MOTION_PROPERTY										(MOUNT_DEVICE_CONTEXT->mount_abort_motion_property)
+
+/** FOCUSER_ABORT_MOTION.ABORT_MOTION property item pointer.
+ */
+#define MOUNT_ABORT_MOTION_ITEM												(MOUNT_ABORT_MOTION_PROPERTY->items+0)
+
 /** Wheel device context structure.
  */
 typedef struct {
@@ -148,6 +156,7 @@ typedef struct {
 	indigo_property *mount_slew_rate_property;							///< MOUNT_SLEW_RATE property pointer
 	indigo_property *mount_equatorial_coordinates_property;	///< MOUNT_EQUATORIAL_COORDINATES property pointer
 	indigo_property *mount_horizontal_coordinates_property;	///< MOUNT_HORIZONTAL_COORDINATES property pointer
+	indigo_property *mount_abort_motion_property;						///< MOUNT_ABORT_MOTION property pointer
 } indigo_mount_device_context;
 
 /** Attach callback function.
