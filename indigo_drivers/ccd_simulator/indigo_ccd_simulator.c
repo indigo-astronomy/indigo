@@ -33,8 +33,8 @@
 
 #include "indigo_ccd_simulator.h"
 
-#define WIDTH               5600
-#define HEIGHT              5200
+#define WIDTH               1600
+#define HEIGHT              1200
 #define TEMP_UPDATE         5.0
 #define STARS               100
 
