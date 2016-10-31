@@ -39,12 +39,12 @@
 indigo_result indigo_focuser_attach(indigo_device *device, indigo_version version) {
 	assert(device != NULL);
 	assert(device != NULL);
-	if (FOCUSER_DEVICE_CONTEXT == NULL) {
+	if (FOCUSER_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_focuser_context));
 		assert(device->device_context);
 		memset(device->device_context, 0, sizeof(indigo_focuser_context));
 	}
-	if (FOCUSER_DEVICE_CONTEXT != NULL) {
+	if (FOCUSER_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_FOCUSER) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- FOCUSER_SPEED
 			FOCUSER_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, "FOCUSER_SPEED", FOCUSER_MAIN_GROUP, "Focuser speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);

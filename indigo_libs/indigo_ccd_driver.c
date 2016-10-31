@@ -47,12 +47,12 @@ static void countdown_timer_callback(indigo_device *device) {
 indigo_result indigo_ccd_attach(indigo_device *device, indigo_version version) {
 	assert(device != NULL);
 	assert(device != NULL);
-	if (CCD_DEVICE_CONTEXT == NULL) {
+	if (CCD_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_ccd_context));
 		assert(device->device_context != NULL);
 		memset(device->device_context, 0, sizeof(indigo_ccd_context));
 	}
-	if (CCD_DEVICE_CONTEXT != NULL) {
+	if (CCD_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- CCD_INFO
 			CCD_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_INFO", CCD_MAIN_GROUP, "CCD info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 8);

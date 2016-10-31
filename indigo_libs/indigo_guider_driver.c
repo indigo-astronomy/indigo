@@ -39,12 +39,12 @@
 indigo_result indigo_guider_attach(indigo_device *device, indigo_version version) {
 	assert(device != NULL);
 	assert(device != NULL);
-	if (GUIDER_DEVICE_CONTEXT == NULL) {
+	if (GUIDER_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_guider_context));
 		assert(device->device_context);
 		memset(device->device_context, 0, sizeof(indigo_guider_context));
 	}
-	if (GUIDER_DEVICE_CONTEXT != NULL) {
+	if (GUIDER_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_GUIDER) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 			GUIDER_GUIDE_DEC_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_GUIDE_DEC", GUIDER_MAIN_GROUP, "DEC guiding", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);

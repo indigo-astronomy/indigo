@@ -39,12 +39,12 @@
 indigo_result indigo_mount_attach(indigo_device *device, indigo_version version) {
 	assert(device != NULL);
 	assert(device != NULL);
-	if (MOUNT_DEVICE_CONTEXT == NULL) {
+	if (MOUNT_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_mount_context));
 		assert(device->device_context);
 		memset(device->device_context, 0, sizeof(indigo_mount_context));
 	}
-	if (MOUNT_DEVICE_CONTEXT != NULL) {
+	if (MOUNT_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_MOUNT) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, "MOUNT_GEOGRAPHIC_COORDINATES", MOUNT_SITE_GROUP, "Geographical coordinates", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 3);
