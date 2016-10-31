@@ -39,12 +39,12 @@
 indigo_result indigo_wheel_attach(indigo_device *device, indigo_version version) {
 	assert(device != NULL);
 	assert(device != NULL);
-	if (WHEEL_DEVICE_CONTEXT == NULL) {
+	if (WHEEL_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_wheel_context));
 		assert(device->device_context);
 		memset(device->device_context, 0, sizeof(indigo_wheel_context));
 	}
-	if (WHEEL_DEVICE_CONTEXT != NULL) {
+	if (WHEEL_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_WHEEL) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- WHEEL_SLOT
 			WHEEL_SLOT_PROPERTY = indigo_init_number_property(NULL, device->name, "WHEEL_SLOT", WHEEL_MAIN_GROUP, "Current slot", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);

@@ -43,11 +43,11 @@
 
 /** Device context pointer.
  */
-#define CCD_DEVICE_CONTEXT                ((indigo_ccd_context *)device->device_context)
+#define CCD_CONTEXT                ((indigo_ccd_context *)device->device_context)
 
 /** CCD_INFO property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_INFO_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_info_property)
+#define CCD_INFO_PROPERTY                 (CCD_CONTEXT->ccd_info_property)
 
 /** CCD_INFO.WIDTH property item pointer.
  */
@@ -83,7 +83,7 @@
 
 /** CCD_UPLOAD_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_UPLOAD_MODE_PROPERTY          (CCD_DEVICE_CONTEXT->ccd_upload_mode_property)
+#define CCD_UPLOAD_MODE_PROPERTY          (CCD_CONTEXT->ccd_upload_mode_property)
 
 /** CCD_UPLOAD_MODE.CLIENT property item pointer.
  */
@@ -99,7 +99,7 @@
 
 /** CCD_LOCAL_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_LOCAL_MODE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_local_mode_property)
+#define CCD_LOCAL_MODE_PROPERTY           (CCD_CONTEXT->ccd_local_mode_property)
 
 /** CCD_LOCAL_MODE.DIR property item pointer.
  */
@@ -111,7 +111,7 @@
 
 /** CCD_EXPOSURE property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
-#define CCD_EXPOSURE_PROPERTY             (CCD_DEVICE_CONTEXT->ccd_exposure_property)
+#define CCD_EXPOSURE_PROPERTY             (CCD_CONTEXT->ccd_exposure_property)
 
 /** CCD_EXPOSURE.EXPOSURE property item pointer.
  */
@@ -119,7 +119,7 @@
 
 /** CCD_ABORT property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
-#define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_DEVICE_CONTEXT->ccd_abort_exposure_property)
+#define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_CONTEXT->ccd_abort_exposure_property)
 
 /** CCD_EXPOSURE.ABORT_EXPOSURE property item pointer.
  */
@@ -127,7 +127,7 @@
 
 /** CCD_FRAME property pointer, property is mandatory, should be set read-only if subframe can't be set, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_FRAME_PROPERTY                (CCD_DEVICE_CONTEXT->ccd_frame_property)
+#define CCD_FRAME_PROPERTY                (CCD_CONTEXT->ccd_frame_property)
 
 /** CCD_FRAME.LEFT property item pointer.
  */
@@ -147,7 +147,7 @@
 
 /** CCD_BIN property pointer, property is mandatory, should be set read-only if binning can't be changed, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_BIN_PROPERTY                  (CCD_DEVICE_CONTEXT->ccd_bin_property)
+#define CCD_BIN_PROPERTY                  (CCD_CONTEXT->ccd_bin_property)
 
 /** CCD_BIN.HORIZONTAL property item pointer.
  */
@@ -159,7 +159,7 @@
 
 /** CCD_OFFSET property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_OFFSET_PROPERTY               (CCD_DEVICE_CONTEXT->ccd_offset_property)
+#define CCD_OFFSET_PROPERTY               (CCD_CONTEXT->ccd_offset_property)
 
 /** CCD_OFFSET.OFFSET property item pointer.
  */
@@ -167,7 +167,7 @@
 
 /** CCD_GAIN property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_GAIN_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_gain_property)
+#define CCD_GAIN_PROPERTY                 (CCD_CONTEXT->ccd_gain_property)
 
 /** CCD_GAIN.GAIN property item pointer.
  */
@@ -175,7 +175,7 @@
 
 /** CCD_GAMMA property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_GAMMA_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_gain_property)
+#define CCD_GAMMA_PROPERTY                 (CCD_CONTEXT->ccd_gain_property)
 
 /** CCD_GAMMA.GAMMA property item pointer.
  */
@@ -183,7 +183,7 @@
 
 /** CCD_FRAME_TYPE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_FRAME_TYPE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_frame_type_property)
+#define CCD_FRAME_TYPE_PROPERTY           (CCD_CONTEXT->ccd_frame_type_property)
 
 /** CCD_FRAME_TYPE.LIGHT property item pointer
  */
@@ -203,7 +203,7 @@
 
 /** CCD_IMAGE_FORMAT property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_IMAGE_FORMAT_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_image_format_property)
+#define CCD_IMAGE_FORMAT_PROPERTY         (CCD_CONTEXT->ccd_image_format_property)
 
 /** CCD_IMAGE_FORMAT.RAW property item pointer.
  */
@@ -219,7 +219,7 @@
 
 /** CCD_IMAGE_FILE property pointer, property is mandatory, read-only property.
  */
-#define CCD_IMAGE_FILE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_image_file_property)
+#define CCD_IMAGE_FILE_PROPERTY           (CCD_CONTEXT->ccd_image_file_property)
 
 /** CCD_IMAGE_FILE.FILE property item pointer.
  */
@@ -227,7 +227,7 @@
 
 /** CCD_IMAGE property pointer, property is mandatory, read-only property.
  */
-#define CCD_IMAGE_PROPERTY                (CCD_DEVICE_CONTEXT->ccd_image_property)
+#define CCD_IMAGE_PROPERTY                (CCD_CONTEXT->ccd_image_property)
 
 /** CCD_IMAGE.IMAGE property item pointer.
  */
@@ -235,7 +235,7 @@
 
 /** CCD_TEMPERATURE property pointer, property change request should be fully handled by device driver.
  */
-#define CCD_TEMPERATURE_PROPERTY          (CCD_DEVICE_CONTEXT->ccd_temperature_property)
+#define CCD_TEMPERATURE_PROPERTY          (CCD_CONTEXT->ccd_temperature_property)
 
 /** CCD_TEMPERATURE.TEMPERATURE property item pointer, property is optional.
  */
@@ -243,7 +243,7 @@
 
 /** CCD_COOLER property pointer, property is optional, property change request should be fully handled by device driver.
  */
-#define CCD_COOLER_PROPERTY               (CCD_DEVICE_CONTEXT->ccd_cooler_property)
+#define CCD_COOLER_PROPERTY               (CCD_CONTEXT->ccd_cooler_property)
 
 /** CCD_COOLER.ON property item pointer.
  */
@@ -255,7 +255,7 @@
 
 /** CCD_COOLER_POWER property pointer, property is optional, read-only property, should be set by device driver.
  */
-#define CCD_COOLER_POWER_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_cooler_power_property)
+#define CCD_COOLER_POWER_PROPERTY         (CCD_CONTEXT->ccd_cooler_power_property)
 
 /** CCD_COOLER_POWER.POWER property item pointer.
  */

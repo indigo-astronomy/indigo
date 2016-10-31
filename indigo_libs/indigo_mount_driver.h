@@ -39,11 +39,11 @@
 
 /** Device context pointer.
  */
-#define MOUNT_DEVICE_CONTEXT													((indigo_mount_context *)device->device_context)
+#define MOUNT_CONTEXT													((indigo_mount_context *)device->device_context)
 
 /** MOUNT_GEOGRAPHIC_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
  */
-#define MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY					(MOUNT_DEVICE_CONTEXT->mount_geographic_coordinates_property)
+#define MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY					(MOUNT_CONTEXT->mount_geographic_coordinates_property)
 
 /** MOUNT_GEOGRAPHIC_COORDINATES.LATITUDE property item pointer.
  */
@@ -59,7 +59,7 @@
 
 /** MOUNT_LST_TIME property pointer, property is optional, property change request should be fully handled by device driver.
  */
-#define MOUNT_LST_TIME_PROPERTY												(MOUNT_DEVICE_CONTEXT->mount_lst_time_property)
+#define MOUNT_LST_TIME_PROPERTY												(MOUNT_CONTEXT->mount_lst_time_property)
 
 /** MOUNT_TIME.TIME property item pointer.
  */
@@ -67,7 +67,7 @@
 
 /** MOUNT_PARK property pointer, property is mandatory, property change request should be fully handled by device driver.
  */
-#define MOUNT_PARK_PROPERTY														(MOUNT_DEVICE_CONTEXT->mount_park_property)
+#define MOUNT_PARK_PROPERTY														(MOUNT_CONTEXT->mount_park_property)
 
 /** MOUNT_PARK.PARKED property item pointer.
  */
@@ -79,7 +79,7 @@
 
 /** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
-#define MOUNT_ON_COORDINATES_SET_PROPERTY							(MOUNT_DEVICE_CONTEXT->mount_on_coordinates_set_property)
+#define MOUNT_ON_COORDINATES_SET_PROPERTY							(MOUNT_CONTEXT->mount_on_coordinates_set_property)
 
 /** MOUNT_ON_COORDINATES_SET.TRACK property item pointer.
  */
@@ -95,7 +95,7 @@
 
 /** MOUNT_SLEW_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
-#define MOUNT_SLEW_RATE_PROPERTY											(MOUNT_DEVICE_CONTEXT->mount_slew_rate_property)
+#define MOUNT_SLEW_RATE_PROPERTY											(MOUNT_CONTEXT->mount_slew_rate_property)
 
 /** MOUNT_SLEW_RATE.GUIDE property item pointer.
  */
@@ -115,7 +115,7 @@
 
 /** MOUNT_EQUATORIAL_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
  */
-#define MOUNT_EQUATORIAL_COORDINATES_PROPERTY					(MOUNT_DEVICE_CONTEXT->mount_equatorial_coordinates_property)
+#define MOUNT_EQUATORIAL_COORDINATES_PROPERTY					(MOUNT_CONTEXT->mount_equatorial_coordinates_property)
 
 /** MOUNT_EQUATORIAL_COORDINATES.RA property item pointer.
  */
@@ -127,7 +127,7 @@
 
 /** MOUNT_HORIZONTAL_COORDINATES property pointer, property is optional, property change request should be fully handled by device driver.
  */
-#define MOUNT_HORIZONTAL_COORDINATES_PROPERTY					(MOUNT_DEVICE_CONTEXT->mount_horizontal_coordinates_property)
+#define MOUNT_HORIZONTAL_COORDINATES_PROPERTY					(MOUNT_CONTEXT->mount_horizontal_coordinates_property)
 
 /** MOUNT_HORIZONTAL_COORDINATES.ALT property item pointer.
  */
@@ -139,7 +139,7 @@
 
 /** MOUNT_ABORT_MOTION property pointer, property is mandatory, property change request should be fully handled by focuser driver
  */
-#define MOUNT_ABORT_MOTION_PROPERTY										(MOUNT_DEVICE_CONTEXT->mount_abort_motion_property)
+#define MOUNT_ABORT_MOTION_PROPERTY										(MOUNT_CONTEXT->mount_abort_motion_property)
 
 /** FOCUSER_ABORT_MOTION.ABORT_MOTION property item pointer.
  */

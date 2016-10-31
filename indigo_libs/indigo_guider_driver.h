@@ -35,11 +35,11 @@
 
 /** Device context pointer.
  */
-#define GUIDER_DEVICE_CONTEXT                ((indigo_guider_context *)device->device_context)
+#define GUIDER_CONTEXT                ((indigo_guider_context *)device->device_context)
 
 /** GUIDER_GUIDE_DEC property pointer, property is optional, property change request should be fully handled by device driver.
  */
-#define GUIDER_GUIDE_DEC_PROPERTY            (GUIDER_DEVICE_CONTEXT->guider_guide_dec_property)
+#define GUIDER_GUIDE_DEC_PROPERTY            (GUIDER_CONTEXT->guider_guide_dec_property)
 
 /** GUIDER_GUIDE.NORTH property item pointer.
  */
@@ -51,7 +51,7 @@
 
 /** GUIDER_GUIDE_RA property pointer, property is optional, property change request should be fully handled by device driver.
  */
-#define GUIDER_GUIDE_RA_PROPERTY             (GUIDER_DEVICE_CONTEXT->guider_guide_ra_property)
+#define GUIDER_GUIDE_RA_PROPERTY             (GUIDER_CONTEXT->guider_guide_ra_property)
 
 /** GUIDER_GUIDE.EAST property item pointer.
  */

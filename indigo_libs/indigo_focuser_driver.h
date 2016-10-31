@@ -35,11 +35,11 @@
 
 /** Device context pointer.
  */
-#define FOCUSER_DEVICE_CONTEXT                ((indigo_focuser_context *)device->device_context)
+#define FOCUSER_CONTEXT                ((indigo_focuser_context *)device->device_context)
 
 /** FOCUSER_SPEED property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_change_property
  */
-#define FOCUSER_SPEED_PROPERTY								(FOCUSER_DEVICE_CONTEXT->focuser_speed_property)
+#define FOCUSER_SPEED_PROPERTY								(FOCUSER_CONTEXT->focuser_speed_property)
 
 /** FOCUSER_SPEED.SPEED property item pointer.
  */
@@ -47,7 +47,7 @@
 
 /** FOCUSER_DIRECTION property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_change_property.
  */
-#define FOCUSER_DIRECTION_PROPERTY						(FOCUSER_DEVICE_CONTEXT->focuser_direction_property)
+#define FOCUSER_DIRECTION_PROPERTY						(FOCUSER_CONTEXT->focuser_direction_property)
 
 /** FOCUSER_DIRECTION.MOVE_INWARD property item pointer.
  */
@@ -59,7 +59,7 @@
 
 /** FOCUSER_STEPS property pointer, property is mandatory, property change request should be fully handled by focuser driver
  */
-#define FOCUSER_STEPS_PROPERTY								(FOCUSER_DEVICE_CONTEXT->focuser_steps_property)
+#define FOCUSER_STEPS_PROPERTY								(FOCUSER_CONTEXT->focuser_steps_property)
 
 /** FOCUSER_STEPS.STEPS property item pointer.
  */
@@ -67,7 +67,7 @@
 
 /** FOCUSER_POSITION property pointer, property is mandatory, property change request should be fully handled by focuser driver
  */
-#define FOCUSER_POSITION_PROPERTY							(FOCUSER_DEVICE_CONTEXT->focuser_position_property)
+#define FOCUSER_POSITION_PROPERTY							(FOCUSER_CONTEXT->focuser_position_property)
 
 /** FOCUSER_POSITION.POSITION property item pointer.
  */
@@ -75,7 +75,7 @@
 
 /** FOCUSER_ABORT_MOTION property pointer, property is mandatory, property change request should be fully handled by focuser driver
  */
-#define FOCUSER_ABORT_MOTION_PROPERTY					(FOCUSER_DEVICE_CONTEXT->focuser_abort_motion_property)
+#define FOCUSER_ABORT_MOTION_PROPERTY					(FOCUSER_CONTEXT->focuser_abort_motion_property)
 
 /** FOCUSER_ABORT_MOTION.ABORT_MOTION property item pointer.
  */

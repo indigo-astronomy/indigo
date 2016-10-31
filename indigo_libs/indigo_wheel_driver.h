@@ -35,11 +35,11 @@
 
 /** Device context pointer.
  */
-#define WHEEL_DEVICE_CONTEXT                ((indigo_wheel_context *)device->device_context)
+#define WHEEL_CONTEXT                ((indigo_wheel_context *)device->device_context)
 
 /** WHEEL_SLOT property pointer, property is mandatory, property change request should be fully handled by device driver.
  */
-#define WHEEL_SLOT_PROPERTY									(WHEEL_DEVICE_CONTEXT->wheel_slot_property)
+#define WHEEL_SLOT_PROPERTY									(WHEEL_CONTEXT->wheel_slot_property)
 
 /** WHEEL_SLOT.SLOT property item pointer.
  */
@@ -47,7 +47,7 @@
 
 /** WHEEL_SLOT_NAME property pointer, property is mandatory, property change request should be fully handled by indigo_wheel_change_property.
  */
-#define WHEEL_SLOT_NAME_PROPERTY             (WHEEL_DEVICE_CONTEXT->wheel_slot_name_property)
+#define WHEEL_SLOT_NAME_PROPERTY             (WHEEL_CONTEXT->wheel_slot_name_property)
 
 /** WHEEL_SLOT_NAME.NAME_1 property item pointer.
  */
