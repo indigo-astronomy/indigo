@@ -36,13 +36,13 @@
 
 #include "indigo_focuser_driver.h"
 
-indigo_result indigo_focuser_device_attach(indigo_device *device, indigo_version version) {
+indigo_result indigo_focuser_attach(indigo_device *device, indigo_version version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (FOCUSER_DEVICE_CONTEXT == NULL) {
-		device->device_context = malloc(sizeof(indigo_focuser_device_context));
+		device->device_context = malloc(sizeof(indigo_focuser_context));
 		assert(device->device_context);
-		memset(device->device_context, 0, sizeof(indigo_focuser_device_context));
+		memset(device->device_context, 0, sizeof(indigo_focuser_context));
 	}
 	if (FOCUSER_DEVICE_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_FOCUSER) == INDIGO_OK) {
@@ -79,7 +79,7 @@ indigo_result indigo_focuser_device_attach(indigo_device *device, indigo_version
 	return INDIGO_FAILED;
 }
 
-indigo_result indigo_focuser_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	indigo_result result = INDIGO_OK;
@@ -133,7 +133,7 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 	return indigo_device_change_property(device, client, property);
 }
 
-indigo_result indigo_focuser_device_detach(indigo_device *device) {
+indigo_result indigo_focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);

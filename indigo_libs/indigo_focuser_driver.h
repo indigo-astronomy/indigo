@@ -23,8 +23,8 @@
  \file indigo_focuser_driver.h
  */
 
-#ifndef indigo_focuser_device_h
-#define indigo_focuser_device_h
+#ifndef indigo_focuser_h
+#define indigo_focuser_h
 
 #include "indigo_bus.h"
 #include "indigo_driver.h"
@@ -35,7 +35,7 @@
 
 /** Device context pointer.
  */
-#define FOCUSER_DEVICE_CONTEXT                ((indigo_focuser_device_context *)device->device_context)
+#define FOCUSER_DEVICE_CONTEXT                ((indigo_focuser_context *)device->device_context)
 
 /** FOCUSER_SPEED property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_change_property
  */
@@ -91,20 +91,20 @@ typedef struct {
 	indigo_property *focuser_steps_property;				///< FOCUSER_STEPS property pointer
 	indigo_property *focuser_position_property;			///< FOCUSER_POSITION property pointer
 	indigo_property *focuser_abort_motion_property;	///< FOCUSER_ABORT_MOTION property pointer
-} indigo_focuser_device_context;
+} indigo_focuser_context;
 
 /** Attach callback function.
  */
-extern indigo_result indigo_focuser_device_attach(indigo_device *device, indigo_version version);
+extern indigo_result indigo_focuser_attach(indigo_device *device, indigo_version version);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_focuser_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
 extern indigo_result indigo_focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_focuser_device_detach(indigo_device *device);
+extern indigo_result indigo_focuser_detach(indigo_device *device);
 
-#endif /* indigo_focuser_device_h */
+#endif /* indigo_focuser_h */
 

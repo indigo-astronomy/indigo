@@ -23,8 +23,8 @@
  \file indigo_mount_driver.h
  */
 
-#ifndef indigo_mount_device_h
-#define indigo_mount_device_h
+#ifndef indigo_mount_h
+#define indigo_mount_h
 
 #include "indigo_bus.h"
 #include "indigo_driver.h"
@@ -39,7 +39,7 @@
 
 /** Device context pointer.
  */
-#define MOUNT_DEVICE_CONTEXT													((indigo_mount_device_context *)device->device_context)
+#define MOUNT_DEVICE_CONTEXT													((indigo_mount_context *)device->device_context)
 
 /** MOUNT_GEOGRAPHIC_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
  */
@@ -157,20 +157,20 @@ typedef struct {
 	indigo_property *mount_equatorial_coordinates_property;	///< MOUNT_EQUATORIAL_COORDINATES property pointer
 	indigo_property *mount_horizontal_coordinates_property;	///< MOUNT_HORIZONTAL_COORDINATES property pointer
 	indigo_property *mount_abort_motion_property;						///< MOUNT_ABORT_MOTION property pointer
-} indigo_mount_device_context;
+} indigo_mount_context;
 
 /** Attach callback function.
  */
-extern indigo_result indigo_mount_device_attach(indigo_device *device, indigo_version version);
+extern indigo_result indigo_mount_attach(indigo_device *device, indigo_version version);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_mount_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
 extern indigo_result indigo_mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_mount_device_detach(indigo_device *device);
+extern indigo_result indigo_mount_detach(indigo_device *device);
 
-#endif /* indigo_mount_device_h */
+#endif /* indigo_mount_h */
 

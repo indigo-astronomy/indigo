@@ -126,7 +126,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	simulator_private_data *private_data = device->device_context;
 	device->device_context = NULL;
 
-	if (indigo_ccd_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = false;
@@ -158,7 +158,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_COOLER_POWER_ITEM->number.value = 0;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_ccd_device_enumerate_properties(device, NULL, NULL);
+		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -233,7 +233,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_ccd_device_detach(device);
+	return indigo_ccd_detach(device);
 }
 
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
@@ -259,10 +259,10 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	simulator_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_guider_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_guider_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_guider_device_enumerate_properties(device, NULL, NULL);
+		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -322,7 +322,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_guider_device_detach(device);
+	return indigo_guider_detach(device);
 }
 
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
@@ -345,14 +345,14 @@ static indigo_result wheel_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	simulator_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_wheel_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_wheel_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- WHEEL_SLOT, WHEEL_SLOT_NAME
 		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = FILTER_COUNT;
 		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot = 1;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_wheel_device_enumerate_properties(device, NULL, NULL);
+		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -389,7 +389,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_wheel_device_detach(device);
+	return indigo_wheel_detach(device);
 }
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
@@ -422,13 +422,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	simulator_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_focuser_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = 1;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_focuser_device_enumerate_properties(device, NULL, NULL);
+		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -486,7 +486,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_focuser_device_detach(device);
+	return indigo_focuser_detach(device);
 }
 
 // --------------------------------------------------------------------------------
@@ -504,35 +504,35 @@ indigo_result indigo_ccd_simulator(bool state) {
 	static indigo_device imager_camera_template = {
 		CCD_SIMULATOR_IMAGER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
-		indigo_ccd_device_enumerate_properties,
+		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device imager_wheel_template = {
 		CCD_SIMULATOR_WHEEL_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
-		indigo_wheel_device_enumerate_properties,
+		indigo_wheel_enumerate_properties,
 		wheel_change_property,
 		wheel_detach
 	};
 	static indigo_device imager_focuser_template = {
 		CCD_SIMULATOR_FOCUSER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
-		indigo_focuser_device_enumerate_properties,
+		indigo_focuser_enumerate_properties,
 		focuser_change_property,
 		focuser_detach
 	};
 	static indigo_device guider_camera_template = {
 		CCD_SIMULATOR_GUIDER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
-		indigo_ccd_device_enumerate_properties,
+		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
 		CCD_SIMULATOR_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
-		indigo_guider_device_enumerate_properties,
+		indigo_guider_enumerate_properties,
 		guider_change_property,
 		guider_detach
 	};
