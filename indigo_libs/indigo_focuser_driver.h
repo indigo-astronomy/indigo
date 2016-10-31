@@ -37,7 +37,7 @@
  */
 #define FOCUSER_DEVICE_CONTEXT                ((indigo_focuser_device_context *)device->device_context)
 
-/** FOCUSER_SPEED property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_device_change_property
+/** FOCUSER_SPEED property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_change_property
  */
 #define FOCUSER_SPEED_PROPERTY								(FOCUSER_DEVICE_CONTEXT->focuser_speed_property)
 
@@ -45,7 +45,7 @@
  */
 #define FOCUSER_SPEED_ITEM										(FOCUSER_SPEED_PROPERTY->items+0)
 
-/** FOCUSER_DIRECTION property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_device_change_property.
+/** FOCUSER_DIRECTION property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_change_property.
  */
 #define FOCUSER_DIRECTION_PROPERTY						(FOCUSER_DEVICE_CONTEXT->focuser_direction_property)
 
@@ -101,7 +101,7 @@ extern indigo_result indigo_focuser_device_attach(indigo_device *device, indigo_
 extern indigo_result indigo_focuser_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_focuser_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
 extern indigo_result indigo_focuser_device_detach(indigo_device *device);

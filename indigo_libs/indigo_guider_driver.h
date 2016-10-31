@@ -77,7 +77,7 @@ extern indigo_result indigo_guider_device_attach(indigo_device *device, indigo_v
 extern indigo_result indigo_guider_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_guider_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
 extern indigo_result indigo_guider_device_detach(indigo_device *device);

@@ -163,7 +163,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
-	return indigo_focuser_device_change_property(device, client, property);
+	return indigo_focuser_change_property(device, client, property);
 }
 
 static indigo_result focuser_detach(indigo_device *device) {
