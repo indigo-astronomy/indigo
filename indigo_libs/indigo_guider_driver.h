@@ -35,7 +35,7 @@
 
 /** Device context pointer.
  */
-#define GUIDER_DEVICE_CONTEXT                ((indigo_guider_device_context *)device->device_context)
+#define GUIDER_DEVICE_CONTEXT                ((indigo_guider_context *)device->device_context)
 
 /** GUIDER_GUIDE_DEC property pointer, property is optional, property change request should be fully handled by device driver.
  */
@@ -67,20 +67,20 @@ typedef struct {
 	indigo_device_context device_context;         ///< device context base
 	indigo_property *guider_guide_dec_property;   ///< GUIDER_GUIDE_DEC property pointer
 	indigo_property *guider_guide_ra_property;    ///< GUIDER_GUIDE_RA property pointer
-} indigo_guider_device_context;
+} indigo_guider_context;
 
 /** Attach callback function.
  */
-extern indigo_result indigo_guider_device_attach(indigo_device *device, indigo_version version);
+extern indigo_result indigo_guider_attach(indigo_device *device, indigo_version version);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_guider_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
 extern indigo_result indigo_guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_guider_device_detach(indigo_device *device);
+extern indigo_result indigo_guider_detach(indigo_device *device);
 
 #endif /* indigo_guider_device_h */
 
