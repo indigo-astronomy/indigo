@@ -128,7 +128,7 @@
 /** Device interface (value shout be used for INFO_DEVICE_INTERFACE_ITEM->number.value
  */
 typedef enum {
-	INDIGO_INTERFACE_MOUNT		 = (1 << 0),    ///< Mount interface
+	INDIGO_INTERFACE_MOUNT     = (1 << 0),    ///< Mount interface
 	INDIGO_INTERFACE_CCD       = (1 << 1),    ///< CCD interface
 	INDIGO_INTERFACE_GUIDER    = (1 << 2),    ///< Guider interface
 	INDIGO_INTERFACE_FOCUSER   = (1 << 3),    ///< Focuser interface
