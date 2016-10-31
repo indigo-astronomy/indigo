@@ -45,7 +45,7 @@
  */
 #define WHEEL_SLOT_ITEM											(WHEEL_SLOT_PROPERTY->items+0)
 
-/** WHEEL_SLOT_NAME property pointer, property is mandatory, property change request should be fully handled by indigo_wheel_device_change_property.
+/** WHEEL_SLOT_NAME property pointer, property is mandatory, property change request should be fully handled by indigo_wheel_change_property.
  */
 #define WHEEL_SLOT_NAME_PROPERTY             (WHEEL_DEVICE_CONTEXT->wheel_slot_name_property)
 
@@ -69,7 +69,7 @@ extern indigo_result indigo_wheel_device_attach(indigo_device *device, indigo_ve
 extern indigo_result indigo_wheel_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_wheel_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
 extern indigo_result indigo_wheel_device_detach(indigo_device *device);

@@ -255,7 +255,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
-	return indigo_ccd_device_change_property(device, client, property);
+	return indigo_ccd_change_property(device, client, property);
 }
 
 static indigo_result ccd_detach(indigo_device *device) {
@@ -370,7 +370,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
-	return indigo_guider_device_change_property(device, client, property);
+	return indigo_guider_change_property(device, client, property);
 }
 
 static indigo_result guider_detach(indigo_device *device) {
@@ -454,7 +454,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
-	return indigo_wheel_device_change_property(device, client, property);
+	return indigo_wheel_change_property(device, client, property);
 }
 
 static indigo_result wheel_detach(indigo_device *device) {

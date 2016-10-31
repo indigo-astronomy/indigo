@@ -45,7 +45,7 @@
  */
 #define CCD_DEVICE_CONTEXT                ((indigo_ccd_device_context *)device->device_context)
 
-/** CCD_INFO property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_INFO property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_INFO_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_info_property)
 
@@ -81,7 +81,7 @@
  */
 #define CCD_INFO_BITS_PER_PIXEL_ITEM      (CCD_INFO_PROPERTY->items+7)
 
-/** CCD_UPLOAD_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_UPLOAD_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_UPLOAD_MODE_PROPERTY          (CCD_DEVICE_CONTEXT->ccd_upload_mode_property)
 
@@ -97,7 +97,7 @@
  */
 #define CCD_UPLOAD_MODE_BOTH_ITEM         (CCD_UPLOAD_MODE_PROPERTY->items+2)
 
-/** CCD_LOCAL_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_LOCAL_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_LOCAL_MODE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_local_mode_property)
 
@@ -109,7 +109,7 @@
  */
 #define CCD_LOCAL_MODE_PREFIX_ITEM        (CCD_LOCAL_MODE_PROPERTY->items+1)
 
-/** CCD_EXPOSURE property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_device_change_property().
+/** CCD_EXPOSURE property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
 #define CCD_EXPOSURE_PROPERTY             (CCD_DEVICE_CONTEXT->ccd_exposure_property)
 
@@ -117,7 +117,7 @@
  */
 #define CCD_EXPOSURE_ITEM                 (CCD_EXPOSURE_PROPERTY->items+0)
 
-/** CCD_ABORT property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_device_change_property().
+/** CCD_ABORT property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
 #define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_DEVICE_CONTEXT->ccd_abort_exposure_property)
 
@@ -125,7 +125,7 @@
  */
 #define CCD_ABORT_EXPOSURE_ITEM           (CCD_ABORT_EXPOSURE_PROPERTY->items+0)
 
-/** CCD_FRAME property pointer, property is mandatory, should be set read-only if subframe can't be set, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_FRAME property pointer, property is mandatory, should be set read-only if subframe can't be set, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_FRAME_PROPERTY                (CCD_DEVICE_CONTEXT->ccd_frame_property)
 
@@ -145,7 +145,7 @@
  */
 #define CCD_FRAME_HEIGHT_ITEM             (CCD_FRAME_PROPERTY->items+3)
 
-/** CCD_BIN property pointer, property is mandatory, should be set read-only if binning can't be changed, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_BIN property pointer, property is mandatory, should be set read-only if binning can't be changed, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_BIN_PROPERTY                  (CCD_DEVICE_CONTEXT->ccd_bin_property)
 
@@ -157,7 +157,7 @@
  */
 #define CCD_BIN_VERTICAL_ITEM             (CCD_BIN_PROPERTY->items+1)
 
-/** CCD_OFFSET property pointer, property is optional, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_OFFSET property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_OFFSET_PROPERTY               (CCD_DEVICE_CONTEXT->ccd_offset_property)
 
@@ -165,7 +165,7 @@
  */
 #define CCD_OFFSET_ITEM                   (CCD_OFFSET_PROPERTY->items+0)
 
-/** CCD_GAIN property pointer, property is optional, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_GAIN property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_GAIN_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_gain_property)
 
@@ -173,7 +173,7 @@
  */
 #define CCD_GAIN_ITEM                     (CCD_GAIN_PROPERTY->items+0)
 
-/** CCD_GAMMA property pointer, property is optional, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_GAMMA property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_GAMMA_PROPERTY                 (CCD_DEVICE_CONTEXT->ccd_gain_property)
 
@@ -181,7 +181,7 @@
  */
 #define CCD_GAMMA_ITEM                     (CCD_GAMMA_PROPERTY->items+0)
 
-/** CCD_FRAME_TYPE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_FRAME_TYPE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_FRAME_TYPE_PROPERTY           (CCD_DEVICE_CONTEXT->ccd_frame_type_property)
 
@@ -201,7 +201,7 @@
  */
 #define CCD_FRAME_TYPE_FLAT_ITEM          (CCD_FRAME_TYPE_PROPERTY->items+3)
 
-/** CCD_IMAGE_FORMAT property pointer, property is mandatory, property change request is fully handled by indigo_ccd_device_change_property().
+/** CCD_IMAGE_FORMAT property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_IMAGE_FORMAT_PROPERTY         (CCD_DEVICE_CONTEXT->ccd_image_format_property)
 
@@ -296,7 +296,7 @@ extern indigo_result indigo_ccd_device_attach(indigo_device *device, indigo_vers
 extern indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_ccd_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
 extern indigo_result indigo_ccd_device_detach(indigo_device *device);

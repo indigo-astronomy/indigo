@@ -77,7 +77,7 @@
  */
 #define MOUNT_PARK_UNPARKED_ITEM											(MOUNT_PARK_PROPERTY->items+1)
 
-/** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_device_change_property.
+/** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
 #define MOUNT_ON_COORDINATES_SET_PROPERTY							(MOUNT_DEVICE_CONTEXT->mount_on_coordinates_set_property)
 
@@ -93,7 +93,7 @@
  */
 #define MOUNT_ON_COORDINATES_SET_SLEW_ITEM						(MOUNT_ON_COORDINATES_SET_PROPERTY->items+2)
 
-/** MOUNT_SLEW_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_device_change_property.
+/** MOUNT_SLEW_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
 #define MOUNT_SLEW_RATE_PROPERTY											(MOUNT_DEVICE_CONTEXT->mount_slew_rate_property)
 
@@ -167,7 +167,7 @@ extern indigo_result indigo_mount_device_attach(indigo_device *device, indigo_ve
 extern indigo_result indigo_mount_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_mount_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
 extern indigo_result indigo_mount_device_detach(indigo_device *device);

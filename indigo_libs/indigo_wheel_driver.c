@@ -84,7 +84,7 @@ indigo_result indigo_wheel_device_enumerate_properties(indigo_device *device, in
 	return result;
 }
 
-indigo_result indigo_wheel_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);

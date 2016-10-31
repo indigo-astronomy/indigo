@@ -82,7 +82,7 @@ indigo_result indigo_guider_device_enumerate_properties(indigo_device *device, i
 	return result;
 }
 
-indigo_result indigo_guider_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+indigo_result indigo_guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
