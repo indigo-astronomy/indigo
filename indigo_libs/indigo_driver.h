@@ -219,7 +219,7 @@ extern void indigo_cancel_timer(indigo_device *device, indigo_timer *timer);
 
 /** Start USB event handler thread.
  */
-extern void indigo_start_usb_even_handler();
+extern void indigo_start_usb_event_handler();
 
 /** Asynchronous execution in thread.
  */
