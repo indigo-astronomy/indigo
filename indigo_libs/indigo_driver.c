@@ -480,7 +480,7 @@ static void *hotplug_thread(void *arg) {
 	return NULL;
 }
 
-void indigo_start_usb_even_handler() {
+void indigo_start_usb_event_handler() {
 	static bool thread_started = false;
 	if (!thread_started) {
 		pthread_t hotplug_thread_handle;
