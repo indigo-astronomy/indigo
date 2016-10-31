@@ -73,7 +73,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	fcusb_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_focuser_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- X_FOCUSER_FREQUENCY
 		X_FOCUSER_FREQUENCY_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_FREQUENCY", FOCUSER_MAIN_GROUP, "Frequency", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
@@ -90,7 +90,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		strncpy(FOCUSER_SPEED_PROPERTY->label, "Power", INDIGO_VALUE_SIZE);
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_focuser_device_enumerate_properties(device, NULL, NULL);
+		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -173,7 +173,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
 	free(X_FOCUSER_FREQUENCY_PROPERTY);
-	return indigo_focuser_device_detach(device);
+	return indigo_focuser_detach(device);
 }
 
 // -------------------------------------------------------------------------------- hot-plug support
@@ -186,7 +186,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	static indigo_device focuser_template = {
 		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
-		indigo_focuser_device_enumerate_properties,
+		indigo_focuser_enumerate_properties,
 		focuser_change_property,
 		focuser_detach
 	};

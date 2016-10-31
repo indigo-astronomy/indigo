@@ -103,10 +103,10 @@ static indigo_result wheel_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	sx_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_wheel_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_wheel_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_wheel_device_enumerate_properties(device, NULL, NULL);
+		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -160,7 +160,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_wheel_device_detach(device);
+	return indigo_wheel_detach(device);
 }
 
 // -------------------------------------------------------------------------------- hot-plug support
@@ -171,7 +171,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	static indigo_device wheel_template = {
 		"SX Filter Wheel", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
-		indigo_wheel_device_enumerate_properties,
+		indigo_wheel_enumerate_properties,
 		wheel_change_property,
 		wheel_detach
 	};
