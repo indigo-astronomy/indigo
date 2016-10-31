@@ -43,7 +43,7 @@
 
 /** Device context pointer.
  */
-#define CCD_DEVICE_CONTEXT                ((indigo_ccd_device_context *)device->device_context)
+#define CCD_DEVICE_CONTEXT                ((indigo_ccd_context *)device->device_context)
 
 /** CCD_INFO property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
@@ -286,20 +286,20 @@ typedef struct {
 	indigo_property *ccd_temperature_property;    ///< CCD_TEMPERATURE property pointer
 	indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
 	indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
-} indigo_ccd_device_context;
+} indigo_ccd_context;
 
 /** Attach callback function.
  */
-extern indigo_result indigo_ccd_device_attach(indigo_device *device, indigo_version version);
+extern indigo_result indigo_ccd_attach(indigo_device *device, indigo_version version);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_ccd_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
 extern indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_ccd_device_detach(indigo_device *device);
+extern indigo_result indigo_ccd_detach(indigo_device *device);
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */

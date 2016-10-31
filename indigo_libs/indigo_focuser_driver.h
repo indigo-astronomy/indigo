@@ -95,16 +95,16 @@ typedef struct {
 
 /** Attach callback function.
  */
-extern indigo_result indigo_focuser_device_attach(indigo_device *device, indigo_version version);
+extern indigo_result indigo_focuser_attach(indigo_device *device, indigo_version version);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_focuser_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+extern indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
 extern indigo_result indigo_focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_focuser_device_detach(indigo_device *device);
+extern indigo_result indigo_focuser_detach(indigo_device *device);
 
 #endif /* indigo_focuser_device_h */
 

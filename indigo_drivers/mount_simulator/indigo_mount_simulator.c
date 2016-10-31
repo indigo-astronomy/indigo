@@ -82,7 +82,7 @@ static indigo_result mount_attach(indigo_device *device) {
 	simulator_private_data *private_data = device->device_context;
 	device->device_context = NULL;
 	
-	if (indigo_mount_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_mount_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = false;
@@ -98,7 +98,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec = PRIVATE_DATA->requestedDec = 90;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_mount_device_enumerate_properties(device, NULL, NULL);
+		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -162,7 +162,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_mount_device_detach(device);
+	return indigo_mount_detach(device);
 }
 
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
@@ -188,10 +188,10 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	simulator_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_guider_device_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_guider_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_guider_device_enumerate_properties(device, NULL, NULL);
+		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -251,7 +251,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_guider_device_detach(device);
+	return indigo_guider_detach(device);
 }
 
 // --------------------------------------------------------------------------------
@@ -265,14 +265,14 @@ indigo_result indigo_mount_simulator(bool state) {
 	static indigo_device mount_template = {
 		MOUNT_SIMULATOR_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
-		indigo_mount_device_enumerate_properties,
+		indigo_mount_enumerate_properties,
 		mount_change_property,
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
 		MOUNT_SIMULATOR_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
-		indigo_guider_device_enumerate_properties,
+		indigo_guider_enumerate_properties,
 		guider_change_property,
 		guider_detach
 	};

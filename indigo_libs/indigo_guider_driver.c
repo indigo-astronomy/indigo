@@ -36,13 +36,13 @@
 
 #include "indigo_guider_driver.h"
 
-indigo_result indigo_guider_device_attach(indigo_device *device, indigo_version version) {
+indigo_result indigo_guider_attach(indigo_device *device, indigo_version version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (GUIDER_DEVICE_CONTEXT == NULL) {
-		device->device_context = malloc(sizeof(indigo_guider_device_context));
+		device->device_context = malloc(sizeof(indigo_guider_context));
 		assert(device->device_context);
-		memset(device->device_context, 0, sizeof(indigo_guider_device_context));
+		memset(device->device_context, 0, sizeof(indigo_guider_context));
 	}
 	if (GUIDER_DEVICE_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_GUIDER) == INDIGO_OK) {
@@ -67,7 +67,7 @@ indigo_result indigo_guider_device_attach(indigo_device *device, indigo_version 
 	return INDIGO_FAILED;
 }
 
-indigo_result indigo_guider_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+indigo_result indigo_guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	indigo_result result = INDIGO_OK;
@@ -100,7 +100,7 @@ indigo_result indigo_guider_change_property(indigo_device *device, indigo_client
 	return indigo_device_change_property(device, client, property);
 }
 
-indigo_result indigo_guider_device_detach(indigo_device *device) {
+indigo_result indigo_guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_delete_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
