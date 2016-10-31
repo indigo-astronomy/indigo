@@ -392,7 +392,6 @@ indigo_result indigo_device_disconnect(indigo_device *device) {
 	return device->change_property(device, NULL, property);
 }
 
-	
 static void xprintf(int handle, const char *format, ...) {
 	char buffer[1024];
 	va_list args;
@@ -488,7 +487,7 @@ void indigo_start_usb_event_handler() {
 		thread_started = true;
 	}
 }
-	
+
 void indigo_async(void *fun(void *data), void *data) {
 	pthread_t async_thread;
 	pthread_create(&async_thread, NULL, fun, data);
