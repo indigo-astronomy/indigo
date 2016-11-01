@@ -36,6 +36,7 @@
 #include "ccd_ssag/indigo_ccd_ssag.h"
 #include "ccd_asi/indigo_ccd_asi.h"
 #include "ccd_atik/indigo_ccd_atik.h"
+#include "ccd_qhy/indigo_ccd_qhy.h"
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
 
 #define MAX_DRIVERS	100
@@ -50,6 +51,7 @@ static struct {
 	{ "SX CCD", indigo_ccd_sx },
 	{ "SX Filter Wheel", indigo_wheel_sx },
 	{ "Atik CCD", indigo_ccd_atik },
+	{ "QHY CCD", indigo_ccd_qhy },
 	{ "SSAG/QHY5 CCD", indigo_ccd_ssag },
 	{ "Shoestring FCUSB Focuser", indigo_focuser_fcusb },
 	{ NULL, NULL }
