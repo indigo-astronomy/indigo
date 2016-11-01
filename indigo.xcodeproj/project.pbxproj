@@ -7,6 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		590112A51DC9476500B5CD8E /* indigo_ccd_qhy_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 590112A21DC9476500B5CD8E /* indigo_ccd_qhy_main.c */; };
+		590112A61DC9476500B5CD8E /* indigo_ccd_qhy.c in Sources */ = {isa = PBXBuildFile; fileRef = 590112A31DC9476500B5CD8E /* indigo_ccd_qhy.c */; };
+		590112A71DC9476500B5CD8E /* indigo_ccd_qhy.h in Headers */ = {isa = PBXBuildFile; fileRef = 590112A41DC9476500B5CD8E /* indigo_ccd_qhy.h */; };
+		590112C01DC94D3C00B5CD8E /* libqhy_5ii.h in Headers */ = {isa = PBXBuildFile; fileRef = 590112BA1DC94D3C00B5CD8E /* libqhy_5ii.h */; };
+		590112C11DC94D3C00B5CD8E /* libqhy_base.h in Headers */ = {isa = PBXBuildFile; fileRef = 590112BB1DC94D3C00B5CD8E /* libqhy_base.h */; };
+		590112C21DC94D3C00B5CD8E /* libqhy_5ii_firmware.c in Sources */ = {isa = PBXBuildFile; fileRef = 590112BC1DC94D3C00B5CD8E /* libqhy_5ii_firmware.c */; };
+		590112C31DC94D3C00B5CD8E /* libqhy_5ii.c in Sources */ = {isa = PBXBuildFile; fileRef = 590112BD1DC94D3C00B5CD8E /* libqhy_5ii.c */; };
+		590112C51DC94D3C00B5CD8E /* libqhy.c in Sources */ = {isa = PBXBuildFile; fileRef = 590112BF1DC94D3C00B5CD8E /* libqhy.c */; };
+		590112C71DC94D4400B5CD8E /* libqhy.h in Headers */ = {isa = PBXBuildFile; fileRef = 590112C61DC94D4400B5CD8E /* libqhy.h */; };
 		5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5981C8DE1DC291AF00C7705F /* libfcusb.a */; };
 		5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
 		599C9A3A1D9FF0A3008BBCC1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */; };
@@ -164,6 +173,15 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		590112A21DC9476500B5CD8E /* indigo_ccd_qhy_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_qhy_main.c; sourceTree = "<group>"; };
+		590112A31DC9476500B5CD8E /* indigo_ccd_qhy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_qhy.c; sourceTree = "<group>"; };
+		590112A41DC9476500B5CD8E /* indigo_ccd_qhy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy.h; sourceTree = "<group>"; };
+		590112BA1DC94D3C00B5CD8E /* libqhy_5ii.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libqhy_5ii.h; sourceTree = "<group>"; };
+		590112BB1DC94D3C00B5CD8E /* libqhy_base.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libqhy_base.h; sourceTree = "<group>"; };
+		590112BC1DC94D3C00B5CD8E /* libqhy_5ii_firmware.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libqhy_5ii_firmware.c; sourceTree = "<group>"; };
+		590112BD1DC94D3C00B5CD8E /* libqhy_5ii.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libqhy_5ii.c; sourceTree = "<group>"; };
+		590112BF1DC94D3C00B5CD8E /* libqhy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libqhy.c; sourceTree = "<group>"; };
+		590112C61DC94D4400B5CD8E /* libqhy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libqhy.h; path = include/libqhy/libqhy.h; sourceTree = "<group>"; };
 		590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi_main.c; sourceTree = "<group>"; };
 		590A86401DB80A04002F12FB /* indigo_ccd_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi.c; sourceTree = "<group>"; };
 		590A86411DB80A04002F12FB /* indigo_ccd_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_asi.h; sourceTree = "<group>"; };
@@ -308,6 +326,38 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		590112A11DC9474800B5CD8E /* ccd_qhy */ = {
+			isa = PBXGroup;
+			children = (
+				590112A81DC9477400B5CD8E /* externals */,
+				590112A41DC9476500B5CD8E /* indigo_ccd_qhy.h */,
+				590112A31DC9476500B5CD8E /* indigo_ccd_qhy.c */,
+				590112A21DC9476500B5CD8E /* indigo_ccd_qhy_main.c */,
+			);
+			path = ccd_qhy;
+			sourceTree = "<group>";
+		};
+		590112A81DC9477400B5CD8E /* externals */ = {
+			isa = PBXGroup;
+			children = (
+				590112B91DC9486F00B5CD8E /* libqhy */,
+			);
+			path = externals;
+			sourceTree = "<group>";
+		};
+		590112B91DC9486F00B5CD8E /* libqhy */ = {
+			isa = PBXGroup;
+			children = (
+				590112C61DC94D4400B5CD8E /* libqhy.h */,
+				590112BB1DC94D3C00B5CD8E /* libqhy_base.h */,
+				590112BF1DC94D3C00B5CD8E /* libqhy.c */,
+				590112BA1DC94D3C00B5CD8E /* libqhy_5ii.h */,
+				590112BD1DC94D3C00B5CD8E /* libqhy_5ii.c */,
+				590112BC1DC94D3C00B5CD8E /* libqhy_5ii_firmware.c */,
+			);
+			path = libqhy;
+			sourceTree = "<group>";
+		};
 		590A863E1DB8096A002F12FB /* ccd_asi */ = {
 			isa = PBXGroup;
 			children = (
@@ -508,6 +558,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				590112A11DC9474800B5CD8E /* ccd_qhy */,
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
 				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
 				59D381AA1D95984D00E87393 /* ccd_simulator */,
@@ -558,12 +609,16 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				590112C11DC94D3C00B5CD8E /* libqhy_base.h in Headers */,
+				590112C71DC94D4400B5CD8E /* libqhy.h in Headers */,
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
+				590112A71DC9476500B5CD8E /* indigo_ccd_qhy.h in Headers */,
 				9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */,
 				9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
 				59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */,
+				590112C01DC94D3C00B5CD8E /* libqhy_5ii.h in Headers */,
 				9D9EA6B31DBFA30600E11841 /* indigo_ccd_driver.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -792,20 +847,25 @@
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
 				9DAC59D81DC24E1400AE410D /* indigo_focuser_fcusb_main.c in Sources */,
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
+				590112C21DC94D3C00B5CD8E /* libqhy_5ii_firmware.c in Sources */,
 				599C9A4F1DA022E3008BBCC1 /* indigo_version.c in Sources */,
 				59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */,
 				9D9EA6A51DBE1F7300E11841 /* indigo_ccd_atik.c in Sources */,
+				590112A61DC9476500B5CD8E /* indigo_ccd_qhy.c in Sources */,
 				9D9EA6B21DBFA30600E11841 /* indigo_ccd_driver.c in Sources */,
 				599C9A501DA022E3008BBCC1 /* indigo_xml.c in Sources */,
 				59D707661DC5268B00DEF566 /* AUTHORS.md in Sources */,
+				590112C31DC94D3C00B5CD8E /* libqhy_5ii.c in Sources */,
 				9D9EA6A41DBE1F7300E11841 /* indigo_ccd_atik_main.c in Sources */,
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,
 				9D9EA6B61DBFA30600E11841 /* indigo_wheel_driver.c in Sources */,
+				590112A51DC9476500B5CD8E /* indigo_ccd_qhy_main.c in Sources */,
 				9D9EA6B41DBFA30600E11841 /* indigo_guider_driver.c in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */,
 				599C9A531DA022E3008BBCC1 /* indigo_server_xml.c in Sources */,
 				59D7076F1DC52C3E00DEF566 /* indigo_mount_simulator_main.c in Sources */,
+				590112C51DC94D3C00B5CD8E /* libqhy.c in Sources */,
 				9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */,
 				9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */,
 			);
