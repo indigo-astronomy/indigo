@@ -53,7 +53,10 @@ typedef struct {
 	int device_count;
 	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 	double current_temperature;
-	unsigned short relay_mask;
+	double exposure_time;
+	unsigned width, height, bits_per_pixel;
+	double pixel_width, pixel_height;
+	unsigned relay_mask;
 	unsigned char *buffer;
 } qhy_private_data;
 
@@ -64,9 +67,10 @@ static void exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (libqhy_read_pixels(PRIVATE_DATA->device_context, (unsigned short *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE))) {
+			libqhy_stop(PRIVATE_DATA->device_context);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
-			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->device_context->frame_width, PRIVATE_DATA->device_context->frame_height, PRIVATE_DATA->device_context->exposure_time);
+			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->width, PRIVATE_DATA->height, PRIVATE_DATA->exposure_time);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
@@ -75,6 +79,14 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
+	double temperature;
+	if (libqhy_get_temperature(PRIVATE_DATA->device_context, &temperature)) {
+		CCD_TEMPERATURE_ITEM->number.value = temperature;
+		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
+	} else {
+		PRIVATE_DATA->temperture_timer = NULL;
+	}
 }
 
 static indigo_result ccd_attach(indigo_device *device) {
@@ -106,33 +118,41 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				result = libqhy_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
 			}
 			if (result) {
-				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->device_context->frame_bits_per_pixel;
-				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = PRIVATE_DATA->device_context->width;
-				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = PRIVATE_DATA->device_context->height;
-				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->device_context->pixel_width * 100)/100;
-				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(PRIVATE_DATA->device_context->pixel_height * 100) / 100;
+				libqhy_get_resolution(PRIVATE_DATA->device_context, &PRIVATE_DATA->width, &PRIVATE_DATA->height, &PRIVATE_DATA->bits_per_pixel);
+				libqhy_get_pixel_size(PRIVATE_DATA->device_context, &PRIVATE_DATA->pixel_width, &PRIVATE_DATA->pixel_height);
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bits_per_pixel;
+				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = PRIVATE_DATA->width;
+				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = PRIVATE_DATA->height;
+				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->pixel_width * 100)/100;
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(PRIVATE_DATA->pixel_height * 100) / 100;
 				PRIVATE_DATA->buffer = malloc(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 				assert(PRIVATE_DATA->buffer != NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				ccd_temperature_callback(device);
 			} else {
 				if (PRIVATE_DATA->temperture_timer) {
 					indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
 					PRIVATE_DATA->temperture_timer = NULL;
 				}
-				if (PRIVATE_DATA->buffer != NULL)
+				if (PRIVATE_DATA->buffer != NULL) {
 					free(PRIVATE_DATA->buffer);
-				PRIVATE_DATA->buffer = NULL;
+					PRIVATE_DATA->buffer = NULL;
+				}
+				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			if (PRIVATE_DATA->temperture_timer != NULL)
+			if (PRIVATE_DATA->temperture_timer != NULL) {
 				indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
+				PRIVATE_DATA->temperture_timer = NULL;
+			}
+			if (PRIVATE_DATA->buffer != NULL) {
+				free(PRIVATE_DATA->buffer);
+				PRIVATE_DATA->buffer = NULL;
+			}
 			if (--PRIVATE_DATA->device_count == 0) {
 				libqhy_close(PRIVATE_DATA->device_context);
-				if (PRIVATE_DATA->buffer != NULL)
-					free(PRIVATE_DATA->buffer);
-				PRIVATE_DATA->buffer = NULL;
 			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -148,7 +168,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		libqhy_start_exposure(PRIVATE_DATA->device_context, CCD_EXPOSURE_ITEM->number.value);
+		libqhy_set_exposure_time(PRIVATE_DATA->device_context, PRIVATE_DATA->exposure_time = CCD_EXPOSURE_ITEM->number.value);
+		libqhy_start(PRIVATE_DATA->device_context);
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
@@ -211,9 +232,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				result = libqhy_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
 			}
 			if (result) {
-				assert(PRIVATE_DATA->device_context->has_guider_port);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
+				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
