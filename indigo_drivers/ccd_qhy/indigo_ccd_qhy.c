@@ -96,6 +96,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 	device->device_context = NULL;
 	if (indigo_ccd_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
+		// -------------------------------------------------------------------------------- CCD_GAIN
+		CCD_GAIN_PROPERTY->hidden = false;
+		CCD_GAIN_ITEM->number.max = CCD_GAIN_ITEM->number.value = 100;
+		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
+		CCD_TEMPERATURE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -168,6 +173,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
+		libqhy_set_gain(PRIVATE_DATA->device_context, CCD_GAIN_ITEM->number.value);
 		libqhy_set_exposure_time(PRIVATE_DATA->device_context, PRIVATE_DATA->exposure_time = CCD_EXPOSURE_ITEM->number.value);
 		libqhy_start(PRIVATE_DATA->device_context);
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
