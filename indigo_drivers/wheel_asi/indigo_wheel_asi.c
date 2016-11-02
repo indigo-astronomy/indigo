@@ -38,8 +38,6 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <hidapi/hidapi.h>
-
 #include <asi_efw/EFW_filter.h>
 
 #include "indigo_driver_xml.h"
@@ -184,7 +182,6 @@ indigo_result indigo_wheel_asi(bool state) {
 	if ((current_state = state)) {
 		device = NULL;
 		libusb_init(NULL);
-		hid_init();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, ASI_PRODUCT_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_asi: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 		indigo_start_usb_event_handler();
