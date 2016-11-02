@@ -39,12 +39,14 @@ endif
 ifeq ($(OS_DETECTED),Darwin)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS/libatik.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
+	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
 	PACKAGE_TYPE=dmg
 endif
 ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
+	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/$(ARCH_DETECTED)/libEFWFilter.a
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	PACKAGE_TYPE=deb
 endif
@@ -63,7 +65,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBHIDAPI=lib/libhidapi.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a lib/libfcusb.a lib/libnovas.a
+	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a
 endif
 
 #---------------------------------------------------------------------
@@ -80,7 +82,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=$(LIBHIDAPI) lib/libatik.a lib/libfcusb.a lib/libnovas.a
+	DEPENDENCIES=$(LIBHIDAPI) lib/libatik.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a
 endif
 
 #---------------------------------------------------------------------
@@ -191,6 +193,22 @@ include/libatik/libatik.h: indigo_drivers/ccd_atik/bin_externals/libatik/include
 lib/libatik.a: include/libatik/libatik.h
 	install -d lib
 	cp $(LIBATIK) lib
+
+
+#---------------------------------------------------------------------
+#
+#	Install libEFWFilter
+#
+#---------------------------------------------------------------------
+
+include/asi_efw/EFW_filter.h: indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h
+	install -d include/asi_efw
+	cp indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h include/asi_efw
+
+lib/libEFWFilter.a: include/asi_efw/EFW_filter.h
+	install -d lib
+	cp $(LIBASIEFW) lib
+
 
 #---------------------------------------------------------------------
 #
@@ -323,6 +341,19 @@ bin/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o lib/indigo_w
 
 #---------------------------------------------------------------------
 #
+#	Build ASI filter wheel driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_wheel_asi.a: indigo_drivers/wheel_asi/indigo_wheel_asi.o
+	$(AR) $(ARFLAGS) $@ $^
+
+bin/indigo_wheel_asi: indigo_drivers/wheel_asi/indigo_wheel_asi_main.o lib/indigo_wheel_asi.a lib/libindigo.a lib/libEFWFilter.a $(LIBUSB) $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
+
+
+#---------------------------------------------------------------------
+#
 #	Build Shoestring FCUSB focuser driver
 #
 #---------------------------------------------------------------------
@@ -346,7 +377,7 @@ bin/client: indigo_test/client.o lib/libindigo.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 bin/indigo_server: indigo_libs/indigo_server.o $(DRIVER_LIBS) lib/libindigo.a $(DEPENDENCIES)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
 
 #---------------------------------------------------------------------
 #
