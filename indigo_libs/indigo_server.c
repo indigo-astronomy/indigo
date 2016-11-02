@@ -35,6 +35,7 @@
 #include "wheel_sx/indigo_wheel_sx.h"
 #include "ccd_ssag/indigo_ccd_ssag.h"
 #include "ccd_asi/indigo_ccd_asi.h"
+#include "wheel_asi/indigo_wheel_asi.h"
 #include "ccd_atik/indigo_ccd_atik.h"
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
 
@@ -52,6 +53,7 @@ static struct {
 	{ "Atik CCD", indigo_ccd_atik },
 	{ "SSAG/QHY5 CCD", indigo_ccd_ssag },
 	{ "Shoestring FCUSB Focuser", indigo_focuser_fcusb },
+	{ "ASI Filter wheel", indigo_wheel_asi },
 	{ NULL, NULL }
 };
 
