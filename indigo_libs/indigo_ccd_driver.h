@@ -175,7 +175,7 @@
 
 /** CCD_GAMMA property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_GAMMA_PROPERTY                 (CCD_CONTEXT->ccd_gain_property)
+#define CCD_GAMMA_PROPERTY                 (CCD_CONTEXT->ccd_gamma_property)
 
 /** CCD_GAMMA.GAMMA property item pointer.
  */
