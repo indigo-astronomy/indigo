@@ -55,7 +55,6 @@ typedef struct {
 	double current_temperature;
 	unsigned short relay_mask;
 	unsigned char *buffer;
-	bool can_check_temperature;
 } qhy_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -72,14 +71,6 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
-	}
-	PRIVATE_DATA->can_check_temperature = true;
-}
-
-static void pre_exposure_timer_callback(indigo_device *device) {
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		PRIVATE_DATA->can_check_temperature = false;
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 2, exposure_timer_callback);
 	}
 }
 
@@ -115,13 +106,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				result = libqhy_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
 			}
 			if (result) {
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->device_context->frame_bits_per_pixel;
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = PRIVATE_DATA->device_context->width;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = PRIVATE_DATA->device_context->height;
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->device_context->pixel_width * 100)/100;
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(PRIVATE_DATA->device_context->pixel_height * 100) / 100;
 				PRIVATE_DATA->buffer = malloc(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 				assert(PRIVATE_DATA->buffer != NULL);
-				PRIVATE_DATA->can_check_temperature = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				if (PRIVATE_DATA->temperture_timer) {
@@ -158,19 +149,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
 		libqhy_start_exposure(PRIVATE_DATA->device_context, CCD_EXPOSURE_ITEM->number.value);
-		if (CCD_EXPOSURE_ITEM->number.value > 2)
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value - 2, pre_exposure_timer_callback);
-		else {
-			PRIVATE_DATA->can_check_temperature = false;
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
-		}
+		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		// libqhy_abort_exposure(PRIVATE_DATA->device_context);
 			indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
 		}
-		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
