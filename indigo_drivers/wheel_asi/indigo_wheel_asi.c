@@ -61,6 +61,7 @@ typedef struct {
 
 static void wheel_timer_callback(indigo_device *device) {
 	EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
+	PRIVATE_DATA->current_slot++;
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -80,6 +81,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
+	INDIGO_LOG(indigo_log("%s attached ERROR", device->name));
 	return INDIGO_FAILED;
 }
 
@@ -87,15 +89,20 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
+	EFW_INFO info;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (EFWOpen(0)) {
+			int num = EFWGetNum();
+			int res = EFWOpen(0);
+			if (!res) {
 				EFWGetID(0, &(PRIVATE_DATA->dev_id));
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = 5;
-				PRIVATE_DATA->target_slot = 1;
+				EFWGetProperty(PRIVATE_DATA->dev_id, &info);
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
+				EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+				PRIVATE_DATA->target_slot++;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
@@ -119,7 +126,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			EFWSetPosition(PRIVATE_DATA->dev_id,PRIVATE_DATA->target_slot);
+			EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
 			indigo_set_timer(device, 0.5, wheel_timer_callback);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
