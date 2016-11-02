@@ -185,37 +185,33 @@ static void ssag_set_gain(indigo_device *device, int gain) {
 
 static bool ssag_open(indigo_device *device) {
 	int rc = 0;
-	if (PRIVATE_DATA->device_count++ == 0) {
-		libusb_device *dev = PRIVATE_DATA->dev;
-		rc = libusb_open(dev, &PRIVATE_DATA->handle);
-		libusb_device_handle *handle = PRIVATE_DATA->handle;
-		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_open [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	libusb_device *dev = PRIVATE_DATA->dev;
+	rc = libusb_open(dev, &PRIVATE_DATA->handle);
+	libusb_device_handle *handle = PRIVATE_DATA->handle;
+	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_open [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 #ifdef LIBUSB_H // not implemented in fake libusb
-		if (rc >= 0) {
-			if (libusb_kernel_driver_active(handle, 0) == 1) {
-				rc = libusb_detach_kernel_driver(handle, 0);
-				INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_detach_kernel_driver [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
-			}
+	if (rc >= 0) {
+		if (libusb_kernel_driver_active(handle, 0) == 1) {
+			rc = libusb_detach_kernel_driver(handle, 0);
+			INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_detach_kernel_driver [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 		}
-		if (rc >= 0) {
-			rc = libusb_set_configuration(handle, 1);
-			INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_set_configuration [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
-		}
-		if (rc >= 0) {
-			rc = libusb_claim_interface(handle, 0);
-			INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, handle, rc < 0 ? libusb_error_name(rc) : "OK"));
-		}
-#endif
-		if (rc >= 0) {
-			unsigned char data[4];
-			rc = libusb_control_transfer(handle, 0xc0, USB_RQ_SET_BUFFER_MODE, 0x00, 0x63, data, sizeof(data), USB_TIMEOUT);
-			INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
-		}
-		ssag_set_gain(device, 1);
-		rc = rc < 0 ? rc : ssag_init_sequence(device);
 	}
-	PRIVATE_DATA->buffer = (unsigned char *)malloc(FITS_HEADER_SIZE + BUFFER_SIZE);
-	assert(PRIVATE_DATA->buffer != NULL);
+	if (rc >= 0) {
+		rc = libusb_set_configuration(handle, 1);
+		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_set_configuration [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	}
+	if (rc >= 0) {
+		rc = libusb_claim_interface(handle, 0);
+		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, handle, rc < 0 ? libusb_error_name(rc) : "OK"));
+	}
+#endif
+	if (rc >= 0) {
+		unsigned char data[4];
+		rc = libusb_control_transfer(handle, 0xc0, USB_RQ_SET_BUFFER_MODE, 0x00, 0x63, data, sizeof(data), USB_TIMEOUT);
+		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	}
+	ssag_set_gain(device, 1);
+	rc = rc < 0 ? rc : ssag_init_sequence(device);
 	return rc >= 0;
 }
 
@@ -262,11 +258,9 @@ static bool ssag_guide(indigo_device *device, guide_direction direction, int dur
 }
 
 static void ssag_close(indigo_device *device) {
-	if (--PRIVATE_DATA->device_count == 0) {
-		libusb_close(PRIVATE_DATA->handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_close: libusb_close [%d]", __LINE__));
-		free(PRIVATE_DATA->buffer);
-	}
+	libusb_close(PRIVATE_DATA->handle);
+	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_close: libusb_close [%d]", __LINE__));
+	free(PRIVATE_DATA->buffer);
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -317,14 +311,33 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (ssag_open(device)) {
+			bool result = true;
+			if (PRIVATE_DATA->device_count++ == 0) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				result = ssag_open(device);
+			}
+			if (result) {
+				PRIVATE_DATA->buffer = (unsigned char *)malloc(FITS_HEADER_SIZE + BUFFER_SIZE);
+				assert(PRIVATE_DATA->buffer != NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
+				if (PRIVATE_DATA->buffer != NULL) {
+					free(PRIVATE_DATA->buffer);
+					PRIVATE_DATA->buffer = NULL;
+				}
+				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			ssag_close(device);
+			if (PRIVATE_DATA->buffer != NULL) {
+				free(PRIVATE_DATA->buffer);
+				PRIVATE_DATA->buffer = NULL;
+			}
+			if (--PRIVATE_DATA->device_count == 0) {
+				ssag_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
@@ -365,7 +378,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(device);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_ccd_detach(device);
 }
@@ -393,14 +407,23 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (ssag_open(device)) {
+			bool result = true;
+			if (PRIVATE_DATA->device_count++ == 0) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				result = ssag_open(device);
+			}
+			if (result) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
+				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			ssag_close(device);
+			if (--PRIVATE_DATA->device_count == 0) {
+				ssag_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
@@ -440,7 +463,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(device);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_guider_detach(device);
 }

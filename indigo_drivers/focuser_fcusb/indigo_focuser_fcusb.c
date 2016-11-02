@@ -104,7 +104,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (libfcusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
-				libfcusb_led_off(PRIVATE_DATA->device_context);
 				libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
 				if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
 					libfcusb_set_frequency(PRIVATE_DATA->device_context, 1);
@@ -168,7 +167,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(device);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);

@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 2
+INDIGO_BUILD := 3
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -38,6 +38,7 @@ endif
 
 ifeq ($(OS_DETECTED),Darwin)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS/libatik.a
+	LIBQHY=indigo_drivers/ccd_qhy/externals/libqhy/lib/macOS/libqhy.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
 	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
@@ -45,6 +46,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
+	LIBQHY=indigo_drivers/ccd_qhy/externals/libqhy/lib/Linux/$(ARCH_DETECTED)/libqhy.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
 	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/$(ARCH_DETECTED)/libEFWFilter.a
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
@@ -65,7 +67,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBHIDAPI=lib/libhidapi.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a
+	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a
 endif
 
 #---------------------------------------------------------------------
@@ -82,7 +84,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	DEPENDENCIES=$(LIBHIDAPI) lib/libatik.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a
+	DEPENDENCIES=$(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a
 endif
 
 #---------------------------------------------------------------------
@@ -187,12 +189,27 @@ lib/libnovas.a: externals/novas/novas.o externals/novas/eph_manager.o externals/
 #---------------------------------------------------------------------
 
 include/libatik/libatik.h: indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik/libatik.h
-	install -d include/libatik
-	cp indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik/libatik.h include/libatik
+	install -d include
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik include
 
 lib/libatik.a: include/libatik/libatik.h
 	install -d lib
-	cp $(LIBATIK) lib
+	ln -sf $(INDIGO_ROOT)/$(LIBATIK) lib
+
+#---------------------------------------------------------------------
+#
+#	Install libqhy
+#
+#---------------------------------------------------------------------
+
+include/libqhy/libqhy.h: indigo_drivers/ccd_qhy/externals/libqhy/include/libqhy/libqhy.h
+	install -d include
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_qhy/externals/libqhy/include/libqhy include
+
+lib/libqhy.a: include/libqhy/libqhy.h
+	cd indigo_drivers/ccd_qhy/externals/libqhy; make clean; make; cd ../../../..
+	install -d lib
+	ln -sf $(INDIGO_ROOT)/$(LIBQHY) lib
 
 
 #---------------------------------------------------------------------
@@ -217,12 +234,12 @@ lib/libEFWFilter.a: include/asi_efw/EFW_filter.h
 #---------------------------------------------------------------------
 
 include/libfcusb/libfcusb.h: indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb/libfcusb.h
-	install -d include/libfcusb
-	cp indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb/libfcusb.h include/libfcusb
+	install -d include
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb include
 
 lib/libfcusb.a: include/libfcusb/libfcusb.h
 	install -d lib
-	cp $(LIBFCUSB) lib
+	ln -sf $(INDIGO_ROOT)/$(LIBFCUSB) lib
 
 #---------------------------------------------------------------------
 #
@@ -351,6 +368,17 @@ lib/indigo_wheel_asi.a: indigo_drivers/wheel_asi/indigo_wheel_asi.o
 bin/indigo_wheel_asi: indigo_drivers/wheel_asi/indigo_wheel_asi_main.o lib/indigo_wheel_asi.a lib/libindigo.a lib/libEFWFilter.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
 
+#---------------------------------------------------------------------
+#
+#	Build QHY CCD driver
+#
+#---------------------------------------------------------------------
+
+lib/indigo_ccd_qhy.a: indigo_drivers/ccd_qhy/indigo_ccd_qhy.o
+	$(AR) $(ARFLAGS) $@ $^
+
+bin/indigo_ccd_qhy: indigo_drivers/ccd_qhy/indigo_ccd_qhy_main.o lib/indigo_ccd_qhy.a lib/libindigo.a  lib/libqhy.a $(LIBUSB)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #

@@ -169,219 +169,211 @@ typedef struct {
 } sx_private_data;
 
 static bool sx_open(indigo_device *device) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-		int rc = 0;
-		if (PRIVATE_DATA->device_count++ == 0) {
-			libusb_device *dev = PRIVATE_DATA->dev;
-			rc = libusb_open(dev, &PRIVATE_DATA->handle);
-			libusb_device_handle *handle = PRIVATE_DATA->handle;
-			unsigned char *setup_data = PRIVATE_DATA->setup_data;
-			INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_open [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int rc = 0;
+	libusb_device *dev = PRIVATE_DATA->dev;
+	rc = libusb_open(dev, &PRIVATE_DATA->handle);
+	libusb_device_handle *handle = PRIVATE_DATA->handle;
+	unsigned char *setup_data = PRIVATE_DATA->setup_data;
+	INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_open [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	if (rc >= 0) {
+		if (libusb_kernel_driver_active(handle, 0) == 1) {
+			rc = libusb_detach_kernel_driver(handle, 0);
+			INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_detach_kernel_driver [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		}
+		if (rc >= 0) {
+			struct libusb_config_descriptor *config;
+			rc = libusb_get_config_descriptor(dev, 0, &config);
+			INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_get_config_descriptor [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 			if (rc >= 0) {
-				if (libusb_kernel_driver_active(handle, 0) == 1) {
-					rc = libusb_detach_kernel_driver(handle, 0);
-					INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_detach_kernel_driver [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
-				}
-				if (rc >= 0) {
-					struct libusb_config_descriptor *config;
-					rc = libusb_get_config_descriptor(dev, 0, &config);
-					INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_get_config_descriptor [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
-					if (rc >= 0) {
-						int interface = config->interface->altsetting->bInterfaceNumber;
-						rc = libusb_claim_interface(handle, interface);
-						INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, interface, rc < 0 ? libusb_error_name(rc) : "OK"));
-					}
-				}
-			}
-			int transferred;
-			if (rc >= 0) { // reset
-				setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
-				setup_data[REQ ] = CCD_RESET;
-				setup_data[REQ_VALUE_L ] = 0;
-				setup_data[REQ_VALUE_H ] = 0;
-				setup_data[REQ_INDEX_L ] = 0;
-				setup_data[REQ_INDEX_H ] = 0;
-				setup_data[REQ_LENGTH_L] = 0;
-				setup_data[REQ_LENGTH_H] = 0;
-				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-				INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-				usleep(1000);
-			}
-			if (rc >= 0) { // read camera model
-				setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAIN;
-				setup_data[REQ ] = CCD_CAMERA_MODEL;
-				setup_data[REQ_VALUE_L ] = 0;
-				setup_data[REQ_VALUE_H ] = 0;
-				setup_data[REQ_INDEX_L ] = 0;
-				setup_data[REQ_INDEX_H ] = 0;
-				setup_data[REQ_LENGTH_L] = 2;
-				setup_data[REQ_LENGTH_H] = 0;
-				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-				INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-				if (rc >=0 && transferred == REQ_DATA) {
-					rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 2, &transferred, BULK_COMMAND_TIMEOUT);
-					INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-					if (rc >=0 && transferred == 2) {
-						int result=setup_data[0] | (setup_data[1] << 8);
-						PRIVATE_DATA->model = result & 0x1F;
-						PRIVATE_DATA->is_color = result & 0x80;
-						PRIVATE_DATA->is_interlaced = result & 0x40;
-						if (result == 0x84)
-							PRIVATE_DATA->is_interlaced = true;
-						if (PRIVATE_DATA->model == 0x16 || PRIVATE_DATA->model == 0x17 || PRIVATE_DATA->model == 0x18 || PRIVATE_DATA->model == 0x19)
-							PRIVATE_DATA->is_interlaced =  false;
-						INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: %s %s model %d\n", PRIVATE_DATA->is_interlaced ? "INTERLACED" : "NON-INTERLACED", PRIVATE_DATA->is_color ? "COLOR" : "MONO", PRIVATE_DATA->model));
-					}
-				}
-			}
-			if (rc >= 0) { // read camera params
-				setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAIN;
-				setup_data[REQ ] = CCD_GET_CCD;
-				setup_data[REQ_VALUE_L ] = 0;
-				setup_data[REQ_VALUE_H ] = 0;
-				setup_data[REQ_INDEX_L ] = 0;
-				setup_data[REQ_INDEX_H ] = 0;
-				setup_data[REQ_LENGTH_L] = 17;
-				setup_data[REQ_LENGTH_H] = 0;
-				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-				INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-				if (rc >=0 && transferred == REQ_DATA) {
-					rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 17, &transferred, BULK_COMMAND_TIMEOUT);
-					INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-					if (rc >=0 && transferred == 17) {
-						PRIVATE_DATA->ccd_width = setup_data[2] | (setup_data[3] << 8);
-						PRIVATE_DATA->ccd_height = setup_data[6] | (setup_data[7] << 8);
-						PRIVATE_DATA->pix_width = ((setup_data[8] | (setup_data[9] << 8)) / 256.0);
-						PRIVATE_DATA->pix_height = ((setup_data[10] | (setup_data[11] << 8)) / 256.0);
-						PRIVATE_DATA->bits_per_pixel = setup_data[14];
-						PRIVATE_DATA->color_matrix = setup_data[12] | (setup_data[13] << 8);
-						PRIVATE_DATA->extra_caps = setup_data[16];
-						if (PRIVATE_DATA->is_interlaced) {
-							PRIVATE_DATA->ccd_height *= 2;
-							PRIVATE_DATA->pix_height /= 2;
-						}
-						PRIVATE_DATA->buffer = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + FITS_HEADER_SIZE);
-						assert(PRIVATE_DATA->buffer != NULL);
-						if (PRIVATE_DATA->is_interlaced) {
-							PRIVATE_DATA->even = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
-							assert(PRIVATE_DATA->even != NULL);
-							PRIVATE_DATA->odd = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
-							assert(PRIVATE_DATA->odd != NULL);
-						}
-						INDIGO_DEBUG_DRIVER(indigo_debug("sxGetCameraParams: chip size: %d x %d, pixel size: %4.2f x %4.2f, matrix type: %x", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height, PRIVATE_DATA->pix_width, PRIVATE_DATA->pix_height, PRIVATE_DATA->color_matrix));
-						INDIGO_DEBUG_DRIVER(indigo_debug("sxGetCameraParams: capabilities:%s%s%s%s", (PRIVATE_DATA->extra_caps & CAPS_GUIDER ? " GUIDER" : ""), (PRIVATE_DATA->extra_caps & CAPS_STAR2K ? " STAR2K" : ""), (PRIVATE_DATA->extra_caps & CAPS_COOLER ? " COOLER" : ""), (PRIVATE_DATA->extra_caps & CAPS_SHUTTER ? " SHUTTER" : "")));
-					}
-				}
+				int interface = config->interface->altsetting->bInterfaceNumber;
+				rc = libusb_claim_interface(handle, interface);
+				INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, interface, rc < 0 ? libusb_error_name(rc) : "OK"));
 			}
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return rc >= 0;
 	}
-	return false;
+	int transferred;
+	if (rc >= 0) { // reset
+		setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
+		setup_data[REQ ] = CCD_RESET;
+		setup_data[REQ_VALUE_L ] = 0;
+		setup_data[REQ_VALUE_H ] = 0;
+		setup_data[REQ_INDEX_L ] = 0;
+		setup_data[REQ_INDEX_H ] = 0;
+		setup_data[REQ_LENGTH_L] = 0;
+		setup_data[REQ_LENGTH_H] = 0;
+		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
+		usleep(1000);
+	}
+	if (rc >= 0) { // read camera model
+		setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAIN;
+		setup_data[REQ ] = CCD_CAMERA_MODEL;
+		setup_data[REQ_VALUE_L ] = 0;
+		setup_data[REQ_VALUE_H ] = 0;
+		setup_data[REQ_INDEX_L ] = 0;
+		setup_data[REQ_INDEX_H ] = 0;
+		setup_data[REQ_LENGTH_L] = 2;
+		setup_data[REQ_LENGTH_H] = 0;
+		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
+		if (rc >=0 && transferred == REQ_DATA) {
+			rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 2, &transferred, BULK_COMMAND_TIMEOUT);
+			INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
+			if (rc >=0 && transferred == 2) {
+				int result=setup_data[0] | (setup_data[1] << 8);
+				PRIVATE_DATA->model = result & 0x1F;
+				PRIVATE_DATA->is_color = result & 0x80;
+				PRIVATE_DATA->is_interlaced = result & 0x40;
+				if (result == 0x84)
+					PRIVATE_DATA->is_interlaced = true;
+				if (PRIVATE_DATA->model == 0x16 || PRIVATE_DATA->model == 0x17 || PRIVATE_DATA->model == 0x18 || PRIVATE_DATA->model == 0x19)
+					PRIVATE_DATA->is_interlaced =  false;
+				INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: %s %s model %d\n", PRIVATE_DATA->is_interlaced ? "INTERLACED" : "NON-INTERLACED", PRIVATE_DATA->is_color ? "COLOR" : "MONO", PRIVATE_DATA->model));
+			}
+		}
+	}
+	if (rc >= 0) { // read camera params
+		setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAIN;
+		setup_data[REQ ] = CCD_GET_CCD;
+		setup_data[REQ_VALUE_L ] = 0;
+		setup_data[REQ_VALUE_H ] = 0;
+		setup_data[REQ_INDEX_L ] = 0;
+		setup_data[REQ_INDEX_H ] = 0;
+		setup_data[REQ_LENGTH_L] = 17;
+		setup_data[REQ_LENGTH_H] = 0;
+		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
+		if (rc >=0 && transferred == REQ_DATA) {
+			rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 17, &transferred, BULK_COMMAND_TIMEOUT);
+			INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: libusb_control_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
+			if (rc >=0 && transferred == 17) {
+				PRIVATE_DATA->ccd_width = setup_data[2] | (setup_data[3] << 8);
+				PRIVATE_DATA->ccd_height = setup_data[6] | (setup_data[7] << 8);
+				PRIVATE_DATA->pix_width = ((setup_data[8] | (setup_data[9] << 8)) / 256.0);
+				PRIVATE_DATA->pix_height = ((setup_data[10] | (setup_data[11] << 8)) / 256.0);
+				PRIVATE_DATA->bits_per_pixel = setup_data[14];
+				PRIVATE_DATA->color_matrix = setup_data[12] | (setup_data[13] << 8);
+				PRIVATE_DATA->extra_caps = setup_data[16];
+				if (PRIVATE_DATA->is_interlaced) {
+					PRIVATE_DATA->ccd_height *= 2;
+					PRIVATE_DATA->pix_height /= 2;
+				}
+				PRIVATE_DATA->buffer = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + FITS_HEADER_SIZE);
+				assert(PRIVATE_DATA->buffer != NULL);
+				if (PRIVATE_DATA->is_interlaced) {
+					PRIVATE_DATA->even = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+					assert(PRIVATE_DATA->even != NULL);
+					PRIVATE_DATA->odd = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+					assert(PRIVATE_DATA->odd != NULL);
+				}
+				INDIGO_DEBUG_DRIVER(indigo_debug("sxGetCameraParams: chip size: %d x %d, pixel size: %4.2f x %4.2f, matrix type: %x", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height, PRIVATE_DATA->pix_width, PRIVATE_DATA->pix_height, PRIVATE_DATA->color_matrix));
+				INDIGO_DEBUG_DRIVER(indigo_debug("sxGetCameraParams: capabilities:%s%s%s%s", (PRIVATE_DATA->extra_caps & CAPS_GUIDER ? " GUIDER" : ""), (PRIVATE_DATA->extra_caps & CAPS_STAR2K ? " STAR2K" : ""), (PRIVATE_DATA->extra_caps & CAPS_COOLER ? " COOLER" : ""), (PRIVATE_DATA->extra_caps & CAPS_SHUTTER ? " SHUTTER" : "")));
+			}
+		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return rc >= 0;
 }
 
 static bool sx_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-		libusb_device_handle *handle = PRIVATE_DATA->handle;
-		unsigned char *setup_data = PRIVATE_DATA->setup_data;
-		int rc = 0;
-		int transferred;
-		if (exposure <= 3) {
-			int milis = (int)round(1000 * exposure);
-			setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
-			setup_data[REQ ] = CCD_READ_PIXELS_DELAYED;
-			setup_data[REQ_VALUE_L ] = FLAGS_FIELD_BOTH;
-			setup_data[REQ_VALUE_H ] = 0;
-			setup_data[REQ_INDEX_L ] = 0;
-			setup_data[REQ_INDEX_H ] = 0;
-			setup_data[REQ_LENGTH_L] = 10;
-			setup_data[REQ_LENGTH_H] = 0;
-			setup_data[REQ_DATA + 0] = frame_left & 0xFF;
-			setup_data[REQ_DATA + 1] = frame_left >> 8;
-			setup_data[REQ_DATA + 2] = frame_top & 0xFF;
-			setup_data[REQ_DATA + 3] = frame_top >> 8;
-			setup_data[REQ_DATA + 4] = frame_width & 0xFF;
-			setup_data[REQ_DATA + 5] = frame_width >> 8;
-			setup_data[REQ_DATA + 6] = frame_height & 0xFF;
-			setup_data[REQ_DATA + 7] = frame_height >> 8;
-			setup_data[REQ_DATA + 8] = horizontal_bin;
-			setup_data[REQ_DATA + 9] = vertical_bin;
-			setup_data[REQ_DATA + 10] = milis & 0xFF;
-			setup_data[REQ_DATA + 11] = (milis>>8) & 0xFF;
-			setup_data[REQ_DATA + 12] = (milis>>16) & 0xFF;
-			setup_data[REQ_DATA + 13] = (milis>>24) & 0xFF;
-			if (PRIVATE_DATA->extra_caps & CAPS_SHUTTER)
-				setup_data[REQ_VALUE_H] = dark ? FLAGS_SHUTTER_CLOSE : FLAGS_SHUTTER_OPEN;
-			if (PRIVATE_DATA->is_interlaced) {
-				if (vertical_bin > 1) {
-					setup_data[REQ_DATA + 2] = (frame_top/2) & 0xFF;
-					setup_data[REQ_DATA + 3] = (frame_top/2) >> 8;
-					setup_data[REQ_DATA + 6] = (frame_height/2) & 0xFF;
-					setup_data[REQ_DATA + 7] = (frame_height/2) >> 8;
-					setup_data[REQ_DATA + 9] = vertical_bin/2;
-					rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
-					INDIGO_DEBUG_DRIVER(indigo_debug("sx_start_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-				} else {
-					setup_data[REQ_DATA + 2] = (frame_top/2) & 0xFF;
-					setup_data[REQ_DATA + 3] = (frame_top/2) >> 8;
-					setup_data[REQ_DATA + 6] = (frame_height/2) & 0xFF;
-					setup_data[REQ_DATA + 7] = (frame_height/2) >> 8;
-					setup_data[REQ_DATA + 9] = 1;
-					setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
-					rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
-					INDIGO_DEBUG_DRIVER(indigo_debug("sx_start_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-				}
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	libusb_device_handle *handle = PRIVATE_DATA->handle;
+	unsigned char *setup_data = PRIVATE_DATA->setup_data;
+	int rc = 0;
+	int transferred;
+	if (exposure <= 3) {
+		int milis = (int)round(1000 * exposure);
+		setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
+		setup_data[REQ ] = CCD_READ_PIXELS_DELAYED;
+		setup_data[REQ_VALUE_L ] = FLAGS_FIELD_BOTH;
+		setup_data[REQ_VALUE_H ] = 0;
+		setup_data[REQ_INDEX_L ] = 0;
+		setup_data[REQ_INDEX_H ] = 0;
+		setup_data[REQ_LENGTH_L] = 10;
+		setup_data[REQ_LENGTH_H] = 0;
+		setup_data[REQ_DATA + 0] = frame_left & 0xFF;
+		setup_data[REQ_DATA + 1] = frame_left >> 8;
+		setup_data[REQ_DATA + 2] = frame_top & 0xFF;
+		setup_data[REQ_DATA + 3] = frame_top >> 8;
+		setup_data[REQ_DATA + 4] = frame_width & 0xFF;
+		setup_data[REQ_DATA + 5] = frame_width >> 8;
+		setup_data[REQ_DATA + 6] = frame_height & 0xFF;
+		setup_data[REQ_DATA + 7] = frame_height >> 8;
+		setup_data[REQ_DATA + 8] = horizontal_bin;
+		setup_data[REQ_DATA + 9] = vertical_bin;
+		setup_data[REQ_DATA + 10] = milis & 0xFF;
+		setup_data[REQ_DATA + 11] = (milis>>8) & 0xFF;
+		setup_data[REQ_DATA + 12] = (milis>>16) & 0xFF;
+		setup_data[REQ_DATA + 13] = (milis>>24) & 0xFF;
+		if (PRIVATE_DATA->extra_caps & CAPS_SHUTTER)
+			setup_data[REQ_VALUE_H] = dark ? FLAGS_SHUTTER_CLOSE : FLAGS_SHUTTER_OPEN;
+		if (PRIVATE_DATA->is_interlaced) {
+			if (vertical_bin > 1) {
+				setup_data[REQ_DATA + 2] = (frame_top/2) & 0xFF;
+				setup_data[REQ_DATA + 3] = (frame_top/2) >> 8;
+				setup_data[REQ_DATA + 6] = (frame_height/2) & 0xFF;
+				setup_data[REQ_DATA + 7] = (frame_height/2) >> 8;
+				setup_data[REQ_DATA + 9] = vertical_bin/2;
+				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
+				INDIGO_DEBUG_DRIVER(indigo_debug("sx_start_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
 			} else {
+				setup_data[REQ_DATA + 2] = (frame_top/2) & 0xFF;
+				setup_data[REQ_DATA + 3] = (frame_top/2) >> 8;
+				setup_data[REQ_DATA + 6] = (frame_height/2) & 0xFF;
+				setup_data[REQ_DATA + 7] = (frame_height/2) >> 8;
+				setup_data[REQ_DATA + 9] = 1;
+				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
 				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
 				INDIGO_DEBUG_DRIVER(indigo_debug("sx_start_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
 			}
 		} else {
-			setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
-			setup_data[REQ ] = CCD_CLEAR_PIXELS;
-			setup_data[REQ_VALUE_L ] = FLAGS_FIELD_BOTH;
-			setup_data[REQ_VALUE_H ] = 0;
-			setup_data[REQ_INDEX_L ] = 0;
-			setup_data[REQ_INDEX_H ] = 0;
-			setup_data[REQ_LENGTH_L] = 0;
-			setup_data[REQ_LENGTH_H] = 0;
-			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
 			INDIGO_DEBUG_DRIVER(indigo_debug("sx_start_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
 		}
-		PRIVATE_DATA->frame_left = frame_left;
-		PRIVATE_DATA->frame_top = frame_top;
-		PRIVATE_DATA->frame_width = frame_width;
-		PRIVATE_DATA->frame_height = frame_height;
-		PRIVATE_DATA->horizontal_bin = horizontal_bin;
-		PRIVATE_DATA->vertical_bin = vertical_bin;
-		PRIVATE_DATA->exposure = exposure;
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return rc >= 0;
+	} else {
+		setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
+		setup_data[REQ ] = CCD_CLEAR_PIXELS;
+		setup_data[REQ_VALUE_L ] = FLAGS_FIELD_BOTH;
+		setup_data[REQ_VALUE_H ] = 0;
+		setup_data[REQ_INDEX_L ] = 0;
+		setup_data[REQ_INDEX_H ] = 0;
+		setup_data[REQ_LENGTH_L] = 0;
+		setup_data[REQ_LENGTH_H] = 0;
+		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		INDIGO_DEBUG_DRIVER(indigo_debug("sx_start_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
 	}
-	return false;
+	PRIVATE_DATA->frame_left = frame_left;
+	PRIVATE_DATA->frame_top = frame_top;
+	PRIVATE_DATA->frame_width = frame_width;
+	PRIVATE_DATA->frame_height = frame_height;
+	PRIVATE_DATA->horizontal_bin = horizontal_bin;
+	PRIVATE_DATA->vertical_bin = vertical_bin;
+	PRIVATE_DATA->exposure = exposure;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return rc >= 0;
 }
 
 static bool sx_clear_regs(indigo_device *device) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-		libusb_device_handle *handle = PRIVATE_DATA->handle;
-		unsigned char *setup_data = PRIVATE_DATA->setup_data;
-		int rc = 0;
-		int transferred;
-		if (rc >= 0) {
-			setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
-			setup_data[REQ ] = CCD_CLEAR_PIXELS;
-			setup_data[REQ_VALUE_L ] = FLAGS_NOWIPE_FRAME;
-			setup_data[REQ_VALUE_H ] = 0;
-			setup_data[REQ_INDEX_L ] = 0;
-			setup_data[REQ_INDEX_H ] = 0;
-			setup_data[REQ_LENGTH_L] = 0;
-			setup_data[REQ_LENGTH_H] = 0;
-			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-			INDIGO_DEBUG_DRIVER(indigo_debug("sx_clear_regs: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return rc >= 0;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	libusb_device_handle *handle = PRIVATE_DATA->handle;
+	unsigned char *setup_data = PRIVATE_DATA->setup_data;
+	int rc = 0;
+	int transferred;
+	if (rc >= 0) {
+		setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
+		setup_data[REQ ] = CCD_CLEAR_PIXELS;
+		setup_data[REQ_VALUE_L ] = FLAGS_NOWIPE_FRAME;
+		setup_data[REQ_VALUE_H ] = 0;
+		setup_data[REQ_INDEX_L ] = 0;
+		setup_data[REQ_INDEX_H ] = 0;
+		setup_data[REQ_LENGTH_L] = 0;
+		setup_data[REQ_LENGTH_H] = 0;
+		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		INDIGO_DEBUG_DRIVER(indigo_debug("sx_clear_regs: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
 	}
-	return false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return rc >= 0;
 }
 
 static bool sx_download_pixels(indigo_device *device, unsigned char *pixels, unsigned long count) {
@@ -403,118 +395,112 @@ static bool sx_download_pixels(indigo_device *device, unsigned char *pixels, uns
 }
 
 static bool sx_read_pixels(indigo_device *device) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-		libusb_device_handle *handle = PRIVATE_DATA->handle;
-		unsigned char *setup_data = PRIVATE_DATA->setup_data;
-		int rc = 0;
-		int transferred;
-		int frame_width = PRIVATE_DATA->frame_width;
-		int frame_height = PRIVATE_DATA->frame_height;
-		int horizontal_bin = PRIVATE_DATA->horizontal_bin;
-		int vertical_bin = PRIVATE_DATA->vertical_bin;
-		int size = (frame_width/horizontal_bin)*(frame_height/vertical_bin);
-		if (PRIVATE_DATA->is_interlaced) {
-			if (vertical_bin>1) {
-				rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
-			} else {
-				unsigned char *even = PRIVATE_DATA->even;
-				if (PRIVATE_DATA->exposure > 3) {
-					setup_data[REQ ] = CCD_READ_PIXELS;
-					setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
-					setup_data[REQ_LENGTH_L] = 10;
-					rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
-				}
-				rc = sx_download_pixels(device, PRIVATE_DATA->even, size);
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	libusb_device_handle *handle = PRIVATE_DATA->handle;
+	unsigned char *setup_data = PRIVATE_DATA->setup_data;
+	int rc = 0;
+	int transferred;
+	int frame_width = PRIVATE_DATA->frame_width;
+	int frame_height = PRIVATE_DATA->frame_height;
+	int horizontal_bin = PRIVATE_DATA->horizontal_bin;
+	int vertical_bin = PRIVATE_DATA->vertical_bin;
+	int size = (frame_width/horizontal_bin)*(frame_height/vertical_bin);
+	if (PRIVATE_DATA->is_interlaced) {
+		if (vertical_bin>1) {
+			rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
+		} else {
+			unsigned char *even = PRIVATE_DATA->even;
+			if (PRIVATE_DATA->exposure > 3) {
+				setup_data[REQ ] = CCD_READ_PIXELS;
+				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
+				setup_data[REQ_LENGTH_L] = 10;
+				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
+			}
+			rc = sx_download_pixels(device, PRIVATE_DATA->even, size);
+			if (rc >= 0) {
+				setup_data[REQ ] = CCD_READ_PIXELS;
+				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_ODD | FLAGS_SPARE2;
+				setup_data[REQ_LENGTH_L] = 10;
+				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
 				if (rc >= 0) {
-					setup_data[REQ ] = CCD_READ_PIXELS;
-					setup_data[REQ_VALUE_L ] = FLAGS_FIELD_ODD | FLAGS_SPARE2;
-					setup_data[REQ_LENGTH_L] = 10;
-					rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
+					INDIGO_DEBUG_DRIVER(indigo_debug("sx_read_pixels: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
+					unsigned char *odd = PRIVATE_DATA->odd;
+					rc = sx_download_pixels(device, PRIVATE_DATA->odd, size);
 					if (rc >= 0) {
-						INDIGO_DEBUG_DRIVER(indigo_debug("sx_read_pixels: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-						unsigned char *odd = PRIVATE_DATA->odd;
-						rc = sx_download_pixels(device, PRIVATE_DATA->odd, size);
-						if (rc >= 0) {
-							unsigned char *buffer = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
-							int ww = frame_width * 2;
-							for (int i = 0, j = 0; i < frame_height; i += 2, j++) {
-								memcpy(buffer + i * ww, (void *)odd + (j * ww), ww);
-								memcpy(buffer + ((i + 1) * ww), (void *)even + (j * ww), ww);
-							}
+						unsigned char *buffer = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
+						int ww = frame_width * 2;
+						for (int i = 0, j = 0; i < frame_height; i += 2, j++) {
+							memcpy(buffer + i * ww, (void *)odd + (j * ww), ww);
+							memcpy(buffer + ((i + 1) * ww), (void *)even + (j * ww), ww);
 						}
 					}
 				}
 			}
-		} else {
-			if (PRIVATE_DATA->exposure > 3) {
-				setup_data[REQ ] = CCD_READ_PIXELS;
-				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_BOTH;
-				setup_data[REQ_LENGTH_L] = 10;
-				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
-			}
-			rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return rc >= 0;
+	} else {
+		if (PRIVATE_DATA->exposure > 3) {
+			setup_data[REQ ] = CCD_READ_PIXELS;
+			setup_data[REQ_VALUE_L ] = FLAGS_FIELD_BOTH;
+			setup_data[REQ_LENGTH_L] = 10;
+			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
+		}
+		rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
 	}
-	return false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return rc >= 0;
 }
 
 static bool sx_abort_exposure(indigo_device *device) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-		libusb_device_handle *handle = PRIVATE_DATA->handle;
-		unsigned char *setup_data = PRIVATE_DATA->setup_data;
-		int rc = 0;
-		int transferred;
-		if (PRIVATE_DATA->extra_caps & CAPS_SHUTTER) {
-			setup_data[REQ_TYPE ] = REQ_VENDOR;
-			setup_data[REQ ] = CCD_SHUTTER;
-			setup_data[REQ_VALUE_L ] = 0;
-			setup_data[REQ_VALUE_H ] = FLAGS_SHUTTER_CLOSE;
-			setup_data[REQ_INDEX_L ] = 0;
-			setup_data[REQ_INDEX_H ] = 0;
-			setup_data[REQ_LENGTH_L] = 0;
-			setup_data[REQ_LENGTH_H] = 0;
-			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
-			INDIGO_DEBUG_DRIVER(indigo_debug("sx_abort_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return rc >= 0;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	libusb_device_handle *handle = PRIVATE_DATA->handle;
+	unsigned char *setup_data = PRIVATE_DATA->setup_data;
+	int rc = 0;
+	int transferred;
+	if (PRIVATE_DATA->extra_caps & CAPS_SHUTTER) {
+		setup_data[REQ_TYPE ] = REQ_VENDOR;
+		setup_data[REQ ] = CCD_SHUTTER;
+		setup_data[REQ_VALUE_L ] = 0;
+		setup_data[REQ_VALUE_H ] = FLAGS_SHUTTER_CLOSE;
+		setup_data[REQ_INDEX_L ] = 0;
+		setup_data[REQ_INDEX_H ] = 0;
+		setup_data[REQ_LENGTH_L] = 0;
+		setup_data[REQ_LENGTH_H] = 0;
+		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		INDIGO_DEBUG_DRIVER(indigo_debug("sx_abort_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
 	}
-	return false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return rc >= 0;
 }
 
 static bool sx_set_cooler(indigo_device *device, bool status, double target, double *current) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-		libusb_device_handle *handle = PRIVATE_DATA->handle;
-		unsigned char *setup_data = PRIVATE_DATA->setup_data;
-		int rc = 0;
-		int transferred;
-		if (PRIVATE_DATA->extra_caps & CAPS_COOLER) {
-			unsigned short setTemp = (unsigned short) (target * 10 + 2730);
-			setup_data[REQ_TYPE ] = REQ_VENDOR;
-			setup_data[REQ ] = CCD_COOLER;
-			setup_data[REQ_VALUE_L ] = setTemp & 0xFF;
-			setup_data[REQ_VALUE_H ] = (setTemp >> 8) & 0xFF;
-			setup_data[REQ_INDEX_L ] = status ? 1 : 0;
-			setup_data[REQ_INDEX_H ] = 0;
-			setup_data[REQ_LENGTH_L] = 0;
-			setup_data[REQ_LENGTH_H] = 0;
-			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	libusb_device_handle *handle = PRIVATE_DATA->handle;
+	unsigned char *setup_data = PRIVATE_DATA->setup_data;
+	int rc = 0;
+	int transferred;
+	if (PRIVATE_DATA->extra_caps & CAPS_COOLER) {
+		unsigned short setTemp = (unsigned short) (target * 10 + 2730);
+		setup_data[REQ_TYPE ] = REQ_VENDOR;
+		setup_data[REQ ] = CCD_COOLER;
+		setup_data[REQ_VALUE_L ] = setTemp & 0xFF;
+		setup_data[REQ_VALUE_H ] = (setTemp >> 8) & 0xFF;
+		setup_data[REQ_INDEX_L ] = status ? 1 : 0;
+		setup_data[REQ_INDEX_H ] = 0;
+		setup_data[REQ_LENGTH_L] = 0;
+		setup_data[REQ_LENGTH_H] = 0;
+		rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA, &transferred, BULK_COMMAND_TIMEOUT);
+		INDIGO_DEBUG_DRIVER(indigo_debug("sx_set_cooler: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
+		if (rc >=0 && transferred == REQ_DATA) {
+			rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 3, &transferred, BULK_COMMAND_TIMEOUT);
 			INDIGO_DEBUG_DRIVER(indigo_debug("sx_set_cooler: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-			if (rc >=0 && transferred == REQ_DATA) {
-				rc = libusb_bulk_transfer(handle, BULK_IN, setup_data, 3, &transferred, BULK_COMMAND_TIMEOUT);
-				INDIGO_DEBUG_DRIVER(indigo_debug("sx_set_cooler: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
-				if (rc >=0 && transferred == 3) {
-					*current = ((setup_data[1]*256)+setup_data[0]-2730)/10.0;
-					INDIGO_DEBUG_DRIVER(indigo_debug("sx_set_cooler: cooler: %s, target: %gC, current: %gC", setup_data[2] ? "On" : "Off", target, *current));
-				}
+			if (rc >=0 && transferred == 3) {
+				*current = ((setup_data[1]*256)+setup_data[0]-2730)/10.0;
+				INDIGO_DEBUG_DRIVER(indigo_debug("sx_set_cooler: cooler: %s, target: %gC, current: %gC", setup_data[2] ? "On" : "Off", target, *current));
 			}
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return rc >= 0;
 	}
-	return false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return rc >= 0;
 }
 
 static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
@@ -534,18 +520,15 @@ static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
 }
 
 static void sx_close(indigo_device *device) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-		if (--PRIVATE_DATA->device_count == 0) {
-			libusb_close(PRIVATE_DATA->handle);
-			INDIGO_DEBUG_DRIVER(indigo_debug("sx_close: libusb_close [%d]", __LINE__));
-			free(PRIVATE_DATA->buffer);
-			if (PRIVATE_DATA->is_interlaced) {
-				free(PRIVATE_DATA->even);
-				free(PRIVATE_DATA->odd);
-			}
-		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	libusb_close(PRIVATE_DATA->handle);
+	INDIGO_DEBUG_DRIVER(indigo_debug("sx_close: libusb_close [%d]", __LINE__));
+	free(PRIVATE_DATA->buffer);
+	if (PRIVATE_DATA->is_interlaced) {
+		free(PRIVATE_DATA->even);
+		free(PRIVATE_DATA->odd);
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -621,7 +604,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (sx_open(device)) {
+			bool result = true;
+			if (PRIVATE_DATA->device_count++ == 0) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				result = sx_open(device);
+			}
+			if (result) {
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = PRIVATE_DATA->ccd_width;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = PRIVATE_DATA->ccd_height;
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->pix_width * 100)/100;
@@ -643,7 +632,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
 				PRIVATE_DATA->temperture_timer = NULL;
 			}
-			sx_close(device);
+			if (--PRIVATE_DATA->device_count == 0) {
+				sx_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
@@ -704,7 +695,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(device);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_ccd_detach(device);
 }
@@ -750,16 +742,25 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (sx_open(device)) {
+			bool result = true;
+			if (PRIVATE_DATA->device_count++ == 0) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				result = sx_open(device);
+			}
+			if (result) {
 				assert(PRIVATE_DATA->extra_caps & CAPS_STAR2K);
 				sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
+				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			sx_close(device);
+			if (--PRIVATE_DATA->device_count == 0) {
+				sx_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
@@ -811,7 +812,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(device);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_guider_detach(device);
 }
@@ -907,7 +909,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				assert(device != NULL);
 				memcpy(device, &guider_template, sizeof(indigo_device));
 				strcpy(device->name, SX_PRODUCTS[i].name);
-				strcat(device->name, " guider");
+				strcat(device->name, " (guider)");
 				device->device_context = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {

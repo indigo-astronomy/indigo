@@ -463,10 +463,17 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H");
 		header[t] = ' ';
-		t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short");
-		header[t] = ' ';
-		t = sprintf(header += 80, "BSCALE  =                     1 / default scaling factor");
-		header[t] = ' ';
+		if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value == 16) {
+			t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short");
+			header[t] = ' ';
+			t = sprintf(header += 80, "BSCALE  =                     1 / default scaling factor");
+			header[t] = ' ';
+		} else {
+			t = sprintf(header += 80, "BZERO   =                     0 / offset data range to that of unsigned short");
+			header[t] = ' ';
+			t = sprintf(header += 80, "BSCALE  =                   256 / default scaling factor");
+			header[t] = ' ';
+		}
 		t = sprintf(header += 80, "XBINNING= %21d / horizontal binning [pixels]", horizontal_bin);
 		header[t] = ' ';
 		t = sprintf(header += 80, "YBINNING= %21d / vertical binning [pixels]", vertical_bin);
