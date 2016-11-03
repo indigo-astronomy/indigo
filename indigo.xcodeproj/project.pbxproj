@@ -73,6 +73,15 @@
 		9DAC59D81DC24E1400AE410D /* indigo_focuser_fcusb_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */; };
 		9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */; };
 		9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */; };
+		9DBC34651DCB267700588DB9 /* indigo_wheel_asi_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DBC34621DCB267700588DB9 /* indigo_wheel_asi_main.c */; };
+		9DBC34661DCB267700588DB9 /* indigo_wheel_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DBC34631DCB267700588DB9 /* indigo_wheel_asi.c */; };
+		9DBC34671DCB267700588DB9 /* indigo_wheel_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DBC34641DCB267700588DB9 /* indigo_wheel_asi.h */; };
+		9DBC346B1DCB26AC00588DB9 /* EFW_filter.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DBC346A1DCB26AC00588DB9 /* EFW_filter.h */; };
+		9DBC346D1DCB26B400588DB9 /* libEFWFilter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC346C1DCB26B400588DB9 /* libEFWFilter.a */; };
+		9DBC346E1DCB26D100588DB9 /* libEFWFilter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC346C1DCB26B400588DB9 /* libEFWFilter.a */; };
+		9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34701DCB26E500588DB9 /* Cocoa.framework */; };
+		9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34721DCB26F200588DB9 /* IOKit.framework */; };
+		9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34741DCB270200588DB9 /* libstdc++.tbd */; };
 		9DE2A1241DC3A325008E8375 /* indigo_server in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D97F8171D9A8A1900582EAF /* indigo_server */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -265,6 +274,14 @@
 		9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fcusb_main.c; sourceTree = "<group>"; };
 		9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fcusb.c; sourceTree = "<group>"; };
 		9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_fcusb.h; sourceTree = "<group>"; };
+		9DBC34621DCB267700588DB9 /* indigo_wheel_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_asi_main.c; sourceTree = "<group>"; };
+		9DBC34631DCB267700588DB9 /* indigo_wheel_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_asi.c; sourceTree = "<group>"; };
+		9DBC34641DCB267700588DB9 /* indigo_wheel_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_asi.h; sourceTree = "<group>"; };
+		9DBC346A1DCB26AC00588DB9 /* EFW_filter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = EFW_filter.h; path = include/EFW_filter.h; sourceTree = "<group>"; };
+		9DBC346C1DCB26B400588DB9 /* libEFWFilter.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libEFWFilter.a; path = lib/mac/libEFWFilter.a; sourceTree = "<group>"; };
+		9DBC34701DCB26E500588DB9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		9DBC34721DCB26F200588DB9 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		9DBC34741DCB270200588DB9 /* libstdc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libstdc++.tbd"; path = "usr/lib/libstdc++.tbd"; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -290,6 +307,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9DBC346D1DCB26B400588DB9 /* libEFWFilter.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -320,6 +338,10 @@
 				599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */,
 				59A7D3931DC50DB20027DE5A /* libhidapi.0.dylib in Frameworks */,
 				59A7D3941DC50DB80027DE5A /* libusb-1.0.0.dylib in Frameworks */,
+				9DBC346E1DCB26D100588DB9 /* libEFWFilter.a in Frameworks */,
+				9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */,
+				9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */,
+				9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -384,6 +406,7 @@
 				599A240C1DBEC5820020BF8F /* tools */,
 				59C8E7CC1DBBC00000AA3F0A /* externals */,
 				592662AE1D9590630021746A /* Products */,
+				9DBC346F1DCB26E400588DB9 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 			usesTabs = 1;
@@ -558,6 +581,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9DBC34611DCB265A00588DB9 /* wheel_asi */,
 				590112A11DC9474800B5CD8E /* ccd_qhy */,
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
 				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
@@ -602,6 +626,44 @@
 			path = libatik;
 			sourceTree = "<group>";
 		};
+		9DBC34611DCB265A00588DB9 /* wheel_asi */ = {
+			isa = PBXGroup;
+			children = (
+				9DBC34681DCB267E00588DB9 /* bin_externals */,
+				9DBC34641DCB267700588DB9 /* indigo_wheel_asi.h */,
+				9DBC34631DCB267700588DB9 /* indigo_wheel_asi.c */,
+				9DBC34621DCB267700588DB9 /* indigo_wheel_asi_main.c */,
+			);
+			path = wheel_asi;
+			sourceTree = "<group>";
+		};
+		9DBC34681DCB267E00588DB9 /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				9DBC34691DCB269400588DB9 /* libEFWFilter */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		9DBC34691DCB269400588DB9 /* libEFWFilter */ = {
+			isa = PBXGroup;
+			children = (
+				9DBC346C1DCB26B400588DB9 /* libEFWFilter.a */,
+				9DBC346A1DCB26AC00588DB9 /* EFW_filter.h */,
+			);
+			path = libEFWFilter;
+			sourceTree = "<group>";
+		};
+		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9DBC34741DCB270200588DB9 /* libstdc++.tbd */,
+				9DBC34721DCB26F200588DB9 /* IOKit.framework */,
+				9DBC34701DCB26E500588DB9 /* Cocoa.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -614,11 +676,13 @@
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
 				590112A71DC9476500B5CD8E /* indigo_ccd_qhy.h in Headers */,
+				9DBC346B1DCB26AC00588DB9 /* EFW_filter.h in Headers */,
 				9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */,
 				9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
 				59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */,
 				590112C01DC94D3C00B5CD8E /* libqhy_5ii.h in Headers */,
+				9DBC34671DCB267700588DB9 /* indigo_wheel_asi.h in Headers */,
 				9D9EA6B31DBFA30600E11841 /* indigo_ccd_driver.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -843,6 +907,7 @@
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
 				59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */,
 				59C8E7C41DBBB05500AA3F0A /* indigo_ccd_asi.c in Sources */,
+				9DBC34651DCB267700588DB9 /* indigo_wheel_asi_main.c in Sources */,
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
 				9DAC59D81DC24E1400AE410D /* indigo_focuser_fcusb_main.c in Sources */,
@@ -850,6 +915,7 @@
 				590112C21DC94D3C00B5CD8E /* libqhy_5ii_firmware.c in Sources */,
 				599C9A4F1DA022E3008BBCC1 /* indigo_version.c in Sources */,
 				59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */,
+				9DBC34661DCB267700588DB9 /* indigo_wheel_asi.c in Sources */,
 				9D9EA6A51DBE1F7300E11841 /* indigo_ccd_atik.c in Sources */,
 				590112A61DC9476500B5CD8E /* indigo_ccd_qhy.c in Sources */,
 				9D9EA6B21DBFA30600E11841 /* indigo_ccd_driver.c in Sources */,
@@ -1127,6 +1193,7 @@
 					"$(PROJECT_DIR)/externals/libfcusb",
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1143,6 +1210,7 @@
 					"$(PROJECT_DIR)/externals/libfcusb",
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1203,6 +1271,7 @@
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1217,6 +1286,7 @@
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
