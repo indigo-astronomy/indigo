@@ -67,7 +67,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (libqhy_read_pixels(PRIVATE_DATA->device_context, (unsigned short *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE))) {
-			//libqhy_stop(PRIVATE_DATA->device_context);
+			libqhy_stop(PRIVATE_DATA->device_context);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
 			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->width, PRIVATE_DATA->height, PRIVATE_DATA->exposure_time);
@@ -134,7 +134,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				assert(PRIVATE_DATA->buffer != NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				ccd_temperature_callback(device);
-				libqhy_start(PRIVATE_DATA->device_context);
 			} else {
 				if (PRIVATE_DATA->temperture_timer) {
 					indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
@@ -176,6 +175,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		libqhy_set_gain(PRIVATE_DATA->device_context, CCD_GAIN_ITEM->number.value);
 		libqhy_set_exposure_time(PRIVATE_DATA->device_context, PRIVATE_DATA->exposure_time = CCD_EXPOSURE_ITEM->number.value);
+		libqhy_start(PRIVATE_DATA->device_context);
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value - 0.1, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
