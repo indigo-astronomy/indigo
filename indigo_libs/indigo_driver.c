@@ -369,6 +369,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 		indigo_delete_property(device, SIMULATION_PROPERTY, NULL);
 	if (!CONFIG_PROPERTY->hidden)
 		indigo_delete_property(device, CONFIG_PROPERTY, NULL);
+	// indigo_delete_property(device, &INDIGO_ALL_PROPERTIES, NULL); // possible workaround for INDI
 	free(CONNECTION_PROPERTY);
 	free(INFO_PROPERTY);
 	free(DEBUG_PROPERTY);
