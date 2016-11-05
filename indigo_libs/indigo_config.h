@@ -40,7 +40,7 @@
 
 /** Conditional compilation wrapper for DEBUG log level
  */
-#define INDIGO_DEBUG(c)
+#define INDIGO_DEBUG(c) c
 
 /** Conditional compilation wrapper for ERROR log level
  */
