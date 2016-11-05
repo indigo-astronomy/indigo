@@ -46,7 +46,7 @@
 static struct {
 	const char *name;
 	indigo_result (*driver)(bool state);
-} drivers[] = {
+} static_drivers[] = {
 	{ "CCD Simulator", indigo_ccd_simulator },
 	{ "Mount Simulator", indigo_mount_simulator },
 	{ "SX CCD", indigo_ccd_sx },
@@ -72,8 +72,8 @@ static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
 	driver_property = indigo_init_switch_property(NULL, "INDIGO Server", "DRIVERS", "Main", "Active drivers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_DRIVERS);
 	driver_property->count = 0;
-	for (int i = first_driver; i < MAX_DRIVERS && drivers[i].name; i++) {
-		indigo_init_switch_item(&driver_property->items[driver_property->count++], drivers[i].name, drivers[i].name, true);
+	for (int i = first_driver; i < MAX_DRIVERS && static_drivers[i].name; i++) {
+		indigo_init_switch_item(&driver_property->items[driver_property->count++], static_drivers[i].name, static_drivers[i].name, true);
 	}
 	if (indigo_load_properties(device, false) == INDIGO_FAILED)
 		change_property(device, NULL, driver_property);
@@ -94,7 +94,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	// -------------------------------------------------------------------------------- DRIVERS
 		indigo_property_copy_values(driver_property, property, false);
 		for (int i = 0; i < driver_property->count; i++)
-			drivers[i + first_driver].driver(driver_property->items[i].sw.value);
+			static_drivers[i + first_driver].driver(driver_property->items[i].sw.value);
 		driver_property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, driver_property, NULL);
 		int handle = 0;
