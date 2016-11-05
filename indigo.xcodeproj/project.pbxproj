@@ -583,10 +583,10 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
-				590112A11DC9474800B5CD8E /* ccd_qhy */,
-				59D7076B1DC52BED00DEF566 /* mount_simulator */,
-				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
 				59D381AA1D95984D00E87393 /* ccd_simulator */,
+				59D7076B1DC52BED00DEF566 /* mount_simulator */,
+				590112A11DC9474800B5CD8E /* ccd_qhy */,
+				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
 				9D9EA69F1DBE1F5000E11841 /* ccd_atik */,
 				59519D421DB422E3008BAF29 /* ccd_ssag */,
 				5999FB651DA40B380084BBF8 /* ccd_sx */,
