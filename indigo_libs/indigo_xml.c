@@ -112,33 +112,30 @@ static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void indigo_xml_printf(int handle, const char *format, ...) {
 	static char buffer[1024];
-	if (!pthread_mutex_lock(&log_mutex)) {
-		va_list args;
-		va_start(args, format);
-		int length = vsnprintf(buffer, 1024, format, args);
-		va_end(args);
-		write(handle, buffer, length);
-		INDIGO_DEBUG_PROTOCOL(indigo_debug("sent: %s", buffer));
-		pthread_mutex_unlock(&log_mutex);
-	}
+	pthread_mutex_lock(&log_mutex);
+	va_list args;
+	va_start(args, format);
+	int length = vsnprintf(buffer, 1024, format, args);
+	va_end(args);
+	write(handle, buffer, length);
+	INDIGO_DEBUG_PROTOCOL(indigo_debug("sent: %s", buffer));
+	pthread_mutex_unlock(&log_mutex);
 }
 
 void indigo_xml_write(int handle, const char *buffer, long length) {
-	if (!pthread_mutex_lock(&log_mutex)) {
-		//   INDIGO_DEBUG(int written =)
-		write(handle, buffer, length);
-		//   INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
-		pthread_mutex_unlock(&log_mutex);
-	}
+	pthread_mutex_lock(&log_mutex);
+	//   INDIGO_DEBUG(int written =)
+	write(handle, buffer, length);
+	//   INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
+	pthread_mutex_unlock(&log_mutex);
 }
 
 void indigo_xml_fwrite(FILE* fh, const char *buffer, long length) {
-	if (!pthread_mutex_lock(&log_mutex)) {
-		//   INDIGO_DEBUG(int written =)
-		fwrite(buffer, 1, length, fh);
-		//   INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
-		pthread_mutex_unlock(&log_mutex);
-	}
+	pthread_mutex_lock(&log_mutex);
+	//   INDIGO_DEBUG(int written =)
+	fwrite(buffer, 1, length, fh);
+	//   INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
+	pthread_mutex_unlock(&log_mutex);
 }
 
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
@@ -1186,6 +1183,6 @@ exit_loop:
 	free(buffer);
 	free(value_buffer);
 	close(handle);
-	INDIGO_DEBUG(indigo_debug("XML Parser: parser finished"));
+	indigo_log("XML Parser: parser finished");
 }
 

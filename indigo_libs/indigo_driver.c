@@ -50,9 +50,6 @@
 
 #define USE_POLL
 
-#undef INDIGO_DEBUG
-#define INDIGO_DEBUG(c) c
-
 #define NANO 1000000000L
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
@@ -406,9 +403,9 @@ static int open_config_file(char *device_name, int mode, const char *suffix) {
 		}
 		handle = open(path, mode, 0644);
 		if (handle < 0)
-			indigo_error("Can't create %s (%s)", path, strerror(errno));
+			INDIGO_DEBUG(indigo_debug("Can't create %s (%s)", path, strerror(errno)));
 	} else {
-		indigo_error("Can't create %s (%s)", path, strerror(errno));
+		INDIGO_DEBUG(indigo_debug("Can't create %s (%s)", path, strerror(errno)));
 	}
 	return handle;
 }

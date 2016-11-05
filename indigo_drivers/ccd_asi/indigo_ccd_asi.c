@@ -68,61 +68,51 @@ typedef struct {
 } asi_private_data;
 
 static bool asi_open(indigo_device *device) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-		if (PRIVATE_DATA->device_count++ == 0) {
-			libusb_device *dev = PRIVATE_DATA->dev;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (PRIVATE_DATA->device_count++ == 0) {
+		libusb_device *dev = PRIVATE_DATA->dev;
 
-			// open the camera, hot-plug should be handled somehow with ASI
+		// open the camera, hot-plug should be handled somehow with ASI
 
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			return true;
-		}
 	}
-	return false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
 }
 
 static bool asi_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-		// start exposure
+	// start exposure
 
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return true;
-	}
-	return false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
 }
 
 static bool asi_read_pixels(indigo_device *device) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 		// download image to PRIVATE_DATA->buffer + FITS_HEADER_SIZE
 
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return true;
-	}
-	return false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
 }
 
 static bool asi_abort_exposure(indigo_device *device) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-		// abort exposure
+	// abort exposure
 
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return true;
-	}
-	return false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
 }
 
 static bool asi_set_cooler(indigo_device *device, bool status, double target, double *current) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-		// set cooler
+	// set cooler
 
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return true;
-	}
-	return false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
 }
 
 //static bool asi_guide(indigo_device *device, ...) {
@@ -130,15 +120,14 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 //}
 
 static void asi_close(indigo_device *device) {
-	if (!pthread_mutex_lock(&PRIVATE_DATA->usb_mutex)) {
-		if (--PRIVATE_DATA->device_count == 0) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (--PRIVATE_DATA->device_count == 0) {
 
-			// close
+		// close
 
-			free(PRIVATE_DATA->buffer);
-		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		free(PRIVATE_DATA->buffer);
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
