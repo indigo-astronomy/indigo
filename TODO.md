@@ -1,5 +1,9 @@
 ## TO DO
 
+### General
+
+1. Add autoconfig support
+
 ### Documents
 
 1. introduction

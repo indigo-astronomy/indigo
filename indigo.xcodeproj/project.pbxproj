@@ -18,7 +18,6 @@
 		590112C71DC94D4400B5CD8E /* libqhy.h in Headers */ = {isa = PBXBuildFile; fileRef = 590112C61DC94D4400B5CD8E /* libqhy.h */; };
 		5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5981C8DE1DC291AF00C7705F /* libfcusb.a */; };
 		5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
-		599C9A3A1D9FF0A3008BBCC1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */; };
 		599C9A3C1D9FF0A3008BBCC1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */; };
 		599C9A3F1D9FF0A3008BBCC1 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3D1D9FF0A3008BBCC1 /* MainMenu.xib */; };
 		599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381BF1D965FDA00E87393 /* indigo_driver.c */; };
@@ -34,11 +33,6 @@
 		599C9A5D1DA028E4008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
-		59A7D3831DC125010027DE5A /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
-		59A7D3931DC50DB20027DE5A /* libhidapi.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */; };
-		59A7D3941DC50DB80027DE5A /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
-		59BE87141DC49C28001775F0 /* libhidapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */; };
-		59BE87151DC49C28001775F0 /* libusb-1.0.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
 		59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */; };
 		59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
 		59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */ = {isa = PBXBuildFile; fileRef = 59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */; };
@@ -47,8 +41,6 @@
 		59C8E7F11DBBD91400AA3F0A /* indigo_ccd_ssag.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */; };
 		59C8E7F31DBBD98900AA3F0A /* indigo_ccd_asi.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */; };
 		59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */; };
-		59D277D51DC4E70D0080BDC3 /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
-		59D277D61DC4E7410080BDC3 /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
 		59D382171D97348500E87393 /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382161D97348500E87393 /* client.c */; };
 		59D707661DC5268B00DEF566 /* AUTHORS.md in Sources */ = {isa = PBXBuildFile; fileRef = 59D707651DC5268B00DEF566 /* AUTHORS.md */; };
 		59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D707671DC527B800DEF566 /* indigo_mount_driver.c */; };
@@ -56,6 +48,14 @@
 		59D7076F1DC52C3E00DEF566 /* indigo_mount_simulator_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */; };
 		59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */; };
 		59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */; };
+		59F756061DCE4DB2002CFC82 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */; };
+		59F756221DCE5006002CFC82 /* libhidapi.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59F756231DCE500A002CFC82 /* libusb.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59F756241DCE501F002CFC82 /* libhidapi.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */; };
+		59F756251DCE5022002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
+		59F756261DCE5043002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
+		59F756271DCE5049002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
+		59F756281DCE504D002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
 		9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* indigo_server.c */; };
 		9D9EA6A41DBE1F7300E11841 /* indigo_ccd_atik_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */; };
 		9D9EA6A51DBE1F7300E11841 /* indigo_ccd_atik.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9EA6A11DBE1F7300E11841 /* indigo_ccd_atik.c */; };
@@ -65,8 +65,6 @@
 		9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9EA6AF1DBFA30600E11841 /* indigo_guider_driver.h */; };
 		9D9EA6B61DBFA30600E11841 /* indigo_wheel_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9EA6B01DBFA30600E11841 /* indigo_wheel_driver.c */; };
 		9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9EA6B11DBFA30600E11841 /* indigo_wheel_driver.h */; };
-		9DAC59CC1DC0A6A900AE410D /* libhidapi.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */; };
-		9DAC59CE1DC0A6AE00AE410D /* libusb-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */; };
 		9DAC59CF1DC0A7B200AE410D /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9EA6A81DBE21DE00E11841 /* libatik.a */; };
 		9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */; };
 		9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAC59D21DC0A8AD00AE410D /* indigo_focuser_driver.h */; };
@@ -82,7 +80,7 @@
 		9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34701DCB26E500588DB9 /* Cocoa.framework */; };
 		9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34721DCB26F200588DB9 /* IOKit.framework */; };
 		9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34741DCB270200588DB9 /* libstdc++.tbd */; };
-		9DE2A1241DC3A325008E8375 /* indigo_server in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D97F8171D9A8A1900582EAF /* indigo_server */; };
+		9DE2A1241DC3A325008E8375 /* indigo_server in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D97F8171D9A8A1900582EAF /* indigo_server */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -120,6 +118,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = 599C9A471DA022C0008BBCC1;
 			remoteInfo = indigo;
+		};
+		59F7561E1DCE4FEB002CFC82 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 592662A51D9590630021746A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 59F756141DCE4F83002CFC82;
+			remoteInfo = usb;
+		};
+		59F756201DCE4FF0002CFC82 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 592662A51D9590630021746A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 59F7560C1DCE4E37002CFC82;
+			remoteInfo = hidapi;
 		};
 		9DE2A1211DC3A309008E8375 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -173,8 +185,8 @@
 			dstPath = "";
 			dstSubfolderSpec = 6;
 			files = (
-				59BE87141DC49C28001775F0 /* libhidapi.0.dylib in CopyFiles */,
-				59BE87151DC49C28001775F0 /* libusb-1.0.0.dylib in CopyFiles */,
+				59F756221DCE5006002CFC82 /* libhidapi.dylib in CopyFiles */,
+				59F756231DCE500A002CFC82 /* libusb.dylib in CopyFiles */,
 				9DE2A1241DC3A325008E8375 /* indigo_server in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -250,6 +262,8 @@
 		59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator_main.c; sourceTree = "<group>"; };
 		59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator.c; sourceTree = "<group>"; };
 		59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_simulator.h; sourceTree = "<group>"; };
+		59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libhidapi.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		59F756191DCE4F83002CFC82 /* libusb.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libusb.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D97F8061D9A89ED00582EAF /* indigo_server_xml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_server_xml.c; sourceTree = "<group>"; };
 		9D97F8071D9A89ED00582EAF /* indigo_server_xml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_server_xml.h; sourceTree = "<group>"; };
 		9D97F8171D9A8A1900582EAF /* indigo_server */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_server; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -291,7 +305,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				599C9A5D1DA028E4008BBCC1 /* libindigo.a in Frameworks */,
-				59A7D3831DC125010027DE5A /* libusb-1.0.0.dylib in Frameworks */,
+				59F756261DCE5043002CFC82 /* libusb.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,8 +313,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9DAC59CC1DC0A6A900AE410D /* libhidapi.0.dylib in Frameworks */,
-				9DAC59CE1DC0A6AE00AE410D /* libusb-1.0.0.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -317,7 +329,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				599C9A551DA02303008BBCC1 /* libindigo.a in Frameworks */,
-				59D277D61DC4E7410080BDC3 /* libusb-1.0.0.dylib in Frameworks */,
+				59F756281DCE504D002CFC82 /* libusb.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -326,7 +338,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */,
-				59D277D51DC4E70D0080BDC3 /* libusb-1.0.0.dylib in Frameworks */,
+				59F756271DCE5049002CFC82 /* libusb.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -337,8 +349,8 @@
 				9DAC59CF1DC0A7B200AE410D /* libatik.a in Frameworks */,
 				5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */,
 				599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */,
-				59A7D3931DC50DB20027DE5A /* libhidapi.0.dylib in Frameworks */,
-				59A7D3941DC50DB80027DE5A /* libusb-1.0.0.dylib in Frameworks */,
+				59F756241DCE501F002CFC82 /* libhidapi.dylib in Frameworks */,
+				59F756251DCE5022002CFC82 /* libusb.dylib in Frameworks */,
 				9DBC346E1DCB26D100588DB9 /* libEFWFilter.a in Frameworks */,
 				9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */,
 				9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */,
@@ -423,6 +435,8 @@
 				9D97F8171D9A8A1900582EAF /* indigo_server */,
 				599C9A371D9FF0A3008BBCC1 /* INDIGO Server.app */,
 				599C9A481DA022C0008BBCC1 /* libindigo.a */,
+				59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */,
+				59F756191DCE4F83002CFC82 /* libusb.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -718,7 +732,6 @@
 				599C9A341D9FF0A3008BBCC1 /* Frameworks */,
 				599C9A351D9FF0A3008BBCC1 /* Resources */,
 				9DE2A1231DC3A317008E8375 /* CopyFiles */,
-				59BE87161DC49C67001775F0 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -784,6 +797,36 @@
 			productReference = 59D3820C1D97343000E87393 /* client */;
 			productType = "com.apple.product-type.tool";
 		};
+		59F7560C1DCE4E37002CFC82 /* hidapi */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 59F7560E1DCE4E37002CFC82 /* Build configuration list for PBXNativeTarget "hidapi" */;
+			buildPhases = (
+				59F756131DCE4E5E002CFC82 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = hidapi;
+			productName = hidapi;
+			productReference = 59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		59F756141DCE4F83002CFC82 /* usb */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 59F756161DCE4F83002CFC82 /* Build configuration list for PBXNativeTarget "usb" */;
+			buildPhases = (
+				59F756151DCE4F83002CFC82 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = usb;
+			productName = hidapi;
+			productReference = 59F756191DCE4F83002CFC82 /* libusb.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
 		9D97F8091D9A8A1900582EAF /* indigo_server */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9D97F8141D9A8A1900582EAF /* Build configuration list for PBXNativeTarget "indigo_server" */;
@@ -796,6 +839,8 @@
 			);
 			dependencies = (
 				599C9A631DA02974008BBCC1 /* PBXTargetDependency */,
+				59F7561F1DCE4FEB002CFC82 /* PBXTargetDependency */,
+				59F756211DCE4FF0002CFC82 /* PBXTargetDependency */,
 			);
 			name = indigo_server;
 			productName = driver;
@@ -819,7 +864,7 @@
 					599C9A361D9FF0A3008BBCC1 = {
 						CreatedOnToolsVersion = 8.0;
 						DevelopmentTeam = AG8BXW65A2;
-						ProvisioningStyle = Automatic;
+						ProvisioningStyle = Manual;
 					};
 					599C9A471DA022C0008BBCC1 = {
 						CreatedOnToolsVersion = 8.0;
@@ -833,6 +878,14 @@
 					59D3820B1D97343000E87393 = {
 						CreatedOnToolsVersion = 8.0;
 						ProvisioningStyle = Automatic;
+					};
+					59F7560C1DCE4E37002CFC82 = {
+						CreatedOnToolsVersion = 8.1;
+						DevelopmentTeam = AG8BXW65A2;
+						ProvisioningStyle = Automatic;
+					};
+					59F756141DCE4F83002CFC82 = {
+						DevelopmentTeam = AG8BXW65A2;
 					};
 				};
 			};
@@ -849,6 +902,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				59F7560C1DCE4E37002CFC82 /* hidapi */,
+				59F756141DCE4F83002CFC82 /* usb */,
 				599C9A471DA022C0008BBCC1 /* indigo */,
 				9D97F8091D9A8A1900582EAF /* indigo_server */,
 				592662AC1D9590630021746A /* test */,
@@ -875,7 +930,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		59BE87161DC49C67001775F0 /* ShellScript */ = {
+		59F756131DCE4E5E002CFC82 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -886,8 +941,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/MacOS\"\ninstall_name_tool -id @executable_path/libhidapi.0.dylib libhidapi.0.dylib\ncodesign --force --sign 6B22D6D0C3C5BAB2EBA3297120D84DCAEA5BBC2D --timestamp=none libhidapi.0.dylib\ninstall_name_tool -id @executable_path/libusb-1.0.0.dylib libusb-1.0.0.dylib\ncodesign --force --sign 6B22D6D0C3C5BAB2EBA3297120D84DCAEA5BBC2D --timestamp=none libusb-1.0.0.dylib\ninstall_name_tool -change ${PROJECT_DIR}/lib/libhidapi.0.dylib @executable_path/libhidapi.0.dylib indigo_server\ninstall_name_tool -change ${PROJECT_DIR}/lib/libusb-1.0.0.dylib @executable_path/libusb-1.0.0.dylib  indigo_server\ncodesign --force --sign 6B22D6D0C3C5BAB2EBA3297120D84DCAEA5BBC2D --timestamp=none indigo_server\n";
-			showEnvVarsInLog = 0;
+			shellScript = "install -d \"${TARGET_BUILD_DIR}\"\ncp \"${PROJECT_DIR}/lib/libhidapi.0.dylib\" \"${TARGET_BUILD_DIR}/libhidapi.dylib\"\ninstall_name_tool -id @executable_path/libhidapi.dylib \"${TARGET_BUILD_DIR}/libhidapi.dylib\"\necho \"${TARGET_BUILD_DIR}/libhidapi.dylib\"\n";
+		};
+		59F756151DCE4F83002CFC82 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "install -d \"${TARGET_BUILD_DIR}\"\ncp \"${PROJECT_DIR}/lib/libusb-1.0.0.dylib\" \"${TARGET_BUILD_DIR}/libusb.dylib\"\ninstall_name_tool -id @executable_path/libusb.dylib \"${TARGET_BUILD_DIR}/libusb.dylib\"\necho \"${TARGET_BUILD_DIR}/libusb.dylib\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -896,7 +963,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				599C9A3A1D9FF0A3008BBCC1 /* AppDelegate.swift in Sources */,
+				59F756061DCE4DB2002CFC82 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -999,6 +1066,16 @@
 			target = 599C9A471DA022C0008BBCC1 /* indigo */;
 			targetProxy = 599C9A621DA02974008BBCC1 /* PBXContainerItemProxy */;
 		};
+		59F7561F1DCE4FEB002CFC82 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 59F756141DCE4F83002CFC82 /* usb */;
+			targetProxy = 59F7561E1DCE4FEB002CFC82 /* PBXContainerItemProxy */;
+		};
+		59F756211DCE4FF0002CFC82 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 59F7560C1DCE4E37002CFC82 /* hidapi */;
+			targetProxy = 59F756201DCE4FF0002CFC82 /* PBXContainerItemProxy */;
+		};
 		9DE2A1221DC3A309008E8375 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 9D97F8091D9A8A1900582EAF /* indigo_server */;
@@ -1060,7 +1137,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = include;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -1104,7 +1181,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = include;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers";
@@ -1118,6 +1195,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -1129,6 +1207,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -1137,7 +1216,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				INFOPLIST_FILE = "$(SRCROOT)/INDIGO Server for macOS/Info.plist";
@@ -1148,7 +1227,7 @@
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_BUNDLE_IDENTIFIER = "eu.cloudmakers.INDIGO-Server";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -1163,7 +1242,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				INFOPLIST_FILE = "$(SRCROOT)/INDIGO Server for macOS/Info.plist";
@@ -1174,7 +1253,7 @@
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_BUNDLE_IDENTIFIER = "eu.cloudmakers.INDIGO-Server";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "INDIGO Server for macOS/BridgingHeader.h";
@@ -1225,6 +1304,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				OTHER_CFLAGS = "-DINDIGO_EXECUTABLE";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1237,6 +1317,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				OTHER_CFLAGS = "-DINDIGO_EXECUTABLE";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1249,6 +1330,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -1260,6 +1342,63 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		59F7560F1DCE4E37002CFC82 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEVELOPMENT_TEAM = AG8BXW65A2;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				EXECUTABLE_PREFIX = lib;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		59F756101DCE4E37002CFC82 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEVELOPMENT_TEAM = AG8BXW65A2;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				EXECUTABLE_PREFIX = lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		59F756171DCE4F83002CFC82 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEVELOPMENT_TEAM = AG8BXW65A2;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				EXECUTABLE_PREFIX = lib;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		59F756181DCE4F83002CFC82 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEVELOPMENT_TEAM = AG8BXW65A2;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				EXECUTABLE_PREFIX = lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -1275,6 +1414,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -1290,6 +1430,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -1347,6 +1488,23 @@
 			buildConfigurations = (
 				59D382111D97343000E87393 /* Debug */,
 				59D382121D97343000E87393 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		59F7560E1DCE4E37002CFC82 /* Build configuration list for PBXNativeTarget "hidapi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				59F7560F1DCE4E37002CFC82 /* Debug */,
+				59F756101DCE4E37002CFC82 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+		59F756161DCE4F83002CFC82 /* Build configuration list for PBXNativeTarget "usb" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				59F756171DCE4F83002CFC82 /* Debug */,
+				59F756181DCE4F83002CFC82 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

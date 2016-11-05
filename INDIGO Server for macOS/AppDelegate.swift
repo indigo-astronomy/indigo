@@ -52,19 +52,19 @@ func serverCallback(count: Int32) {
 	
   func applicationDidFinishLaunching(_ notification: Notification) {
 		var error: Unmanaged<CFError>? = nil
-		if SMJobRemove(kSMDomainUserLaunchd, serverId as CFString, nil, false, &error)  {
-			if let executable = Bundle.main.path(forAuxiliaryExecutable: "indigo_server") {
-				let plist: [String:Any] = [ "Label": serverId, "KeepAlive": true, "Program": executable]
-				if SMJobSubmit(kSMDomainUserLaunchd, plist as CFDictionary, nil, &error) {				
-					NSLog("Server job was successfully installed!")
-					service.delegate = self
-					service.publish()
-				} else {
-					NSLog("Failed to install server job! \(error)")
-				}
-			}
-		} else {
+		if !SMJobRemove(kSMDomainUserLaunchd, serverId as CFString, nil, false, &error)  {
 			NSLog("Failed to remove server job! \(error)")
+		}
+		if let executable = Bundle.main.path(forAuxiliaryExecutable: "indigo_server") {
+			let arguments: [String] = [ executable, "-s" ]
+			let plist: [String:Any] = [ "Label": serverId, "KeepAlive": true, "Program": executable, "ProgramArguments": arguments]
+			if SMJobSubmit(kSMDomainUserLaunchd, plist as CFDictionary, nil, &error) {				
+				NSLog("Server job was successfully installed!")
+				service.delegate = self
+				service.publish()
+			} else {
+				NSLog("Failed to install server job! \(error)")
+			}
 		}
   }
 	
