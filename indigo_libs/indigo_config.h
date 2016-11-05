@@ -28,11 +28,11 @@
 
 /** Current framework and protocol version
  */
-#define INDIGO_VERSION_CURRENT 0x0200
+#define INDIGO_VERSION 0x0200
 
 /** INDIGO Build number
  */
-#define INDIGO_BUILD           0
+#define INDIGO_BUILD 4
 
 /** Conditional compilation wrapper for TRACE log level
  */

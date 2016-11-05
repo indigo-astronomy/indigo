@@ -115,7 +115,7 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	
-	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
+	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION >> 8) & 0xFF, INDIGO_VERSION & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 	
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators"))
@@ -129,14 +129,14 @@ int main(int argc, const char * argv[]) {
 	}
 	
 	static indigo_device device = {
-		SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION,
 		attach,
 		enumerate_properties,
 		change_property,
 		detach
 	};
 
-	if (strstr(argv[0], "macOS"))
+	if (strstr(argv[0], "MacOS"))
 		indigo_use_syslog = true; // embeded into INDIGO Server for macOS
 	
 	indigo_start();

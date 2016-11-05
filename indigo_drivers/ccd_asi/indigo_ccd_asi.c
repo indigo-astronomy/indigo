@@ -194,7 +194,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	asi_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_ccd_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, INDIGO_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 
 		// adjust info know before opening camera...
@@ -313,7 +313,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	asi_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_guider_attach(device, INDIGO_VERSION_CURRENT) == INDIGO_OK) {
+	if (indigo_guider_attach(device, INDIGO_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
@@ -402,14 +402,14 @@ static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", NULL, INDIGO_OK, INDIGO_VERSION,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", NULL, INDIGO_OK, INDIGO_VERSION,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
