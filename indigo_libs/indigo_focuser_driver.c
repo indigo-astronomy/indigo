@@ -135,13 +135,6 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 
 indigo_result indigo_focuser_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-		indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
-		indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-	}
 	free(FOCUSER_SPEED_PROPERTY);
 	free(FOCUSER_DIRECTION_PROPERTY);
 	free(FOCUSER_STEPS_PROPERTY);
