@@ -8,6 +8,31 @@ This is the list of requirements taken into the consideration:
 4. Atomic approach to device drivers. E.g. if camera has imaging and guding chip, driver should expose two independent simple devices instead of one complex. It is much easier and transparent for client.
 5. Drivers should support hot-plug at least for USB devices. If device is connected/disconnected while driver is running, its properties should appear/disappear on the bus.
 
+### This is already done
+
+#### Framework
+
+1. INDIGO Bus framework
+2. XML adapter for client and server side
+3. indigo_server with built-in drivers
+4. INDIGO Server for macOS wrapper
+
+#### Drivers
+
+1. CCD (with wheel, guider and focuser) simulator
+2. Mount simulator
+3. Atik CCD (Titan, 3xx/4xx/One with built in wheel, VS/Infinity, 11000/4000) driver
+4. SX CCD driver
+5. SX wheel driver
+6. Shoestring FCUSB focuser driver
+7. SSAG/QHY5 CCD driver 
+
+### This is under development
+
+1. QHY (5II-L) CCD driver
+2. ASI CCD driver
+3. ASI wheel driver
+
 ------------------------------------------------------------------------------------------------
 
 To build PoC, use
