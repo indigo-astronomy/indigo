@@ -102,6 +102,7 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(WHEEL_SLOT_NAME_PROPERTY, property, false);
 		WHEEL_SLOT_NAME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_device_change_property(device, client, property);

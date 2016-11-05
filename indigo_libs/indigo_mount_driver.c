@@ -166,6 +166,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_ON_COORDINATES_SET_PROPERTY, property, false);
 		MOUNT_ON_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ON_COORDINATES_SET_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_device_change_property(device, client, property);

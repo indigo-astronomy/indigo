@@ -124,11 +124,13 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FOCUSER_DIRECTION
 	} else if (indigo_property_match(FOCUSER_DIRECTION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_DIRECTION_PROPERTY, property, false);
 		FOCUSER_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+		return INDIGO_OK;
 	}
 	return indigo_device_change_property(device, client, property);
 }
