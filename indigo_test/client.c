@@ -92,7 +92,7 @@ static indigo_result client_update_property(struct indigo_client *client, struct
 			indigo_log("image received (%d bytes)...", ccd_image_property->items[0].blob.size);
 			int handle = open("client.fits", O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			if (handle) {
-				write(handle, ccd_image_property->items[0].blob.value, ccd_image_property->items[0].blob.size);
+				int res = write(handle, ccd_image_property->items[0].blob.value, ccd_image_property->items[0].blob.size);
 				close(handle);
 			}
 			connection_property->items[0].sw.value = false;

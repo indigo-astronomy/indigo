@@ -79,7 +79,7 @@ endif
 
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
-	CFLAGS= -fPIC -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
+	CFLAGS= -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
 	LDFLAGS=-lm -lrt -lusb-1.0 -ludev
 	SOEXT=so
 	LIBUSB=

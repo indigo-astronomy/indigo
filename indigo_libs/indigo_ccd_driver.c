@@ -551,7 +551,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 			CCD_IMAGE_ITEM->blob.value = data + FITS_HEADER_SIZE;
 			CCD_IMAGE_ITEM->blob.size = byte_per_pixel * size;
-			strncpy(CCD_IMAGE_ITEM->blob.format, ".raw", INDIGO_VALUE_SIZE);
+			strncpy(CCD_IMAGE_ITEM->blob.format, ".raw", INDIGO_NAME_SIZE);
 		}
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);

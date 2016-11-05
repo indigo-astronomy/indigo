@@ -107,7 +107,7 @@ static void *timer_thread(indigo_device *device) {
 		timeout.tv_usec = (milis % 1000);
 		if (select(FD_SETSIZE, &set, NULL, NULL, &timeout)) {
 #endif
-			read(DEVICE_CONTEXT->timer_pipe[0], &execute, 1);
+			int res = read(DEVICE_CONTEXT->timer_pipe[0], &execute, 1);
 		} else {
 			clock_gettime(CLOCK_MONOTONIC, &now);
 			milis = time_diff(now, sleep_time) - milis;
@@ -169,7 +169,7 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 	}
 	pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
 	char data = 1;
-	write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
+	int res = write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
 	return timer;
 }
 
@@ -352,7 +352,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	assert(device != NULL);
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 	char data = 0;
-	write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
+	int res = write(DEVICE_CONTEXT->timer_pipe[1], &data, 1);
 	pthread_join(DEVICE_CONTEXT->timer_thread, NULL);
 	pthread_mutex_destroy(&DEVICE_CONTEXT->timer_mutex);
 #endif
@@ -386,7 +386,7 @@ static void xprintf(int handle, const char *format, ...) {
 	va_start(args, format);
 	int length = vsnprintf(buffer, 1024, format, args);
 	va_end(args);
-	write(handle, buffer, length);
+	int res = write(handle, buffer, length);
 	INDIGO_DEBUG(indigo_debug("saved: %s", buffer));
 }
 
