@@ -65,6 +65,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LDFLAGS=-framework CoreFoundation -framework IOKit -lobjc
 	LIBUSB=lib/libusb-1.0.a
 	LIBHIDAPI=lib/libhidapi.a
+	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
 	DEPENDENCIES=$(LIBUSB) $(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a
@@ -78,8 +79,9 @@ endif
 
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
-	CFLAGS=-Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
+	CFLAGS= -fPIC -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
 	LDFLAGS=-lm -lrt -lusb-1.0 -ludev
+	SOEXT=so
 	LIBUSB=
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
@@ -105,16 +107,22 @@ endif
 #---------------------------------------------------------------------
 
 DRIVERS=\
-	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*))) \
-	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))) \
-	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*))) \
-	$(addprefix bin/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))
+	$(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*))) \
+	$(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))) \
+	$(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*))) \
+	$(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))
 
 DRIVER_LIBS=\
-	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
-	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))) \
-	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
-	$(addsuffix .a, $(addprefix lib/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))))
+	$(addsuffix .a, $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
+	$(addsuffix .a, $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))) \
+	$(addsuffix .a, $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
+	$(addsuffix .a, $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))))
+
+DRIVER_SOLIBS=\
+	$(addsuffix .$(SOEXT), $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
+	$(addsuffix .$(SOEXT), $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))) \
+	$(addsuffix .$(SOEXT), $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
+	$(addsuffix .$(SOEXT), $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))))
 
 
 .PHONY: init clean
@@ -253,6 +261,7 @@ init:
 	git submodule update --init --recursive
 	install -d bin
 	install -d lib
+	install -d drivers
 	install -d include
 	cp indigo_libs/indigo_config.h indigo_libs/indigo_config.h.orig
 	sed 's/INDIGO_BUILD.*/INDIGO_BUILD $(INDIGO_BUILD)/' indigo_libs/indigo_config.h.orig >indigo_libs/indigo_config.h
@@ -274,7 +283,7 @@ lib/libindigo.a: $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c)))
 #
 #---------------------------------------------------------------------
 
-drivers: $(DRIVER_LIBS) $(DRIVERS)
+drivers: $(DRIVER_LIBS) $(DRIVER_SOLIBS) $(DRIVERS)
 
 #---------------------------------------------------------------------
 #
@@ -282,11 +291,14 @@ drivers: $(DRIVER_LIBS) $(DRIVERS)
 #
 #---------------------------------------------------------------------
 
-lib/indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
+drivers/indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o lib/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB)
+drivers/indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o drivers/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+drivers/indigo_ccd_simulator.$(SOEXT): drivers/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #
@@ -294,11 +306,14 @@ bin/indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main
 #
 #---------------------------------------------------------------------
 
-lib/indigo_mount_simulator.a: indigo_drivers/mount_simulator/indigo_mount_simulator.o
+drivers/indigo_mount_simulator.a: indigo_drivers/mount_simulator/indigo_mount_simulator.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_mount_simulator: indigo_drivers/mount_simulator/indigo_mount_simulator_main.o lib/indigo_mount_simulator.a lib/libindigo.a $(LIBUSB)
+drivers/indigo_mount_simulator: indigo_drivers/mount_simulator/indigo_mount_simulator_main.o drivers/indigo_mount_simulator.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+drivers/indigo_mount_simulator.$(SOEXT): drivers/indigo_mount_simulator.a lib/libindigo.a $(LIBUSB)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #
@@ -306,11 +321,14 @@ bin/indigo_mount_simulator: indigo_drivers/mount_simulator/indigo_mount_simulato
 #
 #---------------------------------------------------------------------
 
-lib/indigo_ccd_sx.a: indigo_drivers/ccd_sx/indigo_ccd_sx.o
+drivers/indigo_ccd_sx.a: indigo_drivers/ccd_sx/indigo_ccd_sx.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_ccd_sx: indigo_drivers/ccd_sx/indigo_ccd_sx_main.o lib/indigo_ccd_sx.a lib/libindigo.a $(LIBUSB)
+drivers/indigo_ccd_sx: indigo_drivers/ccd_sx/indigo_ccd_sx_main.o drivers/indigo_ccd_sx.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+drivers/indigo_ccd_sx.$(SOEXT): drivers/indigo_ccd_sx.a lib/libindigo.a $(LIBUSB)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #
@@ -318,11 +336,14 @@ bin/indigo_ccd_sx: indigo_drivers/ccd_sx/indigo_ccd_sx_main.o lib/indigo_ccd_sx.
 #
 #---------------------------------------------------------------------
 
-lib/indigo_ccd_ssag.a: indigo_drivers/ccd_ssag/indigo_ccd_ssag.o
+drivers/indigo_ccd_ssag.a: indigo_drivers/ccd_ssag/indigo_ccd_ssag.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_ccd_ssag: indigo_drivers/ccd_ssag/indigo_ccd_ssag_main.o lib/indigo_ccd_ssag.a lib/libindigo.a $(LIBUSB)
+drivers/indigo_ccd_ssag: indigo_drivers/ccd_ssag/indigo_ccd_ssag_main.o drivers/indigo_ccd_ssag.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+drivers/indigo_ccd_ssag.$(SOEXT): drivers/indigo_ccd_ssag.a lib/libindigo.a $(LIBUSB)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #
@@ -330,11 +351,14 @@ bin/indigo_ccd_ssag: indigo_drivers/ccd_ssag/indigo_ccd_ssag_main.o lib/indigo_c
 #
 #---------------------------------------------------------------------
 
-lib/indigo_ccd_asi.a: indigo_drivers/ccd_asi/indigo_ccd_asi.o
+drivers/indigo_ccd_asi.a: indigo_drivers/ccd_asi/indigo_ccd_asi.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o lib/indigo_ccd_asi.a lib/libindigo.a $(LIBUSB)
+drivers/indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o drivers/indigo_ccd_asi.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+drivers/indigo_ccd_asi.$(SOEXT): drivers/indigo_ccd_asi.a lib/libindigo.a $(LIBUSB)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #
@@ -342,11 +366,14 @@ bin/indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o lib/indigo_ccd_
 #
 #---------------------------------------------------------------------
 
-lib/indigo_ccd_atik.a: indigo_drivers/ccd_atik/indigo_ccd_atik.o
+drivers/indigo_ccd_atik.a: indigo_drivers/ccd_atik/indigo_ccd_atik.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o lib/indigo_ccd_atik.a lib/libindigo.a  lib/libatik.a $(LIBUSB)
+drivers/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o drivers/indigo_ccd_atik.a lib/libindigo.a  lib/libatik.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+drivers/indigo_ccd_atik.$(SOEXT): drivers/indigo_ccd_atik.a lib/libindigo.a  lib/libatik.a $(LIBUSB)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #
@@ -354,11 +381,14 @@ bin/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o lib/indigo_c
 #
 #---------------------------------------------------------------------
 
-lib/indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
+drivers/indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o lib/indigo_wheel_sx.a lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
+drivers/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o drivers/indigo_wheel_sx.a lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+drivers/indigo_wheel_sx.$(SOEXT): drivers/indigo_wheel_sx.a lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #
@@ -366,11 +396,14 @@ bin/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o lib/indigo_w
 #
 #---------------------------------------------------------------------
 
-lib/indigo_wheel_asi.a: indigo_drivers/wheel_asi/indigo_wheel_asi.o
+drivers/indigo_wheel_asi.a: indigo_drivers/wheel_asi/indigo_wheel_asi.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_wheel_asi: indigo_drivers/wheel_asi/indigo_wheel_asi_main.o lib/indigo_wheel_asi.a lib/libindigo.a lib/libEFWFilter.a $(LIBUSB) $(LIBHIDAPI)
+drivers/indigo_wheel_asi: indigo_drivers/wheel_asi/indigo_wheel_asi_main.o drivers/indigo_wheel_asi.a lib/libindigo.a lib/libEFWFilter.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
+
+drivers/indigo_wheel_asi.$(SOEXT): drivers/indigo_wheel_asi.a lib/libindigo.a lib/libEFWFilter.a $(LIBUSB) $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++
 
 #---------------------------------------------------------------------
 #
@@ -378,11 +411,14 @@ bin/indigo_wheel_asi: indigo_drivers/wheel_asi/indigo_wheel_asi_main.o lib/indig
 #
 #---------------------------------------------------------------------
 
-lib/indigo_ccd_qhy.a: indigo_drivers/ccd_qhy/indigo_ccd_qhy.o
+drivers/indigo_ccd_qhy.a: indigo_drivers/ccd_qhy/indigo_ccd_qhy.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_ccd_qhy: indigo_drivers/ccd_qhy/indigo_ccd_qhy_main.o lib/indigo_ccd_qhy.a lib/libindigo.a  lib/libqhy.a $(LIBUSB)
+drivers/indigo_ccd_qhy: indigo_drivers/ccd_qhy/indigo_ccd_qhy_main.o drivers/indigo_ccd_qhy.a lib/libindigo.a  lib/libqhy.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+drivers/indigo_ccd_qhy.$(SOEXT): drivers/indigo_ccd_qhy.a lib/libindigo.a  lib/libqhy.a $(LIBUSB)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #
@@ -390,11 +426,14 @@ bin/indigo_ccd_qhy: indigo_drivers/ccd_qhy/indigo_ccd_qhy_main.o lib/indigo_ccd_
 #
 #---------------------------------------------------------------------
 
-lib/indigo_focuser_fcusb.a: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.o
+drivers/indigo_focuser_fcusb.a: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.o
 	$(AR) $(ARFLAGS) $@ $^
 
-bin/indigo_focuser_fcusb: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb_main.o lib/indigo_focuser_fcusb.a lib/libindigo.a lib/libfcusb.a $(LIBUSB) $(LIBHIDAPI)
+drivers/indigo_focuser_fcusb: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb_main.o drivers/indigo_focuser_fcusb.a lib/libindigo.a lib/libfcusb.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+drivers/indigo_focuser_fcusb.$(SOEXT): drivers/indigo_focuser_fcusb.a lib/libindigo.a lib/libfcusb.a $(LIBUSB) $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
 #
@@ -402,7 +441,7 @@ bin/indigo_focuser_fcusb: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb_main
 #
 #---------------------------------------------------------------------
 
-bin/test: indigo_test/test.o lib/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB)
+bin/test: indigo_test/test.o drivers/indigo_ccd_simulator.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 bin/client: indigo_test/client.o lib/libindigo.a
@@ -458,6 +497,7 @@ $(PACKAGE_NAME).deb: all
 clean: init
 	rm -f bin/*
 	rm -rf lib/*
+	rm -rf drivers/*
 	rm -f indigo_libs/*.o
 	rm -f $(wildcard indigo_drivers/*/*.o)
 	rm -f $(wildcard indigo_test/*.o)
