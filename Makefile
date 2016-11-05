@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 3
+INDIGO_BUILD := 4
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -254,6 +254,10 @@ init:
 	install -d bin
 	install -d lib
 	install -d include
+	cp indigo_libs/indigo_config.h indigo_libs/indigo_config.h.orig
+	sed 's/INDIGO_BUILD.*/INDIGO_BUILD $(INDIGO_BUILD)/' indigo_libs/indigo_config.h.orig >indigo_libs/indigo_config.h
+	cp INDIGO\ Server\ for\ macOS/Info.plist INDIGO\ Server\ for\ macOS/Info.plist.orig
+	sed '/CFBundleVersion/ { n; s/>.*</>$(INDIGO_BUILD)</; }' INDIGO\ Server\ for\ macOS/Info.plist.orig >INDIGO\ Server\ for\ macOS/Info.plist
 
 #---------------------------------------------------------------------
 #
