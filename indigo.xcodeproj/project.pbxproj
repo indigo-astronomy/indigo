@@ -1124,7 +1124,7 @@
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					INDIGO_MACOS,
@@ -1499,6 +1499,7 @@
 				59F756101DCE4E37002CFC82 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		59F756161DCE4F83002CFC82 /* Build configuration list for PBXNativeTarget "usb" */ = {
 			isa = XCConfigurationList;

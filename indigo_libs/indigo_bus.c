@@ -86,61 +86,60 @@ int indigo_main_argc = 0;
 static void log_message(const char *format, va_list args) {
 	static char buffer[1024];
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
-	if (!pthread_mutex_lock(&log_mutex)) {
-		vsnprintf(buffer, sizeof(buffer), format, args);
-		char *line = buffer;
-		if (indigo_use_syslog) {
-			static bool initialize = true;
-			if (initialize)
-				openlog("INDIGO", LOG_NDELAY, LOG_USER | LOG_PERROR);
-			while (line) {
-				char *eol = strchr(line, '\n');
-				if (eol)
-					*eol = 0;
-				if (eol > line)
-					syslog (LOG_NOTICE, "%s", buffer);
-				syslog (LOG_NOTICE, "%s", line);
-				if (eol)
-					line = eol + 1;
-				else
-					line = NULL;
-			}
-		} else {
-			char timestamp[16];
-			struct timeval tmnow;
-			gettimeofday(&tmnow, NULL);
-			strftime (timestamp, 9, "%H:%M:%S", localtime(&tmnow.tv_sec));
+	pthread_mutex_lock(&log_mutex);
+	vsnprintf(buffer, sizeof(buffer), format, args);
+	char *line = buffer;
+	if (indigo_use_syslog) {
+		static bool initialize = true;
+		if (initialize)
+			openlog("INDIGO", LOG_NDELAY, LOG_USER | LOG_PERROR);
+		while (line) {
+			char *eol = strchr(line, '\n');
+			if (eol)
+				*eol = 0;
+			if (eol > line)
+				syslog (LOG_NOTICE, "%s", buffer);
+			syslog (LOG_NOTICE, "%s", line);
+			if (eol)
+				line = eol + 1;
+			else
+				line = NULL;
+		}
+	} else {
+		char timestamp[16];
+		struct timeval tmnow;
+		gettimeofday(&tmnow, NULL);
+		strftime (timestamp, 9, "%H:%M:%S", localtime(&tmnow.tv_sec));
 #ifdef INDIGO_MACOS
-			snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
+		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
 #else
-			snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
+		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
 #endif
-			static const char *log_executable_name = NULL;
-			if (log_executable_name == NULL) {
-				if (indigo_main_argc == 0) {
-					log_executable_name = "Application";
-				} else {
-					log_executable_name = strrchr(indigo_main_argv[0], '/');
-					if (log_executable_name != NULL)
-						log_executable_name++;
-					else
-						log_executable_name = indigo_main_argv[0];
-				}
-			}
-			while (line) {
-				char *eol = strchr(line, '\n');
-				if (eol)
-					*eol = 0;
-				if (*line)
-					fprintf(stderr, "%s %s: %s\n", timestamp, log_executable_name, line);
-				if (eol)
-					line = eol + 1;
+		static const char *log_executable_name = NULL;
+		if (log_executable_name == NULL) {
+			if (indigo_main_argc == 0) {
+				log_executable_name = "Application";
+			} else {
+				log_executable_name = strrchr(indigo_main_argv[0], '/');
+				if (log_executable_name != NULL)
+					log_executable_name++;
 				else
-					line = NULL;
+					log_executable_name = indigo_main_argv[0];
 			}
 		}
-		pthread_mutex_unlock(&log_mutex);
+		while (line) {
+			char *eol = strchr(line, '\n');
+			if (eol)
+				*eol = 0;
+			if (*line)
+				fprintf(stderr, "%s %s: %s\n", timestamp, log_executable_name, line);
+			if (eol)
+				line = eol + 1;
+			else
+				line = NULL;
+		}
 	}
+	pthread_mutex_unlock(&log_mutex);
 }
 
 void indigo_trace(const char *format, ...) {
@@ -225,90 +224,80 @@ void indigo_log(const char *format, ...) {
 }
 
 indigo_result indigo_start() {
-	if (!pthread_mutex_lock(&client_mutex)) {
-		if (!is_started) {
-			memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));
-			memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
-			memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
-			INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION;
-			is_started = true;
-		}
-		pthread_mutex_unlock(&client_mutex);
-		return INDIGO_OK;
+	pthread_mutex_lock(&client_mutex);
+	if (!is_started) {
+		memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));
+		memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
+		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
+		INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION;
+		is_started = true;
 	}
-	return INDIGO_LOCK_ERROR;
+	pthread_mutex_unlock(&client_mutex);
+	return INDIGO_OK;
 }
 
 indigo_result indigo_attach_device(indigo_device *device) {
 	assert(device != NULL);
-	if (!pthread_mutex_lock(&device_mutex)) {
-		for (int i = 0; i < MAX_DEVICES; i++) {
-			if (devices[i] == NULL) {
-				devices[i] = device;
-				pthread_mutex_unlock(&device_mutex);
-				if (device->attach != NULL)
-					device->last_result = device->attach(device);
-				return INDIGO_OK;
-			}
+	pthread_mutex_lock(&device_mutex);
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		if (devices[i] == NULL) {
+			devices[i] = device;
+			pthread_mutex_unlock(&device_mutex);
+			if (device->attach != NULL)
+				device->last_result = device->attach(device);
+			return INDIGO_OK;
 		}
-		pthread_mutex_unlock(&device_mutex);
-		return INDIGO_TOO_MANY_ELEMENTS;
 	}
-	return INDIGO_LOCK_ERROR;
+	pthread_mutex_unlock(&device_mutex);
+	return INDIGO_TOO_MANY_ELEMENTS;
 }
 
 indigo_result indigo_attach_client(indigo_client *client) {
 	assert(client != NULL);
-	if (!pthread_mutex_lock(&client_mutex)) {
-		for (int i = 0; i < MAX_CLIENTS; i++) {
-			if (clients[i] == NULL) {
-				clients[i] = client;
-				pthread_mutex_unlock(&client_mutex);
-				if (client->attach != NULL)
-					client->last_result = client->attach(client);
-				return INDIGO_OK;
-			}
+	pthread_mutex_lock(&client_mutex);
+	for (int i = 0; i < MAX_CLIENTS; i++) {
+		if (clients[i] == NULL) {
+			clients[i] = client;
+			pthread_mutex_unlock(&client_mutex);
+			if (client->attach != NULL)
+				client->last_result = client->attach(client);
+			return INDIGO_OK;
 		}
-		pthread_mutex_unlock(&client_mutex);
-		return INDIGO_TOO_MANY_ELEMENTS;
 	}
-	return INDIGO_LOCK_ERROR;
+	pthread_mutex_unlock(&client_mutex);
+	return INDIGO_TOO_MANY_ELEMENTS;
 }
 
 indigo_result indigo_detach_device(indigo_device *device) {
 	assert(device != NULL);
-	if (!pthread_mutex_lock(&device_mutex)) {
-		for (int i = 0; i < MAX_DEVICES; i++) {
-			if (devices[i] == device) {
-				devices[i] = NULL;
-				pthread_mutex_unlock(&device_mutex);
-				if (device->detach != NULL)
-					device->last_result = device->detach(device);
-				return INDIGO_OK;
-			}
+	pthread_mutex_lock(&device_mutex);
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		if (devices[i] == device) {
+			devices[i] = NULL;
+			pthread_mutex_unlock(&device_mutex);
+			if (device->detach != NULL)
+				device->last_result = device->detach(device);
+			return INDIGO_OK;
 		}
-		pthread_mutex_unlock(&device_mutex);
-		return INDIGO_OK;
 	}
-	return INDIGO_LOCK_ERROR;
+	pthread_mutex_unlock(&device_mutex);
+	return INDIGO_OK;
 }
 
 indigo_result indigo_detach_client(indigo_client *client) {
 	assert(client != NULL);
-	if (!pthread_mutex_lock(&client_mutex)) {
-		for (int i = 0; i < MAX_CLIENTS; i++) {
-			if (clients[i] == client) {
-				clients[i] = NULL;
-				pthread_mutex_unlock(&client_mutex);
-				if (client->detach != NULL)
-					client->last_result = client->detach(client);
-				return INDIGO_OK;
-			}
+	pthread_mutex_lock(&client_mutex);
+	for (int i = 0; i < MAX_CLIENTS; i++) {
+		if (clients[i] == client) {
+			clients[i] = NULL;
+			pthread_mutex_unlock(&client_mutex);
+			if (client->detach != NULL)
+				client->last_result = client->detach(client);
+			return INDIGO_OK;
 		}
-		pthread_mutex_unlock(&client_mutex);
-		return INDIGO_OK;
 	}
-	return INDIGO_LOCK_ERROR;
+	pthread_mutex_unlock(&client_mutex);
+	return INDIGO_OK;
 }
 
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
@@ -409,24 +398,22 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 }
 
 indigo_result indigo_stop() {
-	if (!pthread_mutex_lock(&client_mutex)) {
-		if (is_started) {
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				indigo_device *device = devices[i];
-				if (device != NULL && device->detach != NULL)
-					device->last_result = device->detach(device);
-			}
-			for (int i = 0; i < MAX_CLIENTS; i++) {
-				indigo_client *client = clients[i];
-				if (client != NULL && client->detach != NULL)
-					client->last_result = client->detach(client);
-			}
-			pthread_mutex_unlock(&client_mutex);
-			is_started = false;
+	pthread_mutex_lock(&client_mutex);
+	if (is_started) {
+		for (int i = 0; i < MAX_DEVICES; i++) {
+			indigo_device *device = devices[i];
+			if (device != NULL && device->detach != NULL)
+				device->last_result = device->detach(device);
 		}
-		return INDIGO_OK;
+		for (int i = 0; i < MAX_CLIENTS; i++) {
+			indigo_client *client = clients[i];
+			if (client != NULL && client->detach != NULL)
+				client->last_result = client->detach(client);
+		}
+		pthread_mutex_unlock(&client_mutex);
+		is_started = false;
 	}
-	return INDIGO_LOCK_ERROR;
+	return INDIGO_OK;
 }
 
 indigo_property *indigo_init_text_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
