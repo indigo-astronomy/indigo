@@ -266,8 +266,8 @@ lib/libfcusb.a: include/libfcusb/libfcusb.h
 init:
 	$(info -------------------- $(OS_DETECTED) build --------------------)
 	$(info drivers: $(notdir $(DRIVERS)))
-#   git submodule update --init --recursive
-	git submodule update --remote
+	git submodule update --init --recursive
+#	git submodule update --remote
 	install -d bin
 	install -d lib
 	install -d drivers
