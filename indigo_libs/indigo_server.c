@@ -26,13 +26,14 @@
 #include <syslog.h>
 #include <assert.h>
 #include <libgen.h>
+#include <signal.h>
 #include <dlfcn.h>
 
 #include "indigo_bus.h"
 #include "indigo_server_xml.h"
 #include "indigo_driver.h"
 
-#define STATIC_DRIVERS
+//#define STATIC_DRIVERS
 
 #ifdef STATIC_DRIVERS
 #include "ccd_simulator/indigo_ccd_simulator.h"
@@ -132,10 +133,45 @@ static indigo_result add_driver(const char *name) {
 	strncpy(dynamic_drivers[driver_count].drv_name, entry_point_name, INDIGO_NAME_SIZE);
 	dynamic_drivers[driver_count].driver = driver;
 	dynamic_drivers[driver_count].dl_handle = dl_handle;
+	INDIGO_LOG(indigo_log("load entry point %d %p", dc, dynamic_drivers[driver_count].driver));
+	INDIGO_LOG(indigo_log("dlopen %d %p", dc, dynamic_drivers[driver_count].dl_handle));
 	driver_count++;
 
-	INDIGO_LOG(indigo_log("Driver %s attached.", entry_point_name));
+	INDIGO_LOG(indigo_log("Driver %s loaded.", entry_point_name));
 	return INDIGO_OK;
+#endif
+}
+
+static indigo_result remove_driver(const char *entry_point_name) {
+#ifdef STATIC_DRIVERS
+	INDIGO_LOG(indigo_log("Can no remove '%s'. Drivers are statcally linked!", entry_point_name));
+	return INDIGO_OK;
+#else
+	if (entry_point_name[0] == '\0') return INDIGO_OK;
+
+	int dc = driver_count-1;
+	while (dc >= 0) {
+		if (!strncmp(dynamic_drivers[dc].drv_name, entry_point_name, INDIGO_NAME_SIZE)) {
+
+			if (dynamic_drivers[dc].driver) {
+				INDIGO_LOG(indigo_log("unload entry point %d %p", dc, dynamic_drivers[dc].driver));
+				dynamic_drivers[dc].driver(false); /* deregister */
+			}
+			if (dynamic_drivers[dc].dl_handle) {
+				INDIGO_LOG(indigo_log("dlclose %d %p,", dc, dynamic_drivers[dc].dl_handle));
+				dlclose(dynamic_drivers[dc].dl_handle);
+			}
+			INDIGO_LOG(indigo_log("Driver %s removed.", entry_point_name));
+			dynamic_drivers[dc].name[0] = '\0';
+			dynamic_drivers[dc].drv_name[0] = '\0';
+			dynamic_drivers[dc].driver = NULL;
+			dynamic_drivers[dc].dl_handle = NULL;
+			return INDIGO_OK;
+		}
+		dc--;
+	}
+	INDIGO_LOG(indigo_log("Driver %s not found. Is it loaded?", entry_point_name));
+	return INDIGO_NOT_FOUND;
 #endif
 }
 
@@ -201,10 +237,22 @@ static indigo_result detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
+void signal_handler(int signo) {
+	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
+#ifndef STATIC_DRIVERS
+	int dc = driver_count-1;
+	while (dc >= 0) {
+		remove_driver(dynamic_drivers[dc].drv_name);
+		dc--;
+	}
+#endif
+	exit(0);
+}
+
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	
+
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION >> 8) & 0xFF, INDIGO_VERSION & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 	
 	for (int i = 1; i < argc; i++) {
@@ -220,7 +268,9 @@ int main(int argc, const char * argv[]) {
 			add_driver(argv[i]);
 		}
 	}
-	
+
+	signal(SIGINT, signal_handler);
+
 	static indigo_device device = {
 		SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION,
 		attach,
