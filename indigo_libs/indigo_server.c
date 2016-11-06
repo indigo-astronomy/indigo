@@ -33,7 +33,7 @@
 #include "indigo_server_xml.h"
 #include "indigo_driver.h"
 
-//#define STATIC_DRIVERS
+#define STATIC_DRIVERS
 
 #ifdef STATIC_DRIVERS
 #include "ccd_simulator/indigo_ccd_simulator.h"
