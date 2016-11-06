@@ -304,7 +304,7 @@ drivers/indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulato
 drivers/indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o drivers/indigo_ccd_simulator.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-drivers/indigo_ccd_simulator.$(SOEXT): drivers/indigo_ccd_simulator.a
+drivers/indigo_ccd_simulator.$(SOEXT): indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
