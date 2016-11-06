@@ -115,7 +115,7 @@ static indigo_result add_driver(const char *name) {
 		dc--;
 	}
 
-	dl_handle = dlopen(name, RTLD_LAZY|RTLD_GLOBAL|RTLD_NODELETE);
+	dl_handle = dlopen(name, RTLD_LAZY);
 	if (!dl_handle) {
 		INDIGO_LOG(indigo_log("Driver %s can not be loaded.", entry_point_name));
 		return INDIGO_FAILED;
@@ -159,7 +159,7 @@ static indigo_result remove_driver(const char *entry_point_name) {
 			}
 			if (dynamic_drivers[dc].dl_handle) {
 				INDIGO_LOG(indigo_log("dlclose %d %p,", dc, dynamic_drivers[dc].dl_handle));
-				dlclose(dynamic_drivers[dc].dl_handle);
+				//dlclose(dynamic_drivers[dc].dl_handle);
 			}
 			INDIGO_LOG(indigo_log("Driver %s removed.", entry_point_name));
 			dynamic_drivers[dc].name[0] = '\0';
@@ -269,6 +269,8 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 
+	indigo_start_usb_event_handler();
+	
 	signal(SIGINT, signal_handler);
 
 	static indigo_device device = {
