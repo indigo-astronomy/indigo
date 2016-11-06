@@ -139,7 +139,7 @@ DRIVER_SOLIBS=\
 #
 #---------------------------------------------------------------------
 
-all: init $(EXTERNALS) lib/libindigo.$(SOEXT) drivers bin/test bin/client bin/indigo_server
+all: init $(EXTERNALS) lib/libindigo.a lib/libindigo.$(SOEXT) drivers bin/indigo_server_standalone bin/test bin/client bin/indigo_server
 
 #---------------------------------------------------------------------
 #
@@ -280,6 +280,9 @@ init:
 #	Build libindigo
 #
 #---------------------------------------------------------------------
+
+lib/libindigo.a: $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c)))
+	$(AR) $(ARFLAGS) $@ $^
 
 lib/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c)))
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
@@ -463,6 +466,10 @@ bin/client: indigo_test/client.o
 bin/indigo_server: indigo_libs/indigo_server.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
+bin/indigo_server_standalone: indigo_libs/indigo_server.c $(DRIVER_LIBS) lib/libindigo.a lib/libqhy.a lib/libatik.a lib/libEFWFilter.a lib/libfcusb.a $(DEPENDENCIES) $(LIBHIDAPI)
+	$(CC) -DSTATIC_DRIVERS $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
+
+
 #---------------------------------------------------------------------
 #
 #	Install rules
@@ -487,6 +494,7 @@ package: $(PACKAGE_NAME).$(PACKAGE_TYPE)
 $(PACKAGE_NAME).deb: all
 	install -d /tmp/$(PACKAGE_NAME)/usr/local/bin
 	install bin/indigo_server /tmp/$(PACKAGE_NAME)/usr/local/bin
+	install bin/indigo_server_standalone /tmp/$(PACKAGE_NAME)/usr/local/bin
 	install $(DRIVERS) /tmp/$(PACKAGE_NAME)/usr/local/bin
 	install -d /tmp/$(PACKAGE_NAME)/usr/local/lib
 	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
