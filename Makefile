@@ -84,7 +84,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
 	ifeq ($(ARCH_DETECTED),arm)
-		CFLAGS=$(CFLAGS) -march=armv6 -mfpu=vfp -mfloat-abi=hard
+		CFLAGS=-fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
 	else
 		CFLAGS=-fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
 	endif
