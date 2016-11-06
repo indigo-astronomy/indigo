@@ -49,7 +49,7 @@ static indigo_server_xml_callback server_callback;
 int indigo_server_xml_port = 7624;
 
 static void start_worker_thread(indigo_client *protocol_adapter) {
-	indigo_log("INDI Go server: worker thread started", indigo_server_xml_port);
+	indigo_log("Worker thread started", indigo_server_xml_port);
 	server_callback(++client_count);
 	assert(protocol_adapter != NULL);
 	indigo_xml_device_adapter_context *device_context = protocol_adapter->client_context;
@@ -57,7 +57,7 @@ static void start_worker_thread(indigo_client *protocol_adapter) {
 	indigo_xml_parse(device_context->input, NULL, protocol_adapter);
 	indigo_detach_client(protocol_adapter);
 	server_callback(--client_count);
-	indigo_log("INDI Go server: worker thread finished", indigo_server_xml_port);
+	indigo_log("Worker thread finished", indigo_server_xml_port);
 }
 
 static void server_shutdown() {
@@ -73,23 +73,23 @@ indigo_result indigo_server_xml(indigo_server_xml_callback callback) {
 	unsigned int name_len = sizeof(client_name);
 	server_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (server_socket == -1)
-		indigo_error("INDI Go server: can't open server socket (%s)", strerror(errno));
+		indigo_error("Can't open server socket (%s)", strerror(errno));
 	server_address.sin_family = AF_INET;
 	server_address.sin_port = htons(indigo_server_xml_port);
 	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (setsockopt(server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
-		indigo_error("INDI Go server: can't setsockopt for server socket (%s)", strerror(errno));
+		indigo_error("Can't setsockopt for server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
 	if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
-		indigo_error("INDI Go server: Can't bind server socket (%s)", strerror(errno));
+		indigo_error("Can't bind server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
 	if (listen(server_socket, 5) < 0) {
-		indigo_error("INDI Go server: can't listen on server socket (%s)", strerror(errno));
+		indigo_error("Can't listen on server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
-	indigo_log("INDI Go server: server started on %d", indigo_server_xml_port);
+	indigo_log("Server started on %d", indigo_server_xml_port);
 	atexit(server_shutdown);
 	callback(client_count);
 	signal(SIGPIPE, SIG_IGN);
@@ -98,12 +98,12 @@ indigo_result indigo_server_xml(indigo_server_xml_callback callback) {
 		if (client_socket == -1) {
 			if (shutdown_initiated)
 				break;
-			indigo_error("INDI Go server: can't accept connection (%s)", strerror(errno));
+			indigo_error("Can't accept connection (%s)", strerror(errno));
 		} else {
 			indigo_client *protocol_adapter = indigo_xml_device_adapter(client_socket, client_socket);;
 			pthread_t thread;
 			if (pthread_create(&thread , NULL, (void *(*)(void *))&start_worker_thread, protocol_adapter) != 0)
-				indigo_error("INDI Go server: can't create worker thread for connection (%s)", strerror(errno));
+				indigo_error("Can't create worker thread for connection (%s)", strerror(errno));
 		}
 	}
 	return shutdown_initiated ? INDIGO_OK : INDIGO_FAILED;
