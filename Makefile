@@ -153,7 +153,7 @@ externals/libusb/configure: externals/libusb/configure.ac
 	cd externals/libusb; autoreconf -i; cd ../..
 
 externals/libusb/Makefile: externals/libusb/configure
-	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC); cd ../..
+	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) --with-pic; cd ../..
 
 $(LIBUSB): externals/libusb/Makefile
 	cd externals/libusb; make; make install; cd ../..
@@ -183,7 +183,7 @@ externals/libdc1394/configure: externals/libdc1394/configure.ac
 	cd externals/libdc1394; autoreconf -i; cd ../..
 
 externals/libdc1394/Makefile: externals/libdc1394/configure
-	cd externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="-Duint=unsigned" LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/include/libusb-1.0" LIBUSB_LIBS="-L$(INDIGO_ROOT)/lib -lusb-1.0"; cd ../..
+	cd externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="-fPIC -Duint=unsigned" LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/include/libusb-1.0" LIBUSB_LIBS="-L$(INDIGO_ROOT)/lib -lusb-1.0"; cd ../..
 
 lib/libdc1394.a: externals/libdc1394/Makefile
 	cd externals/libdc1394; make install; cd ../..
