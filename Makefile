@@ -80,7 +80,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
 	CFLAGS= -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
-	LDFLAGS=-lm -lrt -lusb-1.0 -ludev
+	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev
 	SOEXT=so
 	LIBUSB=
 	LIBHIDAPI=lib/libhidapi-hidraw.a
@@ -312,7 +312,7 @@ drivers/indigo_mount_simulator.a: indigo_drivers/mount_simulator/indigo_mount_si
 drivers/indigo_mount_simulator: indigo_drivers/mount_simulator/indigo_mount_simulator_main.o drivers/indigo_mount_simulator.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-drivers/indigo_mount_simulator.$(SOEXT): drivers/indigo_mount_simulator.a lib/libindigo.a $(LIBUSB)
+drivers/indigo_mount_simulator.$(SOEXT): indigo_drivers/mount_simulator/indigo_mount_simulator.o lib/libindigo.a $(LIBUSB)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
@@ -327,7 +327,7 @@ drivers/indigo_ccd_sx.a: indigo_drivers/ccd_sx/indigo_ccd_sx.o
 drivers/indigo_ccd_sx: indigo_drivers/ccd_sx/indigo_ccd_sx_main.o drivers/indigo_ccd_sx.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-drivers/indigo_ccd_sx.$(SOEXT): drivers/indigo_ccd_sx.a lib/libindigo.a $(LIBUSB)
+drivers/indigo_ccd_sx.$(SOEXT): indigo_drivers/ccd_sx/indigo_ccd_sx.o lib/libindigo.a $(LIBUSB)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
@@ -342,7 +342,7 @@ drivers/indigo_ccd_ssag.a: indigo_drivers/ccd_ssag/indigo_ccd_ssag.o
 drivers/indigo_ccd_ssag: indigo_drivers/ccd_ssag/indigo_ccd_ssag_main.o drivers/indigo_ccd_ssag.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-drivers/indigo_ccd_ssag.$(SOEXT): drivers/indigo_ccd_ssag.a lib/libindigo.a $(LIBUSB)
+drivers/indigo_ccd_ssag.$(SOEXT): indigo_drivers/ccd_ssag/indigo_ccd_ssag.o lib/libindigo.a $(LIBUSB)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
@@ -357,7 +357,7 @@ drivers/indigo_ccd_asi.a: indigo_drivers/ccd_asi/indigo_ccd_asi.o
 drivers/indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o drivers/indigo_ccd_asi.a lib/libindigo.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-drivers/indigo_ccd_asi.$(SOEXT): drivers/indigo_ccd_asi.a lib/libindigo.a $(LIBUSB)
+drivers/indigo_ccd_asi.$(SOEXT): indigo_drivers/ccd_asi/indigo_ccd_asi.o lib/libindigo.a $(LIBUSB)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
@@ -372,6 +372,8 @@ drivers/indigo_ccd_atik.a: indigo_drivers/ccd_atik/indigo_ccd_atik.o
 drivers/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o drivers/indigo_ccd_atik.a lib/libindigo.a  lib/libatik.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+# WRONG need -fPIC for lib/libatik.a
+# WRONG !!!!
 drivers/indigo_ccd_atik.$(SOEXT): drivers/indigo_ccd_atik.a lib/libindigo.a  lib/libatik.a $(LIBUSB)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
@@ -387,6 +389,8 @@ drivers/indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
 drivers/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o drivers/indigo_wheel_sx.a lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+# WRONG need -fPIC for lib/libhidapi-hidraw.a
+# WRONG !!!!
 drivers/indigo_wheel_sx.$(SOEXT): drivers/indigo_wheel_sx.a lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
@@ -402,7 +406,7 @@ drivers/indigo_wheel_asi.a: indigo_drivers/wheel_asi/indigo_wheel_asi.o
 drivers/indigo_wheel_asi: indigo_drivers/wheel_asi/indigo_wheel_asi_main.o drivers/indigo_wheel_asi.a lib/libindigo.a lib/libEFWFilter.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
 
-drivers/indigo_wheel_asi.$(SOEXT): drivers/indigo_wheel_asi.a lib/libindigo.a lib/libEFWFilter.a $(LIBUSB) $(LIBHIDAPI)
+drivers/indigo_wheel_asi.$(SOEXT): indigo_drivers/wheel_asi/indigo_wheel_asi.o lib/libindigo.a lib/libEFWFilter.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++
 
 #---------------------------------------------------------------------
@@ -417,6 +421,8 @@ drivers/indigo_ccd_qhy.a: indigo_drivers/ccd_qhy/indigo_ccd_qhy.o
 drivers/indigo_ccd_qhy: indigo_drivers/ccd_qhy/indigo_ccd_qhy_main.o drivers/indigo_ccd_qhy.a lib/libindigo.a  lib/libqhy.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+# WRONG need -fPIC for lib/lib/libqhy.a
+# WRONG !!!!
 drivers/indigo_ccd_qhy.$(SOEXT): drivers/indigo_ccd_qhy.a lib/libindigo.a  lib/libqhy.a $(LIBUSB)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
@@ -432,6 +438,8 @@ drivers/indigo_focuser_fcusb.a: indigo_drivers/focuser_fcusb/indigo_focuser_fcus
 drivers/indigo_focuser_fcusb: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb_main.o drivers/indigo_focuser_fcusb.a lib/libindigo.a lib/libfcusb.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+# WRONG need -fPIC for lib/lib/libqhy.a
+# WRONG !!!!
 drivers/indigo_focuser_fcusb.$(SOEXT): drivers/indigo_focuser_fcusb.a lib/libindigo.a lib/libfcusb.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
