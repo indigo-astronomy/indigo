@@ -176,7 +176,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		libqhy_set_gain(PRIVATE_DATA->device_context, CCD_GAIN_ITEM->number.value);
 		libqhy_set_exposure_time(PRIVATE_DATA->device_context, PRIVATE_DATA->exposure_time = CCD_EXPOSURE_ITEM->number.value);
 		libqhy_start(PRIVATE_DATA->device_context);
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value - 0.1, exposure_timer_callback);
+		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
