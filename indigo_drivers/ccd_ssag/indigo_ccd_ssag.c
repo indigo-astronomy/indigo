@@ -575,10 +575,9 @@ indigo_result indigo_ccd_ssag(bool state) {
 		for (int i = 0; i < MAX_DEVICES; i++) {
 			devices[i] = 0;
 		}
-		libusb_init(NULL);
+		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_ssag: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
-		indigo_start_usb_event_handler();
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 	} else {
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
