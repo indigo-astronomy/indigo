@@ -91,6 +91,7 @@ indigo_result indigo_server_xml(indigo_server_xml_callback callback) {
 	indigo_log("INDI Go server: server started on %d", indigo_server_xml_port);
 	atexit(server_shutdown);
 	callback(client_count);
+	signal(SIGPIPE, SIG_IGN);
 	while (1) {
 		client_socket = accept(server_socket, (struct sockaddr *)&client_name, &name_len);
 		if (client_socket == -1) {
