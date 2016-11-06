@@ -223,7 +223,7 @@ static indigo_result xml_device_adapter_delete_property(indigo_client *client, i
 	if (*property->name)
 		indigo_xml_printf(handle, "<delProperty device='%s' name='%s'%s/>\n", property->device, indigo_property_name(client->version, property), message_attribute(message));
 	else
-		indigo_xml_printf(handle, "<delProperty device='%s'%s/>\n", property->device, indigo_property_name(client->version, property), message_attribute(message));
+		indigo_xml_printf(handle, "<delProperty device='%s'%s/>\n", device->name, message_attribute(message));
 	pthread_mutex_unlock(&xmutex);
 	return INDIGO_OK;
 }
