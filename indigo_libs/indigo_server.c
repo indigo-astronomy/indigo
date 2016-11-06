@@ -25,10 +25,16 @@
 #include <string.h>
 #include <syslog.h>
 #include <assert.h>
+#include <libgen.h>
+#include <dlfcn.h>
 
 #include "indigo_bus.h"
 #include "indigo_server_xml.h"
+#include "indigo_driver.h"
 
+//#define STATIC_DRIVERS
+
+#ifdef STATIC_DRIVERS
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
 #include "ccd_sx/indigo_ccd_sx.h"
@@ -39,25 +45,41 @@
 #include "ccd_atik/indigo_ccd_atik.h"
 #include "ccd_qhy/indigo_ccd_qhy.h"
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
+#endif
 
 #define MAX_DRIVERS	100
 #define SERVER_NAME	"INDIGO Server"
 
+#ifdef STATIC_DRIVERS
 static struct {
 	const char *name;
+	const char *drv_name;
 	indigo_result (*driver)(bool state);
 } static_drivers[] = {
-	{ "CCD Simulator", indigo_ccd_simulator },
-	{ "Mount Simulator", indigo_mount_simulator },
-	{ "SX CCD", indigo_ccd_sx },
-	{ "SX Filter Wheel", indigo_wheel_sx },
-	{ "Atik CCD", indigo_ccd_atik },
-	{ "QHY CCD", indigo_ccd_qhy },
-	{ "SSAG/QHY5 CCD", indigo_ccd_ssag },
-	{ "Shoestring FCUSB Focuser", indigo_focuser_fcusb },
-	{ "ASI Filter wheel", indigo_wheel_asi },
-	{ NULL, NULL }
+	{ "CCD Simulator", "indigo_ccd_simulator", indigo_ccd_simulator },
+	{ "Mount Simulator", "indigo_mount_simulator", indigo_mount_simulator },
+	{ "SX CCD", "indigo_ccd_sx", indigo_ccd_sx },
+	{ "SX Filter Wheel","indigo_wheel_sx", indigo_wheel_sx },
+	{ "Atik CCD", "indigo_ccd_atik", indigo_ccd_atik },
+	{ "QHY CCD", "indigo_ccd_qhy", indigo_ccd_qhy },
+	{ "SSAG/QHY5 CCD", "indigo_ccd_ssag", indigo_ccd_ssag },
+	{ "Shoestring FCUSB Focuser", "indigo_focuser_fcusb", indigo_focuser_fcusb },
+	{ "ASI Filter wheel", "indigo_wheel_asi", indigo_wheel_asi },
+	{ NULL, NULL, NULL }
 };
+#else
+
+typedef struct {
+	char name[INDIGO_NAME_SIZE];
+	char drv_name[INDIGO_NAME_SIZE];
+	indigo_result (*driver)(bool state);
+	void *dl_handle;
+} drivers;
+
+static drivers dynamic_drivers[MAX_DRIVERS];
+static int driver_count=0;
+
+#endif
 
 static int first_driver = 2;
 static indigo_property *driver_property;
@@ -66,15 +88,75 @@ static void server_callback(int count) {
 	INDIGO_LOG(indigo_log("%d clients", count));
 }
 
+static indigo_result add_driver(const char *name) {
+#ifdef STATIC_DRIVERS
+	INDIGO_LOG(indigo_log("Drivers are static: '%s' can not be oaded ", name));
+	return INDIGO_OK;
+#else
+	char driver_name[INDIGO_NAME_SIZE];
+	char *entry_point_name, *cp;
+	void *dl_handle;
+	indigo_result (*driver)(bool);
+
+	if (driver_count > MAX_DRIVERS-1) return INDIGO_TOO_MANY_ELEMENTS;
+
+	strncpy(driver_name, name, sizeof(driver_name));
+	entry_point_name = basename(driver_name);
+	cp = strchr(entry_point_name, '.');
+	if (cp) *cp = '\0';
+
+	int dc = driver_count-1;
+	while (dc >= 0) {
+		if (!strncmp(dynamic_drivers[dc].drv_name, entry_point_name, INDIGO_NAME_SIZE)) {
+			INDIGO_LOG(indigo_log("Driver '%s' already loaded.", entry_point_name));
+			return INDIGO_FAILED;
+		}
+		dc--;
+	}
+
+	dl_handle = dlopen(name, RTLD_LAZY);
+	if (!dl_handle) {
+		INDIGO_LOG(indigo_log("Driver %s can not be loaded.", entry_point_name));
+		return INDIGO_FAILED;
+	}
+
+	driver = dlsym(dl_handle, entry_point_name);
+	const char* dlsym_error = dlerror();
+	if (dlsym_error) {
+		INDIGO_LOG(indigo_log("Cannot load %s(): %s", entry_point_name, dlsym_error));
+		dlclose(dl_handle);
+		return INDIGO_NOT_FOUND;
+	}
+
+	strncpy(dynamic_drivers[driver_count].name, entry_point_name, INDIGO_NAME_SIZE); //TO BE CHANGED - DRIVER SHOULD REPORT NAME!!!
+	strncpy(dynamic_drivers[driver_count].drv_name, entry_point_name, INDIGO_NAME_SIZE);
+	dynamic_drivers[driver_count].driver = driver;
+	dynamic_drivers[driver_count].dl_handle = dl_handle;
+	driver_count++;
+
+	INDIGO_LOG(indigo_log("Driver %s attached.", entry_point_name));
+	return INDIGO_OK;
+#endif
+}
+
 static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
 	driver_property = indigo_init_switch_property(NULL, "INDIGO Server", "DRIVERS", "Main", "Active drivers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_DRIVERS);
 	driver_property->count = 0;
+
+#ifdef STATIC_DRIVERS
 	for (int i = first_driver; i < MAX_DRIVERS && static_drivers[i].name; i++) {
 		indigo_init_switch_item(&driver_property->items[driver_property->count++], static_drivers[i].name, static_drivers[i].name, true);
 	}
+#else
+	int i = 0;
+	while (i < driver_count) {
+		indigo_init_switch_item(&driver_property->items[driver_property->count++], dynamic_drivers[i].name, dynamic_drivers[i].name, true);
+		i++;
+	}
+#endif
 	if (indigo_load_properties(device, false) == INDIGO_FAILED)
 		change_property(device, NULL, driver_property);
 	INDIGO_LOG(indigo_log("%s attached", device->name));
@@ -93,8 +175,16 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	if (indigo_property_match(driver_property, property)) {
 	// -------------------------------------------------------------------------------- DRIVERS
 		indigo_property_copy_values(driver_property, property, false);
+	#ifdef STATIC_DRIVERS
 		for (int i = 0; i < driver_property->count; i++)
 			static_drivers[i + first_driver].driver(driver_property->items[i].sw.value);
+	#else
+		int i = 0;
+		while (i < driver_count) {
+			dynamic_drivers[i].driver(driver_property->items[i].sw.value);
+			i++;
+		}
+	#endif
 		driver_property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, driver_property, NULL);
 		int handle = 0;
@@ -125,6 +215,9 @@ int main(int argc, const char * argv[]) {
 		else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-h|--help]\n\n", argv[0]);
 			exit(0);
+		}
+		else if(argv[i][0] != '-') {
+			add_driver(argv[i]);
 		}
 	}
 	
