@@ -159,7 +159,7 @@ static indigo_result remove_driver(const char *entry_point_name) {
 			}
 			if (dynamic_drivers[dc].dl_handle) {
 				INDIGO_LOG(indigo_log("dlclose %d %p,", dc, dynamic_drivers[dc].dl_handle));
-				//dlclose(dynamic_drivers[dc].dl_handle);
+				dlclose(dynamic_drivers[dc].dl_handle);
 			}
 			INDIGO_LOG(indigo_log("Driver %s removed.", entry_point_name));
 			dynamic_drivers[dc].name[0] = '\0';
