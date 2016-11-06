@@ -61,7 +61,7 @@ endif
 
 ifeq ($(OS_DETECTED),Darwin)
 	CC=gcc
-	CFLAGS=-Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -DINDIGO_MACOS
+	CFLAGS=-fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -DINDIGO_MACOS
 	LDFLAGS=-framework CoreFoundation -framework IOKit -lobjc
 	LIBUSB=lib/libusb-1.0.a
 	LIBHIDAPI=lib/libhidapi.a
@@ -79,7 +79,11 @@ endif
 
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
-	CFLAGS= -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
+	ifeq ($(ARCH_DETECTED),arm)
+		CFLAGS=$(CFLAGS) -march=armv6 -mfpu=vfp -mfloat-abi=hard
+	else
+		CFLAGS=-fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
+	endif
 	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev
 	SOEXT=so
 	LIBUSB=
