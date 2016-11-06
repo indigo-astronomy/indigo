@@ -168,7 +168,7 @@ externals/hidapi/configure: externals/hidapi/configure.ac
 	cd externals/hidapi; ./bootstrap; cd ../..
 
 externals/hidapi/Makefile: externals/hidapi/configure
-	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC); cd ../..
+	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) --with-pic; cd ../..
 
 $(LIBHIDAPI): externals/hidapi/Makefile
 	cd externals/hidapi; make; make install; cd ../..
@@ -266,7 +266,8 @@ lib/libfcusb.a: include/libfcusb/libfcusb.h
 init:
 	$(info -------------------- $(OS_DETECTED) build --------------------)
 	$(info drivers: $(notdir $(DRIVERS)))
-	git submodule update --init --recursive
+#   git submodule update --init --recursive
+	git submodule update --remote
 	install -d bin
 	install -d lib
 	install -d drivers
@@ -380,9 +381,7 @@ drivers/indigo_ccd_atik.a: indigo_drivers/ccd_atik/indigo_ccd_atik.o
 drivers/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o drivers/indigo_ccd_atik.a lib/libindigo.a  lib/libatik.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# WRONG need -fPIC for lib/libatik.a
-# WRONG !!!!
-drivers/indigo_ccd_atik.$(SOEXT): drivers/indigo_ccd_atik.a lib/libindigo.a  lib/libatik.a $(LIBUSB)
+drivers/indigo_ccd_atik.$(SOEXT): indigo_drivers/ccd_atik/indigo_ccd_atik.o lib/libindigo.a  lib/libatik.a $(LIBUSB)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
@@ -397,9 +396,7 @@ drivers/indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
 drivers/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o drivers/indigo_wheel_sx.a lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# WRONG need -fPIC for lib/libhidapi-hidraw.a
-# WRONG !!!!
-drivers/indigo_wheel_sx.$(SOEXT): drivers/indigo_wheel_sx.a lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
+drivers/indigo_wheel_sx.$(SOEXT): indigo_drivers/wheel_sx/indigo_wheel_sx.o lib/libindigo.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
@@ -429,9 +426,7 @@ drivers/indigo_ccd_qhy.a: indigo_drivers/ccd_qhy/indigo_ccd_qhy.o
 drivers/indigo_ccd_qhy: indigo_drivers/ccd_qhy/indigo_ccd_qhy_main.o drivers/indigo_ccd_qhy.a lib/libindigo.a  lib/libqhy.a $(LIBUSB)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# WRONG need -fPIC for lib/lib/libqhy.a
-# WRONG !!!!
-drivers/indigo_ccd_qhy.$(SOEXT): drivers/indigo_ccd_qhy.a lib/libindigo.a  lib/libqhy.a $(LIBUSB)
+drivers/indigo_ccd_qhy.$(SOEXT): indigo_drivers/ccd_qhy/indigo_ccd_qhy.o lib/libindigo.a  lib/libqhy.a $(LIBUSB)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
@@ -446,9 +441,7 @@ drivers/indigo_focuser_fcusb.a: indigo_drivers/focuser_fcusb/indigo_focuser_fcus
 drivers/indigo_focuser_fcusb: indigo_drivers/focuser_fcusb/indigo_focuser_fcusb_main.o drivers/indigo_focuser_fcusb.a lib/libindigo.a lib/libfcusb.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# WRONG need -fPIC for lib/lib/libqhy.a
-# WRONG !!!!
-drivers/indigo_focuser_fcusb.$(SOEXT): drivers/indigo_focuser_fcusb.a lib/libindigo.a lib/libfcusb.a $(LIBUSB) $(LIBHIDAPI)
+drivers/indigo_focuser_fcusb.$(SOEXT): indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.o lib/libindigo.a lib/libfcusb.a $(LIBUSB) $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
@@ -514,6 +507,7 @@ clean: init
 	rm -f bin/*
 	rm -rf lib/*
 	rm -rf drivers/*
+	rm -rf include/*
 	rm -f indigo_libs/*.o
 	rm -f $(wildcard indigo_drivers/*/*.o)
 	rm -f $(wildcard indigo_test/*.o)
