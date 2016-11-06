@@ -115,7 +115,7 @@ static indigo_result add_driver(const char *name) {
 		dc--;
 	}
 
-	dl_handle = dlopen(name, RTLD_LAZY|RTLD_GLOBAL);
+	dl_handle = dlopen(name, RTLD_LAZY|RTLD_GLOBAL|RTLD_NODELETE);
 	if (!dl_handle) {
 		INDIGO_LOG(indigo_log("Driver %s can not be loaded.", entry_point_name));
 		return INDIGO_FAILED;
