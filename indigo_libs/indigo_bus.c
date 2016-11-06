@@ -306,7 +306,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device != NULL && device->enumerate_properties != NULL)
+		if (device != NULL && device->enumerate_properties != NULL && (!*property->device || !strcmp(property->device, device->name)))
 			device->last_result = device->enumerate_properties(device, client, property);
 	}
 	pthread_mutex_unlock(&client_mutex);
@@ -320,7 +320,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device != NULL && device->change_property != NULL)
+		if (device != NULL && device->change_property != NULL && (!*property->device || !strcmp(property->device, device->name)))
 			device->last_result = device->change_property(device, client, property);
 	}
 	pthread_mutex_unlock(&client_mutex);
