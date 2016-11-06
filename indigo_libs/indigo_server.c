@@ -32,7 +32,7 @@
 #include "indigo_server_xml.h"
 #include "indigo_driver.h"
 
-//#define STATIC_DRIVERS
+#define STATIC_DRIVERS
 
 #ifdef STATIC_DRIVERS
 #include "ccd_simulator/indigo_ccd_simulator.h"
@@ -90,7 +90,7 @@ static void server_callback(int count) {
 
 static indigo_result add_driver(const char *name) {
 #ifdef STATIC_DRIVERS
-	INDIGO_LOG(indigo_log("Drivers are static: '%s' can not be oaded ", name));
+	INDIGO_LOG(indigo_log("Can not load '%s'. Drivers are statcally linked!", name));
 	return INDIGO_OK;
 #else
 	char driver_name[INDIGO_NAME_SIZE];
