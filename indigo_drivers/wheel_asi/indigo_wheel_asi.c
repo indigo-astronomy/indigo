@@ -53,7 +53,6 @@
 
 typedef struct {
 	int dev_id;
-	int index;
 	int current_slot, target_slot;
 	int count;
 } asi_private_data;
@@ -84,6 +83,16 @@ static indigo_result wheel_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+int find_index_by_id(int id) {
+	int count = EFWGetNum();
+	int cur_id;
+	for(int index = 0; index < count; index++) {
+		EFWGetID(index,&cur_id);
+		if (cur_id == id) return index;
+	}
+	return -1;
+}
+
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
@@ -94,9 +103,13 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			int res = EFWOpen(PRIVATE_DATA->index);
+			int index = find_index_by_id(PRIVATE_DATA->dev_id);
+			if (index < 0) {
+				return INDIGO_NOT_FOUND;
+			}
+			int res = EFWOpen(index);
 			if (!res) {
-				EFWGetID(PRIVATE_DATA->index, &(PRIVATE_DATA->dev_id));
+				EFWGetID(index, &(PRIVATE_DATA->dev_id));
 				EFWGetProperty(PRIVATE_DATA->dev_id, &info);
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
 				EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
@@ -104,9 +117,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: EFWOpen() = %d", res));
+				INDIGO_LOG(indigo_log("indigo_wheel_asi: EFWOpen(%d) = %d", index, res));
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				return INDIGO_FAILED;
 			}
 		} else {
 			EFWClose(PRIVATE_DATA->dev_id);
@@ -176,7 +190,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			device->device_context = malloc(sizeof(asi_private_data));
 			assert(device->device_context);
 			memset(device->device_context, 0, sizeof(asi_private_data));
-			((asi_private_data*)device->device_context)->index = index;
+			((asi_private_data*)device->device_context)->dev_id = id;
 			indigo_attach_device(device);
 			//indigo_async((void *)(void *)indigo_attach_device, devices[0]);
 			devices[0]=device;
