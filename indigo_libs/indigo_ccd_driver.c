@@ -364,7 +364,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- CCD_MODE
+		// -------------------------------------------------------------------------------- CCD_MODE
 		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
 		bool update_bin = false;
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
@@ -375,8 +375,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_BIN_HORIZONTAL_ITEM->number.value = h;
 					CCD_BIN_VERTICAL_ITEM->number.value = v;
 					update_bin = true;
-					break;
 				}
+				break;
 			}
 		}
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {

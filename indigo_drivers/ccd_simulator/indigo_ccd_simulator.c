@@ -142,11 +142,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_MODE_PROPERTY->count = 3;
 		char name[32];
-		sprintf(name, "MONO %d x %d", WIDTH, HEIGHT);
+		sprintf(name, "RAW %dx%d", WIDTH, HEIGHT);
 		indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-		sprintf(name, "MONO %d x %d", WIDTH/2, HEIGHT/2);
+		sprintf(name, "RAW %dx%d", WIDTH/2, HEIGHT/2);
 		indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-		sprintf(name, "MONO %d x %d", WIDTH/4, HEIGHT/4);
+		sprintf(name, "RAW %dx%d", WIDTH/4, HEIGHT/4);
 		indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = 5.2;
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 5.2;

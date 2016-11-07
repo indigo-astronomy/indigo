@@ -155,11 +155,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_MODE_PROPERTY->count = 3;
 				char name[32];
-				sprintf(name, "%d x %d", PRIVATE_DATA->device_context->width, PRIVATE_DATA->device_context->height);
+				sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->device_context->width, PRIVATE_DATA->device_context->height);
 				indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-				sprintf(name, "%d x %d", PRIVATE_DATA->device_context->width/2, PRIVATE_DATA->device_context->height/2);
+				sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->device_context->width/2, PRIVATE_DATA->device_context->height/2);
 				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-				sprintf(name, "%d x %d", PRIVATE_DATA->device_context->width/4, PRIVATE_DATA->device_context->height/4);
+				sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->device_context->width/4, PRIVATE_DATA->device_context->height/4);
 				indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
 				PRIVATE_DATA->buffer = malloc(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 				assert(PRIVATE_DATA->buffer != NULL);
