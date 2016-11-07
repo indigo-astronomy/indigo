@@ -182,7 +182,7 @@ indigo_drivers/ccd_iidc/externals/libdc1394/configure: indigo_drivers/ccd_iidc/e
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; autoreconf -i; cd ../../../..
 
 indigo_drivers/ccd_iidc/externals/libdc1394/Makefile: indigo_drivers/ccd_iidc/externals/libdc1394/configure
-	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)"; cd ../../../..
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)"; cd ../../../..
 
 lib/libdc1394.a: indigo_drivers/ccd_iidc/externals/libdc1394/Makefile
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make install; cd ../../../..
