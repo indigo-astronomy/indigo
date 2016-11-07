@@ -200,11 +200,11 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 				indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
 			if (indigo_property_match(CCD_BIN_PROPERTY, property))
 				indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
-			if (indigo_property_match(CCD_OFFSET_PROPERTY, property))
+			if (indigo_property_match(CCD_OFFSET_PROPERTY, property) && !CCD_OFFSET_PROPERTY->hidden)
 				indigo_define_property(device, CCD_OFFSET_PROPERTY, NULL);
-			if (indigo_property_match(CCD_GAIN_PROPERTY, property))
+			if (indigo_property_match(CCD_GAIN_PROPERTY, property) && !CCD_GAIN_PROPERTY->hidden)
 				indigo_define_property(device, CCD_GAIN_PROPERTY, NULL);
-			if (indigo_property_match(CCD_GAMMA_PROPERTY, property))
+			if (indigo_property_match(CCD_GAMMA_PROPERTY, property) && !CCD_GAMMA_PROPERTY->hidden)
 				indigo_define_property(device, CCD_GAMMA_PROPERTY, NULL);
 			if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property))
 				indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
