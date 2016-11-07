@@ -253,7 +253,13 @@ static indigo_result detach(indigo_device *device) {
 
 void signal_handler(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
-#ifndef STATIC_DRIVERS
+#ifdef STATIC_DRIVERS
+	int dc = 0;
+	while (static_drivers[dc].driver != NULL) {
+		static_drivers[dc].driver(false);
+		dc++;
+	}
+#else
 	int dc = used_slots-1;
 	while (dc >= 0) {
 		remove_driver(dynamic_drivers[dc].drv_name);
