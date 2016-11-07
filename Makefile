@@ -482,7 +482,7 @@ bin/client: indigo_test/client.o
 bin/indigo_server: indigo_libs/indigo_server.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
-bin/indigo_server_standalone: indigo_libs/indigo_server.c lib/libindigo.a $(DRIVER_LIBS) $(EXTERNALS)
+bin/indigo_server_standalone: indigo_libs/indigo_server.c $(DRIVER_LIBS) $(EXTERNALS) lib/libindigo.a
 	$(CC) -DSTATIC_DRIVERS $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
 
 
