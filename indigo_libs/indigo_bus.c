@@ -624,6 +624,10 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 						break;
 					case INDIGO_NUMBER_VECTOR:
 						property_item->number.value = other_item->number.value;
+						if (property_item->number.value < property_item->number.min)
+							property_item->number.value = property_item->number.min;
+						if (property_item->number.value > property_item->number.max)
+							property_item->number.value = property_item->number.max;
 						break;
 					case INDIGO_SWITCH_VECTOR:
 						property_item->sw.value = other_item->sw.value;

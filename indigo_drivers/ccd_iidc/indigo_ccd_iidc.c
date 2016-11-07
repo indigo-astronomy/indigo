@@ -49,30 +49,36 @@
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((iidc_private_data *)DEVICE_CONTEXT->private_data)
 
-char *MODE_NAME[] = {
-	"YUV 4:4:4 160x120",
-	"YUV 4:2:2 320x240",
-	"YUV 4:1:1 640x480",
-	"YUV 4:2:2 640x480",
-	"RGB 8 640x480",
-	"MONO 8 640x480",
-	"MONO 16 640x480",
-	"YUV 4:2:2 800x600",
-	"RGB 8 800x600",
-	"MONO 8 800x600",
-	"YUV 4:2:2 1024x768",
-	"RGB 8 1024x768",
-	"MONO 8 1024x768",
-	"MONO 16 800x600",
-	"MONO 16 1024x768",
-	"YUV 4:2:2 1280x960",
-	"RGB 8 1280x960",
-	"MONO 8 1280x960",
-	"YUV 4:2:2 1600x1200",
-	"RGB 8 1600x1200",
-	"MONO 8 1600x1200",
-	"MONO 16 1280x960",
-	"MONO 16 1600x1200"
+struct {
+	char *name;
+	char *label;
+	unsigned short width;
+	unsigned short height;
+	unsigned short bits_per_pixel;
+} MODE[] = {
+	{ "160x120_YUV444", "YUV 4:4:4 160x120", 160, 120, 12 },
+	{ "320x240_YUV422", "YUV 4:2:2 320x240", 320, 240, 8 },
+	{ "640x480_YUV411", "YUV 4:1:1 640x480", 640, 480, 6 },
+	{ "640x480_YUV422", "YUV 4:2:2 640x480", 640, 480, 8 },
+	{ "640x480_RGB8", "RGB 8 640x480", 640, 480, 8 },
+	{ "640x480_MONO8", "MONO 8 640x480", 640, 480, 8 },
+	{ "640x480_MONO16", "MONO 16 640x480", 640, 480, 16 },
+	{ "800x600_YUV422", "YUV 4:2:2 800x600", 800, 600, 8 },
+	{ "800x600_RGB8", "RGB 8 800x600", 800, 600, 8 },
+	{ "800x600_MONO8", "MONO 8 800x600", 800, 600, 8 },
+	{ "1024x768_YUV422", "YUV 4:2:2 1024x768", 1024, 768, 8 },
+	{ "1024x768_RGB8", "RGB 8 1024x768", 1024, 768, 8 },
+	{ "1024x768_MONO8", "MONO 8 1024x768", 1024, 768, 8 },
+	{ "800x600_MONO16", "MONO 16 800x600", 800, 600, 16 },
+	{ "1024x768_MONO16", "MONO 16 1024x768", 1024, 768, 16 },
+	{ "1280x960_YUV422", "YUV 4:2:2 1280x960", 1200, 960, 8 },
+	{ "1280x960_RGB8", "RGB 8 1280x960", 1280, 960, 8 },
+	{ "1280x960_MONO8", "MONO 8 1280x960", 1280, 960, 8 },
+	{ "1600x1200_YUV422", "YUV 4:2:2 1600x1200", 1600, 120, 8 },
+	{ "1600x1200_RGB8", "RGB 8 1600x1200", 1600, 120, 8 },
+	{ "1600x1200_MONO8", "MONO 8 1600x1200", 1600, 120, 8 },
+	{ "1280x960_MONO16", "MONO 16 1280x960", 1280, 960, 16 },
+	{ "1600x1200_MONO16", "MONO 16 1600x1200", 1600, 120, 16 }
 };
 
 typedef struct {
@@ -137,18 +143,34 @@ static indigo_result ccd_attach(indigo_device *device) {
 	device->device_context = NULL;
 	if (indigo_ccd_attach(device, INDIGO_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
-		// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
+		// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_FRAME
+		
+		// -------------------------------------------------------------------------------- CCD_MODE
 		dc1394video_modes_t modes;
 		dc1394_video_get_supported_modes(PRIVATE_DATA->camera, &modes);
 		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_MODE_PROPERTY->count = 0;
+		int ix = 0, max_width = 0, max_height = 0, max_bits_per_pixel = 0;
 		for (int i = 0; i < modes.num; i++) {
 			dc1394video_mode_t mode = modes.modes[i];
 			if (mode < DC1394_VIDEO_MODE_EXIF) {
 				CCD_MODE_PROPERTY->count++;
-				indigo_init_switch_item(CCD_MODE_ITEM+i, MODE_NAME[mode - DC1394_VIDEO_MODE_160x120_YUV444], MODE_NAME[mode - DC1394_VIDEO_MODE_160x120_YUV444], false);
+				ix = mode - DC1394_VIDEO_MODE_160x120_YUV444;
+				indigo_init_switch_item(CCD_MODE_ITEM+i, MODE[ix].name, MODE[ix].label, false);
+				if (max_width < MODE[ix].width)
+					max_width = MODE[ix].width;
+				if (max_height < MODE[ix].height)
+					max_height = MODE[ix].height;
+				if (max_bits_per_pixel < MODE[ix].bits_per_pixel)
+					max_bits_per_pixel = MODE[ix].bits_per_pixel;
 			}
 		}
+		CCD_INFO_WIDTH_ITEM->number.value = max_width;
+		CCD_INFO_HEIGHT_ITEM->number.value = max_height;
+		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = max_bits_per_pixel;
+		(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count - 1)->sw.value = true;
+		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = MODE[ix].width;
+		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = MODE[ix].height;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -201,6 +223,29 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 //			}
 //			libiidc_close(PRIVATE_DATA->camera);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_MODE
+		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
+		bool update_frame = false;
+		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
+			if (item->sw.value) {
+				for (int j = DC1394_VIDEO_MODE_160x120_YUV444; j < DC1394_VIDEO_MODE_1600x1200_MONO16 ; j++) {
+					int ix = j - DC1394_VIDEO_MODE_160x120_YUV444;
+					if (!strcmp(item->name, MODE[ix].name)) {
+						CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = MODE[ix].width;
+						CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = MODE[ix].height;
+						update_frame = true;
+						break;
+					}
+				}
+				break;
+			}
+		}
+		if (update_frame) {
+			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
