@@ -409,12 +409,14 @@ indigo_result indigo_ccd_iidc(bool state) {
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_iidc: libusb_hotplug_deregister_callback [%d]", __LINE__));
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			indigo_device *device = devices[j];
-			if (PRIVATE_DATA != NULL) {
-				free(PRIVATE_DATA);
+			if (device != NULL) {
+				if (PRIVATE_DATA != NULL) {
+					free(PRIVATE_DATA);
+				}
+				indigo_detach_device(device);
+				free(device);
+				devices[j] = NULL;
 			}
-			indigo_detach_device(device);
-			free(device);
-			devices[j] = NULL;
 		}
 		dc1394_free(context);
 		context = NULL;
