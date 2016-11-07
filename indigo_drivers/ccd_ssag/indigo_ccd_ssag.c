@@ -288,9 +288,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, INDIGO_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_FRAME
-		CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 1;
-		CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 1;
-		CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 8;
 		CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = 1280;
 		CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = 1024;

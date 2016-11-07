@@ -122,6 +122,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, INDIGO_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN
+		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 4;
 		CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 4;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
@@ -151,6 +152,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = PRIVATE_DATA->device_context->height;
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->device_context->pixel_width * 100)/100;
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(PRIVATE_DATA->device_context->pixel_height * 100) / 100;
+				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_MODE_PROPERTY->count = 3;
+				char name[32];
+				sprintf(name, "%d x %d", PRIVATE_DATA->device_context->width, PRIVATE_DATA->device_context->height);
+				indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+				sprintf(name, "%d x %d", PRIVATE_DATA->device_context->width/2, PRIVATE_DATA->device_context->height/2);
+				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+				sprintf(name, "%d x %d", PRIVATE_DATA->device_context->width/4, PRIVATE_DATA->device_context->height/4);
+				indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
 				PRIVATE_DATA->buffer = malloc(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 				assert(PRIVATE_DATA->buffer != NULL);
 				if (PRIVATE_DATA->device_context->has_cooler) {
@@ -235,6 +245,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
+			// -------------------------------------------------------------------------------- CCD_BIN
+		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int v = CCD_BIN_VERTICAL_ITEM->number.value;
+		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
+		if (!(CCD_BIN_HORIZONTAL_ITEM->number.value == 1 || CCD_BIN_HORIZONTAL_ITEM->number.value == 2 || CCD_BIN_HORIZONTAL_ITEM->number.value == 4) || CCD_BIN_HORIZONTAL_ITEM->number.value != CCD_BIN_VERTICAL_ITEM->number.value) {
+			CCD_BIN_HORIZONTAL_ITEM->number.value = h;
+			CCD_BIN_VERTICAL_ITEM->number.value = v;
+			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+			return INDIGO_OK;
+		}
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);

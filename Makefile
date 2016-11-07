@@ -66,12 +66,12 @@ endif
 ifeq ($(OS_DETECTED),Darwin)
 	CC=gcc
 	CFLAGS=-fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -DINDIGO_MACOS
-	LDFLAGS=-framework CoreFoundation -framework IOKit -lobjc  -Llib -lusb-1.0
+	LDFLAGS=-framework Cocoa -framework CoreFoundation -framework IOKit -lobjc  -Llib -lusb-1.0
 	LIBHIDAPI=lib/libhidapi.a
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a
+	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libdc1394.a
 endif
 
 #---------------------------------------------------------------------
@@ -92,7 +92,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a
+	EXTERNALS=$(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libdc1394.a
 endif
 
 #---------------------------------------------------------------------
@@ -177,14 +177,14 @@ $(LIBHIDAPI): externals/hidapi/Makefile
 #
 #---------------------------------------------------------------------
 
-externals/libdc1394/configure: externals/libdc1394/configure.ac
-	cd externals/libdc1394; autoreconf -i; cd ../..
+indigo_drivers/ccd_iidc/externals/libdc1394/configure: indigo_drivers/ccd_iidc/externals/libdc1394/configure.ac
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; autoreconf -i; cd ../../../..
 
-externals/libdc1394/Makefile: externals/libdc1394/configure
-	cd externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="-fPIC -Duint=unsigned" LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/include/libusb-1.0" LIBUSB_LIBS="-L$(INDIGO_ROOT)/lib -lusb-1.0"; cd ../..
+indigo_drivers/ccd_iidc/externals/libdc1394/Makefile: indigo_drivers/ccd_iidc/externals/libdc1394/configure
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="-fPIC -Duint=unsigned" LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/include/libusb-1.0" LIBUSB_LIBS="-L$(INDIGO_ROOT)/lib -lusb-1.0"; cd ../../../..
 
-lib/libdc1394.a: externals/libdc1394/Makefile
-	cd externals/libdc1394; make install; cd ../..
+lib/libdc1394.a: indigo_drivers/ccd_iidc/externals/libdc1394/Makefile
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; make install; cd ../../../..
 
 #---------------------------------------------------------------------
 #
@@ -447,6 +447,21 @@ drivers/indigo_focuser_fcusb.$(SOEXT): indigo_drivers/focuser_fcusb/indigo_focus
 
 #---------------------------------------------------------------------
 #
+#	Build IIDC CCD driver
+#
+#---------------------------------------------------------------------
+
+drivers/indigo_ccd_iidc.a: indigo_drivers/ccd_iidc/indigo_ccd_iidc.o
+	$(AR) $(ARFLAGS) $@ $^
+
+drivers/indigo_ccd_iidc: indigo_drivers/ccd_iidc/indigo_ccd_iidc_main.o drivers/indigo_ccd_iidc.a lib/libdc1394.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+drivers/indigo_ccd_iidc.$(SOEXT): indigo_drivers/ccd_iidc/indigo_ccd_iidc.o lib/libdc1394.a
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------
@@ -466,7 +481,7 @@ bin/client: indigo_test/client.o
 bin/indigo_server: indigo_libs/indigo_server.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
-bin/indigo_server_standalone: indigo_libs/indigo_server.c $(DRIVER_LIBS) lib/libindigo.a lib/libqhy.a lib/libatik.a lib/libEFWFilter.a lib/libfcusb.a $(DEPENDENCIES) $(LIBHIDAPI)
+bin/indigo_server_standalone: indigo_libs/indigo_server.c lib/libindigo.a $(DRIVER_LIBS) $(EXTERNALS)
 	$(CC) -DSTATIC_DRIVERS $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
 
 
