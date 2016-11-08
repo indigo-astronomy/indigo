@@ -102,14 +102,15 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 
+		int index = find_index_by_id(PRIVATE_DATA->dev_id);
+		if (index < 0) {
+			return INDIGO_NOT_FOUND;
+		}
+
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			int index = find_index_by_id(PRIVATE_DATA->dev_id);
-			if (index < 0) {
-				return INDIGO_NOT_FOUND;
-			}
 			int res = EFWOpen(index);
 			if (!res) {
-				EFWGetID(index, &(PRIVATE_DATA->dev_id));
+				EFWGetID(index, &(PRIVATE_DATA->dev_id)); /* id's change on connect and disconnect */
 				EFWGetProperty(PRIVATE_DATA->dev_id, &info);
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
 				EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
@@ -124,6 +125,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			}
 		} else {
 			EFWClose(PRIVATE_DATA->dev_id);
+			EFWGetID(index, &(PRIVATE_DATA->dev_id)); /* id's change on connect and disconnect */
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		
