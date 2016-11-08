@@ -198,13 +198,15 @@ int find_unplugged_device_slot() {
 	int count = EFWGetNum();
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		if (devices[slot] == NULL) continue;
-		int exists = 1;
+		int removed = 1;
 		for(int index = 0; index < count; index++) {
 			EFWGetID(index,&id);
-			if (devices[slot] && (((asi_private_data*)devices[slot]->device_context)->dev_id == id)) break;
-			exists = 0;
+			if (devices[slot] && (((asi_private_data*)devices[slot]->device_context)->dev_id == id)) {
+				removed = 0;
+				break;
+			}
 		}
-		if (!exists) return slot;
+		if (removed && devices[slot]) return slot;
 	}
 	return -1;
 }
