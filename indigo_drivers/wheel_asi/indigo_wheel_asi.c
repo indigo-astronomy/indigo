@@ -154,7 +154,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
-	INDIGO_LOG(indigo_log("indigo_wheel_asi: %s detached", device->name));
+	INDIGO_LOG(indigo_log("indigo_wheel_asi: %s detached.", device->name));
 	return indigo_wheel_detach(device);
 }
 
@@ -164,6 +164,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 #define NO_DEVICE                 (-1000)
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+
 
 int find_plugged_device_id() {
 	int id;
@@ -223,13 +224,13 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			int slot = find_available_device_slot();
 			if (slot < 0) {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: No available device slots available"));
+				INDIGO_LOG(indigo_log("indigo_wheel_asi: No available device slots available."));
 				return 0;
 			}
 
 			int id = find_plugged_device_id();
 			if (id == NO_DEVICE) {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: No plugged device found"));
+				INDIGO_LOG(indigo_log("indigo_wheel_asi: No plugged device found."));
 			}
 
 			indigo_device *device = malloc(sizeof(indigo_device));
@@ -237,8 +238,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			EFWGetProperty(id, &info);
 			assert(device != NULL);
 			memcpy(device, &wheel_template, sizeof(indigo_device));
-			strcpy(device->name, info.Name);
-			INDIGO_LOG(indigo_log("indigo_wheel_asi: %s (ID %d) connected", device->name, id));
+			//strcpy(device->name, info.Name);
+			sprintf(device->name, "%s %d", info.Name, id);
+			INDIGO_LOG(indigo_log("indigo_wheel_asi: '%s' attached.", device->name));
 			device->device_context = malloc(sizeof(asi_private_data));
 			assert(device->device_context);
 			memset(device->device_context, 0, sizeof(asi_private_data));
