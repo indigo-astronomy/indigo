@@ -54,7 +54,7 @@ typedef struct {
 	int count;
 } asi_private_data;
 
-int find_index_by_device_id(int id);
+static int find_index_by_device_id(int id);
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
 
@@ -158,7 +158,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 
-int find_index_by_device_id(int id) {
+static int find_index_by_device_id(int id) {
 	int count = EFWGetNum();
 	int cur_id;
 	for(int index = 0; index < count; index++) {
@@ -169,7 +169,7 @@ int find_index_by_device_id(int id) {
 }
 
 
-int find_plugged_device_id() {
+static int find_plugged_device_id() {
 	int id;
 	int count = EFWGetNum();
 	for(int index = 0; index < count; index++) {
@@ -185,7 +185,7 @@ int find_plugged_device_id() {
 }
 
 
-int find_available_device_slot() {
+static int find_available_device_slot() {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		if (devices[slot] == NULL) return slot;
 	}
@@ -193,7 +193,7 @@ int find_available_device_slot() {
 }
 
 
-int find_unplugged_device_slot() {
+static int find_unplugged_device_slot() {
 	int id;
 	int count = EFWGetNum();
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
