@@ -85,14 +85,14 @@ struct {
 	char *name;
 	char *label;
 } FRAMERATE[] = {
-	{ "DC1394_FRAMERATE_1_875", "YUV 4:4:4 160x120" },
-	{ "DC1394_FRAMERATE_3_75", "YUV 4:2:2 320x240" },
-	{ "DC1394_FRAMERATE_7_5", "YUV 4:1:1 640x480" },
-	{ "DC1394_FRAMERATE_15", "YUV 4:2:2 640x480" },
-	{ "DC1394_FRAMERATE_30", "RGB 8 640x480" },
-	{ "DC1394_FRAMERATE_60", "MONO 8 640x480" },
-	{ "DC1394_FRAMERATE_120", "MONO 16 640x480" },
-	{ "DC1394_FRAMERATE_240", "YUV 4:2:2 800x600" }
+	{ "DC1394_FRAMERATE_1_875", "1.875 fps" },
+	{ "DC1394_FRAMERATE_3_75", "3.75 fps" },
+	{ "DC1394_FRAMERATE_7_5", "7.5 fps" },
+	{ "DC1394_FRAMERATE_15", "15 fps" },
+	{ "DC1394_FRAMERATE_30", "30 fps" },
+	{ "DC1394_FRAMERATE_60", "60 fps" },
+	{ "DC1394_FRAMERATE_120", "120 fps" },
+	{ "DC1394_FRAMERATE_240", "240 fps" }
 };
 
 
@@ -192,9 +192,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_FRAME_RATE_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_FRAME_RATE_PROPERTY->count = 0;
 		for (int i = 0; i < framerates.num; i++) {
-			
+			dc1394framerate_t framerate = framerates.framerates[i];
+			ix = framerate - DC1394_FRAMERATE_1_875;
+			CCD_FRAME_RATE_PROPERTY->count++;
+			indigo_init_switch_item(CCD_FRAME_RATE_ITEM+i, FRAMERATE[ix].name, FRAMERATE[ix].label, false);
 		}
-
+		(CCD_FRAME_RATE_ITEM + CCD_FRAME_RATE_PROPERTY->count - 1)->sw.value = true;
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		err = dc1394_feature_is_present(PRIVATE_DATA->camera, DC1394_FEATURE_TEMPERATURE, &PRIVATE_DATA->temperature_is_present);
 		INDIGO_LOG(indigo_log("dc1394_feature_is_present DC1394_FEATURE_TEMPERATURE [%d] -> %d", __LINE__, err));
@@ -290,11 +293,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
 			if (item->sw.value) {
-				for (int j = DC1394_VIDEO_MODE_160x120_YUV444; j < DC1394_VIDEO_MODE_1600x1200_MONO16 ; j++) {
+				for (dc1394video_mode_t j = DC1394_VIDEO_MODE_160x120_YUV444; j < DC1394_VIDEO_MODE_1600x1200_MONO16 ; j++) {
 					int ix = j - DC1394_VIDEO_MODE_160x120_YUV444;
 					if (!strcmp(item->name, MODE[ix].name)) {
 						CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = MODE[ix].width;
 						CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = MODE[ix].height;
+						dc1394error_t err = dc1394_video_set_mode(PRIVATE_DATA->camera, j);
+						INDIGO_LOG(indigo_log("dc1394_video_set_mode [%d] -> %d", __LINE__, err));
+						dc1394framerates_t framerates;
+						err = dc1394_video_get_supported_framerates(PRIVATE_DATA->camera, DC1394_VIDEO_MODE_160x120_YUV444 + ix, &framerates);
+						INDIGO_LOG(indigo_log("dc1394_video_get_supported_framerates [%d] -> %d", __LINE__, err));
+						CCD_FRAME_RATE_PROPERTY->count = 0;
+						for (int i = 0; i < framerates.num; i++) {
+							dc1394framerate_t framerate = framerates.framerates[i];
+							ix = framerate - DC1394_FRAMERATE_1_875;
+							CCD_FRAME_RATE_PROPERTY->count++;
+							indigo_init_switch_item(CCD_FRAME_RATE_ITEM+i, FRAMERATE[ix].name, FRAMERATE[ix].label, false);
+						}
+						(CCD_FRAME_RATE_ITEM + CCD_FRAME_RATE_PROPERTY->count - 1)->sw.value = true;
 						update_frame = true;
 						break;
 					}
@@ -305,6 +321,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value && update_frame) {
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+			CCD_FRAME_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_FRAME_RATE_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
