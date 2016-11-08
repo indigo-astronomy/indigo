@@ -86,6 +86,12 @@ indigo_result indigo_ccd_attach(indigo_device *device, indigo_version version) {
 			CCD_MODE_PROPERTY->count = 1;
 			CCD_MODE_PROPERTY->perm = INDIGO_RO_PERM;
 			indigo_init_switch_item(CCD_MODE_ITEM, "DEFAULT_MODE", "Default mode", true);
+			// -------------------------------------------------------------------------------- CCD_FRAME_RATE
+			CCD_FRAME_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, "CCD_FRAME_RATE", CCD_MAIN_GROUP, "Frame rate", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 32);
+			if (CCD_FRAME_RATE_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			CCD_FRAME_RATE_PROPERTY->hidden = true;
+			CCD_FRAME_RATE_PROPERTY->count = 0;
 			// -------------------------------------------------------------------------------- CCD_EXPOSURE
 			CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_EXPOSURE", CCD_MAIN_GROUP, "Start exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_EXPOSURE_PROPERTY == NULL)
@@ -192,6 +198,8 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 				indigo_define_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
 			if (indigo_property_match(CCD_MODE_PROPERTY, property))
 				indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
+			if (indigo_property_match(CCD_FRAME_RATE_PROPERTY, property) && !CCD_FRAME_RATE_PROPERTY->hidden)
+				indigo_define_property(device, CCD_FRAME_RATE_PROPERTY, NULL);
 			if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property))
 				indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property))
@@ -236,6 +244,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
+			if (!CCD_FRAME_RATE_PROPERTY->hidden)
+				indigo_define_property(device, CCD_FRAME_RATE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
@@ -260,6 +270,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
+			if (!CCD_FRAME_RATE_PROPERTY->hidden)
+				indigo_delete_property(device, CCD_FRAME_RATE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
@@ -291,6 +303,10 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_save_property(device, NULL, CCD_UPLOAD_MODE_PROPERTY);
 			if (CCD_LOCAL_MODE_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, CCD_LOCAL_MODE_PROPERTY);
+			if (CCD_MODE_PROPERTY->perm == INDIGO_RW_PERM)
+				indigo_save_property(device, NULL, CCD_MODE_PROPERTY);
+			if (!CCD_FRAME_RATE_PROPERTY->hidden && CCD_FRAME_RATE_PROPERTY->perm == INDIGO_RW_PERM)
+				indigo_save_property(device, NULL, CCD_FRAME_RATE_PROPERTY);
 			if (CCD_FRAME_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, CCD_FRAME_PROPERTY);
 			if (CCD_BIN_PROPERTY->perm == INDIGO_RW_PERM)
@@ -451,6 +467,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	free(CCD_UPLOAD_MODE_PROPERTY);
 	free(CCD_LOCAL_MODE_PROPERTY);
 	free(CCD_MODE_PROPERTY);
+	free(CCD_FRAME_RATE_PROPERTY);
 	free(CCD_EXPOSURE_PROPERTY);
 	free(CCD_ABORT_EXPOSURE_PROPERTY);
 	free(CCD_FRAME_PROPERTY);
