@@ -174,10 +174,10 @@ static int find_plugged_device_id() {
 	int count = EFWGetNum();
 	for(int index = 0; index < count; index++) {
 		EFWGetID(index,&id);
-		int exists = 1;
+		bool exists = true;
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			if (devices[slot] && (((asi_private_data*)devices[slot]->device_context)->dev_id == id)) break;
-			exists = 0;
+			exists = false;
 		}
 		if (!exists) return id;
 	}
@@ -198,11 +198,11 @@ static int find_unplugged_device_slot() {
 	int count = EFWGetNum();
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		if (devices[slot] == NULL) continue;
-		int removed = 1;
+		bool removed = true;
 		for(int index = 0; index < count; index++) {
 			EFWGetID(index,&id);
 			if (devices[slot] && (((asi_private_data*)devices[slot]->device_context)->dev_id == id)) {
-				removed = 0;
+				removed = false;
 				break;
 			}
 		}
@@ -256,18 +256,21 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			int slot = find_unplugged_device_slot();
-			if (slot < 0) {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: No unplugged device found!"));
-				return 0;
+			int slot;
+			bool removed = false;
+			while ((slot = find_unplugged_device_slot()) != -1) {
+				indigo_device **device = &devices[slot];
+				if (*device == NULL)
+					return 0;
+				indigo_detach_device(*device);
+				free((*device)->device_context);
+				free(*device);
+				*device = NULL;
+				removed = true;
 			}
-			indigo_device **device = &devices[slot];
-			if (*device == NULL)
-				return 0;
-			indigo_detach_device(*device);
-			free((*device)->device_context);
-			free(*device);
-			*device = NULL;
+			if (!removed) {
+				INDIGO_LOG(indigo_log("indigo_wheel_asi: No unplugged device found!"));
+			}
 		}
 	}
 	return 0;
