@@ -39,11 +39,8 @@
 #endif
 
 #include <asi_efw/EFW_filter.h>
-
 #include "indigo_driver_xml.h"
-
 #include "indigo_wheel_asi.h"
-
 
 #define ASI_VENDOR_ID                   0x03c3
 #define ASI_PRODUCT_ID                  0x1f01
@@ -57,7 +54,9 @@ typedef struct {
 	int count;
 } asi_private_data;
 
+int find_index_by_device_id(int id);
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
+
 
 static void wheel_timer_callback(indigo_device *device) {
 	EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
@@ -71,6 +70,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
+
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
@@ -83,15 +83,6 @@ static indigo_result wheel_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-int find_index_by_id(int id) {
-	int count = EFWGetNum();
-	int cur_id;
-	for(int index = 0; index < count; index++) {
-		EFWGetID(index,&cur_id);
-		if (cur_id == id) return index;
-	}
-	return -1;
-}
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -102,7 +93,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 
-		int index = find_index_by_id(PRIVATE_DATA->dev_id);
+		int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
 		if (index < 0) {
 			return INDIGO_NOT_FOUND;
 		}
@@ -151,6 +142,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	return indigo_wheel_change_property(device, client, property);
 }
 
+
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
@@ -164,6 +156,17 @@ static indigo_result wheel_detach(indigo_device *device) {
 #define NO_DEVICE                 (-1000)
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+
+
+int find_index_by_device_id(int id) {
+	int count = EFWGetNum();
+	int cur_id;
+	for(int index = 0; index < count; index++) {
+		EFWGetID(index,&cur_id);
+		if (cur_id == id) return index;
+	}
+	return -1;
+}
 
 
 int find_plugged_device_id() {
