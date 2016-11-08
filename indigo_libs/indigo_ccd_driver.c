@@ -97,6 +97,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, indigo_version version) {
 			if (CCD_EXPOSURE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_EXPOSURE_ITEM, "EXPOSURE", "Start exposure", 0, 10000, 1, 0);
+			strcpy(CCD_EXPOSURE_ITEM->number.format, "%f");
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, "CCD_ABORT_EXPOSURE", CCD_MAIN_GROUP, "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			if (CCD_ABORT_EXPOSURE_PROPERTY == NULL)
