@@ -180,7 +180,8 @@ static int find_plugged_device_id() {
 			if (devices[slot] && (((asi_private_data*)devices[slot]->device_context)->dev_id == id)) {
 				exists = true;
 				break;
-			} else if(devices[slot]) exists = false;
+			}
+			exists = false;
 		}
 		INDIGO_LOG(indigo_log("%s found = %d ID = %d", __FUNCTION__, exists, id));
 		if (!exists) return id;
