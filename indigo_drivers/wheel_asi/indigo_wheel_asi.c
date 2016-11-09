@@ -175,10 +175,12 @@ static int find_plugged_device_id() {
 	for(int index = 0; index < count; index++) {
 		EFWGetID(index,&id);
 		INDIGO_LOG(indigo_log("%s index = %d ID = %d", __FUNCTION__, index, id));
-		bool exists = true;
+		bool exists = false;
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
-			if (devices[slot] && (((asi_private_data*)devices[slot]->device_context)->dev_id == id)) break;
-			exists = false;
+			if (devices[slot] && (((asi_private_data*)devices[slot]->device_context)->dev_id == id)) {
+				exists = true;
+				break;
+			} else if(devices[slot]) exists = false;
 		}
 		INDIGO_LOG(indigo_log("%s found = %d ID = %d", __FUNCTION__, exists, id));
 		if (!exists) return id;
