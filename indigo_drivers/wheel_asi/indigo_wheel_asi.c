@@ -287,6 +287,21 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	return 0;
 };
 
+
+void remove_all_devices() {
+	int i;
+	for(i = 0; i < MAX_DEVICES; i++) {
+		indigo_device **device = &devices[i];
+		if (*device == NULL) continue;
+		indigo_detach_device(*device);
+		free((*device)->device_context);
+		free(*device);
+	}
+	for(i = 0; i < EFW_ID_MAX; i++)
+		connected_ids[i] = false;
+}
+
+
 static libusb_hotplug_callback_handle callback_handle;
 
 indigo_result indigo_wheel_asi(bool state) {
@@ -306,8 +321,7 @@ indigo_result indigo_wheel_asi(bool state) {
 	} else {
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_asi: libusb_hotplug_deregister_callback [%d]", __LINE__));
-		if (devices[0])
-			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+		remove_all_devices();
 		return INDIGO_OK;
 	}
 }
