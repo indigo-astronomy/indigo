@@ -60,14 +60,14 @@ static struct {
 } static_drivers[] = {
 	{ "CCD Simulator", "indigo_ccd_simulator", indigo_ccd_simulator },
 	{ "Mount Simulator", "indigo_mount_simulator", indigo_mount_simulator },
-//	{ "SX CCD", "indigo_ccd_sx", indigo_ccd_sx },
-//	{ "SX Filter Wheel","indigo_wheel_sx", indigo_wheel_sx },
-//	{ "Atik CCD", "indigo_ccd_atik", indigo_ccd_atik },
-//	{ "QHY CCD", "indigo_ccd_qhy", indigo_ccd_qhy },
-//	{ "SSAG/QHY5 CCD", "indigo_ccd_ssag", indigo_ccd_ssag },
-//	{ "Shoestring FCUSB Focuser", "indigo_focuser_fcusb", indigo_focuser_fcusb },
+	{ "SX CCD", "indigo_ccd_sx", indigo_ccd_sx },
+	{ "SX Filter Wheel","indigo_wheel_sx", indigo_wheel_sx },
+	{ "Atik CCD", "indigo_ccd_atik", indigo_ccd_atik },
+	{ "QHY CCD", "indigo_ccd_qhy", indigo_ccd_qhy },
+	{ "SSAG/QHY5 CCD", "indigo_ccd_ssag", indigo_ccd_ssag },
+	{ "Shoestring FCUSB Focuser", "indigo_focuser_fcusb", indigo_focuser_fcusb },
 	{ "ASI Filter wheel", "indigo_wheel_asi", indigo_wheel_asi },
-//	{ "IIDC CCD", "indigo_ccd_iidc", indigo_ccd_iidc },
+	{ "IIDC CCD", "indigo_ccd_iidc", indigo_ccd_iidc },
 	{ NULL, NULL, NULL }
 };
 #else
