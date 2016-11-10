@@ -371,13 +371,17 @@ indigo_result indigo_device_detach(indigo_device *device) {
 indigo_result indigo_device_connect(indigo_device *device) {
 	indigo_property *property = indigo_init_switch_property(NULL, device->name, "CONNECTION", NULL, NULL, 0, 0, 0, 1);
 	indigo_init_switch_item(property->items, "CONNECTED", NULL, true);
-	return device->change_property(device, NULL, property);
+	indigo_result res = device->change_property(device, NULL, property);
+	free(property);
+	return res;
 }
 
 indigo_result indigo_device_disconnect(indigo_device *device) {
 	indigo_property *property = indigo_init_switch_property(NULL, device->name, "CONNECTION", NULL, NULL, 0, 0, 0, 1);
 	indigo_init_switch_item(property->items, "DISCONNECTED", NULL, true);
-	return device->change_property(device, NULL, property);
+	indigo_result res = device->change_property(device, NULL, property);
+	free(property);
+	return res;
 }
 
 static void xprintf(int handle, const char *format, ...) {
