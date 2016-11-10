@@ -296,6 +296,7 @@ void remove_all_devices() {
 		indigo_detach_device(*device);
 		free((*device)->device_context);
 		free(*device);
+		*device = NULL;
 	}
 	for(i = 0; i < EFW_ID_MAX; i++)
 		connected_ids[i] = false;
