@@ -157,6 +157,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
+static bool connected_ids[MAX_DEVICES];
 
 static int find_index_by_device_id(int id) {
 	int count = EFWGetNum();
@@ -170,23 +171,20 @@ static int find_index_by_device_id(int id) {
 
 
 static int find_plugged_device_id() {
-	int id;
+	bool dev_tmp[MAX_DEVICES] = {false};
+	int i, id = NO_DEVICE, new_id = NO_DEVICE;
+
 	int count = EFWGetNum();
-	for(int index = 0; index < count; index++) {
-		EFWGetID(index,&id);
-		INDIGO_LOG(indigo_log("%s index = %d ID = %d", __FUNCTION__, index, id));
-		bool exists = false;
-		for(int slot = 0; slot < MAX_DEVICES; slot++) {
-			if (devices[slot] && (((asi_private_data*)devices[slot]->device_context)->dev_id == id)) {
-				exists = true;
-				break;
-			}
-			exists = false;
-		}
-		INDIGO_LOG(indigo_log("%s found = %d ID = %d", __FUNCTION__, exists, id));
-		if (!exists) return id;
+	for(i = 0; i < count; i++) {
+		EFWGetID(i, &id);
+		dev_tmp[id] = true;
+		if(!connected_ids[id]) new_id = id;
 	}
-	return NO_DEVICE;
+
+	for(i = 0; i < MAX_DEVICES; i++)
+		connected_ids[i] = dev_tmp[i];
+
+	return new_id;
 }
 
 
@@ -199,21 +197,21 @@ static int find_available_device_slot() {
 
 
 static int find_unplugged_device_slot() {
-	int id;
+	bool dev_tmp[MAX_DEVICES] = {false};
+	int i, id = -1;
+
 	int count = EFWGetNum();
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		if (devices[slot] == NULL) continue;
-		bool removed = true;
-		for(int index = 0; index < count; index++) {
-			EFWGetID(index,&id);
-			if (devices[slot] && (((asi_private_data*)devices[slot]->device_context)->dev_id == id)) {
-				removed = false;
-				break;
-			}
-		}
-		if (removed && devices[slot]) return slot;
+	for(i = 0; i < count; i++) {
+		EFWGetID(i, &id);
+		dev_tmp[id] = true;
 	}
-	return -1;
+
+	id = -1;
+	for(i = 0; i < MAX_DEVICES; i++) {
+		if(connected_ids[i] && !dev_tmp[i] && id == -1) id = i;
+		connected_ids[i] = dev_tmp[i];
+	}
+	return id;
 }
 
 
@@ -248,7 +246,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			EFWGetProperty(id, &info);
 			assert(device != NULL);
 			memcpy(device, &wheel_template, sizeof(indigo_device));
-			//strcpy(device->name, info.Name);
 			sprintf(device->name, "%s %d", info.Name, id);
 			INDIGO_LOG(indigo_log("indigo_wheel_asi: '%s' attached.", device->name));
 			device->device_context = malloc(sizeof(asi_private_data));
@@ -256,7 +253,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			memset(device->device_context, 0, sizeof(asi_private_data));
 			((asi_private_data*)device->device_context)->dev_id = id;
 			indigo_attach_device(device);
-			//indigo_async((void *)(void *)indigo_attach_device, devices[0]);
 			devices[slot]=device;
 			break;
 		}
