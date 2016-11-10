@@ -146,7 +146,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(device);
-	INDIGO_LOG(indigo_log("indigo_wheel_asi: %s detached.", device->name));
+	INDIGO_LOG(indigo_log("indigo_wheel_asi: '%s' detached.", device->name));
 	return indigo_wheel_detach(device);
 }
 
@@ -155,9 +155,10 @@ static indigo_result wheel_detach(indigo_device *device) {
 #define MAX_DEVICES                   10
 #define NO_DEVICE                 (-1000)
 
-static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
-static bool connected_ids[MAX_DEVICES];
+static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+static bool connected_ids[EFW_ID_MAX];
+
 
 static int find_index_by_device_id(int id) {
 	int count = EFWGetNum();
@@ -171,7 +172,7 @@ static int find_index_by_device_id(int id) {
 
 
 static int find_plugged_device_id() {
-	bool dev_tmp[MAX_DEVICES] = {false};
+	bool dev_tmp[EFW_ID_MAX] = {false};
 	int i, id = NO_DEVICE, new_id = NO_DEVICE;
 
 	int count = EFWGetNum();
@@ -181,7 +182,7 @@ static int find_plugged_device_id() {
 		if(!connected_ids[id]) new_id = id;
 	}
 
-	for(i = 0; i < MAX_DEVICES; i++)
+	for(i = 0; i < EFW_ID_MAX; i++)
 		connected_ids[i] = dev_tmp[i];
 
 	return new_id;
@@ -197,7 +198,7 @@ static int find_available_device_slot() {
 
 
 static int find_unplugged_device_slot() {
-	bool dev_tmp[MAX_DEVICES] = {false};
+	bool dev_tmp[EFW_ID_MAX] = {false};
 	int i, id = -1;
 
 	int count = EFWGetNum();
@@ -207,7 +208,7 @@ static int find_unplugged_device_slot() {
 	}
 
 	id = -1;
-	for(i = 0; i < MAX_DEVICES; i++) {
+	for(i = 0; i < EFW_ID_MAX; i++) {
 		if(connected_ids[i] && !dev_tmp[i] && id == -1) id = i;
 		connected_ids[i] = dev_tmp[i];
 	}
@@ -297,5 +298,3 @@ indigo_result indigo_wheel_asi(bool state) {
 		return INDIGO_OK;
 	}
 }
-
-
