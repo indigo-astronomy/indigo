@@ -43,7 +43,6 @@
 #include "indigo_wheel_asi.h"
 
 #define ASI_VENDOR_ID                   0x03c3
-#define ASI_PRODUCT_ID                  0x1f01
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((asi_private_data *)DEVICE_CONTEXT->private_data)
@@ -156,6 +155,10 @@ static indigo_result wheel_detach(indigo_device *device) {
 #define NO_DEVICE                 (-1000)
 
 
+static int efw_products[100];
+static int efw_id_count = 0;
+
+
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 static bool connected_ids[EFW_ID_MAX];
 
@@ -229,32 +232,38 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		wheel_detach
 	};
 
+	struct libusb_device_descriptor descriptor;
+
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			int slot = find_available_device_slot();
-			if (slot < 0) {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: No available device slots available."));
-				return 0;
+			int rc = libusb_get_device_descriptor(dev, &descriptor);
+			for (int i = 0; i < efw_id_count; i++) {
+				if (descriptor.idVendor != ASI_VENDOR_ID || efw_products[i] != descriptor.idProduct) continue;
+
+				int slot = find_available_device_slot();
+				if (slot < 0) {
+					INDIGO_LOG(indigo_log("indigo_wheel_asi: No available device slots available."));
+					return 0;
+				}
+
+				int id = find_plugged_device_id();
+				if (id == NO_DEVICE) {
+					INDIGO_LOG(indigo_log("indigo_wheel_asi: No plugged device found."));
+				}
+
+				indigo_device *device = malloc(sizeof(indigo_device));
+				EFWGetProperty(id, &info);
+				assert(device != NULL);
+				memcpy(device, &wheel_template, sizeof(indigo_device));
+				sprintf(device->name, "%s %d", info.Name, id);
+				INDIGO_LOG(indigo_log("indigo_wheel_asi: '%s' attached.", device->name));
+				device->device_context = malloc(sizeof(asi_private_data));
+				assert(device->device_context);
+				memset(device->device_context, 0, sizeof(asi_private_data));
+				((asi_private_data*)device->device_context)->dev_id = id;
+				indigo_attach_device(device);
+				devices[slot]=device;
 			}
-
-			int id = find_plugged_device_id();
-			if (id == NO_DEVICE) {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: No plugged device found."));
-			}
-
-			indigo_device *device = malloc(sizeof(indigo_device));
-
-			EFWGetProperty(id, &info);
-			assert(device != NULL);
-			memcpy(device, &wheel_template, sizeof(indigo_device));
-			sprintf(device->name, "%s %d", info.Name, id);
-			INDIGO_LOG(indigo_log("indigo_wheel_asi: '%s' attached.", device->name));
-			device->device_context = malloc(sizeof(asi_private_data));
-			assert(device->device_context);
-			memset(device->device_context, 0, sizeof(asi_private_data));
-			((asi_private_data*)device->device_context)->dev_id = id;
-			indigo_attach_device(device);
-			devices[slot]=device;
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
@@ -271,7 +280,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				removed = true;
 			}
 			if (!removed) {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: No unplugged device found!"));
+				INDIGO_LOG(indigo_log("indigo_wheel_asi: No ASI EFW device unplugged (maybe ASI camera)!"));
 			}
 		}
 	}
@@ -285,9 +294,13 @@ indigo_result indigo_wheel_asi(bool state) {
 	if (state == current_state)
 		return INDIGO_OK;
 	if ((current_state = state)) {
-		//device = NULL;
+		efw_id_count = EFWGetProductIDs(efw_products);
+		if (efw_id_count <= 0) {
+			INDIGO_LOG(indigo_log("indigo_wheel_asi: Can not get the list of supported IDs."));
+			return INDIGO_FAILED;
+		}
 		indigo_start_usb_event_handler();
-		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, ASI_PRODUCT_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_asi: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 	} else {
