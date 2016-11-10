@@ -47,6 +47,17 @@ EFW_API int EFWGetNum();
 
 /***************************************************************************
 Descriptions:
+get the product ID of each wheel, at first set pPIDs as 0 and get length and then malloc a buffer to load the PIDs
+
+Paras:
+int* pPIDs: pointer to array of PIDs
+
+Return: length of the array.
+***************************************************************************/
+EFW_API int EFWGetProductIDs(int* pPIDs);
+
+/***************************************************************************
+Descriptions:
 open filter wheel
 
 Paras:
@@ -181,7 +192,6 @@ EFW_ERROR_INVALID_ID: invalid ID value
 EFW_SUCCESS: operation succeeds
 ***************************************************************************/
 EFW_API	EFW_ERROR_CODE EFWClose(int ID);
-
 
 
 #ifdef __cplusplus
