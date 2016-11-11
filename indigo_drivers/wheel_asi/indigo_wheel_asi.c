@@ -175,18 +175,17 @@ static int find_index_by_device_id(int id) {
 
 
 static int find_plugged_device_id() {
-	bool dev_tmp[EFW_ID_MAX] = {false};
 	int i, id = NO_DEVICE, new_id = NO_DEVICE;
 
 	int count = EFWGetNum();
 	for(i = 0; i < count; i++) {
 		EFWGetID(i, &id);
-		dev_tmp[id] = true;
-		if(!connected_ids[id]) new_id = id;
+		if(!connected_ids[id]) {
+			new_id = id;
+			connected_ids[id] = true;
+			break;
+		}
 	}
-
-	for(i = 0; i < EFW_ID_MAX; i++)
-		connected_ids[i] = dev_tmp[i];
 
 	return new_id;
 }
@@ -212,8 +211,11 @@ static int find_unplugged_device_slot() {
 
 	id = -1;
 	for(i = 0; i < EFW_ID_MAX; i++) {
-		if(connected_ids[i] && !dev_tmp[i] && id == -1) id = i;
-		connected_ids[i] = dev_tmp[i];
+		if(connected_ids[i] && !dev_tmp[i]){
+			id = i;
+			connected_ids[id] = false;
+			break;
+		}
 	}
 	return id;
 }
