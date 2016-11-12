@@ -32,7 +32,7 @@
 /** Register FCUSB focuser hot-plug callback
  */
 
-extern indigo_result indigo_focuser_fcusb(bool state);
+extern indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_info *info);
 
 #endif /* focuser_fcusb_h */
 

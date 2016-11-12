@@ -263,7 +263,7 @@ static simulator_private_data *private_data = NULL;
 static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
 
-indigo_result indigo_mount_simulator(bool state) {
+indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = {
 		MOUNT_SIMULATOR_NAME, NULL, INDIGO_OK, INDIGO_VERSION,
 		mount_attach,
@@ -278,10 +278,14 @@ indigo_result indigo_mount_simulator(bool state) {
 		guider_change_property,
 		guider_detach
 	};
-	static bool current_state = false;
-	if (state == current_state)
+
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+	if (action == last_action)
 		return INDIGO_OK;
-	if ((current_state = state)) {
+
+	switch (action) {
+	case INDIGO_DRIVER_INIT:
+		last_action = action;
 		private_data = malloc(sizeof(simulator_private_data));
 		assert(private_data != NULL);
 		mount = malloc(sizeof(indigo_device));
@@ -294,7 +298,10 @@ indigo_result indigo_mount_simulator(bool state) {
 		memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
 		mount_guider->device_context = private_data;
 		indigo_attach_device(mount_guider);
-	} else {
+		break;
+
+	case INDIGO_DRIVER_SHUTDOWN:
+		last_action = action;
 		if (mount != NULL) {
 			indigo_detach_device(mount);
 			free(mount);
@@ -309,7 +316,12 @@ indigo_result indigo_mount_simulator(bool state) {
 			free(private_data);
 			private_data = NULL;
 		}
+		break;
+
+	case INDIGO_DRIVER_INFO:
+		break;
 	}
+
 	return INDIGO_OK;
 }
 

@@ -203,25 +203,33 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 static libusb_hotplug_callback_handle callback_handle;
 
-indigo_result indigo_wheel_sx(bool state) {
-	static bool current_state = false;
-	if (state == current_state)
+indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+	if (action == last_action)
 		return INDIGO_OK;
-	if ((current_state = state)) {
+
+	switch (action) {
+	case INDIGO_DRIVER_INIT:
+		last_action = action;
 		device = NULL;
 		hid_init();
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, SX_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sx: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
-	} else {
+
+	case INDIGO_DRIVER_SHUTDOWN:
+		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sx: libusb_hotplug_deregister_callback [%d]", __LINE__));
 		if (device)
 			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 		hid_exit();
-		return INDIGO_OK;
+		break;
+
+	case INDIGO_DRIVER_INFO:
+		break;
 	}
+
+	return INDIGO_OK;
 }
-
-
