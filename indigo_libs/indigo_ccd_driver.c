@@ -104,13 +104,14 @@ indigo_result indigo_ccd_attach(indigo_device *device, indigo_version version) {
 				return INDIGO_FAILED;
 			indigo_init_switch_item(CCD_ABORT_EXPOSURE_ITEM, "ABORT_EXPOSURE", "Abort exposure", false);
 			// -------------------------------------------------------------------------------- CCD_FRAME
-			CCD_FRAME_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_FRAME", CCD_IMAGE_GROUP, "Frame size setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
+			CCD_FRAME_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_FRAME", CCD_IMAGE_GROUP, "Frame size setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 5);
 			if (CCD_FRAME_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_FRAME_LEFT_ITEM, "X", "Left", 0, 0, 1, 0);
 			indigo_init_number_item(CCD_FRAME_TOP_ITEM, "Y", "Top", 0, 0, 1, 0);
 			indigo_init_number_item(CCD_FRAME_WIDTH_ITEM, "WIDTH", "Width", 0, 0, 1, 0);
 			indigo_init_number_item(CCD_FRAME_HEIGHT_ITEM, "HEIGHT", "Height", 0, 0, 1, 0);
+			indigo_init_number_item(CCD_FRAME_BITS_PER_PIXEL_ITEM, "BITS_PER_PIXEL", "Bits per pixel", 16, 16, 0, 16);
 			// -------------------------------------------------------------------------------- CCD_BIN
 			CCD_BIN_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_BIN", CCD_IMAGE_GROUP, "Binning setting", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
 			if (CCD_BIN_PROPERTY == NULL)
@@ -483,7 +484,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time) {
+void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time, bool little_endian) {
 	assert(device != NULL);
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
@@ -492,8 +493,16 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
 // int frame_width = CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
 // int frame_height = CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
-	int byte_per_pixel = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value / 8;
+	int byte_per_pixel = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value / 8;
 	int size = frame_width * frame_height;
+	if (byte_per_pixel == 2 && !little_endian) {
+		short *raw = (short *)(data + FITS_HEADER_SIZE);
+		int size = CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value;
+		for (int i = 0; i < size; i++) {
+			int value = *raw;
+			*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+		}
+	}
 
 	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 		time_t timer;
@@ -506,7 +515,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		memset(header, ' ', FITS_HEADER_SIZE);
 		int t = sprintf(header, "SIMPLE  =                     T / file conforms to FITS standard");
 		header[t] = ' ';
-		t = sprintf(header += 80, "BITPIX  = %21d / number of bits per data pixel", (int)CCD_INFO_BITS_PER_PIXEL_ITEM->number.value);
+		t = sprintf(header += 80, "BITPIX  = %21d / number of bits per data pixel", (int)CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value);
 		header[t] = ' ';
 		t = sprintf(header += 80, "NAXIS   =                     2 / number of data axes");
 		header[t] = ' ';
@@ -520,7 +529,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H");
 		header[t] = ' ';
-		if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value == 16) {
+		if (byte_per_pixel == 2) {
 			t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short");
 			header[t] = ' ';
 			t = sprintf(header += 80, "BSCALE  =                     1 / default scaling factor");
@@ -556,10 +565,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		if (byte_per_pixel == 2) {
 			short *raw = (short *)(data + FITS_HEADER_SIZE);
 			int size = CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value;
-			for (int i = 0; i < size; i++) {
-				int value = *raw - 32768;
-				*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-			}
+				for (int i = 0; i < size; i++) {
+					int value = *raw - 32768;
+					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+				}
 		}
 		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}

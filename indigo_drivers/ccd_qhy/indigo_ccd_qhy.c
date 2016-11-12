@@ -70,7 +70,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			libqhy_stop(PRIVATE_DATA->device_context);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
-			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->width, PRIVATE_DATA->height, PRIVATE_DATA->exposure_time);
+			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->width, PRIVATE_DATA->height, PRIVATE_DATA->exposure_time, true);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
@@ -125,7 +125,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (result) {
 				libqhy_get_resolution(PRIVATE_DATA->device_context, &PRIVATE_DATA->width, &PRIVATE_DATA->height, &PRIVATE_DATA->bits_per_pixel);
 				libqhy_get_pixel_size(PRIVATE_DATA->device_context, &PRIVATE_DATA->pixel_width, &PRIVATE_DATA->pixel_height);
-				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bits_per_pixel;
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = PRIVATE_DATA->bits_per_pixel;
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = PRIVATE_DATA->width;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = PRIVATE_DATA->height;
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->pixel_width * 100)/100;

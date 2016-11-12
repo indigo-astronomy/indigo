@@ -100,25 +100,31 @@ typedef struct {
 	dc1394camera_t *camera;
 	uint64_t guid;
 	bool present;
-	bool setup;
+	bool connected;
 	int device_count;
 	dc1394bool_t temperature_is_present, gain_is_present, gamma_is_present;
 	indigo_timer *exposure_timer, *temperture_timer;
-	double exposure_time;
 	unsigned char *buffer;
+	double exposure;
 } iidc_private_data;
 
-static void setup_camera(indigo_device *device) {
-	if (PRIVATE_DATA->setup) {
+static void start_camera(indigo_device *device) {
+	if (!PRIVATE_DATA->connected) {
+		dc1394error_t err = dc1394_capture_setup(PRIVATE_DATA->camera, 8, DC1394_CAPTURE_FLAGS_DEFAULT);
+		INDIGO_LOG(indigo_log("dc1394_capture_setup [%d] -> %d", __LINE__, err));
+		dc1394speed_t speed;
+		dc1394_video_get_iso_speed(PRIVATE_DATA->camera, &speed);
+		INDIGO_LOG(indigo_log("dc1394_video_get_iso_speed [%d] -> %d (%d)", __LINE__, err, speed));
+		PRIVATE_DATA->connected = true;
+	}
+}
+
+static void stop_camera(indigo_device *device) {
+	if (PRIVATE_DATA->connected) {
 		dc1394error_t err=dc1394_capture_stop(PRIVATE_DATA->camera);
 		INDIGO_LOG(indigo_log("dc1394_capture_stop [%d] -> %d", __LINE__, err));
 	}
-	dc1394error_t err = dc1394_capture_setup(PRIVATE_DATA->camera, 8, DC1394_CAPTURE_FLAGS_DEFAULT);
-	INDIGO_LOG(indigo_log("dc1394_capture_setup [%d] -> %d", __LINE__, err));
-	dc1394speed_t speed;
-	dc1394_video_get_iso_speed(PRIVATE_DATA->camera, &speed);
-	INDIGO_LOG(indigo_log("dc1394_video_get_iso_speed [%d] -> %d (%d)", __LINE__, err, speed));
-	PRIVATE_DATA->setup = true;
+	PRIVATE_DATA->connected = false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -142,7 +148,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_process_image(device, PRIVATE_DATA->buffer, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, PRIVATE_DATA->exposure_time);
+			indigo_process_image(device, PRIVATE_DATA->buffer, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, PRIVATE_DATA->exposure, false);
 			err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
 			INDIGO_LOG(indigo_log("dc1394_capture_enqueue [%d] -> %d", __LINE__, err));
 		} else {
@@ -166,6 +172,36 @@ static void ccd_temperature_callback(indigo_device *device) {
 	}
 }
 
+static bool setup_feature(indigo_device *device, indigo_item *item, dc1394feature_t feature) {
+	dc1394feature_info_t info;
+	info.id = feature;
+	dc1394error_t err = dc1394_feature_get(PRIVATE_DATA->camera, &info);
+	INDIGO_LOG(indigo_log("dc1394_feature_get %d [%d] -> %d", feature, __LINE__, err));
+	if (err == DC1394_SUCCESS && info.available) {
+		if (info.is_on != DC1394_ON) {
+			err = dc1394_feature_set_power(PRIVATE_DATA->camera, feature, DC1394_ON);
+			INDIGO_LOG(indigo_log("dc1394_feature_set_power [%d] -> %d", __LINE__, err));
+		}
+		if (info.current_mode != DC1394_FEATURE_MODE_MANUAL) {
+			err = dc1394_feature_set_mode(PRIVATE_DATA->camera, feature, DC1394_FEATURE_MODE_MANUAL);
+			INDIGO_LOG(indigo_log("dc1394_feature_set_mode [%d] -> %d", __LINE__, err));
+		}
+		if (info.abs_control != DC1394_ON) {
+			err = dc1394_feature_set_absolute_control(PRIVATE_DATA->camera, feature, DC1394_ON);
+			INDIGO_LOG(indigo_log("dc1394_feature_set_absolute_control [%d] -> %d", __LINE__, err));
+		}
+		item->number.value = info.abs_value;
+		item->number.min = info.abs_min;
+		if (item->number.value <  info.abs_min)
+			item->number.value =  info.abs_min;
+		item->number.max =  info.abs_max;
+		if (item->number.value > info.abs_max)
+			item->number.value = info.abs_max;
+		return true;
+	}
+	return false;
+}
+
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
@@ -174,21 +210,29 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, INDIGO_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		dc1394error_t err;
-		dc1394bool_t feature_present;
 		// -------------------------------------------------------------------------------- CCD_MODE, CCD_FRAMERATE, CCD_INFO, CCD_FRAME
+		dc1394video_mode_t current_mode, mode;
+		dc1394_video_get_mode(PRIVATE_DATA->camera, &current_mode);
+		INDIGO_LOG(indigo_log("dc1394_video_get_mode [%d] -> %d", __LINE__, err));
 		dc1394video_modes_t modes;
 		dc1394_video_get_supported_modes(PRIVATE_DATA->camera, &modes);
 		INDIGO_LOG(indigo_log("dc1394_video_get_supported_modes [%d] -> %d", __LINE__, err));
 		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_MODE_PROPERTY->count = 0;
 		int ix = 0, max_width = 0, max_height = 0, max_bits_per_pixel = 0;
-		dc1394video_mode_t mode = DC1394_VIDEO_MODE_160x120_YUV444;
 		for (int i = 0; i < modes.num; i++) {
 			mode = modes.modes[i];
 			if (mode < DC1394_VIDEO_MODE_EXIF) {
 				CCD_MODE_PROPERTY->count++;
 				ix = mode - DC1394_VIDEO_MODE_160x120_YUV444;
-				indigo_init_switch_item(CCD_MODE_ITEM+i, MODE[ix].name, MODE[ix].label, false);
+				if (mode == current_mode) {
+					indigo_init_switch_item(CCD_MODE_ITEM+i, MODE[ix].name, MODE[ix].label, true);
+					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = MODE[ix].width;
+					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = MODE[ix].height;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = MODE[ix].bits_per_pixel;
+				} else {
+					indigo_init_switch_item(CCD_MODE_ITEM+i, MODE[ix].name, MODE[ix].label, false);
+				}
 				if (max_width < MODE[ix].width)
 					max_width = MODE[ix].width;
 				if (max_height < MODE[ix].height)
@@ -197,45 +241,41 @@ static indigo_result ccd_attach(indigo_device *device) {
 					max_bits_per_pixel = MODE[ix].bits_per_pixel;
 			}
 		}
-		mode = ix + DC1394_VIDEO_MODE_160x120_YUV444;
 		CCD_INFO_WIDTH_ITEM->number.value = max_width;
 		CCD_INFO_HEIGHT_ITEM->number.value = max_height;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = max_bits_per_pixel;
-		(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count - 1)->sw.value = true;
-		err = dc1394_video_set_mode(PRIVATE_DATA->camera, mode);
-		INDIGO_LOG(indigo_log("dc1394_video_set_mode [%d] -> %d", __LINE__, err));
-		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = MODE[ix].width;
-		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = MODE[ix].height;
+		dc1394framerate_t current_framerate, framerate;
+		dc1394_video_get_framerate(PRIVATE_DATA->camera, &current_framerate);
+		INDIGO_LOG(indigo_log("dc1394_video_get_framerate [%d] -> %d", __LINE__, err));
 		dc1394framerates_t framerates;
-		dc1394framerate_t framerate = DC1394_FRAMERATE_1_875;
-		err = dc1394_video_get_supported_framerates(PRIVATE_DATA->camera, mode, &framerates);
+		err = dc1394_video_get_supported_framerates(PRIVATE_DATA->camera, current_mode, &framerates);
 		INDIGO_LOG(indigo_log("dc1394_video_get_supported_framerates [%d] -> %d", __LINE__, err));
 		CCD_FRAME_RATE_PROPERTY->hidden = false;
 		CCD_FRAME_RATE_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_FRAME_RATE_PROPERTY->count = 0;
+		bool framerate_found = false;
 		for (int i = 0; i < framerates.num; i++) {
 			framerate = framerates.framerates[i];
 			ix = framerate - DC1394_FRAMERATE_1_875;
 			CCD_FRAME_RATE_PROPERTY->count++;
-			indigo_init_switch_item(CCD_FRAME_RATE_ITEM+i, FRAMERATE[ix].name, FRAMERATE[ix].label, false);
+			indigo_init_switch_item(CCD_FRAME_RATE_ITEM+i, FRAMERATE[ix].name, FRAMERATE[ix].label, current_framerate == framerate);
+			framerate_found |= current_framerate == framerate;
 		}
-		(CCD_FRAME_RATE_ITEM + CCD_FRAME_RATE_PROPERTY->count - 1)->sw.value = true;
-		dc1394_video_set_framerate(PRIVATE_DATA->camera, framerate);
-		INDIGO_LOG(indigo_log("dc1394_video_set_framerate [%d] -> %d", __LINE__, err));
-		err = dc1394_feature_is_present(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, &PRIVATE_DATA->temperature_is_present);
-		INDIGO_LOG(indigo_log("dc1394_feature_is_present DC1394_FEATURE_SHUTTER [%d] -> %d", __LINE__, err));
-		if (err == DC1394_SUCCESS) {
-			float min, max;
-			err = dc1394_feature_set_mode(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, DC1394_FEATURE_MODE_MANUAL);
-			INDIGO_LOG(indigo_log("dc1394_feature_set_mode DC1394_FEATURE_SHUTTER [%d] -> %d", __LINE__, err));
-			err = dc1394_feature_get_absolute_boundaries(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, &min, &max);
-			INDIGO_LOG(indigo_log("dc1394_feature_get_absolute_boundaries DC1394_FEATURE_SHUTTER [%d] -> %d", __LINE__, err));
-			CCD_EXPOSURE_ITEM->number.min = min;
-			if (CCD_EXPOSURE_ITEM->number.value < min)
-				CCD_EXPOSURE_ITEM->number.value = min;
-			CCD_EXPOSURE_ITEM->number.max = max;
-			if (CCD_EXPOSURE_ITEM->number.value > max)
-				CCD_EXPOSURE_ITEM->number.value = max;
+		if (!framerate_found) {
+			CCD_FRAME_RATE_ITEM[CCD_FRAME_RATE_PROPERTY->count-1].sw.value = true;
+			dc1394_video_set_framerate(PRIVATE_DATA->camera, ix+DC1394_FRAMERATE_1_875);
+			INDIGO_LOG(indigo_log("dc1394_video_set_framerate [%d] -> %d", __LINE__, err));
+		}
+		setup_feature(device, CCD_EXPOSURE_ITEM, DC1394_FEATURE_SHUTTER);
+		// -------------------------------------------------------------------------------- CCD_GAIN
+		if (setup_feature(device, CCD_GAIN_ITEM, DC1394_FEATURE_GAIN)) {
+			CCD_GAIN_PROPERTY->hidden = false;
+			PRIVATE_DATA->gain_is_present = true;
+		}
+		// -------------------------------------------------------------------------------- CCD_GAMMA
+		if (setup_feature(device, CCD_GAIN_ITEM, DC1394_FEATURE_GAMMA)) {
+			CCD_GAMMA_PROPERTY->hidden = false;
+			PRIVATE_DATA->gamma_is_present = true;
 		}
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		err = dc1394_feature_is_present(PRIVATE_DATA->camera, DC1394_FEATURE_TEMPERATURE, &PRIVATE_DATA->temperature_is_present);
@@ -243,56 +283,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (err == DC1394_SUCCESS) {
 			CCD_TEMPERATURE_PROPERTY->hidden = !PRIVATE_DATA->temperature_is_present;
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-		}
-		// -------------------------------------------------------------------------------- CCD_GAIN
-		err = dc1394_feature_is_present(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, &feature_present);
-		INDIGO_LOG(indigo_log("dc1394_feature_is_present DC1394_FEATURE_GAIN [%d] -> %d", __LINE__, err));
-		if (feature_present) {
-			dc1394bool_t has_absolute_control;
-			float value, min, max;
-			PRIVATE_DATA->gain_is_present = false;
-			err = dc1394_feature_has_absolute_control(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, &has_absolute_control);
-			INDIGO_LOG(indigo_log("dc1394_feature_has_absolute_control DC1394_FEATURE_GAIN [%d] -> %d", __LINE__, err));
-			if (has_absolute_control) {
-				err = dc1394_feature_set_mode(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, DC1394_FEATURE_MODE_MANUAL);
-				INDIGO_LOG(indigo_log("dc1394_feature_set_mode DC1394_FEATURE_GAIN [%d] -> %d", __LINE__, err));
-				if (err == DC1394_SUCCESS) {
-					err = dc1394_feature_get_absolute_boundaries(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, &min, &max);
-					INDIGO_LOG(indigo_log("dc1394_feature_get_absolute_boundaries DC1394_FEATURE_GAIN [%d] -> %d", __LINE__, err));
-					err = dc1394_feature_get_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, &value);
-					INDIGO_LOG(indigo_log("dc1394_feature_get_absolute_value DC1394_FEATURE_GAIN [%d] -> %d", __LINE__, err));
-					CCD_GAIN_ITEM->number.min = min;
-					CCD_GAIN_ITEM->number.max = max;
-					CCD_GAIN_ITEM->number.value = value;
-					CCD_GAIN_PROPERTY->hidden = false;
-					PRIVATE_DATA->gain_is_present = true;
-				}
-			}
-		}
-		// -------------------------------------------------------------------------------- CCD_GAMMA
-		dc1394_feature_is_present(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, &feature_present);
-		INDIGO_LOG(indigo_log("dc1394_feature_is_present DC1394_FEATURE_GAMMA [%d] -> %d", __LINE__, err));
-		if (feature_present) {
-			dc1394bool_t has_absolute_control;
-			float value, min, max;
-			PRIVATE_DATA->gamma_is_present = false;
-			err = dc1394_feature_has_absolute_control(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, &has_absolute_control);
-			INDIGO_LOG(indigo_log("dc1394_feature_has_absolute_control DC1394_FEATURE_GAMMA [%d] -> %d", __LINE__, err));
-			if (has_absolute_control) {
-				err = dc1394_feature_set_mode(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, DC1394_FEATURE_MODE_MANUAL);
-				INDIGO_LOG(indigo_log("dc1394_feature_set_mode DC1394_FEATURE_GAMMA [%d] -> %d", __LINE__, err));
-				if (err == DC1394_SUCCESS) {
-					err = dc1394_feature_get_absolute_boundaries(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, &min, &max);
-					INDIGO_LOG(indigo_log("dc1394_feature_get_absolute_boundaries DC1394_FEATURE_GAMMA [%d] -> %d", __LINE__, err));
-					err = dc1394_feature_get_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, &value);
-					INDIGO_LOG(indigo_log("dc1394_feature_get_absolute_value DC1394_FEATURE_GAMMA [%d] -> %d", __LINE__, err));
-					CCD_GAMMA_ITEM->number.min = min;
-					CCD_GAMMA_ITEM->number.max = max;
-					CCD_GAMMA_ITEM->number.value = value;
-					CCD_GAMMA_PROPERTY->hidden = false;
-					PRIVATE_DATA->gamma_is_present = true;
-				}
-			}
 		}
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
@@ -309,7 +299,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			setup_camera(device);
+			start_camera(device);
 			PRIVATE_DATA->buffer = malloc(FITS_HEADER_SIZE + 2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value);
 			assert(PRIVATE_DATA->buffer != NULL);
 			if (PRIVATE_DATA->temperature_is_present) {
@@ -320,8 +310,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
 				PRIVATE_DATA->temperture_timer = NULL;
 			}
-			dc1394error_t err=dc1394_capture_stop(PRIVATE_DATA->camera);
-			INDIGO_LOG(indigo_log("dc1394_capture_stop [%d] -> %d", __LINE__, err));
+			stop_camera(device);
 			if (PRIVATE_DATA->buffer != NULL) {
 				free(PRIVATE_DATA->buffer);
 				PRIVATE_DATA->buffer = NULL;
@@ -331,6 +320,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_MODE
 		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
+		stop_camera(device);
 		bool update_frame = false;
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
@@ -340,9 +330,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					if (!strcmp(item->name, MODE[ix].name)) {
 						CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = MODE[ix].width;
 						CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = MODE[ix].height;
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = MODE[ix].bits_per_pixel;
 						dc1394error_t err = dc1394_video_set_mode(PRIVATE_DATA->camera, mode);
 						INDIGO_LOG(indigo_log("dc1394_video_set_mode [%d] -> %d", __LINE__, err));
+						dc1394framerate_t current_framerate;
+						err = dc1394_video_get_framerate(PRIVATE_DATA->camera, &current_framerate);
+						INDIGO_LOG(indigo_log("dc1394_video_get_framerate [%d] -> %d", __LINE__, err));
 						dc1394framerates_t framerates;
+						bool framerate_found = false;
 						err = dc1394_video_get_supported_framerates(PRIVATE_DATA->camera, mode, &framerates);
 						INDIGO_LOG(indigo_log("dc1394_video_get_supported_framerates [%d] -> %d", __LINE__, err));
 						CCD_FRAME_RATE_PROPERTY->count = 0;
@@ -350,19 +345,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 							dc1394framerate_t framerate = framerates.framerates[i];
 							ix = framerate - DC1394_FRAMERATE_1_875;
 							CCD_FRAME_RATE_PROPERTY->count++;
-							indigo_init_switch_item(CCD_FRAME_RATE_ITEM+i, FRAMERATE[ix].name, FRAMERATE[ix].label, false);
+							indigo_init_switch_item(CCD_FRAME_RATE_ITEM+i, FRAMERATE[ix].name, FRAMERATE[ix].label, current_framerate == framerate);
+							framerate_found |= current_framerate == framerate;
 						}
-						(CCD_FRAME_RATE_ITEM + CCD_FRAME_RATE_PROPERTY->count - 1)->sw.value = true;
-						float min, max;
-						err = dc1394_feature_get_absolute_boundaries(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, &min, &max);
-						INDIGO_LOG(indigo_log("dc1394_feature_get_absolute_boundaries DC1394_FEATURE_SHUTTER [%d] -> %d", __LINE__, err));
-						CCD_EXPOSURE_ITEM->number.min = min;
-						if (CCD_EXPOSURE_ITEM->number.value < min)
-							CCD_EXPOSURE_ITEM->number.value = min;
-						CCD_EXPOSURE_ITEM->number.max = max;
-						if (CCD_EXPOSURE_ITEM->number.value > max)
-							CCD_EXPOSURE_ITEM->number.value = max;
-						setup_camera(device);
+						if (!framerate_found) {
+							CCD_FRAME_RATE_ITEM[CCD_FRAME_RATE_PROPERTY->count-1].sw.value = true;
+							dc1394_video_set_framerate(PRIVATE_DATA->camera, ix+DC1394_FRAMERATE_1_875);
+							INDIGO_LOG(indigo_log("dc1394_video_set_framerate [%d] -> %d", __LINE__, err));
+						}
+						setup_feature(device, CCD_EXPOSURE_ITEM, DC1394_FEATURE_SHUTTER);
 						update_frame = true;
 						break;
 					}
@@ -373,12 +364,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value && update_frame) {
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			CCD_FRAME_RATE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_FRAME_RATE_PROPERTY, NULL);
+			indigo_define_property(device, CCD_FRAME_RATE_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(CCD_FRAME_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_FRAME_RATE
 		indigo_property_copy_values(CCD_FRAME_RATE_PROPERTY, property, false);
+		stop_camera(device);
 		bool update_exposure = false;
 		for (int i = 0; i < CCD_FRAME_RATE_PROPERTY->count; i++) {
 			indigo_item *item = &CCD_FRAME_RATE_PROPERTY->items[i];
@@ -388,30 +382,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					if (!strcmp(item->name, FRAMERATE[ix].name)) {
 						dc1394error_t err = dc1394_video_set_framerate(PRIVATE_DATA->camera, framerate);
 						INDIGO_LOG(indigo_log("dc1394_video_set_framerate DC1394_FEATURE_SHUTTER [%d] -> %d", __LINE__, err));
-						err = dc1394_feature_is_present(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, &PRIVATE_DATA->temperature_is_present);
-						INDIGO_LOG(indigo_log("dc1394_feature_is_present DC1394_FEATURE_SHUTTER [%d] -> %d", __LINE__, err));
-						if (err == DC1394_SUCCESS) {
-							float min, max;
-							err = dc1394_feature_get_absolute_boundaries(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, &min, &max);
-							INDIGO_LOG(indigo_log("dc1394_feature_get_absolute_boundaries DC1394_FEATURE_SHUTTER [%d] -> %d", __LINE__, err));
-							CCD_EXPOSURE_ITEM->number.min = min;
-							if (CCD_EXPOSURE_ITEM->number.value < min)
-								CCD_EXPOSURE_ITEM->number.value = min;
-							CCD_EXPOSURE_ITEM->number.max = max;
-							if (CCD_EXPOSURE_ITEM->number.value > max)
-								CCD_EXPOSURE_ITEM->number.value = max;
-							setup_camera(device);
-							update_exposure = true;
-							break;
-						}
+						setup_feature(device, CCD_EXPOSURE_ITEM, DC1394_FEATURE_SHUTTER);
+						update_exposure = true;
+						break;
 					}
 				}
 				break;
 			}
 		}
 		if (CONNECTION_CONNECTED_ITEM->sw.value && update_exposure) {
-			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			CCD_FRAME_RATE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_FRAME_RATE_PROPERTY, NULL);
 		}
@@ -429,12 +410,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
 		dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAMMA, CCD_GAMMA_ITEM->number.value);
-		INDIGO_LOG(indigo_log("dc1394_feature_set_absolute_value DC1394_FEATURE_GAMMA [%d] -> %d", __LINE__, err));
+		INDIGO_LOG(indigo_log("dc1394_feature_set_absolute_value %g [%d] -> %d", CCD_GAMMA_ITEM->number.value, __LINE__, err));
 		err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, CCD_GAIN_ITEM->number.value);
-		INDIGO_LOG(indigo_log("dc1394_feature_set_absolute_value DC1394_FEATURE_GAIN [%d] -> %d", __LINE__, err));
+		INDIGO_LOG(indigo_log("dc1394_feature_set_absolute_value %g [%d] -> %d", CCD_GAIN_ITEM->number.value, __LINE__, err));
+		err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_GAIN_ITEM->number.value);
+		INDIGO_LOG(indigo_log("dc1394_feature_set_absolute_value %g [%d] -> %d", CCD_EXPOSURE_ITEM->number.value, __LINE__, err));
+		start_camera(device);
 		err = dc1394_video_set_one_shot(PRIVATE_DATA->camera, true);
 		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_video_set_one_shot() [%d] -> %d", __LINE__, err));
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
+		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, PRIVATE_DATA->exposure = CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -519,9 +503,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 							INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_video_set_iso_speed [%d] -> %d", __LINE__, err));
 						}
 //						INDIGO_DEBUG_DRIVER(dc1394_camera_print_info(camera, stderr));
-						INDIGO_DEBUG_DRIVER(dc1394featureset_t features);
-						INDIGO_DEBUG_DRIVER(dc1394_feature_get_all(camera, &features));
-						INDIGO_DEBUG_DRIVER(dc1394_feature_print_all(&features, stderr));
+//						INDIGO_DEBUG_DRIVER(dc1394featureset_t features);
+//						INDIGO_DEBUG_DRIVER(dc1394_feature_get_all(camera, &features));
+//						INDIGO_DEBUG_DRIVER(dc1394_feature_print_all(&features, stderr));
 						iidc_private_data *private_data = malloc(sizeof(iidc_private_data));
 						assert(private_data != NULL);
 						memset(private_data, 0, sizeof(iidc_private_data));
@@ -567,15 +551,17 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				}
 				dc1394_camera_free_list(list);
 			}
+			iidc_private_data *private_data = NULL;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] != NULL) {
 					indigo_device *device = devices[j];
 					if (!PRIVATE_DATA->present) {
-						dc1394_camera_free(PRIVATE_DATA->camera);
-						if (PRIVATE_DATA != NULL) {
-							free(PRIVATE_DATA);
-						}
+						private_data = PRIVATE_DATA;
 						indigo_detach_device(device);
+						dc1394_camera_free(private_data->camera);
+						if (private_data != NULL) {
+							free(private_data);
+						}
 						free(device);
 						devices[j] = NULL;
 					}
