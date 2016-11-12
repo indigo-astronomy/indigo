@@ -23,6 +23,8 @@
  \file indigo_ccd_simulator.c
  */
 
+#define DRIVER_VERSION 0x0001
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -564,6 +566,9 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 	};
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	SET_DRIVER_INFO(info, "CCD Simulator", __FUNCTION__, DRIVER_VERSION, last_action);
+
 	if (action == last_action)
 		return INDIGO_OK;
 
