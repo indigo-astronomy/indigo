@@ -54,8 +54,8 @@
 
 #ifdef STATIC_DRIVERS
 static struct {
+	const char *description;
 	const char *name;
-	const char *drv_name;
 	indigo_result (*driver)(indigo_driver_action, indigo_driver_info*);
 } static_drivers[] = {
 	{ "CCD Simulator", "indigo_ccd_simulator", indigo_ccd_simulator },
@@ -66,15 +66,15 @@ static struct {
 	{ "QHY CCD", "indigo_ccd_qhy", indigo_ccd_qhy },
 	{ "SSAG/QHY5 CCD", "indigo_ccd_ssag", indigo_ccd_ssag },
 	{ "Shoestring FCUSB Focuser", "indigo_focuser_fcusb", indigo_focuser_fcusb },
-	{ "ASI Filter wheel", "indigo_wheel_asi", indigo_wheel_asi },
+	{ "ASI Filter Wheel", "indigo_wheel_asi", indigo_wheel_asi },
 	{ "IIDC CCD", "indigo_ccd_iidc", indigo_ccd_iidc },
 	{ NULL, NULL, NULL }
 };
 #else
 
 typedef struct {
+	char description[INDIGO_NAME_SIZE];
 	char name[INDIGO_NAME_SIZE];
-	char drv_name[INDIGO_NAME_SIZE];
 	indigo_result (*driver)(indigo_driver_action, indigo_driver_info*);
 	void *dl_handle;
 } drivers;
@@ -112,7 +112,7 @@ static indigo_result add_driver(const char *name) {
 	empty_slot = used_slots; /* the first slot after the last used is a good candidate */
 	int dc = used_slots-1;
 	while (dc >= 0) {
-		if (!strncmp(dynamic_drivers[dc].drv_name, entry_point_name, INDIGO_NAME_SIZE)) {
+		if (!strncmp(dynamic_drivers[dc].name, entry_point_name, INDIGO_NAME_SIZE)) {
 			INDIGO_LOG(indigo_log("Driver '%s' already loaded.", entry_point_name));
 			return INDIGO_FAILED;
 		} else if (dynamic_drivers[dc].driver == NULL) {
@@ -137,12 +137,12 @@ static indigo_result add_driver(const char *name) {
 		return INDIGO_NOT_FOUND;
 	}
 
-	strncpy(dynamic_drivers[empty_slot].name, entry_point_name, INDIGO_NAME_SIZE); //TO BE CHANGED - DRIVER SHOULD REPORT NAME!!!
-	strncpy(dynamic_drivers[empty_slot].drv_name, entry_point_name, INDIGO_NAME_SIZE);
+	indigo_driver_info info;
+	driver(INDIGO_DRIVER_INFO, &info);
+	strncpy(dynamic_drivers[empty_slot].description, info.description, INDIGO_NAME_SIZE); //TO BE CHANGED - DRIVER SHOULD REPORT NAME!!!
+	strncpy(dynamic_drivers[empty_slot].name, entry_point_name, INDIGO_NAME_SIZE);
 	dynamic_drivers[empty_slot].driver = driver;
 	dynamic_drivers[empty_slot].dl_handle = dl_handle;
-	//INDIGO_LOG(indigo_log("load entry point %d %p", empty_slot, dynamic_drivers[empty_slot].driver));
-	//INDIGO_LOG(indigo_log("dlopen %d %p", empty_slot, dynamic_drivers[empty_slot].dl_handle));
 
 	if (empty_slot == used_slots) used_slots++; /* if we are not filling a gap - increase used_slots */
 
@@ -161,7 +161,7 @@ static indigo_result remove_driver(const char *entry_point_name) {
 
 	int dc = used_slots-1;
 	while (dc >= 0) {
-		if (!strncmp(dynamic_drivers[dc].drv_name, entry_point_name, INDIGO_NAME_SIZE)) {
+		if (!strncmp(dynamic_drivers[dc].name, entry_point_name, INDIGO_NAME_SIZE)) {
 
 			if (dynamic_drivers[dc].driver) {
 				//INDIGO_LOG(indigo_log("unload entry point %d %p", dc, dynamic_drivers[dc].driver));
@@ -172,8 +172,8 @@ static indigo_result remove_driver(const char *entry_point_name) {
 				dlclose(dynamic_drivers[dc].dl_handle);
 			}
 			INDIGO_LOG(indigo_log("Driver %s removed.", entry_point_name));
+			dynamic_drivers[dc].description[0] = '\0';
 			dynamic_drivers[dc].name[0] = '\0';
-			dynamic_drivers[dc].drv_name[0] = '\0';
 			dynamic_drivers[dc].driver = NULL;
 			dynamic_drivers[dc].dl_handle = NULL;
 			return INDIGO_OK;
@@ -195,13 +195,13 @@ static indigo_result attach(indigo_device *device) {
 	driver_property->count = 0;
 
 #ifdef STATIC_DRIVERS
-	for (int i = first_driver; i < MAX_DRIVERS && static_drivers[i].name; i++) {
-		indigo_init_switch_item(&driver_property->items[driver_property->count++], static_drivers[i].name, static_drivers[i].name, true);
+	for (int i = first_driver; i < MAX_DRIVERS && static_drivers[i].description; i++) {
+		indigo_init_switch_item(&driver_property->items[driver_property->count++], static_drivers[i].description, static_drivers[i].description, true);
 	}
 #else
 	int i = 0;
 	while (i < used_slots) {
-		indigo_init_switch_item(&driver_property->items[driver_property->count++], dynamic_drivers[i].name, dynamic_drivers[i].name, true);
+		indigo_init_switch_item(&driver_property->items[driver_property->count++], dynamic_drivers[i].description, dynamic_drivers[i].description, true);
 		i++;
 	}
 #endif
@@ -271,7 +271,7 @@ void signal_handler(int signo) {
 #else
 	int dc = used_slots-1;
 	while (dc >= 0) {
-		remove_driver(dynamic_drivers[dc].drv_name);
+		remove_driver(dynamic_drivers[dc].name);
 		dc--;
 	}
 #endif
@@ -285,7 +285,7 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION >> 8) & 0xFF, INDIGO_VERSION & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
-	
+
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators"))
 			first_driver = 0;
