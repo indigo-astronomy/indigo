@@ -59,10 +59,9 @@
 
 #### Wheels
 
-1. ASU EFW wheel driver
-2. Atik EFW wheel driver
-3. FLI wheel driver (based on FLI SDK)
-4. SBIG wheel driver
+1. Atik EFW wheel driver
+2. FLI wheel driver (based on FLI SDK)
+3. SBIG wheel driver
 
 #### Guiders
 
