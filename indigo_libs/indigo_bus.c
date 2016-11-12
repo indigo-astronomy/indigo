@@ -605,43 +605,45 @@ void indigo_set_switch(indigo_property *property, indigo_item *item, bool value)
 void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state) {
 	assert(property != NULL);
 	assert(other != NULL);
-	if (property->type == other->type) {
-		if (with_state)
-			property->state = other->state;
-		if (property->type == INDIGO_SWITCH_VECTOR && property->rule != INDIGO_ANY_OF_MANY_RULE) {
-			for (int j = 0; j < property->count; j++) {
-				property->items[j].sw.value = false;
+	if (property->perm == INDIGO_RW_PERM) {
+		if (property->type == other->type) {
+			if (with_state)
+				property->state = other->state;
+			if (property->type == INDIGO_SWITCH_VECTOR && property->rule != INDIGO_ANY_OF_MANY_RULE) {
+				for (int j = 0; j < property->count; j++) {
+					property->items[j].sw.value = false;
+				}
 			}
-		}
-		for (int i = 0; i < other->count; i++) {
-			indigo_item *other_item = &other->items[i];
-			for (int j = 0; j < property->count; j++) {
-				indigo_item *property_item = &property->items[j];
-				if (!strcmp(property_item->name, other_item->name)) {
-					switch (property->type) {
-					case INDIGO_TEXT_VECTOR:
-						strncpy(property_item->text.value, other_item->text.value, INDIGO_VALUE_SIZE);
-						break;
-					case INDIGO_NUMBER_VECTOR:
-						property_item->number.value = other_item->number.value;
-						if (property_item->number.value < property_item->number.min)
-							property_item->number.value = property_item->number.min;
-						if (property_item->number.value > property_item->number.max)
-							property_item->number.value = property_item->number.max;
-						break;
-					case INDIGO_SWITCH_VECTOR:
-						property_item->sw.value = other_item->sw.value;
-						break;
-					case INDIGO_LIGHT_VECTOR:
-						property_item->light.value = other_item->light.value;
-						break;
-					case INDIGO_BLOB_VECTOR:
-						strncpy(property_item->blob.format, other_item->blob.format, INDIGO_NAME_SIZE);
-						property_item->blob.size = other_item->blob.size;
-						property_item->blob.value = other_item->blob.value;
+			for (int i = 0; i < other->count; i++) {
+				indigo_item *other_item = &other->items[i];
+				for (int j = 0; j < property->count; j++) {
+					indigo_item *property_item = &property->items[j];
+					if (!strcmp(property_item->name, other_item->name)) {
+						switch (property->type) {
+						case INDIGO_TEXT_VECTOR:
+							strncpy(property_item->text.value, other_item->text.value, INDIGO_VALUE_SIZE);
+							break;
+						case INDIGO_NUMBER_VECTOR:
+							property_item->number.value = other_item->number.value;
+							if (property_item->number.value < property_item->number.min)
+								property_item->number.value = property_item->number.min;
+							if (property_item->number.value > property_item->number.max)
+								property_item->number.value = property_item->number.max;
+							break;
+						case INDIGO_SWITCH_VECTOR:
+							property_item->sw.value = other_item->sw.value;
+							break;
+						case INDIGO_LIGHT_VECTOR:
+							property_item->light.value = other_item->light.value;
+							break;
+						case INDIGO_BLOB_VECTOR:
+							strncpy(property_item->blob.format, other_item->blob.format, INDIGO_NAME_SIZE);
+							property_item->blob.size = other_item->blob.size;
+							property_item->blob.value = other_item->blob.value;
+							break;
+						}
 						break;
 					}
-					break;
 				}
 			}
 		}

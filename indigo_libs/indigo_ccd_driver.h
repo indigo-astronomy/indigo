@@ -145,6 +145,10 @@
  */
 #define CCD_FRAME_HEIGHT_ITEM             (CCD_FRAME_PROPERTY->items+3)
 
+/** CCD_FRAME.BITS_PER_PIXEL property item pointer.
+ */
+#define CCD_FRAME_BITS_PER_PIXEL_ITEM             (CCD_FRAME_PROPERTY->items+4)
+
 /** CCD_BIN property pointer, property is mandatory, should be set read-only if binning can't be changed, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_BIN_PROPERTY                  (CCD_CONTEXT->ccd_bin_property)
@@ -321,7 +325,7 @@ extern indigo_result indigo_ccd_detach(indigo_device *device);
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
-extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time);
+extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time, bool little_endian);
 
 #endif /* indigo_ccd_h */
 
