@@ -119,10 +119,10 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_start();
-	indigo_ccd_simulator(true);
+	indigo_ccd_simulator(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(&test);
 	sleep(1000);
-	indigo_ccd_simulator(false);
+	indigo_ccd_simulator(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_stop();
 	return 0;
 }

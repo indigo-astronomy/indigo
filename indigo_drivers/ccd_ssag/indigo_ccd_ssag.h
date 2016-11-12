@@ -33,7 +33,7 @@
 /** Register Orion StarShoot AutoGuider hot-plug callback
  */
 
-extern indigo_result indigo_ccd_ssag(bool state);
+extern indigo_result indigo_ccd_ssag(indigo_driver_action action, indigo_driver_info *info);
 
 #endif /* indigo_ccd_ssag_h */
 
