@@ -50,11 +50,11 @@
 #define PRIVATE_DATA        ((iidc_private_data *)DEVICE_CONTEXT->private_data)
 
 struct {
-	char *name;
-	char *label;
-	unsigned short width;
-	unsigned short height;
-	unsigned short bits_per_pixel;
+	char name[128];
+	char label[128];
+	unsigned width;
+	unsigned height;
+	unsigned bits_per_pixel;
 } MODE[] = {
 	{ "160x120_YUV444", "YUV 4:4:4 160x120", 160, 120, 12 },
 	{ "320x240_YUV422", "YUV 4:2:2 320x240", 320, 240, 8 },
@@ -78,7 +78,16 @@ struct {
 	{ "1600x1200_RGB8", "RGB 8 1600x1200", 1600, 120, 8 },
 	{ "1600x1200_MONO8", "MONO 8 1600x1200", 1600, 120, 8 },
 	{ "1280x960_MONO16", "MONO 16 1280x960", 1280, 960, 16 },
-	{ "1600x1200_MONO16", "MONO 16 1600x1200", 1600, 120, 16 }
+	{ "1600x1200_MONO16", "MONO 16 1600x1200", 1600, 120, 16 },
+	{ "", "", 0, 0, 0 },
+	{ "FORMAT7_0", "FORMAT7_0", 0, 0, 0 },
+	{ "FORMAT7_1", "FORMAT7_1", 0, 0, 0 },
+	{ "FORMAT7_2", "FORMAT7_2", 0, 0, 0 },
+	{ "FORMAT7_3", "FORMAT7_3", 0, 0, 0 },
+	{ "FORMAT7_4", "FORMAT7_4", 0, 0, 0 },
+	{ "FORMAT7_5", "FORMAT7_5", 0, 0, 0 },
+	{ "FORMAT7_6", "FORMAT7_6", 0, 0, 0 },
+	{ "FORMAT7_7", "FORMAT7_7", 0, 0, 0 }
 };
 
 struct {
@@ -222,9 +231,16 @@ static indigo_result ccd_attach(indigo_device *device) {
 		int ix = 0, max_width = 0, max_height = 0, max_bits_per_pixel = 0;
 		for (int i = 0; i < modes.num; i++) {
 			mode = modes.modes[i];
-			if (mode < DC1394_VIDEO_MODE_EXIF) {
+			if (mode <= DC1394_VIDEO_MODE_FORMAT7_MAX) {
 				CCD_MODE_PROPERTY->count++;
 				ix = mode - DC1394_VIDEO_MODE_160x120_YUV444;
+				if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN) {
+					dc1394_format7_get_max_image_size(PRIVATE_DATA->camera, mode, &MODE[ix].width, &MODE[ix].height);
+					INDIGO_LOG(indigo_log("dc1394_format7_get_max_image_size [%d] -> %d", __LINE__, err));
+					dc1394_format7_get_data_depth(PRIVATE_DATA->camera, mode, &MODE[ix].bits_per_pixel);
+					INDIGO_LOG(indigo_log("dc1394_format7_get_data_depth [%d] -> %d", __LINE__, err));
+					snprintf(MODE[ix].label, 127, "FORMAT7 %d %dx%d", MODE[ix].bits_per_pixel, MODE[ix].width, MODE[ix].height);
+				}
 				if (mode == current_mode) {
 					indigo_init_switch_item(CCD_MODE_ITEM+i, MODE[ix].name, MODE[ix].label, true);
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = MODE[ix].width;
@@ -325,7 +341,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
 			if (item->sw.value) {
-				for (dc1394video_mode_t mode = DC1394_VIDEO_MODE_160x120_YUV444; mode < DC1394_VIDEO_MODE_1600x1200_MONO16 ; mode++) {
+				for (dc1394video_mode_t mode = DC1394_VIDEO_MODE_160x120_YUV444; mode <= DC1394_VIDEO_MODE_FORMAT7_MAX ; mode++) {
 					int ix = mode - DC1394_VIDEO_MODE_160x120_YUV444;
 					if (!strcmp(item->name, MODE[ix].name)) {
 						CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = MODE[ix].width;
@@ -413,7 +429,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_LOG(indigo_log("dc1394_feature_set_absolute_value %g [%d] -> %d", CCD_GAMMA_ITEM->number.value, __LINE__, err));
 		err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_GAIN, CCD_GAIN_ITEM->number.value);
 		INDIGO_LOG(indigo_log("dc1394_feature_set_absolute_value %g [%d] -> %d", CCD_GAIN_ITEM->number.value, __LINE__, err));
-		err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_GAIN_ITEM->number.value);
+		err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_EXPOSURE_ITEM->number.value);
 		INDIGO_LOG(indigo_log("dc1394_feature_set_absolute_value %g [%d] -> %d", CCD_EXPOSURE_ITEM->number.value, __LINE__, err));
 		start_camera(device);
 		err = dc1394_video_set_one_shot(PRIVATE_DATA->camera, true);
@@ -421,6 +437,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, PRIVATE_DATA->exposure = CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
+		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
 			dc1394video_frame_t *frame;
@@ -433,7 +450,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					INDIGO_LOG(indigo_log("dc1394_capture_enqueue [%d] -> %d", __LINE__, err));
 			}
 		}
-		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
