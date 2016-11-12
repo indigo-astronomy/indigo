@@ -26,7 +26,7 @@
 
 #### indigo_server
 
-1. posibility to run external drivers dynamic libraries in indigo_server (INDI style drivers)
+(DONE) 1. posibility to run external drivers dynamic libraries in indigo_server (INDI style drivers)
 2. posibility to run external drivers executables in indigo_server (INDI style drivers)
 3. posibility to add driver to indigo_server over INDIGO protocol
 
