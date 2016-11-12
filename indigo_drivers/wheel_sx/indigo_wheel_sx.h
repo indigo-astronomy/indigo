@@ -32,7 +32,7 @@
 /** Register StarlighXpress filter wheel hot-plug callback
  */
 
-extern indigo_result indigo_wheel_sx(bool state);
+extern indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *info);
 
 #endif /* ccd_wheel_h */
 

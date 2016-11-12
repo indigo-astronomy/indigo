@@ -56,7 +56,7 @@
 static struct {
 	const char *name;
 	const char *drv_name;
-	indigo_result (*driver)(bool state);
+	indigo_result (*driver)(indigo_driver_action, indigo_driver_info*);
 } static_drivers[] = {
 	{ "CCD Simulator", "indigo_ccd_simulator", indigo_ccd_simulator },
 	{ "Mount Simulator", "indigo_mount_simulator", indigo_mount_simulator },
@@ -75,7 +75,7 @@ static struct {
 typedef struct {
 	char name[INDIGO_NAME_SIZE];
 	char drv_name[INDIGO_NAME_SIZE];
-	indigo_result (*driver)(bool state);
+	indigo_result (*driver)(indigo_driver_action, indigo_driver_info*);
 	void *dl_handle;
 } drivers;
 
@@ -102,7 +102,7 @@ static indigo_result add_driver(const char *name) {
 	char *entry_point_name, *cp;
 	void *dl_handle;
 	int empty_slot;
-	indigo_result (*driver)(bool);
+	indigo_result (*driver)(indigo_driver_action, indigo_driver_info*);
 
 	strncpy(driver_name, name, sizeof(driver_name));
 	entry_point_name = basename(driver_name);
@@ -165,7 +165,7 @@ static indigo_result remove_driver(const char *entry_point_name) {
 
 			if (dynamic_drivers[dc].driver) {
 				//INDIGO_LOG(indigo_log("unload entry point %d %p", dc, dynamic_drivers[dc].driver));
-				dynamic_drivers[dc].driver(false); /* deregister */
+				dynamic_drivers[dc].driver(INDIGO_DRIVER_SHUTDOWN, NULL); /* deregister */
 			}
 			if (dynamic_drivers[dc].dl_handle) {
 				//INDIGO_LOG(indigo_log("dlclose %d %p,", dc, dynamic_drivers[dc].dl_handle));
@@ -226,12 +226,19 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	// -------------------------------------------------------------------------------- DRIVERS
 		indigo_property_copy_values(driver_property, property, false);
 	#ifdef STATIC_DRIVERS
-		for (int i = 0; i < driver_property->count; i++)
-			static_drivers[i + first_driver].driver(driver_property->items[i].sw.value);
+		for (int i = 0; i < driver_property->count; i++) {
+			if (driver_property->items[i].sw.value)
+				static_drivers[i + first_driver].driver(INDIGO_DRIVER_INIT, NULL);
+			else
+				static_drivers[i + first_driver].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
+		}
 	#else
 		int i = 0;
 		while (i < used_slots) {
-			dynamic_drivers[i].driver(driver_property->items[i].sw.value);
+			if (driver_property->items[i].sw.value)
+				dynamic_drivers[i].driver(INDIGO_DRIVER_INIT, NULL);
+			else
+				dynamic_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
 			i++;
 		}
 	#endif
@@ -258,7 +265,7 @@ void signal_handler(int signo) {
 #ifdef STATIC_DRIVERS
 	int dc = 0;
 	while (static_drivers[dc].driver != NULL) {
-		static_drivers[dc].driver(false);
+		static_drivers[dc].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
 		dc++;
 	}
 #else
@@ -294,7 +301,7 @@ int main(int argc, const char * argv[]) {
 	}
 
 	indigo_start_usb_event_handler();
-	
+
 	signal(SIGINT, signal_handler);
 
 	static indigo_device device = {
@@ -307,7 +314,7 @@ int main(int argc, const char * argv[]) {
 
 	if (strstr(argv[0], "MacOS"))
 		indigo_use_syslog = true; // embeded into INDIGO Server for macOS
-	
+
 	indigo_start();
 	indigo_attach_device(&device);
 

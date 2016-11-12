@@ -34,7 +34,7 @@
 /** Register QHY CCD hot-plug callback
  */
 
-extern indigo_result indigo_ccd_qhy(bool state);
+extern indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info);
 
 #endif /* ccd_qhy_h */
 
