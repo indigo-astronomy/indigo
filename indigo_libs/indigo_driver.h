@@ -158,7 +158,7 @@ typedef struct {
 	char description[INDIGO_NAME_SIZE];
 	char name[INDIGO_NAME_SIZE];
 	uint16_t version;  /* version - MSB, revision - LSB */
-	indigo_result status;
+	indigo_driver_action status;
 } indigo_driver_info;
 
 /** Timer callback function prototype.
@@ -195,6 +195,19 @@ typedef struct {
 	indigo_property *simulation_property;     ///< SIMULATION property pointer
 	indigo_property *congfiguration_property; ///< CONFIGURATION property pointer
 } indigo_device_context;
+
+/** set driver info.
+ */
+
+#define SET_DRIVER_INFO(dinfo, ddescr, dname, dversion, dstatus)\
+{\
+	if(dinfo) {\
+		strncpy(dinfo->description, ddescr, INDIGO_NAME_SIZE);\
+		strncpy(dinfo->name, dname, INDIGO_NAME_SIZE);\
+		dinfo->version = dversion;\
+		dinfo->status = dstatus;\
+	}\
+}
 
 /** Attach callback function.
  */
