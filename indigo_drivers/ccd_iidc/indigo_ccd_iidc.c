@@ -100,12 +100,26 @@ typedef struct {
 	dc1394camera_t *camera;
 	uint64_t guid;
 	bool present;
+	bool setup;
 	int device_count;
 	dc1394bool_t temperature_is_present, gain_is_present, gamma_is_present;
 	indigo_timer *exposure_timer, *temperture_timer;
 	double exposure_time;
 	unsigned char *buffer;
 } iidc_private_data;
+
+static void setup_camera(indigo_device *device) {
+	if (PRIVATE_DATA->setup) {
+		dc1394error_t err=dc1394_capture_stop(PRIVATE_DATA->camera);
+		INDIGO_LOG(indigo_log("dc1394_capture_stop [%d] -> %d", __LINE__, err));
+	}
+	dc1394error_t err = dc1394_capture_setup(PRIVATE_DATA->camera, 8, DC1394_CAPTURE_FLAGS_DEFAULT);
+	INDIGO_LOG(indigo_log("dc1394_capture_setup [%d] -> %d", __LINE__, err));
+	dc1394speed_t speed;
+	dc1394_video_get_iso_speed(PRIVATE_DATA->camera, &speed);
+	INDIGO_LOG(indigo_log("dc1394_video_get_iso_speed [%d] -> %d (%d)", __LINE__, err, speed));
+	PRIVATE_DATA->setup = true;
+}
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
@@ -295,12 +309,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			dc1394error_t err = dc1394_capture_setup(PRIVATE_DATA->camera, 8, DC1394_CAPTURE_FLAGS_DEFAULT);
-			INDIGO_LOG(indigo_log("dc1394_capture_setup [%d] -> %d", __LINE__, err));
-			dc1394speed_t speed;
-			dc1394_video_get_iso_speed(PRIVATE_DATA->camera, &speed);
-			INDIGO_LOG(indigo_log("dc1394_video_get_iso_speed [%d] -> %d (%d)", __LINE__, err, speed));
-			
+			setup_camera(device);
 			PRIVATE_DATA->buffer = malloc(FITS_HEADER_SIZE + 2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value);
 			assert(PRIVATE_DATA->buffer != NULL);
 			if (PRIVATE_DATA->temperature_is_present) {
@@ -353,6 +362,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_EXPOSURE_ITEM->number.max = max;
 						if (CCD_EXPOSURE_ITEM->number.value > max)
 							CCD_EXPOSURE_ITEM->number.value = max;
+						setup_camera(device);
 						update_frame = true;
 						break;
 					}
@@ -390,6 +400,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 							CCD_EXPOSURE_ITEM->number.max = max;
 							if (CCD_EXPOSURE_ITEM->number.value > max)
 								CCD_EXPOSURE_ITEM->number.value = max;
+							setup_camera(device);
 							update_exposure = true;
 							break;
 						}
