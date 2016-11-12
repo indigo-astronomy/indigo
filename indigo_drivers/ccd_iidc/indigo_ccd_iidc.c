@@ -598,11 +598,14 @@ static void debuglog_handler(dc1394log_t type, const char *message, void* user) 
 	INDIGO_DEBUG_DRIVER(indigo_debug("dc1394: %s", message));
 }
 
-indigo_result indigo_ccd_iidc(bool state) {
-	static bool current_state = false;
-	if (state == current_state)
+indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+	if (action == last_action)
 		return INDIGO_OK;
-	if ((current_state = state)) {
+
+	switch (action) {
+	case INDIGO_DRIVER_INIT:
+		last_action = action;
 		context = dc1394_new();
 		if (context != NULL) {
 			dc1394_log_register_handler(DC1394_LOG_ERROR, errorlog_handler, NULL);
@@ -616,9 +619,11 @@ indigo_result indigo_ccd_iidc(bool state) {
 			INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_iidc: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 		}
-		current_state = false;
+		last_action = action;
 		return INDIGO_FAILED;
-	} else {
+
+	case INDIGO_DRIVER_SHUTDOWN:
+		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_iidc: libusb_hotplug_deregister_callback [%d]", __LINE__));
 		for (int j = 0; j < MAX_DEVICES; j++) {
@@ -634,8 +639,11 @@ indigo_result indigo_ccd_iidc(bool state) {
 		}
 		dc1394_free(context);
 		context = NULL;
-		return INDIGO_OK;
+		break;
+
+	case INDIGO_DRIVER_INFO:
+		break;
 	}
+
+	return INDIGO_OK;
 }
-
-

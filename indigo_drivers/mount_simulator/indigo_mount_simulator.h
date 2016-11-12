@@ -37,7 +37,7 @@
 /** Create mount Simulator device instance
  */
 
-extern indigo_result indigo_mount_simulator(bool state);
+extern indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_info *info);
 
 #endif /* mount_simulator_h */
 
