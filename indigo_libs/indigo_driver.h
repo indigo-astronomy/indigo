@@ -35,6 +35,8 @@
 #include <dispatch/dispatch.h>
 #endif
 
+#include <stdint.h>
+
 #include "indigo_bus.h"
 
 /** Main group name string.
@@ -141,6 +143,23 @@ typedef enum {
 	INDIGO_INTERFACE_LIGHTBOX  = (1 << 10),   ///< Light Box Interface
 	INDIGO_INTERFACE_AUX       = (1 << 15)    ///< Auxiliary interface
 } indigo_device_interface;
+
+/** Device driver entrypoint actions
+ */
+typedef enum {
+	INDIGO_DRIVER_INIT,
+	INDIGO_DRIVER_INFO,
+	INDIGO_DRIVER_SHUTDOWN
+} indigo_driver_action;
+
+/** Device driver info structure
+ */
+typedef struct {
+	char description[INDIGO_NAME_SIZE];
+	char name[INDIGO_NAME_SIZE];
+	uint16_t version;  /* version - MSB, revision - LSB */
+	indigo_result status;
+} indigo_driver_info;
 
 /** Timer callback function prototype.
  */

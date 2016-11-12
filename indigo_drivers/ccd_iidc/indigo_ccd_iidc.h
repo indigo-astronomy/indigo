@@ -32,7 +32,7 @@
 /** Register IIDC CCD hot-plug callback
  */
 
-extern indigo_result indigo_ccd_iidc(bool state);
+extern indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *info);
 
 #endif /* ccd_iidc_h */
 
