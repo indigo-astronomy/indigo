@@ -152,6 +152,11 @@ typedef enum {
 	INDIGO_DRIVER_SHUTDOWN
 } indigo_driver_action;
 
+/** Device driver version major and minor
+ */
+#define DRIVER_VERSION_MAJOR(ver) (ver >> 8)
+#define DRIVER_VERSION_MINOR(ver) (ver & 0x00ff)
+
 /** Device driver info structure
  */
 typedef struct {
@@ -160,6 +165,10 @@ typedef struct {
 	uint16_t version;  /* version - MSB, revision - LSB */
 	indigo_driver_action status;
 } indigo_driver_info;
+
+/** Device driver entry point prototype
+ */
+typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_info*);
 
 /** Timer callback function prototype.
  */

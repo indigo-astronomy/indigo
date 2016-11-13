@@ -53,35 +53,29 @@
 #define SERVER_NAME	"INDIGO Server"
 
 #ifdef STATIC_DRIVERS
-static struct {
-	const char *description;
-	const char *name;
-	indigo_result (*driver)(indigo_driver_action, indigo_driver_info*);
-} static_drivers[] = {
-	{ "CCD Simulator", "indigo_ccd_simulator", indigo_ccd_simulator },
-	{ "Mount Simulator", "indigo_mount_simulator", indigo_mount_simulator },
-	{ "SX CCD", "indigo_ccd_sx", indigo_ccd_sx },
-	{ "SX Filter Wheel","indigo_wheel_sx", indigo_wheel_sx },
-	{ "Atik CCD", "indigo_ccd_atik", indigo_ccd_atik },
-	{ "QHY CCD", "indigo_ccd_qhy", indigo_ccd_qhy },
-	{ "SSAG/QHY5 CCD", "indigo_ccd_ssag", indigo_ccd_ssag },
-	{ "Shoestring FCUSB Focuser", "indigo_focuser_fcusb", indigo_focuser_fcusb },
-	{ "ASI Filter Wheel", "indigo_wheel_asi", indigo_wheel_asi },
-	{ "IIDC CCD", "indigo_ccd_iidc", indigo_ccd_iidc },
-	{ NULL, NULL, NULL }
+driver_entry_point static_drivers[] = {
+	indigo_ccd_simulator,
+	indigo_mount_simulator,
+	indigo_ccd_sx,
+	indigo_wheel_sx,
+	indigo_ccd_atik,
+	indigo_ccd_qhy,
+	indigo_ccd_ssag,
+	indigo_focuser_fcusb,
+	indigo_wheel_asi,
+	indigo_ccd_iidc,
+	NULL
 };
 #else
-
 typedef struct {
 	char description[INDIGO_NAME_SIZE];
 	char name[INDIGO_NAME_SIZE];
-	indigo_result (*driver)(indigo_driver_action, indigo_driver_info*);
+	driver_entry_point driver;
 	void *dl_handle;
 } drivers;
 
 static drivers dynamic_drivers[MAX_DRIVERS];
 static int used_slots=0;
-
 #endif
 
 static int first_driver = 2;
@@ -102,7 +96,7 @@ static indigo_result add_driver(const char *name) {
 	char *entry_point_name, *cp;
 	void *dl_handle;
 	int empty_slot;
-	indigo_result (*driver)(indigo_driver_action, indigo_driver_info*);
+	driver_entry_point driver;
 
 	strncpy(driver_name, name, sizeof(driver_name));
 	entry_point_name = basename(driver_name);
@@ -146,7 +140,7 @@ static indigo_result add_driver(const char *name) {
 
 	if (empty_slot == used_slots) used_slots++; /* if we are not filling a gap - increase used_slots */
 
-	INDIGO_LOG(indigo_log("Driver %s loaded.", entry_point_name));
+	INDIGO_LOG(indigo_log("Driver %s v.%d.%02d loaded.", entry_point_name, DRIVER_VERSION_MAJOR(info.version), DRIVER_VERSION_MINOR(info.version)));
 	return INDIGO_OK;
 #endif
 }
@@ -154,7 +148,7 @@ static indigo_result add_driver(const char *name) {
 
 static indigo_result remove_driver(const char *entry_point_name) {
 #ifdef STATIC_DRIVERS
-	INDIGO_LOG(indigo_log("Can no remove '%s'. Drivers are statcally linked!", entry_point_name));
+	INDIGO_LOG(indigo_log("Can not remove '%s'. Drivers are statcally linked!", entry_point_name));
 	return INDIGO_OK;
 #else
 	if (entry_point_name[0] == '\0') return INDIGO_OK;
@@ -195,8 +189,10 @@ static indigo_result attach(indigo_device *device) {
 	driver_property->count = 0;
 
 #ifdef STATIC_DRIVERS
-	for (int i = first_driver; i < MAX_DRIVERS && static_drivers[i].description; i++) {
-		indigo_init_switch_item(&driver_property->items[driver_property->count++], static_drivers[i].description, static_drivers[i].description, true);
+	for (int i = first_driver; i < MAX_DRIVERS && static_drivers[i]; i++) {
+		indigo_driver_info info;
+		(static_drivers[i])(INDIGO_DRIVER_INFO, &info);
+		indigo_init_switch_item(&driver_property->items[driver_property->count++], info.description, info.description, true);
 	}
 #else
 	int i = 0;
@@ -228,9 +224,9 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	#ifdef STATIC_DRIVERS
 		for (int i = 0; i < driver_property->count; i++) {
 			if (driver_property->items[i].sw.value)
-				static_drivers[i + first_driver].driver(INDIGO_DRIVER_INIT, NULL);
+				(static_drivers[i + first_driver])(INDIGO_DRIVER_INIT, NULL);
 			else
-				static_drivers[i + first_driver].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
+				(static_drivers[i + first_driver])(INDIGO_DRIVER_SHUTDOWN, NULL);
 		}
 	#else
 		int i = 0;
@@ -264,8 +260,8 @@ void signal_handler(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
 #ifdef STATIC_DRIVERS
 	int dc = 0;
-	while (static_drivers[dc].driver != NULL) {
-		static_drivers[dc].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
+	while (static_drivers[dc] != NULL) {
+		(static_drivers[dc])(INDIGO_DRIVER_SHUTDOWN, NULL);
 		dc++;
 	}
 #else
