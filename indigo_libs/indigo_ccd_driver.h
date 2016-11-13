@@ -169,14 +169,6 @@
  */
 #define CCD_MODE_ITEM											(CCD_MODE_PROPERTY->items+0)
 
-/** CCD_FRAME_RATE property pointer, property is optional.
- */
-#define CCD_FRAME_RATE_PROPERTY						(CCD_CONTEXT->ccd_frame_rate_property)
-
-/** CCD_FRAME_RATE.FRAME_RATE property item pointer.
- */
-#define CCD_FRAME_RATE_ITEM								(CCD_FRAME_RATE_PROPERTY->items+0)
-
 /** CCD_OFFSET property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_OFFSET_PROPERTY               (CCD_CONTEXT->ccd_offset_property)
@@ -293,7 +285,6 @@ typedef struct {
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
 	indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer
 	indigo_property *ccd_mode_property;						///< CCD_MODE property pointer
-	indigo_property *ccd_frame_rate_property;			///< CCD_FRAME_RATE property pointer
 	indigo_property *ccd_exposure_property;       ///< CCD_EXPOSURE property pointer
 	indigo_property *ccd_abort_exposure_property; ///< CCD_ABORT_EXPOSURE property pointer
 	indigo_property *ccd_frame_property;          ///< CCD_FRAME property pointer
