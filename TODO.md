@@ -48,6 +48,8 @@
 7. SBig CCD driver (based on SBIG SDK)
 8. Apogee CCD driver (based on Apogee SDK)
 9. Fishcamp CCD driver (based on Fishcamp SDK)
+10. Andor CCD driver (based on Andor SDK - payed :( we will require but not provide it)
+12. DSI II Pro driver.
 
 #### DSLRs
 
@@ -62,6 +64,7 @@
 1. Atik EFW wheel driver
 2. FLI wheel driver (based on FLI SDK)
 3. SBIG wheel driver
+(DONE) 4. ASI EFW Driver
 
 #### Guiders
 
@@ -79,6 +82,7 @@
 2. NexStar EVO protocol mount driver
 3. LX200 protocol mount driver
 4. EQMod mount driver
+5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft)
 
 #### ASCOM
 
