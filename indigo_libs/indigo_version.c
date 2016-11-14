@@ -290,6 +290,7 @@ void indigo_copy_item_name(indigo_version version, indigo_property *property, in
 					}
 					item_mapping++;
 				}
+				strncpy(item->name, name, INDIGO_NAME_SIZE);
 				return;
 			}
 			property_mapping++;

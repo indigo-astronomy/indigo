@@ -139,6 +139,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
+	libatik_debug_level = DEBUG_ENABLED_ITEM->sw.value;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -332,6 +333,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
+	libatik_debug_level = DEBUG_ENABLED_ITEM->sw.value;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -442,6 +444,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
+	libatik_debug_level = DEBUG_ENABLED_ITEM->sw.value;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
