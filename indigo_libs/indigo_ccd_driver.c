@@ -101,8 +101,8 @@ indigo_result indigo_ccd_attach(indigo_device *device, indigo_version version) {
 			CCD_FRAME_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_FRAME", CCD_IMAGE_GROUP, "Frame size setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 5);
 			if (CCD_FRAME_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(CCD_FRAME_LEFT_ITEM, "X", "Left", 0, 0, 1, 0);
-			indigo_init_number_item(CCD_FRAME_TOP_ITEM, "Y", "Top", 0, 0, 1, 0);
+			indigo_init_number_item(CCD_FRAME_LEFT_ITEM, "LEFT", "Left", 0, 0, 1, 0);
+			indigo_init_number_item(CCD_FRAME_TOP_ITEM, "TOP", "Top", 0, 0, 1, 0);
 			indigo_init_number_item(CCD_FRAME_WIDTH_ITEM, "WIDTH", "Width", 0, 0, 1, 0);
 			indigo_init_number_item(CCD_FRAME_HEIGHT_ITEM, "HEIGHT", "Height", 0, 0, 1, 0);
 			indigo_init_number_item(CCD_FRAME_BITS_PER_PIXEL_ITEM, "BITS_PER_PIXEL", "Bits per pixel", 16, 16, 0, 16);
