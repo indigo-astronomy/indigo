@@ -535,29 +535,16 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			libatik_camera_type type;
 			const char *name;
 			bool is_guider, has_fw;
-			libatik_camera(dev, &type, &name, &is_guider, &has_fw);
-			atik_private_data *private_data = malloc(sizeof(atik_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(atik_private_data));
-			private_data->dev = dev;
-			libusb_ref_device(dev);
-			indigo_device *device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &ccd_template, sizeof(indigo_device));
-			strcpy(device->name, name);
-			device->device_context = private_data;
-			for (int j = 0; j < MAX_DEVICES; j++) {
-				if (devices[j] == NULL) {
-					indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-					break;
-				}
-			}
-			if (is_guider) {
-				device = malloc(sizeof(indigo_device));
+			if (libatik_camera(dev, &type, &name, &is_guider, &has_fw)) {
+				atik_private_data *private_data = malloc(sizeof(atik_private_data));
+				assert(private_data != NULL);
+				memset(private_data, 0, sizeof(atik_private_data));
+				private_data->dev = dev;
+				libusb_ref_device(dev);
+				indigo_device *device = malloc(sizeof(indigo_device));
 				assert(device != NULL);
-				memcpy(device, &guider_template, sizeof(indigo_device));
+				memcpy(device, &ccd_template, sizeof(indigo_device));
 				strcpy(device->name, name);
-				strcat(device->name, " (guider)");
 				device->device_context = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
@@ -565,18 +552,32 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						break;
 					}
 				}
-			}
-			if (has_fw) {
-				device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &wheel_template, sizeof(indigo_device));
-				strcpy(device->name, name);
-				strcat(device->name, " (wheel)");
-				device->device_context = private_data;
-				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-						break;
+				if (is_guider) {
+					device = malloc(sizeof(indigo_device));
+					assert(device != NULL);
+					memcpy(device, &guider_template, sizeof(indigo_device));
+					strcpy(device->name, name);
+					strcat(device->name, " (guider)");
+					device->device_context = private_data;
+					for (int j = 0; j < MAX_DEVICES; j++) {
+						if (devices[j] == NULL) {
+							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+							break;
+						}
+					}
+				}
+				if (has_fw) {
+					device = malloc(sizeof(indigo_device));
+					assert(device != NULL);
+					memcpy(device, &wheel_template, sizeof(indigo_device));
+					strcpy(device->name, name);
+					strcat(device->name, " (wheel)");
+					device->device_context = private_data;
+					for (int j = 0; j < MAX_DEVICES; j++) {
+						if (devices[j] == NULL) {
+							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+							break;
+						}
 					}
 				}
 			}
