@@ -253,6 +253,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				int id = find_plugged_device_id();
 				if (id == NO_DEVICE) {
 					INDIGO_LOG(indigo_log("indigo_wheel_asi: No plugged device found."));
+					return 0;
 				}
 
 				indigo_device *device = malloc(sizeof(indigo_device));
