@@ -36,7 +36,7 @@
 
 /** Item value size.
  */
-#define INDIGO_VALUE_SIZE     256
+#define INDIGO_VALUE_SIZE     512
 
 /** Max number of item per property.
  */

@@ -566,49 +566,55 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 			sufix = ".raw";
 		}
-		char file_name[256];
-		char *xxx = strstr(prefix, "XXX");
-		if (xxx == NULL) {
-			strncpy(file_name, dir, INDIGO_VALUE_SIZE);
-			strcat(file_name, prefix);
-			strcat(file_name, sufix);
-		} else {
-			char format[256];
-			strncpy(format, dir, INDIGO_VALUE_SIZE);
-			strncat(format, prefix, xxx - prefix);
-			strcat(format, "%03d");
-			strcat(format, xxx+3);
-			strcat(format, sufix);
-			struct stat sb;
-			int i = 1;
-			while (true) {
-				snprintf(file_name, sizeof(file_name), format, i);
-				if (stat(file_name, &sb) == 0 && S_ISREG(sb.st_mode))
-					i++;
-				else
-					break;
-			}
-		}
-		strncpy(CCD_IMAGE_FILE_ITEM->text.value, file_name, INDIGO_VALUE_SIZE);
-		CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+		int handle = 0;
 		char *message = NULL;
-		int handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-		if (handle) {
-			if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-				if (write(handle, data, FITS_HEADER_SIZE + byte_per_pixel * size) < 0) {
-					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-					message = strerror(errno);
-				}
-			} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-				if (write(handle, data + FITS_HEADER_SIZE, byte_per_pixel * size) < 0) {
-					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-					message = strerror(errno);
+		if (strlen(dir) + strlen(prefix) + strlen(sufix) < INDIGO_VALUE_SIZE) {
+			char file_name[INDIGO_VALUE_SIZE];
+			char *xxx = strstr(prefix, "XXX");
+			if (xxx == NULL) {
+				strcpy(file_name, dir);
+				strcat(file_name, prefix);
+				strcat(file_name, sufix);
+			} else {
+				char format[INDIGO_VALUE_SIZE];
+				strcpy(format, dir);
+				strncat(format, prefix, xxx - prefix);
+				strcat(format, "%03d");
+				strcat(format, xxx+3);
+				strcat(format, sufix);
+				struct stat sb;
+				int i = 1;
+				while (true) {
+					snprintf(file_name, sizeof(file_name), format, i);
+					if (stat(file_name, &sb) == 0 && S_ISREG(sb.st_mode))
+						i++;
+					else
+						break;
 				}
 			}
-			close(handle);
+			strncpy(CCD_IMAGE_FILE_ITEM->text.value, file_name, INDIGO_VALUE_SIZE);
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+			handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			if (handle) {
+				if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
+					if (write(handle, data, FITS_HEADER_SIZE + byte_per_pixel * size) < 0) {
+						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+						message = strerror(errno);
+					}
+				} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+					if (write(handle, data + FITS_HEADER_SIZE, byte_per_pixel * size) < 0) {
+						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+						message = strerror(errno);
+					}
+				}
+				close(handle);
+			} else {
+				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+				message = strerror(errno);
+			}
 		} else {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-			message = strerror(errno);
+			message = "dir + prefix + suffix is too long";
 		}
 		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, message);
 		INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
