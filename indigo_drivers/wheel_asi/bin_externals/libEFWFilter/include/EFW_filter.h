@@ -28,7 +28,7 @@ typedef enum _EFW_ERROR_CODE{
 	EFW_ERROR_ERROR_STATE,//filter wheel is in error state
 	EFW_ERROR_GENERAL_ERROR,//other error
 	EFW_ERROR_NOT_SUPPORTED,
-	EFW_ERROR_NOT_OPENED,
+	EFW_ERROR_CLOSED,
 	EFW_ERROR_END = -1
 }EFW_ERROR_CODE;
 
@@ -58,21 +58,6 @@ EFW_API int EFWGetProductIDs(int* pPIDs);
 
 /***************************************************************************
 Descriptions:
-open filter wheel
-
-Paras:
-int index: the index of filter wheel, from 0 to N - 1, N is returned by GetNumOffilter wheels()
-
-Return: 
-EFW_ERROR_INVALID_INDEX: invalid index value
-EFW_ERROR_GENERAL_ERROR: number of opened filter wheel reaches the maximum value.
-EFW_ERROR_REMOVED: the filter wheel is removed.
-EFW_SUCCESS: operation succeeds
-***************************************************************************/
-EFW_API	EFW_ERROR_CODE EFWOpen(int index);
-
-/***************************************************************************
-Descriptions:
 get ID of filter wheel
 
 Paras:
@@ -88,6 +73,21 @@ EFW_SUCCESS:  operation succeeds
 
 ***************************************************************************/
 EFW_API EFW_ERROR_CODE EFWGetID(int index, int* ID);
+
+/***************************************************************************
+Descriptions:
+open filter wheel
+
+Paras:
+int ID: the ID of filter wheel
+
+Return: 
+EFW_ERROR_INVALID_INDEX: invalid index value
+EFW_ERROR_GENERAL_ERROR: number of opened filter wheel reaches the maximum value.
+EFW_ERROR_REMOVED: the filter wheel is removed.
+EFW_SUCCESS: operation succeeds
+***************************************************************************/
+EFW_API	EFW_ERROR_CODE EFWOpen(int ID);
 
 /***************************************************************************
 Descriptions:
