@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 6
+INDIGO_BUILD := 7
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
