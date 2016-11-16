@@ -45,8 +45,8 @@
 
 #include "indigo_ccd_iidc.h"
 
-#undef INDIGO_DRIVER_DEBUG
-#define INDIGO_DRIVER_DEBUG(c) c
+//#undef INDIGO_DRIVER_DEBUG
+//#define INDIGO_DRIVER_DEBUG(c) c
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((iidc_private_data *)DEVICE_CONTEXT->private_data)
@@ -388,8 +388,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_feature_set_absolute_value(DC1394_FEATURE_GAMMA, %g) [%d] -> %s", CCD_GAMMA_ITEM->number.value, __LINE__, dc1394_error_get_string(err)));
 		err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_EXPOSURE_ITEM->number.value);
 		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) [%d] -> %s", CCD_EXPOSURE_ITEM->number.value, __LINE__, dc1394_error_get_string(err)));
-		err = dc1394_format7_set_image_position(PRIVATE_DATA->camera, mode, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_LEFT_ITEM->number.value);
-		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_format7_set_image_position(%d, %d) [%d] -> %s", (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_LEFT_ITEM->number.value, __LINE__, dc1394_error_get_string(err)));
+		err = dc1394_format7_set_image_position(PRIVATE_DATA->camera, mode, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value);
+		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_format7_set_image_position(%d, %d) [%d] -> %s", (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, __LINE__, dc1394_error_get_string(err)));
 		err = dc1394_format7_set_image_size(PRIVATE_DATA->camera, mode, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value);
 		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_format7_set_image_size(%d, %d) [%d] -> %s", (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, __LINE__, dc1394_error_get_string(err)));
 		uint32_t packet_size;
