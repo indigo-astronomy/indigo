@@ -178,7 +178,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 					fh = fdopen(handle2, "w");
 					if (property->version >= INDIGO_VERSION_2_0) {
 						while (input_length) {
-							char encoded_data[BASE64_BUF_SIZE];
+							char encoded_data[BASE64_BUF_SIZE + 1];
 							long len = (RAW_BUF_SIZE < input_length) ?  RAW_BUF_SIZE : input_length;
 							long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
 							indigo_xml_fwrite(fh, encoded_data, enclen);
@@ -186,7 +186,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 							data += len;
 						}
 					} else {
-						static char encoded_data[73];
+						static char encoded_data[74];
 						while (input_length) {
 							/* 54 raw = 72 encoded */
 							long len = (54 < input_length) ?  54 : input_length;
