@@ -218,6 +218,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
+		if (PRIVATE_DATA->exposure < PRIVATE_DATA->device_context->min_exposure)
+			PRIVATE_DATA->exposure = PRIVATE_DATA->device_context->min_exposure;
 		if (PRIVATE_DATA->exposure <= 1) {
 			PRIVATE_DATA->can_check_temperature = false;
 			CCD_EXPOSURE_ITEM->number.value = 0;

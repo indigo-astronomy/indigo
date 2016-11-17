@@ -169,14 +169,6 @@
  */
 #define CCD_MODE_ITEM											(CCD_MODE_PROPERTY->items+0)
 
-/** CCD_OFFSET property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
- */
-#define CCD_OFFSET_PROPERTY               (CCD_CONTEXT->ccd_offset_property)
-
-/** CCD_OFFSET.OFFSET property item pointer.
- */
-#define CCD_OFFSET_ITEM                   (CCD_OFFSET_PROPERTY->items+0)
-
 /** CCD_GAIN property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_GAIN_PROPERTY                 (CCD_CONTEXT->ccd_gain_property)
@@ -185,13 +177,21 @@
  */
 #define CCD_GAIN_ITEM                     (CCD_GAIN_PROPERTY->items+0)
 
+/** CCD_OFFSET property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_OFFSET_PROPERTY               (CCD_CONTEXT->ccd_offset_property)
+
+/** CCD_OFFSET.OFFSET property item pointer.
+ */
+#define CCD_OFFSET_ITEM										(CCD_OFFSET_PROPERTY->items+0)
+
 /** CCD_GAMMA property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_GAMMA_PROPERTY                 (CCD_CONTEXT->ccd_gamma_property)
+#define CCD_GAMMA_PROPERTY                (CCD_CONTEXT->ccd_gamma_property)
 
 /** CCD_GAMMA.GAMMA property item pointer.
  */
-#define CCD_GAMMA_ITEM                     (CCD_GAMMA_PROPERTY->items+0)
+#define CCD_GAMMA_ITEM                    (CCD_GAMMA_PROPERTY->items+0)
 
 /** CCD_FRAME_TYPE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
