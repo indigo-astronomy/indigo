@@ -41,7 +41,7 @@
 
 1. QHY CCD driver
 2. ASI CCD driver
-3. IIDC CCD driver (based on libdc1394)
+3. IIDC CCD driver (based on libdc1394) __DONE__
 4. MI CCD driver (based on MI SDK)
 5. QSI CCD driver (based on QSI SDK)
 6. FLI CCD driver (based on FLI SDK)
@@ -64,7 +64,7 @@
 1. Atik EFW wheel driver
 2. FLI wheel driver (based on FLI SDK)
 3. SBIG wheel driver
-(DONE) 4. ASI EFW Driver
+4. ASI EFW Driver __DONE__
 
 #### Guiders
 
