@@ -49,6 +49,7 @@ typedef struct {
 	int max_bin_hor, max_bin_vert;
 	int well_capacity;
 	int min_power, max_power;
+	double min_exposure;
 	pthread_mutex_t lock;
 } libatik_device_context;
 

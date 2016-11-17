@@ -112,18 +112,18 @@ indigo_result indigo_ccd_attach(indigo_device *device, indigo_version version) {
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_BIN_HORIZONTAL_ITEM, "HORIZONTAL", "Horizontal binning", 0, 1, 1, 1);
 			indigo_init_number_item(CCD_BIN_VERTICAL_ITEM, "VERTICAL", "Vertical binning", 0, 1, 1, 1);
-			// -------------------------------------------------------------------------------- CCD_OFFSET
-			CCD_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_OFFSET", CCD_IMAGE_GROUP, "Offset setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
-			if (CCD_OFFSET_PROPERTY == NULL)
-				return INDIGO_FAILED;
-			CCD_OFFSET_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_OFFSET_ITEM, "OFFSET", "Offset", 0, 1, 1, 1);
 			// -------------------------------------------------------------------------------- CCD_GAIN
 			CCD_GAIN_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_GAIN", CCD_IMAGE_GROUP, "Gain setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_GAIN_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_GAIN_PROPERTY->hidden = true;
 			indigo_init_number_item(CCD_GAIN_ITEM, "GAIN", "Gain", 0, 1, 1, 1);
+			// -------------------------------------------------------------------------------- CCD_OFFSET
+			CCD_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_OFFSET", CCD_IMAGE_GROUP, "Offset setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			if (CCD_OFFSET_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			CCD_OFFSET_PROPERTY->hidden = true;
+			indigo_init_number_item(CCD_OFFSET_ITEM, "OFFSET", "Offset", 0, 1, 1, 1);
 			// -------------------------------------------------------------------------------- CCD_GAMMA
 			CCD_GAMMA_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_GAMMA", CCD_IMAGE_GROUP, "Gamma setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_GAMMA_PROPERTY == NULL)
@@ -514,6 +514,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H");
 		header[t] = ' ';
+		t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see www.indigo-astronomy.org", (INDIGO_VERSION >> 8) & 0xFF, INDIGO_VERSION & 0xFF);
+		header[t] = ' ';
 		if (byte_per_pixel == 2) {
 			t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short");
 			header[t] = ' ';
@@ -529,21 +531,42 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		t = sprintf(header += 80, "YBINNING= %21d / vertical binning [pixels]", vertical_bin);
 		header[t] = ' ';
-		t = sprintf(header += 80, "XPIXSZ  = %21.2g / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number.value);
-		header[t] = ' ';
-		t = sprintf(header += 80, "YPIXSZ  = %21.2g / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value);
-		header[t] = ' ';
+		if (CCD_INFO_PIXEL_WIDTH_ITEM->number.value > 0 && CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) {
+			t = sprintf(header += 80, "XPIXSZ  = %21.2g / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number.value);
+			header[t] = ' ';
+			t = sprintf(header += 80, "YPIXSZ  = %21.2g / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value);
+			header[t] = ' ';
+		}
 		t = sprintf(header += 80, "EXPTIME = %21.2g / exposure time [s]", exposure_time);
 		header[t] = ' ';
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 			t = sprintf(header += 80, "CCD-TEMP= %21.2g / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number.value);
 			header[t] = ' ';
 		}
-		t = sprintf(header += 80, "DATE    = '%s' / UTC date that FITS file was created", now);
+		if (CCD_FRAME_TYPE_LIGHT_ITEM->sw.value)
+			t = sprintf(header += 80, "IMAGETYP= 'Light'               / frame type");
+		else if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
+			t = sprintf(header += 80, "IMAGETYP= 'Flat'                / frame type");
+		else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
+			t = sprintf(header += 80, "IMAGETYP= 'Bias'                / frame type");
+		else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
+			t = sprintf(header += 80, "IMAGETYP= 'Dark'                / frame type");
+		header[t] = ' ';
+		if (!CCD_GAIN_PROPERTY->hidden) {
+			t = sprintf(header += 80, "GAIN    = %21.2g / Gain", CCD_GAIN_ITEM->number.value);
+			header[t] = ' ';
+		}
+		if (!CCD_OFFSET_PROPERTY->hidden) {
+			t = sprintf(header += 80, "OFFSET  = %21.2g / Offset", CCD_OFFSET_ITEM->number.value);
+			header[t] = ' ';
+		}
+		if (!CCD_GAMMA_PROPERTY->hidden) {
+			t = sprintf(header += 80, "GAMMA   = %21.2g / Gamma", CCD_GAMMA_ITEM->number.value);
+			header[t] = ' ';
+		}
+		t = sprintf(header += 80, "DATE-OBS= '%s' / UTC date that FITS file was created", now);
 		header[t] = ' ';
 		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
-		header[t] = ' ';
-		t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see www.indigo-astronomy.org", (INDIGO_VERSION >> 8) & 0xFF, INDIGO_VERSION & 0xFF);
 		header[t] = ' ';
 		t = sprintf(header += 80, "END");
 		header[t] = ' ';

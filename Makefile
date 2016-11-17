@@ -490,14 +490,20 @@ bin/indigo_server_standalone: indigo_libs/indigo_server.c $(DRIVER_LIBS) $(EXTER
 
 #---------------------------------------------------------------------
 #
-#	Install rules
+#	Install
 #
 #---------------------------------------------------------------------
 
-rules:
-	sudo cp indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-sx.rules
-	sudo cp indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-ssag.rules
-	sudo cp indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-asi.rules
+install:
+	sudo install -D -m 0755 bin/indigo_server /tmp/$(PACKAGE_NAME)/usr/local/bin
+	sudo install -D -m 0755 bin/indigo_server_standalone /tmp/$(PACKAGE_NAME)/usr/local/bin
+	sudo install -D -m 0644 $(DRIVERS) /tmp/$(PACKAGE_NAME)/usr/local/bin
+	sudo install -D -m 0644 $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
+	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-indigo_ccd_asi.rules
+	sudo install -D -m 0644 indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/99-efw.rules /lib/udev/rules.d/99-indigo_wheel_asi.rules
 	sudo udevadm control --reload-rules
 
 #---------------------------------------------------------------------
@@ -506,10 +512,9 @@ rules:
 #
 #---------------------------------------------------------------------
 
-
 package: $(PACKAGE_NAME).$(PACKAGE_TYPE)
 
-$(PACKAGE_NAME).deb: all
+$(PACKAGE_NAME).deb: clean all
 	install -d /tmp/$(PACKAGE_NAME)/usr/local/bin
 	install bin/indigo_server /tmp/$(PACKAGE_NAME)/usr/local/bin
 	install bin/indigo_server_standalone /tmp/$(PACKAGE_NAME)/usr/local/bin
@@ -517,8 +522,10 @@ $(PACKAGE_NAME).deb: all
 	install -d /tmp/$(PACKAGE_NAME)/usr/local/lib
 	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
 	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
+	install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
 	install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_ssag.rules
-	install -D -m 0644 indigo_drivers/ccd_asi/indigo_ccd_asi.rules debian/lib/udev/rules.d/99-indigo_ccd_asi.rules
+	install -D -m 0644 indigo_drivers/ccd_asi/indigo_ccd_asi.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_asi.rules
+	install -D -m 0644 indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/99-efw.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_wheel_asi.rules
 	cp -r share /tmp/$(PACKAGE_NAME)
 	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
 	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
