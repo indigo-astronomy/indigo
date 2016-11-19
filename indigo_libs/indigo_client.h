@@ -26,27 +26,62 @@
 #ifndef indigo_client_h
 #define indigo_client_h
 
+#include <pthread.h>
+
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
 #define INDIGO_MAX_DRIVERS	100
+#define INDIGO_MAX_SERVERS	10
 
+/** Driver entry type.
+ */
 typedef struct {
-	char description[INDIGO_NAME_SIZE];
-	char name[INDIGO_NAME_SIZE];
-	driver_entry_point driver;
-	void *dl_handle;
+	char description[INDIGO_NAME_SIZE];	///< driver description
+	char name[INDIGO_NAME_SIZE];				///< driver name (entry point name)
+	driver_entry_point driver;					///< driver entry point
+	void *dl_handle;										///< dynamic library handle (NULL for statically linked driver)
 } indigo_driver_entry;
 
+/** Remote server entry type.
+ */
+typedef struct {
+	char host[INDIGO_NAME_SIZE];				///< server host name
+	int port;														///< server port
+	pthread_t thread;										///< client thread
+	int socket;													///< stream socket
+} indigo_server_entry;
+
+/** Array of all available drivers (statically & dynamically linked).
+ */
 extern indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
 
+/** Array of all available servers.
+ */
+extern indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
+
+/** Add statically linked driver.
+ */
 extern indigo_result indigo_add_driver(driver_entry_point driver);
+
+/** Remove statically linked driver.
+ */
 extern indigo_result indigo_remove_driver(driver_entry_point driver);
 
+/** Load & add dynamically linked driver.
+ */
 extern indigo_result indigo_load_driver(const char *name);
+
+/** Remove & unload dynamically linked driver.
+ */
 extern indigo_result indigo_unload_driver(const char *name);
 
-extern indigo_result indigo_connect_server(const char *name);
-extern indigo_result indigo_disconnect_server(const char *name);
+/** Connect and start thread for remote server.
+ */
+extern indigo_result indigo_connect_server(const char *host, int port);
+
+/** Disconnect and stop thread for remote server.
+ */
+extern indigo_result indigo_disconnect_server(const char *host, int port);
 
 #endif /* indigo_client_h */
