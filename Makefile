@@ -133,6 +133,8 @@ DRIVER_SOLIBS=\
 	$(addsuffix .$(SOEXT), $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))))
 
+SIMULATOR_LIBS=\
+	$(addsuffix .a, $(addprefix drivers/indigo_, $(notdir $(wildcard indigo_drivers/*_simulator))))
 
 .PHONY: init clean
 
@@ -481,10 +483,10 @@ bin/client: indigo_test/client.o
 #
 #---------------------------------------------------------------------
 
-bin/indigo_server: indigo_libs/indigo_server.o
+bin/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
-bin/indigo_server_standalone: indigo_libs/indigo_server.c $(DRIVER_LIBS) $(EXTERNALS) lib/libindigo.a
+bin/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS) $(EXTERNALS) lib/libindigo.a
 	$(CC) -DSTATIC_DRIVERS $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
 
 
@@ -546,5 +548,6 @@ clean: init
 	rm -rf drivers/*
 	rm -rf include/*
 	rm -f indigo_libs/*.o
+	rm -f indigo_server/*.o
 	rm -f $(wildcard indigo_drivers/*/*.o)
 	rm -f $(wildcard indigo_test/*.o)
