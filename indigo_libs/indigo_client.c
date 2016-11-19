@@ -170,7 +170,7 @@ void *server_thread(indigo_server_entry *server) {
 			sleep(5);
 		}
 	}
-	server->thread = NULL;
+	server->thread_started = false;
 	INDIGO_LOG(indigo_log("Server %s:%d thread stopped.", server->host, server->port));
 	return NULL;
 }
