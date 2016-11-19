@@ -32,9 +32,9 @@
 #include "indigo_driver.h"
 #include "indigo_client.h"
 
-#ifdef STATIC_DRIVERS
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
+#ifdef STATIC_DRIVERS
 #include "ccd_sx/indigo_ccd_sx.h"
 #include "wheel_sx/indigo_wheel_sx.h"
 #include "ccd_ssag/indigo_ccd_ssag.h"
@@ -49,9 +49,9 @@
 #define SERVER_NAME	"INDIGO Server"
 
 driver_entry_point static_drivers[] = {
-#ifdef STATIC_DRIVERS
 	indigo_ccd_simulator,
 	indigo_mount_simulator,
+#ifdef STATIC_DRIVERS
 	indigo_ccd_sx,
 	indigo_wheel_sx,
 	indigo_ccd_atik,
@@ -142,16 +142,10 @@ int main(int argc, const char * argv[]) {
 	for (int i = 1; i < argc; i++) {
 		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1)
 			indigo_server_xml_port = atoi(argv[i+1]);
-#ifdef STATIC_DRIVERS
 		else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators"))
 			first_driver = 0;
-#endif
 		else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-#ifdef STATIC_DRIVERS
 			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-h|--help] driver_name driver_name ...\n\n", argv[0]);
-#else
-			printf("\n%s [-p|--port port] [-h|--help] driver_name driver_name ...\n\n", argv[0]);
-#endif
 			exit(0);
 		} else if(argv[i][0] != '-') {
 			indigo_load_driver(argv[i]);

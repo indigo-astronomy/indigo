@@ -152,10 +152,10 @@ typedef enum {
 	INDIGO_DRIVER_SHUTDOWN
 } indigo_driver_action;
 
-/** Device driver version major and minor
+/** Version major and minor
  */
-#define DRIVER_VERSION_MAJOR(ver) (ver >> 8)
-#define DRIVER_VERSION_MINOR(ver) (ver & 0x00ff)
+#define INDIGO_VERSION_MAJOR(ver) ((ver >> 8) & 0xff)
+#define INDIGO_VERSION_MINOR(ver) (ver & 0xff)
 
 /** Device driver info structure
  */

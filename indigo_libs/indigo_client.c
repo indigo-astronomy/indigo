@@ -59,7 +59,7 @@ static indigo_result add_driver(driver_entry_point driver, void *dl_handle) {
 	strncpy(indigo_available_drivers[empty_slot].name, info.name, INDIGO_NAME_SIZE);
 	indigo_available_drivers[empty_slot].driver = driver;
 	indigo_available_drivers[empty_slot].dl_handle = dl_handle;
-	INDIGO_LOG(indigo_log("Driver %s v.%d.%02d loaded.", info.name, DRIVER_VERSION_MAJOR(info.version), DRIVER_VERSION_MINOR(info.version)));
+	INDIGO_LOG(indigo_log("Driver %s %d.%d.%d.%d loaded.", info.name, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(info.version), INDIGO_VERSION_MINOR(info.version)));
 	
 	if (empty_slot == used_slots)
 		used_slots++; /* if we are not filling a gap - increase used_slots */
@@ -82,13 +82,13 @@ indigo_result indigo_load_driver(const char *name) {
 	if (cp) *cp = '\0';
 	dl_handle = dlopen(name, RTLD_LAZY);
 	if (!dl_handle) {
-		INDIGO_LOG(indigo_log("Driver %s can not be loaded.", entry_point_name));
+		INDIGO_LOG(indigo_log("Driver %s can't be loaded.", entry_point_name));
 		return INDIGO_FAILED;
 	}
 	driver = dlsym(dl_handle, entry_point_name);
 	const char* dlsym_error = dlerror();
 	if (dlsym_error) {
-		INDIGO_LOG(indigo_log("Cannot load %s(): %s", entry_point_name, dlsym_error));
+		INDIGO_LOG(indigo_log("Can't load %s(): %s", entry_point_name, dlsym_error));
 		dlclose(dl_handle);
 		return INDIGO_NOT_FOUND;
 	}
@@ -100,7 +100,7 @@ indigo_result remove_driver(int dc) {
 	if (indigo_available_drivers[dc].dl_handle) {
 		dlclose(indigo_available_drivers[dc].dl_handle);
 	}
-	INDIGO_LOG(indigo_log("Driver %s removed.", indigo_available_drivers[dc].name));
+	INDIGO_LOG(indigo_log("Driver %s unloaded.", indigo_available_drivers[dc].name));
 	indigo_available_drivers[dc].description[0] = '\0';
 	indigo_available_drivers[dc].name[0] = '\0';
 	indigo_available_drivers[dc].driver = NULL;
