@@ -47,15 +47,20 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	if (property != NULL) {
 		if (*property->device && *indigo_property_name(device->version, property)) {
 			indigo_xml_printf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF, property->device, indigo_property_name(device->version, property));
+			indigo_xml_printf(handle, "<enableBLOB device='%s'>Also</enableBLOB>\n", property->device);
 		} else if (*property->device) {
 			indigo_xml_printf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF, property->device);
+			indigo_xml_printf(handle, "<enableBLOB device='%s'>Also</enableBLOB>\n", property->device);
 		} else if (*indigo_property_name(device->version, property)) {
 			indigo_xml_printf(handle, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF, indigo_property_name(device->version, property));
+			indigo_xml_printf(handle, "<enableBLOB>Also</enableBLOB>\n");
 		} else {
 			indigo_xml_printf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF);
+			indigo_xml_printf(handle, "<enableBLOB>Also</enableBLOB>\n");
 		}
 	} else {
 		indigo_xml_printf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF);
+		indigo_xml_printf(handle, "<enableBLOB>Also</enableBLOB>\n");
 	}
 	pthread_mutex_unlock(&xmutex);
 	return INDIGO_OK;
@@ -110,7 +115,7 @@ static indigo_result xml_client_parser_detach(indigo_device *device) {
 
 indigo_device *indigo_xml_client_adapter(int input, int ouput) {
 	static indigo_device device_template = {
-		"client protocol adapter", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_LEGACY,
 		NULL,
 		xml_client_parser_enumerate_properties,
 		xml_client_parser_change_property,

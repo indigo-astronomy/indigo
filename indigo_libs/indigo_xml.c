@@ -117,7 +117,7 @@ void indigo_xml_printf(int handle, const char *format, ...) {
 	va_start(args, format);
 	int length = vsnprintf(buffer, 1024, format, args);
 	va_end(args);
-	int res = write(handle, buffer, length);
+	write(handle, buffer, length);
 	INDIGO_DEBUG_PROTOCOL(indigo_debug("sent: %s", buffer));
 	pthread_mutex_unlock(&log_mutex);
 }
@@ -125,7 +125,7 @@ void indigo_xml_printf(int handle, const char *format, ...) {
 void indigo_xml_write(int handle, const char *buffer, long length) {
 	pthread_mutex_lock(&log_mutex);
 	//   INDIGO_DEBUG(int written =)
-	int res = write(handle, buffer, length);
+	write(handle, buffer, length);
 	//   INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
 	pthread_mutex_unlock(&log_mutex);
 }
@@ -163,10 +163,10 @@ void *enable_blob_handler(parser_state state, char *name, char *value, indigo_pr
 	} else if (state == TEXT) {
 		if (!strcmp(value, "Also")) {
 			client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
-		} else if (!strcmp(value, "Also")) {
-			client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
-		} else if (!strcmp(value, "Also")) {
-			client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
+		} else if (!strcmp(value, "Never")) {
+			client->enable_blob = INDIGO_ENABLE_BLOB_NEVER;
+		} else if (!strcmp(value, "Only")) {
+			client->enable_blob = INDIGO_ENABLE_BLOB_ONLY;
 		}
 	}
 	return enable_blob_handler;
@@ -594,6 +594,8 @@ void *def_number_handler(parser_state state, char *name, char *value, indigo_pro
 			property->items[property->count-1].number.max = atof(value);
 		} else if (!strcmp(name, "step")) {
 			property->items[property->count-1].number.step = atof(value);
+		} else if (!strcmp(name, "format")) {
+			strncpy(property->items[property->count-1].number.format, value, INDIGO_NAME_SIZE);
 		}
 	} else if (state == TEXT) {
 		property->items[property->count-1].number.value = atof(value);
@@ -760,6 +762,8 @@ void *def_blob_vector_handler(parser_state state, char *name, char *value, indig
 			strncpy(property->label, value, INDIGO_VALUE_SIZE);
 		} else if (!strcmp(name, "state")) {
 			property->state = parse_state(value);
+		} else if (!strcmp(name, "perm")) {
+			property->perm = parse_perm(value);
 		} else if (!strcmp(name, "message")) {
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}

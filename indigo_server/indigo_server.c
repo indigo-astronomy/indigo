@@ -123,11 +123,15 @@ void signal_handler(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
-			if (indigo_available_drivers[i].dl_handle)
+			if (indigo_available_drivers[i].dl_handle != NULL)
 				indigo_unload_driver(indigo_available_drivers[i].name);
 			else
 				indigo_remove_driver(indigo_available_drivers[i].driver);
 		}
+	}
+	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
+		if (indigo_available_servers[i].thread != NULL)
+			indigo_disconnect_server(indigo_available_servers[i].host, indigo_available_servers[i].port);
 	}
 	INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 	exit(0);
@@ -140,11 +144,23 @@ int main(int argc, const char * argv[]) {
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 
 	for (int i = 1; i < argc; i++) {
-		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1)
-			indigo_server_xml_port = atoi(argv[i+1]);
-		else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators"))
+		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
+			indigo_server_xml_port = atoi(argv[i + 1]);
+			i++;
+		} else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators")) {
 			first_driver = 0;
-		else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+		} else if ((!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) && i < argc - 1) {
+			char host[INDIGO_NAME_SIZE];
+			strncpy(host, argv[i + 1], INDIGO_NAME_SIZE);
+			char *colon = strchr(host, ':');
+			int port = 7624;
+			if (colon != NULL) {
+				*colon++ = 0;
+				port = atoi(colon);
+			}
+			indigo_connect_server(host, port);
+			i++;
+		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-h|--help] driver_name driver_name ...\n\n", argv[0]);
 			exit(0);
 		} else if(argv[i][0] != '-') {
