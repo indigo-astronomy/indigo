@@ -52,6 +52,7 @@ typedef struct {
 	pthread_t thread;                       ///< client thread ID
 	bool thread_started;                    ///< client thread started/stopped
 	int socket;                             ///< stream socket
+	indigo_device *protocol_adapter;        ///< server protocol adapter
 } indigo_server_entry;
 
 /** Array of all available drivers (statically & dynamically linked).

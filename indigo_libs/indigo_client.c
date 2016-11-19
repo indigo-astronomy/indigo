@@ -158,16 +158,19 @@ void *server_thread(indigo_server_entry *server) {
 		}
 		if (server->socket > 0) {
 			INDIGO_LOG(indigo_log("Server %s:%d connected.", server->host, server->port));
-			indigo_device *protocol_adapter = indigo_xml_client_adapter(server->socket, server->socket);
-			indigo_attach_device(protocol_adapter);
-			indigo_xml_parse(server->socket, protocol_adapter, NULL);
+			server->protocol_adapter = indigo_xml_client_adapter(server->socket, server->socket);
+			indigo_attach_device(server->protocol_adapter);
+			indigo_xml_parse(server->socket, server->protocol_adapter, NULL);
+			indigo_detach_device(server->protocol_adapter);
+			free(server->protocol_adapter->device_context);
+			free(server->protocol_adapter);
 			close(server->socket);
-			server->socket = 0;
 			INDIGO_LOG(indigo_log("Server %s:%d disconnected.", server->host, server->port));
 		} else {
 			sleep(5);
 		}
 	}
+	server->thread = NULL;
 	INDIGO_LOG(indigo_log("Server %s:%d thread stopped.", server->host, server->port));
 	return NULL;
 }
