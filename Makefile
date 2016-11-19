@@ -41,6 +41,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBQHY=indigo_drivers/ccd_qhy/externals/libqhy/lib/macOS/libqhy.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
 	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
+	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac/libASICamera2.a
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
 	PACKAGE_TYPE=dmg
 	UINT=-Duint=unsigned
@@ -53,8 +54,10 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
 	ifeq ($(ARCH_DETECTED),arm)
 		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/armv6/libEFWFilter.a
+		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/armv6/libASICamera2.a
 	else
 		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/$(ARCH_DETECTED)/libEFWFilter.a
+		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/$(ARCH_DETECTED)/libASICamera2.a
 	endif
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	PACKAGE_TYPE=deb
@@ -74,7 +77,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libdc1394.a
+	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
 endif
 
 #---------------------------------------------------------------------
@@ -95,7 +98,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libdc1394.a
+	EXTERNALS=$(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
 endif
 
 #---------------------------------------------------------------------
@@ -244,6 +247,21 @@ include/asi_efw/EFW_filter.h: indigo_drivers/wheel_asi/bin_externals/libEFWFilte
 lib/libEFWFilter.a: include/asi_efw/EFW_filter.h
 	install -d lib
 	cp $(LIBASIEFW) lib
+
+
+#---------------------------------------------------------------------
+#
+#       Install libasicamera2
+#
+#---------------------------------------------------------------------
+
+include/asi_ccd/ASICamera2.h: indigo_drivers/ccd_asi/bin_externals/libasicamera/include/ASICamera2.h
+	install -d include/asi_ccd
+	cp indigo_drivers/ccd_asi/bin_externals/libasicamera/include/ASICamera2.h include/asi_ccd
+
+lib/libASICamera2.a: include/asi_ccd/ASICamera2.h
+	install -d lib
+	cp $(LIBASICAMERA) lib
 
 
 #---------------------------------------------------------------------
