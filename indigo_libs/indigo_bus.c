@@ -229,7 +229,7 @@ indigo_result indigo_start() {
 		memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));
 		memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
 		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
-		INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION;
+		INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
 		is_started = true;
 	}
 	pthread_mutex_unlock(&client_mutex);
@@ -301,7 +301,7 @@ indigo_result indigo_detach_client(indigo_client *client) {
 }
 
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
-	property->version = client ? client->version : INDIGO_VERSION;
+	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
 	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -313,7 +313,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
 	assert(property != NULL);
-	property->version = client ? client->version : INDIGO_VERSION;
+	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
 	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -333,7 +333,7 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 		va_end(args);
 	}
-	property->version = device ? device->version : INDIGO_VERSION;
+	property->version = device ? device->version : INDIGO_VERSION_CURRENT;
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		indigo_client *client = clients[i];
 		if (client != NULL && client->define_property != NULL)
@@ -352,7 +352,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 		va_end(args);
 	}
-	property->version = device ? device->version : INDIGO_VERSION;
+	property->version = device ? device->version : INDIGO_VERSION_CURRENT;
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		indigo_client *client = clients[i];
 		if (client != NULL && client->update_property != NULL)
@@ -371,7 +371,7 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
 		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 		va_end(args);
 	}
-	property->version = device ? device->version : INDIGO_VERSION;
+	property->version = device ? device->version : INDIGO_VERSION_CURRENT;
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		indigo_client *client = clients[i];
 		if (client != NULL && client->delete_property != NULL)
@@ -432,7 +432,7 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 	property->type = INDIGO_TEXT_VECTOR;
 	property->state = state;
 	property->perm = perm;
-	property->version = INDIGO_VERSION;
+	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
 	return property;
 }
@@ -453,7 +453,7 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 	property->type = INDIGO_NUMBER_VECTOR;
 	property->state = state;
 	property->perm = perm;
-	property->version = INDIGO_VERSION;
+	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
 	return property;
 }
@@ -475,7 +475,7 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 	property->state = state;
 	property->perm = perm;
 	property->rule = rule;
-	property->version = INDIGO_VERSION;
+	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
 	return property;
 }
@@ -496,7 +496,7 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 	property->type = INDIGO_LIGHT_VECTOR;
 	property->perm = INDIGO_RO_PERM;
 	property->state = state;
-	property->version = INDIGO_VERSION;
+	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
 	return property;
 }
@@ -517,7 +517,7 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	property->type = INDIGO_BLOB_VECTOR;
 	property->perm = INDIGO_RO_PERM;
 	property->state = state;
-	property->version = INDIGO_VERSION;
+	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
 	return property;
 }

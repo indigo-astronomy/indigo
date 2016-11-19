@@ -89,7 +89,7 @@ static void server_callback(int count) {
 
 static indigo_result add_driver(const char *name) {
 #ifdef STATIC_DRIVERS
-	INDIGO_LOG(indigo_log("Can not load '%s'. Drivers are statcally linked!", name));
+	INDIGO_LOG(indigo_log("Can not load '%s'. Drivers are statically linked!", name));
 	return INDIGO_OK;
 #else
 	char driver_name[INDIGO_NAME_SIZE];
@@ -148,7 +148,7 @@ static indigo_result add_driver(const char *name) {
 
 static indigo_result remove_driver(const char *entry_point_name) {
 #ifdef STATIC_DRIVERS
-	INDIGO_LOG(indigo_log("Can not remove '%s'. Drivers are statcally linked!", entry_point_name));
+	INDIGO_LOG(indigo_log("Can not remove '%s'. Drivers are statically linked!", entry_point_name));
 	return INDIGO_OK;
 #else
 	if (entry_point_name[0] == '\0') return INDIGO_OK;
@@ -248,13 +248,11 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	return INDIGO_OK;
 }
 
-
 static indigo_result detach(indigo_device *device) {
 	assert(device != NULL);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }
-
 
 void signal_handler(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
@@ -275,12 +273,11 @@ void signal_handler(int signo) {
 	exit(0);
 }
 
-
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 
-	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION >> 8) & 0xFF, INDIGO_VERSION & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
+	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators"))
@@ -288,7 +285,11 @@ int main(int argc, const char * argv[]) {
 		else if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1)
 			indigo_server_xml_port = atoi(argv[i+1]);
 		else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+#ifdef STATIC_DRIVERS
 			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-h|--help]\n\n", argv[0]);
+#else
+			printf("\n%s [-p|--port port] [-h|--help] driver_name driver_name ...\n\n", argv[0]);
+#endif
 			exit(0);
 		}
 		else if(argv[i][0] != '-') {
@@ -301,7 +302,7 @@ int main(int argc, const char * argv[]) {
 	signal(SIGINT, signal_handler);
 
 	static indigo_device device = {
-		SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION,
+		SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		attach,
 		enumerate_properties,
 		change_property,

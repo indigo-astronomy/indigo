@@ -246,7 +246,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		if (INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(INFO_DEVICE_NAME_ITEM, "NAME", "Name", device->name);
-		indigo_init_text_item(INFO_DEVICE_VERSION_ITEM, "VERSION", "Version", "%d.%d", (version >> 8) & 0xFF, version & 0xFF);
+		indigo_init_text_item(INFO_DEVICE_VERSION_ITEM, "VERSION", "Version", "%d.%d.%d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, version);
 		indigo_init_text_item(INFO_DEVICE_INTERFACE_ITEM, "INTERFACE", "Interface", "%d", interface);
 		// -------------------------------------------------------------------------------- DEBUG
 		DEBUG_PROPERTY = indigo_init_switch_property(NULL, device->name, "DEBUG", MAIN_GROUP, "Debug status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);

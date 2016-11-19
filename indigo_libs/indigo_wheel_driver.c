@@ -36,7 +36,7 @@
 
 #include "indigo_wheel_driver.h"
 
-indigo_result indigo_wheel_attach(indigo_device *device, indigo_version version) {
+indigo_result indigo_wheel_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (WHEEL_CONTEXT == NULL) {

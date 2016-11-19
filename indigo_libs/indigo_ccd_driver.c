@@ -44,7 +44,7 @@ static void countdown_timer_callback(indigo_device *device) {
 	}
 }
 
-indigo_result indigo_ccd_attach(indigo_device *device, indigo_version version) {
+indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (CCD_CONTEXT == NULL) {
@@ -514,7 +514,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H");
 		header[t] = ' ';
-		t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see www.indigo-astronomy.org", (INDIGO_VERSION >> 8) & 0xFF, INDIGO_VERSION & 0xFF);
+		t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see www.indigo-astronomy.org", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 		header[t] = ' ';
 		if (byte_per_pixel == 2) {
 			t = sprintf(header += 80, "BZERO   =                 32768 / offset data range to that of unsigned short");

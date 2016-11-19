@@ -77,7 +77,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	asi_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_wheel_attach(device, INDIGO_VERSION) == INDIGO_OK) {
+	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
@@ -229,7 +229,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	EFW_INFO info;
 
 	static indigo_device wheel_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,

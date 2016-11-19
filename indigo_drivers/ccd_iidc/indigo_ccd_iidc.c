@@ -203,7 +203,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	iidc_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_ccd_attach(device, INDIGO_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- CCD_MODE, CCD_INFO, CCD_FRAME
 		dc1394error_t err;
@@ -440,7 +440,7 @@ static dc1394_t *context;
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
