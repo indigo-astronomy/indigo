@@ -121,7 +121,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	atik_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_ccd_attach(device, INDIGO_VERSION) == INDIGO_OK) {
+	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN
 		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
@@ -323,7 +323,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	atik_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_guider_attach(device, INDIGO_VERSION) == INDIGO_OK) {
+	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
@@ -434,7 +434,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	atik_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_wheel_attach(device, INDIGO_VERSION) == INDIGO_OK) {
+	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
@@ -512,21 +512,21 @@ static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
 		guider_detach
 	};
 	static indigo_device wheel_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,

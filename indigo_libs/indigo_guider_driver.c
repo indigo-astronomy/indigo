@@ -36,7 +36,7 @@
 
 #include "indigo_guider_driver.h"
 
-indigo_result indigo_guider_attach(indigo_device *device, indigo_version version) {
+indigo_result indigo_guider_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (GUIDER_CONTEXT == NULL) {

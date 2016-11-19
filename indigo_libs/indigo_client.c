@@ -19,48 +19,8 @@
 // version history
 // 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Build configuration
- \file indigo_config.h
+/** INDIGO client
+ \file indigo_client.c
  */
 
-#ifndef indigo_config_h
-#define indigo_config_h
-
-/** INDIGO Build number
- */
-#define INDIGO_BUILD 8
-
-/** Conditional compilation wrapper for TRACE log level
- */
-#define INDIGO_TRACE(c)
-
-/** Conditional compilation wrapper for DEBUG log level
- */
-#define INDIGO_DEBUG(c)
-
-/** Conditional compilation wrapper for ERROR log level
- */
-#define INDIGO_ERROR(c) c
-
-/** Conditional compilation wrapper for LOG log level
- */
-#define INDIGO_LOG(c) c
-
-/** Conditional compilation wrapper for TRACE log level (for wire protocol adapters)
- */
-#define INDIGO_TRACE_PROTOCOL(c)
-
-/** Conditional compilation wrapper for DEBUG log level (for wire protocol adapters)
- */
-#define INDIGO_DEBUG_PROTOCOL(c)
-
-/** Conditional compilation wrapper for TRACE log level (for drivers)
- */
-#define INDIGO_TRACE_DRIVER(c)
-
-/** Conditional compilation wrapper for DEBUG log level (for drivers)
- */
-#define INDIGO_DEBUG_DRIVER(c) c
-
-#endif /* indigo_config_h */
-
+#include "indigo_client.h"

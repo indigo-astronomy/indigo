@@ -36,7 +36,7 @@
 
 #include "indigo_focuser_driver.h"
 
-indigo_result indigo_focuser_attach(indigo_device *device, indigo_version version) {
+indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (FOCUSER_CONTEXT == NULL) {

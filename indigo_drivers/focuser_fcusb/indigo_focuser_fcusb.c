@@ -75,7 +75,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device->device_context != NULL);
 	fcusb_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-	if (indigo_focuser_attach(device, INDIGO_VERSION) == INDIGO_OK) {
+	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- X_FOCUSER_FREQUENCY
 		X_FOCUSER_FREQUENCY_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_FREQUENCY", FOCUSER_MAIN_GROUP, "Frequency", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
@@ -189,7 +189,7 @@ static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device focuser_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,
