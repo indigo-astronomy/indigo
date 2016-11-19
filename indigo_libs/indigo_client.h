@@ -27,29 +27,31 @@
 #define indigo_client_h
 
 #include <pthread.h>
+#include <stdbool.h>
 
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
-#define INDIGO_MAX_DRIVERS	100
-#define INDIGO_MAX_SERVERS	10
+#define INDIGO_MAX_DRIVERS    100
+#define INDIGO_MAX_SERVERS    10
 
 /** Driver entry type.
  */
 typedef struct {
-	char description[INDIGO_NAME_SIZE];	///< driver description
-	char name[INDIGO_NAME_SIZE];				///< driver name (entry point name)
-	driver_entry_point driver;					///< driver entry point
-	void *dl_handle;										///< dynamic library handle (NULL for statically linked driver)
+	char description[INDIGO_NAME_SIZE];     ///< driver description
+	char name[INDIGO_NAME_SIZE];            ///< driver name (entry point name)
+	driver_entry_point driver;              ///< driver entry point
+	void *dl_handle;                        ///< dynamic library handle (NULL for statically linked driver)
 } indigo_driver_entry;
 
 /** Remote server entry type.
  */
 typedef struct {
-	char host[INDIGO_NAME_SIZE];				///< server host name
-	int port;														///< server port
-	pthread_t thread;										///< client thread
-	int socket;													///< stream socket
+	char host[INDIGO_NAME_SIZE];            ///< server host name
+	int port;                               ///< server port
+	pthread_t thread;                       ///< client thread ID
+	bool thread_started;                    ///< client thread started/stopped
+	int socket;                             ///< stream socket
 } indigo_server_entry;
 
 /** Array of all available drivers (statically & dynamically linked).

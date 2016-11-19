@@ -130,7 +130,7 @@ void signal_handler(int signo) {
 		}
 	}
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
-		if (indigo_available_servers[i].thread != NULL)
+		if (indigo_available_servers[i].thread_started)
 			indigo_disconnect_server(indigo_available_servers[i].host, indigo_available_servers[i].port);
 	}
 	INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
@@ -171,7 +171,7 @@ int main(int argc, const char * argv[]) {
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i]);
 	}
-	
+
 	indigo_start_usb_event_handler();
 
 	signal(SIGINT, signal_handler);
