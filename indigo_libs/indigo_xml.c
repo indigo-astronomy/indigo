@@ -117,7 +117,11 @@ void indigo_xml_printf(int handle, const char *format, ...) {
 	va_start(args, format);
 	int length = vsnprintf(buffer, 1024, format, args);
 	va_end(args);
-	write(handle, buffer, length);
+	while(length > 0) {
+		int written = write(handle, buffer, length);
+		if (written > 0) length -= written;
+		else break;
+	}
 	INDIGO_DEBUG_PROTOCOL(indigo_debug("sent: %s", buffer));
 	pthread_mutex_unlock(&log_mutex);
 }
@@ -125,7 +129,11 @@ void indigo_xml_printf(int handle, const char *format, ...) {
 void indigo_xml_write(int handle, const char *buffer, long length) {
 	pthread_mutex_lock(&log_mutex);
 	//   INDIGO_DEBUG(int written =)
-	write(handle, buffer, length);
+	while(length > 0) {
+		int written = write(handle, buffer, length);
+		if (written > 0) length -= written;
+		else break;
+	}
 	//   INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
 	pthread_mutex_unlock(&log_mutex);
 }
