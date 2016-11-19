@@ -27,12 +27,26 @@
 #define indigo_client_h
 
 #include "indigo_bus.h"
+#include "indigo_driver.h"
 
-extern indigo_result indigo_add_driver(const char *name);
-extern indigo_result indigo_remove_driver(const char *name);
-extern indigo_result indigo_add_server(const char *name);
-extern indigo_result indigo_remove_server(const char *name);
+#define INDIGO_MAX_DRIVERS	100
 
+typedef struct {
+	char description[INDIGO_NAME_SIZE];
+	char name[INDIGO_NAME_SIZE];
+	driver_entry_point driver;
+	void *dl_handle;
+} indigo_driver_entry;
 
+extern indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
+
+extern indigo_result indigo_add_driver(driver_entry_point driver);
+extern indigo_result indigo_remove_driver(driver_entry_point driver);
+
+extern indigo_result indigo_load_driver(const char *name);
+extern indigo_result indigo_unload_driver(const char *name);
+
+extern indigo_result indigo_connect_server(const char *name);
+extern indigo_result indigo_disconnect_server(const char *name);
 
 #endif /* indigo_client_h */
