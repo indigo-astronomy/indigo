@@ -42,9 +42,11 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "ASICamera2.h"
+#include "asi_ccd/ASICamera2.h"
 #include "indigo_ccd_asi.h"
 #include "indigo_driver_xml.h"
+
+#define ASI_VENDOR_ID                   0x03c3
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((asi_private_data *)DEVICE_CONTEXT->private_data)
@@ -59,6 +61,7 @@
 typedef struct {
 	libusb_device *dev;
 	libusb_device_handle *handle;
+	int dev_id;
 	int device_count;
 	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 	double target_temperature, current_temperature;
@@ -378,9 +381,75 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-#define ASI_VENDOR_ID                  0xXXXX
-
 #define MAX_DEVICES                   10
+#define NO_DEVICE                 (-1000)
+
+
+static int asi_products[100];
+static int asi_id_count = 0;
+
+static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+static bool connected_ids[ASICAMERA_ID_MAX];
+
+static int find_index_by_device_id(int id) {
+	ASI_CAMERA_INFO info;
+	int count = ASIGetNumOfConnectedCameras();
+	for(int index = 0; index < count; index++) {
+		ASIGetCameraProperty(&info, index);
+		if (info.CameraID == id) return index;
+	}
+	return -1;
+}
+
+
+static int find_plugged_device_id() {
+	int i, id = NO_DEVICE, new_id = NO_DEVICE;
+	ASI_CAMERA_INFO info;
+
+	int count = ASIGetNumOfConnectedCameras();
+	for(i = 0; i < count; i++) {
+		ASIGetCameraProperty(&info, i);
+		id = info.CameraID;
+		if(!connected_ids[id]) {
+			new_id = id;
+			connected_ids[id] = true;
+			break;
+		}
+	}
+
+	return new_id;
+}
+
+
+static int find_available_device_slot() {
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		if (devices[slot] == NULL) return slot;
+	}
+	return -1;
+}
+
+
+static int find_unplugged_device_slot() {
+	bool dev_tmp[ASICAMERA_ID_MAX] = {false};
+	int i;
+	ASI_CAMERA_INFO info;
+
+	int count = ASIGetNumOfConnectedCameras();
+	for(i = 0; i < count; i++) {
+		ASIGetCameraProperty(&info, i);
+		dev_tmp[info.CameraID] = true;
+	}
+
+	int id = -1;
+	for(i = 0; i < ASICAMERA_ID_MAX; i++) {
+		if(connected_ids[i] && !dev_tmp[i]){
+			id = i;
+			connected_ids[id] = false;
+			break;
+		}
+	}
+	return id;
+}
 
 static struct {
 	int product;
@@ -393,6 +462,8 @@ static struct {
 static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+	ASI_CAMERA_INFO info;
+
 	static indigo_device ccd_template = {
 		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -407,7 +478,70 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		guider_change_property,
 		guider_detach
 	};
+
 	struct libusb_device_descriptor descriptor;
+
+	switch (event) {
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
+			int rc = libusb_get_device_descriptor(dev, &descriptor);
+			for (int i = 0; i < asi_id_count; i++) {
+				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct) continue;
+
+				int slot = find_available_device_slot();
+				if (slot < 0) {
+					INDIGO_LOG(indigo_log("indigo_ccd_asi: No available device slots available."));
+					return 0;
+				}
+
+				int id = find_plugged_device_id();
+				if (id == NO_DEVICE) {
+					INDIGO_LOG(indigo_log("indigo_ccd_asi: No plugged device found."));
+					return 0;
+				}
+
+				indigo_device *device = malloc(sizeof(indigo_device));
+				int index = find_index_by_device_id(id);
+				if (index < 0) {
+					INDIGO_LOG(indigo_log("indigo_ccd_asi: No index of plugged device found."));
+					return 0;
+				}
+				ASIGetCameraProperty(&info, index);
+				assert(device != NULL);
+				memcpy(device, &ccd_template, sizeof(indigo_device));
+				sprintf(device->name, "%s %d", info.Name, id);
+				INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
+				device->device_context = malloc(sizeof(asi_private_data));
+				assert(device->device_context);
+				memset(device->device_context, 0, sizeof(asi_private_data));
+				((asi_private_data*)device->device_context)->dev_id = id;
+				indigo_attach_device(device);
+				devices[slot]=device;
+			}
+			break;
+		}
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+			int slot;
+			bool removed = false;
+			while ((slot = find_unplugged_device_slot()) != -1) {
+				indigo_device **device = &devices[slot];
+				if (*device == NULL)
+					return 0;
+				indigo_detach_device(*device);
+				free((*device)->device_context);
+				free(*device);
+				*device = NULL;
+				removed = true;
+			}
+			if (!removed) {
+				INDIGO_LOG(indigo_log("indigo_wheel_asi: No ASI EFW device unplugged (maybe ASI camera)!"));
+			}
+		}
+	}
+	return 0;
+};
+
+
+/*
 	switch (event) {
 	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 		int rc = libusb_get_device_descriptor(dev, &descriptor);
@@ -470,31 +604,57 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	return 0;
 };
 
-static libusb_hotplug_callback_handle callback_handle;
+*/
 
-indigo_result indigo_ccd_asi(bool state) {
-	static bool current_state = false;
-	if (state == current_state)
-		return INDIGO_OK;
-	if ((current_state = state)) {
-		for (int i = 0; i < MAX_DEVICES; i++) {
-			devices[i] = 0;
-		}
-		indigo_start_usb_event_handler();
-		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, 0x1278, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, NULL);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_asi: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, libusb_error_name(rc)));
-		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
-	} else {
-		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_asi: libusb_hotplug_deregister_callback [%d]", __LINE__));
-		for (int j = 0; j < MAX_DEVICES; j++) {
-			if (devices[j] != NULL) {
-				indigo_device *device = devices[j];
-				hotplug_callback(NULL, PRIVATE_DATA->dev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
-			}
-		}
-		return INDIGO_OK;
+
+static void remove_all_devices() {
+	int i;
+	for(i = 0; i < MAX_DEVICES; i++) {
+		indigo_device **device = &devices[i];
+		if (*device == NULL) continue;
+		indigo_detach_device(*device);
+		free((*device)->device_context);
+		free(*device);
+		*device = NULL;
 	}
+	for(i = 0; i < ASICAMERA_ID_MAX; i++)
+		connected_ids[i] = false;
 }
 
 
+static libusb_hotplug_callback_handle callback_handle;
+
+indigo_result indigo_ccd_asi(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	SET_DRIVER_INFO(info, "ASI Camera", __FUNCTION__, DRIVER_VERSION, last_action);
+
+	if (action == last_action)
+		return INDIGO_OK;
+
+	switch (action) {
+	case INDIGO_DRIVER_INIT:
+		last_action = action;
+		asi_id_count = ASIGetProductIDs(asi_products);
+		if (asi_id_count <= 0) {
+			INDIGO_LOG(indigo_log("indigo_ccd_asi: Can not get the list of supported IDs."));
+			return INDIGO_FAILED;
+		}
+		indigo_start_usb_event_handler();
+		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_asi: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
+
+	case INDIGO_DRIVER_SHUTDOWN:
+		last_action = action;
+		libusb_hotplug_deregister_callback(NULL, callback_handle);
+		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_asi: libusb_hotplug_deregister_callback [%d]", __LINE__));
+		remove_all_devices();
+		break;
+
+	case INDIGO_DRIVER_INFO:
+		break;
+	}
+
+	return INDIGO_OK;
+}
