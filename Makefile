@@ -350,6 +350,21 @@ drivers/indigo_mount_simulator.$(SOEXT): indigo_drivers/mount_simulator/indigo_m
 
 #---------------------------------------------------------------------
 #
+#	Build mount nexstar driver
+#
+#---------------------------------------------------------------------
+
+drivers/indigo_mount_nexstar.a: indigo_drivers/mount_nexstar/indigo_mount_nexstar.o
+	$(AR) $(ARFLAGS) $@ $^
+
+drivers/indigo_mount_nexstar: indigo_drivers/mount_nexstar/indigo_mount_nexstar_main.o drivers/indigo_mount_nexstar.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+drivers/indigo_mount_nexstar.$(SOEXT): indigo_drivers/mount_nexstar/indigo_mount_nexstar.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build SX CCD driver
 #
 #---------------------------------------------------------------------

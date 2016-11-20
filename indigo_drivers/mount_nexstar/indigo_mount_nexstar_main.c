@@ -1,4 +1,3 @@
-// Copyright (c) 2016 CloudMakers, s. r. o.
 // Copyright (c) 2016 Rumen G. Bogdanovski
 // All rights reserved.
 //
@@ -17,30 +16,29 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
 // version history
-// 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 // 2.0 Build 0 - PoC by Rumen G. Bogdanovski
 
-/** INDIGO ZWO ASI CCD driver main
- \file indigo_ccd_asi_main.c
+/** INDIGO mount nexstar driver main
+ \file indigo_mount_nexstar_main.c
  */
 
 #include <stdio.h>
-#include <string.h>
 
-#include "indigo_ccd_asi.h"
 #include "indigo_driver_xml.h"
+
+#include "indigo_mount_nexstar.h"
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
-	indigo_ccd_asi(INDIGO_DRIVER_INIT, NULL);
+	indigo_mount_nexstar(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(0, NULL, protocol_adapter);
-	indigo_ccd_asi(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_mount_nexstar(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_stop();
 	return 0;
 }
-

@@ -1,4 +1,5 @@
 // Copyright (c) 2016 CloudMakers, s. r. o.
+// Copyright (c) 2016 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,6 +19,8 @@
 
 // version history
 // 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 2.0 Build 0 - PoC by Rumen G. Bogdanovski
+
 
 /** INDIGO ZWO ASI CCD driver
  \file indigo_ccd_asi.h
