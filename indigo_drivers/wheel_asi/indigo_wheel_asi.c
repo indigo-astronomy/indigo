@@ -201,7 +201,16 @@ static int find_available_device_slot() {
 }
 
 
-static int find_unplugged_device_slot() {
+static int find_device_slot(int id) {
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL) continue;
+		if (PRIVATE_DATA->dev_id == id) return slot;
+	}
+	return -1;
+}
+
+static int find_unplugged_device_id() {
 	bool dev_tmp[EFW_ID_MAX] = {false};
 	int i, id = -1;
 
@@ -272,9 +281,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			int slot;
+			int slot, id;
 			bool removed = false;
-			while ((slot = find_unplugged_device_slot()) != -1) {
+			while ((id = find_unplugged_device_id()) != -1) {
+				slot = find_device_slot(id);
+				if (slot < 0) continue;
 				indigo_device **device = &devices[slot];
 				if (*device == NULL)
 					return 0;
@@ -285,7 +296,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				removed = true;
 			}
 			if (!removed) {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: No ASI EFW device unplugged (maybe ASI camera)!"));
+				INDIGO_LOG(indigo_log("indigo_wheel_asi: No ASI EFW device unplugged (maybe ASI Camera)!"));
 			}
 		}
 	}
