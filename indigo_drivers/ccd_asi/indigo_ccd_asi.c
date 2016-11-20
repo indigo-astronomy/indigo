@@ -198,7 +198,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// adjust min/max values for properties if needed
 
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		//INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -297,7 +297,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(device);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
 	return indigo_ccd_detach(device);
 }
 
@@ -310,7 +310,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	device->device_context = NULL;
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		//INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -375,7 +375,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(device);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
 	return indigo_guider_detach(device);
 }
 
@@ -390,6 +390,7 @@ static int asi_id_count = 0;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 static bool connected_ids[ASICAMERA_ID_MAX];
+
 
 static int find_index_by_device_id(int id) {
 	ASI_CAMERA_INFO info;
@@ -429,7 +430,17 @@ static int find_available_device_slot() {
 }
 
 
-static int find_unplugged_device_slot() {
+static int find_device_slot(int id) {
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL) continue;
+		if (PRIVATE_DATA->dev_id == id) return slot;
+	}
+	return -1;
+}
+
+
+static int find_unplugged_device_id() {
 	bool dev_tmp[ASICAMERA_ID_MAX] = {false};
 	int i;
 	ASI_CAMERA_INFO info;
@@ -451,15 +462,6 @@ static int find_unplugged_device_slot() {
 	return id;
 }
 
-static struct {
-	int product;
-	const char *name;
-	indigo_device_interface iface;
-} ASI_PRODUCTS[] = {
-	{ 0, NULL }
-};
-
-static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	ASI_CAMERA_INFO info;
@@ -516,24 +518,47 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				((asi_private_data*)device->device_context)->dev_id = id;
 				indigo_attach_device(device);
 				devices[slot]=device;
+
+				if (info.ST4Port) {
+					slot = find_available_device_slot();
+					if (slot < 0) {
+						INDIGO_LOG(indigo_log("indigo_ccd_asi: No available device slots available."));
+						return 0;
+					}
+					device = malloc(sizeof(indigo_device));
+					assert(device != NULL);
+					memcpy(device, &guider_template, sizeof(indigo_device));
+					sprintf(device->name, "%s %d guider", info.Name, id);
+					INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
+					device->device_context = malloc(sizeof(asi_private_data));
+					assert(device->device_context);
+					memset(device->device_context, 0, sizeof(asi_private_data));
+					((asi_private_data*)device->device_context)->dev_id = id;
+					indigo_attach_device(device);
+					devices[slot]=device;
+				}
 			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			int slot;
+			int id, slot;
 			bool removed = false;
-			while ((slot = find_unplugged_device_slot()) != -1) {
-				indigo_device **device = &devices[slot];
-				if (*device == NULL)
-					return 0;
-				indigo_detach_device(*device);
-				free((*device)->device_context);
-				free(*device);
-				*device = NULL;
-				removed = true;
+			while ((id = find_unplugged_device_id()) != -1) {
+				slot = find_device_slot(id);
+				while (slot >= 0) {
+					indigo_device **device = &devices[slot];
+					if (*device == NULL)
+						return 0;
+					indigo_detach_device(*device);
+					free((*device)->device_context);
+					free(*device);
+					*device = NULL;
+					removed = true;
+					slot = find_device_slot(id);
+				}
 			}
 			if (!removed) {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: No ASI EFW device unplugged (maybe ASI camera)!"));
+				INDIGO_LOG(indigo_log("indigo_ccd_asi: No ASI Camera unplugged (maybe EFW wheel)!"));
 			}
 		}
 	}

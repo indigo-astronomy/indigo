@@ -210,6 +210,7 @@ static int find_device_slot(int id) {
 	return -1;
 }
 
+
 static int find_unplugged_device_id() {
 	bool dev_tmp[EFW_ID_MAX] = {false};
 	int i, id = -1;
