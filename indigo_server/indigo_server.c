@@ -58,6 +58,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_qhy,
 	indigo_ccd_ssag,
 	indigo_focuser_fcusb,
+	indigo_ccd_asi,
 	indigo_wheel_asi,
 	indigo_ccd_iidc,
 #endif

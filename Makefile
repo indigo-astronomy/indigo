@@ -387,11 +387,11 @@ drivers/indigo_ccd_ssag.$(SOEXT): indigo_drivers/ccd_ssag/indigo_ccd_ssag.o
 drivers/indigo_ccd_asi.a: indigo_drivers/ccd_asi/indigo_ccd_asi.o
 	$(AR) $(ARFLAGS) $@ $^
 
-drivers/indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o drivers/indigo_ccd_asi.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+drivers/indigo_ccd_asi: indigo_drivers/ccd_asi/indigo_ccd_asi_main.o drivers/indigo_ccd_asi.a lib/libASICamera2.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
-drivers/indigo_ccd_asi.$(SOEXT): indigo_drivers/ccd_asi/indigo_ccd_asi.o
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+drivers/indigo_ccd_asi.$(SOEXT): indigo_drivers/ccd_asi/indigo_ccd_asi.o lib/libASICamera2.a
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
 #---------------------------------------------------------------------
 #

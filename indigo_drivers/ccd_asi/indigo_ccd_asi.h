@@ -33,7 +33,7 @@
 /** Register ZWO ASI CCD hot-plug callback
  */
 
-extern indigo_result indigo_ccd_asi(bool state);
+extern indigo_result indigo_ccd_asi(indigo_driver_action action, indigo_driver_info *info);
 
 #endif /* ccd_asi_h */
 
