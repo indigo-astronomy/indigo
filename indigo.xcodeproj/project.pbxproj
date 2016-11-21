@@ -18,6 +18,8 @@
 		590112C71DC94D4400B5CD8E /* libqhy.h in Headers */ = {isa = PBXBuildFile; fileRef = 590112C61DC94D4400B5CD8E /* libqhy.h */; };
 		59019E0B1DE0AC7400CCB3ED /* indigo_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59019E091DE0AC7400CCB3ED /* indigo_client.c */; };
 		59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */ = {isa = PBXBuildFile; fileRef = 59019E0A1DE0AC7400CCB3ED /* indigo_client.h */; };
+		59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59019E0F1DE112A600CCB3ED /* ASICamera2.h */; };
+		59019E131DE112B700CCB3ED /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59019E111DE112B000CCB3ED /* libASICamera2.a */; };
 		5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5981C8DE1DC291AF00C7705F /* libfcusb.a */; };
 		5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
 		599C9A3C1D9FF0A3008BBCC1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */; };
@@ -212,6 +214,8 @@
 		590112C61DC94D4400B5CD8E /* libqhy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libqhy.h; path = include/libqhy/libqhy.h; sourceTree = "<group>"; };
 		59019E091DE0AC7400CCB3ED /* indigo_client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_client.c; sourceTree = "<group>"; };
 		59019E0A1DE0AC7400CCB3ED /* indigo_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_client.h; sourceTree = "<group>"; };
+		59019E0F1DE112A600CCB3ED /* ASICamera2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ASICamera2.h; path = include/ASICamera2.h; sourceTree = "<group>"; };
+		59019E111DE112B000CCB3ED /* libASICamera2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libASICamera2.a; path = lib/mac/libASICamera2.a; sourceTree = "<group>"; };
 		590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi_main.c; sourceTree = "<group>"; };
 		590A86401DB80A04002F12FB /* indigo_ccd_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi.c; sourceTree = "<group>"; };
 		590A86411DB80A04002F12FB /* indigo_ccd_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_asi.h; sourceTree = "<group>"; };
@@ -231,6 +235,9 @@
 		5999FBCF1DB01FB70084BBF8 /* indigo_base64_luts.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_base64_luts.h; sourceTree = "<group>"; };
 		5999FBD01DB01FB70084BBF8 /* indigo_base64.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_base64.h; sourceTree = "<group>"; };
 		599A240D1DBEC5BA0020BF8F /* cltools.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = cltools.sh; sourceTree = "<group>"; };
+		599A63A21DE3734700ABC827 /* indigo_mount_nexstar_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_nexstar_main.c; sourceTree = "<group>"; };
+		599A63A31DE3734700ABC827 /* indigo_mount_nexstar.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_nexstar.c; sourceTree = "<group>"; };
+		599A63A41DE3734700ABC827 /* indigo_mount_nexstar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_nexstar.h; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
 		599C9A371D9FF0A3008BBCC1 /* INDIGO Server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "INDIGO Server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -346,6 +353,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59019E131DE112B700CCB3ED /* libASICamera2.a in Frameworks */,
 				9DBC346D1DCB26B400588DB9 /* libEFWFilter.a in Frameworks */,
 				9D976FDD1DD0C69D00782B32 /* libdc1394.a in Frameworks */,
 			);
@@ -421,9 +429,27 @@
 			path = libqhy;
 			sourceTree = "<group>";
 		};
+		59019E0D1DE1125900CCB3ED /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				59019E0E1DE1129300CCB3ED /* libasicamera */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		59019E0E1DE1129300CCB3ED /* libasicamera */ = {
+			isa = PBXGroup;
+			children = (
+				59019E111DE112B000CCB3ED /* libASICamera2.a */,
+				59019E0F1DE112A600CCB3ED /* ASICamera2.h */,
+			);
+			path = libasicamera;
+			sourceTree = "<group>";
+		};
 		590A863E1DB8096A002F12FB /* ccd_asi */ = {
 			isa = PBXGroup;
 			children = (
+				59019E0D1DE1125900CCB3ED /* bin_externals */,
 				590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */,
 				590A86401DB80A04002F12FB /* indigo_ccd_asi.c */,
 				590A86411DB80A04002F12FB /* indigo_ccd_asi.h */,
@@ -544,6 +570,16 @@
 			path = tools;
 			sourceTree = "<group>";
 		};
+		599A63A11DE3733200ABC827 /* mount_nexstar */ = {
+			isa = PBXGroup;
+			children = (
+				599A63A41DE3734700ABC827 /* indigo_mount_nexstar.h */,
+				599A63A31DE3734700ABC827 /* indigo_mount_nexstar.c */,
+				599A63A21DE3734700ABC827 /* indigo_mount_nexstar_main.c */,
+			);
+			path = mount_nexstar;
+			sourceTree = "<group>";
+		};
 		599C9A381D9FF0A3008BBCC1 /* INDIGO Server for macOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -626,6 +662,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				599A63A11DE3733200ABC827 /* mount_nexstar */,
 				59D381AA1D95984D00E87393 /* ccd_simulator */,
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
 				590112A11DC9474800B5CD8E /* ccd_qhy */,
@@ -758,6 +795,7 @@
 				9DBC346B1DCB26AC00588DB9 /* EFW_filter.h in Headers */,
 				9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */,
 				9D976FDC1DD0C69D00782B32 /* dc1394.h in Headers */,
+				59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */,
 				9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
 				59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */,
@@ -1347,6 +1385,7 @@
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1364,6 +1403,7 @@
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
