@@ -64,7 +64,7 @@ typedef struct {
 	libusb_device *dev;
 	libusb_device_handle *handle;
 	int dev_id;
-	int device_count;
+	//int device_count;
 	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 	double target_temperature, current_temperature;
 	unsigned short relay_mask;
@@ -77,12 +77,12 @@ typedef struct {
 
 static bool asi_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (PRIVATE_DATA->device_count++ == 0) {
+	//if (PRIVATE_DATA->device_count++ == 0) {
 		libusb_device *dev = PRIVATE_DATA->dev;
 
 		// open the camera, hot-plug should be handled somehow with ASI
 
-	}
+	//}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -129,12 +129,12 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 
 static void asi_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (--PRIVATE_DATA->device_count == 0) {
+	//if (--PRIVATE_DATA->device_count == 0) {
 
 		// close
 
 		free(PRIVATE_DATA->buffer);
-	}
+	//}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
@@ -554,6 +554,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					indigo_detach_device(*device);
 					free((*device)->device_context);
 					free(*device);
+					libusb_unref_device(dev);
 					*device = NULL;
 					removed = true;
 					slot = find_device_slot(id);
@@ -566,72 +567,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	}
 	return 0;
 };
-
-
-/*
-	switch (event) {
-	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-		int rc = libusb_get_device_descriptor(dev, &descriptor);
-		INDIGO_DEBUG_DRIVER(indigo_debug("asi_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s", __LINE__, libusb_error_name(rc)));
-		for (int i = 0; ASI_PRODUCTS[i].name; i++) {
-			if (descriptor.idVendor == 0x1278 && ASI_PRODUCTS[i].product == descriptor.idProduct) {
-				asi_private_data *private_data = malloc(sizeof(asi_private_data));
-				assert(private_data != NULL);
-				memset(private_data, 0, sizeof(asi_private_data));
-				libusb_ref_device(dev);
-				private_data->dev = dev;
-				indigo_device *device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &ccd_template, sizeof(indigo_device));
-				strcpy(device->name, ASI_PRODUCTS[i].name);
-				device->device_context = private_data;
-				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-						break;
-					}
-				}
-				device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &guider_template, sizeof(indigo_device));
-				strcpy(device->name, ASI_PRODUCTS[i].name);
-				strcat(device->name, " guider");
-				device->device_context = private_data;
-				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-						break;
-					}
-				}
-				break;
-			}
-		}
-		break;
-	}
-	case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-		asi_private_data *private_data = NULL;
-		for (int j = 0; j < MAX_DEVICES; j++) {
-			if (devices[j] != NULL) {
-				indigo_device *device = devices[j];
-				if (PRIVATE_DATA->dev == dev) {
-					private_data = PRIVATE_DATA;
-					indigo_detach_device(device);
-					free(device);
-					devices[j] = NULL;
-				}
-			}
-		}
-		if (private_data != NULL) {
-			libusb_unref_device(dev);
-			free(private_data);
-		}
-		break;
-	}
-	}
-	return 0;
-};
-
-*/
 
 
 static void remove_all_devices() {

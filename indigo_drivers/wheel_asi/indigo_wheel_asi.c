@@ -293,6 +293,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				indigo_detach_device(*device);
 				free((*device)->device_context);
 				free(*device);
+				libusb_unref_device(dev);
 				*device = NULL;
 				removed = true;
 			}
