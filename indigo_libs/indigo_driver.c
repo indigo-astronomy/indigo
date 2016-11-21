@@ -268,6 +268,12 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		indigo_init_switch_item(CONFIG_LOAD_ITEM, "LOAD", "Load", false);
 		indigo_init_switch_item(CONFIG_SAVE_ITEM, "SAVE", "Save", false);
 		indigo_init_switch_item(CONFIG_DEFAULT_ITEM, "DEFAULT", "Default", false);
+		// -------------------------------------------------------------------------------- DEVICE_PORT
+		DEVICE_PORT_PROPERTY = indigo_init_text_property(NULL, device->name, "DEVICE_PORT", MAIN_GROUP, "Serial port", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+		if (DEVICE_PORT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		DEVICE_PORT_PROPERTY->hidden = true;
+		indigo_init_text_item(DEVICE_PORT_ITEM, "PORT", "Serial port", "/dev/tty");
 		// --------------------------------------------------------------------------------
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 		if (pipe(DEVICE_CONTEXT->timer_pipe) != 0)
@@ -295,6 +301,8 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
 		indigo_define_property(device, SIMULATION_PROPERTY, NULL);
 	if (indigo_property_match(CONFIG_PROPERTY, property) && !CONFIG_PROPERTY->hidden)
 		indigo_define_property(device, CONFIG_PROPERTY, NULL);
+	if (indigo_property_match(DEVICE_PORT_PROPERTY, property) && !DEVICE_PORT_PROPERTY->hidden)
+		indigo_define_property(device, DEVICE_PORT_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
@@ -343,6 +351,11 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			CONFIG_DEFAULT_ITEM->sw.value = false;
 		}
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
+	} else if (indigo_property_match(DEVICE_PORT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DEVICE_PORT
+		indigo_property_copy_values(DEVICE_PORT_PROPERTY, property, false);
+		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
