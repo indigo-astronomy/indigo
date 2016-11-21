@@ -459,6 +459,9 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	free(CCD_ABORT_EXPOSURE_PROPERTY);
 	free(CCD_FRAME_PROPERTY);
 	free(CCD_BIN_PROPERTY);
+	free(CCD_GAIN_PROPERTY);
+	free(CCD_GAMMA_PROPERTY);
+	free(CCD_OFFSET_PROPERTY);
 	free(CCD_FRAME_TYPE_PROPERTY);
 	free(CCD_IMAGE_FORMAT_PROPERTY);
 	free(CCD_IMAGE_FILE_PROPERTY);
