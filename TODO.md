@@ -22,6 +22,7 @@
 7. Windows port
 8. Android port
 9. JPEG format support
+10. smart serial port selection 
 
 ### Utilities
 
@@ -30,6 +31,7 @@
 1. posibility to run external drivers dynamic libraries in indigo_server (INDI style drivers) __DONE__
 2. posibility to run external drivers executables in indigo_server (INDI style drivers)
 3. posibility to add driver to indigo_server over INDIGO protocol
+4. server chaining __DONE__
 
 #### command line client
 
