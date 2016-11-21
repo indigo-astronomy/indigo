@@ -372,6 +372,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_delete_property(device, &INDIGO_ALL_PROPERTIES, NULL);
 	free(CONNECTION_PROPERTY);
 	free(INFO_PROPERTY);
+	free(DEVICE_PORT_PROPERTY);
 	free(DEBUG_PROPERTY);
 	free(SIMULATION_PROPERTY);
 	free(CONFIG_PROPERTY);
