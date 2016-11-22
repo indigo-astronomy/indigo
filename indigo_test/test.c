@@ -28,6 +28,8 @@
 #include "indigo_client.h"
 #include "ccd_simulator/indigo_ccd_simulator.h"
 
+static bool connected = false;
+
 static indigo_result test_attach(indigo_client *client) {
 	indigo_log("attached to INDI bus...");
 	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
@@ -35,7 +37,7 @@ static indigo_result test_attach(indigo_client *client) {
 }
 
 static indigo_result test_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
-	if (strcmp(device->name, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
+	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		indigo_device_connect(client, device);
@@ -45,17 +47,23 @@ static indigo_result test_define_property(struct indigo_client *client, struct i
 }
 
 static indigo_result test_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
-	if (strcmp(device->name, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
+	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
-			indigo_log("connected...");
-			static char * items[] = { CCD_EXPOSURE_ITEM_NAME };
-			static double values[] = { 3.0 };
-			indigo_change_number_property(client, device, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+			if (!connected) {
+				connected = true;
+				indigo_log("connected...");
+				static char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+				static double values[] = { 3.0 };
+				indigo_change_number_property(client, device, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+			}
 		} else {
-			indigo_log("disconnected...");
-			indigo_stop();
+			if (connected) {
+				indigo_log("disconnected...");
+				indigo_stop();
+				connected = false;
+			}
 		}
 		return INDIGO_OK;
 	}
