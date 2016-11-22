@@ -38,6 +38,7 @@
 #include <stdint.h>
 
 #include "indigo_bus.h"
+#include "indigo_names.h"
 
 /** Main group name string.
  */
@@ -242,14 +243,6 @@ extern indigo_result indigo_device_change_property(indigo_device *device, indigo
 /** Detach callback function.
  */
 extern indigo_result indigo_device_detach(indigo_device *device);
-
-/** Send connect message.
- */
-extern indigo_result indigo_device_connect(indigo_device *device);
-
-/** Send disconnect message.
- */
-extern indigo_result indigo_device_disconnect(indigo_device *device);
 
 /** Load properties.
  */

@@ -165,12 +165,12 @@ int main(int argc, const char * argv[]) {
 			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-h|--help] driver_name driver_name ...\n\n", argv[0]);
 			exit(0);
 		} else if(argv[i][0] != '-') {
-			indigo_load_driver(argv[i]);
+			indigo_load_driver(argv[i], false);
 		}
 	}
 
 	for (int i = first_driver; static_drivers[i]; i++) {
-		indigo_add_driver(static_drivers[i]);
+		indigo_add_driver(static_drivers[i], false);
 	}
 
 	indigo_start_usb_event_handler();
