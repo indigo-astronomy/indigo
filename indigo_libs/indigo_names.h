@@ -11,87 +11,87 @@
 
 /** CONNECTION property name.
  */
-#define CONNECTION_PROPERTY_NAME					"CONNECTION"
+#define CONNECTION_PROPERTY_NAME							"CONNECTION"
 
 /** CONNECTION.CONNECTED property item name.
  */
-#define CONNECTION_CONNECTED_ITEM_NAME		"CONNECTED"
+#define CONNECTION_CONNECTED_ITEM_NAME				"CONNECTED"
 
 /** CONNECTION.DISCONNECTED property item name.
  */
-#define CONNECTION_DISCONNECTED_ITEM_NAME	"DISCONNECTED"
+#define CONNECTION_DISCONNECTED_ITEM_NAME			"DISCONNECTED"
 
 /** INFO property name.
  */
-#define INFO_PROPERTY_NAME								"INFO"
+#define INFO_PROPERTY_NAME										"INFO"
 
 /** INFO.DEVICE_NAME property item name.
  */
-#define INFO_DEVICE_NAME_ITEM_NAME				"DEVICE_NAME"
+#define INFO_DEVICE_NAME_ITEM_NAME						"DEVICE_NAME"
 
 /** INFO.DEVICE_VERSION property item name.
  */
-#define INFO_DEVICE_VERSION_ITEM_NAME     "DEVICE_VERSION"
+#define INFO_DEVICE_VERSION_ITEM_NAME					"DEVICE_VERSION"
 
 /** INFO.DEVICE_INTERFACE property item name.
  */
-#define INFO_DEVICE_INTERFACE_ITEM_NAME   "DEVICE_INTERFACE"
+#define INFO_DEVICE_INTERFACE_ITEM_NAME				"DEVICE_INTERFACE"
 
 /** INFO.FRAMEWORK_NAME property item name.
  */
-#define INFO_FRAMEWORK_NAME_ITEM_NAME     "FRAMEWORK_NAME"
+#define INFO_FRAMEWORK_NAME_ITEM_NAME					"FRAMEWORK_NAME"
 
 /** INFO.FRAMEWORK_VERSION property item name.
  */
-#define INFO_FRAMEWORK_VERSION_ITEM_NAME  "FRAMEWORK_VERSION"
+#define INFO_FRAMEWORK_VERSION_ITEM_NAME			"FRAMEWORK_VERSION"
 
 /** DEBUG property name.
  */
-#define DEBUG_PROPERTY_NAME               "DEBUG"
+#define DEBUG_PROPERTY_NAME										"DEBUG"
 
 /** DEBUG.ENABLED property item name.
  */
-#define DEBUG_ENABLED_ITEM_NAME           "ENABLED"
+#define DEBUG_ENABLED_ITEM_NAME								"ENABLED"
 
 /** DEBUG.DISABLED property item name.
  */
-#define DEBUG_DISABLED_ITEM_NAME          "DISABLED"
+#define DEBUG_DISABLED_ITEM_NAME							"DISABLED"
 
 /** SIMULATION property name.
  */
-#define SIMULATION_PROPERTY_NAME          "SIMULATION"
+#define SIMULATION_PROPERTY_NAME							"SIMULATION"
 
 /** SIMULATION.DISABLED property name.
  */
-#define SIMULATION_ENABLED_ITEM_NAME      "DISABLED"
+#define SIMULATION_ENABLED_ITEM_NAME					"DISABLED"
 
 /** SIMULATION.DISABLED property item name.
  */
-#define SIMULATION_DISABLED_ITEM_NAME     "DISABLED"
+#define SIMULATION_DISABLED_ITEM_NAME					"DISABLED"
 
 /** CONFIG property name.
  */
-#define CONFIG_PROPERTY_NAME              "CONFIG"
+#define CONFIG_PROPERTY_NAME									"CONFIG"
 
 /** CONFIG.LOAD property item name.
  */
-#define CONFIG_LOAD_ITEM_NAME             "LOAD"
+#define CONFIG_LOAD_ITEM_NAME									"LOAD"
 
 /** CONFIG.SAVE property item name.
  */
-#define CONFIG_SAVE_ITEM_NAME             "SAVE"
+#define CONFIG_SAVE_ITEM_NAME									"SAVE"
 
 /** CONFIG.DEFAULT property item name.
  */
-#define CONFIG_DEFAULT_ITEM_NAME          "DEFAULT"
+#define CONFIG_DEFAULT_ITEM_NAME							"DEFAULT"
 
 /** DEVICE_PORT property name.
  */
-#define DEVICE_PORT_PROPERTY_NAME					"DEVICE_PORT"
+#define DEVICE_PORT_PROPERTY_NAME							"DEVICE_PORT"
 
 /** DEVICE_PORT.DEVICE_PORT property name.
  */
-#define DEVICE_PORT_ITEM_NAME							"DEVICE_PORT"
+#define DEVICE_PORT_ITEM_NAME									"DEVICE_PORT"
 
 /** CCD_INFO property name.
  */
@@ -317,7 +317,229 @@
  */
 #define CCD_COOLER_POWER_ITEM_NAME            "POWER"
 
+/** GUIDER_GUIDE_DEC property name.
+ */
+#define GUIDER_GUIDE_DEC_PROPERTY_NAME        "GUIDER_GUIDE_DEC"
 
+/** GUIDER_GUIDE.NORTH property item name.
+ */
+#define GUIDER_GUIDE_NORTH_ITEM_NAME          "NORTH"
+
+/** GUIDER_GUIDE.SOUTH property item name.
+ */
+#define GUIDER_GUIDE_SOUTH_ITEM_NAME          "SOUTH"
+
+/** GUIDER_GUIDE_RA property name.
+ */
+#define GUIDER_GUIDE_RA_PROPERTY_NAME         "GUIDER_GUIDE_RA"
+
+/** GUIDER_GUIDE.EAST property item name.
+ */
+#define GUIDER_GUIDE_EAST_ITEM_NAME           "EAST"
+
+/** GUIDER_GUIDE.WEST property item name.
+ */
+#define GUIDER_GUIDE_WEST_ITEM_NAME           "WEST"
+
+/** WHEEL_SLOT property name.
+ */
+#define WHEEL_SLOT_PROPERTY_NAME							"WHEEL_SLOT"
+
+/** WHEEL_SLOT.SLOT property item name.
+ */
+#define WHEEL_SLOT_ITEM_NAME									"SLOT"
+
+/** WHEEL_SLOT_NAME property name.
+ */
+#define WHEEL_SLOT_NAME_PROPERTY_NAME					"WHEEL_SLOT_NAME"
+
+/** WHEEL_SLOT_NAME.NAME_%d property item name.
+ */
+#define WHEEL_SLOT_NAME_ITEM_NAME							"SLOT_NAME_%d"
+
+/** WHEEL_SLOT_NAME.NAME_1 property item name.
+ */
+#define WHEEL_SLOT_NAME_1_ITEM_NAME						"SLOT_NAME_1"
+
+/** WHEEL_SLOT_NAME.NAME_2 property item name.
+ */
+#define WHEEL_SLOT_NAME_2_ITEM_NAME						"SLOT_NAME_2"
+
+/** WHEEL_SLOT_NAME.NAME_3 property item name.
+ */
+#define WHEEL_SLOT_NAME_3_ITEM_NAME						"SLOT_NAME_3"
+
+/** WHEEL_SLOT_NAME.NAME_4 property item name.
+ */
+#define WHEEL_SLOT_NAME_4_ITEM_NAME						"SLOT_NAME_4"
+
+/** WHEEL_SLOT_NAME.NAME_5 property item name.
+ */
+#define WHEEL_SLOT_NAME_5_ITEM_NAME						"SLOT_NAME_5"
+
+/** WHEEL_SLOT_NAME.NAME_6 property item name.
+ */
+#define WHEEL_SLOT_NAME_6_ITEM_NAME						"SLOT_NAME_6"
+
+/** WHEEL_SLOT_NAME.NAME_7 property item name.
+ */
+#define WHEEL_SLOT_NAME_7_ITEM_NAME						"SLOT_NAME_7"
+
+/** WHEEL_SLOT_NAME.NAME_8 property item name.
+ */
+#define WHEEL_SLOT_NAME_8_ITEM_NAME						"SLOT_NAME_8"
+
+/** WHEEL_SLOT_NAME.NAME_9 property item name.
+ */
+#define WHEEL_SLOT_NAME_9_ITEM_NAME						"SLOT_NAME_9"
+
+/** FOCUSER_SPEED property name.
+ */
+#define FOCUSER_SPEED_PROPERTY_NAME						"FOCUSER_SPEED"
+
+/** FOCUSER_SPEED.SPEED property item name.
+ */
+#define FOCUSER_SPEED_ITEM_NAME								"SPEED"
+
+/** FOCUSER_DIRECTION property name.
+ */
+#define FOCUSER_DIRECTION_PROPERTY_NAME				"FOCUSER_DIRECTION"
+
+/** FOCUSER_DIRECTION.MOVE_INWARD property item name.
+ */
+#define FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME		"MOVE_INWARD"
+
+/** FOCUSER_DIRECTION.MOVE_OUTWARD property item name.
+ */
+#define FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME	"MOVE_OUTWARD"
+
+/** FOCUSER_STEPS property name.
+ */
+#define FOCUSER_STEPS_PROPERTY_NAME						"FOCUSER_STEPS"
+
+/** FOCUSER_STEPS.STEPS property item name.
+ */
+#define FOCUSER_STEPS_ITEM_NAME								"STEPS"
+
+/** FOCUSER_POSITION property name.
+ */
+#define FOCUSER_POSITION_PROPERTY_NAME				"FOCUSER_POSITION"
+
+/** FOCUSER_POSITION.POSITION property item name.
+ */
+#define FOCUSER_POSITION_ITEM_NAME						"POSITION"
+
+/** FOCUSER_ABORT_MOTION property name.
+ */
+#define FOCUSER_ABORT_MOTION_PROPERTY_NAME		"FOCUSER_ABORT_MOTION"
+
+/** FOCUSER_ABORT_MOTION.ABORT_MOTION property item name.
+ */
+#define FOCUSER_ABORT_MOTION_ITEM_NAME				"ABORT_MOTION"
+
+/** MOUNT_GEOGRAPHIC_COORDINATES property name.
+ */
+#define MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY_NAME	"MOUNT_GEOGRAPHIC_COORDINATES"
+
+/** MOUNT_GEOGRAPHIC_COORDINATES.LATITUDE property item name.
+ */
+#define MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME	"LATITUDE"
+
+/** MOUNT_GEOGRAPHIC_COORDINATES.LONGITUDE property item name.
+ */
+#define MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME	"LONGITUDE"
+
+/** MOUNT_GEOGRAPHIC_COORDINATES.ELEVATION property item name.
+ */
+#define MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME	"ELEVATION"
+
+/** MOUNT_LST_TIME property name.
+ */
+#define MOUNT_LST_TIME_PROPERTY_NAME						"MOUNT_LST_TIME"
+
+/** MOUNT_TIME.TIME property item name.
+ */
+#define MOUNT_LST_TIME_ITEM_NAME								"TIME"
+
+/** MOUNT_PARK property name.
+ */
+#define MOUNT_PARK_PROPERTY_NAME								"MOUNT_PARK"
+
+/** MOUNT_PARK.PARKED property item name.
+ */
+#define MOUNT_PARK_PARKED_ITEM_NAME							"PARKED"
+
+/** MOUNT_PARK.UNPARKED property item name.
+ */
+#define MOUNT_PARK_UNPARKED_ITEM_NAME						"UNPARKED"
+
+/** MOUNT_ON_COORDINATES_SET property name.
+ */
+#define MOUNT_ON_COORDINATES_SET_PROPERTY_NAME	"MOUNT_ON_COORDINATES_SET"
+
+/** MOUNT_ON_COORDINATES_SET.TRACK property item name.
+ */
+#define MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME	"TRACK"
+
+/** MOUNT_ON_COORDINATES_SET.SYNC property item name.
+ */
+#define MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME		"SYNC"
+
+/** MOUNT_ON_COORDINATES_SET.SLEW property item name.
+ */
+#define MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME		"SLEW"
+
+/** MOUNT_SLEW_RATE property name.
+ */
+#define MOUNT_SLEW_RATE_PROPERTY_NAME						"MOUNT_SLEW_RATE"
+
+/** MOUNT_SLEW_RATE.GUIDE property item name.
+ */
+#define MOUNT_SLEW_RATE_GUIDE_ITEM_NAME					"GUIDE"
+
+/** MOUNT_SLEW_RATE.CENTERING property item name.
+ */
+#define MOUNT_SLEW_RATE_CENTERING_ITEM_NAME			"CENTERING"
+
+/** MOUNT_SLEW_RATE.FIND property item name.
+ */
+#define MOUNT_SLEW_RATE_FIND_ITEM_NAME					"FIND"
+
+/** MOUNT_SLEW_RATE.MAX property item name.
+ */
+#define MOUNT_SLEW_RATE_MAX_ITEM_NAME						"MAX"
+
+/** MOUNT_EQUATORIAL_COORDINATES property name.
+ */
+#define MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME	"MOUNT_EQUATORIAL_COORDINATES"
+
+/** MOUNT_EQUATORIAL_COORDINATES.RA property item name.
+ */
+#define MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME		"RA"
+
+/** MOUNT_EQUATORIAL_COORDINATES.DEC property item name.
+ */
+#define MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME	"DEC"
+
+/** MOUNT_HORIZONTAL_COORDINATES property name.
+ */
+#define MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME	"MOUNT_HORIZONTAL_COORDINATES"
+
+/** MOUNT_HORIZONTAL_COORDINATES.ALT property item name.
+ */
+#define MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME	"ALT"
+
+/** MOUNT_HORIZONTAL_COORDINATES.AZ property item name.
+ */
+#define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME	"AZ"
+
+/** MOUNT_ABORT_MOTION property name.
+ */
+#define MOUNT_ABORT_MOTION_PROPERTY_NAME				"MOUNT_ABORT_MOTION"
+
+/** FOCUSER_ABORT_MOTION.ABORT_MOTION property item name.
+ */
+#define MOUNT_ABORT_MOTION_ITEM_NAME						"ABORT_MOTION"
 
 
 #endif /* indigo_names_h */

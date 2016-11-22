@@ -14,7 +14,7 @@
 ### Framework
 
 1. Snooping support
-2. Client API for easier integration to client apps & GUI
+2. Client API for easier integration to client apps & GUI __DONE__
 3. ASCOM client adapter
 4. Multipoint alignment engine for mount drivers
 5. integrated http server for binary blob download
