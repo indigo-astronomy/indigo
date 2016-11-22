@@ -64,11 +64,13 @@ typedef struct {
 	libusb_device *dev;
 	libusb_device_handle *handle;
 	int dev_id;
-	//int device_count;
+	int device_count;
+	bool is_camera;
 	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 	double target_temperature, current_temperature;
 	unsigned short relay_mask;
 	unsigned char *buffer;
+	long int buffer_size;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature;
 	double exposure;
@@ -79,20 +81,27 @@ static bool asi_open(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	//if (PRIVATE_DATA->device_count++ == 0) {
-	res = ASIOpenCamera(id);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIOpenCamera(%d) = %d", id, res));
-		return false;
+	if (PRIVATE_DATA->device_count++ == 0) {
+		res = ASIOpenCamera(id);
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIOpenCamera(%d) = %d", id, res));
+			return false;
+		}
+		res = ASIInitCamera(id);
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIInitCamera(%d) = %d", id, res));
+			return false;
+		}
+		if (PRIVATE_DATA->buffer == NULL) {
+			if(PRIVATE_DATA->info.IsCoolerCam)
+				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*3 + FITS_HEADER_SIZE;
+			else
+				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*2 + FITS_HEADER_SIZE;
+			PRIVATE_DATA->buffer = (unsigned char*)malloc(PRIVATE_DATA->buffer_size);
+		}
 	}
-	res = ASIInitCamera(id);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIInitCamera(%d) = %d", id, res));
-		return false;
-	}
-	//}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -133,10 +142,15 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 }
 
 static bool asi_read_pixels(indigo_device *device) {
+	ASI_ERROR_CODE res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	//ASI_ERROR_CODE ASIGetDataAfterExp(int iCameraID, unsigned char* pBuffer, long lBuffSize);
-		// download image to PRIVATE_DATA->buffer + FITS_HEADER_SIZE
+	res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res));
+		return false;
+	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -169,8 +183,13 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 
 static void asi_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	ASICloseCamera(PRIVATE_DATA->dev_id);
-	free(PRIVATE_DATA->buffer);
+
+	if (--PRIVATE_DATA->device_count == 0) {
+		ASICloseCamera(PRIVATE_DATA->dev_id);
+		if (PRIVATE_DATA->is_camera && (PRIVATE_DATA->buffer != NULL))
+			free(PRIVATE_DATA->buffer);
+	}
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
@@ -553,8 +572,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				device->device_context = malloc(sizeof(asi_private_data));
 				assert(device->device_context);
 				memset(device->device_context, 0, sizeof(asi_private_data));
-				PRIVATE_DATA->dev_id = id;
-				memcpy(&(PRIVATE_DATA->info), &info, sizeof(ASI_CAMERA_INFO));
+				((asi_private_data*)device->device_context)->dev_id = id;
+				((asi_private_data*)device->device_context)->is_camera = true;
+				memcpy(&(((asi_private_data*)device->device_context)->info), &info, sizeof(ASI_CAMERA_INFO));
 				indigo_attach_device(device);
 				devices[slot]=device;
 
@@ -572,8 +592,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					device->device_context = malloc(sizeof(asi_private_data));
 					assert(device->device_context);
 					memset(device->device_context, 0, sizeof(asi_private_data));
-					PRIVATE_DATA->dev_id = id;
-					memcpy(&(PRIVATE_DATA->info), &info, sizeof(ASI_CAMERA_INFO));
+					((asi_private_data*)device->device_context)->dev_id = id;
+					((asi_private_data*)device->device_context)->is_camera = false;
+					memcpy(&(((asi_private_data*)device->device_context)->info), &info, sizeof(ASI_CAMERA_INFO));
 					indigo_attach_device(device);
 					devices[slot]=device;
 				}
