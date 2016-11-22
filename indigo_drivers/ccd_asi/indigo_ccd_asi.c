@@ -72,25 +72,61 @@ typedef struct {
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature;
 	double exposure;
-	// ...etc, local variables for camera instance
+	ASI_CAMERA_INFO info;
 } asi_private_data;
 
 static bool asi_open(indigo_device *device) {
+	int id = PRIVATE_DATA->dev_id;
+	ASI_ERROR_CODE res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	//if (PRIVATE_DATA->device_count++ == 0) {
-		libusb_device *dev = PRIVATE_DATA->dev;
-
-		// open the camera, hot-plug should be handled somehow with ASI
-
+	res = ASIOpenCamera(id);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIOpenCamera(%d) = %d", id, res));
+		return false;
+	}
+	res = ASIInitCamera(id);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIInitCamera(%d) = %d", id, res));
+		return false;
+	}
 	//}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
 static bool asi_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
+	int id = PRIVATE_DATA->dev_id;
+	ASI_ERROR_CODE res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	// start exposure
+	//start exposure - NEEDS MUCH MORE
+	res = ASISetROIFormat(id, frame_width, frame_height,  horizontal_bin, ASI_IMG_RAW16);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetROIFormat(%d) = %d", id, res));
+		return false;
+	}
+	res = ASISetStartPos(id, frame_left, frame_top);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetStartPos(%d) = %d", id, res));
+		return false;
+	}
+	res = ASISetControlValue(id, ASI_EXPOSURE, (long)(exposure*1000), ASI_FALSE);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res));
+		return false;
+	}
+	res = ASIStartExposure(id, dark);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIStartExposure(%d) = %d", id, res));
+		return false;
+	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -99,6 +135,7 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 static bool asi_read_pixels(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
+	//ASI_ERROR_CODE ASIGetDataAfterExp(int iCameraID, unsigned char* pBuffer, long lBuffSize);
 		// download image to PRIVATE_DATA->buffer + FITS_HEADER_SIZE
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -108,16 +145,19 @@ static bool asi_read_pixels(indigo_device *device) {
 static bool asi_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	// abort exposure
+	ASI_ERROR_CODE err = ASIStopExposure(PRIVATE_DATA->dev_id);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	return true;
+	if(err) return false;
+	else return true;
 }
 
 static bool asi_set_cooler(indigo_device *device, bool status, double target, double *current) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	// set cooler
+	// ASI_COOLER_ON
+	//ASI_ERROR_CODE ASISetControlValue(int  iCameraID, ASI_CONTROL_TYPE  ControlType, long lValue, ASI_BOOL bAuto);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -129,12 +169,8 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 
 static void asi_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	//if (--PRIVATE_DATA->device_count == 0) {
-
-		// close
-
-		free(PRIVATE_DATA->buffer);
-	//}
+	ASICloseCamera(PRIVATE_DATA->dev_id);
+	free(PRIVATE_DATA->buffer);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
@@ -517,7 +553,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				device->device_context = malloc(sizeof(asi_private_data));
 				assert(device->device_context);
 				memset(device->device_context, 0, sizeof(asi_private_data));
-				((asi_private_data*)device->device_context)->dev_id = id;
+				PRIVATE_DATA->dev_id = id;
+				memcpy(&(PRIVATE_DATA->info), &info, sizeof(ASI_CAMERA_INFO));
 				indigo_attach_device(device);
 				devices[slot]=device;
 
@@ -535,7 +572,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					device->device_context = malloc(sizeof(asi_private_data));
 					assert(device->device_context);
 					memset(device->device_context, 0, sizeof(asi_private_data));
-					((asi_private_data*)device->device_context)->dev_id = id;
+					PRIVATE_DATA->dev_id = id;
+					memcpy(&(PRIVATE_DATA->info), &info, sizeof(ASI_CAMERA_INFO));
 					indigo_attach_device(device);
 					devices[slot]=device;
 				}
