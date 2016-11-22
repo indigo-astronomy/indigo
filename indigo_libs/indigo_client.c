@@ -47,7 +47,7 @@ indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
 static int used_driver_slots = 0;
 static int used_server_slots = 0;
 
-static indigo_result add_driver(driver_entry_point driver, void *dl_handle) {
+static indigo_result add_driver(driver_entry_point driver, void *dl_handle, bool init) {
 	int empty_slot = used_driver_slots; /* the first slot after the last used is a good candidate */
 	for (int dc = 0; dc < used_driver_slots;  dc++) {
 		if (indigo_available_drivers[dc].driver == driver) {
@@ -77,14 +77,16 @@ static indigo_result add_driver(driver_entry_point driver, void *dl_handle) {
 	if (empty_slot == used_driver_slots)
 		used_driver_slots++; /* if we are not filling a gap - increase used_slots */
 
+	if (init)
+		return driver(INDIGO_DRIVER_INIT, NULL);
 	return INDIGO_OK;
 }
 
-indigo_result indigo_add_driver(driver_entry_point driver) {
-	return add_driver(driver, NULL);
+indigo_result indigo_add_driver(driver_entry_point driver, bool init) {
+	return add_driver(driver, NULL, init);
 }
 
-indigo_result indigo_load_driver(const char *name) {
+indigo_result indigo_load_driver(const char *name, bool init) {
 	char driver_name[INDIGO_NAME_SIZE];
 	char *entry_point_name, *cp;
 	void *dl_handle;
@@ -105,7 +107,7 @@ indigo_result indigo_load_driver(const char *name) {
 		dlclose(dl_handle);
 		return INDIGO_NOT_FOUND;
 	}
-	return add_driver(driver, dl_handle);
+	return add_driver(driver, dl_handle, init);
 }
 
 indigo_result remove_driver(int dc) {

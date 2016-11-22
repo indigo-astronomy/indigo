@@ -165,7 +165,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(device);
+		indigo_device_disconnect(NULL, device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_mount_detach(device);
 }
@@ -255,7 +255,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(device);
+		indigo_device_disconnect(NULL, device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_guider_detach(device);
 }
