@@ -55,124 +55,124 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 	if (CCD_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- CCD_INFO
-			CCD_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_INFO", CCD_MAIN_GROUP, "CCD info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 8);
+			CCD_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_INFO_PROPERTY_NAME, CCD_MAIN_GROUP, "CCD info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 8);
 			if (CCD_INFO_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(CCD_INFO_WIDTH_ITEM, "WIDTH", "Horizontal resolution", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_HEIGHT_ITEM, "HEIGHT", "Vertical resolution", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, "MAX_HORIZONAL_BIN", "Max vertical binning", 0, 0, 0, 1);
-			indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, "MAX_VERTICAL_BIN", "Max horizontal binning", 0, 0, 0, 1);
-			indigo_init_number_item(CCD_INFO_PIXEL_SIZE_ITEM, "PIXEL_SIZE", "Pixel size", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_PIXEL_WIDTH_ITEM, "PIXEL_WIDTH", "Pixel width", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, "PIXEL_HEIGHT", "Pixel height", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_BITS_PER_PIXEL_ITEM, "BITS_PER_PIXEL", "Bits/pixel", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_WIDTH_ITEM, CCD_INFO_WIDTH_ITEM_NAME, "Horizontal resolution", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_HEIGHT_ITEM, CCD_INFO_HEIGHT_ITEM_NAME, "Vertical resolution", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, CCD_INFO_MAX_HORIZONAL_BIN_ITEM_NAME, "Max vertical binning", 0, 0, 0, 1);
+			indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME, "Max horizontal binning", 0, 0, 0, 1);
+			indigo_init_number_item(CCD_INFO_PIXEL_SIZE_ITEM, CCD_INFO_PIXEL_SIZE_ITEM_NAME, "Pixel size", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_PIXEL_WIDTH_ITEM, CCD_INFO_PIXEL_WIDTH_ITEM_NAME, "Pixel width", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME, "Pixel height", 0, 0, 0, 0);
+			indigo_init_number_item(CCD_INFO_BITS_PER_PIXEL_ITEM, CCD_INFO_BITS_PER_PIXEL_ITEM_NAME, "Bits/pixel", 0, 0, 0, 0);
 			// -------------------------------------------------------------------------------- CCD_UPLOAD_MODE
-			CCD_UPLOAD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "CCD_UPLOAD_MODE", CCD_MAIN_GROUP, "Image upload settings", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+			CCD_UPLOAD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Image upload settings", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 			if (CCD_UPLOAD_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(CCD_UPLOAD_MODE_CLIENT_ITEM, "CLIENT", "Upload to client", true);
-			indigo_init_switch_item(CCD_UPLOAD_MODE_LOCAL_ITEM, "LOCAL", "Save locally", false);
-			indigo_init_switch_item(CCD_UPLOAD_MODE_BOTH_ITEM, "BOTH", "Both upload to client and save locally", false);
+			indigo_init_switch_item(CCD_UPLOAD_MODE_CLIENT_ITEM, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, "Upload to client", true);
+			indigo_init_switch_item(CCD_UPLOAD_MODE_LOCAL_ITEM, CCD_UPLOAD_MODE_LOCAL_ITEM_NAME, "Save locally", false);
+			indigo_init_switch_item(CCD_UPLOAD_MODE_BOTH_ITEM, CCD_UPLOAD_MODE_BOTH_ITEM_NAME, "Both upload to client and save locally", false);
 			// -------------------------------------------------------------------------------- CCD_LOCAL_MODE
-			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, "CCD_LOCAL_MODE", CCD_MAIN_GROUP, "Local mode settings", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Local mode settings", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_LOCAL_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_text_item(CCD_LOCAL_MODE_DIR_ITEM, "DIR", "Directory", getenv("HOME"));
-			indigo_init_text_item(CCD_LOCAL_MODE_PREFIX_ITEM, "PREFIX", "File name prefix", "IMAGE_XXX");
+			indigo_init_text_item(CCD_LOCAL_MODE_DIR_ITEM, CCD_LOCAL_MODE_DIR_ITEM_NAME, "Directory", getenv("HOME"));
+			indigo_init_text_item(CCD_LOCAL_MODE_PREFIX_ITEM, CCD_LOCAL_MODE_PREFIX_ITEM_NAME, "File name prefix", "IMAGE_XXX");
 			// -------------------------------------------------------------------------------- CCD_MODE
-			CCD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "CCD_MODE", CCD_MAIN_GROUP, "Capture mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 32);
+			CCD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Capture mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 32);
 			if (CCD_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_MODE_PROPERTY->count = 1;
 			CCD_MODE_PROPERTY->perm = INDIGO_RO_PERM;
 			indigo_init_switch_item(CCD_MODE_ITEM, "DEFAULT_MODE", "Default mode", true);
 			// -------------------------------------------------------------------------------- CCD_EXPOSURE
-			CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_EXPOSURE", CCD_MAIN_GROUP, "Start exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Start exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_EXPOSURE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(CCD_EXPOSURE_ITEM, "EXPOSURE", "Start exposure", 0, 10000, 1, 0);
+			indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 10000, 1, 0);
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%f");
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, "CCD_ABORT_EXPOSURE", CCD_MAIN_GROUP, "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			if (CCD_ABORT_EXPOSURE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(CCD_ABORT_EXPOSURE_ITEM, "ABORT_EXPOSURE", "Abort exposure", false);
+			indigo_init_switch_item(CCD_ABORT_EXPOSURE_ITEM, CCD_ABORT_EXPOSURE_ITEM_NAME, "Abort exposure", false);
 			// -------------------------------------------------------------------------------- CCD_FRAME
-			CCD_FRAME_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_FRAME", CCD_IMAGE_GROUP, "Frame size setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 5);
+			CCD_FRAME_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_FRAME_PROPERTY_NAME, CCD_IMAGE_GROUP, "Frame size setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 5);
 			if (CCD_FRAME_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(CCD_FRAME_LEFT_ITEM, "LEFT", "Left", 0, 0, 1, 0);
-			indigo_init_number_item(CCD_FRAME_TOP_ITEM, "TOP", "Top", 0, 0, 1, 0);
-			indigo_init_number_item(CCD_FRAME_WIDTH_ITEM, "WIDTH", "Width", 0, 0, 1, 0);
-			indigo_init_number_item(CCD_FRAME_HEIGHT_ITEM, "HEIGHT", "Height", 0, 0, 1, 0);
-			indigo_init_number_item(CCD_FRAME_BITS_PER_PIXEL_ITEM, "BITS_PER_PIXEL", "Bits per pixel", 16, 16, 0, 16);
+			indigo_init_number_item(CCD_FRAME_LEFT_ITEM, CCD_FRAME_LEFT_ITEM_NAME, "Left", 0, 0, 1, 0);
+			indigo_init_number_item(CCD_FRAME_TOP_ITEM, CCD_FRAME_TOP_ITEM_NAME, "Top", 0, 0, 1, 0);
+			indigo_init_number_item(CCD_FRAME_WIDTH_ITEM, CCD_FRAME_WIDTH_ITEM_NAME, "Width", 0, 0, 1, 0);
+			indigo_init_number_item(CCD_FRAME_HEIGHT_ITEM, CCD_FRAME_HEIGHT_ITEM_NAME, "Height", 0, 0, 1, 0);
+			indigo_init_number_item(CCD_FRAME_BITS_PER_PIXEL_ITEM, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME, "Bits per pixel", 16, 16, 0, 16);
 			// -------------------------------------------------------------------------------- CCD_BIN
-			CCD_BIN_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_BIN", CCD_IMAGE_GROUP, "Binning setting", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
+			CCD_BIN_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_BIN_PROPERTY_NAME, CCD_IMAGE_GROUP, "Binning setting", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
 			if (CCD_BIN_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(CCD_BIN_HORIZONTAL_ITEM, "HORIZONTAL", "Horizontal binning", 0, 1, 1, 1);
-			indigo_init_number_item(CCD_BIN_VERTICAL_ITEM, "VERTICAL", "Vertical binning", 0, 1, 1, 1);
+			indigo_init_number_item(CCD_BIN_HORIZONTAL_ITEM, CCD_BIN_HORIZONTAL_ITEM_NAME, "Horizontal binning", 0, 1, 1, 1);
+			indigo_init_number_item(CCD_BIN_VERTICAL_ITEM, CCD_BIN_VERTICAL_ITEM_NAME, "Vertical binning", 0, 1, 1, 1);
 			// -------------------------------------------------------------------------------- CCD_GAIN
-			CCD_GAIN_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_GAIN", CCD_IMAGE_GROUP, "Gain setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			CCD_GAIN_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_GAIN_PROPERTY_NAME, CCD_IMAGE_GROUP, "Gain setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_GAIN_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_GAIN_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_GAIN_ITEM, "GAIN", "Gain", 0, 1, 1, 1);
+			indigo_init_number_item(CCD_GAIN_ITEM, CCD_GAIN_ITEM_NAME, "Gain", 0, 1, 1, 1);
 			// -------------------------------------------------------------------------------- CCD_OFFSET
-			CCD_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_OFFSET", CCD_IMAGE_GROUP, "Offset setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			CCD_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_OFFSET_PROPERTY_NAME, CCD_IMAGE_GROUP, "Offset setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_OFFSET_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_OFFSET_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_OFFSET_ITEM, "OFFSET", "Offset", 0, 1, 1, 1);
+			indigo_init_number_item(CCD_OFFSET_ITEM, CCD_OFFSET_ITEM_NAME, "Offset", 0, 1, 1, 1);
 			// -------------------------------------------------------------------------------- CCD_GAMMA
-			CCD_GAMMA_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_GAMMA", CCD_IMAGE_GROUP, "Gamma setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			CCD_GAMMA_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_GAMMA_PROPERTY_NAME, CCD_IMAGE_GROUP, "Gamma setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_GAMMA_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_GAMMA_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_GAMMA_ITEM, "GAMMA", "Gamma", 0, 1, 1, 1);
+			indigo_init_number_item(CCD_GAMMA_ITEM, CCD_GAMMA_ITEM_NAME, "Gamma", 0, 1, 1, 1);
 			// -------------------------------------------------------------------------------- CCD_FRAME_TYPE
-			CCD_FRAME_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, "CCD_FRAME_TYPE", CCD_IMAGE_GROUP, "Frame type setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+			CCD_FRAME_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_FRAME_TYPE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Frame type setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 			if (CCD_FRAME_TYPE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(CCD_FRAME_TYPE_LIGHT_ITEM, "LIGHT", "Light frame exposure", true);
-			indigo_init_switch_item(CCD_FRAME_TYPE_BIAS_ITEM, "BIAS", "Bias frame exposure", false);
-			indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, "DARK", "Dark frame exposure", false);
-			indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, "FLAT", "Flat field frame exposure", false);
+			indigo_init_switch_item(CCD_FRAME_TYPE_LIGHT_ITEM, CCD_FRAME_TYPE_LIGHT_ITEM_NAME, "Light frame exposure", true);
+			indigo_init_switch_item(CCD_FRAME_TYPE_BIAS_ITEM, CCD_FRAME_TYPE_BIAS_ITEM_NAME, "Bias frame exposure", false);
+			indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, CCD_FRAME_TYPE_DARK_ITEM_NAME, "Dark frame exposure", false);
+			indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, CCD_FRAME_TYPE_FLAT_ITEM_NAME, "Flat field frame exposure", false);
 			// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
-			CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "CCD_IMAGE_FORMAT", CCD_IMAGE_GROUP, "Image format setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image format setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (CCD_IMAGE_FORMAT_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_ITEM, "RAW", "Raw data", false);
-			indigo_init_switch_item(CCD_IMAGE_FORMAT_FITS_ITEM, "FITS", "FITS format", true);
+			indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_ITEM, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, "Raw data", false);
+			indigo_init_switch_item(CCD_IMAGE_FORMAT_FITS_ITEM, CCD_IMAGE_FORMAT_FITS_ITEM_NAME, "FITS format", true);
 			// -------------------------------------------------------------------------------- CCD_IMAGE
-			CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, "CCD_IMAGE", CCD_IMAGE_GROUP, "Image data", INDIGO_IDLE_STATE, 1);
+			CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_IMAGE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image data", INDIGO_IDLE_STATE, 1);
 			if (CCD_IMAGE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_blob_item(CCD_IMAGE_ITEM, "IMAGE", "Image data");
+			indigo_init_blob_item(CCD_IMAGE_ITEM, CCD_IMAGE_ITEM_NAME, "Image data");
 			// -------------------------------------------------------------------------------- CCD_LOCAL_FILE
-			CCD_IMAGE_FILE_PROPERTY = indigo_init_text_property(NULL, device->name, "CCD_IMAGE_FILE", CCD_IMAGE_GROUP, "Image file info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+			CCD_IMAGE_FILE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_IMAGE_FILE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image file info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
 			if (CCD_IMAGE_FILE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_text_item(CCD_IMAGE_FILE_ITEM, "FILE", "Filename", "None");
+			indigo_init_text_item(CCD_IMAGE_FILE_ITEM, CCD_IMAGE_FILE_ITEM_NAME, "Filename", "None");
 			// -------------------------------------------------------------------------------- CCD_COOLER
-			CCD_COOLER_PROPERTY = indigo_init_switch_property(NULL, device->name, "CCD_COOLER", CCD_COOLER_GROUP, "Cooler status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			CCD_COOLER_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_GROUP, "Cooler status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (CCD_COOLER_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_COOLER_PROPERTY->hidden = true;
-			indigo_init_switch_item(CCD_COOLER_ON_ITEM, "ON", "On", false);
-			indigo_init_switch_item(CCD_COOLER_OFF_ITEM, "OFF", "Off", true);
+			indigo_init_switch_item(CCD_COOLER_ON_ITEM, CCD_COOLER_ON_ITEM_NAME, "On", false);
+			indigo_init_switch_item(CCD_COOLER_OFF_ITEM, CCD_COOLER_OFF_ITEM_NAME, "Off", true);
 			// -------------------------------------------------------------------------------- CCD_COOLER_POWER
-			CCD_COOLER_POWER_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_COOLER_POWER", CCD_COOLER_GROUP, "Cooler power setting", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+			CCD_COOLER_POWER_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_COOLER_POWER_PROPERTY_NAME, CCD_COOLER_GROUP, "Cooler power setting", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
 			if (CCD_COOLER_POWER_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_COOLER_POWER_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_COOLER_POWER_ITEM, "POWER", "Power (%)", 0, 100, 1, 0);
+			indigo_init_number_item(CCD_COOLER_POWER_ITEM, CCD_COOLER_POWER_ITEM_NAME, "Power (%)", 0, 100, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_TEMPERATURE
-			CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, "CCD_TEMPERATURE", CCD_COOLER_GROUP, "Temperature setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			CCD_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_TEMPERATURE_PROPERTY_NAME, CCD_COOLER_GROUP, "Temperature setting", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_TEMPERATURE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_TEMPERATURE_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_TEMPERATURE_ITEM, "TEMPERATURE", "Temperature (C)", -50, 50, 1, 0);
+			indigo_init_number_item(CCD_TEMPERATURE_ITEM, CCD_TEMPERATURE_ITEM_NAME, "Temperature (C)", -50, 50, 1, 0);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}

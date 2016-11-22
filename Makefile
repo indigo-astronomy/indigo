@@ -584,3 +584,6 @@ clean: init
 	rm -f indigo_server/*.o
 	rm -f $(wildcard indigo_drivers/*/*.o)
 	rm -f $(wildcard indigo_test/*.o)
+	cd externals/hidapi; make maintainer-clean; cd ../..
+	cd externals/libusb; make maintainer-clean; cd ../..
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; cd ../../../..

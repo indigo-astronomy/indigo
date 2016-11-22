@@ -47,31 +47,31 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 	if (FOCUSER_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_FOCUSER) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- FOCUSER_SPEED
-			FOCUSER_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, "FOCUSER_SPEED", FOCUSER_MAIN_GROUP, "Focuser speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			FOCUSER_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Focuser speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_SPEED_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(FOCUSER_SPEED_ITEM, "SPEED", "Speed", 0, 100, 0, 0);
+			indigo_init_number_item(FOCUSER_SPEED_ITEM, FOCUSER_SPEED_ITEM_NAME, "Speed", 0, 100, 0, 0);
 			// -------------------------------------------------------------------------------- FOCUSER_DIRECTION
-			FOCUSER_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, "FOCUSER_DIRECTION", FOCUSER_MAIN_GROUP, "Movement direction", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			FOCUSER_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Movement direction", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_DIRECTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(FOCUSER_DIRECTION_MOVE_INWARD_ITEM, "MOVE_INWARD", "Move inward", true);
-			indigo_init_switch_item(FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM, "MOVE_OUTWARD", "Move outward", false);
+			indigo_init_switch_item(FOCUSER_DIRECTION_MOVE_INWARD_ITEM, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, "Move inward", true);
+			indigo_init_switch_item(FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, "Move outward", false);
 			// -------------------------------------------------------------------------------- FOCUSER_STEPS
-			FOCUSER_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, "FOCUSER_STEPS", FOCUSER_MAIN_GROUP, "Relative move", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			FOCUSER_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Relative move", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_STEPS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(FOCUSER_STEPS_ITEM, "STEPS", "Relative move (steps/ms)", 0, 10000, 1, 0);
+			indigo_init_number_item(FOCUSER_STEPS_ITEM, FOCUSER_STEPS_ITEM_NAME, "Relative move (steps/ms)", 0, 10000, 1, 0);
 				// -------------------------------------------------------------------------------- FOCUSER_POSITION
-			FOCUSER_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, "FOCUSER_POSITION", FOCUSER_MAIN_GROUP, "Absolute position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			FOCUSER_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Absolute position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(FOCUSER_POSITION_ITEM, "POSITION", "Absolute position", -10000, 10000, 1, 0);
+			indigo_init_number_item(FOCUSER_POSITION_ITEM, FOCUSER_POSITION_ITEM_NAME, "Absolute position", -10000, 10000, 1, 0);
 			// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-			FOCUSER_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, "FOCUSER_ABORT_MOTION", FOCUSER_MAIN_GROUP, "Abort motion", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			FOCUSER_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Abort motion", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			if (FOCUSER_ABORT_MOTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(FOCUSER_ABORT_MOTION_ITEM, "ABORT_MOTION", "Abort motion", false);
+			indigo_init_switch_item(FOCUSER_ABORT_MOTION_ITEM, FOCUSER_ABORT_MOTION_ITEM_NAME, "Abort motion", false);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}

@@ -47,6 +47,7 @@
 
 #include "indigo_driver.h"
 #include "indigo_xml.h"
+#include "indigo_names.h"
 
 #define USE_POLL
 
@@ -236,44 +237,44 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 	}
 	if (DEVICE_CONTEXT != NULL) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		CONNECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, "CONNECTION", MAIN_GROUP, "Connection status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		CONNECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, CONNECTION_PROPERTY_NAME, MAIN_GROUP, "Connection status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (CONNECTION_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(CONNECTION_CONNECTED_ITEM, "CONNECTED", "Connected", false);
-		indigo_init_switch_item(CONNECTION_DISCONNECTED_ITEM, "DISCONNECTED", "Disconnected", true);
+		indigo_init_switch_item(CONNECTION_CONNECTED_ITEM, CONNECTION_CONNECTED_ITEM_NAME, "Connected", false);
+		indigo_init_switch_item(CONNECTION_DISCONNECTED_ITEM, CONNECTION_DISCONNECTED_ITEM_NAME, "Disconnected", true);
 		// -------------------------------------------------------------------------------- DEVICE_INFO
 		INFO_PROPERTY = indigo_init_text_property(NULL, device->name, "DEVICE_INFO", MAIN_GROUP, "Device info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
 		if (INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(INFO_DEVICE_NAME_ITEM, "NAME", "Name", device->name);
-		indigo_init_text_item(INFO_DEVICE_VERSION_ITEM, "VERSION", "Version", "%d.%d.%d.%d", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(version), INDIGO_VERSION_MINOR(version));
-		indigo_init_text_item(INFO_DEVICE_INTERFACE_ITEM, "INTERFACE", "Interface", "%d", interface);
+		indigo_init_text_item(INFO_DEVICE_NAME_ITEM, INFO_PROPERTY_NAME, "Name", device->name);
+		indigo_init_text_item(INFO_DEVICE_VERSION_ITEM, INFO_DEVICE_VERSION_ITEM_NAME, "Version", "%d.%d.%d.%d", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(version), INDIGO_VERSION_MINOR(version));
+		indigo_init_text_item(INFO_DEVICE_INTERFACE_ITEM, INFO_DEVICE_INTERFACE_ITEM_NAME, "Interface", "%d", interface);
 		// -------------------------------------------------------------------------------- DEBUG
-		DEBUG_PROPERTY = indigo_init_switch_property(NULL, device->name, "DEBUG", MAIN_GROUP, "Debug status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		DEBUG_PROPERTY = indigo_init_switch_property(NULL, device->name, DEBUG_PROPERTY_NAME, MAIN_GROUP, "Debug status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (DEBUG_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(DEBUG_ENABLED_ITEM, "ENABLED", "Enabled", false);
-		indigo_init_switch_item(DEBUG_DISABLED_ITEM, "DISABLED", "Disabled", true);
+		indigo_init_switch_item(DEBUG_ENABLED_ITEM, DEBUG_ENABLED_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(DEBUG_DISABLED_ITEM, DEBUG_DISABLED_ITEM_NAME, "Disabled", true);
 		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device->name, "SIMULATION", MAIN_GROUP, "Simulation status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SIMULATION_PROPERTY_NAME, MAIN_GROUP, "Simulation status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SIMULATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		SIMULATION_PROPERTY->hidden = true;
-		indigo_init_switch_item(SIMULATION_ENABLED_ITEM, "ENABLED", "Enabled", false);
-		indigo_init_switch_item(SIMULATION_DISABLED_ITEM, "DISABLED", "Disabled", true);
+		indigo_init_switch_item(SIMULATION_ENABLED_ITEM, SIMULATION_ENABLED_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(SIMULATION_DISABLED_ITEM, SIMULATION_DISABLED_ITEM_NAME, "Disabled", true);
 		// -------------------------------------------------------------------------------- CONFIG
-		CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, "CONFIG", MAIN_GROUP, "Configuration control", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, CONFIG_PROPERTY_NAME, MAIN_GROUP, "Configuration control", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (CONFIG_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(CONFIG_LOAD_ITEM, "LOAD", "Load", false);
-		indigo_init_switch_item(CONFIG_SAVE_ITEM, "SAVE", "Save", false);
-		indigo_init_switch_item(CONFIG_DEFAULT_ITEM, "DEFAULT", "Default", false);
+		indigo_init_switch_item(CONFIG_LOAD_ITEM, CONFIG_LOAD_ITEM_NAME, "Load", false);
+		indigo_init_switch_item(CONFIG_SAVE_ITEM, CONFIG_SAVE_ITEM_NAME, "Save", false);
+		indigo_init_switch_item(CONFIG_DEFAULT_ITEM, CONFIG_DEFAULT_ITEM_NAME, "Default", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY = indigo_init_text_property(NULL, device->name, "DEVICE_PORT", MAIN_GROUP, "Serial port", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+		DEVICE_PORT_PROPERTY = indigo_init_text_property(NULL, device->name, DEVICE_PORT_PROPERTY_NAME, MAIN_GROUP, "Serial port", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 		if (DEVICE_PORT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DEVICE_PORT_PROPERTY->hidden = true;
-		indigo_init_text_item(DEVICE_PORT_ITEM, "PORT", "Serial port", "/dev/tty");
+		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Serial port", "/dev/tty");
 		// --------------------------------------------------------------------------------
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 		if (pipe(DEVICE_CONTEXT->timer_pipe) != 0)
@@ -382,29 +383,13 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
-indigo_result indigo_device_connect(indigo_device *device) {
-	indigo_property *property = indigo_init_switch_property(NULL, device->name, "CONNECTION", NULL, NULL, 0, 0, 0, 1);
-	indigo_init_switch_item(property->items, "CONNECTED", NULL, true);
-	indigo_result res = device->change_property(device, NULL, property);
-	free(property);
-	return res;
-}
-
-indigo_result indigo_device_disconnect(indigo_device *device) {
-	indigo_property *property = indigo_init_switch_property(NULL, device->name, "CONNECTION", NULL, NULL, 0, 0, 0, 1);
-	indigo_init_switch_item(property->items, "DISCONNECTED", NULL, true);
-	indigo_result res = device->change_property(device, NULL, property);
-	free(property);
-	return res;
-}
-
 static void xprintf(int handle, const char *format, ...) {
 	char buffer[1024];
 	va_list args;
 	va_start(args, format);
 	int length = vsnprintf(buffer, 1024, format, args);
 	va_end(args);
-	int res = write(handle, buffer, length);
+	write(handle, buffer, length);
 	INDIGO_DEBUG(indigo_debug("saved: %s", buffer));
 }
 

@@ -349,9 +349,33 @@ extern bool indigo_switch_match(indigo_item *item, indigo_property *other);
  */
 extern void indigo_set_switch(indigo_property *property, indigo_item *item, bool value);
 
+/** Get switch item value.
+ */
+extern bool indigo_get_switch(indigo_property *property, char *item_name);
+
 /** Copy item values from other property into property (optionally including property state).
  */
 extern void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state);
+
+/** Request text property change.
+ */
+extern indigo_result indigo_change_text_property(indigo_client *client, indigo_device *device, char *name, int count, char **items, const char **values);
+
+/** Request number property change.
+ */
+extern indigo_result indigo_change_number_property(indigo_client *client, indigo_device *device, char *name, int count, char **items, const double *values);
+
+/** Request switch property change.
+ */
+extern indigo_result indigo_change_switch_property(indigo_client *client, indigo_device *device, char *name, int count, char **items, const bool *values);
+
+/** Send connect message.
+ */
+extern indigo_result indigo_device_connect(indigo_client *client, indigo_device *device);
+
+/** Send disconnect message.
+ */
+extern indigo_result indigo_device_disconnect(indigo_client *client, indigo_device *device);
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */

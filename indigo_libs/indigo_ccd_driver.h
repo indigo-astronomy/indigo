@@ -147,7 +147,7 @@
 
 /** CCD_FRAME.BITS_PER_PIXEL property item pointer.
  */
-#define CCD_FRAME_BITS_PER_PIXEL_ITEM             (CCD_FRAME_PROPERTY->items+4)
+#define CCD_FRAME_BITS_PER_PIXEL_ITEM     (CCD_FRAME_PROPERTY->items+4)
 
 /** CCD_BIN property pointer, property is mandatory, should be set read-only if binning can't be changed, property change request is fully handled by indigo_ccd_change_property().
  */
