@@ -65,7 +65,7 @@ extern indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
 
 /** Add statically linked driver.
  */
-extern indigo_result indigo_add_driver(driver_entry_point driver);
+extern indigo_result indigo_add_driver(driver_entry_point driver, bool init);
 
 /** Remove statically linked driver.
  */
@@ -73,7 +73,7 @@ extern indigo_result indigo_remove_driver(driver_entry_point driver);
 
 /** Load & add dynamically linked driver.
  */
-extern indigo_result indigo_load_driver(const char *name);
+extern indigo_result indigo_load_driver(const char *name, bool init);
 
 /** Remove & unload dynamically linked driver.
  */

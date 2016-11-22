@@ -50,7 +50,7 @@ typedef struct {
 	double target_temperature, current_temperature;
 	int target_slot, current_slot;
 	int target_position, current_position;
-	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
+	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 } simulator_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -118,7 +118,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
-	PRIVATE_DATA->temperture_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
+	PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 }
 
 static indigo_result ccd_attach(indigo_device *device) {
@@ -184,11 +184,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (CONNECTION_CONNECTED_ITEM->sw.value)
-			PRIVATE_DATA->temperture_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
+			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 		else {
-			if (PRIVATE_DATA->temperture_timer) {
-				indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
-				PRIVATE_DATA->temperture_timer = NULL;
+			if (PRIVATE_DATA->temperature_timer) {
+				indigo_cancel_timer(device, PRIVATE_DATA->temperature_timer);
+				PRIVATE_DATA->temperature_timer = NULL;
 			}
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
@@ -256,7 +256,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(device);
+		indigo_device_disconnect(NULL, device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_ccd_detach(device);
 }
@@ -346,7 +346,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(device);
+		indigo_device_disconnect(NULL, device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_guider_detach(device);
 }
@@ -414,7 +414,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(device);
+		indigo_device_disconnect(NULL, device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_wheel_detach(device);
 }
@@ -512,7 +512,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(device);
+		indigo_device_disconnect(NULL, device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_focuser_detach(device);
 }
