@@ -112,8 +112,7 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	//start exposure - NEEDS MUCH MORE
-	//res = ASISetROIFormat(id, frame_width, frame_height,  horizontal_bin, ASI_IMG_RAW16);
-	res = ASISetROIFormat(id, PRIVATE_DATA->info.MaxWidth, PRIVATE_DATA->info.MaxHeight,  1, ASI_IMG_RAW16);
+	res = ASISetROIFormat(id, frame_width, frame_height,  horizontal_bin, ASI_IMG_RAW16);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetROIFormat(%d) = %d", id, res));
@@ -152,7 +151,7 @@ static bool asi_read_pixels(indigo_device *device) {
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res));
 		return false;
 	}
-INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res));
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -255,7 +254,17 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_MODE_PROPERTY->count = 0;
 			CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
 			CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
-			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 0;
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
+			CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
+			CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
+
+			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+			CCD_BIN_HORIZONTAL_ITEM->number.max = 16;
+
+			CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+			CCD_BIN_VERTICAL_ITEM->number.max = 16;
+
+			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		}
 
 		// adjust info know before opening camera...
