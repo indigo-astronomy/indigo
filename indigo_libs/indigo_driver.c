@@ -389,7 +389,7 @@ static void xprintf(int handle, const char *format, ...) {
 	va_start(args, format);
 	int length = vsnprintf(buffer, 1024, format, args);
 	va_end(args);
-	write(handle, buffer, length);
+	int len = write(handle, buffer, length);
 	INDIGO_DEBUG(indigo_debug("saved: %s", buffer));
 }
 
