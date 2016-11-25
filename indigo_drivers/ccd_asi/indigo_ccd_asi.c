@@ -65,9 +65,10 @@ typedef struct {
 	libusb_device_handle *handle;
 	int dev_id;
 	int device_count;
-	bool is_camera;
+	//bool is_camera;
 	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 	double target_temperature, current_temperature;
+	long cooler_power;
 	unsigned short relay_mask;
 	unsigned char *buffer;
 	long int buffer_size;
@@ -166,12 +167,35 @@ static bool asi_abort_exposure(indigo_device *device) {
 	else return true;
 }
 
-static bool asi_set_cooler(indigo_device *device, bool status, double target, double *current) {
+static bool asi_set_cooler(indigo_device *device, bool status, double target, double *current, long *cooler_power) {
+	ASI_ERROR_CODE res;
+	int id = PRIVATE_DATA->dev_id;
+	long current_status;
+	long temp_x10;
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	// set cooler
-	// ASI_COOLER_ON
-	//ASI_ERROR_CODE ASISetControlValue(int  iCameraID, ASI_CONTROL_TYPE  ControlType, long lValue, ASI_BOOL bAuto);
+	res = ASIGetControlValue(id, ASI_COOLER_ON, &current_status, NULL);
+	if(res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_COOLER_ON) = %d", id, res));
+		return false;
+	}
+
+	if (current_status != status) {
+		res = ASISetControlValue(id, ASI_COOLER_ON, status, false);
+		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res));
+	} else if(status) {
+		res = ASISetControlValue(id, ASI_TARGET_TEMP, (int)target, false);
+		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res));
+	}
+
+	res = ASIGetControlValue(id, ASI_TEMPERATURE, &temp_x10, NULL);
+	if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res));
+	*current = temp_x10/10.0; /* ASI_TEMPERATURE gives temp x 10 */
+
+	res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, cooler_power, NULL);
+	if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res));
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -186,7 +210,7 @@ static void asi_close(indigo_device *device) {
 
 	if (--PRIVATE_DATA->device_count == 0) {
 		ASICloseCamera(PRIVATE_DATA->dev_id);
-		if (PRIVATE_DATA->is_camera && (PRIVATE_DATA->buffer != NULL))
+		if (PRIVATE_DATA->buffer != NULL)
 			free(PRIVATE_DATA->buffer);
 	}
 
@@ -223,7 +247,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 
 static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
-		if (asi_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature)) {
+		if (asi_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
 			if (CCD_COOLER_ON_ITEM->sw.value)
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
@@ -241,6 +265,22 @@ static void ccd_temperature_callback(indigo_device *device) {
 	PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
 }
 
+static char *get_bayer_string (indigo_device *device) {
+	if (!PRIVATE_DATA->info.IsColorCam) return NULL;
+
+	switch (PRIVATE_DATA->info.BayerPattern) {
+		case ASI_BAYER_BG:
+			return "BGGR";
+		case ASI_BAYER_GR:
+			return "GRBG";
+		case ASI_BAYER_GB:
+			return "GBRG";
+		case ASI_BAYER_RG:
+		default:
+			return "RGGB";
+    }
+}
+
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
@@ -249,7 +289,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 
-		if (PRIVATE_DATA->is_camera) {
+		//if (PRIVATE_DATA->is_camera) {
 			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 			CCD_MODE_PROPERTY->count = 0;
 			CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
@@ -265,7 +305,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_BIN_VERTICAL_ITEM->number.max = 16;
 
 			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
-		}
+
+			CCD_TEMPERATURE_PROPERTY->hidden = false;
+			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+
+		//}
 
 		// adjust info know before opening camera...
 		// make hidden properties visible if needed
@@ -294,12 +338,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				// adjust read-write/read-only permission for properties if needed
 				// adjust min/max values for properties if needed
 
-//       if (has cooler) {
-//         CCD_COOLER_PROPERTY->hidden = false;
-//         CCD_TEMPERATURE_PROPERTY->hidden = false;
-//         PRIVATE_DATA->target_temperature = 0;
-//         ccd_temperature_callback(device);
-//       }
+				if (PRIVATE_DATA->info.IsCoolerCam) {
+					CCD_COOLER_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					PRIVATE_DATA->target_temperature = 0;
+					ccd_temperature_callback(device);
+				}
 				PRIVATE_DATA->can_check_temperature = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -587,11 +631,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				memcpy(device, &ccd_template, sizeof(indigo_device));
 				sprintf(device->name, "%s %d", info.Name, id);
 				INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
-				device->device_context = malloc(sizeof(asi_private_data));
+				void *private_data_ptr = malloc(sizeof(asi_private_data));
+				device->device_context = private_data_ptr;
 				assert(device->device_context);
 				memset(device->device_context, 0, sizeof(asi_private_data));
 				((asi_private_data*)device->device_context)->dev_id = id;
-				((asi_private_data*)device->device_context)->is_camera = true;
+				//((asi_private_data*)device->device_context)->is_camera = true;
 				memcpy(&(((asi_private_data*)device->device_context)->info), &info, sizeof(ASI_CAMERA_INFO));
 				indigo_attach_device(device);
 				devices[slot]=device;
@@ -607,12 +652,13 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					memcpy(device, &guider_template, sizeof(indigo_device));
 					sprintf(device->name, "%s %d guider", info.Name, id);
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
-					device->device_context = malloc(sizeof(asi_private_data));
+					// device->device_context = malloc(sizeof(asi_private_data));
+					device->device_context = private_data_ptr;
 					assert(device->device_context);
-					memset(device->device_context, 0, sizeof(asi_private_data));
-					((asi_private_data*)device->device_context)->dev_id = id;
-					((asi_private_data*)device->device_context)->is_camera = false;
-					memcpy(&(((asi_private_data*)device->device_context)->info), &info, sizeof(ASI_CAMERA_INFO));
+					// memset(device->device_context, 0, sizeof(asi_private_data));
+					// ((asi_private_data*)device->device_context)->dev_id = id;
+					// ((asi_private_data*)device->device_context)->is_camera = false;
+					// memcpy(&(((asi_private_data*)device->device_context)->info), &info, sizeof(ASI_CAMERA_INFO));
 					indigo_attach_device(device);
 					devices[slot]=device;
 				}
@@ -629,7 +675,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					if (*device == NULL)
 						return 0;
 					indigo_detach_device(*device);
-					free((*device)->device_context);
+					if((*device)->device_context) {
+						free((*device)->device_context);
+						(*device)->device_context = NULL;
+					}
 					free(*device);
 					libusb_unref_device(dev);
 					*device = NULL;
@@ -652,7 +701,10 @@ static void remove_all_devices() {
 		indigo_device **device = &devices[i];
 		if (*device == NULL) continue;
 		indigo_detach_device(*device);
-		free((*device)->device_context);
+		if((*device)->device_context) {
+			free((*device)->device_context);
+			(*device)->device_context = NULL;
+		}
 		free(*device);
 		*device = NULL;
 	}
