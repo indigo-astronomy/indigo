@@ -49,7 +49,7 @@
 #undef PRIVATE_DATA
 #define PRIVATE_DATA													((fcusb_private_data *)DEVICE_CONTEXT->private_data)
 
-#define X_FOCUSER_FREQUENCY_PROPERTY					(PRIVATE_DATA->focuser_abort_motion_property)
+#define X_FOCUSER_FREQUENCY_PROPERTY					(PRIVATE_DATA->frequency_property)
 #define X_FOCUSER_FREQUENCY_1_ITEM						(X_FOCUSER_FREQUENCY_PROPERTY->items+0)
 #define X_FOCUSER_FREQUENCY_4_ITEM						(X_FOCUSER_FREQUENCY_PROPERTY->items+1)
 #define X_FOCUSER_FREQUENCY_16_ITEM						(X_FOCUSER_FREQUENCY_PROPERTY->items+2)
@@ -58,7 +58,7 @@ typedef struct {
 	libfcusb_device_context *device_context;
 	indigo_timer *focuser_timer;
 	libusb_device *dev;
-	indigo_property *focuser_abort_motion_property;
+	indigo_property *frequency_property;
 
 } fcusb_private_data;
 
