@@ -451,8 +451,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			dc1394camera_list_t *list;
 			dc1394error_t err=dc1394_camera_enumerate(context, &list);
-			INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_camera_enumerate() -> %s (%d)", dc1394_error_get_string(err),  list->num));
-			if (err == DC1394_SUCCESS) {
+			if (err != DC1394_SUCCESS) {
+				INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_camera_enumerate() -> %s (%d)", dc1394_error_get_string(err),  list->num));
+			} else {
 				for (int i = 0; i < list->num; i++) {
 					uint64_t guid = list->ids[i].guid;
 					for (int j = 0; j < MAX_DEVICES; j++) {
@@ -519,8 +520,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 			dc1394camera_list_t *list;
 			dc1394error_t err=dc1394_camera_enumerate(context, &list);
-			INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_camera_enumerate() [%d] -> %s (%d)", __LINE__, dc1394_error_get_string(err),  list->num));
-			if (err == DC1394_SUCCESS) {
+			if (err != DC1394_SUCCESS) {
+				INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_camera_enumerate() [%d] -> %s (%d)", __LINE__, dc1394_error_get_string(err),  list->num));
+			} else {
 				for (int i = 0; i < list->num; i++) {
 					uint64_t guid = list->ids[i].guid;
 					for (int j = 0; j < MAX_DEVICES; j++) {
@@ -559,7 +561,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static libusb_hotplug_callback_handle callback_handle;
 
 static void errorlog_handler(dc1394log_t type, const char *message, void* user) {
-	INDIGO_LOG(indigo_error("dc1394: %s", message));
+	INDIGO_DEBUG_DRIVER(indigo_error("dc1394: %s", message));
 }
 
 static void debuglog_handler(dc1394log_t type, const char *message, void* user) {
