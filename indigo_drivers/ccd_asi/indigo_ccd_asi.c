@@ -261,12 +261,17 @@ static void ccd_temperature_callback(indigo_device *device) {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_COOLER_POWER_ITEM->number.value = PRIVATE_DATA->cooler_power;
+			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			CCD_COOLER_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
 	PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
 }
@@ -346,6 +351,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 					CCD_COOLER_PROPERTY->hidden = false;
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_COOLER_POWER_PROPERTY->hidden = false;
+					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
 					PRIVATE_DATA->target_temperature = 0;
 					ccd_temperature_callback(device);
 					PRIVATE_DATA->can_check_temperature = true;
