@@ -60,7 +60,7 @@
 
 /** Conditional compilation wrapper for DEBUG log level (for drivers)
  */
-#define INDIGO_DEBUG_DRIVER(c) c
+#define INDIGO_DEBUG_DRIVER(c)
 
 #endif /* indigo_config_h */
 
