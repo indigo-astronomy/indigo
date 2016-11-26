@@ -31,10 +31,6 @@
 
 #define JSON_BUFFER_SIZE	(64 * 1024)
 
-/** Create initialized instance of JSON wire protocol device side adapter.
- */
-extern indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket);
-
 /** JSON wire protocol parser.
  */
 extern void indigo_json_parse(indigo_device *device, indigo_client *client);
