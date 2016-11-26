@@ -162,7 +162,7 @@ void *server_thread(indigo_server_entry *server) {
 			INDIGO_LOG(indigo_log("Server %s:%d connected.", server->host, server->port));
 			server->protocol_adapter = indigo_xml_client_adapter(server->socket, server->socket);
 			indigo_attach_device(server->protocol_adapter);
-			indigo_xml_parse(server->socket, server->protocol_adapter, NULL);
+			indigo_xml_parse(server->protocol_adapter, NULL);
 			indigo_detach_device(server->protocol_adapter);
 			free(server->protocol_adapter->device_context);
 			free(server->protocol_adapter);

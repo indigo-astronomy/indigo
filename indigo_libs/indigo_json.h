@@ -29,19 +29,10 @@
 #include <stdio.h>
 #include "indigo_bus.h"
 
-#define JSON_BUFFER_SIZE	(128 * 1024)
-
-/** JSON wire protocol adapter private data structure.
- */
-typedef struct {
-	int input;						///< input handle
-	int output;						///< output handle
-	char *input_buffer;		///< input buffer
-	char *output_buffer;	///< input buffer
-} indigo_json_adapter_context;
+#define JSON_BUFFER_SIZE	(64 * 1024)
 
 /** JSON wire protocol parser.
  */
-extern void indigo_json_parse(int handle, indigo_device *device, indigo_client *client);
+extern void indigo_json_parse(indigo_device *device, indigo_client *client);
 
 #endif /* indigo_json_h */

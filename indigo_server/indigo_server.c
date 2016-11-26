@@ -28,7 +28,7 @@
 #include <signal.h>
 
 #include "indigo_bus.h"
-#include "indigo_server_xml.h"
+#include "indigo_server_tcp.h"
 #include "indigo_driver.h"
 #include "indigo_client.h"
 
@@ -146,7 +146,7 @@ int main(int argc, const char * argv[]) {
 
 	for (int i = 1; i < argc; i++) {
 		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
-			indigo_server_xml_port = atoi(argv[i + 1]);
+			indigo_server_tcp_port = atoi(argv[i + 1]);
 			i++;
 		} else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators")) {
 			first_driver = 0;
@@ -191,7 +191,7 @@ int main(int argc, const char * argv[]) {
 	indigo_start();
 	indigo_attach_device(&device);
 
-	indigo_server_xml(server_callback);
+	indigo_server_tcp(server_callback);
 	return 0;
 }
 

@@ -41,7 +41,7 @@ static pthread_mutex_t xmutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_result xml_client_parser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	pthread_mutex_lock(&xmutex);
-	indigo_xml_adapter_context *device_context = (indigo_xml_adapter_context *)device->device_context;
+	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	if (property != NULL) {
@@ -70,7 +70,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 	assert(device != NULL);
 	assert(property != NULL);
 	pthread_mutex_lock(&xmutex);
-	indigo_xml_adapter_context *device_context = (indigo_xml_adapter_context *)device->device_context;
+	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	switch (property->type) {
@@ -107,7 +107,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 
 static indigo_result xml_client_parser_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_xml_adapter_context *device_context = (indigo_xml_adapter_context *)device->device_context;
+	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
 	close(device_context->input);
 	close(device_context->output);
 	return INDIGO_OK;
@@ -124,7 +124,7 @@ indigo_device *indigo_xml_client_adapter(int input, int ouput) {
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &device_template, sizeof(indigo_device));
-	indigo_xml_adapter_context *device_context = malloc(sizeof(indigo_xml_adapter_context));
+	indigo_adapter_context *device_context = malloc(sizeof(indigo_adapter_context));
 	assert(device_context != NULL);
 	device_context->input = input;
 	device_context->output = ouput;
