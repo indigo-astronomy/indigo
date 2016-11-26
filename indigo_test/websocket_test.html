@@ -21,7 +21,7 @@
 
 	function onOpen(evt) {
 		writeToScreen("CONNECTED");
-		doSend("{ getProperties: { version: 512 } }");
+		doSend('{ "getProperties": { "version": 512 } }');
 	}
 
 	function onClose(evt) {
@@ -29,7 +29,7 @@
 	}
 
 	function onMessage(evt) {
-		writeToScreen('<span style="color: blue;">RECEIVED: ' + evt.data+'</span>');
+		writeToScreen('<span style="color: blue;">RECEIVED: ' + JSON.stringify(JSON.parse(evt.data), null, 2)+'</span>');
 	}
 
 	function onError(evt) {
@@ -37,19 +37,20 @@
 	}
 
 	function doSend(message) {
-		writeToScreen("SENT: " + message);
+		writeToScreen('<span style="color: green;">SENT: ' + JSON.stringify(JSON.parse(message), null, 2)+'</span>');
 		websocket.send(message);
 	}
 
 	function writeToScreen(message) {
-		var pre = document.createElement("p");
+		var pre = document.createElement("pre");
 		pre.style.wordWrap = "break-word";
 		pre.innerHTML = message;
 		output.appendChild(pre);
+		pre.scrollIntoView(false);
 	}
 
 	window.addEventListener("load", init, false);
 
 </script>
 
-<div style="font-family: Arial; font-size: 12px;" id="output"></div>
+<div id="output"></div>
