@@ -233,6 +233,13 @@ typedef struct indigo_client {
 	indigo_result (*detach)(indigo_client *client);
 } indigo_client;
 
+/** Wire protocol adapter private data structure.
+ */
+typedef struct {
+	int input;				///< input handle
+	int output;				///< output handle
+	bool web_socket;	///< connection over WebSocket (RFC6455)
+} indigo_adapter_context;
 
 /** Print diagnostic messages on trace level, wrap calls to INDIGO_TRACE() macro.
  */

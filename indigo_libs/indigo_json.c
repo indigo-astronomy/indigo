@@ -35,6 +35,9 @@
 
 #include "indigo_json.h"
 
+#undef INDIGO_TRACE_PROTOCOL
+#define INDIGO_TRACE_PROTOCOL(c) c
+
 static pthread_mutex_t json_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static bool full_write(int handle, const char *buffer, long length) {
@@ -69,6 +72,14 @@ static void ws_write(int handle, const char *buffer, long length) {
 	full_write(handle, buffer, length);
 }
 
+static indigo_result json_attach(indigo_client *client) {
+	assert(client != NULL);
+	indigo_json_adapter_context *client_context = (indigo_json_adapter_context *)client->client_context;
+	client_context->input_buffer = malloc(JSON_BUFFER_SIZE);
+	client_context->output_buffer = malloc(JSON_BUFFER_SIZE);
+	return INDIGO_OK;
+}
+
 static indigo_result json_define_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
@@ -83,13 +94,13 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 	int size;
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
-			size = sprintf(buffer, "{ \"define\": \"text\", \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
+			size = sprintf(buffer, "{ \"define\": \"text\", \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
 			buffer += size;
 			if (message) {
-				size = sprintf(buffer, " \"message\": \"%s\", \"items\": {", message);
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
 				buffer += size;
 			} else {
-				size = sprintf(buffer, " \"items\": [");
+				size = sprintf(buffer, ", \"items\": [");
 				buffer += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -101,13 +112,13 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size += buffer - client_context->output_buffer;
 			break;
 		case INDIGO_NUMBER_VECTOR:
-			size = sprintf(buffer, "{ \"define\": \"number\", \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
+			size = sprintf(buffer, "{ \"define\": \"number\", \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
 			buffer += size;
 			if (message) {
-				size = sprintf(buffer, " \"message\": \"%s\", \"items\": {", message);
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
 				buffer += size;
 			} else {
-				size = sprintf(buffer, " \"items\": [");
+				size = sprintf(buffer, ", \"items\": [");
 				buffer += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -119,13 +130,13 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size += buffer - client_context->output_buffer;
 			break;
 		case INDIGO_SWITCH_VECTOR:
-			size = sprintf(buffer, "{ \"define\": \"switch\", \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\", \"rule\": \"%s\"", property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule]);
+			size = sprintf(buffer, "{ \"define\": \"switch\", \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\", \"rule\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule]);
 			buffer += size;
 			if (message) {
-				size = sprintf(buffer, " \"message\": \"%s\", \"items\": {", message);
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
 				buffer += size;
 			} else {
-				size = sprintf(buffer, " \"items\": [");
+				size = sprintf(buffer, ", \"items\": [");
 				buffer += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -137,13 +148,13 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size += buffer - client_context->output_buffer;
 			break;
 		case INDIGO_LIGHT_VECTOR:
-			size = sprintf(buffer, "{ \"define\": \"light\", \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->device, property->name, property->group, property->label, indigo_property_state_text[property->state]);
+			size = sprintf(buffer, "{ \"define\": \"light\", \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_state_text[property->state]);
 			buffer += size;
 			if (message) {
-				size = sprintf(buffer, " \"message\": \"%s\", \"items\": {", message);
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
 				buffer += size;
 			} else {
-				size = sprintf(buffer, " \"items\": [");
+				size = sprintf(buffer, ", \"items\": [");
 				buffer += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -155,13 +166,13 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size += buffer - client_context->output_buffer;
 			break;
 		case INDIGO_BLOB_VECTOR:
-			size = sprintf(buffer, "{ \"define\": \"blob\", \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->device, property->name, property->group, property->label, indigo_property_state_text[property->state]);
+			size = sprintf(buffer, "{ \"define\": \"blob\", \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_state_text[property->state]);
 			buffer += size;
 			if (message) {
-				size = sprintf(buffer, " \"message\": \"%s\", \"items\": {", message);
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
 				buffer += size;
 			} else {
-				size = sprintf(buffer, " \"items\": [");
+				size = sprintf(buffer, ", \"items\": [");
 				buffer += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -173,8 +184,215 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size += buffer - client_context->output_buffer;
 			break;
 	}
-	printf("%s\n", buffer);
+	ws_write(handle, client_context->output_buffer, size);
+	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", client_context->output_buffer));
 	pthread_mutex_unlock(&json_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result json_update_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+	assert(device != NULL);
+	assert(client != NULL);
+	assert(property != NULL);
+	if (client->version == INDIGO_VERSION_NONE)
+		return INDIGO_OK;
+	pthread_mutex_lock(&json_mutex);
+	indigo_json_adapter_context *client_context = (indigo_json_adapter_context *)client->client_context;
+	assert(client_context != NULL);
+	int handle = client_context->output;
+	char *buffer = client_context->output_buffer;
+	int size;
+	switch (property->type) {
+		case INDIGO_TEXT_VECTOR:
+			size = sprintf(buffer, "{ \"update\": \"text\", \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
+				buffer += size;
+			} else {
+				size = sprintf(buffer, ", \"items\": [");
+				buffer += size;
+			}
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = &property->items[i];
+				size = sprintf(buffer, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, item->text.value);
+				buffer += size;
+			}
+			size = sprintf(buffer, " ] }");
+			size += buffer - client_context->output_buffer;
+			break;
+		case INDIGO_NUMBER_VECTOR:
+			size = sprintf(buffer, "{ \"update\": \"number\", \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
+				buffer += size;
+			} else {
+				size = sprintf(buffer, ", \"items\": [");
+				buffer += size;
+			}
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = &property->items[i];
+				size = sprintf(buffer, "%s { \"name\": \"%s\", \"value\": %g }",  i > 0 ? "," : "", item->name, item->number.value);
+				buffer += size;
+			}
+			size = sprintf(buffer, " ] }");
+			size += buffer - client_context->output_buffer;
+			break;
+		case INDIGO_SWITCH_VECTOR:
+			size = sprintf(buffer, "{ \"update\": \"switch\", \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
+				buffer += size;
+			} else {
+				size = sprintf(buffer, ", \"items\": [");
+				buffer += size;
+			}
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = &property->items[i];
+				size = sprintf(buffer, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, item->sw.value ? "On" : "Off");
+				buffer += size;
+			}
+			size = sprintf(buffer, " ] }");
+			size += buffer - client_context->output_buffer;
+			break;
+		case INDIGO_LIGHT_VECTOR:
+			size = sprintf(buffer, "{ \"update\": \"light\", \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
+				buffer += size;
+			} else {
+				size = sprintf(buffer, ", \"items\": [");
+				buffer += size;
+			}
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = &property->items[i];
+				size = sprintf(buffer, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_property_state_text[item->light.value]);
+				buffer += size;
+			}
+			size = sprintf(buffer, " ] }");
+			size += buffer - client_context->output_buffer;
+			break;
+		case INDIGO_BLOB_VECTOR:
+			size = sprintf(buffer, "{ \"update\": \"blob\", \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\", \"items\": {", message);
+				buffer += size;
+			} else {
+				size = sprintf(buffer, ", \"items\": [");
+				buffer += size;
+			}
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = &property->items[i];
+				size = sprintf(buffer, "%s { \"name\": \"%s\" }", i > 0 ? "," : "", item->name);
+				buffer += size;
+			}
+			size = sprintf(buffer, " ] }");
+			size += buffer - client_context->output_buffer;
+			break;
+	}
+	ws_write(handle, client_context->output_buffer, size);
+	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", client_context->output_buffer));
+	pthread_mutex_unlock(&json_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result json_delete_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+	assert(device != NULL);
+	assert(client != NULL);
+	assert(property != NULL);
+	if (client->version == INDIGO_VERSION_NONE)
+		return INDIGO_OK;
+	pthread_mutex_lock(&json_mutex);
+	indigo_json_adapter_context *client_context = (indigo_json_adapter_context *)client->client_context;
+	assert(client_context != NULL);
+	int handle = client_context->output;
+	char *buffer = client_context->output_buffer;
+	int size;
+	switch (property->type) {
+		case INDIGO_TEXT_VECTOR:
+			size = sprintf(buffer, "{ \"delete\": \"text\", \"device\": \"%s\", \"name\": \"%s\"", property->device, property->name);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\" }", message);
+			} else {
+				size = sprintf(buffer, " }");
+			}
+			size += buffer - client_context->output_buffer;
+			break;
+		case INDIGO_NUMBER_VECTOR:
+			size = sprintf(buffer, "{ \"delete\": \"number\", \"device\": \"%s\", \"name\": \"%s\"", property->device, property->name);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\" }", message);
+			} else {
+				size = sprintf(buffer, " }");
+			}
+			size += buffer - client_context->output_buffer;
+			break;
+		case INDIGO_SWITCH_VECTOR:
+			size = sprintf(buffer, "{ \"delete\": \"switch\", \"device\": \"%s\", \"name\": \"%s\"", property->device, property->name);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\" }", message);
+			} else {
+				size = sprintf(buffer, " }");
+			}
+			size += buffer - client_context->output_buffer;
+			break;
+		case INDIGO_LIGHT_VECTOR:
+			size = sprintf(buffer, "{ \"delete\": \"light\", \"device\": \"%s\", \"name\": \"%s\"", property->device, property->name);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\" }", message);
+			} else {
+				size = sprintf(buffer, " }");
+			}
+			size += buffer - client_context->output_buffer;
+			break;
+		case INDIGO_BLOB_VECTOR:
+			size = sprintf(buffer, "{ \"delete\": \"blob\", \"device\": \"%s\", \"name\": \"%s\"", property->device, property->name);
+			buffer += size;
+			if (message) {
+				size = sprintf(buffer, ", \"message\": \"%s\" }", message);
+			} else {
+				size = sprintf(buffer, " }");
+			}
+			size += buffer - client_context->output_buffer;
+			break;
+	}
+	ws_write(handle, client_context->output_buffer, size);
+	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", client_context->output_buffer));
+	pthread_mutex_unlock(&json_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result json_message_property(indigo_client *client, struct indigo_device *device, const char *message) {
+	assert(device != NULL);
+	assert(client != NULL);
+	pthread_mutex_lock(&json_mutex);
+	indigo_json_adapter_context *client_context = (indigo_json_adapter_context *)client->client_context;
+	assert(client_context != NULL);
+	int handle = client_context->output;
+	char *buffer = client_context->output_buffer;
+	int size = sprintf(buffer, "{ \"message\": \"%s\" }", message);
+	size += buffer - client_context->output_buffer;
+	ws_write(handle, client_context->output_buffer, size);
+	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", client_context->output_buffer));
+	pthread_mutex_unlock(&json_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result json_detach(indigo_client *client) {
+	assert(client != NULL);
+	indigo_json_adapter_context *client_context = (indigo_json_adapter_context *)client->client_context;
+	close(client_context->input);
+	free(client_context->input_buffer);
+	close(client_context->output);
+	free(client_context->output_buffer);
 	return INDIGO_OK;
 }
 
@@ -216,13 +434,14 @@ static long ws_read(int handle, char *buffer, long length) {
 
 indigo_client *indigo_json_device_adapter(int input, int ouput) {
 	static indigo_client client_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_NONE, INDIGO_ENABLE_BLOB_ALSO,
-		NULL,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
+		json_attach,
 		json_define_property,
-		NULL,
-		NULL,
-		NULL,
-		NULL
+		json_update_property,
+		json_delete_property,
+		json_message_property,
+		json_detach,
+
 	};
 	indigo_client *client = malloc(sizeof(indigo_client));
 	assert(client != NULL);
@@ -233,4 +452,8 @@ indigo_client *indigo_json_device_adapter(int input, int ouput) {
 	client_context->output = ouput;
 	client->client_context = client_context;
 	return client;
+}
+
+void indigo_json_parse(indigo_device *device, indigo_client *client) {
+	indigo_adapter_context *context = (indigo_adapter_context*)client->client_context;
 }

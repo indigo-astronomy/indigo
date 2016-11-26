@@ -29,13 +29,6 @@
 #include <stdio.h>
 #include "indigo_bus.h"
 
-/** XML wire protocol adapter private data structure.
- */
-typedef struct {
-	int input;  ///< input handle
-	int output; ///< output handle
-} indigo_xml_adapter_context;
-
 /** Print formatted output to the handle (synchronized).
  */
 extern void indigo_xml_printf(int handle, const char *format, ...);
@@ -43,11 +36,14 @@ extern void indigo_xml_printf(int handle, const char *format, ...);
 /** Print unformatted output to the handle (synchronized).
  */
 extern void indigo_xml_write(int handle, const char *buffer, long length);
+
+/** Print unformatted output to the handle (synchronized).
+ */
 extern void indigo_xml_fwrite(FILE* fh, const char *buffer, long length);
 
 /** XML wire protocol parser.
  */
-extern void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client);
+extern void indigo_xml_parse(indigo_device *device, indigo_client *client);
 
 #endif /* indigo_xml_h */
 
