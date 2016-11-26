@@ -415,6 +415,7 @@ static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CA
 		CCD_COOLER_POWER_ITEM->number.max = ctrl_caps.MaxValue;
 		CCD_COOLER_POWER_ITEM->number.value = ctrl_caps.DefaultValue;
 	}
+	return INDIGO_OK;
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
