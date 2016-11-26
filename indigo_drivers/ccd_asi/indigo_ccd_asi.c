@@ -66,7 +66,6 @@ typedef struct {
 	int dev_id;
 	int count_open;
 	int count_connected;
-	//bool is_camera;
 	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 	double target_temperature, current_temperature;
 	long cooler_power;
@@ -344,6 +343,80 @@ static indigo_result ccd_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CAPS ctrl_caps) {
+	if (ctrl_caps.ControlType == ASI_EXPOSURE) {
+		CCD_EXPOSURE_PROPERTY->hidden = false;
+		if(ctrl_caps.IsWritable)
+			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
+		else
+			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
+
+		CCD_EXPOSURE_ITEM->number.min = ctrl_caps.MinValue;
+		CCD_EXPOSURE_ITEM->number.max = ctrl_caps.MaxValue;
+		CCD_EXPOSURE_ITEM->number.value = 1;
+	}
+
+	if (ctrl_caps.ControlType == ASI_GAIN) {
+		CCD_GAIN_PROPERTY->hidden = false;
+		if(ctrl_caps.IsWritable)
+			CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
+		else
+			CCD_GAIN_PROPERTY->perm = INDIGO_RO_PERM;
+
+		CCD_GAIN_ITEM->number.min = ctrl_caps.MinValue;
+		CCD_GAIN_ITEM->number.max = ctrl_caps.MaxValue;
+		CCD_GAIN_ITEM->number.value = ctrl_caps.DefaultValue;
+		CCD_GAIN_ITEM->number.step = 1;
+	}
+
+	if (ctrl_caps.ControlType == ASI_GAMMA) {
+		CCD_GAMMA_PROPERTY->hidden = false;
+		if(ctrl_caps.IsWritable)
+			CCD_GAMMA_PROPERTY->perm = INDIGO_RW_PERM;
+		else
+			CCD_GAMMA_PROPERTY->perm = INDIGO_RO_PERM;
+
+		CCD_GAMMA_ITEM->number.min = ctrl_caps.MinValue;
+		CCD_GAMMA_ITEM->number.max = ctrl_caps.MaxValue;
+		CCD_GAMMA_ITEM->number.value = ctrl_caps.DefaultValue;
+		CCD_GAMMA_ITEM->number.step = 1;
+	}
+
+	if (ctrl_caps.ControlType == ASI_TARGET_TEMP) {
+		CCD_TEMPERATURE_PROPERTY->hidden = false;
+		if(ctrl_caps.IsWritable)
+			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+		else
+			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+
+		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.MinValue;
+		CCD_TEMPERATURE_ITEM->number.max = ctrl_caps.MaxValue;
+		CCD_TEMPERATURE_ITEM->number.value = ctrl_caps.DefaultValue;
+		PRIVATE_DATA->target_temperature = ctrl_caps.DefaultValue;
+		PRIVATE_DATA->can_check_temperature = true;
+	}
+
+	if (ctrl_caps.ControlType == ASI_COOLER_ON) {
+		CCD_COOLER_PROPERTY->hidden = false;
+		if(ctrl_caps.IsWritable)
+			CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
+		else
+			CCD_COOLER_PROPERTY->perm = INDIGO_RO_PERM;
+	}
+
+	if (ctrl_caps.ControlType == ASI_COOLER_POWER_PERC) {
+		CCD_COOLER_POWER_PROPERTY->hidden = false;
+		if(ctrl_caps.IsWritable)
+			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RW_PERM;
+		else
+			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+
+		CCD_COOLER_POWER_ITEM->number.min = ctrl_caps.MinValue;
+		CCD_COOLER_POWER_ITEM->number.max = ctrl_caps.MaxValue;
+		CCD_COOLER_POWER_ITEM->number.value = ctrl_caps.DefaultValue;
+	}
+}
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
@@ -353,23 +426,26 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (asi_open(device)) {
-
+				int id = PRIVATE_DATA->dev_id;
+				int ctrl_count;
+				ASI_CONTROL_CAPS ctrl_caps;
 				// adjust info known after opening camera...
 				// make hidden properties visible if needed
 				// adjust read-write/read-only permission for properties if needed
 				// adjust min/max values for properties if needed
 
-				if (PRIVATE_DATA->info.IsCoolerCam) {
-					CCD_TEMPERATURE_PROPERTY->hidden = false;
-					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-					CCD_COOLER_PROPERTY->hidden = false;
-					CCD_TEMPERATURE_PROPERTY->hidden = false;
-					CCD_COOLER_POWER_PROPERTY->hidden = false;
-					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
-					PRIVATE_DATA->target_temperature = 0;
-					ccd_temperature_callback(device);
-					PRIVATE_DATA->can_check_temperature = true;
+				int res = ASIGetNumOfControls(id, &ctrl_count);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
+					return INDIGO_NOT_FOUND;
 				}
+
+				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+					hadle_camera_controls(device, ctrl_caps);
+				}
+
+				ccd_temperature_callback(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
