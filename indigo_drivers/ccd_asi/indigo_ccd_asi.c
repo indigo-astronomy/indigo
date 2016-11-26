@@ -79,6 +79,24 @@ typedef struct {
 	ASI_CAMERA_INFO info;
 } asi_private_data;
 
+
+static char *get_bayer_string(indigo_device *device) {
+	if (!PRIVATE_DATA->info.IsColorCam) return NULL;
+
+	switch (PRIVATE_DATA->info.BayerPattern) {
+		case ASI_BAYER_BG:
+			return "BGGR";
+		case ASI_BAYER_GR:
+			return "GRBG";
+		case ASI_BAYER_GB:
+			return "GBRG";
+		case ASI_BAYER_RG:
+		default:
+			return "RGGB";
+    }
+}
+
+
 static bool asi_open(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
@@ -233,13 +251,18 @@ static void exposure_timer_callback(indigo_device *device) {
 		if (asi_read_pixels(device)) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
-			indigo_fits_keyword keywords[] = {
-				{ INDIGO_FITS_STRING, "BAYERPAT", .string = "RGGB", "Bayer color pattern" },
-				{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
-				{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
-				{ 0 }
-			};
-			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), PRIVATE_DATA->exposure, true, keywords);
+			char *color_string = get_bayer_string(device);
+			if(color_string) {
+				indigo_fits_keyword keywords[] = {
+					{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
+					{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
+					{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
+					{ 0 }
+				};
+				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), PRIVATE_DATA->exposure, true, keywords);
+			} else {
+				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), PRIVATE_DATA->exposure, true, NULL);
+			}
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
@@ -280,22 +303,6 @@ static void ccd_temperature_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
 	PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
-}
-
-static char *get_bayer_string (indigo_device *device) {
-	if (!PRIVATE_DATA->info.IsColorCam) return NULL;
-
-	switch (PRIVATE_DATA->info.BayerPattern) {
-		case ASI_BAYER_BG:
-			return "BGGR";
-		case ASI_BAYER_GR:
-			return "GRBG";
-		case ASI_BAYER_GB:
-			return "GBRG";
-		case ASI_BAYER_RG:
-		default:
-			return "RGGB";
-    }
 }
 
 static indigo_result ccd_attach(indigo_device *device) {
