@@ -38,14 +38,6 @@
 //#undef INDIGO_TRACE_PROTOCOL
 //#define INDIGO_TRACE_PROTOCOL(c) c
 
-
-#ifndef htonll
-#define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-#endif
-
-#ifndef ntohll
-#define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
-#endif
 static pthread_mutex_t json_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static bool full_write(int handle, const char *buffer, long length) {
