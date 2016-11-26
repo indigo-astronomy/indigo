@@ -19,26 +19,18 @@
 // version history
 // 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO CCD Simulator driver main
- \file indigo_ccd_simulator_main.c
+/** INDIGO JSON wire protocol client side adapter
+ \file indigo_driver_json.h
  */
 
+#ifndef indigo_driver_json_h
+#define indigo_driver_json_h
+
 #include <stdio.h>
+#include "indigo_json.h"
 
-#include "indigo_driver_xml.h"
+/** Create initialized instance of JSON wire protocol device side adapter.
+ */
+extern indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket);
 
-#include "indigo_ccd_simulator.h"
-
-int main(int argc, const char * argv[]) {
-	indigo_main_argc = argc;
-	indigo_main_argv = argv;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
-	indigo_start();
-	indigo_ccd_simulator(INDIGO_DRIVER_INIT, NULL);
-	indigo_attach_client(protocol_adapter);
-	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_ccd_simulator(INDIGO_DRIVER_SHUTDOWN, NULL);
-	indigo_stop();
-	return 0;
-}
-
+#endif /* indigo_driver_json_h */
