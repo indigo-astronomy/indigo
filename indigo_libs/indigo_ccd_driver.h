@@ -314,9 +314,22 @@ extern indigo_result indigo_ccd_change_property(indigo_device *device, indigo_cl
  */
 extern indigo_result indigo_ccd_detach(indigo_device *device);
 
+typedef enum { INDIGO_FITS_NUMBER = 1, INDIGO_FITS_STRING, INDIGO_FITS_LOGICAL } indigo_fits_keyword_type;
+
+typedef struct {
+	indigo_fits_keyword_type type;
+	const char *name;
+	union {
+		double number;
+		const char *string;
+		bool logical;
+	};
+	const char *comment;
+} indigo_fits_keyword;
+
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
-extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time, bool little_endian);
+extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time, bool little_endian, indigo_fits_keyword *keywords);
 
 #endif /* indigo_ccd_h */
 

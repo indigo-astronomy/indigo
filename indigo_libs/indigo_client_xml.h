@@ -29,13 +29,6 @@
 #include "indigo_bus.h"
 #include "indigo_xml.h"
 
-/** XML wire protocol driver side adapter private data structure.
- */
-typedef struct {
-	int input;  ///< input handle
-	int output; ///< output handle
-} indigo_xml_client_adapter_context;
-
 /** Create initialized instance of XML wire protocol driver side adapter.
  */
 extern indigo_device *indigo_xml_client_adapter(int input, int ouput);

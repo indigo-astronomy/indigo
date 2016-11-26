@@ -472,15 +472,13 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time, bool little_endian) {
+void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time, bool little_endian, indigo_fits_keyword *keywords) {
 	assert(device != NULL);
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
 
 	int horizontal_bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
-// int frame_width = CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
-// int frame_height = CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
 	int byte_per_pixel = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value / 8;
 	int size = frame_width * frame_height;
 	if (byte_per_pixel == 2 && !little_endian) {
@@ -570,7 +568,24 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		t = sprintf(header += 80, "DATE-OBS= '%s' / UTC date that FITS file was created", now);
 		header[t] = ' ';
 		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
-		header[t] = ' ';
+		header[t] = ' ';		
+		if (keywords) {
+			while (keywords->type) {
+				switch (keywords->type) {
+					case INDIGO_FITS_NUMBER:
+						t = sprintf(header += 80, "%7s= %21g / %s", keywords->name, keywords->number, keywords->comment);
+						break;
+					case INDIGO_FITS_STRING:
+						t = sprintf(header += 80, "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(19 - strlen(keywords->string)), ' ', keywords->comment);
+						break;
+					case INDIGO_FITS_LOGICAL:
+						t = sprintf(header += 80, "%7s=                     %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
+						break;
+				}
+				header[t] = ' ';
+				keywords++;
+			}
+		}
 		t = sprintf(header += 80, "END");
 		header[t] = ' ';
 		if (byte_per_pixel == 2) {

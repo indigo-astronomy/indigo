@@ -199,7 +199,7 @@ void *get_properties_handler(parser_state state, char *name, char *value, indigo
 				version = INDIGO_VERSION_2_0;
 			if (version > client->version) {
 				assert(client->client_context != NULL);
-				int handle = ((indigo_xml_device_adapter_context *)(client->client_context))->output;
+				int handle = ((indigo_xml_adapter_context *)(client->client_context))->output;
 				indigo_xml_printf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
 				client->version = version;
 			}

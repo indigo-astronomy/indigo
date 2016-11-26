@@ -19,19 +19,29 @@
 // version history
 // 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO XML wire protocol client side adapter
- \file indigo_driver_xml.h
+/** INDIGO JSON wire protocol parser
+ \file indigo_json.h
  */
 
-#ifndef indigo_device_xml_h
-#define indigo_device_xml_h
+#ifndef indigo_json_h
+#define indigo_json_h
 
+#include <stdio.h>
 #include "indigo_bus.h"
-#include "indigo_xml.h"
 
-/** Create initialized instance of XML wire protocol client side adapter.
+#define JSON_BUFFER_SIZE	(128 * 1024)
+
+/** JSON wire protocol adapter private data structure.
  */
-extern indigo_client *indigo_xml_device_adapter(int input, int ouput);
+typedef struct {
+	int input;						///< input handle
+	int output;						///< output handle
+	char *input_buffer;		///< input buffer
+	char *output_buffer;	///< input buffer
+} indigo_json_adapter_context;
 
-#endif /* indigo_device_xml_h */
+/** JSON wire protocol parser.
+ */
+extern void indigo_json_parse(int handle, indigo_device *device, indigo_client *client);
 
+#endif /* indigo_json_h */
