@@ -40,8 +40,8 @@
 #include <netinet/in.h>
 
 #include "indigo_server_tcp.h"
-#include "indigo_xml.h"
-#include "indigo_json.h"
+#include "indigo_driver_xml.h"
+#include "indigo_driver_json.h"
 #include "indigo_base64.h"
 
 #define SHA1_SIZE 20
@@ -131,6 +131,7 @@ static void start_worker_thread(int *client_socket) {
 					memset(shaHash, 0, sizeof(shaHash));
 					sha1(shaHash, response, strlen(response));
 					write_line(socket, "HTTP/1.1 101 Switching Protocols\r\n");
+					write_line(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 					write_line(socket, "Upgrade: websocket\r\n");
 					write_line(socket, "Connection: Upgrade\r\n");
 					base64_encode((unsigned char *)response, shaHash, 20);
@@ -294,16 +295,16 @@ void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_
 	memset(w, 0, sizeof w);
 	
 	for (; i < n; ++i)
-  w[i >> 2 & 0xf] |= ((const unsigned char *) p)[i] << ((3 ^ i & 3) << 3);
+  w[i >> 2 & 0xf] |= ((const unsigned char *) p)[i] << ((3 ^ (i & 3)) << 3);
 	
-	w[i >> 2 & 0xf] |= 0x80 << ((3 ^ i & 3) << 3);
+	w[i >> 2 & 0xf] |= 0x80 << ((3 ^ (i & 3)) << 3);
 	
 	if ((n & 0x3f) > 56) {
 		sha1mix(r, w);
 		memset(w, 0, sizeof w);
 	}
 	
-	w[15] = n << 3;
+	w[15] = (unsigned) n << 3;
 	sha1mix(r, w);
 	
 	for (i = 0; i < 5; ++i)

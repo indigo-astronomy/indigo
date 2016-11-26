@@ -19,26 +19,18 @@
 // version history
 // 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO TCP wire protocol server
- \file indigo_server_tcp.h
+/** INDIGO JSON wire protocol client side adapter
+ \file indigo_driver_json.h
  */
 
-#ifndef indigo_server_tcp_h
-#define indigo_server_tcp_h
+#ifndef indigo_driver_json_h
+#define indigo_driver_json_h
 
-#include "indigo_bus.h"
+#include <stdio.h>
+#include "indigo_json.h"
 
-/** Prototype of callback function for network server (providing number of active clients).
+/** Create initialized instance of JSON wire protocol device side adapter.
  */
-typedef void (*indigo_server_tcp_callback)(int);
+extern indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket);
 
-/** TCP port to run on.
- */
-extern int indigo_server_tcp_port;
-
-/** Start network server (function will block until server is active).
- */
-extern indigo_result indigo_server_tcp(indigo_server_tcp_callback callback);
-
-#endif /* indigo_server_tcp_h */
-
+#endif /* indigo_driver_json_h */
