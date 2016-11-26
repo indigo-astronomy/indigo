@@ -52,7 +52,7 @@ static void start_worker_thread(indigo_client *protocol_adapter) {
 	indigo_log("Worker thread started", indigo_server_xml_port);
 	server_callback(++client_count);
 	assert(protocol_adapter != NULL);
-	indigo_xml_device_adapter_context *device_context = protocol_adapter->client_context;
+	indigo_xml_adapter_context *device_context = protocol_adapter->client_context;
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(device_context->input, NULL, protocol_adapter);
 	indigo_detach_client(protocol_adapter);
