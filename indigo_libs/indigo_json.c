@@ -229,12 +229,15 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 			INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
 		}
 		switch (state) {
+			case ERROR:
+				goto exit_loop;
 			case IDLE:
-				name_pointer = name_buffer;
-				*name_pointer = 0;
-				value_pointer = value_buffer;
-				*value_pointer = 0;
-				if (c == '{') {
+				if (isspace(c)) {
+				} else if (c == '{') {
+					name_pointer = name_buffer;
+					*name_pointer = 0;
+					value_pointer = value_buffer;
+					*value_pointer = 0;
 					state = BEGIN_STRUCT;
 					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' IDLE -> BEGIN_STRUCT", c));
 					depth++;
@@ -288,6 +291,11 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					value_pointer = value_buffer;
 					*value_pointer++ = c;
 					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> NUMBER_VALUE", c));
+				} else if (isalpha(c)) {
+					state = LOGICAL_VALUE;
+					value_pointer = value_buffer;
+					*value_pointer++ = c;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> LOGICAL_VALUE", c));
 				}
 				break;
 			case TEXT_VALUE:
@@ -311,6 +319,21 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					*value_pointer = 0;
 					handler = handler(NUMBER_VALUE, name_buffer, value_buffer, property, device, client, message);
 					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NUMBER_VALUE -> VALUE1", c));
+				}
+				break;
+			case LOGICAL_VALUE:
+				if ((isalpha(c)) && value_pointer - value_buffer <INDIGO_VALUE_SIZE) {
+					*value_pointer++ = c;
+				} else {
+					*value_pointer = 0;
+					if (!strcmp(value_buffer, "true") || !strcmp(value_buffer, "false")) {
+						handler = handler(LOGICAL_VALUE, name_buffer, value_buffer, property, device, client, message);
+						state = VALUE1;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' LOGICAL_VALUE -> VALUE1", c));
+					} else {
+						state = ERROR;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' LOGICAL_VALUE -> ERROR", c));
+					}
 				}
 				break;
 			case VALUE1:
