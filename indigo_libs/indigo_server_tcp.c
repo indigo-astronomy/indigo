@@ -32,6 +32,7 @@
 #include <string.h>
 #include <assert.h>
 #include <signal.h>
+#include <stdarg.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -41,6 +42,16 @@
 #include "indigo_server_tcp.h"
 #include "indigo_xml.h"
 #include "indigo_json.h"
+#include "indigo_base64.h"
+
+#define SHA1_SIZE 20
+#if _MSC_VER
+# define _sha1_restrict __restrict
+#else
+# define _sha1_restrict __restrict__
+#endif
+
+void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_t n);
 
 static int server_socket;
 static struct sockaddr_in server_address;
@@ -50,27 +61,92 @@ static indigo_server_tcp_callback server_callback;
 
 int indigo_server_tcp_port = 7624;
 
+#define BUFFER_SIZE	1024
+
+static long read_line(int handle, char *buffer, int length) {
+	int i = 0;
+	char c = '\0';
+	long n = 0;
+	while (i < length) {
+		n = read(handle, &c, 1);
+		if (n > 0) {
+			if (c == '\r') {
+			} else if (c == '\n') {
+				buffer[i++] = 0;
+				break;
+			} else {
+				buffer[i++] = c;
+			}
+		} else {
+			break;
+		}
+	}
+	buffer[i] = '\0';
+	return n == -1 ? -1 : i;
+}
+
+static void write_line(int handle, char *format, ...) {
+	char buf[1024];
+	va_list args;
+	va_start (args, format);
+	vsprintf(buf, format, args);
+	va_end (args);
+	write(handle, buf, strlen(buf));
+}
+
 static void start_worker_thread(int *client_socket) {
+	int socket = *client_socket;
 	indigo_log("Worker thread started");
 	server_callback(++client_count);
 	char c;
-	if (recv(*client_socket, &c, 1, MSG_PEEK) == 1) {
+	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
 			indigo_log("Protocol switched to XML");
-			indigo_client *protocol_adapter = indigo_xml_device_adapter(*client_socket, *client_socket);
+			indigo_client *protocol_adapter = indigo_xml_device_adapter(socket, socket);
 			assert(protocol_adapter != NULL);
-			indigo_adapter_context *device_context = protocol_adapter->client_context;
 			indigo_attach_client(protocol_adapter);
 			indigo_xml_parse(NULL, protocol_adapter);
 			indigo_detach_client(protocol_adapter);
-		} else {
+		} else if (c == '{') {
 			indigo_log("Protocol switched to JSON");
-			indigo_client *protocol_adapter = indigo_json_device_adapter(*client_socket, *client_socket);
+			indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, false);
 			assert(protocol_adapter != NULL);
-			indigo_adapter_context *device_context = protocol_adapter->client_context;
 			indigo_attach_client(protocol_adapter);
 			indigo_json_parse(NULL, protocol_adapter);
 			indigo_detach_client(protocol_adapter);
+		} else if (c == 'G') {
+			char buffer[BUFFER_SIZE];
+			if (read_line(socket, buffer, BUFFER_SIZE) >= 0) {
+				if (!strncmp(buffer, "GET / ", 6)) {
+					char response[256];
+					unsigned char shaHash[20];
+					while (read_line(socket, buffer, BUFFER_SIZE) >= 0) {
+						if (*buffer == 0)
+							break;
+						if (!strncmp(buffer, "Sec-WebSocket-Key: ", 19)) {
+							strcpy(response, buffer + 19);
+						}
+					}
+					strcat(response, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+					memset(shaHash, 0, sizeof(shaHash));
+					sha1(shaHash, response, strlen(response));
+					write_line(socket, "HTTP/1.1 101 Switching Protocols\r\n");
+					write_line(socket, "Upgrade: websocket\r\n");
+					write_line(socket, "Connection: Upgrade\r\n");
+					base64_encode((unsigned char *)response, shaHash, 20);
+					write_line(socket, "Sec-WebSocket-Accept: %s\r\n\r\n", response);
+					indigo_log("Protocol switched to JSON-over-WebSockets");
+					indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, true);
+					assert(protocol_adapter != NULL);
+					indigo_attach_client(protocol_adapter);
+					indigo_json_parse(NULL, protocol_adapter);
+					indigo_detach_client(protocol_adapter);
+				} else {
+					//TBD get blob over HTTP
+				}
+			}
+		} else {
+			indigo_log("Unrecognised protocol");
 		}
 	}
 	server_callback(--client_count);
@@ -128,3 +204,111 @@ indigo_result indigo_server_tcp(indigo_server_tcp_callback callback) {
 	return shutdown_initiated ? INDIGO_OK : INDIGO_FAILED;
 }
 
+/*
+ Copyright (c) 2014 Malte Hildingsson, malte (at) afterwi.se
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
+ 
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ THE SOFTWARE.
+ */
+
+static inline void sha1mix(unsigned *_sha1_restrict r, unsigned *_sha1_restrict w) {
+	unsigned a = r[0];
+	unsigned b = r[1];
+	unsigned c = r[2];
+	unsigned d = r[3];
+	unsigned e = r[4];
+	unsigned t, i = 0;
+	
+#define rol(x,s) ((x) << (s) | (unsigned) (x) >> (32 - (s)))
+#define mix(f,v) do { \
+t = (f) + (v) + rol(a, 5) + e + w[i & 0xf]; \
+e = d; \
+d = c; \
+c = rol(b, 30); \
+b = a; \
+a = t; \
+} while (0)
+	
+	for (; i < 16; ++i)
+  mix(d ^ (b & (c ^ d)), 0x5a827999);
+	
+	for (; i < 20; ++i) {
+		w[i & 0xf] = rol(w[i + 13 & 0xf] ^ w[i + 8 & 0xf] ^ w[i + 2 & 0xf] ^ w[i & 0xf], 1);
+		mix(d ^ (b & (c ^ d)), 0x5a827999);
+	}
+	
+	for (; i < 40; ++i) {
+		w[i & 0xf] = rol(w[i + 13 & 0xf] ^ w[i + 8 & 0xf] ^ w[i + 2 & 0xf] ^ w[i & 0xf], 1);
+		mix(b ^ c ^ d, 0x6ed9eba1);
+	}
+	
+	for (; i < 60; ++i) {
+		w[i & 0xf] = rol(w[i + 13 & 0xf] ^ w[i + 8 & 0xf] ^ w[i + 2 & 0xf] ^ w[i & 0xf], 1);
+		mix((b & c) | (d & (b | c)), 0x8f1bbcdc);
+	}
+	
+	for (; i < 80; ++i) {
+		w[i & 0xf] = rol(w[i + 13 & 0xf] ^ w[i + 8 & 0xf] ^ w[i + 2 & 0xf] ^ w[i & 0xf], 1);
+		mix(b ^ c ^ d, 0xca62c1d6);
+	}
+	
+#undef mix
+#undef rol
+	
+	r[0] += a;
+	r[1] += b;
+	r[2] += c;
+	r[3] += d;
+	r[4] += e;
+}
+
+void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_t n) {
+	size_t i = 0;
+	unsigned w[16], r[5] = {0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0};
+	
+	for (; i < (n & ~0x3f);) {
+		do w[i >> 2 & 0xf] =
+			((const unsigned char *) p)[i + 3] << 0x00 |
+			((const unsigned char *) p)[i + 2] << 0x08 |
+			((const unsigned char *) p)[i + 1] << 0x10 |
+			((const unsigned char *) p)[i + 0] << 0x18;
+		while ((i += 4) & 0x3f);
+		sha1mix(r, w);
+	}
+	
+	memset(w, 0, sizeof w);
+	
+	for (; i < n; ++i)
+  w[i >> 2 & 0xf] |= ((const unsigned char *) p)[i] << ((3 ^ i & 3) << 3);
+	
+	w[i >> 2 & 0xf] |= 0x80 << ((3 ^ i & 3) << 3);
+	
+	if ((n & 0x3f) > 56) {
+		sha1mix(r, w);
+		memset(w, 0, sizeof w);
+	}
+	
+	w[15] = n << 3;
+	sha1mix(r, w);
+	
+	for (i = 0; i < 5; ++i)
+  h[(i << 2) + 0] = (unsigned char) (r[i] >> 0x18),
+  h[(i << 2) + 1] = (unsigned char) (r[i] >> 0x10),
+  h[(i << 2) + 2] = (unsigned char) (r[i] >> 0x08),
+  h[(i << 2) + 3] = (unsigned char) (r[i] >> 0x00);
+}
