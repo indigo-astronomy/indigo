@@ -417,8 +417,15 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	assert(device != NULL);
 	int handle = open_config_file(device->name, O_RDONLY, default_properties ? ".default" : ".config");
 	if (handle > 0) {
-		indigo_xml_parse(handle, NULL, NULL);
+		indigo_client *client = malloc(sizeof(indigo_client));
+		memset(client, 0, sizeof(indigo_client));
+		indigo_adapter_context *context = malloc(sizeof(indigo_adapter_context));
+		context->input = handle;
+		client->client_context = context;
+		indigo_xml_parse(NULL, client);
 		close(handle);
+		free(context);
+		free(client);
 	}
 	return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
 }

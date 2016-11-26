@@ -23,7 +23,7 @@
 #define BridgingHeader_h
 
 #include "indigo_bus.h"
-#include "indigo_server_xml.h"
+#include "indigo_server_tcp.h"
 #include "indigo_ccd_simulator.h"
 #include "indigo_ccd_sx.h"
 #include "indigo_ccd_ssag.h"

@@ -199,7 +199,7 @@ void *get_properties_handler(parser_state state, char *name, char *value, indigo
 				version = INDIGO_VERSION_2_0;
 			if (version > client->version) {
 				assert(client->client_context != NULL);
-				int handle = ((indigo_xml_adapter_context *)(client->client_context))->output;
+				int handle = ((indigo_adapter_context *)(client->client_context))->output;
 				indigo_xml_printf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
 				client->version = version;
 			}
@@ -885,7 +885,7 @@ void *top_level_handler(parser_state state, char *name, char *value, indigo_prop
 	return top_level_handler;
 }
 
-void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) {
+void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	char *buffer = malloc(BUFFER_SIZE+3); /* BUFFER_SIZE % 4 == 0 and keep always +3 for base64 alignmet */
 	assert(buffer != NULL);
 	char *value_buffer = malloc(BUFFER_SIZE+1); /* +1 to accomodate \0" */
@@ -910,8 +910,12 @@ void indigo_xml_parse(int handle, indigo_device *device, indigo_client *client) 
 	indigo_property *property = (indigo_property *)property_buffer;
 	memset(property_buffer, 0, PROPERTY_SIZE);
 
+	int handle = 0;
 	if (device != NULL) {
+		handle = ((indigo_adapter_context *)device->device_context)->input;
 		device->enumerate_properties(device, client, NULL);
+	} else {
+		handle = ((indigo_adapter_context *)client->client_context)->input;
 	}
 	*pointer = 0;
 	while (true) {

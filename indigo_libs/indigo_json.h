@@ -40,8 +40,12 @@ typedef struct {
 	char *output_buffer;	///< input buffer
 } indigo_json_adapter_context;
 
+/** Create initialized instance of JSON wire protocol device side adapter.
+ */
+extern indigo_client *indigo_json_device_adapter(int input, int ouput);
+
 /** JSON wire protocol parser.
  */
-extern void indigo_json_parse(int handle, indigo_device *device, indigo_client *client);
+extern void indigo_json_parse(indigo_device *device, indigo_client *client);
 
 #endif /* indigo_json_h */

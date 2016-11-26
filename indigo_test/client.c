@@ -127,7 +127,7 @@ int main(int argc, const char * argv[]) {
 		indigo_device *protocol_adapter = indigo_xml_client_adapter(input[0], output[1]);
 		indigo_attach_device(protocol_adapter);
 		indigo_attach_client(&client);
-		indigo_xml_parse(input[0], protocol_adapter, &client);
+		indigo_xml_parse(protocol_adapter, &client);
 		indigo_stop();
 	}
 	return 0;

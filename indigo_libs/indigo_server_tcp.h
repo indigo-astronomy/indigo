@@ -19,26 +19,26 @@
 // version history
 // 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO XML wire protocol server
- \file indigo_server_xml.h
+/** INDIGO TCP wire protocol server
+ \file indigo_server_tcp.h
  */
 
-#ifndef indigo_server_xml_h
-#define indigo_server_xml_h
+#ifndef indigo_server_tcp_h
+#define indigo_server_tcp_h
 
 #include "indigo_driver_xml.h"
 
 /** Prototype of callback function for network server (providing number of active clients).
  */
-typedef void (*indigo_server_xml_callback)(int);
+typedef void (*indigo_server_tcp_callback)(int);
 
 /** TCP port to run on.
  */
-extern int indigo_server_xml_port;
+extern int indigo_server_tcp_port;
 
 /** Start network server (function will block until server is active).
  */
-extern indigo_result indigo_server_xml(indigo_server_xml_callback callback);
+extern indigo_result indigo_server_tcp(indigo_server_tcp_callback callback);
 
-#endif /* indigo_server_xml_h */
+#endif /* indigo_server_tcp_h */
 
