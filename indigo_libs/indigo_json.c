@@ -31,6 +31,7 @@
 #include <ctype.h>
 #include <pthread.h>
 #include <assert.h>
+#include <stdint.h>
 
 #include "indigo_json.h"
 
