@@ -58,6 +58,8 @@
 
 // -------------------------------------------------------------------------------- ZWO ASI USB interface implementation
 
+#define us2s(s) ((s) / 1000000.0)
+#define s2us(us) ((us) * 1000000)
 
 
 typedef struct {
@@ -144,7 +146,8 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetStartPos(%d) = %d", id, res));
 		return false;
 	}
-	res = ASISetControlValue(id, ASI_EXPOSURE, (long)(exposure*1000), ASI_FALSE);
+
+	res = ASISetControlValue(id, ASI_EXPOSURE, (long)s2us(exposure), ASI_FALSE);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res));
@@ -163,17 +166,30 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 
 static bool asi_read_pixels(indigo_device *device) {
 	ASI_ERROR_CODE res;
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-	res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
-	if (res) {
+	ASI_EXPOSURE_STATUS status;
+	int wait_cicles = 2000;    /* 2000*1000us = 2s */
+	status = ASI_EXP_WORKING;
+	while((status == ASI_EXP_WORKING) && wait_cicles--) {
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			usleep(1000);
+			// INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetExpStatus(%d), %d", PRIVATE_DATA->dev_id, wait_cicles));
+	}
+	if(status == ASI_EXP_SUCCESS) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res));
+			return false;
+		}
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res));
+		return true;
+	} else {
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: Exposure failed: dev_id = %d EC = %d", PRIVATE_DATA->dev_id, status));
 		return false;
 	}
-
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	return true;
 }
 
 static bool asi_abort_exposure(indigo_device *device) {
@@ -351,9 +367,9 @@ static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CA
 		else
 			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
 
-		CCD_EXPOSURE_ITEM->number.min = ctrl_caps.MinValue;
-		CCD_EXPOSURE_ITEM->number.max = ctrl_caps.MaxValue;
-		CCD_EXPOSURE_ITEM->number.value = 1;
+		CCD_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.MinValue);
+		CCD_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.MaxValue);
+		CCD_EXPOSURE_ITEM->number.value = us2s(ctrl_caps.DefaultValue);
 	}
 
 	if (ctrl_caps.ControlType == ASI_GAIN) {
