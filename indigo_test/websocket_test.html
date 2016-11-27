@@ -22,6 +22,8 @@
 	function onOpen(evt) {
 		writeToScreen("CONNECTED");
 		doSend('{ "getProperties": { "version": 512 } }');
+		doSend('{ "newSwitchVector": { "device": "CCD Imager Simulator", "name": "CONNECTION", "oneSwitch": [ { "name": "CONNECTED", "value": true } ] } }');
+		doSend('{ "newNumberVector": { "device": "CCD Imager Simulator", "name": "CCD_EXPOSURE", "oneNumber": [ { "name": "EXPOSURE", "value": 5 } ] } }');
 	}
 
 	function onClose(evt) {
