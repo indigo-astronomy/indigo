@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>WebSocket Test</title>
+<script language="javascript" type="text/javascript">
+	
+	var wsUri = "ws://localhost:7624/";
+	var output;
+
+	var model = [];
+
+	function init() {
+		output = document.getElementById("output");
+		testWebSocket();
+	}
+
+	function testWebSocket() {
+		websocket = new WebSocket(wsUri);
+		websocket.onopen = function(evt) { onOpen(evt) };
+		websocket.onclose = function(evt) { onClose(evt) };
+		websocket.onmessage = function(evt) { onMessage(evt) };
+		websocket.onerror = function(evt) { onError(evt) };
+	}
+
+	function onOpen(evt) {
+		writeToScreen("CONNECTED");
+		doSend('{ "getProperties": { "version": 512 } }');
+		doSend('{ "newSwitchVector": { "device": "CCD Imager Simulator", "name": "CONNECTION", "oneSwitch": [ { "name": "CONNECTED", "value": true } ] } }');
+		doSend('{ "newNumberVector": { "device": "CCD Imager Simulator", "name": "CCD_EXPOSURE", "oneNumber": [ { "name": "EXPOSURE", "value": 5 } ] } }');
+	}
+
+	function onClose(evt) {
+		writeToScreen("DISCONNECTED");
+	}
+
+	function addDevice(device) {
+		for (var i = 0; i < model.length; i++) {
+			var dev = model[i];
+			if (dev.device === device)
+				return dev;
+		}
+		var dev = { "device": device, "groups": [] };
+		model.push(dev);
+		return dev;
+	}
+
+	function addGroup(device, group) {
+		var groups = device.groups;
+		for (var i = 0; i < groups.length; i++) {
+			var grp = groups[i];
+			if (grp.group === group)
+				return grp;
+		}
+		var grp = { "group": group, "properties": [] };
+		groups.push(grp);
+		return grp;
+	}
+
+	function addProperty(group, property) {
+		var properties = group.properties;
+		for (var i = 0; i < properties.length; i++) {
+			var prop = properties[i];
+			if (prop.property === prop)
+				return prop;
+		}
+		var prop = { "property": property, "items": [] };
+		properties.push(prop);
+		return prop;
+	}
+
+	function addItem(property, item) {
+		var items = property.items;
+		for (var i = 0; i < items.length; i++) {
+			var itm = items[i];
+			if (itm.item === item)
+				return itm;
+		}
+		var itm = { "item": item };
+		items.push(itm);
+		return itm;
+	}
+
+	function getProperty(device, property) {
+		for (var i = 0; i < model.length; i++) {
+			var dev = model[i];
+			if (dev.device === device) {
+				var groups = dev.groups;
+				for (var j = 0; j < groups.length; j++) {
+					var grp = groups[j];
+					var properties = grp.properties;
+					for (var k = 0; k < properties.length; k++) {
+						var prop = properties[k];
+						if (prop.property === property)
+						return prop;
+					}
+				}
+			}
+		}
+		return undefined;
+	}
+
+	function getItem(property, item) {
+		var items = property.items;
+		for (var i = 0; i < items.length; i++) {
+			var itm = items[i];
+			if (itm.item === item)
+				return itm;
+		}
+		return undefined;
+	}
+
+	function deleteProperty(device, property) {
+		for (var i = 0; i < model.length; i++) {
+			var dev = model[i];
+			if (dev.device === device) {
+				if (property === undefined) {
+					model.splice(i, 1);
+					return;
+				}
+				var groups = dev.groups;
+				for (var j = 0; j < groups.length; j++) {
+					var grp = groups[j];
+					var properties = grp.properties;
+					for (var k = 0; k < properties.length; k++) {
+						var prop = properties[k];
+						if (prop.property === property) {
+							properties.splice(k, 1);
+							if (properties.length == 0) {
+								groups.splice(j, 1);
+								if (groups.length == 0) {
+									model.splice(i, 1);
+								}
+							}
+							return;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	function onMessage(evt) {
+		try {
+			var message = JSON.parse(evt.data);
+			var vector;
+			if ((vector = message.defSwitchVector) != undefined) {
+				var device = addDevice(vector.device);
+				var group = addGroup(device, vector.group);
+				var property = addProperty(group, vector.name);
+				property.type = "SWITCH";
+				property.perm = vector.perm;
+				property.state = vector.state;
+				property.rule = vector.rule;
+				for (var i = 0; i < vector.defSwitch.length; i++) {
+					var item = addItem(property, vector.defSwitch[i].name);
+					item.value = vector.defSwitch[i].value;
+				}
+			} else if ((vector = message.setSwitchVector) != undefined) {
+				var property = getProperty(vector.device, vector.name);
+				if (property != undefined) {
+					property.state = vector.state;
+					for (var i = 0; i < vector.oneSwitch.length; i++) {
+						var item = getItem(property, vector.oneSwitch[i].name);
+						if (item != undefined)
+							item.value = vector.oneSwitch[i].value;
+					}
+				}
+			} else if ((vector = message.defTextVector) != undefined) {
+				var device = addDevice(vector.device);
+				var group = addGroup(device, vector.group);
+				var property = addProperty(group, vector.name);
+				property.type = "TEXT";
+				property.perm = vector.perm;
+				property.state = vector.state;
+				for (var i = 0; i < vector.defText.length; i++) {
+					var item = addItem(property, vector.defText[i].name);
+					item.value = vector.defText[i].value;
+				}
+			} else if ((vector = message.setTextVector) != undefined) {
+				var property = getProperty(vector.device, vector.name);
+				if (property != undefined) {
+					property.state = vector.state;
+					for (var i = 0; i < vector.oneText.length; i++) {
+						var item = getItem(property, vector.oneText[i].name);
+						if (item != undefined)
+						item.value = vector.oneText[i].value;
+					}
+				}
+			} else if ((vector = message.defNumberVector) != undefined) {
+				var device = addDevice(vector.device);
+				var group = addGroup(device, vector.group);
+				var property = addProperty(group, vector.name);
+				property.type = "NUMBER";
+				property.perm = vector.perm;
+				property.state = vector.state;
+				for (var i = 0; i < vector.defNumber.length; i++) {
+					var item = addItem(property, vector.defNumber[i].name);
+					item.min = vector.defNumber[i].min;
+					item.max = vector.defNumber[i].max;
+					item.step = vector.defNumber[i].step;
+					item.value = vector.defNumber[i].value;
+				}
+			} else if ((vector = message.setNumberVector) != undefined) {
+				var property = getProperty(vector.device, vector.name);
+				if (property != undefined) {
+					property.state = vector.state;
+					for (var i = 0; i < vector.oneNumber.length; i++) {
+						var item = getItem(property, vector.oneNumber[i].name);
+						if (item != undefined)
+						item.value = vector.oneNumber[i].value;
+					}
+				}
+			} else if ((vector = message.defLightVector) != undefined) {
+				var device = addDevice(vector.device);
+				var group = addGroup(device, vector.group);
+				var property = addProperty(group, vector.name);
+				property.type = "LIGHT";
+				property.state = vector.state;
+				for (var i = 0; i < vector.defLight.length; i++) {
+					var item = addItem(property, vector.defLight[i].name);
+					item.value = vector.defLight[i].value;
+				}
+			} else if ((vector = message.setLightVector) != undefined) {
+				var property = getProperty(vector.device, vector.name);
+				if (property != undefined) {
+					property.state = vector.state;
+					for (var i = 0; i < vector.oneLight.length; i++) {
+						var item = getItem(property, vector.oneLight[i].name);
+						if (item != undefined)
+						item.value = vector.oneLight[i].value;
+					}
+				}
+			} else if ((vector = message.defTextVector) != undefined) {
+				var device = addDevice(vector.device);
+				var group = addGroup(device, vector.group);
+				var property = addProperty(group, vector.name);
+				property.type = "BLOB";
+				property.state = vector.state;
+				for (var i = 0; i < vector.defBLOB.length; i++) {
+					var item = addItem(property, vector.defBLOB[i].name);
+					item.value = vector.defBLOB[i].value;
+				}
+			} else if ((vector = message.setBLOBVector) != undefined) {
+				var property = getProperty(vector.device, vector.name);
+				if (property != undefined) {
+					property.state = vector.state;
+					for (var i = 0; i < vector.oneBLOB.length; i++) {
+						var item = getItem(property, vector.oneBLOB[i].name);
+						if (item != undefined)
+						item.value = vector.oneBLOB[i].value;
+					}
+				}
+			} else if ((vector = message.deleteProperty) != undefined) {
+				var property = deleteProperty(vector.device, vector.name);
+			}
+			writeToScreen(JSON.stringify(model, null, 2));
+		} catch(e) {
+			error.innerHTML = evt.data;
+		}
+	}
+
+	function onError(evt) {
+		writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
+	}
+
+	function doSend(message) {
+		websocket.send(message);
+	}
+
+	function writeToScreen(message) {
+		output.innerHTML = message;
+	}
+
+	window.addEventListener("load", init, false);
+
+</script>
+
+<pre id="output"></pre>
+<hr>
+<pre id="error"></pre>
+<hr>
