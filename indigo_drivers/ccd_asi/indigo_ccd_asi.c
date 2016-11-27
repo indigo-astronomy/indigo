@@ -78,6 +78,8 @@ typedef struct {
 	bool can_check_temperature;
 	double exposure;
 	ASI_CAMERA_INFO info;
+	indigo_property *image_format_property;
+	indigo_property *asi_misc_property;
 } asi_private_data;
 
 
@@ -370,6 +372,7 @@ static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CA
 		CCD_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.MinValue);
 		CCD_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.MaxValue);
 		CCD_EXPOSURE_ITEM->number.value = us2s(ctrl_caps.DefaultValue);
+		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.ControlType == ASI_GAIN) {
@@ -383,6 +386,7 @@ static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CA
 		CCD_GAIN_ITEM->number.max = ctrl_caps.MaxValue;
 		CCD_GAIN_ITEM->number.value = ctrl_caps.DefaultValue;
 		CCD_GAIN_ITEM->number.step = 1;
+		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.ControlType == ASI_GAMMA) {
@@ -396,6 +400,7 @@ static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CA
 		CCD_GAMMA_ITEM->number.max = ctrl_caps.MaxValue;
 		CCD_GAMMA_ITEM->number.value = ctrl_caps.DefaultValue;
 		CCD_GAMMA_ITEM->number.step = 1;
+		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.ControlType == ASI_TARGET_TEMP) {
@@ -410,6 +415,7 @@ static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CA
 		CCD_TEMPERATURE_ITEM->number.value = ctrl_caps.DefaultValue;
 		PRIVATE_DATA->target_temperature = ctrl_caps.DefaultValue;
 		PRIVATE_DATA->can_check_temperature = true;
+		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.ControlType == ASI_COOLER_ON) {
@@ -418,6 +424,8 @@ static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CA
 			CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
 		else
 			CCD_COOLER_PROPERTY->perm = INDIGO_RO_PERM;
+
+		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.ControlType == ASI_COOLER_POWER_PERC) {
@@ -430,6 +438,11 @@ static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CA
 		CCD_COOLER_POWER_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_COOLER_POWER_ITEM->number.max = ctrl_caps.MaxValue;
 		CCD_COOLER_POWER_ITEM->number.value = ctrl_caps.DefaultValue;
+		return INDIGO_OK;
+	}
+
+	if(PRIVATE_DATA->asi_misc_property == NULL) {
+		// add other controls here
 	}
 	return INDIGO_OK;
 }
