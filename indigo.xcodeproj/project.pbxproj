@@ -247,6 +247,7 @@
 		599A63AD1DEA070E00ABC827 /* websocket_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = websocket_test.html; sourceTree = "<group>"; };
 		599A63AE1DEA2F4700ABC827 /* indigo_driver_json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_driver_json.c; sourceTree = "<group>"; };
 		599A63AF1DEA2F4700ABC827 /* indigo_driver_json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_driver_json.h; sourceTree = "<group>"; };
+		599A63B21DEB7BF500ABC827 /* websocket_ctrl.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = websocket_ctrl.html; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
 		599C9A371D9FF0A3008BBCC1 /* INDIGO Server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "INDIGO Server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -510,6 +511,7 @@
 				592662B01D9590630021746A /* test.c */,
 				59D382161D97348500E87393 /* client.c */,
 				599A63AD1DEA070E00ABC827 /* websocket_test.html */,
+				599A63B21DEB7BF500ABC827 /* websocket_ctrl.html */,
 			);
 			path = indigo_test;
 			sourceTree = "<group>";
