@@ -358,7 +358,7 @@ static indigo_result json_detach(indigo_client *client) {
 
 indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket) {
 	static indigo_client client_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_NONE, INDIGO_ENABLE_BLOB_ALSO,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
 		NULL,
 		json_define_property,
 		json_update_property,
