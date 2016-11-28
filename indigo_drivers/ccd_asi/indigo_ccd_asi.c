@@ -537,7 +537,7 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 			return INDIGO_NOT_FOUND;
 		}
 
-		ASI_ADVANCED_PROPERTY = indigo_init_switch_property(NULL, device->name, "ASI_ADVANCED", "Advanced", "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, ctrl_count - 6);
+		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", "Advanced", "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, ctrl_count - 6);
 		if (ASI_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -553,7 +553,7 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 			case ASI_TEMPERATURE:
 				break;
 			default:
-				indigo_init_switch_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Description, true);
+				indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Description, 1,1,1,1);
 				offset++;
 				break;
 			} 
@@ -592,6 +592,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
 					init_camera_properties(device, ctrl_caps);
 				}
+				indigo_delete_property(device, ASI_ADVANCED_PROPERTY, NULL);
 
 				if (PRIVATE_DATA->info.IsCoolerCam) {
 					ccd_temperature_callback(device);
@@ -607,6 +608,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
 
 			indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+			indigo_delete_property(device, ASI_ADVANCED_PROPERTY, NULL);
 			asi_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
