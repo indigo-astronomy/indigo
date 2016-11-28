@@ -59,6 +59,8 @@
 #define PIXEL_RAW16_ITEM           (PIXEL_FORMAT_PROPERTY->items+2)
 #define PIXEL_Y8_ITEM              (PIXEL_FORMAT_PROPERTY->items+3)
 
+#define ASI_ADVANCED_PROPERTY      (PRIVATE_DATA->asi_advanced_property)
+
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
 
@@ -85,7 +87,7 @@ typedef struct {
 	double exposure;
 	ASI_CAMERA_INFO info;
 	indigo_property *pixel_format_property;
-	indigo_property *asi_misc_property;
+	indigo_property *asi_advanced_property;
 } asi_private_data;
 
 
@@ -109,6 +111,8 @@ static char *get_bayer_string(indigo_device *device) {
 static int get_pixel_depth(indigo_device *device) {
 	if (PIXEL_RAW16_ITEM->sw.value) {
 		return 16;
+	} else if (PIXEL_RGB24_ITEM->sw.value) {
+		return 24;
 	} else {
 		return 8;
 	}
@@ -134,6 +138,8 @@ static indigo_result asi_enumerate_properties(indigo_device *device, indigo_clie
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
 			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+		if (indigo_property_match(ASI_ADVANCED_PROPERTY, property))
+			indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -406,13 +412,30 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// adjust min/max values for properties if needed
 
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
-		//INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
 
-static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CAPS ctrl_caps) {
+static indigo_result handle_advanced_property(indigo_device *device, indigo_property *property) {
+	int ctrl_count;
+	ASI_CONTROL_CAPS ctrl_caps;
+	int id = PRIVATE_DATA->dev_id;
+
+	int res = ASIGetNumOfControls(id, &ctrl_count);
+	if (res) {
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
+		return INDIGO_NOT_FOUND;
+	}
+
+	for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+		ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+		/* handle changes here */
+	}
+}
+
+
+static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_CAPS ctrl_caps) {
 	int id = PRIVATE_DATA->dev_id;
 	long value;
 	ASI_BOOL unused;
@@ -500,9 +523,41 @@ static indigo_result hadle_camera_controls(indigo_device *device, ASI_CONTROL_CA
 		return INDIGO_OK;
 	}
 
-	if(PRIVATE_DATA->asi_misc_property == NULL) {
-		// add other controls here
+	if(ASI_ADVANCED_PROPERTY == NULL) {
+		int ctrl_count;
+		ASI_CONTROL_CAPS ctrl_caps;
+		int id = PRIVATE_DATA->dev_id;
+
+		int res = ASIGetNumOfControls(id, &ctrl_count);
+		if (res) {
+			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
+			return INDIGO_NOT_FOUND;
+		}
+
+		ASI_ADVANCED_PROPERTY = indigo_init_switch_property(NULL, device->name, "ASI_ADVANCED", "Advanced", "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, ctrl_count - 6);
+		if (ASI_ADVANCED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		int offset=0;
+		for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+			ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+			switch (ctrl_caps.ControlType) {
+			case ASI_EXPOSURE:
+			case ASI_GAIN:
+			case ASI_GAMMA:
+			case ASI_COOLER_POWER_PERC:
+			case ASI_COOLER_ON:
+			case ASI_TEMPERATURE:
+				break;
+			default:
+				indigo_init_switch_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Description, true);
+				offset++;
+				break;
+			} 
+			/* handle changes here */
+		}
 	}
+
 	return INDIGO_OK;
 }
 
@@ -532,7 +587,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-					hadle_camera_controls(device, ctrl_caps);
+					init_camera_properties(device, ctrl_caps);
 				}
 
 				if (PRIVATE_DATA->info.IsCoolerCam) {
@@ -603,6 +658,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+		// ------------------------------------------------------------------------------- GAIN
+		CCD_GAIN_PROPERTY->state == INDIGO_IDLE_STATE;
+		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
+		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
+		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res));
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT
 	} else if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property)) {
 		indigo_property_copy_values(PIXEL_FORMAT_PROPERTY, property, false);
@@ -616,13 +678,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-
-	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
-		// ------------------------------------------------------------------------------- GAIN
-		CCD_GAIN_PROPERTY->state == INDIGO_IDLE_STATE;
-		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
-		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res));
+		return INDIGO_OK;
+	} else if (indigo_property_match(ASI_ADVANCED_PROPERTY, property)) {
+		
 	}
 	return indigo_ccd_change_property(device, client, property);
 }
@@ -635,6 +693,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
 
 	free(PIXEL_FORMAT_PROPERTY);
+	free(ASI_ADVANCED_PROPERTY);
 
 	return indigo_ccd_detach(device);
 }
