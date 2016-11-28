@@ -506,7 +506,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		memset(header, ' ', FITS_HEADER_SIZE);
 		int t = sprintf(header, "SIMPLE  =                     T / file conforms to FITS standard");
 		header[t] = ' ';
-		t = sprintf(header += 80, "BITPIX  = %21d / number of bits per data pixel", (int)CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value);
+		t = sprintf(header += 80, "BITPIX  = %21d / number of bits per data pixel", 8 * byte_per_pixel);
 		header[t] = ' ';
 		t = sprintf(header += 80, "NAXIS   =                     %d / number of data axes", naxis);
 		header[t] = ' ';

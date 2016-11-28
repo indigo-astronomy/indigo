@@ -50,6 +50,8 @@
 
 #define ASI_VENDOR_ID              0x03c3
 
+#define CCD_ADVANCED_GROUP                   "CCD advanced"
+
 #undef PRIVATE_DATA
 #define PRIVATE_DATA               ((asi_private_data *)DEVICE_CONTEXT->private_data)
 
@@ -378,7 +380,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		DEVICE_CONTEXT->private_data = private_data;
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT
-		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_IMAGE_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (PIXEL_FORMAT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(PIXEL_RAW8_ITEM, "RAW8", "RAW 8", true);
@@ -432,6 +434,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 		ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
 		/* handle changes here */
 	}
+	return INDIGO_OK;
 }
 
 
