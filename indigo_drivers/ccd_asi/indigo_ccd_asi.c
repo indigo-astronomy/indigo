@@ -537,12 +537,9 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 			return INDIGO_NOT_FOUND;
 		}
 
-		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, ctrl_count - 6);
-		if (ASI_ADVANCED_PROPERTY == NULL)
-			return INDIGO_FAILED;
-
-		int offset=0;
-		for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+		int ctrl_no;
+		int num_to_skip = 0;   /* calculate how many settings are exposed */
+		for(ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 			ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
 			switch (ctrl_caps.ControlType) {
 			case ASI_EXPOSURE:
@@ -550,14 +547,40 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 			case ASI_GAMMA:
 			case ASI_COOLER_POWER_PERC:
 			case ASI_COOLER_ON:
+			case ASI_TARGET_TEMP:
+			case ASI_TEMPERATURE:
+				num_to_skip++;
+				break;
+			default:
+				break;
+			}
+		}
+
+		/* expose in Advanced only the unexposed settings */
+		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, ctrl_count - num_to_skip);
+		if (ASI_ADVANCED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		long value;
+		ASI_BOOL notused;
+		int offset=0;
+		for(ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+			ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+			switch (ctrl_caps.ControlType) {
+			case ASI_EXPOSURE:
+			case ASI_GAIN:
+			case ASI_GAMMA:
+			case ASI_COOLER_POWER_PERC:
+			case ASI_COOLER_ON:
+			case ASI_TARGET_TEMP:
 			case ASI_TEMPERATURE:
 				break;
 			default:
-				indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Description, 1,1,1,1);
+				ASIGetControlValue(id, ctrl_no, &value, &notused);
+				indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, value);
 				offset++;
 				break;
 			} 
-			/* handle changes here */
 		}
 	}
 
