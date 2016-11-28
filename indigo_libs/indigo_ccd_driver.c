@@ -481,11 +481,13 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
 	int byte_per_pixel = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value / 8;
 	int naxis = 2;
+	int size = frame_width * frame_height;
+	int blobsize = byte_per_pixel * size;
 	if (byte_per_pixel == 3) {
 		byte_per_pixel = 1;
 		naxis = 3;
+		blobsize = 3 * size;
 	}
-	int size = frame_width * frame_height;
 	if (byte_per_pixel == 2 && !little_endian) {
 		short *raw = (short *)(data + FITS_HEADER_SIZE);
 		int size = CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value;
@@ -605,16 +607,15 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 				}
 		} else if (byte_per_pixel == 1 && naxis == 3) {
-			int size = CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value;
 			unsigned char *raw = malloc(3 * size);
 			unsigned char *red = raw;
 			unsigned char *green = raw + size;
 			unsigned char *blue = raw + 2 * size;
 			unsigned char *tmp = data + FITS_HEADER_SIZE;
 			for (int i = 0; i < size; i++) {
-				blue[i] = *tmp++;
-				green[i] = *tmp++;
-				red[i] = *tmp++;
+				*blue++ = *tmp++;
+				*green++ = *tmp++;
+				*red++ = *tmp++;
 			}
 			memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
 			free(raw);
@@ -661,12 +662,12 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			if (handle) {
 				if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-					if (write(handle, data, FITS_HEADER_SIZE + byte_per_pixel * size) < 0) {
+					if (write(handle, data, FITS_HEADER_SIZE + blobsize) < 0) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
 				} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-					if (write(handle, data + FITS_HEADER_SIZE, byte_per_pixel * size) < 0) {
+					if (write(handle, data + FITS_HEADER_SIZE, blobsize) < 0) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
@@ -686,11 +687,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 			CCD_IMAGE_ITEM->blob.value = data;
-			CCD_IMAGE_ITEM->blob.size = FITS_HEADER_SIZE + byte_per_pixel * size;
+			CCD_IMAGE_ITEM->blob.size = FITS_HEADER_SIZE + blobsize;
 			strncpy(CCD_IMAGE_ITEM->blob.format, ".fits", INDIGO_NAME_SIZE);
 		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 			CCD_IMAGE_ITEM->blob.value = data + FITS_HEADER_SIZE;
-			CCD_IMAGE_ITEM->blob.size = byte_per_pixel * size;
+			CCD_IMAGE_ITEM->blob.size = blobsize;
 			strncpy(CCD_IMAGE_ITEM->blob.format, ".raw", INDIGO_NAME_SIZE);
 		}
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
