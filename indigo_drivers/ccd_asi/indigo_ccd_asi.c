@@ -368,6 +368,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(PIXEL_RGB24_ITEM, "RGB24", "RGB 24", false);
 		indigo_init_switch_item(PIXEL_RAW16_ITEM, "RAW16", "RAW 16", false);
 		indigo_init_switch_item(PIXEL_Y8_ITEM, "Y8", "Y 8", false);
+		indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
 		//if (PRIVATE_DATA->is_camera) {
 			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
