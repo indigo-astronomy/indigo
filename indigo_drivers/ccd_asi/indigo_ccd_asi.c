@@ -130,6 +130,15 @@ static int get_pixel_format(indigo_device *device) {
 }
 
 
+static indigo_result asi_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
+			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+	}
+	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+}
+
+
 static bool asi_open(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
@@ -773,7 +782,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	static indigo_device ccd_template = {
 		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
-		indigo_ccd_enumerate_properties,
+		asi_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
