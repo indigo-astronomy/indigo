@@ -32,6 +32,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <stdint.h>
+#include <arpa/inet.h>
 
 #include "indigo_json.h"
 
