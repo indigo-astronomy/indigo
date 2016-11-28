@@ -48,10 +48,16 @@
 #include "indigo_ccd_asi.h"
 #include "indigo_driver_xml.h"
 
-#define ASI_VENDOR_ID                   0x03c3
+#define ASI_VENDOR_ID              0x03c3
 
 #undef PRIVATE_DATA
-#define PRIVATE_DATA        ((asi_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA               ((asi_private_data *)DEVICE_CONTEXT->private_data)
+
+#define PIXEL_FORMAT_PROPERTY      (PRIVATE_DATA->pixel_format_property)
+#define PIXEL_RAW8_ITEM            (PIXEL_FORMAT_PROPERTY->items+0)
+#define PIXEL_RGB24_ITEM           (PIXEL_FORMAT_PROPERTY->items+1)
+#define PIXEL_RAW16_ITEM           (PIXEL_FORMAT_PROPERTY->items+2)
+#define PIXEL_Y8_ITEM              (PIXEL_FORMAT_PROPERTY->items+3)
 
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
@@ -78,7 +84,7 @@ typedef struct {
 	bool can_check_temperature;
 	double exposure;
 	ASI_CAMERA_INFO info;
-	indigo_property *image_format_property;
+	indigo_property *pixel_format_property;
 	indigo_property *asi_misc_property;
 } asi_private_data;
 
@@ -97,6 +103,30 @@ static char *get_bayer_string(indigo_device *device) {
 		default:
 			return "RGGB";
     }
+}
+
+
+static int get_pixel_depth(indigo_device *device) {
+	if (PIXEL_RAW16_ITEM->sw.value) {
+		return 16;
+	} else {
+		return 8;
+	}
+}
+
+
+static int get_pixel_format(indigo_device *device) {
+	if (PIXEL_RAW8_ITEM->sw.value) {
+		return ASI_IMG_RAW8;
+	} else if (PIXEL_RGB24_ITEM->sw.value) {
+		return ASI_IMG_RGB24;
+	} else if (PIXEL_RAW16_ITEM->sw.value) {
+		return ASI_IMG_RAW16;
+	} else if (PIXEL_Y8_ITEM->sw.value) {
+		return ASI_IMG_Y8;
+	} else {
+		return ASI_IMG_RAW8;
+	}
 }
 
 
@@ -136,7 +166,7 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	//start exposure - NEEDS MUCH MORE
-	res = ASISetROIFormat(id, frame_width, frame_height,  horizontal_bin, ASI_IMG_RAW16);
+	res = ASISetROIFormat(id, frame_width, frame_height,  horizontal_bin, get_pixel_format(device));
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetROIFormat(%d) = %d", id, res));
@@ -329,6 +359,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 	device->device_context = NULL;
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
+		DEVICE_CONTEXT->private_data = private_data;
+		// -------------------------------------------------------------------------------- PIXEL_FORMAT
+		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_IMAGE_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		if (PIXEL_FORMAT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(PIXEL_RAW8_ITEM, "RAW8", "RAW 8", true);
+		indigo_init_switch_item(PIXEL_RGB24_ITEM, "RGB24", "RGB 24", false);
+		indigo_init_switch_item(PIXEL_RAW16_ITEM, "RAW16", "RAW 16", false);
+		indigo_init_switch_item(PIXEL_Y8_ITEM, "Y8", "Y 8", false);
 
 		//if (PRIVATE_DATA->is_camera) {
 			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
@@ -345,7 +384,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
 			CCD_BIN_VERTICAL_ITEM->number.max = 16;
 
-			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
 
 		//}
 
@@ -538,6 +577,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- PIXEL_FORMAT
+	} else if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property)) {
+		indigo_property_copy_values(PIXEL_FORMAT_PROPERTY, property, false);
+		PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
+		indigo_update_property(device, CCD_INFO_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
@@ -547,7 +593,13 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device);
+
 	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
+
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+	free(PIXEL_FORMAT_PROPERTY);
+
 	return indigo_ccd_detach(device);
 }
 
