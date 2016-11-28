@@ -368,7 +368,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(PIXEL_RGB24_ITEM, "RGB24", "RGB 24", false);
 		indigo_init_switch_item(PIXEL_RAW16_ITEM, "RAW16", "RAW 16", false);
 		indigo_init_switch_item(PIXEL_Y8_ITEM, "Y8", "Y 8", false);
-		indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
 		//if (PRIVATE_DATA->is_camera) {
 			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
@@ -503,6 +502,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				// make hidden properties visible if needed
 				// adjust read-write/read-only permission for properties if needed
 				// adjust min/max values for properties if needed
+				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
 				int res = ASIGetNumOfControls(id, &ctrl_count);
 				if (res) {
@@ -524,6 +524,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			if (PRIVATE_DATA->temperture_timer != NULL)
 				indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
+
+			indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 			asi_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -598,8 +600,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
 
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 	free(PIXEL_FORMAT_PROPERTY);
 
 	return indigo_ccd_detach(device);
