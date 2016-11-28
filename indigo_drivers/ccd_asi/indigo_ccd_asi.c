@@ -537,7 +537,7 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 			return INDIGO_NOT_FOUND;
 		}
 
-		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", "Advanced", "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, ctrl_count - 6);
+		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, ctrl_count - 6);
 		if (ASI_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -592,7 +592,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
 					init_camera_properties(device, ctrl_caps);
 				}
-				indigo_delete_property(device, ASI_ADVANCED_PROPERTY, NULL);
+				indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
 
 				if (PRIVATE_DATA->info.IsCoolerCam) {
 					ccd_temperature_callback(device);
@@ -665,7 +665,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
 		// ------------------------------------------------------------------------------- GAIN
-		CCD_GAIN_PROPERTY->state == INDIGO_IDLE_STATE;
+		CCD_GAIN_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res));
