@@ -97,6 +97,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (indigo_property_match(X_FOCUSER_FREQUENCY_PROPERTY, property))
+			indigo_define_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
+	}
+	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+}
+
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
@@ -191,7 +199,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	static indigo_device focuser_template = {
 		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
-		indigo_focuser_enumerate_properties,
+		focuser_enumerate_properties,
 		focuser_change_property,
 		focuser_detach
 	};
