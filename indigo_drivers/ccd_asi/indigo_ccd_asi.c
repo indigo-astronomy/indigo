@@ -583,6 +583,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
+		CCD_INFO_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_INFO_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
