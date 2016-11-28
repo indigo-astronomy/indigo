@@ -1,280 +1,598 @@
 <!DOCTYPE html>
-<meta charset="utf-8" />
-<title>WebSocket Test</title>
-<script language="javascript" type="text/javascript">
-	
-	var wsUri = "ws://localhost:7624/";
-	var output;
-
-	var model = [];
-
-	function init() {
-		output = document.getElementById("output");
-		testWebSocket();
-	}
-
-	function testWebSocket() {
-		websocket = new WebSocket(wsUri);
-		websocket.onopen = function(evt) { onOpen(evt) };
-		websocket.onclose = function(evt) { onClose(evt) };
-		websocket.onmessage = function(evt) { onMessage(evt) };
-		websocket.onerror = function(evt) { onError(evt) };
-	}
-
-	function onOpen(evt) {
-		writeToScreen("CONNECTED");
-		doSend('{ "getProperties": { "version": 512 } }');
-		doSend('{ "newSwitchVector": { "device": "CCD Imager Simulator", "name": "CONNECTION", "oneSwitch": [ { "name": "CONNECTED", "value": true } ] } }');
-		doSend('{ "newNumberVector": { "device": "CCD Imager Simulator", "name": "CCD_EXPOSURE", "oneNumber": [ { "name": "EXPOSURE", "value": 5 } ] } }');
-	}
-
-	function onClose(evt) {
-		writeToScreen("DISCONNECTED");
-	}
-
-	function addDevice(device) {
-		for (var i = 0; i < model.length; i++) {
-			var dev = model[i];
-			if (dev.device === device)
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+		<style>
+			body {
+				padding: 10px 2% 0 2%;
+			}
+			
+			.navbar-offset {
+				padding-top: 80px;
+			}
+		
+			.tree {
+			}
+			
+			.tree li.closed >  ul > li {
+				display: none;
+			}
+			
+			.tree li.open >  ul > li {
+				display: list-item;
+			}
+			
+			.tree li {
+				list-style-type:none;
+				margin:0;
+				padding:10px 5px 0 5px;
+				position:relative
+			}
+			
+			.tree li::before, .tree li::after {
+				content:'';
+				left:-20px;
+				position:absolute;
+				right:auto
+			}
+			
+			.tree li::before {
+				border-left:1px solid #999;
+				bottom:50px;
+				height:100%;
+				top:0;
+				width:1px
+			}
+			
+			.tree li::after {
+				border-top:1px solid #999;
+				height:20px;
+				top:30px;
+				width:25px
+			}
+			
+			.tree li span.btn {
+				-moz-border-radius:5px;
+				-webkit-border-radius:5px;
+				border:1px solid #999;
+				border-radius:5px;
+				display:inline-block;
+				padding:6px 8px 6px;
+				text-decoration:none;
+				cursor:pointer
+			}
+			
+			.tree>ul>li::before, .tree>ul>li::after {
+				border:0
+			}
+			
+			.tree li:last-child::before {
+				height:30px
+			}
+			
+			li > span.btn {
+				width: 450px;
+				text-align: left;
+			}
+			
+			li > div.btn {
+				width: 100%;
+				text-align: left;
+				padding-top: 6px;
+				padding-bottom: 6px;
+			}
+			
+			.tree > ul {
+				padding-left: 0px;
+				
+			}
+			
+			.glyphicon::after {
+				content: "\0000a0";
+			}
+			
+			.panel {
+				margin-bottom: 0px;
+			}
+			
+			.panel-body {
+				padding: 10px;
+			}
+			
+			input[type=checkbox] {
+				margin: 5px;
+			}
+			
+			.panel-success {
+				border-color:  #5cb85c;
+			}
+			
+			.panel-success > .panel-heading {
+				background-color: #5cb85c;
+				color:  white;
+			}
+			
+			.panel-warning {
+				border-color: #f0ad4e;
+			}
+			
+			.panel-warning > .panel-heading {
+				background-color: #f0ad4e;
+				color:  white;
+			}
+			
+			.panel-danger {
+				border-color: #c9302c;
+			}
+			
+			.panel-danger > .panel-heading {
+				background-color: #c9302c;
+				color:  white;
+			}
+			
+			.panel-heading {
+				font-size: 18px;
+				padding: 6px 8px 6px 8px;
+			}
+			
+			.btn-default {
+				background-color: #f5f5f5;
+			}
+			
+			.panel-body > .alert {
+				margin-bottom: 0;
+			}
+			
+			input.ng-invalid {
+				background-color: #FFEEEE;
+			}
+			
+			input.ng-dirty {
+				background-color: #EEEEFF;
+			}
+			.form-horizontal .control-label {
+				text-align: left;
+			}
+		</style>
+		<title>INDIGO Control Panel</title>
+		<script language="javascript" type="text/javascript">
+		</script>
+	</head>
+	<body ng-app="INDIGO" ng-controller="INDIGOController">
+		<div class="container">
+			<div class="row">
+				<div class="col-sm-12">
+						<a href="http://www.indigo-astronomy.org/"><img class="pull-right" height="120" alt="INDIGO" src="http://www.indigo-astronomy.org/assets/logo.png"></a>
+					<div class="tree">
+						<ul>
+							<li initially-collapsed>
+								<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{indigoURI}}</span>
+								<ul>
+									<li ng-repeat="device in model" initially-collapsed>
+										<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{device.device}}</span>
+										<ul>
+											<li ng-repeat="group in device.groups" initially-collapsed>
+												<span class="btn btn-default btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{group.group}}</span>
+												<ul>
+													<li ng-repeat="property in group.properties">
+														<div class="panel panel-{{property.state | status}}">
+															<div class="panel-heading"><i class="glyphicon glyphicon-th-list"></i>{{property.label}}</div>
+															<div class="panel-body" ng-switch="property.type">
+																<form class="form-horizontal" ng-switch-when="SWITCH">
+																	<div class="form-group" ng-repeat="item in property.items">
+																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule=='AnyOfMany'">
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-switch-when="true" ng-click="setSwitch(device, property, item, false)">{{item.value | switch}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																		</div>
+																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule!='AnyOfMany'">
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-switch-when="true" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																		</div>
+																		<label class="col-sm-10 control-label">{{item.label}}</label>
+																	</div>
+																</form>
+																<form name="form" class="form-horizontal" ng-switch-when="TEXT">
+																	<div class="form-group" ng-repeat="item in property.items">
+																		<label class="col-sm-6 control-label">{{item.label}}</label>
+																		<div class="col-sm-6">
+																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)">
+																				</div>
+																	</div>
+																	<div class="form-group" ng-if="property.perm!='ro'">
+																		<div class="col-sm-offset-6 col-sm-6">
+																			<button type="submit" class="btn btn-primary" ng-click="setText(form, device, property)">Submit</button>
+																			<button class="btn btn-default" ng-click="reset(form, property)">Reset</button>
+																		</div>
+																	</div>
+																</form>
+																<form name="form" class="form-horizontal" ng-switch-when="NUMBER">
+																	<div class="form-group" ng-repeat="item in property.items">
+																		<label class="col-sm-6 control-label">{{item.label}}</label>
+																		<div class="col-sm-6">
+																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)">
+																				</div>
+																	</div>
+																	<div class="form-group" ng-if="property.perm!='ro'">
+																		<div class="col-sm-offset-6 col-sm-6">
+																			<button type="submit" class="btn btn-primary" ng-click="setNumber(form, device, property)">Submit</button>
+																			<button class="btn btn-default" ng-click="reset(form, property)">Reset</button>
+																		</div>
+																	</div>
+																</form>
+																<div class="alert alert-warning alert-dismissible" role="alert" ng-if="property.message!=null">
+																	<button type="button" class="close" ng-click="property.message=null"><span>&times;</span></button>
+																	{{property.message}}
+																</div>
+															</div>
+														</div>
+													</li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+		<script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.0/angular.min.js"></script>
+		<script type="text/javascript">
+			function addDevice(model, device) {
+				for (var i = 0; i < model.length; i++) {
+					var dev = model[i];
+					if (dev.device === device)
+					return dev;
+				}
+				var dev = { "device": device, "groups": [] };
+				model.push(dev);
 				return dev;
-		}
-		var dev = { "device": device, "groups": [] };
-		model.push(dev);
-		return dev;
-	}
-
-	function addGroup(device, group) {
-		var groups = device.groups;
-		for (var i = 0; i < groups.length; i++) {
-			var grp = groups[i];
-			if (grp.group === group)
+			}
+		
+		function addGroup(device, group) {
+			var groups = device.groups;
+			for (var i = 0; i < groups.length; i++) {
+				var grp = groups[i];
+				if (grp.group === group)
 				return grp;
+			}
+			var grp = { "group": group, "properties": [] };
+			groups.push(grp);
+			return grp;
 		}
-		var grp = { "group": group, "properties": [] };
-		groups.push(grp);
-		return grp;
-	}
-
-	function addProperty(group, property) {
-		var properties = group.properties;
-		for (var i = 0; i < properties.length; i++) {
-			var prop = properties[i];
-			if (prop.property === prop)
+		
+		function addProperty(group, property) {
+			var properties = group.properties;
+			for (var i = 0; i < properties.length; i++) {
+				var prop = properties[i];
+				if (prop.property === prop)
 				return prop;
+			}
+			var prop = { "property": property, "items": [] };
+			properties.push(prop);
+			return prop;
 		}
-		var prop = { "property": property, "items": [] };
-		properties.push(prop);
-		return prop;
-	}
-
-	function addItem(property, item) {
-		var items = property.items;
-		for (var i = 0; i < items.length; i++) {
-			var itm = items[i];
-			if (itm.item === item)
+		
+		function addItem(property, item) {
+			var items = property.items;
+			for (var i = 0; i < items.length; i++) {
+				var itm = items[i];
+				if (itm.item === item)
 				return itm;
+			}
+			var itm = { "item": item, "modified": false };
+			items.push(itm);
+			return itm;
 		}
-		var itm = { "item": item };
-		items.push(itm);
-		return itm;
-	}
-
-	function getProperty(device, property) {
-		for (var i = 0; i < model.length; i++) {
-			var dev = model[i];
-			if (dev.device === device) {
-				var groups = dev.groups;
-				for (var j = 0; j < groups.length; j++) {
-					var grp = groups[j];
-					var properties = grp.properties;
-					for (var k = 0; k < properties.length; k++) {
-						var prop = properties[k];
-						if (prop.property === property)
-						return prop;
+		
+		function getProperty(model, device, property) {
+			for (var i = 0; i < model.length; i++) {
+				var dev = model[i];
+				if (dev.device === device) {
+					var groups = dev.groups;
+					for (var j = 0; j < groups.length; j++) {
+						var grp = groups[j];
+						var properties = grp.properties;
+						for (var k = 0; k < properties.length; k++) {
+							var prop = properties[k];
+							if (prop.property === property)
+							return prop;
+						}
 					}
 				}
 			}
+			return undefined;
 		}
-		return undefined;
-	}
-
-	function getItem(property, item) {
-		var items = property.items;
-		for (var i = 0; i < items.length; i++) {
-			var itm = items[i];
-			if (itm.item === item)
+		
+		function getItem(property, item) {
+			var items = property.items;
+			for (var i = 0; i < items.length; i++) {
+				var itm = items[i];
+				if (itm.item === item)
 				return itm;
+			}
+			return undefined;
 		}
-		return undefined;
-	}
-
-	function deleteProperty(device, property) {
-		for (var i = 0; i < model.length; i++) {
-			var dev = model[i];
-			if (dev.device === device) {
-				if (property === undefined) {
-					model.splice(i, 1);
-					return;
-				}
-				var groups = dev.groups;
-				for (var j = 0; j < groups.length; j++) {
-					var grp = groups[j];
-					var properties = grp.properties;
-					for (var k = 0; k < properties.length; k++) {
-						var prop = properties[k];
-						if (prop.property === property) {
-							properties.splice(k, 1);
-							if (properties.length == 0) {
-								groups.splice(j, 1);
-								if (groups.length == 0) {
-									model.splice(i, 1);
+		
+		function deleteProperty(model, device, property) {
+			for (var i = 0; i < model.length; i++) {
+				var dev = model[i];
+				if (dev.device === device) {
+					if (property === undefined) {
+						model.splice(i, 1);
+						return;
+					}
+					var groups = dev.groups;
+					for (var j = 0; j < groups.length; j++) {
+						var grp = groups[j];
+						var properties = grp.properties;
+						for (var k = 0; k < properties.length; k++) {
+							var prop = properties[k];
+							if (prop.property === property) {
+								properties.splice(k, 1);
+								if (properties.length == 0) {
+									groups.splice(j, 1);
+									if (groups.length == 0) {
+										model.splice(i, 1);
+									}
 								}
+								return;
 							}
-							return;
 						}
 					}
 				}
 			}
 		}
-	}
-
-	function onMessage(evt) {
-		try {
-			var message = JSON.parse(evt.data);
-			var vector;
-			if ((vector = message.defSwitchVector) != undefined) {
-				var device = addDevice(vector.device);
-				var group = addGroup(device, vector.group);
-				var property = addProperty(group, vector.name);
-				property.type = "SWITCH";
-				property.perm = vector.perm;
-				property.state = vector.state;
-				property.rule = vector.rule;
-				for (var i = 0; i < vector.defSwitch.length; i++) {
-					var item = addItem(property, vector.defSwitch[i].name);
-					item.value = vector.defSwitch[i].value;
-				}
-			} else if ((vector = message.setSwitchVector) != undefined) {
-				var property = getProperty(vector.device, vector.name);
-				if (property != undefined) {
-					property.state = vector.state;
-					for (var i = 0; i < vector.oneSwitch.length; i++) {
-						var item = getItem(property, vector.oneSwitch[i].name);
-						if (item != undefined)
-							item.value = vector.oneSwitch[i].value;
-					}
-				}
-			} else if ((vector = message.defTextVector) != undefined) {
-				var device = addDevice(vector.device);
-				var group = addGroup(device, vector.group);
-				var property = addProperty(group, vector.name);
-				property.type = "TEXT";
-				property.perm = vector.perm;
-				property.state = vector.state;
-				for (var i = 0; i < vector.defText.length; i++) {
-					var item = addItem(property, vector.defText[i].name);
-					item.value = vector.defText[i].value;
-				}
-			} else if ((vector = message.setTextVector) != undefined) {
-				var property = getProperty(vector.device, vector.name);
-				if (property != undefined) {
-					property.state = vector.state;
-					for (var i = 0; i < vector.oneText.length; i++) {
-						var item = getItem(property, vector.oneText[i].name);
-						if (item != undefined)
-						item.value = vector.oneText[i].value;
-					}
-				}
-			} else if ((vector = message.defNumberVector) != undefined) {
-				var device = addDevice(vector.device);
-				var group = addGroup(device, vector.group);
-				var property = addProperty(group, vector.name);
-				property.type = "NUMBER";
-				property.perm = vector.perm;
-				property.state = vector.state;
-				for (var i = 0; i < vector.defNumber.length; i++) {
-					var item = addItem(property, vector.defNumber[i].name);
-					item.min = vector.defNumber[i].min;
-					item.max = vector.defNumber[i].max;
-					item.step = vector.defNumber[i].step;
-					item.value = vector.defNumber[i].value;
-				}
-			} else if ((vector = message.setNumberVector) != undefined) {
-				var property = getProperty(vector.device, vector.name);
-				if (property != undefined) {
-					property.state = vector.state;
-					for (var i = 0; i < vector.oneNumber.length; i++) {
-						var item = getItem(property, vector.oneNumber[i].name);
-						if (item != undefined)
-						item.value = vector.oneNumber[i].value;
-					}
-				}
-			} else if ((vector = message.defLightVector) != undefined) {
-				var device = addDevice(vector.device);
-				var group = addGroup(device, vector.group);
-				var property = addProperty(group, vector.name);
-				property.type = "LIGHT";
-				property.state = vector.state;
-				for (var i = 0; i < vector.defLight.length; i++) {
-					var item = addItem(property, vector.defLight[i].name);
-					item.value = vector.defLight[i].value;
-				}
-			} else if ((vector = message.setLightVector) != undefined) {
-				var property = getProperty(vector.device, vector.name);
-				if (property != undefined) {
-					property.state = vector.state;
-					for (var i = 0; i < vector.oneLight.length; i++) {
-						var item = getItem(property, vector.oneLight[i].name);
-						if (item != undefined)
-						item.value = vector.oneLight[i].value;
-					}
-				}
-			} else if ((vector = message.defTextVector) != undefined) {
-				var device = addDevice(vector.device);
-				var group = addGroup(device, vector.group);
-				var property = addProperty(group, vector.name);
-				property.type = "BLOB";
-				property.state = vector.state;
-				for (var i = 0; i < vector.defBLOB.length; i++) {
-					var item = addItem(property, vector.defBLOB[i].name);
-					item.value = vector.defBLOB[i].value;
-				}
-			} else if ((vector = message.setBLOBVector) != undefined) {
-				var property = getProperty(vector.device, vector.name);
-				if (property != undefined) {
-					property.state = vector.state;
-					for (var i = 0; i < vector.oneBLOB.length; i++) {
-						var item = getItem(property, vector.oneBLOB[i].name);
-						if (item != undefined)
-						item.value = vector.oneBLOB[i].value;
-					}
-				}
-			} else if ((vector = message.deleteProperty) != undefined) {
-				var property = deleteProperty(vector.device, vector.name);
-			}
-			writeToScreen(JSON.stringify(model, null, 2));
-		} catch(e) {
-			error.innerHTML = evt.data;
+		
+		function doSend(message) {
+			websocket.send(message);
 		}
-	}
-
-	function onError(evt) {
-		writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
-	}
-
-	function doSend(message) {
-		websocket.send(message);
-	}
-
-	function writeToScreen(message) {
-		output.innerHTML = message;
-	}
-
-	window.addEventListener("load", init, false);
-
-</script>
-
-<pre id="output"></pre>
-<hr>
-<pre id="error"></pre>
-<hr>
+		
+		angular.module('INDIGO', [])
+		.filter('status', function() {
+				return function(input) {
+					switch (input) {
+						case 'Ok':
+						return 'success';
+						case 'Busy':
+						return 'warning';
+						case 'Alert':
+						return 'danger';
+					}
+					return 'default';
+				};
+		})
+		.filter('switch', function() {
+			return function(input) {
+				if (input)
+					return 'On';
+				return 'Off';
+			};
+		})
+		.directive('initiallyCollapsed', function() {
+			return function(scope, node, attrs) {
+				node.addClass("closed");
+			}
+		})
+		.controller('INDIGOController', function($scope) {
+			$scope.expand = function(event) {
+				var node = $(event.target);
+				var parent = node.parent();
+				var children = parent.find('>ul>li');
+				if (parent.hasClass("open")) {
+					parent.removeClass("open").addClass("closed");
+					node.find('>i').addClass('glyphicon-plus').removeClass('glyphicon-minus');
+				} else {
+					parent.addClass("open").removeClass("closed");
+					node.find('>i').addClass('glyphicon-minus').removeClass('glyphicon-plus');
+				}
+				event.stopPropagation();
+			}
+			$scope.markModified = function(item) {
+				console.log("MARK " + JSON.stringify(item));
+				if (!item.modified) {
+					item.modified = true;
+				}
+			}
+			$scope.reset = function(form, property) {
+				console.log("RESET");
+				for (i = 0; i < property.items.length; i++) {
+					var item = property.items[i];
+					item.value = item.oldValue
+					item.modified = 0;
+				}
+				form.$setPristine();
+			}
+			$scope.onOpen = function (event) {
+				console.log("CONNECTED");
+				doSend('{ "getProperties": { "version": 512 } }');
+			}
+			$scope.onClose = function (event) {
+				console.log("DISCONNECTED");
+			}
+			$scope.onMessage = function (event) {
+			console.log("MESSAGE "+event.data);
+				try {
+					var message = JSON.parse(event.data);
+					var vector;
+					if ((vector = message.defSwitchVector) != undefined) {
+						var device = addDevice($scope.model, vector.device);
+						var group = addGroup(device, vector.group);
+						var property = addProperty(group, vector.name);
+						property.label = vector.label;
+						property.type = "SWITCH";
+						property.perm = vector.perm;
+						property.state = vector.state;
+						property.rule = vector.rule;
+						property.message = vector.message;
+						for (var i = 0; i < vector.defSwitch.length; i++) {
+							var item = addItem(property, vector.defSwitch[i].name);
+							item.value = item.oldValue = vector.defSwitch[i].value;
+							item.label = vector.defSwitch[i].label;
+						}
+					} else if ((vector = message.setSwitchVector) != undefined) {
+						var property = getProperty($scope.model, vector.device, vector.name);
+						if (property != undefined) {
+							property.state = vector.state;
+							for (var i = 0; i < vector.oneSwitch.length; i++) {
+									var item = getItem(property, vector.oneSwitch[i].name);
+									if (item != undefined)
+									item.value = item.oldValue = vector.oneSwitch[i].value;
+								}
+							}
+						} else if ((vector = message.defTextVector) != undefined) {
+							var device = addDevice($scope.model, vector.device);
+							var group = addGroup(device, vector.group);
+							var property = addProperty(group, vector.name);
+							property.label = vector.label;
+							property.type = "TEXT";
+							property.perm = vector.perm;
+							property.state = vector.state;
+							property.message = vector.message;
+							for (var i = 0; i < vector.defText.length; i++) {
+							var item = addItem(property, vector.defText[i].name);
+							item.value = item.oldValue = vector.defText[i].value;
+							item.label = vector.defText[i].label;
+						}
+					} else if ((vector = message.setTextVector) != undefined) {
+						var property = getProperty($scope.model, vector.device, vector.name);
+						if (property != undefined) {
+							property.state = vector.state;
+							for (var i = 0; i < vector.oneText.length; i++) {
+								var item = getItem(property, vector.oneText[i].name);
+								if (item != undefined)
+									item.value = item.oldValue = vector.oneText[i].value;
+							}
+						}
+					} else if ((vector = message.defNumberVector) != undefined) {
+						var device = addDevice($scope.model, vector.device);
+						var group = addGroup(device, vector.group);
+						var property = addProperty(group, vector.name);
+						property.label = vector.label;
+						property.type = "NUMBER";
+						property.perm = vector.perm;
+						property.state = vector.state;
+						property.message = vector.message;
+						for (var i = 0; i < vector.defNumber.length; i++) {
+							var item = addItem(property, vector.defNumber[i].name);
+							item.min = vector.defNumber[i].min;
+							item.max = vector.defNumber[i].max;
+							item.step = vector.defNumber[i].step;
+							item.value = item.oldValue = vector.defNumber[i].value;
+							item.label = vector.defNumber[i].label;
+						}
+					} else if ((vector = message.setNumberVector) != undefined) {
+						var property = getProperty($scope.model, vector.device, vector.name);
+						if (property != undefined) {
+							property.state = vector.state;
+							for (var i = 0; i < vector.oneNumber.length; i++) {
+								var item = getItem(property, vector.oneNumber[i].name);
+								if (item != undefined)
+									item.value = item.oldValue = vector.oneNumber[i].value;
+							}
+						}
+					} else if ((vector = message.defLightVector) != undefined) {
+						var device = addDevice($scope.model, vector.device);
+						var group = addGroup(device, vector.group);
+						var property = addProperty(group, vector.name);
+						property.label = vector.label;
+						property.type = "LIGHT";
+						property.state = vector.state;
+						property.message = vector.message;
+						for (var i = 0; i < vector.defLight.length; i++) {
+							var item = addItem(property, vector.defLight[i].name);
+							item.value = vector.defLight[i].value;
+							item.label = vector.defLight[i].label;
+						}
+					} else if ((vector = message.setLightVector) != undefined) {
+						var property = getProperty($scope.model, vector.device, vector.name);
+						if (property != undefined) {
+						property.state = vector.state;
+						for (var i = 0; i < vector.oneLight.length; i++) {
+							var item = getItem(property, vector.oneLight[i].name);
+							if (item != undefined)
+								item.value = vector.oneLight[i].value;
+							}
+						}
+					} else if ((vector = message.defTextVector) != undefined) {
+						var device = addDevice($scope.model, vector.device);
+						var group = addGroup(device, vector.group);
+						var property = addProperty(group, vector.name);
+						property.label = vector.label;
+						property.type = "BLOB";
+						property.state = vector.state;
+						property.message = vector.message;
+						for (var i = 0; i < vector.defBLOB.length; i++) {
+							var item = addItem(property, vector.defBLOB[i].name);
+							item.value = vector.defBLOB[i].value;
+							}
+						} else if ((vector = message.setBLOBVector) != undefined) {
+						var property = getProperty($scope.model, vector.device, vector.name);
+						if (property != undefined) {
+							property.state = vector.state;
+							for (var i = 0; i < vector.oneBLOB.length; i++) {
+								var item = getItem(property, vector.oneBLOB[i].name);
+								if (item != undefined)
+									item.value = vector.oneBLOB[i].value;
+									item.label = vector.oneBLOB[i].label;
+							}
+						}
+					} else if ((vector = message.deleteProperty) != undefined) {
+						var property = deleteProperty($scope.model, vector.device, vector.name);
+					}
+				} catch(e) {
+					alert(e);
+				}
+				$scope.$apply();
+			}
+			$scope.onError = function(event) {
+				console.log("ERROR "+event.data);
+				alert(event.data);
+			}
+			$scope.setSwitch = function(device, property, item, value) {
+				var message = { "newSwitchVector": { "device": device.device, "name": property.property, "oneSwitch": [ { "name": item.item, "value": value } ] } }
+				message = JSON.stringify(message);
+				doSend(message);
+				console.log("SEND "+message);
+			}
+			$scope.setText = function(form, device, property) {
+				var message = { "newTextVector": { "device": device.device, "name": property.property, "oneText": [ ] } }
+				for (var i = 0; i < property.items.length; i++) {
+					var item = property.items[i];
+					message.newTextVector.oneText.push({ "name": item.item, "value": item.value });
+				}
+				message = JSON.stringify(message);
+				doSend(message);
+				console.log("SEND "+message);
+			}
+			$scope.setNumber = function(form, device, property) {
+				var message = { "newNumberVector": { "device": device.device, "name": property.property, "oneNumber": [ ] } }
+				for (var i = 0; i < property.items.length; i++) {
+					var item = property.items[i];
+					message.newNumberVector.oneNumber.push({ "name": item.item, "value": Number(item.value) });
+				}
+				message = JSON.stringify(message);
+				doSend(message);
+				console.log("SEND "+message);
+			}
+			$scope.indigoURI = "ws://localhost:7624/";
+			$scope.init = function() {
+				console.log("INIT");
+				$scope.model = [];
+				websocket = new WebSocket($scope.indigoURI);
+				websocket.onopen = $scope.onOpen;
+				websocket.onclose = $scope.onClose;
+				websocket.onmessage = $scope.onMessage;
+				websocket.onerror = $scope.onError;
+			};
+			$scope.init();
+		});
+		</script>
+	</body>
+</html>
