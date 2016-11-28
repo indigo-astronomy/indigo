@@ -431,6 +431,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 			case TEXT_VALUE:
 				if (c == q) {
 					state = VALUE1;
+					pointer--;
 					*value_pointer = 0;
 					handler = handler(TEXT_VALUE, name_buffer, value_buffer, property, device, client, message);
 					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' TEXT_VALUE -> VALUE1", c));
@@ -446,6 +447,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					*value_pointer++ = c;
 				} else {
 					state = VALUE1;
+					pointer--;
 					*value_pointer = 0;
 					handler = handler(NUMBER_VALUE, name_buffer, value_buffer, property, device, client, message);
 					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NUMBER_VALUE -> VALUE1", c));
@@ -459,6 +461,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					if (!strcmp(value_buffer, "true") || !strcmp(value_buffer, "false")) {
 						handler = handler(LOGICAL_VALUE, name_buffer, value_buffer, property, device, client, message);
 						state = VALUE1;
+						pointer--;
 						INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' LOGICAL_VALUE -> VALUE1", c));
 					} else {
 						state = ERROR;
