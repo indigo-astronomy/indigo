@@ -480,6 +480,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	int horizontal_bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
 	int byte_per_pixel = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value / 8;
+	int naxis = 2;
+	if (byte_per_pixel == 3) {
+		byte_per_pixel = 1;
+		naxis = 3;
+	}
 	int size = frame_width * frame_height;
 	if (byte_per_pixel == 2 && !little_endian) {
 		short *raw = (short *)(data + FITS_HEADER_SIZE);
@@ -503,12 +508,16 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		t = sprintf(header += 80, "BITPIX  = %21d / number of bits per data pixel", (int)CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value);
 		header[t] = ' ';
-		t = sprintf(header += 80, "NAXIS   =                     2 / number of data axes");
+		t = sprintf(header += 80, "NAXIS   =                     %d / number of data axes", naxis);
 		header[t] = ' ';
 		t = sprintf(header += 80, "NAXIS1  = %21d / length of data axis 1 [pixels]", frame_width);
 		header[t] = ' ';
 		t = sprintf(header += 80, "NAXIS2  = %21d / length of data axis 2 [pixels]", frame_height);
 		header[t] = ' ';
+		if (naxis == 3) {
+			t = sprintf(header += 80, "NAXIS3  = %21d / length of data axis 3 [RGB]", 3);
+			header[t] = ' ';
+		}
 		t = sprintf(header += 80, "EXTEND  =                     T / FITS dataset may contain extensions");
 		header[t] = ' ';
 		t = sprintf(header += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy");
@@ -595,6 +604,20 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 					int value = *raw - 32768;
 					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 				}
+		} else if (byte_per_pixel == 1 && naxis == 3) {
+			int size = CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value;
+			unsigned char *raw = malloc(3 * size);
+			unsigned char *red = raw;
+			unsigned char *green = raw + size;
+			unsigned char *blue = raw + 2 * size;
+			unsigned char *tmp = data + FITS_HEADER_SIZE;
+			for (int i = 0; i < size; i++) {
+				blue[i] = *tmp++;
+				green[i] = *tmp++;
+				red[i] = *tmp++;
+			}
+			memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
+			free(raw);
 		}
 		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
