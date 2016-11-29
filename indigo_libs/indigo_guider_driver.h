@@ -31,7 +31,7 @@
 
 /** Main guider group name string.
  */
-#define GUIDER_MAIN_GROUP                "Guider main"
+#define GUIDER_MAIN_GROUP                "Main"
 
 /** Device context pointer.
  */

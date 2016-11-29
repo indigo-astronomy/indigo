@@ -31,7 +31,7 @@
 
 /** Main focuser group name string.
  */
-#define FOCUSER_MAIN_GROUP                "Focuser main"
+#define FOCUSER_MAIN_GROUP                "Main"
 
 /** Device context pointer.
  */
