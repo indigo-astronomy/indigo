@@ -31,11 +31,11 @@
 
 /** Main mount group name string.
  */
-#define MOUNT_MAIN_GROUP															"Mount main"
+#define MOUNT_MAIN_GROUP															"Main"
 
 /** Main site group name string.
  */
-#define MOUNT_SITE_GROUP															"Mount site"
+#define MOUNT_SITE_GROUP															"Site"
 
 /** Device context pointer.
  */

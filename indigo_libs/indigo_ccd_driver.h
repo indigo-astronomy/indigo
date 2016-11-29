@@ -31,15 +31,15 @@
 
 /** CCD Main group name string.
  */
-#define CCD_MAIN_GROUP                    "CCD main"
+#define CCD_MAIN_GROUP                    "Main"
 
 /** CCD Image group name string.
  */
-#define CCD_IMAGE_GROUP                   "CCD image"
+#define CCD_IMAGE_GROUP                   "Image"
 
 /** CCD Cooler group name string.
  */
-#define CCD_COOLER_GROUP                  "CCD cooler"
+#define CCD_COOLER_GROUP                  "Cooler"
 
 /** Device context pointer.
  */

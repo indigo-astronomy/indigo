@@ -31,7 +31,7 @@
 
 /** Main wheel group name string.
  */
-#define WHEEL_MAIN_GROUP                "Filter wheel main"
+#define WHEEL_MAIN_GROUP                "Main"
 
 /** Device context pointer.
  */
