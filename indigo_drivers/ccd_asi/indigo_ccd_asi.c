@@ -388,30 +388,29 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(PIXEL_RAW16_ITEM, "RAW16", "RAW 16", false);
 		indigo_init_switch_item(PIXEL_Y8_ITEM, "Y8", "Y 8", false);
 
-		//if (PRIVATE_DATA->is_camera) {
-			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-			CCD_MODE_PROPERTY->count = 0;
-			CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
-			CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
-			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
-			CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
-			CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
-			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
+		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+		CCD_MODE_PROPERTY->count = 0;
+		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
+		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
+		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
+		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
+		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
 
-			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-			CCD_BIN_HORIZONTAL_ITEM->number.max = 16;
+		/* find max binning */
+		int max_bin = 1;
+		int num = 0;
+		while ((num < 16) && PRIVATE_DATA->info.SupportedBins[num]) {
+			max_bin = PRIVATE_DATA->info.SupportedBins[num];
+			num++;
+		}
 
-			CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-			CCD_BIN_VERTICAL_ITEM->number.max = 16;
+		CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+		CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
+		CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+		CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
 
-			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
-
-		//}
-
-		// adjust info know before opening camera...
-		// make hidden properties visible if needed
-		// adjust read-write/read-only permission for properties if needed
-		// adjust min/max values for properties if needed
+		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
 
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
