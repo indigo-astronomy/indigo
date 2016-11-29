@@ -432,7 +432,11 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 
 	for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 		ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-		/* handle changes here */
+		for(int item = 0; item < property->count; item++) {
+			if(!strncmp(ctrl_caps.Name, property->items[item].name, INDIGO_NAME_SIZE)) {
+				ASISetControlValue(id, ctrl_caps.ControlType,property->items[item].number.value, ASI_FALSE);
+			}
+		}
 	}
 	return INDIGO_OK;
 }
@@ -441,6 +445,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_CAPS ctrl_caps) {
 	int id = PRIVATE_DATA->dev_id;
 	long value;
+	ASI_ERROR_CODE res;
 	ASI_BOOL unused;
 
 	if (ctrl_caps.ControlType == ASI_EXPOSURE) {
@@ -562,7 +567,6 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 			return INDIGO_FAILED;
 
 		long value;
-		ASI_BOOL notused;
 		int offset=0;
 		for(ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 			ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
@@ -576,8 +580,8 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 			case ASI_TEMPERATURE:
 				break;
 			default:
-				ASIGetControlValue(id, ctrl_no, &value, &notused);
-				indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, value);
+				res = ASISetControlValue(id, ctrl_no, ctrl_caps.DefaultValue, false);
+				indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, ctrl_caps.DefaultValue);
 				offset++;
 				break;
 			} 
@@ -591,8 +595,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
+
+	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (asi_open(device)) {
@@ -635,8 +640,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			asi_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		PRIVATE_DATA->exposure = CCD_EXPOSURE_ITEM->number.value;
 		asi_start_exposure(device, PRIVATE_DATA->exposure, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
@@ -655,24 +660,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			PRIVATE_DATA->can_check_temperature = false;
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, PRIVATE_DATA->exposure, exposure_timer_callback);
 		}
+	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			asi_abort_exposure(device);
 			indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
@@ -686,14 +691,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	// ------------------------------------------------------------------------------- GAIN
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
-		// ------------------------------------------------------------------------------- GAIN
 		CCD_GAIN_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res));
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- PIXEL_FORMAT
+	// -------------------------------------------------------------------------------- PIXEL_FORMAT
 	} else if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property)) {
 		indigo_property_copy_values(PIXEL_FORMAT_PROPERTY, property, false);
 		PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
@@ -707,8 +712,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- PIXEL_FORMAT
 	} else if (indigo_property_match(ASI_ADVANCED_PROPERTY, property)) {
-		
+		handle_advanced_property(device, property);
+		indigo_property_copy_values(ASI_ADVANCED_PROPERTY, property, false);
+		ASI_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, ASI_ADVANCED_PROPERTY, NULL);
 	}
 	return indigo_ccd_change_property(device, client, property);
 }
@@ -842,7 +851,6 @@ static int find_plugged_device_id() {
 			break;
 		}
 	}
-
 	return new_id;
 }
 
