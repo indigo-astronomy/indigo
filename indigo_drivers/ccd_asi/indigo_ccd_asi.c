@@ -421,7 +421,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	ASI_ERROR_CODE res;
 	int id = PRIVATE_DATA->dev_id;
 
-	int res = ASIGetNumOfControls(id, &ctrl_count);
+	res = ASIGetNumOfControls(id, &ctrl_count);
 	if (res) {
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
 		return INDIGO_NOT_FOUND;
