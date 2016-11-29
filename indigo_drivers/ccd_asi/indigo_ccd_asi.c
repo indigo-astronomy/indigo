@@ -50,7 +50,7 @@
 
 #define ASI_VENDOR_ID              0x03c3
 
-#define CCD_ADVANCED_GROUP                   "CCD advanced"
+#define CCD_ADVANCED_GROUP                   "Advanced"
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA               ((asi_private_data *)DEVICE_CONTEXT->private_data)
