@@ -298,7 +298,7 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res));
 		*current = temp_x10/10.0; /* ASI_TEMPERATURE gives temp x 10 */
 	} else {
-		current = 0
+		*current = 0;
 	}
 
 	if (!PRIVATE_DATA->info.IsCoolerCam) {
