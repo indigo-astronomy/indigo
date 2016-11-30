@@ -326,57 +326,63 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	assert(property != NULL);
-	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
-	char message[INDIGO_VALUE_SIZE];
-	if (format != NULL) {
-		va_list args;
-		va_start(args, format);
-		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-		va_end(args);
-	}
-	property->version = device ? device->version : INDIGO_VERSION_CURRENT;
-	for (int i = 0; i < MAX_CLIENTS; i++) {
-		indigo_client *client = clients[i];
-		if (client != NULL && client->define_property != NULL)
-			client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
+	if (!property->hidden) {
+		INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
+		char message[INDIGO_VALUE_SIZE];
+		if (format != NULL) {
+			va_list args;
+			va_start(args, format);
+			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+			va_end(args);
+		}
+		property->version = device ? device->version : INDIGO_VERSION_CURRENT;
+		for (int i = 0; i < MAX_CLIENTS; i++) {
+			indigo_client *client = clients[i];
+			if (client != NULL && client->define_property != NULL)
+				client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
+		}
 	}
 	return INDIGO_OK;
 }
 
 indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	assert(property != NULL);
-	char message[INDIGO_VALUE_SIZE];
-	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
-	if (format != NULL) {
-		va_list args;
-		va_start(args, format);
-		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-		va_end(args);
-	}
-	property->version = device ? device->version : INDIGO_VERSION_CURRENT;
-	for (int i = 0; i < MAX_CLIENTS; i++) {
-		indigo_client *client = clients[i];
-		if (client != NULL && client->update_property != NULL)
-			client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
+	if (!property->hidden) {
+		char message[INDIGO_VALUE_SIZE];
+		INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
+		if (format != NULL) {
+			va_list args;
+			va_start(args, format);
+			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+			va_end(args);
+		}
+		property->version = device ? device->version : INDIGO_VERSION_CURRENT;
+		for (int i = 0; i < MAX_CLIENTS; i++) {
+			indigo_client *client = clients[i];
+			if (client != NULL && client->update_property != NULL)
+				client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
+		}
 	}
 	return INDIGO_OK;
 }
 
 indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	assert(property != NULL);
-	char message[INDIGO_VALUE_SIZE];
-	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
-	if (format != NULL) {
-		va_list args;
-		va_start(args, format);
-		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-		va_end(args);
-	}
-	property->version = device ? device->version : INDIGO_VERSION_CURRENT;
-	for (int i = 0; i < MAX_CLIENTS; i++) {
-		indigo_client *client = clients[i];
-		if (client != NULL && client->delete_property != NULL)
-			client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
+	if (!property->hidden) {
+		char message[INDIGO_VALUE_SIZE];
+		INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
+		if (format != NULL) {
+			va_list args;
+			va_start(args, format);
+			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+			va_end(args);
+		}
+		property->version = device ? device->version : INDIGO_VERSION_CURRENT;
+		for (int i = 0; i < MAX_CLIENTS; i++) {
+			indigo_client *client = clients[i];
+			if (client != NULL && client->delete_property != NULL)
+				client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
+		}
 	}
 	return INDIGO_OK;
 }
