@@ -87,7 +87,7 @@ typedef struct {
 	unsigned char *buffer;
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
-	bool can_check_temperature;
+	bool can_check_temperature, has_temperature_sensor;
 	double exposure;
 	ASI_CAMERA_INFO info;
 	indigo_property *pixel_format_property;
@@ -291,9 +291,20 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 	long current_status;
 	long temp_x10;
 
-	if (!PRIVATE_DATA->info.IsCoolerCam) return true;
-
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	if (PRIVATE_DATA->has_temperature_sensor) {
+		res = ASIGetControlValue(id, ASI_TEMPERATURE, &temp_x10, &unused);
+		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res));
+		*current = temp_x10/10.0; /* ASI_TEMPERATURE gives temp x 10 */
+	} else {
+		current = 0
+	}
+
+	if (!PRIVATE_DATA->info.IsCoolerCam) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return true;
+	}
 
 	res = ASIGetControlValue(id, ASI_COOLER_ON, &current_status, &unused);
 	if(res) {
@@ -309,10 +320,6 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 		res = ASISetControlValue(id, ASI_TARGET_TEMP, (int)target, false);
 		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res));
 	}
-
-	res = ASIGetControlValue(id, ASI_TEMPERATURE, &temp_x10, &unused);
-	if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res));
-	*current = temp_x10/10.0; /* ASI_TEMPERATURE gives temp x 10 */
 
 	res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, cooler_power, &unused);
 	if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res));
@@ -565,6 +572,11 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 		return INDIGO_OK;
 	}
 
+	if (ctrl_caps.ControlType == ASI_TEMPERATURE) {
+		PRIVATE_DATA->has_temperature_sensor = true;
+		return INDIGO_OK;
+	}
+
 	if (ctrl_caps.ControlType == ASI_COOLER_ON) {
 		CCD_COOLER_PROPERTY->hidden = false;
 		if(ctrl_caps.IsWritable)
@@ -691,7 +703,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
 
-				if (PRIVATE_DATA->info.IsCoolerCam) {
+				if (PRIVATE_DATA->has_temperature_sensor) {
 					ccd_temperature_callback(device);
 				}
 
