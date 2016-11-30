@@ -467,8 +467,11 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	ASI_ERROR_CODE res;
 	int id = PRIVATE_DATA->dev_id;
 
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
 	res = ASIGetNumOfControls(id, &ctrl_count);
 	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
 		return INDIGO_NOT_FOUND;
 	}
@@ -482,6 +485,8 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 			}
 		}
 	}
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return INDIGO_OK;
 }
 
@@ -501,7 +506,9 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 
 		CCD_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.MinValue);
 		CCD_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.MaxValue);
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetControlValue(id, ASI_EXPOSURE, &value, &unused);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_EXPOSURE) = %d", id, res));
 		CCD_EXPOSURE_ITEM->number.value = us2s(value);
 		return INDIGO_OK;
@@ -516,7 +523,9 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 
 		CCD_GAIN_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_GAIN_ITEM->number.max = ctrl_caps.MaxValue;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetControlValue(id, ASI_GAIN, &value, &unused);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_GAIN) = %d", id, res));
 		CCD_GAIN_ITEM->number.value = value;
 		CCD_GAIN_ITEM->number.step = 1;
@@ -532,7 +541,9 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 
 		CCD_GAMMA_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_GAMMA_ITEM->number.max = ctrl_caps.MaxValue;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetControlValue(id, ASI_GAMMA, &value, &unused);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_GAMMA) = %d", id, res));
 		CCD_GAMMA_ITEM->number.value = value;
 		CCD_GAMMA_ITEM->number.step = 1;
@@ -577,7 +588,9 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 
 		CCD_COOLER_POWER_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_COOLER_POWER_ITEM->number.max = ctrl_caps.MaxValue;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, &value, &unused);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res));
 		CCD_COOLER_POWER_ITEM->number.value = value;
 		return INDIGO_OK;
@@ -588,11 +601,15 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 		ASI_CONTROL_CAPS ctrl_caps;
 		int id = PRIVATE_DATA->dev_id;
 
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		int res = ASIGetNumOfControls(id, &ctrl_count);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
 			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
 			return INDIGO_NOT_FOUND;
 		}
+
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 		int ctrl_no;
 		int num_to_skip = 0;   /* calculate how many settings are exposed */
@@ -639,6 +656,8 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 				break;
 			} 
 		}
+
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	}
 
 	return INDIGO_OK;
@@ -720,6 +739,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
+		//INDIGO_LOG(indigo_log("indigo_ccd_asi: COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -728,6 +748,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
+		//INDIGO_LOG(indigo_log("indigo_ccd_asi: TEMPERTURE = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
@@ -745,8 +766,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
 		CCD_GAIN_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
+
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res));
+
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
