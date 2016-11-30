@@ -317,7 +317,7 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 		res = ASISetControlValue(id, ASI_COOLER_ON, status, false);
 		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res));
 	} else if(status) {
-		res = ASISetControlValue(id, ASI_TARGET_TEMP, (int)target, false);
+		res = ASISetControlValue(id, ASI_TARGET_TEMP, (long)target, false);
 		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res));
 	}
 
@@ -589,10 +589,6 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 		else
 			CCD_COOLER_PROPERTY->perm = INDIGO_RO_PERM;
 
-		/* At start cooler is always on WHY?!?!?! */
-		CCD_COOLER_OFF_ITEM->sw.value = true;
-		CCD_COOLER_ON_ITEM->sw.value = false;
-
 		return INDIGO_OK;
 	}
 
@@ -765,7 +761,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
-		//INDIGO_LOG(indigo_log("indigo_ccd_asi: TEMPERTURE = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
@@ -791,6 +786,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		return INDIGO_OK;
+	// ------------------------------------------------------------------------------- CCD_FRAME
+	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
+		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
+		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- PIXEL_FORMAT
 	} else if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property)) {
