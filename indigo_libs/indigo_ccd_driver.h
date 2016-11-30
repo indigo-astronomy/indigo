@@ -31,7 +31,7 @@
 
 /** CCD Main group name string.
  */
-#define CCD_MAIN_GROUP                    "Main"
+#define CCD_MAIN_GROUP                    "Camera"
 
 /** CCD Image group name string.
  */

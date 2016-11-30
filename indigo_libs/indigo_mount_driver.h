@@ -31,7 +31,7 @@
 
 /** Main mount group name string.
  */
-#define MOUNT_MAIN_GROUP															"Main"
+#define MOUNT_MAIN_GROUP															"Mount"
 
 /** Main site group name string.
  */

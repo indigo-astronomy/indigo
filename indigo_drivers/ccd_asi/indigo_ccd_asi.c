@@ -48,18 +48,20 @@
 #include "indigo_ccd_asi.h"
 #include "indigo_driver_xml.h"
 
+#define ASI_MAX_FORMATS            4
+
 #define ASI_VENDOR_ID              0x03c3
 
-#define CCD_ADVANCED_GROUP                   "Advanced"
+#define CCD_ADVANCED_GROUP         "Advanced"
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA               ((asi_private_data *)DEVICE_CONTEXT->private_data)
 
 #define PIXEL_FORMAT_PROPERTY      (PRIVATE_DATA->pixel_format_property)
-#define PIXEL_RAW8_ITEM            (PIXEL_FORMAT_PROPERTY->items+0)
-#define PIXEL_RGB24_ITEM           (PIXEL_FORMAT_PROPERTY->items+1)
-#define PIXEL_RAW16_ITEM           (PIXEL_FORMAT_PROPERTY->items+2)
-#define PIXEL_Y8_ITEM              (PIXEL_FORMAT_PROPERTY->items+3)
+#define RAW8_NAME                  "RAW 8"
+#define RGB24_NAME                 "RGB 24"
+#define RAW16_NAME                 "RAW 16"
+#define Y8_NAME                    "Y 8"
 
 #define ASI_ADVANCED_PROPERTY      (PRIVATE_DATA->asi_advanced_property)
 
@@ -111,28 +113,57 @@ static char *get_bayer_string(indigo_device *device) {
 
 
 static int get_pixel_depth(indigo_device *device) {
-	if (PIXEL_RAW16_ITEM->sw.value) {
-		return 16;
-	} else if (PIXEL_RGB24_ITEM->sw.value) {
-		return 24;
-	} else {
-		return 8;
+	int item = 0;
+	while (item < ASI_MAX_FORMATS) {
+		if (PIXEL_FORMAT_PROPERTY->items[item].sw.value) {
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW8_NAME)) {
+				return 8;
+			}
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RGB24_NAME)) {
+				return 24;
+			}
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW16_NAME)) {
+				return 16;
+			}
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, Y8_NAME)) {
+				return 8;
+			}
+		}
+		item++;
 	}
+	return 8;
 }
 
 
 static int get_pixel_format(indigo_device *device) {
-	if (PIXEL_RAW8_ITEM->sw.value) {
-		return ASI_IMG_RAW8;
-	} else if (PIXEL_RGB24_ITEM->sw.value) {
-		return ASI_IMG_RGB24;
-	} else if (PIXEL_RAW16_ITEM->sw.value) {
-		return ASI_IMG_RAW16;
-	} else if (PIXEL_Y8_ITEM->sw.value) {
-		return ASI_IMG_Y8;
-	} else {
-		return ASI_IMG_RAW8;
+	int item = 0;
+	while (item < ASI_MAX_FORMATS) {
+		if (PIXEL_FORMAT_PROPERTY->items[item].sw.value) {
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW8_NAME)) {
+				return ASI_IMG_RAW8;
+			}
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RGB24_NAME)) {
+				return ASI_IMG_RGB24;
+			}
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW16_NAME)) {
+				return ASI_IMG_RAW16;
+			}
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, Y8_NAME)) {
+				return ASI_IMG_Y8;
+			}
+		}
+		item++;
 	}
+	return ASI_IMG_END;
+}
+
+
+static bool pixel_format_supported(indigo_device *device, ASI_IMG_TYPE type) {
+	for (int i = 0; i < ASI_MAX_FORMATS; i++) {
+		if (i == ASI_IMG_END) return false;
+		if (type == PRIVATE_DATA->info.SupportedVideoFormat[i]) return true;
+	}
+	return false;
 }
 
 
@@ -377,13 +408,28 @@ static indigo_result ccd_attach(indigo_device *device) {
 		DEVICE_CONTEXT->private_data = private_data;
 		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
-		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, ASI_MAX_FORMATS);
 		if (PIXEL_FORMAT_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(PIXEL_RAW8_ITEM, "RAW8", "RAW 8", true);
-		indigo_init_switch_item(PIXEL_RGB24_ITEM, "RGB24", "RGB 24", false);
-		indigo_init_switch_item(PIXEL_RAW16_ITEM, "RAW16", "RAW 16", false);
-		indigo_init_switch_item(PIXEL_Y8_ITEM, "Y8", "Y 8", false);
+
+		int format_count = 0;
+		if (pixel_format_supported(device, ASI_IMG_RAW8)) {
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RAW8_NAME, RAW8_NAME, true);
+			format_count++;
+		}
+		if (pixel_format_supported(device, ASI_IMG_RGB24)) {
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RGB24_NAME, RGB24_NAME, false);
+			format_count++;
+		}
+		if (pixel_format_supported(device, ASI_IMG_RAW16)) {
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RAW16_NAME, RAW16_NAME, false);
+			format_count++;
+		}
+		if (pixel_format_supported(device, ASI_IMG_Y8)) {
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, Y8_NAME, Y8_NAME, false);
+			format_count++;
+		}
+		PIXEL_FORMAT_PROPERTY->count = format_count;
 
 		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_MODE_PROPERTY->count = 0;
@@ -514,6 +560,10 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 			CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
 		else
 			CCD_COOLER_PROPERTY->perm = INDIGO_RO_PERM;
+
+		/* At start cooler is always on WHY?!?!?! */
+		CCD_COOLER_OFF_ITEM->sw.value = true;
+		CCD_COOLER_ON_ITEM->sw.value = false;
 
 		return INDIGO_OK;
 	}
@@ -697,6 +747,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res));
+		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- PIXEL_FORMAT
 	} else if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property)) {
@@ -712,7 +764,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- PIXEL_FORMAT
+	// -------------------------------------------------------------------------------- ADVANCED_FORMAT
 	} else if (indigo_property_match(ASI_ADVANCED_PROPERTY, property)) {
 		handle_advanced_property(device, property);
 		indigo_property_copy_values(ASI_ADVANCED_PROPERTY, property, false);
