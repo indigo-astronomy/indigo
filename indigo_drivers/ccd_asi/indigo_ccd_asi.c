@@ -573,6 +573,11 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 	}
 
 	if (ctrl_caps.ControlType == ASI_TEMPERATURE) {
+		if (CCD_TEMPERATURE_PROPERTY->hidden) {
+			PRIVATE_DATA->can_check_temperature = true;
+			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+			CCD_TEMPERATURE_PROPERTY->hidden = false;
+		}
 		PRIVATE_DATA->has_temperature_sensor = true;
 		return INDIGO_OK;
 	}
