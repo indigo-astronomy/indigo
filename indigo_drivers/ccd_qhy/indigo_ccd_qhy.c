@@ -55,7 +55,6 @@ typedef struct {
 	int device_count;
 	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 	double current_temperature;
-	double exposure_time;
 	unsigned width, height, bits_per_pixel;
 	double pixel_width, pixel_height;
 	unsigned relay_mask;
@@ -177,7 +176,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
 		libqhy_set_gain(PRIVATE_DATA->device_context, CCD_GAIN_ITEM->number.value);
-		libqhy_set_exposure_time(PRIVATE_DATA->device_context, PRIVATE_DATA->exposure_time = CCD_EXPOSURE_ITEM->number.value);
+		libqhy_set_exposure_time(PRIVATE_DATA->device_context, CCD_EXPOSURE_ITEM->number.value);
 		libqhy_start(PRIVATE_DATA->device_context);
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
