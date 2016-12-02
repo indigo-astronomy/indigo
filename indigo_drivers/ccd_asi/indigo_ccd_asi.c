@@ -90,7 +90,6 @@ typedef struct {
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
-	double exposure;
 	ASI_CAMERA_INFO info;
 	indigo_property *pixel_format_property;
 	indigo_property *asi_advanced_property;
@@ -363,9 +362,9 @@ static void exposure_timer_callback(indigo_device *device) {
 					{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 					{ 0 }
 				};
-				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), PRIVATE_DATA->exposure, true, keywords);
+				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, keywords);
 			} else {
-				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), PRIVATE_DATA->exposure, true, NULL);
+				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
 			}
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -701,8 +700,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		PRIVATE_DATA->exposure = CCD_EXPOSURE_ITEM->number.value;
-		asi_start_exposure(device, PRIVATE_DATA->exposure, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
+		asi_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure initiated");
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
@@ -712,11 +710,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		if (PRIVATE_DATA->exposure > 4)
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, PRIVATE_DATA->exposure - 4, clear_reg_timer_callback);
+		if (CCD_EXPOSURE_ITEM->number.target > 4)
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
 		else {
 			PRIVATE_DATA->can_check_temperature = false;
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, PRIVATE_DATA->exposure, exposure_timer_callback);
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
 		}
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
