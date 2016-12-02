@@ -143,7 +143,8 @@ typedef struct {
 			double min;                     ///< item min value (for number properties)
 			double max;                     ///< item max value (for number properties)
 			double step;                    ///< item increment value (for number properties)
-			double value;                   ///< item values (for number properties)
+			double value;                   ///< item value (for number properties)
+			double target;									///< item target value (for number properties)
 		} number;
 		/** Switch property item specific fields.
 		 */

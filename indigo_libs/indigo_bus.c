@@ -551,7 +551,7 @@ void indigo_init_number_item(indigo_item *item, const char *name, const char *la
 	item->number.min = min;
 	item->number.max = max;
 	item->number.step = step;
-	item->number.value = value;
+	item->number.target = item->number.value = value;
 }
 
 void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value) {
@@ -641,11 +641,11 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 							strncpy(property_item->text.value, other_item->text.value, INDIGO_VALUE_SIZE);
 							break;
 						case INDIGO_NUMBER_VECTOR:
-							property_item->number.value = other_item->number.value;
+							property_item->number.target = property_item->number.value = other_item->number.value;
 							if (property_item->number.value < property_item->number.min)
-								property_item->number.value = property_item->number.min;
+								property_item->number.target = property_item->number.value = property_item->number.min;
 							if (property_item->number.value > property_item->number.max)
-								property_item->number.value = property_item->number.max;
+								property_item->number.target = property_item->number.value = property_item->number.max;
 							break;
 						case INDIGO_SWITCH_VECTOR:
 							property_item->sw.value = other_item->sw.value;
