@@ -441,7 +441,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	device->device_context = NULL;
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
-		DEVICE_CONTEXT->private_data = private_data;
+		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, ASI_MAX_FORMATS);
 		if (PIXEL_FORMAT_PROPERTY == NULL)
@@ -496,7 +496,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		ASI_ADVANCED_PROPERTY->count = 0;
 		// --------------------------------------------------------------------------------
-		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
