@@ -90,7 +90,6 @@ typedef struct {
 	dc1394bool_t temperature_is_present, gain_is_present, gamma_is_present;
 	indigo_timer *exposure_timer, *temperture_timer;
 	unsigned char *buffer;
-	double exposure;
 } iidc_private_data;
 
 static void stop_camera(indigo_device *device) {
@@ -400,7 +399,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		setup_camera(device);
 		err = dc1394_video_set_one_shot(PRIVATE_DATA->camera, DC1394_ON);
 		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_video_set_one_shot(DC1394_ON) [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, PRIVATE_DATA->exposure = CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
+		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);

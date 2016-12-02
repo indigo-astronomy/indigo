@@ -70,7 +70,6 @@ typedef struct {
 	libusb_device_handle *handle;
 	unsigned char gain;
 	int device_count;
-	double exposure;
 	unsigned char *buffer;
 	indigo_timer *exposure_timer;
 } ssag_private_data;
@@ -342,8 +341,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		PRIVATE_DATA->exposure = CCD_EXPOSURE_ITEM->number.value;
-		ssag_start_exposure(device, PRIVATE_DATA->exposure);
+		ssag_start_exposure(device, CCD_EXPOSURE_ITEM->number.target);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure initiated");
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
@@ -353,13 +351,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		if (PRIVATE_DATA->exposure < 0.1) {
-			usleep(PRIVATE_DATA->exposure * 1000000);
+		if (CCD_EXPOSURE_ITEM->number.target < 0.1) {
+			usleep(CCD_EXPOSURE_ITEM->number.target * 1000000);
 			exposure_timer_callback(device);
 			PRIVATE_DATA->exposure_timer = NULL;
 		}
 		else
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, PRIVATE_DATA->exposure, exposure_timer_callback);
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
