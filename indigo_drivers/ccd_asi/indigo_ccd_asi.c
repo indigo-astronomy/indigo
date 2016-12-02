@@ -1044,7 +1044,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				ASIGetCameraProperty(&info, index);
 				assert(device != NULL);
 				memcpy(device, &ccd_template, sizeof(indigo_device));
-				sprintf(device->name, "%s %d", info.Name, id);
+				sprintf(device->name, "%s #%d", info.Name, id);
 				INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
 				void *private_data_ptr = malloc(sizeof(asi_private_data));
 				device->device_context = private_data_ptr;
@@ -1064,7 +1064,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					device = malloc(sizeof(indigo_device));
 					assert(device != NULL);
 					memcpy(device, &guider_template, sizeof(indigo_device));
-					sprintf(device->name, "%s %d guider", info.Name, id);
+					sprintf(device->name, "%s Guider #%d", info.Name, id);
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
 					device->device_context = private_data_ptr;
 					assert(device->device_context);
