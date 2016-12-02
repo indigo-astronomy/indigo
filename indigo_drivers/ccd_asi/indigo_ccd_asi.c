@@ -216,7 +216,7 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 	ASI_ERROR_CODE res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	res = ASISetROIFormat(id, frame_width, frame_height,  horizontal_bin, get_pixel_format(device));
+	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/horizontal_bin,  horizontal_bin, get_pixel_format(device));
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetROIFormat(%d) = %d", id, res));
@@ -648,7 +648,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 	assert(offset < MAX_ASI_ADVANCED_ITEMS);
 	res = ASISetControlValue(id, ctrl_caps.ControlType, ctrl_caps.DefaultValue, false);
 	if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res));
-	indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Description, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, ctrl_caps.DefaultValue);
+	indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, ctrl_caps.DefaultValue);
 	return INDIGO_OK;
 }
 
