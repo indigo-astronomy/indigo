@@ -65,6 +65,8 @@
 
 #define ASI_ADVANCED_PROPERTY      (PRIVATE_DATA->asi_advanced_property)
 
+#define MAX_ASI_ADVANCED_ITEMS			25
+
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
 
@@ -490,7 +492,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
-		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, ASI_ANTI_DEW_HEATER - 7 + 1);
+		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, MAX_ASI_ADVANCED_ITEMS);
 		if (ASI_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		ASI_ADVANCED_PROPERTY->count = 0;
@@ -643,6 +645,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 	}
 
 	int offset = ASI_ADVANCED_PROPERTY->count++;
+	assert(offset < MAX_ASI_ADVANCED_ITEMS);
 	res = ASISetControlValue(id, ctrl_caps.ControlType, ctrl_caps.DefaultValue, false);
 	if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res));
 	indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Description, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, ctrl_caps.DefaultValue);
