@@ -83,7 +83,7 @@ typedef struct {
 	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
 	double target_temperature, current_temperature;
 	long cooler_power;
-	unsigned short relay_mask;
+	bool guide_relays[4];
 	unsigned char *buffer;
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
@@ -405,6 +405,33 @@ static void ccd_temperature_callback(indigo_device *device) {
 	}
 	PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
 }
+
+
+static void guider_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->guider_timer = NULL;
+	int id = PRIVATE_DATA->dev_id;
+	ASIPulseGuideOff(id, ASI_GUIDE_EAST);
+	ASIPulseGuideOff(id, ASI_GUIDE_WEST);
+	ASIPulseGuideOff(id, ASI_GUIDE_SOUTH);
+	ASIPulseGuideOff(id, ASI_GUIDE_NORTH);
+	if (PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH]) {
+		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+	}
+	if (PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] || PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST]) {
+		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	}
+	PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = false;
+	PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = false;
+	PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = false;
+	PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = false;
+}
+
 
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -851,6 +878,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
+	ASI_ERROR_CODE res;
+	int id = PRIVATE_DATA->dev_id;
+
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -872,13 +902,25 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
-			// guide north
+			res = ASIPulseGuideOn(id, ASI_GUIDE_NORTH);
+			if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res));
+			PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+			PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = true;
 		} else {
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
-				// guide north
+				res = ASIPulseGuideOn(id, ASI_GUIDE_SOUTH);
+				if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res));
+				PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+				PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = true;
 			}
 		}
+
+		if (PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH])
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		else
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
@@ -888,13 +930,25 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
-			// guide east
+			res = ASIPulseGuideOn(id, ASI_GUIDE_EAST);
+			if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res));
+			PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+			PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = true;
 		} else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
-				// guide west
+				res = ASIPulseGuideOn(id, ASI_GUIDE_WEST);
+				if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res));
+				PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+				PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = true;
 			}
 		}
+
+		if (PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] || PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST])
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		else
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
