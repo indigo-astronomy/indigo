@@ -489,7 +489,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
 
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
-
+		// -------------------------------------------------------------------------------- ASI_ADVANCED
+		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, ASI_ANTI_DEW_HEATER - 7 + 1);
+		if (ASI_ADVANCED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		ASI_ADVANCED_PROPERTY->count = 0;
+		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -526,7 +531,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 }
 
 
-static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_CAPS ctrl_caps) {
+static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAPS ctrl_caps) {
 	int id = PRIVATE_DATA->dev_id;
 	long value;
 	ASI_ERROR_CODE res;
@@ -637,70 +642,10 @@ static indigo_result init_camera_properties(indigo_device *device, ASI_CONTROL_C
 		return INDIGO_OK;
 	}
 
-	if(ASI_ADVANCED_PROPERTY == NULL) {
-		int ctrl_count;
-		ASI_CONTROL_CAPS ctrl_caps;
-		int id = PRIVATE_DATA->dev_id;
-
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		int res = ASIGetNumOfControls(id, &ctrl_count);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) {
-			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
-			return INDIGO_NOT_FOUND;
-		}
-
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-		int ctrl_no;
-		int num_to_skip = 0;   /* calculate how many settings are exposed */
-		for(ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
-			ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-			switch (ctrl_caps.ControlType) {
-			case ASI_EXPOSURE:
-			case ASI_GAIN:
-			case ASI_GAMMA:
-			case ASI_COOLER_POWER_PERC:
-			case ASI_COOLER_ON:
-			case ASI_TARGET_TEMP:
-			case ASI_TEMPERATURE:
-				num_to_skip++;
-				break;
-			default:
-				break;
-			}
-		}
-
-		/* expose in Advanced only the unexposed settings */
-		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, ctrl_count - num_to_skip);
-		if (ASI_ADVANCED_PROPERTY == NULL)
-			return INDIGO_FAILED;
-
-		long value;
-		int offset=0;
-		for(ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
-			ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-			switch (ctrl_caps.ControlType) {
-			case ASI_EXPOSURE:
-			case ASI_GAIN:
-			case ASI_GAMMA:
-			case ASI_COOLER_POWER_PERC:
-			case ASI_COOLER_ON:
-			case ASI_TARGET_TEMP:
-			case ASI_TEMPERATURE:
-				break;
-			default:
-				res = ASISetControlValue(id, ctrl_no, ctrl_caps.DefaultValue, false);
-				if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res));
-				indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, ctrl_caps.DefaultValue);
-				offset++;
-				break;
-			} 
-		}
-
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	}
-
+	int offset = ASI_ADVANCED_PROPERTY->count++;
+	res = ASISetControlValue(id, ctrl_caps.ControlType, ctrl_caps.DefaultValue, false);
+	if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res));
+	indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Description, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, ctrl_caps.DefaultValue);
 	return INDIGO_OK;
 }
 
@@ -725,10 +670,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
 					return INDIGO_NOT_FOUND;
 				}
-
+				ASI_ADVANCED_PROPERTY->count = 0;
 				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-					init_camera_properties(device, ctrl_caps);
+					init_camera_property(device, ctrl_caps);
 				}
 				indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
 
@@ -837,7 +782,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ADVANCED_FORMAT
-	} else if (ASI_ADVANCED_PROPERTY && indigo_property_match(ASI_ADVANCED_PROPERTY, property)) {
+	} else if (indigo_property_match(ASI_ADVANCED_PROPERTY, property)) {
 		handle_advanced_property(device, property);
 		indigo_property_copy_values(ASI_ADVANCED_PROPERTY, property, false);
 		ASI_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
