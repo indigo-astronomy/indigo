@@ -887,6 +887,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (asi_open(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
