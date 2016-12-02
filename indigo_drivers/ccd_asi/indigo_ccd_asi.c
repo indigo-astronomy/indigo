@@ -482,7 +482,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			num++;
 		}
 
-		//CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
 		CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
 		CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
