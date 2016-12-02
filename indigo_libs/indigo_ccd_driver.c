@@ -472,7 +472,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, double exposure_time, bool little_endian, indigo_fits_keyword *keywords) {
+void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, bool little_endian, indigo_fits_keyword *keywords) {
 	assert(device != NULL);
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
@@ -549,7 +549,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			t = sprintf(header += 80, "YPIXSZ  = %21.2g / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value);
 			header[t] = ' ';
 		}
-		t = sprintf(header += 80, "EXPTIME = %21.2g / exposure time [s]", exposure_time);
+		t = sprintf(header += 80, "EXPTIME = %21.2g / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
 		header[t] = ' ';
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 			t = sprintf(header += 80, "CCD-TEMP= %21.2g / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number.value);

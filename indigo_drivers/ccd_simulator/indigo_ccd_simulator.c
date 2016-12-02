@@ -46,7 +46,6 @@
 typedef struct {
 	int star_x[STARS], star_y[STARS], star_a[STARS];
 	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
-	double exposure_time;
 	double target_temperature, current_temperature;
 	int target_slot, current_slot;
 	int target_position, current_position;
@@ -85,7 +84,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				}
 			}
 		}
-		indigo_process_image(device, private_data->image, frame_width, frame_height, private_data->exposure_time, true, NULL);
+		indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
 	}
 }
 
@@ -194,7 +193,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		PRIVATE_DATA->exposure_time = CCD_EXPOSURE_ITEM->number.value;
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure initiated");
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {

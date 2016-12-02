@@ -174,7 +174,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_process_image(device, PRIVATE_DATA->buffer, width, height, PRIVATE_DATA->exposure, frame->little_endian, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->little_endian, NULL);
 			err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
 			INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_capture_enqueue() [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
 		} else {
