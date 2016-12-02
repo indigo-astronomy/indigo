@@ -542,7 +542,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		if (sx_read_pixels(device)) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
-			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), PRIVATE_DATA->exposure, true, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
