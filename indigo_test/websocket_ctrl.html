@@ -185,8 +185,8 @@
 																	<div class="form-group" ng-repeat="item in property.items">
 																		<label class="col-sm-6 control-label">{{item.label}}</label>
 																		<div class="col-sm-6">
-																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)">
-																				</div>
+																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)"/>
+																		</div>
 																	</div>
 																	<div class="form-group" ng-if="property.perm!='ro'">
 																		<div class="col-sm-offset-6 col-sm-6">
@@ -198,9 +198,15 @@
 																<form name="form" class="form-horizontal" ng-switch-when="NUMBER">
 																	<div class="form-group" ng-repeat="item in property.items">
 																		<label class="col-sm-6 control-label">{{item.label}}</label>
-																		<div class="col-sm-6">
-																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)">
-																				</div>
+																		<div class="col-sm-3" ng-if="property.perm!='ro'">
+																			<input class="form-control" type="text" ng-disabled="true" ng-model="item.target"/>
+																		</div>
+																		<div class="col-sm-3" ng-if="property.perm=='ro'">
+																			&nbsp;
+																		</div>
+																		<div class="col-sm-3">
+																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)"/>
+																		</div>
 																	</div>
 																	<div class="form-group" ng-if="property.perm!='ro'">
 																		<div class="col-sm-offset-6 col-sm-6">
@@ -490,6 +496,8 @@
 							item.max = vector.defNumber[i].max;
 							item.step = vector.defNumber[i].step;
 							item.value = item.oldValue = vector.defNumber[i].value;
+							if (vector.perm != "ro")
+								item.target = vector.defNumber[i].target;
 							item.label = vector.defNumber[i].label;
 						}
 					} else if ((vector = message.setNumberVector) != undefined) {
@@ -498,8 +506,11 @@
 							property.state = vector.state;
 							for (var i = 0; i < vector.oneNumber.length; i++) {
 								var item = getItem(property, vector.oneNumber[i].name);
-								if (item != undefined)
+								if (item != undefined) {
 									item.value = item.oldValue = vector.oneNumber[i].value;
+									if (vector.perm != "ro")
+										item.target = vector.oneNumber[i].target;
+								}
 							}
 						}
 					} else if ((vector = message.defLightVector) != undefined) {
