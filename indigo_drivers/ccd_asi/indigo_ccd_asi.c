@@ -216,7 +216,7 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 	ASI_ERROR_CODE res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	res = ASISetROIFormat(id, frame_width, frame_height,  horizontal_bin, get_pixel_format(device));
+	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/horizontal_bin,  horizontal_bin, get_pixel_format(device));
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetROIFormat(%d) = %d", id, res));
