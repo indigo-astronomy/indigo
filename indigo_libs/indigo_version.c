@@ -102,7 +102,7 @@ static struct property_mapping legacy[] = {
 	},
 	{	"CCD_BINNING", CCD_BIN_PROPERTY_NAME, {
 			{ "VER_BIN", CCD_BIN_HORIZONTAL_ITEM_NAME },
-			{ "HOR_BIN", CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME },
+			{ "HOR_BIN", CCD_BIN_VERTICAL_ITEM_NAME },
 			NULL
 		}
 	},

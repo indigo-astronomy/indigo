@@ -181,19 +181,6 @@
 														<div class="panel panel-{{property.state | status}}">
 															<div class="panel-heading"><i class="glyphicon glyphicon-th-list"></i>{{property.label}}</div>
 															<div class="panel-body" ng-switch="property.type">
-																<form class="form-horizontal" ng-switch-when="SWITCH">
-																	<div class="form-group" ng-repeat="item in property.items">
-																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule=='AnyOfMany'">
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-switch-when="true" ng-click="setSwitch(device, property, item, false)">{{item.value | switch}}</button>
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
-																		</div>
-																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule!='AnyOfMany'">
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-switch-when="true" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
-																		</div>
-																		<label class="col-sm-10 control-label">{{item.label}}</label>
-																	</div>
-																</form>
 																<form name="form" class="form-horizontal" ng-switch-when="TEXT">
 																	<div class="form-group" ng-repeat="item in property.items">
 																		<label class="col-sm-6 control-label">{{item.label}}</label>
@@ -220,6 +207,24 @@
 																			<button type="submit" class="btn btn-primary" ng-click="setNumber(form, device, property)">Submit</button>
 																			<button class="btn btn-default" ng-click="reset(form, property)">Reset</button>
 																		</div>
+																	</div>
+																</form>
+																<form class="form-horizontal" ng-switch-when="SWITCH">
+																	<div class="form-group" ng-repeat="item in property.items">
+																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule=='AnyOfMany'">
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-switch-when="true" ng-click="setSwitch(device, property, item, false)">{{item.value | switch}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																		</div>
+																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule!='AnyOfMany'">
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-switch-when="true" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																		</div>
+																		<label class="col-sm-10 control-label">{{item.label}}</label>
+																	</div>
+																</form>
+																<form class="form-horizontal" ng-switch-when="LIGHT">
+																	<div class="form-group" ng-repeat="item in property.items">
+																		<label class="col-sm-10 control-label">{{item.label}}</label>
 																	</div>
 																</form>
 																<div class="alert alert-warning alert-dismissible" role="alert" ng-if="property.message!=null">
