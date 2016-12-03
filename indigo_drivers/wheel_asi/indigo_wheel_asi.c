@@ -270,7 +270,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				EFWGetProperty(id, &info);
 				assert(device != NULL);
 				memcpy(device, &wheel_template, sizeof(indigo_device));
-				sprintf(device->name, "%s %d", info.Name, id);
+				sprintf(device->name, "%s #%d", info.Name, id);
 				INDIGO_LOG(indigo_log("indigo_wheel_asi: '%s' attached.", device->name));
 				device->device_context = malloc(sizeof(asi_private_data));
 				assert(device->device_context);
