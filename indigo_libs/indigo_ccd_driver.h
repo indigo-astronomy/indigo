@@ -217,13 +217,13 @@
  */
 #define CCD_IMAGE_FORMAT_PROPERTY         (CCD_CONTEXT->ccd_image_format_property)
 
-/** CCD_IMAGE_FORMAT.RAW property item pointer.
- */
-#define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+0)
-
 /** CCD_IMAGE_FORMAT.FITS property item pointer.
  */
-#define CCD_IMAGE_FORMAT_FITS_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+1)
+#define CCD_IMAGE_FORMAT_FITS_ITEM        (CCD_IMAGE_FORMAT_PROPERTY->items+0)
+
+/** CCD_IMAGE_FORMAT.RAW property item pointer.
+ */
+#define CCD_IMAGE_FORMAT_RAW_ITEM         (CCD_IMAGE_FORMAT_PROPERTY->items+1)
 
 /** CCD_IMAGE_FORMAT.JPEG property item pointer.
  */
