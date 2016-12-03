@@ -447,7 +447,7 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 indigo_property *indigo_init_number_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
 	assert(device != NULL);
 	assert(name != NULL);
-	int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
+	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
 		assert(property != NULL);
@@ -468,7 +468,7 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 indigo_property *indigo_init_switch_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, indigo_rule rule, int count) {
 	assert(device != NULL);
 	assert(name != NULL);
-	int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
+	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
 		assert(property != NULL);
@@ -490,7 +490,7 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 indigo_property *indigo_init_light_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count) {
 	assert(device != NULL);
 	assert(name != NULL);
-	int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
+	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
 		assert(property != NULL);
@@ -511,7 +511,7 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count) {
 	assert(device != NULL);
 	assert(name != NULL);
-	int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
+	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
 		assert(property != NULL);
@@ -526,6 +526,15 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	property->state = state;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
+	return property;
+}
+
+indigo_property *indigo_resize_property(indigo_property *property, int count) {
+	assert(property != NULL);
+	property = realloc(property, sizeof(indigo_property) + count * sizeof(indigo_item));
+	assert(property != NULL);
+	if (count > property->count)
+		memset(property->items+property->count, 0, (count - property->count) * sizeof(indigo_item));
 	return property;
 }
 

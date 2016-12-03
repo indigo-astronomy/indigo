@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 7
+INDIGO_BUILD := 8
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -89,9 +89,9 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
 	ifeq ($(ARCH_DETECTED),arm)
-		CFLAGS=-fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
+		CFLAGS=-g -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -Iinclude  -std=gnu11 -pthread -DINDIGO_LINUX
 	else
-		CFLAGS=-fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -pthread -DINDIGO_LINUX
+		CFLAGS=-g -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -pthread -DINDIGO_LINUX
 	endif
 	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -Llib
 	SOEXT=so
