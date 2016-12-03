@@ -568,6 +568,7 @@ $(PACKAGE_NAME).deb: clean all
 	install $(DRIVERS) /tmp/$(PACKAGE_NAME)/usr/local/bin
 	install -d /tmp/$(PACKAGE_NAME)/usr/local/lib
 	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
+	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
 	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
 	install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
 	install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_ssag.rules
