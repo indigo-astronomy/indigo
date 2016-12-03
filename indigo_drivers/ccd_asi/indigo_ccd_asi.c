@@ -1109,21 +1109,22 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 static void remove_all_devices() {
 	int i;
-	asi_private_data *pd;
+	asi_private_data *pds[ASICAMERA_ID_MAX] = {NULL};
 
 	for(i = 0; i < MAX_DEVICES; i++) {
-		indigo_device **device = &devices[i];
-		if (*device == NULL) continue;
-		indigo_detach_device(*device);
-		pd = (asi_private_data*)(*device)->device_context;
-		if(pd && connected_ids[pd->dev_id]) {   /* if camera has guider => prevent double free */
-			connected_ids[pd->dev_id] = false;  /* if prevent double free */
-			free(pd);
-			(*device)->device_context = NULL;
-		}
-		free(*device);
-		*device = NULL;
+		indigo_device *device = devices[i];
+		if (device == NULL) continue;
+		if (PRIVATE_DATA) pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
+		indigo_detach_device(device);
+		free(device);
+		device = NULL;
 	}
+
+	/* free private data */
+	for(i = 0; i < ASICAMERA_ID_MAX; i++) {
+		if (pds[i]) free(pds[i]);
+	}
+
 	for(i = 0; i < ASICAMERA_ID_MAX; i++)
 		connected_ids[i] = false;
 }
