@@ -77,7 +77,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
+	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
 endif
 
 #---------------------------------------------------------------------
@@ -98,7 +98,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
+	EXTERNALS=$(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
 endif
 
 #---------------------------------------------------------------------
@@ -206,6 +206,18 @@ lib/libnovas.a: externals/novas/novas.o externals/novas/eph_manager.o externals/
 
 #---------------------------------------------------------------------
 #
+#	Build libjpeg
+#
+#---------------------------------------------------------------------
+
+externals/libjpeg/Makefile: indigo_drivers/ccd_iidc/externals/libdc1394/configure
+	cd externals/libjpeg; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) $(LIBUSB_CFLAGS) $(LIBUSB_LIBS); cd ../..
+
+lib/libjpeg.a: externals/libjpeg/Makefile
+	cd externals/libjpeg; make install; cd ../..
+
+#---------------------------------------------------------------------
+#
 #	Install libatik
 #
 #---------------------------------------------------------------------
@@ -307,7 +319,7 @@ init:
 lib/libindigo.a: $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c)))
 	$(AR) $(ARFLAGS) $@ $^
 
-lib/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c)))
+lib/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c))) lib/libjpeg.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------

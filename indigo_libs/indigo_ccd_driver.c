@@ -33,6 +33,7 @@
 #include <math.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <jpeglib.h>
 
 #include "indigo_ccd_driver.h"
 
@@ -139,11 +140,12 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			indigo_init_switch_item(CCD_FRAME_TYPE_DARK_ITEM, CCD_FRAME_TYPE_DARK_ITEM_NAME, "Dark frame exposure", false);
 			indigo_init_switch_item(CCD_FRAME_TYPE_FLAT_ITEM, CCD_FRAME_TYPE_FLAT_ITEM_NAME, "Flat field frame exposure", false);
 			// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
-			CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			CCD_IMAGE_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 			if (CCD_IMAGE_FORMAT_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_ITEM, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, "Raw data", false);
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_FITS_ITEM, CCD_IMAGE_FORMAT_FITS_ITEM_NAME, "FITS format", true);
+			indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_ITEM, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, "Raw data", false);
+			indigo_init_switch_item(CCD_IMAGE_FORMAT_JPEG_ITEM, CCD_IMAGE_FORMAT_JPEG_ITEM_NAME, "JPEG format", false);
 			// -------------------------------------------------------------------------------- CCD_IMAGE
 			CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_IMAGE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image data", INDIGO_IDLE_STATE, 1);
 			if (CCD_IMAGE_PROPERTY == NULL)
@@ -498,6 +500,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	}
 
 	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
+		INDIGO_DEBUG(clock_t start = clock());
 		time_t timer;
 		struct tm* tm_info;
 		char now[20];
@@ -621,6 +624,62 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			free(raw);
 		}
 		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+	} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+		
+		INDIGO_DEBUG(clock_t start = clock());
+		unsigned char *mem = NULL;
+		unsigned long mem_size = 0;
+		struct jpeg_compress_struct cinfo;
+		struct jpeg_error_mgr jerr;
+		cinfo.err = jpeg_std_error(&jerr);
+		jpeg_create_compress(&cinfo);
+		jpeg_mem_dest(&cinfo, &mem, &mem_size);
+		cinfo.image_width = CCD_INFO_WIDTH_ITEM->number.value;
+		cinfo.image_height = CCD_INFO_HEIGHT_ITEM->number.value;
+		if (naxis == 2) {
+			if (byte_per_pixel == 1) {
+			} else if (byte_per_pixel == 2) {
+				unsigned short *b16 = data + FITS_HEADER_SIZE;
+				unsigned char *b8 = data + FITS_HEADER_SIZE;
+				for (int i = 0; i < size; i++)
+					*b8++ = *b16++;
+			}
+			cinfo.input_components = 1;
+			cinfo.in_color_space = JCS_GRAYSCALE;
+		} else if (naxis == 3 ) {
+			if (byte_per_pixel == 1) {
+				unsigned char *b8 = data + FITS_HEADER_SIZE;
+				for (int i = 0; i < size; i++) {
+					unsigned char b = *b8;
+					unsigned char r = *(b8 + 2);
+					*b8 = r;
+					*(b8 + 2) = b;
+					b8 += 3;
+				}
+			}
+			cinfo.input_components = 3;
+			cinfo.in_color_space = JCS_RGB;
+		}
+		jpeg_set_defaults(&cinfo);
+		JSAMPROW row_pointer[1];
+		jpeg_start_compress( &cinfo, TRUE);
+		unsigned char *tmp = data + FITS_HEADER_SIZE;
+		
+		while( cinfo.next_scanline < cinfo.image_height ) {
+			row_pointer[0] = &tmp[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
+			jpeg_write_scanlines(&cinfo, row_pointer, 1);
+		}
+		
+		jpeg_finish_compress( &cinfo );
+		jpeg_destroy_compress( &cinfo );
+
+		if (mem_size < size) {
+			memcpy(data, mem, mem_size);
+		}
+		blobsize = (int)mem_size;
+		free(mem);
+		
+		INDIGO_DEBUG(indigo_debug("RAW to JPEG conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
@@ -630,6 +689,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			sufix = ".fits";
 		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 			sufix = ".raw";
+		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+			sufix = ".jpeg";
 		}
 		int handle = 0;
 		char *message = NULL;
@@ -671,6 +732,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
+				} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+					if (write(handle, data, blobsize) < 0) {
+						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+						message = strerror(errno);
+					}
 				}
 				close(handle);
 			} else {
@@ -693,6 +759,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			CCD_IMAGE_ITEM->blob.value = data + FITS_HEADER_SIZE;
 			CCD_IMAGE_ITEM->blob.size = blobsize;
 			strncpy(CCD_IMAGE_ITEM->blob.format, ".raw", INDIGO_NAME_SIZE);
+		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+			CCD_IMAGE_ITEM->blob.value = data;
+			CCD_IMAGE_ITEM->blob.size = blobsize;
+			strncpy(CCD_IMAGE_ITEM->blob.format, ".jpeg", INDIGO_NAME_SIZE);
 		}
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
