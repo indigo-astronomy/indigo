@@ -555,6 +555,8 @@ $(PACKAGE_NAME).deb: clean all
 	install bin/indigo_server_standalone /tmp/$(PACKAGE_NAME)/usr/local/bin
 	install $(DRIVERS) /tmp/$(PACKAGE_NAME)/usr/local/bin
 	install -d /tmp/$(PACKAGE_NAME)/usr/local/lib
+	install lib/libindigo.so /tmp/$(PACKAGE_NAME)/usr/local/lib
+	install lib/libindigo.a /tmp/$(PACKAGE_NAME)/usr/local/lib
 	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
 	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
 	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
