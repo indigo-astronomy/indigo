@@ -642,7 +642,8 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		return INDIGO_OK;
 	}
 
-	int offset = ASI_ADVANCED_PROPERTY->count++;
+	int offset = ASI_ADVANCED_PROPERTY->count + 1;
+	ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, offset);
 	assert(offset < MAX_ASI_ADVANCED_ITEMS);
 	res = ASISetControlValue(id, ctrl_caps.ControlType, ctrl_caps.DefaultValue, false);
 	if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res));
@@ -671,7 +672,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
 					return INDIGO_NOT_FOUND;
 				}
-				ASI_ADVANCED_PROPERTY->count = 0;
+				ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
 				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
 					init_camera_property(device, ctrl_caps);

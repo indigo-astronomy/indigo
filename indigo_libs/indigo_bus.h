@@ -328,6 +328,9 @@ extern indigo_property *indigo_init_light_property(indigo_property *property, co
 /** Initialize BLOB property.
  */
 extern indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
+/** Resize property.
+ */
+extern indigo_property *indigo_resize_property(indigo_property *property, int count);
 
 /** Initialize text item.
  */
