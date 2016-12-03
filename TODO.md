@@ -21,7 +21,7 @@
 6. HTTP/JSON protocol adapters
 7. Windows port
 8. Android port
-9. JPEG format support
+9. JPEG format support __DONE__
 10. smart serial port selection 
 
 ### Utilities
