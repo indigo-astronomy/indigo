@@ -1074,7 +1074,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			int id, slot;
 			bool removed = false;
-			asi_private_data *private_data = NULL;
+			asi_private_data *device_context = NULL;
 			while ((id = find_unplugged_device_id()) != -1) {
 				slot = find_device_slot(id);
 				while (slot >= 0) {
@@ -1084,7 +1084,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 					indigo_detach_device(*device);
 					if ((*device)->device_context) {
-						private_data = (*device)->device_context;
+						device_context = (*device)->device_context;
 					}
 					free(*device);
 					*device = NULL;
@@ -1092,10 +1092,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					slot = find_device_slot(id);
 				}
 
-				if (private_data) {
+				if (device_context) {
 					ASICloseCamera(id);
-					free(private_data);
-					private_data = NULL;
+					free(device_context);
+					device_context = NULL;
 				}
 			}
 			if (!removed) {
