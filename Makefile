@@ -77,7 +77,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
+	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
 endif
 
 #---------------------------------------------------------------------
@@ -98,7 +98,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
+	EXTERNALS=$(LIBHIDAPI) lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
 endif
 
 #---------------------------------------------------------------------
@@ -531,7 +531,7 @@ bin/client: indigo_test/client.o
 bin/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
-bin/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS) $(EXTERNALS) lib/libindigo.a
+bin/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS) $(EXTERNALS) lib/libindigo.a lib/libjpeg.a
 	$(CC) -DSTATIC_DRIVERS $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
 
 
