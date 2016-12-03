@@ -535,6 +535,7 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 	assert(property != NULL);
 	if (count > property->count)
 		memset(property->items+property->count, 0, (count - property->count) * sizeof(indigo_item));
+	property->count = count;
 	return property;
 }
 
