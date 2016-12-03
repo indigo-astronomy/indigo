@@ -28,11 +28,11 @@ This is the list of requirements taken into the consideration:
 7. SSAG/QHY5 CCD driver 
 8. ASI wheel driver
 9. IIDC CCD driver
+10. ASI CCD driver
 
 ### This is under development
 
 1. QHY (5II-L) CCD driver
-2. ASI CCD driver
 
 ------------------------------------------------------------------------------------------------
 

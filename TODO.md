@@ -43,7 +43,7 @@
 #### CCDs
 
 1. QHY CCD driver
-2. ASI CCD driver
+2. ASI CCD driver __DONE__
 3. IIDC CCD driver (based on libdc1394) __DONE__
 4. MI CCD driver (based on MI SDK)
 5. QSI CCD driver (based on QSI SDK)
