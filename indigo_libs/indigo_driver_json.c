@@ -292,7 +292,10 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\" }", i > 0 ? "," : "", item->name);
+				if (property->state == INDIGO_OK_STATE)
+					size = sprintf(pnt, "%s { \"name\": \"%s\", \"value\": \"/blob/%p%s\" }", i > 0 ? "," : "", item->name, item, item->blob.format);
+				else
+					size = sprintf(pnt, "%s { \"name\": \"%s\" }", i > 0 ? "," : "", item->name);
 				pnt += size;
 			}
 			size = sprintf(pnt, " ] } }");

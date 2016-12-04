@@ -110,8 +110,8 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 
 indigo_result indigo_wheel_detach(indigo_device *device) {
 	assert(device != NULL);
-	free(WHEEL_SLOT_PROPERTY);
-	free(WHEEL_SLOT_NAME_PROPERTY);
+	indigo_release_property(WHEEL_SLOT_PROPERTY);
+	indigo_release_property(WHEEL_SLOT_NAME_PROPERTY);
 	return indigo_device_detach(device);
 }
 

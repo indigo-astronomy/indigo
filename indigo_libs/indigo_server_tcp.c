@@ -142,8 +142,25 @@ static void start_worker_thread(int *client_socket) {
 					indigo_attach_client(protocol_adapter);
 					indigo_json_parse(NULL, protocol_adapter);
 					indigo_detach_client(protocol_adapter);
-				} else {
-					//TBD get blob over HTTP
+				} else if (!strncmp(buffer, "GET /blob/", 10)) {
+					indigo_item *item;
+					if (sscanf(buffer, "GET /blob/%p.", &item) && indigo_validate_blob(item) == INDIGO_OK) {
+						write_line(socket, "HTTP/1.1 200 OK\r\n");
+						write_line(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+						if (!strcmp(item->blob.format, ".jpeg")) {
+							write_line(socket, "Content-Type: image/jpeg\r\n");
+						} else {
+							write_line(socket, "Content-Type: application/octet-stream\r\n");
+							write_line(socket, "Content-Disposition: attachment; filename=\"%p.%s\"\r\n", item, item->blob.format);
+						}
+						write_line(socket, "Content-Size: %ld\r\n\r\n", item->blob.size);
+						write(socket, item->blob.value, item->blob.size);
+					} else {
+						write_line(socket, "HTTP/1.1 404 Not found\r\n");
+						write_line(socket, "Content-Type: text/plain\r\n\r\n");
+						write_line(socket, "BLOB not found!");
+					}
+					close(socket);
 				}
 			}
 		} else {

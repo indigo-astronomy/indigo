@@ -371,12 +371,12 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	pthread_mutex_destroy(&DEVICE_CONTEXT->timer_mutex);
 #endif
 	indigo_delete_property(device, &INDIGO_ALL_PROPERTIES, NULL);
-	free(CONNECTION_PROPERTY);
-	free(INFO_PROPERTY);
-	free(DEVICE_PORT_PROPERTY);
-	free(DEBUG_PROPERTY);
-	free(SIMULATION_PROPERTY);
-	free(CONFIG_PROPERTY);
+	indigo_release_property(CONNECTION_PROPERTY);
+	indigo_release_property(INFO_PROPERTY);
+	indigo_release_property(DEVICE_PORT_PROPERTY);
+	indigo_release_property(DEBUG_PROPERTY);
+	indigo_release_property(SIMULATION_PROPERTY);
+	indigo_release_property(CONFIG_PROPERTY);
 	indigo_device_context *context = DEVICE_CONTEXT;
 	device->device_context = context->private_data;
 	free(context);

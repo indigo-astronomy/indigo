@@ -453,24 +453,24 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 
 indigo_result indigo_ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	free(CCD_INFO_PROPERTY);
-	free(CCD_UPLOAD_MODE_PROPERTY);
-	free(CCD_LOCAL_MODE_PROPERTY);
-	free(CCD_MODE_PROPERTY);
-	free(CCD_EXPOSURE_PROPERTY);
-	free(CCD_ABORT_EXPOSURE_PROPERTY);
-	free(CCD_FRAME_PROPERTY);
-	free(CCD_BIN_PROPERTY);
-	free(CCD_GAIN_PROPERTY);
-	free(CCD_GAMMA_PROPERTY);
-	free(CCD_OFFSET_PROPERTY);
-	free(CCD_FRAME_TYPE_PROPERTY);
-	free(CCD_IMAGE_FORMAT_PROPERTY);
-	free(CCD_IMAGE_FILE_PROPERTY);
-	free(CCD_IMAGE_PROPERTY);
-	free(CCD_TEMPERATURE_PROPERTY);
-	free(CCD_COOLER_PROPERTY);
-	free(CCD_COOLER_POWER_PROPERTY);
+	indigo_release_property(CCD_INFO_PROPERTY);
+	indigo_release_property(CCD_UPLOAD_MODE_PROPERTY);
+	indigo_release_property(CCD_LOCAL_MODE_PROPERTY);
+	indigo_release_property(CCD_MODE_PROPERTY);
+	indigo_release_property(CCD_EXPOSURE_PROPERTY);
+	indigo_release_property(CCD_ABORT_EXPOSURE_PROPERTY);
+	indigo_release_property(CCD_FRAME_PROPERTY);
+	indigo_release_property(CCD_BIN_PROPERTY);
+	indigo_release_property(CCD_GAIN_PROPERTY);
+	indigo_release_property(CCD_GAMMA_PROPERTY);
+	indigo_release_property(CCD_OFFSET_PROPERTY);
+	indigo_release_property(CCD_FRAME_TYPE_PROPERTY);
+	indigo_release_property(CCD_IMAGE_FORMAT_PROPERTY);
+	indigo_release_property(CCD_IMAGE_FILE_PROPERTY);
+	indigo_release_property(CCD_IMAGE_PROPERTY);
+	indigo_release_property(CCD_TEMPERATURE_PROPERTY);
+	indigo_release_property(CCD_COOLER_PROPERTY);
+	indigo_release_property(CCD_COOLER_POWER_PROPERTY);
 	return indigo_device_detach(device);
 }
 
@@ -582,7 +582,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		t = sprintf(header += 80, "DATE-OBS= '%s' / UTC date that FITS file was created", now);
 		header[t] = ' ';
 		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
-		header[t] = ' ';		
+		header[t] = ' ';
 		if (keywords) {
 			while (keywords->type) {
 				switch (keywords->type) {
@@ -625,7 +625,6 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-		
 		INDIGO_DEBUG(clock_t start = clock());
 		unsigned char *mem = NULL;
 		unsigned long mem_size = 0;
@@ -640,9 +639,38 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			if (byte_per_pixel == 1) {
 			} else if (byte_per_pixel == 2) {
 				unsigned short *b16 = data + FITS_HEADER_SIZE;
+				unsigned short max = 0;
+				for (int i = 0; i < size; i++) {
+					unsigned short value = *b16++;
+					if (max < value)
+						max = value;
+				}
+				int shift = 0;
+				if (max > 0x8000)
+					shift = 8;
+				else if (max > 0x4000)
+					shift = 7;
+				else if (max > 0x2000)
+					shift = 6;
+				else if (max > 0x1000)
+					shift = 5;
+				else if (max > 0x800)
+					shift = 4;
+				else if (max > 0x400)
+					shift = 3;
+				else if (max > 0x200)
+					shift = 2;
+				else if (max > 0x100)
+					shift = 1;
 				unsigned char *b8 = data + FITS_HEADER_SIZE;
-				for (int i = 0; i < size; i++)
-					*b8++ = *b16++;
+				b16 = data + FITS_HEADER_SIZE;
+				if (shift > 0) {
+					for (int i = 0; i < size; i++)
+						*b8++ = *b16++ >> shift;
+				} else {
+					for (int i = 0; i < size; i++)
+						*b8++ = *b16++;
+				}
 			}
 			cinfo.input_components = 1;
 			cinfo.in_color_space = JCS_GRAYSCALE;
@@ -664,12 +692,12 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		JSAMPROW row_pointer[1];
 		jpeg_start_compress( &cinfo, TRUE);
 		unsigned char *tmp = data + FITS_HEADER_SIZE;
-		
+
 		while( cinfo.next_scanline < cinfo.image_height ) {
 			row_pointer[0] = &tmp[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
 			jpeg_write_scanlines(&cinfo, row_pointer, 1);
 		}
-		
+
 		jpeg_finish_compress( &cinfo );
 		jpeg_destroy_compress( &cinfo );
 
@@ -678,7 +706,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		blobsize = (int)mem_size;
 		free(mem);
-		
+
 		INDIGO_DEBUG(indigo_debug("RAW to JPEG conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {

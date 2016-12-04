@@ -169,7 +169,7 @@
 					<div class="tree">
 						<ul>
 							<li initially-collapsed>
-								<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{indigoURI}}</span>
+								<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{indigoServer}}</span>
 								<ul>
 									<li ng-repeat="device in model" initially-collapsed>
 										<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{device.device}}</span>
@@ -230,7 +230,19 @@
 																</form>
 																<form class="form-horizontal" ng-switch-when="LIGHT">
 																	<div class="form-group" ng-repeat="item in property.items">
-																		<label class="col-sm-10 control-label">{{item.label}}</label>
+																		<label class="col-sm-6 control-label">{{item.label}}</label>
+																		<div class="col-sm-6">
+																			<input class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value"/>
+																		</div>
+																	</div>
+																</form>
+																<form class="form-horizontal" ng-switch-when="BLOB">
+																	<div class="form-group" ng-repeat="item in property.items">
+																		<label class="col-sm-6 control-label">{{item.label}}</label>
+																		<div class="col-sm-6" ng-if="property.state=='Ok' && item.value!=undefined">
+																			<img width="100%" ng-src="{{'http://' + indigoServer + item.value}}" ng-if="item.jpeg"/>
+																			<a ng-href="{{'http://' + indigoServer + item.value}}" ng-if="!item.jpeg">{{'http://' + indigoServer + item.value}}</a>
+																		</div>
 																	</div>
 																</form>
 																<div class="alert alert-warning alert-dismissible" role="alert" ng-if="property.message!=null">
@@ -536,7 +548,7 @@
 								item.value = vector.oneLight[i].value;
 							}
 						}
-					} else if ((vector = message.defTextVector) != undefined) {
+					} else if ((vector = message.defBLOBVector) != undefined) {
 						var device = addDevice($scope.model, vector.device);
 						var group = addGroup(device, vector.group);
 						var property = addProperty(group, vector.name);
@@ -545,8 +557,8 @@
 						property.state = vector.state;
 						property.message = vector.message;
 						for (var i = 0; i < vector.defBLOB.length; i++) {
-							var item = addItem(property, vector.defBLOB[i].name);
-							item.value = vector.defBLOB[i].value;
+								var item = addItem(property, vector.defBLOB[i].name);
+								item.label = vector.defBLOB[i].label;
 							}
 						} else if ((vector = message.setBLOBVector) != undefined) {
 						var property = getProperty($scope.model, vector.device, vector.name);
@@ -554,9 +566,13 @@
 							property.state = vector.state;
 							for (var i = 0; i < vector.oneBLOB.length; i++) {
 								var item = getItem(property, vector.oneBLOB[i].name);
-								if (item != undefined)
-									item.value = vector.oneBLOB[i].value;
-									item.label = vector.oneBLOB[i].label;
+								item.jpeg = false;
+								if (item != undefined) {
+									if (vector.oneBLOB[i].value != undefined) {
+										item.value = vector.oneBLOB[i].value;
+										item.jpeg = vector.oneBLOB[i].value.substr(-5) === ".jpeg";
+									}
+								}
 							}
 						}
 					} else if ((vector = message.deleteProperty) != undefined) {
@@ -597,11 +613,11 @@
 				doSend(message);
 				console.log("SEND "+message);
 			}
-			$scope.indigoURI = "ws://localhost:7624/";
+			$scope.indigoServer = "localhost:7624";
 			$scope.init = function() {
 				console.log("INIT");
 				$scope.model = [];
-				websocket = new WebSocket($scope.indigoURI);
+				websocket = new WebSocket("ws://" + $scope.indigoServer);
 				websocket.onopen = $scope.onOpen;
 				websocket.onclose = $scope.onClose;
 				websocket.onmessage = $scope.onMessage;

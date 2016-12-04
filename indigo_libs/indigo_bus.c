@@ -38,11 +38,14 @@
 
 #define MAX_DEVICES 32
 #define MAX_CLIENTS 8
+#define MAX_BLOBS		32
 
 static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
+static indigo_property *blobs[MAX_BLOBS];
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t blob_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool is_started = false;
 
 char *indigo_property_type_text[] = {
@@ -229,6 +232,7 @@ indigo_result indigo_start() {
 	if (!is_started) {
 		memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));
 		memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
+		memset(blobs, 0, MAX_BLOBS * sizeof(indigo_property *));
 		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
 		INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
 		is_started = true;
@@ -526,6 +530,11 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	property->state = state;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
+	for (int i = 0; i < MAX_BLOBS; i++)
+		if (blobs[i] == NULL) {
+			blobs[i] = property;
+			break;
+		}
 	return property;
 }
 
@@ -538,6 +547,30 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 	property->count = count;
 	return property;
 }
+
+void indigo_release_property(indigo_property *property) {
+	assert(property != NULL);
+	for (int i = 0; i < MAX_BLOBS; i++)
+		if (blobs[i] == property) {
+			blobs[i] = NULL;
+			break;
+		}
+	free(property);
+}
+
+indigo_result indigo_validate_blob(indigo_item *item) {
+	for (int i = 0; i < MAX_BLOBS; i++) {
+		indigo_property *property = blobs[i];
+		if (property != NULL) {
+			for (int j = 0; j < property->count; j++) {
+				if (item == &property->items[j])
+					return INDIGO_OK;
+			}
+		}
+	}
+	return INDIGO_FAILED;
+}
+
 
 void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *format, ...) {
 	assert(item != NULL);
