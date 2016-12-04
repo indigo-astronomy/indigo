@@ -331,6 +331,12 @@ extern indigo_property *indigo_init_blob_property(indigo_property *property, con
 /** Resize property.
  */
 extern indigo_property *indigo_resize_property(indigo_property *property, int count);
+/** Release property.
+ */
+extern void indigo_release_property(indigo_property *property);
+/** Validate address of item of registered BLOB property.
+ */
+extern indigo_result indigo_validate_blob(indigo_item *item);
 
 /** Initialize text item.
  */

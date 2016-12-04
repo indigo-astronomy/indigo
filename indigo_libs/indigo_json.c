@@ -36,11 +36,11 @@
 
 #include "indigo_json.h"
 
-#undef INDIGO_TRACE_PROTOCOL
-#define INDIGO_TRACE_PROTOCOL(c) c
+//#undef INDIGO_TRACE_PROTOCOL
+//#define INDIGO_TRACE_PROTOCOL(c) c
 
-#undef INDIGO_DEBUG_PROTOCOL
-#define INDIGO_DEBUG_PROTOCOL(c) c
+//#undef INDIGO_DEBUG_PROTOCOL
+//#define INDIGO_DEBUG_PROTOCOL(c) c
 
 #define PROPERTY_SIZE sizeof(indigo_property)+INDIGO_MAX_ITEMS*(sizeof(indigo_item))
 

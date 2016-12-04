@@ -174,14 +174,14 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 
 indigo_result indigo_mount_detach(indigo_device *device) {
 	assert(device != NULL);
-	free(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
-	free(MOUNT_LST_TIME_PROPERTY);
-	free(MOUNT_PARK_PROPERTY);
-	free(MOUNT_ON_COORDINATES_SET_PROPERTY);
-	free(MOUNT_SLEW_RATE_PROPERTY);
-	free(MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
-	free(MOUNT_HORIZONTAL_COORDINATES_PROPERTY);
-	free(MOUNT_ABORT_MOTION_PROPERTY);
+	indigo_release_property(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
+	indigo_release_property(MOUNT_LST_TIME_PROPERTY);
+	indigo_release_property(MOUNT_PARK_PROPERTY);
+	indigo_release_property(MOUNT_ON_COORDINATES_SET_PROPERTY);
+	indigo_release_property(MOUNT_SLEW_RATE_PROPERTY);
+	indigo_release_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
+	indigo_release_property(MOUNT_HORIZONTAL_COORDINATES_PROPERTY);
+	indigo_release_property(MOUNT_ABORT_MOTION_PROPERTY);
 	return indigo_device_detach(device);
 }
 

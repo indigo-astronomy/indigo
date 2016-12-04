@@ -185,7 +185,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
-	free(X_FOCUSER_FREQUENCY_PROPERTY);
+	indigo_release_property(X_FOCUSER_FREQUENCY_PROPERTY);
 	return indigo_focuser_detach(device);
 }
 

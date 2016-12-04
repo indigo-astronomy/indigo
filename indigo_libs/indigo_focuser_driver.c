@@ -137,11 +137,11 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 
 indigo_result indigo_focuser_detach(indigo_device *device) {
 	assert(device != NULL);
-	free(FOCUSER_SPEED_PROPERTY);
-	free(FOCUSER_DIRECTION_PROPERTY);
-	free(FOCUSER_STEPS_PROPERTY);
-	free(FOCUSER_POSITION_PROPERTY);
-	free(FOCUSER_ABORT_MOTION_PROPERTY);
+	indigo_release_property(FOCUSER_SPEED_PROPERTY);
+	indigo_release_property(FOCUSER_DIRECTION_PROPERTY);
+	indigo_release_property(FOCUSER_STEPS_PROPERTY);
+	indigo_release_property(FOCUSER_POSITION_PROPERTY);
+	indigo_release_property(FOCUSER_ABORT_MOTION_PROPERTY);
 	return indigo_device_detach(device);
 }
 

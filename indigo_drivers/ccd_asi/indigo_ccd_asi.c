@@ -798,8 +798,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
 
-	free(PIXEL_FORMAT_PROPERTY);
-	free(ASI_ADVANCED_PROPERTY);
+	indigo_release_property(PIXEL_FORMAT_PROPERTY);
+	indigo_release_property(ASI_ADVANCED_PROPERTY);
 
 	return indigo_ccd_detach(device);
 }

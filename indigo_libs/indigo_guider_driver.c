@@ -102,8 +102,8 @@ indigo_result indigo_guider_change_property(indigo_device *device, indigo_client
 
 indigo_result indigo_guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	free(GUIDER_GUIDE_DEC_PROPERTY);
-	free(GUIDER_GUIDE_RA_PROPERTY);
+	indigo_release_property(GUIDER_GUIDE_DEC_PROPERTY);
+	indigo_release_property(GUIDER_GUIDE_RA_PROPERTY);
 	return indigo_device_detach(device);
 }
 
