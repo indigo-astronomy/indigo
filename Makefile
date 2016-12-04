@@ -211,7 +211,7 @@ lib/libnovas.a: externals/novas/novas.o externals/novas/eph_manager.o externals/
 #---------------------------------------------------------------------
 
 externals/libjpeg/Makefile: indigo_drivers/ccd_iidc/externals/libdc1394/configure
-	cd externals/libjpeg; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) $(LIBUSB_CFLAGS) $(LIBUSB_LIBS); cd ../..
+	cd externals/libjpeg; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)"; cd ../..
 
 lib/libjpeg.a: externals/libjpeg/Makefile
 	cd externals/libjpeg; make install; cd ../..
@@ -601,4 +601,5 @@ clean: init
 	rm -f $(wildcard indigo_test/*.o)
 	cd externals/hidapi; make maintainer-clean; cd ../..
 	cd externals/libusb; make maintainer-clean; cd ../..
+	cd externals/libjpeg; make distclean; cd ../..
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; cd ../../../..
