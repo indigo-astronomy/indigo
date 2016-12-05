@@ -48,6 +48,7 @@
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 #include "mdns_avahi.h"
+#define MDNS_SERVICE_TYPE "_indigo._tcp"
 #endif
 
 #define SERVER_NAME	"INDIGO Server"
@@ -191,9 +192,9 @@ int main(int argc, const char * argv[]) {
 	}
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-	char hostname[255];
-	gethostname(hostname, 255);
-	mdns_init(hostname, "_indigo._tcp", NULL, indigo_server_tcp_port);
+	char hostname[MAX_LENGTH];
+	gethostname(hostname, MAX_LENGTH);
+	mdns_init(hostname, MDNS_SERVICE_TYPE, NULL, indigo_server_tcp_port);
 	mdns_start();
 #endif
 

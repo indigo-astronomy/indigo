@@ -86,16 +86,28 @@ indigo_result indigo_add_driver(driver_entry_point driver, bool init) {
 	return add_driver(driver, NULL, init);
 }
 
+#if defined(INDIGO_MACOS)
+#define SO_NAME ".dylib"
+#else
+#define SO_NAME ".so"
+#endif
+
 indigo_result indigo_load_driver(const char *name, bool init) {
 	char driver_name[INDIGO_NAME_SIZE];
+	char so_name[INDIGO_NAME_SIZE];
 	char *entry_point_name, *cp;
 	void *dl_handle;
-	driver_entry_point driver;	
+	driver_entry_point driver;
+
 	strncpy(driver_name, name, sizeof(driver_name));
+	strncpy(so_name, name, sizeof(so_name));
+
 	entry_point_name = basename(driver_name);
 	cp = strchr(entry_point_name, '.');
 	if (cp) *cp = '\0';
-	dl_handle = dlopen(name, RTLD_LAZY);
+	else strncat(so_name, SO_NAME, sizeof(so_name));
+
+	dl_handle = dlopen(so_name, RTLD_LAZY);
 	if (!dl_handle) {
 		INDIGO_LOG(indigo_log("Driver %s can't be loaded.", entry_point_name));
 		return INDIGO_FAILED;

@@ -28,6 +28,8 @@
 
 #include "indigo_bus.h"
 
+#define MAX_LENGTH 255
+
 int mdns_init(char *name, char *type, char *text, int port);
 int mdns_start();
 int mdns_stop();
