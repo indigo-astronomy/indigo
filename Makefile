@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 10
+INDIGO_BUILD := 11
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -60,6 +60,7 @@ ifeq ($(OS_DETECTED),Linux)
 		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/$(ARCH_DETECTED)/libASICamera2.a
 	endif
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
+	INSTALL_PREFIX=/usr/local
 	PACKAGE_TYPE=deb
 endif
 
@@ -93,7 +94,7 @@ ifeq ($(OS_DETECTED),Linux)
 	else
 		CFLAGS=-g -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -pthread -DINDIGO_LINUX
 	endif
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -Llib
+	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -Llib -Wl,-rpath=$(INSTALL_PREFIX)/lib,-rpath=.,-rpath=$(INSTALL_PREFIX)/drivers
 	SOEXT=so
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
@@ -562,15 +563,15 @@ install:
 package: $(PACKAGE_NAME).$(PACKAGE_TYPE)
 
 $(PACKAGE_NAME).deb: clean all
-	install -d /tmp/$(PACKAGE_NAME)/usr/local/bin
-	install bin/indigo_server /tmp/$(PACKAGE_NAME)/usr/local/bin
-	install bin/indigo_server_standalone /tmp/$(PACKAGE_NAME)/usr/local/bin
-	install $(DRIVERS) /tmp/$(PACKAGE_NAME)/usr/local/bin
-	install -d /tmp/$(PACKAGE_NAME)/usr/local/lib
-	install lib/libindigo.so /tmp/$(PACKAGE_NAME)/usr/local/lib
-	install lib/libindigo.a /tmp/$(PACKAGE_NAME)/usr/local/lib
-	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
-	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
+	install -d /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
+	install bin/indigo_server /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
+	install bin/indigo_server_standalone /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
+	install $(DRIVERS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
+	install -d /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	install lib/libindigo.so /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	install lib/libindigo.a /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
 	install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
 	install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_ssag.rules
