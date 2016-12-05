@@ -160,7 +160,7 @@ static void start_worker_thread(int *client_socket) {
 							break;
 						if (!strcasecmp(header, "Connection: keep-alive"))
 							keep_alive = true;
-						indigo_debug("%s", header);
+						INDIGO_DEBUG(indigo_debug("%s", header));
 					}
 					if (!strncmp(buffer, "GET /blob/", 10)) {
 						indigo_item *item;
