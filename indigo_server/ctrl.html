@@ -613,9 +613,9 @@
 				doSend(message);
 				console.log("SEND "+message);
 			}
-			$scope.indigoServer = "localhost:7624";
+			$scope.indigoServer = window.location.hostname+":"+window.location.port;
 			$scope.init = function() {
-				console.log("INIT");
+				console.log("INIT "+$scope.indigoServer);
 				$scope.model = [];
 				websocket = new WebSocket("ws://" + $scope.indigoServer);
 				websocket.onopen = $scope.onOpen;

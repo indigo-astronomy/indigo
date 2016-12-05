@@ -148,7 +148,7 @@ SIMULATOR_LIBS=\
 #
 #---------------------------------------------------------------------
 
-all: init $(EXTERNALS) lib/libindigo.a lib/libindigo.$(SOEXT) drivers bin/indigo_server_standalone bin/test bin/client bin/indigo_server
+all: init $(EXTERNALS) lib/libindigo.a lib/libindigo.$(SOEXT) drivers bin/indigo_server_standalone bin/test bin/client bin/indigo_server share/indigo/ctrl.html
 
 #---------------------------------------------------------------------
 #
@@ -306,6 +306,7 @@ init:
 	install -d lib
 	install -d drivers
 	install -d include
+	install -d share/indigo
 	cp indigo_libs/indigo_config.h indigo_libs/indigo_config.h.orig
 	sed 's/INDIGO_BUILD.*/INDIGO_BUILD $(INDIGO_BUILD)/' indigo_libs/indigo_config.h.orig >indigo_libs/indigo_config.h
 	cp INDIGO\ Server\ for\ macOS/Info.plist INDIGO\ Server\ for\ macOS/Info.plist.orig
@@ -538,20 +539,30 @@ bin/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  lib/
 
 #---------------------------------------------------------------------
 #
+#	Control panel
+#
+#---------------------------------------------------------------------
+
+share/indigo/ctrl.html:	indigo_server/ctrl.html
+	install indigo_server/ctrl.html share/indigo/ctrl.html
+
+#---------------------------------------------------------------------
+#
 #	Install
 #
 #---------------------------------------------------------------------
 
 install:
-	sudo install -D -m 0755 bin/indigo_server /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
-	sudo install -D -m 0755 bin/indigo_server_standalone /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
-	sudo install -D -m 0644 $(DRIVERS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
-	sudo install -D -m 0644 $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	sudo install -D -m 0755 bin/indigo_server $(INSTALL_PREFIX)/bin
+	sudo install -D -m 0755 bin/indigo_server_standalone $(INSTALL_PREFIX)/bin
+	sudo install -D -m 0644 $(DRIVERS) $(INSTALL_PREFIX)/bin
+	sudo install -D -m 0644 $(DRIVER_LIBS) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-indigo_ccd_asi.rules
 	sudo install -D -m 0644 indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/99-efw.rules /lib/udev/rules.d/99-indigo_wheel_asi.rules
+	sudo install -D -m 0644 share/indigo/ctrl.html $(INSTALL_PREFIX)/share/indigo/ctrl.html
 	sudo udevadm control --reload-rules
 
 #---------------------------------------------------------------------
@@ -577,6 +588,7 @@ $(PACKAGE_NAME).deb: clean all
 	install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_ssag.rules
 	install -D -m 0644 indigo_drivers/ccd_asi/indigo_ccd_asi.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_asi.rules
 	install -D -m 0644 indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/99-efw.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_wheel_asi.rules
+	install -D -m 0644 share/indigo/ctrl.html /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/share/indigo/ctrl.html
 	cp -r share /tmp/$(PACKAGE_NAME)
 	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
 	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
