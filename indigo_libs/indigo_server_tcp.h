@@ -36,6 +36,10 @@ typedef void (*indigo_server_tcp_callback)(int);
  */
 extern int indigo_server_tcp_port;
 
+/** HTTP server document root.
+ */
+extern char indigo_server_document_root[INDIGO_VALUE_SIZE];
+
 /** Start network server (function will block until server is active).
  */
 extern indigo_result indigo_server_tcp(indigo_server_tcp_callback callback);

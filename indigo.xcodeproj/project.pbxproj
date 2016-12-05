@@ -248,7 +248,7 @@
 		599A63AD1DEA070E00ABC827 /* websocket_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = websocket_test.html; sourceTree = "<group>"; };
 		599A63AE1DEA2F4700ABC827 /* indigo_driver_json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_driver_json.c; sourceTree = "<group>"; };
 		599A63AF1DEA2F4700ABC827 /* indigo_driver_json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_driver_json.h; sourceTree = "<group>"; };
-		599A63B21DEB7BF500ABC827 /* websocket_ctrl.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = websocket_ctrl.html; sourceTree = "<group>"; };
+		599A63B21DEB7BF500ABC827 /* ctrl.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = ctrl.html; sourceTree = "<group>"; };
 		599A63D41DF3670100ABC827 /* libjpeg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjpeg.a; path = lib/libjpeg.a; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
 		599C9A371D9FF0A3008BBCC1 /* INDIGO Server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "INDIGO Server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -313,7 +313,7 @@
 		9D97F8061D9A89ED00582EAF /* indigo_server_tcp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_server_tcp.c; sourceTree = "<group>"; };
 		9D97F8071D9A89ED00582EAF /* indigo_server_tcp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_server_tcp.h; sourceTree = "<group>"; };
 		9D97F8171D9A8A1900582EAF /* indigo_server */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_server; sourceTree = BUILT_PRODUCTS_DIR; };
-		9D97F81A1D9A8A5D00582EAF /* indigo_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = indigo_server.c; path = ../indigo_server/indigo_server.c; sourceTree = "<group>"; };
+		9D97F81A1D9A8A5D00582EAF /* indigo_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_server.c; sourceTree = "<group>"; };
 		9D97F81E1D9E9E4F00582EAF /* indigo_version.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_version.c; sourceTree = "<group>"; };
 		9D97F81F1D9E9E4F00582EAF /* indigo_version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_version.h; sourceTree = "<group>"; };
 		9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_atik_main.c; sourceTree = "<group>"; };
@@ -482,6 +482,7 @@
 				5981C8E21DC2A2D300C7705F /* TODO.md */,
 				59D381AF1D95998300E87393 /* indigo_drivers */,
 				59D381A61D9590EA00E87393 /* indigo_libs */,
+				599A63D61DF5D93500ABC827 /* indigo_server */,
 				592662AF1D9590630021746A /* indigo_test */,
 				599C9A381D9FF0A3008BBCC1 /* INDIGO Server for macOS */,
 				599A240C1DBEC5820020BF8F /* tools */,
@@ -514,7 +515,6 @@
 				592662B01D9590630021746A /* test.c */,
 				59D382161D97348500E87393 /* client.c */,
 				599A63AD1DEA070E00ABC827 /* websocket_test.html */,
-				599A63B21DEB7BF500ABC827 /* websocket_ctrl.html */,
 			);
 			path = indigo_test;
 			sourceTree = "<group>";
@@ -596,6 +596,15 @@
 			path = mount_nexstar;
 			sourceTree = "<group>";
 		};
+		599A63D61DF5D93500ABC827 /* indigo_server */ = {
+			isa = PBXGroup;
+			children = (
+				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
+				599A63B21DEB7BF500ABC827 /* ctrl.html */,
+			);
+			path = indigo_server;
+			sourceTree = "<group>";
+		};
 		599C9A381D9FF0A3008BBCC1 /* INDIGO Server for macOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -665,7 +674,6 @@
 				59D707671DC527B800DEF566 /* indigo_mount_driver.c */,
 				59019E0A1DE0AC7400CCB3ED /* indigo_client.h */,
 				59019E091DE0AC7400CCB3ED /* indigo_client.c */,
-				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
 			);
 			path = indigo_libs;
 			sourceTree = "<group>";
