@@ -46,6 +46,10 @@
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #endif
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
+#include "mdns_avahi.h"
+#endif
+
 #define SERVER_NAME	"INDIGO Server"
 
 driver_entry_point static_drivers[] = {
@@ -122,6 +126,11 @@ static indigo_result detach(indigo_device *device) {
 
 void signal_handler(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
+	mdns_stop();
+#endif
+
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
 			if (indigo_available_drivers[i].dl_handle != NULL)
@@ -141,7 +150,7 @@ void signal_handler(int signo) {
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	
+
 	if (!access("share/indigo", X_OK | R_OK)) {
 		getcwd(indigo_server_document_root, INDIGO_VALUE_SIZE);
 		strcat(indigo_server_document_root, "/share/indigo");
@@ -180,6 +189,13 @@ int main(int argc, const char * argv[]) {
 			indigo_load_driver(argv[i], false);
 		}
 	}
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
+	char hostname[255];
+	gethostname(hostname, 255);
+	mdns_init(hostname, "_indigo._tcp", NULL, indigo_server_tcp_port);
+	mdns_start();
+#endif
 
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i], false);

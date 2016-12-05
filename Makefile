@@ -11,6 +11,14 @@ INDIGO_ROOT := $(shell pwd)
 ENABLE_STATIC=yes
 ENABLE_SHARED=yes
 
+USE_AVAHI=yes
+
+ifeq ($(USE_AVAHI),yes)
+	AVAHI_LIBS=-lavahi-client -lavahi-common
+	AVAHI_CFLAGS=-DHAVE_LIBAVAHI_CLIENT -DHAVE_LIBAVAHI_COMMON
+endif
+
+
 ifeq ($(OS),Windows_NT)
 	OS_DETECTED := Windows
 else
@@ -530,11 +538,11 @@ bin/client: indigo_test/client.o
 #
 #---------------------------------------------------------------------
 
-bin/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
+bin/indigo_server: indigo_server/indigo_server.o indigo_server/mdns_avahi.c $(SIMULATOR_LIBS)
+	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo $(AVAHI_LIBS)
 
-bin/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  lib/libindigo.a $(EXTERNALS)
-	$(CC) -DSTATIC_DRIVERS $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
+bin/indigo_server_standalone: indigo_server/indigo_server.c indigo_server/mdns_avahi.c $(DRIVER_LIBS)  lib/libindigo.a $(EXTERNALS)
+	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) $(AVAHI_LIBS) -lstdc++
 
 
 #---------------------------------------------------------------------
