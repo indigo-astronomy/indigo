@@ -121,6 +121,10 @@ static void start_worker_thread(int *client_socket) {
 			char buffer[BUFFER_SIZE];
 			while (read_line(socket, buffer, BUFFER_SIZE) >= 0) {
 				indigo_debug("%s", buffer);
+				if (strstr(buffer, "..")) {
+					close(socket);
+					break;
+				}
 				if (!strncmp(buffer, "GET / ", 6)) {
 					char response[256];
 					unsigned char shaHash[20];
