@@ -94,7 +94,7 @@ ifeq ($(OS_DETECTED),Linux)
 	else
 		CFLAGS=-g -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -pthread -DINDIGO_LINUX
 	endif
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -Llib -Wl,-rpath=$(INSTALL_PREFIX)/lib,-rpath=.,-rpath=$(INSTALL_PREFIX)/drivers
+	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -Llib -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
