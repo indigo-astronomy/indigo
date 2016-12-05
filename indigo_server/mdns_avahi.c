@@ -48,9 +48,9 @@ static AvahiSimplePoll *simple_poll = NULL;
 static AvahiClient *client = NULL;
 static char *name = NULL;
 
-static char svc_name[255];
-static char svc_text[255];
-static char svc_type[255];
+static char svc_name[MAX_LENGTH];
+static char svc_text[MAX_LENGTH];
+static char svc_type[MAX_LENGTH];
 static int svc_port;
 
 pthread_mutex_t sleep_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -232,9 +232,9 @@ fail:
 }
 
 int mdns_init(char *name, char *type, char *text, int port) {
-	strncpy(svc_name, name, 255);
-	strncpy(svc_type, type, 255);
-	if (text != NULL) strncpy(svc_text, text, 255);
+	strncpy(svc_name, name, MAX_LENGTH);
+	strncpy(svc_type, type, MAX_LENGTH);
+	if (text != NULL) strncpy(svc_text, text, MAX_LENGTH);
 	else svc_text[0] = '\0';
 	svc_port = port;
 	return 0;
@@ -257,7 +257,7 @@ int mdns_stop() {
 #else /* HAVE_LIBAVAHI */
 
 int mdns_init(char *name, char *type, char *text, int port) {
-        return 0;
+	return 0;
 }
 
 int mdns_start() {
