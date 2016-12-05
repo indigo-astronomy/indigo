@@ -543,10 +543,10 @@ bin/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  lib/
 #---------------------------------------------------------------------
 
 install:
-	sudo install -D -m 0755 bin/indigo_server /tmp/$(PACKAGE_NAME)/usr/local/bin
-	sudo install -D -m 0755 bin/indigo_server_standalone /tmp/$(PACKAGE_NAME)/usr/local/bin
-	sudo install -D -m 0644 $(DRIVERS) /tmp/$(PACKAGE_NAME)/usr/local/bin
-	sudo install -D -m 0644 $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/usr/local/lib
+	sudo install -D -m 0755 bin/indigo_server /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
+	sudo install -D -m 0755 bin/indigo_server_standalone /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
+	sudo install -D -m 0644 $(DRIVERS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
+	sudo install -D -m 0644 $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
