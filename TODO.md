@@ -17,8 +17,8 @@
 2. Client API for easier integration to client apps & GUI __DONE__
 3. ASCOM client adapter
 4. Multipoint alignment engine for mount drivers
-5. integrated http server for binary blob download
-6. HTTP/JSON protocol adapters
+5. integrated http server for binary blob download __DONE__
+6. HTTP/JSON protocol adapters __DONE__
 7. Windows port
 8. Android port
 9. JPEG format support __DONE__
