@@ -26,8 +26,7 @@
 #include <syslog.h>
 #include <assert.h>
 #include <signal.h>
-
-#define MDNS_SERVICE_TYPE "_indigo._tcp"
+#include <dns_sd.h>
 
 #include "indigo_bus.h"
 #include "indigo_server_tcp.h"
@@ -48,17 +47,8 @@
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #endif
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-#include "mdns_avahi.h"
-#elif defined(INDIGO_MACOS)
-#include <dns_sd.h>
-
-DNSServiceRef sdRef;
-#endif
-
-
-
-#define SERVER_NAME	"INDIGO Server"
+#define MDNS_SERVICE_TYPE	"_indigo._tcp"
+#define SERVER_NAME				"INDIGO Server"
 
 driver_entry_point static_drivers[] = {
 	indigo_ccd_simulator,
@@ -79,6 +69,7 @@ driver_entry_point static_drivers[] = {
 
 static int first_driver = 2;
 static indigo_property *driver_property;
+static DNSServiceRef sdRef;
 
 static unsigned char ctrl[] = {
 #include "ctrl.data"
@@ -139,11 +130,7 @@ static indigo_result detach(indigo_device *device) {
 void signal_handler(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-	mdns_stop();
-#elif defined(INDIGO_MACOS)
 	DNSServiceRefDeallocate(sdRef);
-#endif
 
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
@@ -194,14 +181,7 @@ int main(int argc, const char * argv[]) {
 	
 	indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
 	
-#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-	char hostname[MAX_LENGTH];
-	gethostname(hostname, MAX_LENGTH);
-	mdns_init(hostname, MDNS_SERVICE_TYPE, NULL, indigo_server_tcp_port);
-	mdns_start();
-#elif defined(INDIGO_MACOS)
 	DNSServiceRegister(&sdRef, 0, 0, NULL, MDNS_SERVICE_TYPE, NULL, NULL, indigo_server_tcp_port, 0, NULL, NULL, NULL);
-#endif
 
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i], false);

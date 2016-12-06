@@ -11,8 +11,6 @@ INDIGO_ROOT := $(shell pwd)
 ENABLE_STATIC=yes
 ENABLE_SHARED=yes
 
-USE_AVAHI=yes
-
 ifeq ($(OS),Windows_NT)
 	OS_DETECTED := Windows
 else
@@ -64,10 +62,6 @@ ifeq ($(OS_DETECTED),Linux)
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	INSTALL_PREFIX=/usr/local
 	PACKAGE_TYPE=deb
-	ifeq ($(USE_AVAHI),yes)
-		AVAHI_LIBS=-lavahi-client -lavahi-common
-		AVAHI_CFLAGS=-DHAVE_LIBAVAHI_CLIENT -DHAVE_LIBAVAHI_COMMON
-	endif
 endif
 
 #---------------------------------------------------------------------
@@ -100,7 +94,7 @@ ifeq ($(OS_DETECTED),Linux)
 	else
 		CFLAGS=-g -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -pthread -DINDIGO_LINUX
 	endif
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -Llib -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
+	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -Llib -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
