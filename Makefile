@@ -13,12 +13,6 @@ ENABLE_SHARED=yes
 
 USE_AVAHI=yes
 
-ifeq ($(USE_AVAHI),yes)
-	AVAHI_LIBS=-lavahi-client -lavahi-common
-	AVAHI_CFLAGS=-DHAVE_LIBAVAHI_CLIENT -DHAVE_LIBAVAHI_COMMON
-endif
-
-
 ifeq ($(OS),Windows_NT)
 	OS_DETECTED := Windows
 else
@@ -70,6 +64,10 @@ ifeq ($(OS_DETECTED),Linux)
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	INSTALL_PREFIX=/usr/local
 	PACKAGE_TYPE=deb
+	ifeq ($(USE_AVAHI),yes)
+		AVAHI_LIBS=-lavahi-client -lavahi-common
+		AVAHI_CFLAGS=-DHAVE_LIBAVAHI_CLIENT -DHAVE_LIBAVAHI_COMMON
+	endif
 endif
 
 #---------------------------------------------------------------------
