@@ -293,6 +293,7 @@
 		59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libhidapi.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		59F756191DCE4F83002CFC82 /* libusb.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libusb.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D658B941DE4A8BC006C9CC5 /* indigo_names.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_names.h; sourceTree = "<group>"; };
+		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
 		9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc.c; sourceTree = "<group>"; };
 		9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_iidc.h; sourceTree = "<group>"; };
@@ -581,6 +582,7 @@
 		599A240C1DBEC5820020BF8F /* tools */ = {
 			isa = PBXGroup;
 			children = (
+				9D7D59191DF6B21B003D2B59 /* rjsmin.py */,
 				599A240D1DBEC5BA0020BF8F /* cltools.sh */,
 			);
 			path = tools;

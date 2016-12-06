@@ -61,7 +61,14 @@ static int client_count = 0;
 static indigo_server_tcp_callback server_callback;
 
 int indigo_server_tcp_port = 7624;
-char indigo_server_document_root[INDIGO_VALUE_SIZE] = "";
+
+static struct resource {
+	char *path;
+	unsigned char *data;
+	unsigned length;
+	char *content_type;
+	struct resource *next;
+} *resources = NULL;
 
 #define BUFFER_SIZE	1024
 
@@ -83,7 +90,7 @@ static long read_line(int handle, char *buffer, int length) {
 			break;
 		}
 	}
-	buffer[i] = '\0';
+	buffer[i] = 0;
 	return n == -1 ? -1 : i;
 }
 
@@ -118,123 +125,102 @@ static void start_worker_thread(int *client_socket) {
 			indigo_json_parse(NULL, protocol_adapter);
 			indigo_detach_client(protocol_adapter);
 		} else if (c == 'G') {
-			char buffer[BUFFER_SIZE];
-			while (read_line(socket, buffer, BUFFER_SIZE) >= 0) {
-				indigo_debug("%s", buffer);
-				if (strstr(buffer, "..")) {
-					close(socket);
-					break;
-				}
-				if (!strncmp(buffer, "GET / ", 6)) {
-					char response[256];
-					unsigned char shaHash[20];
-					while (read_line(socket, buffer, BUFFER_SIZE) >= 0) {
-						if (*buffer == 0)
-							break;
-						if (!strncmp(buffer, "Sec-WebSocket-Key: ", 19)) {
-							strcpy(response, buffer + 19);
-						}
-					}
-					strcat(response, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-					memset(shaHash, 0, sizeof(shaHash));
-					sha1(shaHash, response, strlen(response));
-					write_line(socket, "HTTP/1.1 101 Switching Protocols");
-					write_line(socket, "Server: INDIGO/%d.%d-%d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-					write_line(socket, "Upgrade: websocket");
-					write_line(socket, "Connection: upgrade");
-					base64_encode((unsigned char *)response, shaHash, 20);
-					write_line(socket, "Sec-WebSocket-Accept: %s", response);
-					write_line(socket, "");
-					indigo_log("Protocol switched to JSON-over-WebSockets");
-					indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, true);
-					assert(protocol_adapter != NULL);
-					indigo_attach_client(protocol_adapter);
-					indigo_json_parse(NULL, protocol_adapter);
-					indigo_detach_client(protocol_adapter);
-					break;
-				} else {
+			char request[BUFFER_SIZE];
+			char header[BUFFER_SIZE];
+			while (read_line(socket, request, BUFFER_SIZE) >= 0) {
+				if (!strncmp(request, "GET /", 5)) {
+					char *path = request + 4;
+					char *space = strchr(path, ' ');
+					if (space)
+						*space = 0;
+					char websocket_key[256];
 					bool keep_alive = false;
-					char header[BUFFER_SIZE];
 					while (read_line(socket, header, BUFFER_SIZE) >= 0) {
 						if (*header == 0)
 							break;
+						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
+							strcpy(websocket_key, header + 19);
 						if (!strcasecmp(header, "Connection: keep-alive"))
 							keep_alive = true;
-						INDIGO_DEBUG(indigo_debug("%s", header));
 					}
-					if (!strncmp(buffer, "GET /blob/", 10)) {
-						indigo_item *item;
-						if (sscanf(buffer, "GET /blob/%p.", &item) && indigo_validate_blob(item) == INDIGO_OK) {
-							write_line(socket, "HTTP/1.1 200 OK");
-							write_line(socket, "Server: INDIGO/%d.%d-%d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							if (!strcmp(item->blob.format, ".jpeg")) {
-								write_line(socket, "Content-Type: image/jpeg");
-							} else {
-								write_line(socket, "Content-Type: application/octet-stream");
-								write_line(socket, "Content-Disposition: attachment; filename=\"%p.%s\"", item, item->blob.format);
-							}
-							if (keep_alive)
-								write_line(socket, "Connection: keep-alive");
-							write_line(socket, "Content-Length: %ld", item->blob.size);
-							write_line(socket, "");
-							write(socket, item->blob.value, item->blob.size);
-						} else {
-							write_line(socket, "HTTP/1.1 404 Not found");
-							write_line(socket, "Content-Type: text/plain");
-							write_line(socket, "");
-							write_line(socket, "BLOB not found!");
-							close(socket);
-							break;
-						}
-					} else {
-						char file_name[INDIGO_VALUE_SIZE];
-						char *space = strchr(buffer + 4, ' ');
-						if (space)
-							*space = 0;
-						strncpy(file_name, indigo_server_document_root, INDIGO_VALUE_SIZE);
-						strncat(file_name, buffer + 4, INDIGO_VALUE_SIZE);
-						char block[32 * 1024];
-						int file = open(file_name, O_RDONLY);
-						if (file < 0) {
-							write_line(socket, "HTTP/1.1 404 Not found");
-							write_line(socket, "Content-Type: text/plain");
-							write_line(socket, "");
-							write_line(socket, "%s not found!", file_name);
-							close(socket);
-							break;
-						} else {
-							long size = lseek(file, 0L, SEEK_END);
-							lseek(file, 0L, SEEK_SET);
-							write_line(socket, "HTTP/1.1 200 OK");
-							write_line(socket, "Server: INDIGO/%d.%d-%d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							if (keep_alive)
-								write_line(socket, "Connection: keep-alive");
-							if (strstr(file_name, ".html"))
-								write_line(socket, "Content-Type: text/html");
-							else if (strstr(file_name, ".css"))
-								write_line(socket, "Content-Type: text/css");
-							else if (strstr(file_name, ".js"))
-								write_line(socket, "Content-Type: application/javascript");
-							else if (strstr(file_name, ".jpeg"))
-								write_line(socket, "Content-Type: image/jpeg");
-							write_line(socket, "Content-Length: %ld", size);
-							write_line(socket, "");
-							long bytes_read, bytes_written;
-							while (size > 0) {
-								bytes_read = read(file, block, 32 * 1024);
-								size -= bytes_read;
-								char *data = block;
-								while (bytes_read > 0) {
-									bytes_written = write(socket, data, bytes_read);
-									bytes_read -= bytes_written;
-									data += bytes_written;
-								}
-							}
-						}
-					}
-					if (!keep_alive) {
-						close(socket);
+					if (!strcmp(path, "/")) {
+						unsigned char shaHash[20];
+						strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+						memset(shaHash, 0, sizeof(shaHash));
+						sha1(shaHash, websocket_key, strlen(websocket_key));
+						write_line(socket, "HTTP/1.1 101 Switching Protocols");
+						write_line(socket, "Server: INDIGO/%d.%d-%d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+						write_line(socket, "Upgrade: websocket");
+						write_line(socket, "Connection: upgrade");
+						base64_encode((unsigned char *)websocket_key, shaHash, 20);
+						write_line(socket, "Sec-WebSocket-Accept: %s", websocket_key);
+						write_line(socket, "");
+						indigo_log("Protocol switched to JSON-over-WebSockets");
+						indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, true);
+						assert(protocol_adapter != NULL);
+						indigo_attach_client(protocol_adapter);
+						indigo_json_parse(NULL, protocol_adapter);
+						indigo_detach_client(protocol_adapter);
 						break;
+					} else {
+						if (!strncmp(path, "/blob/", 6)) {
+							indigo_item *item;
+							if (sscanf(path, "/blob/%p.", &item) && indigo_validate_blob(item) == INDIGO_OK) {
+								write_line(socket, "HTTP/1.1 200 OK");
+								write_line(socket, "Server: INDIGO/%d.%d-%d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+								if (!strcmp(item->blob.format, ".jpeg")) {
+									write_line(socket, "Content-Type: image/jpeg");
+								} else {
+									write_line(socket, "Content-Type: application/octet-stream");
+									write_line(socket, "Content-Disposition: attachment; filename=\"%p.%s\"", item, item->blob.format);
+								}
+								if (keep_alive)
+									write_line(socket, "Connection: keep-alive");
+								write_line(socket, "Content-Length: %ld", item->blob.size);
+								write_line(socket, "");
+								write(socket, item->blob.value, item->blob.size);
+								INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, item->blob.size));
+							} else {
+								write_line(socket, "HTTP/1.1 404 Not found");
+								write_line(socket, "Content-Type: text/plain");
+								write_line(socket, "");
+								write_line(socket, "BLOB not found!");
+								close(socket);
+								INDIGO_LOG(indigo_log("%s -> Failed", request));
+								break;
+							}
+						} else {
+							struct resource *resource = resources;
+							while (resource != NULL)
+								if (!strcmp(resource->path, path))
+									break;
+								else
+									resource = resource->next;
+							if (resource == NULL) {
+								write_line(socket, "HTTP/1.1 404 Not found");
+								write_line(socket, "Content-Type: text/plain");
+								write_line(socket, "");
+								write_line(socket, "%s not found!", path);
+								close(socket);
+								INDIGO_LOG(indigo_log("%s -> Failed", request));
+								break;
+							} else {
+								write_line(socket, "HTTP/1.1 200 OK");
+								write_line(socket, "Server: INDIGO/%d.%d-%d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+								if (keep_alive)
+									write_line(socket, "Connection: keep-alive");
+								write_line(socket, "Content-Type: %s", resource->content_type);
+								write_line(socket, "Content-Length: %d", resource->length);
+								write_line(socket, "Content-Encoding: gzip");
+								write_line(socket, "");
+								write(socket, resource->data, resource->length);
+								INDIGO_LOG(indigo_log("%s -> OK (%d bytes)", request, resource->length));
+							}
+						}
+						if (!keep_alive) {
+							close(socket);
+							break;
+						}
 					}
 				}
 			}
@@ -250,6 +236,17 @@ static void start_worker_thread(int *client_socket) {
 static void server_shutdown() {
 	shutdown_initiated = true;
 	close(server_socket);
+}
+
+void indigo_server_add_resource(char *path, unsigned char *data, unsigned length, char *content_type) {
+	indigo_log("Resource %s (%d, %s) added", path, length, content_type);
+	struct resource *resource = malloc(sizeof(struct resource));
+	resource->path = path;
+	resource->data = data;
+	resource->length = length;
+	resource->content_type = content_type;
+	resource->next = resources;
+	resources = resource;
 }
 
 indigo_result indigo_server_tcp(indigo_server_tcp_callback callback) {
@@ -277,8 +274,6 @@ indigo_result indigo_server_tcp(indigo_server_tcp_callback callback) {
 		return INDIGO_CANT_START_SERVER;
 	}
 	indigo_log("Server started on %d", indigo_server_tcp_port);
-	if (*indigo_server_document_root)
-		indigo_log("Document root %s", indigo_server_document_root);
 	atexit(server_shutdown);
 	callback(client_count);
 	signal(SIGPIPE, SIG_IGN);

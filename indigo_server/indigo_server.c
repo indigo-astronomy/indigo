@@ -73,6 +73,10 @@ driver_entry_point static_drivers[] = {
 static int first_driver = 2;
 static indigo_property *driver_property;
 
+static unsigned char ctrl[] = {
+#include "ctrl.data"
+};
+
 static void server_callback(int count) {
 	INDIGO_LOG(indigo_log("%d clients", count));
 }
@@ -152,23 +156,11 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 
-	if (!access("share/indigo", X_OK | R_OK)) {
-		getcwd(indigo_server_document_root, INDIGO_VALUE_SIZE);
-		strcat(indigo_server_document_root, "/share/indigo");
-	} else if (!access("/usr/share/indigo", X_OK | R_OK)) {
-		strcpy(indigo_server_document_root, "/usr/share/indigo");
-	} else if (!access("/usr/local/share/indigo", X_OK | R_OK)) {
-		strcpy(indigo_server_document_root, "/usr/share/indigo");
-	}
-
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 
 	for (int i = 1; i < argc; i++) {
 		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
 			indigo_server_tcp_port = atoi(argv[i + 1]);
-			i++;
-		} else if ((!strcmp(argv[i], "-d") || !strcmp(argv[i], "--document-root")) && i < argc - 1) {
-			strncpy(indigo_server_document_root, argv[i + 1], INDIGO_VALUE_SIZE);
 			i++;
 		} else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators")) {
 			first_driver = 0;
@@ -190,7 +182,9 @@ int main(int argc, const char * argv[]) {
 			indigo_load_driver(argv[i], false);
 		}
 	}
-
+	
+	indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
+	
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 	char hostname[MAX_LENGTH];
 	gethostname(hostname, MAX_LENGTH);
