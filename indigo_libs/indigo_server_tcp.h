@@ -36,9 +36,9 @@ typedef void (*indigo_server_tcp_callback)(int);
  */
 extern int indigo_server_tcp_port;
 
-/** HTTP server document root.
+/** Add static document.
  */
-extern char indigo_server_document_root[INDIGO_VALUE_SIZE];
+extern void indigo_server_add_resource(char *path, unsigned char *data, unsigned length, char *content_type);
 
 /** Start network server (function will block until server is active).
  */
