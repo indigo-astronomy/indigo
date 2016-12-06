@@ -27,6 +27,15 @@
 #include <assert.h>
 #include <signal.h>
 
+#define MDNS_SERVICE_TYPE "_indigo._tcp"
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
+#include "mdns_avahi.h"
+#elif defined(INDIGO_MACOS)
+#include <dns_sd.h>
+#endif
+
+
 #include "indigo_bus.h"
 #include "indigo_server_tcp.h"
 #include "indigo_driver.h"
@@ -46,10 +55,6 @@
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #endif
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-#include "mdns_avahi.h"
-#define MDNS_SERVICE_TYPE "_indigo._tcp"
-#endif
 
 #define SERVER_NAME	"INDIGO Server"
 
@@ -190,6 +195,9 @@ int main(int argc, const char * argv[]) {
 	gethostname(hostname, MAX_LENGTH);
 	mdns_init(hostname, MDNS_SERVICE_TYPE, NULL, indigo_server_tcp_port);
 	mdns_start();
+#elif defined(INDIGO_MACOS)
+	DNSServiceRef sdRef;
+	DNSServiceRegister(&sdRef, 0, 0, NULL, MDNS_SERVICE_TYPE, NULL, NULL, indigo_server_tcp_port, 0, NULL, NULL, NULL);
 #endif
 
 	for (int i = first_driver; static_drivers[i]; i++) {
