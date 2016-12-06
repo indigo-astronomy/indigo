@@ -29,13 +29,6 @@
 
 #define MDNS_SERVICE_TYPE "_indigo._tcp"
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-#include "mdns_avahi.h"
-#elif defined(INDIGO_MACOS)
-#include <dns_sd.h>
-#endif
-
-
 #include "indigo_bus.h"
 #include "indigo_server_tcp.h"
 #include "indigo_driver.h"
@@ -54,6 +47,15 @@
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #endif
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
+#include "mdns_avahi.h"
+#elif defined(INDIGO_MACOS)
+#include <dns_sd.h>
+
+DNSServiceRef sdRef;
+#endif
+
 
 
 #define SERVER_NAME	"INDIGO Server"
@@ -139,6 +141,8 @@ void signal_handler(int signo) {
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 	mdns_stop();
+#elif defined(INDIGO_MACOS)
+	DNSServiceRefDeallocate(sdRef);
 #endif
 
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
@@ -196,7 +200,6 @@ int main(int argc, const char * argv[]) {
 	mdns_init(hostname, MDNS_SERVICE_TYPE, NULL, indigo_server_tcp_port);
 	mdns_start();
 #elif defined(INDIGO_MACOS)
-	DNSServiceRef sdRef;
 	DNSServiceRegister(&sdRef, 0, 0, NULL, MDNS_SERVICE_TYPE, NULL, NULL, indigo_server_tcp_port, 0, NULL, NULL, NULL);
 #endif
 

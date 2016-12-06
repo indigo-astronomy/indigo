@@ -297,6 +297,7 @@
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D7D591A1DF6E8E2003D2B59 /* mdns_avahi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mdns_avahi.c; sourceTree = "<group>"; };
 		9D7D591B1DF6E8E3003D2B59 /* mdns_avahi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mdns_avahi.h; sourceTree = "<group>"; };
+		9D7D591D1DF710C8003D2B59 /* ctrl.data */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ctrl.data; sourceTree = "<group>"; };
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
 		9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc.c; sourceTree = "<group>"; };
 		9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_iidc.h; sourceTree = "<group>"; };
@@ -604,6 +605,7 @@
 		599A63D61DF5D93500ABC827 /* indigo_server */ = {
 			isa = PBXGroup;
 			children = (
+				9D7D591D1DF710C8003D2B59 /* ctrl.data */,
 				9D7D591A1DF6E8E2003D2B59 /* mdns_avahi.c */,
 				9D7D591B1DF6E8E3003D2B59 /* mdns_avahi.h */,
 				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
