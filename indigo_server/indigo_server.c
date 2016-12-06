@@ -180,7 +180,9 @@ int main(int argc, const char * argv[]) {
 	}
 	
 	indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
-	
+
+	/* suppress compat mode warning messages*/
+	setenv("AVAHI_COMPAT_NOWARN", "1", 1);
 	DNSServiceRegister(&sdRef, 0, 0, NULL, MDNS_SERVICE_TYPE, NULL, NULL, indigo_server_tcp_port, 0, NULL, NULL, NULL);
 
 	for (int i = first_driver; static_drivers[i]; i++) {
