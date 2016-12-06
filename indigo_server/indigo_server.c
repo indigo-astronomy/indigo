@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <dns_sd.h>
+#include <arpa/inet.h>
 
 #include "indigo_bus.h"
 #include "indigo_server_tcp.h"
