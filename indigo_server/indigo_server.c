@@ -48,8 +48,9 @@
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #endif
 
-#define MDNS_SERVICE_TYPE	"_indigo._tcp"
-#define SERVER_NAME				"INDIGO Server"
+#define MDNS_INDIGO_TYPE    "_indigo._tcp"
+#define MDNS_HTTP_TYPE      "_http._tcp"
+#define SERVER_NAME         "INDIGO Server"
 
 driver_entry_point static_drivers[] = {
 	indigo_ccd_simulator,
@@ -70,7 +71,8 @@ driver_entry_point static_drivers[] = {
 
 static int first_driver = 2;
 static indigo_property *driver_property;
-static DNSServiceRef sdRef;
+static DNSServiceRef sd_http;
+static DNSServiceRef sd_indigo;
 
 static unsigned char ctrl[] = {
 #include "ctrl.data"
@@ -131,7 +133,8 @@ static indigo_result detach(indigo_device *device) {
 void signal_handler(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
 
-	DNSServiceRefDeallocate(sdRef);
+	DNSServiceRefDeallocate(sd_indigo);
+	DNSServiceRefDeallocate(sd_http);
 
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
@@ -182,9 +185,10 @@ int main(int argc, const char * argv[]) {
 	
 	indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
 
-	/* suppress compat mode warning messages*/
+	/* UGLY but the only way to suppress compat mode warning messages on Linux */
 	setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-	DNSServiceRegister(&sdRef, 0, 0, NULL, MDNS_SERVICE_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+	DNSServiceRegister(&sd_http, 0, 0, NULL, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+	DNSServiceRegister(&sd_indigo, 0, 0, NULL, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i], false);
