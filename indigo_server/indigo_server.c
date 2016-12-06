@@ -183,7 +183,7 @@ int main(int argc, const char * argv[]) {
 
 	/* suppress compat mode warning messages*/
 	setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-	DNSServiceRegister(&sdRef, 0, 0, NULL, MDNS_SERVICE_TYPE, NULL, NULL, indigo_server_tcp_port, 0, NULL, NULL, NULL);
+	DNSServiceRegister(&sdRef, 0, 0, NULL, MDNS_SERVICE_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i], false);
