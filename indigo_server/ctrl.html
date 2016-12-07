@@ -191,6 +191,7 @@
 																	<div class="form-group" ng-if="property.perm!='ro'">
 																		<div class="col-sm-offset-6 col-sm-6">
 																			<button type="submit" class="btn btn-primary" ng-click="setText(form, device, property)">Submit</button>
+																			&nbsp;
 																			<button class="btn btn-default" ng-click="reset(form, property)">Reset</button>
 																		</div>
 																	</div>
@@ -211,6 +212,7 @@
 																	<div class="form-group" ng-if="property.perm!='ro'">
 																		<div class="col-sm-offset-6 col-sm-6">
 																			<button type="submit" class="btn btn-primary" ng-click="setNumber(form, device, property)">Submit</button>
+																			&nbsp;
 																			<button class="btn btn-default" ng-click="reset(form, property)">Reset</button>
 																		</div>
 																	</div>
@@ -218,12 +220,12 @@
 																<form class="form-horizontal" ng-switch-when="SWITCH">
 																	<div class="form-group" ng-repeat="item in property.items">
 																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule=='AnyOfMany'">
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-switch-when="true" ng-click="setSwitch(device, property, item, false)">{{item.value | switch}}</button>
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-disabled="property.perm=='ro'" ng-switch-when="true" ng-click="setSwitch(device, property, item, false)">{{item.value | switch}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-disabled="property.perm=='ro'" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
 																		</div>
 																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule!='AnyOfMany'">
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-switch-when="true" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-disabled="property.perm=='ro'" ng-switch-when="true" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-disabled="property.perm=='ro'" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
 																		</div>
 																		<label class="col-sm-10 control-label">{{item.label}}</label>
 																	</div>
@@ -434,10 +436,14 @@
 			}
 			$scope.onOpen = function (event) {
 				console.log("CONNECTED");
+				$scope.model = [];
+				$scope.$apply();
 				doSend('{ "getProperties": { "version": 512 } }');
 			}
 			$scope.onClose = function (event) {
 				console.log("DISCONNECTED");
+				$scope.model = [];
+				$scope.$apply();
 			}
 			$scope.onMessage = function (event) {
 			console.log("MESSAGE "+event.data);
@@ -489,7 +495,7 @@
 							property.state = vector.state;
 							for (var i = 0; i < vector.oneText.length; i++) {
 								var item = getItem(property, vector.oneText[i].name);
-								if (item != undefined)
+								if (item != undefined && !item.modified)
 									item.value = item.oldValue = vector.oneText[i].value;
 							}
 						}
@@ -519,7 +525,8 @@
 							for (var i = 0; i < vector.oneNumber.length; i++) {
 								var item = getItem(property, vector.oneNumber[i].name);
 								if (item != undefined) {
-									item.value = item.oldValue = vector.oneNumber[i].value;
+									if (!item.modified)
+										item.value = item.oldValue = vector.oneNumber[i].value;
 									if (vector.perm != "ro")
 										item.target = vector.oneNumber[i].target;
 								}
@@ -598,6 +605,7 @@
 				for (var i = 0; i < property.items.length; i++) {
 					var item = property.items[i];
 					message.newTextVector.oneText.push({ "name": item.item, "value": item.value });
+					item.modified = false;
 				}
 				message = JSON.stringify(message);
 				doSend(message);
@@ -608,6 +616,7 @@
 				for (var i = 0; i < property.items.length; i++) {
 					var item = property.items[i];
 					message.newNumberVector.oneNumber.push({ "name": item.item, "value": Number(item.value) });
+					item.modified = false;
 				}
 				message = JSON.stringify(message);
 				doSend(message);

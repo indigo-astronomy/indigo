@@ -16,12 +16,11 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 // version history
 // 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO MOUNT Simulator driver
- \file indigo_mount_simulator.c
+/** INDIGO LX200 driver
+ \file indigo_mount_lx200.c
  */
 
 #define DRIVER_VERSION 0x0001
@@ -34,21 +33,23 @@
 
 #include "indigo_driver_xml.h"
 
-#include "indigo_mount_simulator.h"
+#include "indigo_mount_lx200.h"
 
 #undef PRIVATE_DATA
-#define PRIVATE_DATA        ((simulator_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA        ((lx200_private_data *)DEVICE_CONTEXT->private_data)
 
 typedef struct {
 	bool parked;
+	double currentRA, requestedRA;
+	double currentDec, requestedDec;
 	indigo_timer *slew_timer, *guider_timer;
-} simulator_private_data;
+} lx200_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void slew_timer_callback(indigo_device *device) {
-	double diffRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-	double diffDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+	double diffRA = PRIVATE_DATA->requestedRA - PRIVATE_DATA->currentRA;
+	double diffDec = PRIVATE_DATA->requestedDec - PRIVATE_DATA->currentDec;
 	if (diffRA == 0 && diffDec == 0) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->slew_timer = NULL;
@@ -56,20 +57,22 @@ static void slew_timer_callback(indigo_device *device) {
 		double speedRA = 0.1;
 		double speedDec = 1.5;
 		if (fabs(diffRA) < speedRA)
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+			PRIVATE_DATA->currentRA = PRIVATE_DATA->requestedRA;
 		else if (diffRA > 0)
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value += speedRA;
+			PRIVATE_DATA->currentRA += speedRA;
 		else if (diffRA < 0)
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value -= speedRA;
+			PRIVATE_DATA->currentRA -= speedRA;
 		if (fabs(diffDec) < speedDec)
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+			PRIVATE_DATA->currentDec = PRIVATE_DATA->requestedDec;
 		else if (diffDec > 0)
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value += speedDec;
+			PRIVATE_DATA->currentDec += speedDec;
 		else if (diffDec < 0)
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value -= speedDec;
+			PRIVATE_DATA->currentDec -= speedDec;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.2, slew_timer_callback);
 	}
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 }
 
@@ -77,7 +80,7 @@ static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	
-	simulator_private_data *private_data = device->device_context;
+	lx200_private_data *private_data = device->device_context;
 	device->device_context = NULL;
 	
 	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
@@ -87,15 +90,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
 		SIMULATION_ENABLED_ITEM->sw.value = true;
 		SIMULATION_DISABLED_ITEM->sw.value = false;
-		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		PRIVATE_DATA->parked = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = 0;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = 90;
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA = PRIVATE_DATA->requestedRA = 0;
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec = PRIVATE_DATA->requestedDec = 90;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -132,12 +133,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-		double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM) {
+			PRIVATE_DATA->requestedRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
+			PRIVATE_DATA->requestedDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 			slew_timer_callback(device);
 		}
 		return INDIGO_OK;
@@ -187,7 +188,7 @@ static void guider_timer_callback(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
-	simulator_private_data *private_data = device->device_context;
+	lx200_private_data *private_data = device->device_context;
 	device->device_context = NULL;
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
@@ -258,21 +259,21 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static simulator_private_data *private_data = NULL;
+static lx200_private_data *private_data = NULL;
 
 static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
 
-indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = {
-		MOUNT_SIMULATOR_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_LX200_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
 		indigo_mount_enumerate_properties,
 		mount_change_property,
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
-		MOUNT_SIMULATOR_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_LX200_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -281,7 +282,7 @@ indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Mount Simulator", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, MOUNT_LX200_NAME, __FUNCTION__, DRIVER_VERSION, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
@@ -289,7 +290,7 @@ indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		private_data = malloc(sizeof(simulator_private_data));
+		private_data = malloc(sizeof(lx200_private_data));
 		assert(private_data != NULL);
 		mount = malloc(sizeof(indigo_device));
 		assert(mount != NULL);
