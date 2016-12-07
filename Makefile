@@ -11,8 +11,6 @@ INDIGO_ROOT := $(shell pwd)
 ENABLE_STATIC=yes
 ENABLE_SHARED=yes
 
-USE_AVAHI=yes
-
 ifeq ($(OS),Windows_NT)
 	OS_DETECTED := Windows
 else
@@ -64,10 +62,6 @@ ifeq ($(OS_DETECTED),Linux)
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	INSTALL_PREFIX=/usr/local
 	PACKAGE_TYPE=deb
-	ifeq ($(USE_AVAHI),yes)
-		AVAHI_LIBS=-lavahi-client -lavahi-common
-		AVAHI_CFLAGS=-DHAVE_LIBAVAHI_CLIENT -DHAVE_LIBAVAHI_COMMON
-	endif
 endif
 
 #---------------------------------------------------------------------
@@ -100,7 +94,7 @@ ifeq ($(OS_DETECTED),Linux)
 	else
 		CFLAGS=-g -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iinclude -std=gnu11 -pthread -DINDIGO_LINUX
 	endif
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -Llib -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
+	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -Llib -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
@@ -536,11 +530,11 @@ bin/client: indigo_test/client.o
 #
 #---------------------------------------------------------------------
 
-bin/indigo_server: indigo_server/indigo_server.o indigo_server/mdns_avahi.c $(SIMULATOR_LIBS)
-	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo $(AVAHI_LIBS)
+bin/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS)
+	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
-bin/indigo_server_standalone: indigo_server/indigo_server.c indigo_server/mdns_avahi.c $(DRIVER_LIBS)  lib/libindigo.a $(EXTERNALS)
-	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) $(AVAHI_LIBS) -lstdc++
+bin/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  lib/libindigo.a $(EXTERNALS)
+	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
 
 
 #---------------------------------------------------------------------
@@ -595,7 +589,7 @@ $(PACKAGE_NAME).deb: clean all
 	install -D -m 0644 indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/99-efw.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_wheel_asi.rules
 	cp -r share /tmp/$(PACKAGE_NAME)
 	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
-	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0 libavahi-compat-libdnssd1\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	sudo chown root /tmp/$(PACKAGE_NAME)
 	dpkg --build /tmp/$(PACKAGE_NAME)
 	mv /tmp/$(PACKAGE_NAME).deb .

@@ -30,19 +30,6 @@ func serverCallback(count: Int32) {
 
   @IBOutlet weak var window: NSWindow!
 	
-  func netServiceWillPublish(_ sender: NetService) {
-    NSLog("Bonjour service is ready to publish.")
-  }
-  
-  func netServiceDidPublish(_ sender: NetService) {
-    NSLog("Bonjour service was successfully published.")
-  }
-  
-  func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
-    NSLog("Bonjour service   could not be published.");
-    NSLog("\(errorDict)");
-  }
-  
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     return true
   }
@@ -60,8 +47,6 @@ func serverCallback(count: Int32) {
 			let plist: [String:Any] = [ "Label": serverId, "KeepAlive": true, "Program": executable, "ProgramArguments": arguments]
 			if SMJobSubmit(kSMDomainUserLaunchd, plist as CFDictionary, nil, &error) {				
 				NSLog("Server job was successfully installed!")
-				service.delegate = self
-				service.publish()
 			} else {
 				NSLog("Failed to install server job! \(error)")
 			}
