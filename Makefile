@@ -379,6 +379,21 @@ drivers/indigo_mount_nexstar.$(SOEXT): indigo_drivers/mount_nexstar/indigo_mount
 
 #---------------------------------------------------------------------
 #
+#	Build mount lx200 driver
+#
+#---------------------------------------------------------------------
+
+drivers/indigo_mount_lx200.a: indigo_drivers/mount_lx200/indigo_mount_lx200.o
+	$(AR) $(ARFLAGS) $@ $^
+
+drivers/indigo_mount_lx200: indigo_drivers/mount_lx200/indigo_mount_lx200_main.o drivers/indigo_mount_lx200.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+drivers/indigo_mount_lx200.$(SOEXT): indigo_drivers/mount_lx200/indigo_mount_lx200.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build SX CCD driver
 #
 #---------------------------------------------------------------------
@@ -545,6 +560,7 @@ bin/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  lib/
 
 indigo_server/ctrl.data:	indigo_server/ctrl.html
 	python tools/rjsmin.py <indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
+#	cat indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
 
 #---------------------------------------------------------------------
 #

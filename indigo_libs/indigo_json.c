@@ -38,7 +38,7 @@
 
 //#undef INDIGO_TRACE_PROTOCOL
 //#define INDIGO_TRACE_PROTOCOL(c) c
-
+//
 //#undef INDIGO_DEBUG_PROTOCOL
 //#define INDIGO_DEBUG_PROTOCOL(c) c
 
@@ -498,6 +498,11 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					state = NAME;
 					name_pointer = name_buffer;
 					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' VALUE2 -> NAME", c));
+				} else if (c == '{') {
+					state = BEGIN_STRUCT;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> BEGIN_STRUCT", c));
+					handler = handler(BEGIN_STRUCT, NULL, NULL, property, device, client, message);
+					depth++;
 				} else {
 					state = ERROR;
 					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' VALUE2 -> ERROR", c));

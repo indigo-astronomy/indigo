@@ -63,7 +63,7 @@
 
 /** SIMULATION.DISABLED property name.
  */
-#define SIMULATION_ENABLED_ITEM_NAME					"DISABLED"
+#define SIMULATION_ENABLED_ITEM_NAME					"ENABLED"
 
 /** SIMULATION.DISABLED property item name.
  */
