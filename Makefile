@@ -547,10 +547,17 @@ bin/client: indigo_test/client.o
 
 bin/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS)
 	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
+ifeq ($(OS_DETECTED),Darwin)
+	install_name_tool -add_rpath @loader_path/../drivers $@
+	install_name_tool -change lib/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
+endif
 
 bin/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  lib/libindigo.a $(EXTERNALS)
 	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
-
+ifeq ($(OS_DETECTED),Darwin)
+	install_name_tool -add_rpath @loader_path/../drivers $@
+	install_name_tool -change lib/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
+endif
 
 #---------------------------------------------------------------------
 #
