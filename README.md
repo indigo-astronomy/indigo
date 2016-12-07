@@ -1,4 +1,4 @@
-### INDIGO is a proof-of-concept of future INDI based on layered architecture and software bus.
+# INDIGO is a proof-of-concept of future INDI based on layered architecture and software bus.
 
 This is the list of requirements taken into the consideration:
 
@@ -8,7 +8,7 @@ This is the list of requirements taken into the consideration:
 4. Atomic approach to device drivers. E.g. if camera has imaging and guiding chip, driver should expose two independent simple devices instead of one complex. It is much easier and transparent for client.
 5. Drivers should support hot-plug at least for USB devices. If device is connected/disconnected while driver is running, its properties should appear/disappear on the bus.
 
-### This is already done
+## This is already done
 
 #### Framework
 
@@ -31,13 +31,28 @@ This is the list of requirements taken into the consideration:
 9. IIDC CCD driver
 10. ASI CCD driver
 
-### This is under development
+## This is under development
 
 1. QHY (5II-L) CCD driver
 
 ------------------------------------------------------------------------------------------------
 
-To build PoC, use
+##To build PoC
+
+### Prerequisits
+#### Ubuntu / Debian
+
+`sudo apt-get install build-essential autotools-dev libtool libudev-dev libavahi-compat-libdnssd-dev`
+
+It is advised to remove libraw1394-dev
+
+`sudo apt-get remove libraw1394-dev`
+
+#### Fedora
+
+TBD - see ubuntu and install the corresponding packages.
+
+### Get code and build it
 
 `git clone https://github.com/indigo-astronomy/indigo.git`
 
@@ -46,5 +61,9 @@ To build PoC, use
 `make all`
 
 `bin/indigo_server_standalone`
+
+or
+
+`bin/indigo_server indigo_ccd_asi [other drivers]`
 
 and connect from any INDI client to port 7624...
