@@ -40,7 +40,7 @@ This is the list of requirements taken into the consideration:
 ##To build PoC
 
 ### Prerequisits
-#### Ubuntu / Debian
+#### Ubuntu / Debian / Raspbian
 
 `sudo apt-get install build-essential autotools-dev libtool libudev-dev libavahi-compat-libdnssd-dev`
 
@@ -51,6 +51,10 @@ It is advised to remove libraw1394-dev
 #### Fedora
 
 TBD - see ubuntu and install the corresponding packages.
+
+#### macOS
+
+Install XCode and download and build autoconf, automake and libtool (use tools/cltools.sh script). 
 
 ### Get code and build it
 
