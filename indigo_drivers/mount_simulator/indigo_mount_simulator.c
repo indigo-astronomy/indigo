@@ -137,7 +137,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-		if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM) {
+		if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 			slew_timer_callback(device);
 		}
 		return INDIGO_OK;

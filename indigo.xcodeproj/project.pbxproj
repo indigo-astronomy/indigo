@@ -343,6 +343,7 @@
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
 		9DB918011DF8546800678721 /* indigo_mount_lx200.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_lx200.h; sourceTree = "<group>"; };
+		9DB918051DF8647800678721 /* TelescopeProtocol_2010-10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TelescopeProtocol_2010-10.pdf"; sourceTree = "<group>"; };
 		9DBC34621DCB267700588DB9 /* indigo_wheel_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_asi_main.c; sourceTree = "<group>"; };
 		9DBC34631DCB267700588DB9 /* indigo_wheel_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_asi.c; sourceTree = "<group>"; };
 		9DBC34641DCB267700588DB9 /* indigo_wheel_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_asi.h; sourceTree = "<group>"; };
@@ -787,6 +788,7 @@
 				9DB918011DF8546800678721 /* indigo_mount_lx200.h */,
 				9DB918001DF8546800678721 /* indigo_mount_lx200.c */,
 				9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */,
+				9DB918051DF8647800678721 /* TelescopeProtocol_2010-10.pdf */,
 			);
 			path = mount_lx200;
 			sourceTree = "<group>";
