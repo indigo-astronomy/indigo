@@ -39,6 +39,7 @@
 
 #if defined(INDIGO_MACOS)
 #include <libusb-1.0/libusb.h>
+#include <dirent.h>
 #elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
@@ -227,6 +228,21 @@ void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
 
 #endif
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
+static bool is_serial(const char *name) {
+	return !strncmp(name, "ttyS", 4);
+}
+#elif defined(INDIGO_MACOS)
+static bool is_serial(const char *name) {
+	if (!strncmp(name, "cu.", 3)) {
+		if (!strcmp(name, "cu.Bluetooth-Incoming-Port") || !strcmp(name, "cu.iPhone-WirelessiAP"))
+			return false;
+		return true;
+	}
+	return false;
+}
+#endif
+
 indigo_result indigo_device_attach(indigo_device *device, indigo_version version, int interface) {
 	assert(device != NULL);
 	assert(device != NULL);
@@ -274,7 +290,26 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		if (DEVICE_PORT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DEVICE_PORT_PROPERTY->hidden = true;
-		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Serial port", "/dev/tty");
+		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Serial port", "/dev/usbserial");
+		// -------------------------------------------------------------------------------- DEVICE_PORTS
+#define MAX_DEVICE_PORTS	20
+		DEVICE_PORTS_PROPERTY = indigo_init_switch_property(NULL, device->name, DEVICE_PORTS_PROPERTY_NAME, MAIN_GROUP, "Serial ports", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_DEVICE_PORTS);
+		if (DEVICE_PORTS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		DEVICE_PORTS_PROPERTY->hidden = true;
+		DEVICE_PORTS_PROPERTY->count = 0;
+		DIR *dir = opendir ("/dev");
+		struct dirent *entry;
+		char name[INDIGO_VALUE_SIZE];
+		while ((entry = readdir (dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
+			if (is_serial(entry->d_name)) {
+				snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
+				int i = DEVICE_PORTS_PROPERTY->count++;
+				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
+				if (i == 0)
+					strcpy(DEVICE_PORT_ITEM->text.value, name);
+			}
+		}
 		// --------------------------------------------------------------------------------
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 		if (pipe(DEVICE_CONTEXT->timer_pipe) != 0)
@@ -304,6 +339,8 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
 		indigo_define_property(device, CONFIG_PROPERTY, NULL);
 	if (indigo_property_match(DEVICE_PORT_PROPERTY, property) && !DEVICE_PORT_PROPERTY->hidden)
 		indigo_define_property(device, DEVICE_PORT_PROPERTY, NULL);
+	if (indigo_property_match(DEVICE_PORTS_PROPERTY, property) && !DEVICE_PORTS_PROPERTY->hidden)
+		indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
@@ -355,8 +392,26 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(DEVICE_PORT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		indigo_property_copy_values(DEVICE_PORT_PROPERTY, property, false);
-		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+		if (!access(DEVICE_PORT_ITEM->text.value, R_OK)) {
+			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+		} else {
+			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DEVICE_PORT_PROPERTY, "%s does not exists", DEVICE_PORT_ITEM->text.value);
+		}
+	} else if (indigo_property_match(DEVICE_PORTS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DEVICE_PORTS
+		indigo_property_copy_values(DEVICE_PORTS_PROPERTY, property, false);
+		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
+			if (DEVICE_PORTS_PROPERTY->items[i].sw.value) {
+				strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name, INDIGO_VALUE_SIZE);
+				DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+				DEVICE_PORTS_PROPERTY->items[i].sw.value = false;
+			}
+		}
+		DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -374,6 +429,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(CONNECTION_PROPERTY);
 	indigo_release_property(INFO_PROPERTY);
 	indigo_release_property(DEVICE_PORT_PROPERTY);
+	indigo_release_property(DEVICE_PORTS_PROPERTY);
 	indigo_release_property(DEBUG_PROPERTY);
 	indigo_release_property(SIMULATION_PROPERTY);
 	indigo_release_property(CONFIG_PROPERTY);
