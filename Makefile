@@ -99,7 +99,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
+	EXTERNALS=$(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a lib/libnexstar.a
 endif
 
 #---------------------------------------------------------------------
@@ -293,6 +293,21 @@ lib/libfcusb.a: include/libfcusb/libfcusb.h
 
 #---------------------------------------------------------------------
 #
+#	Build libnexstar
+#
+#---------------------------------------------------------------------
+
+indigo_drivers/mount_nexstar/externals/libnexstar/configure: indigo_drivers/mount_nexstar/externals/libnexstar/configure.in
+	cd indigo_drivers/mount_nexstar/externals/libnexstar; autoreconf -i; cd ../../../..
+
+indigo_drivers/mount_nexstar/externals/libnexstar/Makefile: indigo_drivers/mount_nexstar/externals/libnexstar/configure
+	cd indigo_drivers/mount_nexstar/externals/libnexstar; ./configure --prefix=$(INDIGO_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)"; cd ../../../..
+
+lib/libnexstar.a: indigo_drivers/mount_nexstar/externals/libnexstar/Makefile
+	cd indigo_drivers/mount_nexstar/externals/libnexstar; make install; cd ../../../..
+
+#---------------------------------------------------------------------
+#
 #	Initialize
 #
 #---------------------------------------------------------------------
@@ -371,10 +386,10 @@ drivers/indigo_mount_simulator.$(SOEXT): indigo_drivers/mount_simulator/indigo_m
 drivers/indigo_mount_nexstar.a: indigo_drivers/mount_nexstar/indigo_mount_nexstar.o
 	$(AR) $(ARFLAGS) $@ $^
 
-drivers/indigo_mount_nexstar: indigo_drivers/mount_nexstar/indigo_mount_nexstar_main.o drivers/indigo_mount_nexstar.a
+drivers/indigo_mount_nexstar: indigo_drivers/mount_nexstar/indigo_mount_nexstar_main.o drivers/indigo_mount_nexstar.a lib/libnexstar.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-drivers/indigo_mount_nexstar.$(SOEXT): indigo_drivers/mount_nexstar/indigo_mount_nexstar.o
+drivers/indigo_mount_nexstar.$(SOEXT): indigo_drivers/mount_nexstar/indigo_mount_nexstar.o lib/libnexstar.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
@@ -638,3 +653,4 @@ clean: init
 	cd externals/libusb; make maintainer-clean; cd ../..
 	cd externals/libjpeg; make distclean; cd ../..
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; cd ../../../..
+	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; cd ../../../..

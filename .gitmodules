@@ -16,3 +16,6 @@
 [submodule "externals/libjpeg"]
 	path = externals/libjpeg
 	url = https://github.com/indigo-astronomy/libjpeg.git
+[submodule "indigo_drivers/mount_nexstar/externals/libnexstar"]
+	path = indigo_drivers/mount_nexstar/externals/libnexstar
+	url = https://github.com/indigo-astronomy/libnexstar.git

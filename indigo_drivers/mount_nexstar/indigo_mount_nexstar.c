@@ -34,6 +34,7 @@
 
 #include "indigo_driver_xml.h"
 
+#include "nexstar.h"
 #include "indigo_mount_nexstar.h"
 
 #undef PRIVATE_DATA
