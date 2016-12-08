@@ -14,9 +14,10 @@ This is the list of requirements taken into the consideration:
 
 1. INDIGO Bus framework
 2. XML adapter for client and server side
-3. indigo_server with built-in drivers
-4. INDIGO Server for macOS wrapper
-5. Integrated HTTP server for BLOB download & server control (= web based INDI control panel)
+3. indigo_server_standalone - server with built-in drivers
+4. indigo_server - server with loadable (.so/.dylib) drivers
+5. INDIGO Server for macOS wrapper
+6. Integrated HTTP server for BLOB download & server control (= web based INDI control panel)
 
 #### Drivers
 
