@@ -136,6 +136,10 @@
  */
 #define DEVICE_PORT_ITEM							(DEVICE_PORT_PROPERTY->items+0)
 
+/** DEVICE_PORTS property pointer, property is optional, property change request is handled by indigo_device_change_property.
+ */
+#define DEVICE_PORTS_PROPERTY					(DEVICE_CONTEXT->device_ports_property)
+
 /** Device interface (value shout be used for INFO_DEVICE_INTERFACE_ITEM->number.value
  */
 typedef enum {
@@ -213,6 +217,7 @@ typedef struct {
 	indigo_property *simulation_property;     ///< SIMULATION property pointer
 	indigo_property *congfiguration_property; ///< CONFIGURATION property pointer
 	indigo_property *device_port_property;		///< DEVICE_PORT property pointer
+	indigo_property *device_ports_property;		///< DEVICE_PORTS property pointer
 } indigo_device_context;
 
 /** set driver info.

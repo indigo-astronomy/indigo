@@ -93,6 +93,10 @@
  */
 #define DEVICE_PORT_ITEM_NAME									"DEVICE_PORT"
 
+/** DEVICE_PORTS property name.
+ */
+#define DEVICE_PORTS_PROPERTY_NAME						"DEVICE_PORTS"
+
 /** CCD_INFO property name.
  */
 #define CCD_INFO_PROPERTY_NAME                "CCD_INFO"
