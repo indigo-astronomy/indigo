@@ -640,7 +640,9 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 	}
 
 	int offset = ASI_ADVANCED_PROPERTY->count;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = ASISetControlValue(id, ctrl_caps.ControlType, ctrl_caps.DefaultValue, false);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res)
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res));
 	else {
