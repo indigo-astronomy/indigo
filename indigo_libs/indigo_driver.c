@@ -39,7 +39,8 @@
 
 #if defined(INDIGO_MACOS)
 #include <libusb-1.0/libusb.h>
-#include <dirent.h>
+#include <IOKit/IOKitLib.h>
+#include <IOKit/serial/IOSerialKeys.h>
 #elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
@@ -228,21 +229,6 @@ void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
 
 #endif
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-static bool is_serial(const char *name) {
-	return !strncmp(name, "ttyS", 4);
-}
-#elif defined(INDIGO_MACOS)
-static bool is_serial(const char *name) {
-	if (!strncmp(name, "cu.", 3)) {
-		if (!strcmp(name, "cu.Bluetooth-Incoming-Port") || !strcmp(name, "cu.iPhone-WirelessiAP"))
-			return false;
-		return true;
-	}
-	return false;
-}
-#endif
-
 indigo_result indigo_device_attach(indigo_device *device, indigo_version version, int interface) {
 	assert(device != NULL);
 	assert(device != NULL);
@@ -298,19 +284,33 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 			return INDIGO_FAILED;
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		DEVICE_PORTS_PROPERTY->count = 0;
-		DIR *dir = opendir ("/dev");
-		struct dirent *entry;
 		char name[INDIGO_VALUE_SIZE];
-		while ((entry = readdir (dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
-			if (is_serial(entry->d_name)) {
-				snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
-				int i = DEVICE_PORTS_PROPERTY->count++;
-				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
-				if (i == 0)
-					strcpy(DEVICE_PORT_ITEM->text.value, name);
+#if defined(INDIGO_MACOS)
+		io_iterator_t iterator;
+		io_object_t serial_device;
+		CFMutableDictionaryRef matching_dict = IOServiceMatching(kIOSerialBSDServiceValue);
+		CFDictionarySetValue(matching_dict, CFSTR(kIOSerialBSDTypeKey), CFSTR(kIOSerialBSDAllTypes));
+		kern_return_t kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matching_dict, &iterator);
+		if (kr == 0) {
+			while ((serial_device = IOIteratorNext(iterator))) {
+				CFTypeRef cfs = IORegistryEntryCreateCFProperty (serial_device, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault,0);
+				if (cfs) {
+					CFStringGetCString(cfs, name, INDIGO_VALUE_SIZE, kCFStringEncodingASCII);
+					if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port") && strcmp(name, "/dev/cu.iPhone-WirelessiAP")) {
+						int i = DEVICE_PORTS_PROPERTY->count++;
+						indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
+						if (i == 0)
+							strcpy(DEVICE_PORT_ITEM->text.value, name);
+					}
+					CFRelease(cfs);
+				}
+				IOObjectRelease(serial_device);
 			}
+			IOObjectRelease(iterator);
 		}
-		// --------------------------------------------------------------------------------
+#else // TBD Linux, etc...
+#endif
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 		if (pipe(DEVICE_CONTEXT->timer_pipe) != 0)
 			return INDIGO_FAILED;
