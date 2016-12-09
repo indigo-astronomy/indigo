@@ -352,6 +352,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 					strcpy(DEVICE_PORT_ITEM->text.value, name);
 			}
 		}
+		closedir(dir);
 #else
     /* freebsd */
 #endif
