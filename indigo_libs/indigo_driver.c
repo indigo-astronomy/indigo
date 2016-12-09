@@ -43,8 +43,22 @@
 #include <IOKit/serial/IOSerialKeys.h>
 #elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
+#elif defined(INDIGO_LINUX)
+#include <linux/serial.h>
+#include <sys/ioctl.h>
+#include <dirent.h>
 #else
 #include <libusb-1.0/libusb.h>
+#endif
+
+#if defined(INDIGO_MACOS)
+#define DEFAULT_TTY "/dev/cu.usbserial"
+#elif defined(INDIGO_FREEBSD)
+#define DEFAULT_TTY "/dev/ttyu1"
+#elif defined(INDIGO_LINUX)
+#define DEFAULT_TTY "/dev/ttyUSB0"
+#else
+#define DEFAULT_TTY "/dev/tty"
 #endif
 
 #include "indigo_driver.h"
@@ -229,6 +243,22 @@ void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
 
 #endif
 
+#if defined(INDIGO_LINUX)
+bool is_serial(char *path) {
+	int fd;
+	struct serial_struct serinfo;
+
+	if ((fd = open(path, O_RDWR | O_NONBLOCK)) == -1) return false;
+
+	bool is_sp = false;
+	if (ioctl(fd, TIOCGSERIAL, &serinfo) == 0) is_sp = true;
+	if (serinfo.type == PORT_UNKNOWN) is_sp = false;
+
+	close(fd);
+	return is_sp;
+}
+#endif
+
 indigo_result indigo_device_attach(indigo_device *device, indigo_version version, int interface) {
 	assert(device != NULL);
 	assert(device != NULL);
@@ -276,7 +306,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		if (DEVICE_PORT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DEVICE_PORT_PROPERTY->hidden = true;
-		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Serial port", "/dev/usbserial");
+		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Serial port", DEFAULT_TTY);
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 #define MAX_DEVICE_PORTS	20
 		DEVICE_PORTS_PROPERTY = indigo_init_switch_property(NULL, device->name, DEVICE_PORTS_PROPERTY_NAME, MAIN_GROUP, "Serial ports", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_DEVICE_PORTS);
@@ -308,7 +338,20 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 			}
 			IOObjectRelease(iterator);
 		}
-#else // TBD Linux, etc...
+#elif defined(INDIGO_LINUX)
+		DIR *dir = opendir ("/dev");
+		struct dirent *entry;
+		while ((entry = readdir (dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
+			snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
+			if (is_serial(name)) {
+				int i = DEVICE_PORTS_PROPERTY->count++;
+				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
+				if (i == 0)
+					strcpy(DEVICE_PORT_ITEM->text.value, name);
+			}
+		}
+#else
+    /* freebsd */
 #endif
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
