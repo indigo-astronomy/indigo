@@ -78,7 +78,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a
+	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a lib/libnexstar.a
 endif
 
 #---------------------------------------------------------------------
@@ -581,8 +581,8 @@ endif
 #---------------------------------------------------------------------
 
 indigo_server/ctrl.data:	indigo_server/ctrl.html
-	python tools/rjsmin.py <indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
-#	cat indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
+#	python tools/rjsmin.py <indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
+	cat indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
 
 #---------------------------------------------------------------------
 #
