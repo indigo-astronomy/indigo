@@ -342,6 +342,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		DIR *dir = opendir ("/dev");
 		struct dirent *entry;
 		while ((entry = readdir (dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
+			if (strncmp(name, "tty", 3)) continue;
 			snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
 			if (is_serial(name)) {
 				int i = DEVICE_PORTS_PROPERTY->count++;
