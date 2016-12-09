@@ -252,8 +252,7 @@ bool is_serial(char *path) {
 	if ((fd = open(path, O_RDWR | O_NONBLOCK)) == -1) return false;
 
 	bool is_sp = false;
-	if (ioctl(fd, TIOCGSERIAL, &serinfo) == 0) is_sp = true;
-	if (serinfo.type == PORT_UNKNOWN) is_sp = false;
+	if ((ioctl(fd, TIOCGSERIAL, &serinfo) == 0) && (serinfo.type != PORT_UNKNOWN)) is_sp = true;
 
 	close(fd);
 	return is_sp;
@@ -343,7 +342,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		DIR *dir = opendir ("/dev");
 		struct dirent *entry;
 		while ((entry = readdir (dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
-			if (!strncmp(name, "tty", 3)) continue;
+			if (strncmp(entry->d_name, "tty", 3)) continue;
 			snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
 			if (is_serial(name)) {
 				int i = DEVICE_PORTS_PROPERTY->count++;
