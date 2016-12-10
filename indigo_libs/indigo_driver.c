@@ -490,16 +490,21 @@ static void xprintf(int handle, const char *format, ...) {
 	va_start(args, format);
 	int length = vsnprintf(buffer, 1024, format, args);
 	va_end(args);
-	int len = write(handle, buffer, length);
+	write(handle, buffer, length);
 	INDIGO_DEBUG(indigo_debug("saved: %s", buffer));
 }
 
+extern int indigo_server_tcp_port;
+	
 static int open_config_file(char *device_name, int mode, const char *suffix) {
 	static char path[128];
 	int path_end = snprintf(path, sizeof(path), "%s/.indigo", getenv("HOME"));
 	int handle = mkdir(path, 0777);
 	if (handle == 0 || errno == EEXIST) {
-		snprintf(path + path_end, sizeof(path) - path_end, "/%s%s", device_name, suffix);
+		if (indigo_server_tcp_port == 7624)
+			snprintf(path + path_end, sizeof(path) - path_end, "/%s%s", device_name, suffix);
+		else
+			snprintf(path + path_end, sizeof(path) - path_end, "/%s_%d%s", device_name, indigo_server_tcp_port, suffix);
 		char *space = strchr(path, ' ');
 		while (space != NULL) {
 			*space = '_';
