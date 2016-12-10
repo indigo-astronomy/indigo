@@ -133,7 +133,7 @@ static void start_worker_thread(int *client_socket) {
 					char *space = strchr(path, ' ');
 					if (space)
 						*space = 0;
-					char websocket_key[256];
+					char websocket_key[256] = "";
 					bool keep_alive = false;
 					while (read_line(socket, header, BUFFER_SIZE) >= 0) {
 						if (*header == 0)
@@ -143,10 +143,10 @@ static void start_worker_thread(int *client_socket) {
 						if (!strcasecmp(header, "Connection: keep-alive"))
 							keep_alive = true;
 					}
-					if (!strcmp(path, "/")) {
+					if (!strcmp(path, "/") && *websocket_key) {
 						unsigned char shaHash[20];
-						strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 						memset(shaHash, 0, sizeof(shaHash));
+						strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 						sha1(shaHash, websocket_key, strlen(websocket_key));
 						write_line(socket, "HTTP/1.1 101 Switching Protocols");
 						write_line(socket, "Server: INDIGO/%d.%d-%d", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);

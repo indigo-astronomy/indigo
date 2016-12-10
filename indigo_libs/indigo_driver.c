@@ -322,7 +322,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		CFDictionarySetValue(matching_dict, CFSTR(kIOSerialBSDTypeKey), CFSTR(kIOSerialBSDAllTypes));
 		kern_return_t kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matching_dict, &iterator);
 		if (kr == 0) {
-			while ((serial_device = IOIteratorNext(iterator))) {
+			while ((serial_device = IOIteratorNext(iterator)) && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
 				CFTypeRef cfs = IORegistryEntryCreateCFProperty (serial_device, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault,0);
 				if (cfs) {
 					CFStringGetCString(cfs, name, INDIGO_VALUE_SIZE, kCFStringEncodingASCII);
