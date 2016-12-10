@@ -70,7 +70,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		if (libqhy_read_pixels(PRIVATE_DATA->device_context, (unsigned short *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE))) {
 			libqhy_stop(PRIVATE_DATA->device_context);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure done");
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->width, PRIVATE_DATA->height, true, NULL);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
