@@ -627,7 +627,7 @@ $(PACKAGE_NAME).deb: clean all
 	install -D -m 0644 indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/99-efw.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_wheel_asi.rules
 	cp -r share /tmp/$(PACKAGE_NAME)
 	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
-	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0 libavahi-compat-libdnssd1\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0, libavahi-compat-libdnssd1\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	sudo chown root /tmp/$(PACKAGE_NAME)
 	dpkg --build /tmp/$(PACKAGE_NAME)
 	mv /tmp/$(PACKAGE_NAME).deb .
