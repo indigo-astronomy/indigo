@@ -43,6 +43,7 @@
 #include "ccd_asi/indigo_ccd_asi.h"
 #include "wheel_asi/indigo_wheel_asi.h"
 #include "ccd_atik/indigo_ccd_atik.h"
+#include "wheel_atik/indigo_wheel_atik.h"
 #include "ccd_qhy/indigo_ccd_qhy.h"
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
 #include "ccd_iidc/indigo_ccd_iidc.h"
@@ -60,6 +61,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_sx,
 	indigo_wheel_sx,
 	indigo_ccd_atik,
+	indigo_wheel_atik,
 	indigo_ccd_qhy,
 	indigo_ccd_ssag,
 	indigo_focuser_fcusb,

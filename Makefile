@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 13
+INDIGO_BUILD := 14
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -424,6 +424,21 @@ drivers/indigo_ccd_sx.$(SOEXT): indigo_drivers/ccd_sx/indigo_ccd_sx.o
 
 #---------------------------------------------------------------------
 #
+#	Build SX filter wheel driver
+#
+#---------------------------------------------------------------------
+
+drivers/indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
+	$(AR) $(ARFLAGS) $@ $^
+
+drivers/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o drivers/indigo_wheel_sx.a $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+drivers/indigo_wheel_sx.$(SOEXT): indigo_drivers/wheel_sx/indigo_wheel_sx.o $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build SSAG/QHY5 CCD driver
 #
 #---------------------------------------------------------------------
@@ -461,26 +476,27 @@ drivers/indigo_ccd_asi.$(SOEXT): indigo_drivers/ccd_asi/indigo_ccd_asi.o lib/lib
 drivers/indigo_ccd_atik.a: indigo_drivers/ccd_atik/indigo_ccd_atik.o
 	$(AR) $(ARFLAGS) $@ $^
 
-drivers/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o drivers/indigo_ccd_atik.a lib/libatik.a
+drivers/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o drivers/indigo_ccd_atik.a lib/libatik.a $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-drivers/indigo_ccd_atik.$(SOEXT): indigo_drivers/ccd_atik/indigo_ccd_atik.o lib/libatik.a
+drivers/indigo_ccd_atik.$(SOEXT): indigo_drivers/ccd_atik/indigo_ccd_atik.o lib/libatik.a $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
 #
-#	Build SX filter wheel driver
+#	Build ATIK wheel driver
 #
 #---------------------------------------------------------------------
 
-drivers/indigo_wheel_sx.a: indigo_drivers/wheel_sx/indigo_wheel_sx.o
+drivers/indigo_wheel_atik.a: indigo_drivers/wheel_atik/indigo_wheel_atik.o
 	$(AR) $(ARFLAGS) $@ $^
 
-drivers/indigo_wheel_sx: indigo_drivers/wheel_sx/indigo_wheel_sx_main.o drivers/indigo_wheel_sx.a $(LIBHIDAPI)
+drivers/indigo_wheel_atik: indigo_drivers/wheel_atik/indigo_wheel_atik_main.o drivers/indigo_wheel_atik.a lib/libatik.a $(LIBHIDAPI)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-drivers/indigo_wheel_sx.$(SOEXT): indigo_drivers/wheel_sx/indigo_wheel_sx.o $(LIBHIDAPI)
+drivers/indigo_wheel_atik.$(SOEXT): indigo_drivers/wheel_atik/indigo_wheel_atik.o lib/libatik.a $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
 
 #---------------------------------------------------------------------
 #
