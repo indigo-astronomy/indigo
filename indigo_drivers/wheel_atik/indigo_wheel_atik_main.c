@@ -19,20 +19,27 @@
 // version history
 // 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress filter wheel driver
- \file indigo_wheel_sx.h
+/** INDIGO Atik filter wheel driver main
+ \file indigo_wheel_atik_main.c
  */
 
-#ifndef wheel_sx_h
-#define wheel_sx_h
+#include <stdio.h>
+#include <string.h>
 
-#include "indigo_driver.h"
-#include "indigo_wheel_driver.h"
+#include "indigo_driver_xml.h"
 
-/** Register StarlighXpress filter wheel hot-plug callback
- */
+#include "indigo_wheel_atik.h"
 
-extern indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *info);
-
-#endif /* wheel_sx_h */
+int main(int argc, const char * argv[]) {
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_start();
+	indigo_wheel_atik(INDIGO_DRIVER_INIT, NULL);
+	indigo_attach_client(protocol_adapter);
+	indigo_xml_parse(NULL, protocol_adapter);
+	indigo_wheel_atik(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_stop();
+	return 0;
+}
 

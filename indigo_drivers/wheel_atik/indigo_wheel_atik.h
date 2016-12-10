@@ -19,20 +19,20 @@
 // version history
 // 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress filter wheel driver
- \file indigo_wheel_sx.h
+/** INDIGO Atik filter wheel driver
+ \file indigo_wheel_atik.h
  */
 
-#ifndef wheel_sx_h
-#define wheel_sx_h
+#ifndef wheel_atik_h
+#define wheel_atik_h
 
 #include "indigo_driver.h"
 #include "indigo_wheel_driver.h"
 
-/** Register StarlighXpress filter wheel hot-plug callback
+/** Register Atik filter wheel hot-plug callback
  */
 
-extern indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info *info);
 
-#endif /* wheel_sx_h */
+#endif /* wheel_atik_h */
 

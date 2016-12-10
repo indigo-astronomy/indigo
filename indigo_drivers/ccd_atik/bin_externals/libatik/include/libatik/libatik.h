@@ -21,6 +21,9 @@
 #include <stdbool.h>
 #include <pthread.h>
 
+#include <libusb-1.0/libusb.h>
+#include <hidapi/hidapi.h>
+
 #define ATIK_VID1	0x20E7
 #define ATIK_VID2 0x04b4
 
@@ -103,6 +106,9 @@ extern bool lf_read_pixels(libatik_device_context *context, double delay, int x,
 extern bool lf_set_cooler(libatik_device_context *context, bool status, double temperature);
 extern bool lf_check_cooler(libatik_device_context *device_context, bool *status, double *power, double *temperature);
 extern void lf_close(libatik_device_context *context);
+
+extern bool libatik_wheel_query(hid_device *handle, int *slot_count, int *current_slot);
+extern bool libatik_wheel_set(hid_device *handle, int slot);
 
 extern bool libatik_debug_level;
 extern bool libatik_use_syslog;
