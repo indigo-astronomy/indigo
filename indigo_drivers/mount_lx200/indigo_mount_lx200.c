@@ -33,7 +33,16 @@
 #include <termios.h>
 #include <errno.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
+
+/* could not find these on linux, so I define them as in digi.h - to be tested, at least it compiles now */
+#if !defined(TIOCSDTR)
+#define TIOCSDTR        ('e'<<8) | 0            /* set DTR              */
+#define TIOCCDTR        ('e'<<8) | 1            /* clear DTR            */
+#endif
 
 #include "indigo_driver_xml.h"
 
