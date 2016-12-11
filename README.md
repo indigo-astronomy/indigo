@@ -35,6 +35,9 @@ This is the list of requirements taken into the consideration:
 ## This is under development
 
 1. QHY (5II-L) CCD driver
+2. Atik EFW2 filterwheel driver
+3. LX200 mount driver
+4. NexStar mount driver
 
 ------------------------------------------------------------------------------------------------
 

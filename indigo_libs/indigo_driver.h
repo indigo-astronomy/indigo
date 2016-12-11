@@ -273,5 +273,13 @@ extern void indigo_start_usb_event_handler();
  */
 extern void indigo_async(void *fun(void *data), void *data);
 
+/** Convert sexagesimal string to double.
+ */
+extern double indigo_stod(char *string);
+
+/** Convert double to sexagesimal string.
+ */
+extern char* indigo_dtos(double value, char *format);
+
 #endif /* indigo_device_h */
 
