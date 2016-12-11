@@ -598,5 +598,39 @@ void indigo_async(void *fun(void *data), void *data) {
 	pthread_create(&async_thread, NULL, fun, data);
 }
 
+double indigo_stod(char *string) {
+	char copy[128];
+	strncpy(copy, string, 128);
+	string = copy;
+	double value = 0;
+	char *separator = strpbrk(string, ":*' ");
+	if (separator == NULL) {
+		value = atof(string);
+	} else {
+		*separator++ = 0;
+		value = atof(string);
+		separator = strpbrk(string = separator, ":*' ");
+		if (separator == NULL) {
+			value += atof(string)/60.0;
+		} else {
+			*separator++ = 0;
+			value += atof(string)/60.0 + atof(separator)/3600.0;
+		}
+	}
+	return value;
+}
 
+char* indigo_dtos(double value, char *format) {
+	double d = fabs(value);
+	double m = 60.0 * (d - floor(d));
+	double s = 60.0 * (m - floor(m));
+	if (value < 0)
+		d = -d;
+	static char string[128];
+	if (format == NULL)
+		snprintf(string, 128, "%d:%02d:%05.2f", (int)d, (int)m, s);
+	else
+		snprintf(string, 128, format, (int)d, (int)m, s);
+	return string;
+}
 
