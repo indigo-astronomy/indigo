@@ -77,7 +77,7 @@ static bool mount_handle_coordinates(indigo_device *device) {
 	int res = RC_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	// GOTO requested
-	if(MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value) {
+	if(MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		res = tc_goto_rade_p(PRIVATE_DATA->dev_id, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		if (res != RC_OK) {
 			INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_goto_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res));
