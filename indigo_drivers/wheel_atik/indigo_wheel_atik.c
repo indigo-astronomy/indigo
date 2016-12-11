@@ -44,6 +44,13 @@
 #include "indigo_driver_xml.h"
 #include "indigo_wheel_atik.h"
 
+#undef INDIGO_DRIVER_DEBUG
+#define INDIGO_DRIVER_DEBUG(c) c
+
+#undef INDIGO_LOG
+#define INDIGO_LOG(c) c
+
+
 // -------------------------------------------------------------------------------- ATIK USB interface implementation
 
 #define ATIK_VENDOR_ID                  0x04D8
