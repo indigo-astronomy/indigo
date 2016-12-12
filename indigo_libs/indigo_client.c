@@ -105,7 +105,7 @@ indigo_result indigo_load_driver(const char *name, bool init) {
 	entry_point_name = basename(driver_name);
 	cp = strchr(entry_point_name, '.');
 	if (cp) *cp = '\0';
-	else strncat(so_name, SO_NAME, sizeof(so_name));
+	else strncat(so_name, SO_NAME, INDIGO_NAME_SIZE);
 
 	dl_handle = dlopen(so_name, RTLD_LAZY);
 	if (!dl_handle) {

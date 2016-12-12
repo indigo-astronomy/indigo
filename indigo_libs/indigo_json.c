@@ -89,32 +89,6 @@ static long stream_read(int handle, char *buffer, int length) {
 	return n == -1 ? -1 : i;
 }
 
-static indigo_property_state parse_state(char *value) {
-	if (!strcmp(value, "Ok"))
-		return INDIGO_OK_STATE;
-	if (!strcmp(value, "Busy"))
-		return INDIGO_BUSY_STATE;
-	if (!strcmp(value, "Alert"))
-		return INDIGO_ALERT_STATE;
-	return INDIGO_IDLE_STATE;
-}
-
-static indigo_property_perm parse_perm(char *value) {
-	if (!strcmp(value, "rw"))
-		return INDIGO_RW_PERM;
-	if (!strcmp(value, "wo"))
-		return INDIGO_WO_PERM;
-	return INDIGO_RO_PERM;
-}
-
-static indigo_rule parse_rule(char *value) {
-	if (!strcmp(value, "OneOfMany"))
-		return INDIGO_ONE_OF_MANY_RULE;
-	if (!strcmp(value, "AtMostOne"))
-		return INDIGO_AT_MOST_ONE_RULE;
-	return INDIGO_ANY_OF_MANY_RULE;
-}
-
 typedef enum {
 	ERROR,
 	IDLE,
@@ -169,7 +143,7 @@ static void *get_properties_handler(parser_state state, char *name, char *value,
 }
 
 static void *one_text_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_text_vector_handler;
 	if (state == END_STRUCT) {
@@ -183,7 +157,7 @@ static void *one_text_handler(parser_state state, char *name, char *value, indig
 }
 
 static void *new_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "oneText")) {
 		property->count = 0;
 		return one_text_handler;
@@ -202,7 +176,7 @@ static void *new_text_vector_handler(parser_state state, char *name, char *value
 }
 
 static void *one_number_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_number_vector_handler;
 	if (state == END_STRUCT) {
@@ -216,7 +190,7 @@ static void *one_number_handler(parser_state state, char *name, char *value, ind
 }
 
 static void *new_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "oneNumber")) {
 		property->count = 0;
 		return one_number_handler;
@@ -235,7 +209,7 @@ static void *new_number_vector_handler(parser_state state, char *name, char *val
 }
 
 static void *one_switch_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_switch_vector_handler;
 	if (state == END_STRUCT) {
@@ -249,7 +223,7 @@ static void *one_switch_handler(parser_state state, char *name, char *value, ind
 }
 
 static void *new_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "oneSwitch")) {
 		property->count = 0;
 		return one_switch_handler;
@@ -319,7 +293,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 		assert(pointer - buffer <= JSON_BUFFER_SIZE);
 		assert(name_pointer - name_buffer <= INDIGO_NAME_SIZE);
 		if (state == ERROR) {
-			indigo_error("XML Parser: syntax error");
+			indigo_error("JSON Parser: syntax error");
 			goto exit_loop;
 		}
 		while ((c = *pointer++) == 0) {

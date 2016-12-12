@@ -27,11 +27,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <unistd.h>
 #include <termios.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <netdb.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -127,3 +129,30 @@ bool indigo_write(int handle, const char *buffer, long length) {
 		remains -= bytes_written;
 	}
 }
+
+bool indigo_write_synced(int handle, pthread_mutex_t mutex, const char *buffer, long length) {
+	pthread_mutex_lock(&mutex);
+	bool result = indigo_write(handle, buffer, length);
+	pthread_mutex_unlock(&mutex);
+	return result;
+}
+
+bool indigo_printf(int handle, const char *format, ...) {
+	char buffer[1024];
+	va_list args;
+	va_start(args, format);
+	int length = vsnprintf(buffer, 1024, format, args);
+	va_end(args);
+	return indigo_write(handle, buffer, length);
+}
+
+
+bool indigo_printf_synced(int handle, pthread_mutex_t mutex, const char *format, ...) {
+	char buffer[1024];
+	va_list args;
+	va_start(args, format);
+	int length = vsnprintf(buffer, 1024, format, args);
+	va_end(args);
+	return indigo_write_synced(handle, mutex, buffer, length);
+}
+

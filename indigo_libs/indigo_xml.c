@@ -37,6 +37,7 @@
 
 #include "indigo_base64.h"
 #include "indigo_xml.h"
+#include "indigo_io.h"
 #include "indigo_version.h"
 #include "indigo_driver_xml.h"
 
@@ -107,45 +108,6 @@ static indigo_rule parse_rule(char *value) {
 	return INDIGO_ANY_OF_MANY_RULE;
 }
 
-/* mutex used by writing indigo_xml_printf(), indigo_xml_write() */
-static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void indigo_xml_printf(int handle, const char *format, ...) {
-	static char buffer[1024];
-	pthread_mutex_lock(&log_mutex);
-	va_list args;
-	va_start(args, format);
-	int length = vsnprintf(buffer, 1024, format, args);
-	va_end(args);
-	while(length > 0) {
-		ssize_t written = write(handle, buffer, length);
-		if (written > 0) length -= written;
-		else break;
-	}
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("sent: %s", buffer));
-	pthread_mutex_unlock(&log_mutex);
-}
-
-void indigo_xml_write(int handle, const char *buffer, long length) {
-	pthread_mutex_lock(&log_mutex);
-	//   INDIGO_DEBUG(int written =)
-	while(length > 0) {
-		ssize_t written = write(handle, buffer, length);
-		if (written > 0) length -= written;
-		else break;
-	}
-	//   INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
-	pthread_mutex_unlock(&log_mutex);
-}
-
-void indigo_xml_fwrite(FILE* fh, const char *buffer, long length) {
-	pthread_mutex_lock(&log_mutex);
-	//   INDIGO_DEBUG(int written =)
-	fwrite(buffer, 1, length, fh);
-	//   INDIGO_DEBUG(indigo_debug("%s sent: %d bytes", __FUNCTION__, written));
-	pthread_mutex_unlock(&log_mutex);
-}
-
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
 
 static void *top_level_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
@@ -200,7 +162,7 @@ static void *get_properties_handler(parser_state state, char *name, char *value,
 			if (version > client->version) {
 				assert(client->client_context != NULL);
 				int handle = ((indigo_adapter_context *)(client->client_context))->output;
-				indigo_xml_printf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
+				indigo_printf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
 				client->version = version;
 			}
 		} else if (!strncmp(name, "device",INDIGO_NAME_SIZE)) {
