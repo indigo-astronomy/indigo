@@ -50,16 +50,8 @@ extern bool indigo_read_line(int handle, char *buffer, int length);
  */
 extern bool indigo_write(int handle, const char *buffer, long length);
 
-/** Write buffer with mutex.
- */
-extern bool indigo_write_synced(int handle, pthread_mutex_t mutex, const char *buffer, long length);
-
 /** Write formatted.
  */
 extern bool indigo_printf(int handle, const char *format, ...);
-
-/** Write formatted with mutex.
- */
-extern bool indigo_printf_synced(int handle, pthread_mutex_t mutex, const char *format, ...);
 
 #endif /* indigo_io_h */

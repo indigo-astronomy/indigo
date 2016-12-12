@@ -30,7 +30,6 @@
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <termios.h>
 #include <errno.h>
 #include <pthread.h>
 #include <sys/types.h>
@@ -38,15 +37,9 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-/* could not find these on linux, so I define them as in digi.h - to be tested, at least it compiles now */
-#if !defined(TIOCSDTR)
-#define TIOCSDTR        ('e'<<8) | 0            /* set DTR              */
-#define TIOCCDTR        ('e'<<8) | 1            /* clear DTR            */
-#endif
-
 #include "indigo_driver_xml.h"
-
 #include "indigo_mount_lx200.h"
+#include "indigo_io.h"
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((lx200_private_data *)DEVICE_CONTEXT->private_data)
@@ -68,61 +61,43 @@ typedef struct {
 bool meade_command(indigo_device *device, char *command, char *response, int max);
 
 bool meade_open(indigo_device *device) {
-	struct termios	tty_setting;
-	PRIVATE_DATA->handle = open(PRIVATE_DATA->device_port->items->text.value, O_RDWR | O_NOCTTY | O_NONBLOCK);
-	if (PRIVATE_DATA->handle <= 0) {
-		INDIGO_LOG(indigo_log("lx200: failed to connect %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
+	char *name = PRIVATE_DATA->device_port->items->text.value;
+	
+	if (!strncmp(name, "/dev", 4)) {
+		PRIVATE_DATA->handle = indigo_open_serial(name);
+	} else {
+		char *colon = strchr(name, ':');
+		if (colon == NULL) {
+			PRIVATE_DATA->handle = indigo_open_tcp(name, 4030);
+		} else {
+			char host[INDIGO_NAME_SIZE];
+			strncmp(host, name, colon - name);
+			int port = atoi(colon + 1);
+			PRIVATE_DATA->handle = indigo_open_tcp(host, port);
+		}
+	}
+	if (PRIVATE_DATA->handle >= 0) {
+		indigo_send_message(device, "lx200: connected to %s", name);
+		INDIGO_LOG(indigo_log("lx200: connected to %s", name));
+		char response[128];
+		if (meade_command(device, "\006", response, 1)) {
+			INDIGO_LOG(indigo_log("lx200: mode:     %s", response));
+		}
+		if (meade_command(device, ":GVP#", response, 127)) {
+			INDIGO_LOG(indigo_log("lx200: product:  %s", response));
+		}
+		if (meade_command(device, ":GVN#", response, 127)) {
+			INDIGO_LOG(indigo_log("lx200: firmware: %s", response));
+		}
+		if (meade_command(device, ":GW#", response, 127)) {
+			INDIGO_LOG(indigo_log("lx200: status:   %s", response));
+		}
+		return true;
+	} else {
+		INDIGO_LOG(indigo_log("lx200: failed to connect to %s", name));
+		indigo_send_message(device, "lx200: failed to connect to %s", name);
 		return false;
 	}
-	if (ioctl(PRIVATE_DATA->handle, TIOCEXCL) == -1) {
-		INDIGO_LOG(indigo_log("lx200: TIOCEXCL failed on %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
-		return false;
-	}
-	if (fcntl(PRIVATE_DATA->handle, F_SETFL, 0) == -1) {
-		INDIGO_LOG(indigo_log("lx200: Clearing O_NONBLOCK failed on %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
-		return false;
-	}
-	if (tcgetattr(PRIVATE_DATA->handle, &tty_setting) == -1) {
-		INDIGO_LOG(indigo_log("lx200: Failed to get tty attributes for %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
-		return false;
-	}
-	cfmakeraw(&tty_setting);
-	tty_setting.c_cc[VMIN] = 1;
-	tty_setting.c_cc[VTIME] = 10;
-	cfsetspeed(&tty_setting, B9600);
-	tty_setting.c_cflag |= CS8;
-	if (tcsetattr(PRIVATE_DATA->handle, TCSANOW, &tty_setting) == -1) {
-		INDIGO_LOG(indigo_log("lx200: Failed to set tty attributes for %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
-		return false;
-	}
-	if (ioctl(PRIVATE_DATA->handle, TIOCSDTR) == -1)  {
-		INDIGO_LOG(indigo_log("lx200: Failed to assert DTR for %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
-		return false;
-	}
-	if (ioctl(PRIVATE_DATA->handle, TIOCCDTR) == -1) {
-		INDIGO_LOG(indigo_log("lx200: Failed to clear DTR for %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
-		return false;
-	}
-	int handshake = TIOCM_DTR | TIOCM_RTS | TIOCM_CTS | TIOCM_DSR;
-	if (ioctl(PRIVATE_DATA->handle, TIOCMSET, &handshake) == -1) {
-		INDIGO_LOG(indigo_log("lx200: Failed to set handshake lines for %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
-		return false;
-	}
-	INDIGO_LOG(indigo_log("lx200: connected to %s", PRIVATE_DATA->device_port->items->text.value));
-	char response[128];
-	if (meade_command(device, "\006", response, 1)) {
-		INDIGO_LOG(indigo_log("lx200: mode:     %s", response));
-	}
-	if (meade_command(device, ":GVP#", response, 127)) {
-		INDIGO_LOG(indigo_log("lx200: product:  %s", response));
-	}
-	if (meade_command(device, ":GVN#", response, 127)) {
-		INDIGO_LOG(indigo_log("lx200: firmware: %s", response));
-	}
-	if (meade_command(device, ":GW#", response, 127)) {
-		INDIGO_LOG(indigo_log("lx200: status:   %s", response));
-	}
-	return true;
 }
 
 bool meade_command(indigo_device *device, char *command, char *response, int max) {
@@ -167,7 +142,7 @@ bool meade_command(indigo_device *device, char *command, char *response, int max
 	if (response != NULL) {
 		int index = 0;
 		remains = max;
-		int timeout = 1;
+		int timeout = 3;
 		while (remains > 0) {
 			fd_set readout;
 			FD_ZERO(&readout);
