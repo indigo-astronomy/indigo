@@ -1,0 +1,49 @@
+// Copyright (c) 2016 CloudMakers, s. r. o.
+// Copyright (c) 2016 Rumen G.Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// version history
+// 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+/** INDIGO Bus
+ \file indigo_io.h
+ */
+
+#ifndef indigo_io_h
+#define indigo_io_h
+
+#include <stdio.h>
+#include <stdbool.h>
+
+/** Open serial connection.
+ */
+extern int indigo_open_serial(const char *dev_file);
+
+/** Open network connection.
+ */
+extern int indigo_open_tcp(const char *host, int port);
+
+/** Read buffer.
+ */
+extern bool indigo_read(int handle, char *buffer, long length);
+
+/** Write buffer.
+ */
+extern bool indigo_write(int handle, const char *buffer, long length);
+
+#endif /* indigo_io_h */

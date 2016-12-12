@@ -36,42 +36,30 @@
 
 
 #include "indigo_json.h"
+#include "indigo_io.h"
 
 //#undef INDIGO_TRACE_PROTOCOL
 //#define INDIGO_TRACE_PROTOCOL(c) c
 
 static pthread_mutex_t json_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static bool full_write(int handle, const char *buffer, long length) {
-	long remains = length;
-	while (true) {
-		long bytes_written = write(handle, buffer, remains);
-		if (bytes_written < 0)
-			return false;
-		if (bytes_written == remains)
-			return true;
-		buffer += bytes_written;
-		remains -= bytes_written;
-	}
-}
-
 static void ws_write(int handle, const char *buffer, long length) {
 	uint8_t header[10] = { 0x81 };
 	if (length <= 0x7D) {
 		header[1] = length;
-		full_write(handle, (char *)header, 2);
+		indigo_write(handle, (char *)header, 2);
 	} else if (length <= 0xFFFF) {
 		header[1] = 0x7E;
 		uint16_t payloadLength = htons(length);
 		memcpy(header+2, &payloadLength, 2);
-		full_write(handle, (char *)header, 4);
+		indigo_write(handle, (char *)header, 4);
 	} else {
 		header[1] = 0x7F;
 		uint64_t payloadLength = htonll(length);
 		memcpy(header+2, &payloadLength, 8);
-		full_write(handle, (char *)header, 10);
+		indigo_write(handle, (char *)header, 10);
 	}
-	full_write(handle, buffer, length);
+	indigo_write(handle, buffer, length);
 }
 
 static indigo_result json_define_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {

@@ -113,6 +113,34 @@
  */
 #define MOUNT_SLEW_RATE_MAX_ITEM											(MOUNT_SLEW_RATE_PROPERTY->items+3)
 
+/** MOUNT_TRACK_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
+ */
+#define MOUNT_TRACK_RATE_PROPERTY											(MOUNT_CONTEXT->mount_track_rate_property)
+
+/** MOUNT_TRACK_RATE.SIDEREAL property item pointer.
+ */
+#define MOUNT_TRACK_RATE_SIDEREAL_ITEM								(MOUNT_TRACK_RATE_PROPERTY->items+0)
+
+/** MOUNT_TRACK_RATE.SOLAR property item pointer.
+ */
+#define MOUNT_TRACK_RATE_SOLAR_ITEM										(MOUNT_TRACK_RATE_PROPERTY->items+1)
+
+/** MOUNT_TRACK_RATE.LINAR property item pointer.
+ */
+#define MOUNT_TRACK_RATE_LUNAR_ITEM										(MOUNT_TRACK_RATE_PROPERTY->items+2)
+
+/** MOUNT_GUIDE_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
+ */
+#define MOUNT_GUIDE_RATE_PROPERTY											(MOUNT_CONTEXT->mount_guide_rate_property)
+
+/** MOUNT_GUIDE_RATE.RA property item pointer.
+ */
+#define MOUNT_GUIDE_RATE_RA_ITEM											(MOUNT_GUIDE_RATE_PROPERTY->items+0)
+
+/** MOUNT_GUIDE_RATE.DEC property item pointer.
+ */
+#define MOUNT_GUIDE_RATE_DEC_ITEM											(MOUNT_GUIDE_RATE_PROPERTY->items+1)
+
 /** MOUNT_EQUATORIAL_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
  */
 #define MOUNT_EQUATORIAL_COORDINATES_PROPERTY					(MOUNT_CONTEXT->mount_equatorial_coordinates_property)
@@ -154,6 +182,8 @@ typedef struct {
 	indigo_property *mount_park_property;										///< MOUNT_PARK property pointer
 	indigo_property *mount_on_coordinates_set_property;			///< MOUNT_ON_COORDINATES_SET property pointer
 	indigo_property *mount_slew_rate_property;							///< MOUNT_SLEW_RATE property pointer
+	indigo_property *mount_track_rate_property;							///< MOUNT_TRACK_RATE property pointer
+	indigo_property *mount_guide_rate_property;							///< MOUNT_GUIDE_RATE property pointer
 	indigo_property *mount_equatorial_coordinates_property;	///< MOUNT_EQUATORIAL_COORDINATES property pointer
 	indigo_property *mount_horizontal_coordinates_property;	///< MOUNT_HORIZONTAL_COORDINATES property pointer
 	indigo_property *mount_abort_motion_property;						///< MOUNT_ABORT_MOTION property pointer
