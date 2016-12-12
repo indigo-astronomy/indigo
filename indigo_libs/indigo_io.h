@@ -42,6 +42,10 @@ extern int indigo_open_tcp(const char *host, int port);
  */
 extern bool indigo_read(int handle, char *buffer, long length);
 
+/** Read line.
+ */
+extern bool indigo_read_line(int handle, char *buffer, int length);
+
 /** Write buffer.
  */
 extern bool indigo_write(int handle, const char *buffer, long length);
