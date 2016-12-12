@@ -71,7 +71,7 @@ bool meade_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_open_tcp(name, 4030);
 		} else {
 			char host[INDIGO_NAME_SIZE];
-			strncmp(host, name, colon - name);
+			strncpy(host, name, colon - name);
 			int port = atoi(colon + 1);
 			PRIVATE_DATA->handle = indigo_open_tcp(host, port);
 		}
