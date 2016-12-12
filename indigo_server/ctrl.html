@@ -469,6 +469,7 @@
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 							property.state = vector.state;
+							property.message = vector.message;
 							for (var i = 0; i < vector.oneSwitch.length; i++) {
 									var item = getItem(property, vector.oneSwitch[i].name);
 									if (item != undefined)
@@ -493,6 +494,7 @@
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 							property.state = vector.state;
+							property.message = vector.message;
 							for (var i = 0; i < vector.oneText.length; i++) {
 								var item = getItem(property, vector.oneText[i].name);
 								if (item != undefined && !item.modified)
@@ -522,6 +524,7 @@
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 							property.state = vector.state;
+							property.message = vector.message;
 							for (var i = 0; i < vector.oneNumber.length; i++) {
 								var item = getItem(property, vector.oneNumber[i].name);
 								if (item != undefined) {
@@ -549,6 +552,7 @@
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 						property.state = vector.state;
+						property.message = vector.message;
 						for (var i = 0; i < vector.oneLight.length; i++) {
 							var item = getItem(property, vector.oneLight[i].name);
 							if (item != undefined)
@@ -571,6 +575,7 @@
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 							property.state = vector.state;
+							property.message = vector.message;
 							for (var i = 0; i < vector.oneBLOB.length; i++) {
 								var item = getItem(property, vector.oneBLOB[i].name);
 								item.jpeg = false;

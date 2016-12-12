@@ -50,7 +50,6 @@
 #undef INDIGO_LOG
 #define INDIGO_LOG(c) c
 
-
 // -------------------------------------------------------------------------------- ATIK USB interface implementation
 
 #define ATIK_VENDOR_ID                  0x04D8

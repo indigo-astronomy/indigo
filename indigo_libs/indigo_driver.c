@@ -419,6 +419,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 				indigo_save_property(device, NULL, DEBUG_PROPERTY);
 			if (SIMULATION_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, SIMULATION_PROPERTY);
+			if (!DEVICE_PORT_PROPERTY->hidden && DEVICE_PORT_PROPERTY->perm == INDIGO_RW_PERM)
+				indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			if (DEVICE_CONTEXT->property_save_file_handle) {
 				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 				close(DEVICE_CONTEXT->property_save_file_handle);
