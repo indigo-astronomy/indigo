@@ -234,8 +234,6 @@ static int find_unplugged_device_id() {
 
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	int id;
-	int index = 0;
 	EFW_INFO info;
 
 	static indigo_device wheel_template = {
@@ -250,7 +248,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			int rc = libusb_get_device_descriptor(dev, &descriptor);
+			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
 			for (int i = 0; i < efw_id_count; i++) {
 				if (descriptor.idVendor != ASI_VENDOR_ID || efw_products[i] != descriptor.idProduct) continue;
 

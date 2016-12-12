@@ -502,7 +502,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	struct libusb_device_descriptor descriptor;
 	switch (event) {
 	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-		int rc = libusb_get_device_descriptor(dev, &descriptor);
+		INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
 		if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID)) {
 			INDIGO_DEBUG_DRIVER(indigo_debug("ssag_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s (0x%04x, 0x%04x)", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct));
 			libusb_ref_device(dev);

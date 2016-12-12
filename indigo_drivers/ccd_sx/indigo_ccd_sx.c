@@ -908,7 +908,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	struct libusb_device_descriptor descriptor;
 	switch (event) {
 	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-		int rc = libusb_get_device_descriptor(dev, &descriptor);
+		INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
 		INDIGO_DEBUG_DRIVER(indigo_debug("sx_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 		for (int i = 0; SX_PRODUCTS[i].name; i++) {
 			if (descriptor.idVendor == SX_VENDOR_ID && SX_PRODUCTS[i].product == descriptor.idProduct) {
