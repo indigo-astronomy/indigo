@@ -208,17 +208,17 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_ON_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ON_COORDINATES_SET_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
-		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
-		MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
-		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
 		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
+		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
+		MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_GUIDE_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE

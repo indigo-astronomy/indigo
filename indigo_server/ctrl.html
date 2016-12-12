@@ -219,12 +219,12 @@
 																</form>
 																<form class="form-horizontal" ng-switch-when="SWITCH">
 																	<div class="form-group" ng-repeat="item in property.items">
-																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule=='AnyOfMany'">
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-disabled="property.perm=='ro'" ng-switch-when="true" ng-click="setSwitch(device, property, item, false)">{{item.value | switch}}</button>
+																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule=='OneOfMany'">
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-disabled="property.perm=='ro'" ng-switch-when="true">{{item.value | switch}}</button>
 																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-disabled="property.perm=='ro'" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
 																		</div>
-																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule!='AnyOfMany'">
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-disabled="property.perm=='ro'" ng-switch-when="true" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																		<div class="col-sm-2" ng-switch="item.value" ng-if="property.rule!='OneOfMany'">
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-disabled="property.perm=='ro'" ng-switch-when="true" ng-click="setSwitch(device, property, item, false)">{{item.value | switch}}</button>
 																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-disabled="property.perm=='ro'" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
 																		</div>
 																		<label class="col-sm-10 control-label">{{item.label}}</label>
