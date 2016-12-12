@@ -105,6 +105,7 @@ static bool mount_cancel_slew(indigo_device *device) {
 	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	return true;
 }
 
 
