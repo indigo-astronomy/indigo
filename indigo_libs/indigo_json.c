@@ -73,22 +73,6 @@ static long ws_read(int handle, char *buffer, long length) {
 	return payload_length;
 }
 
-static long stream_read(int handle, char *buffer, int length) {
-	int i = 0;
-	char c = '\0';
-	long n = 0;
-	while (i < length) {
-		n = read(handle, &c, 1);
-		if (n > 0 && c != '\r' && c != '\n') {
-			buffer[i++] = c;
-		} else {
-			break;
-		}
-	}
-	buffer[i] = '\0';
-	return n == -1 ? -1 : i;
-}
-
 typedef enum {
 	ERROR,
 	IDLE,
@@ -297,7 +281,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 			goto exit_loop;
 		}
 		while ((c = *pointer++) == 0) {
-			ssize_t count = (int)context->web_socket ? ws_read(handle, buffer, JSON_BUFFER_SIZE) : stream_read(handle, buffer, JSON_BUFFER_SIZE);
+			ssize_t count = (int)context->web_socket ? ws_read(handle, buffer, JSON_BUFFER_SIZE) : indigo_read_line(handle, buffer, JSON_BUFFER_SIZE);
 			if (count <= 0) {
 				goto exit_loop;
 			}

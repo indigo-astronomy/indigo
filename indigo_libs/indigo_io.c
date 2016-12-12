@@ -117,6 +117,28 @@ bool indigo_read(int handle, char *buffer, long length) {
 	}
 }
 
+
+bool indigo_read_line(int handle, char *buffer, int length) {
+	int i = 0;
+	char c = '\0';
+	long n = 0;
+	while (i < length) {
+		n = read(handle, &c, 1);
+		if (n > 0) {
+			if (c == '\r')
+				;
+			else if (c != '\n')
+				buffer[i++] = c;
+			else
+				break;
+		} else {
+			break;
+		}
+	}
+	buffer[i] = '\0';
+	return n != -1;
+}
+
 bool indigo_write(int handle, const char *buffer, long length) {
 	long remains = length;
 	while (true) {
