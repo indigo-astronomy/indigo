@@ -513,6 +513,30 @@
  */
 #define MOUNT_SLEW_RATE_MAX_ITEM_NAME						"MAX"
 
+/** MOUNT_MOTION_NS_PROPERTY_NAME property name.
+ */
+#define MOUNT_MOTION_NS_PROPERTY_NAME                "MOUNT_MOTION_NS"
+
+/** MOUNT_MOTION_NS.NORTH property item name.
+ */
+#define MOUNT_MOTION_NORTH_ITEM_NAME                 "MOTION_NORTH"
+
+/** MOUNT_MOTION_NS.SOUTH property item name.
+ */
+#define MOUNT_MOTION_SOUTH_ITEM_NAME                 "MOTION_SOUTH"
+
+/** MOUNT_MOTION_WE_PROPERTY_NAME property name.
+ */
+#define MOUNT_MOTION_WE_PROPERTY_NAME                "MOUNT_MOTION_WE"
+
+/** MOUNT_MOTION_NS.WEST property item name.
+ */
+#define MOUNT_MOTION_WEST_ITEM_NAME                 "MOTION_WEST"
+
+/** MOUNT_MOTION_NS.EAST property item name.
+ */
+#define MOUNT_MOTION_EAST_ITEM_NAME                 "MOTION_EAST"
+
 /** MOUNT_TRACK_RATE property name.
  */
 #define MOUNT_TRACK_RATE_PROPERTY_NAME					"MOUNT_TRACK_RATE"
