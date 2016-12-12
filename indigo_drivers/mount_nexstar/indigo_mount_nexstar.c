@@ -48,6 +48,7 @@ typedef struct {
 	bool parked;
 	char tty_name[INDIGO_VALUE_SIZE];
 	int count_open;
+	int slew_rate;
 	//double currentRA, requestedRA;
 	//double currentDec, requestedDec;
 	pthread_mutex_t serial_mutex;
@@ -91,6 +92,24 @@ static bool mount_handle_coordinates(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	if (res) return false;
+	else return true;
+}
+
+
+static bool mount_handle_slew_rate(indigo_device *device) {
+	int res = RC_OK;
+	//pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	if(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
+		PRIVATE_DATA->slew_rate = 2;
+	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
+		PRIVATE_DATA->slew_rate = 4;
+	} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
+		PRIVATE_DATA->slew_rate = 6;
+	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
+		PRIVATE_DATA->slew_rate = 9;
+	}
+	//pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res) return false;
 	else return true;
 }
@@ -177,6 +196,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (mount_open(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				MOUNT_LST_TIME_PROPERTY->hidden = false;
+				MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 			} else {
@@ -214,6 +235,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		if(mount_handle_coordinates(device)) slew_timer_callback(device);
+		else MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
+		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
+		if(mount_handle_slew_rate(device)) MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		else MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {

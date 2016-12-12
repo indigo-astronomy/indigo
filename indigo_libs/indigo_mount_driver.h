@@ -113,6 +113,30 @@
  */
 #define MOUNT_SLEW_RATE_MAX_ITEM											(MOUNT_SLEW_RATE_PROPERTY->items+3)
 
+/** MOUNT_MOTION_NS property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
+ */
+#define MOUNT_MOTION_NS_PROPERTY											(MOUNT_CONTEXT->mount_slew_rate_property)
+
+/** MOUNT_MOTION_NS.NORTH property item pointer.
+ */
+#define  MOUNT_MOTION_NORTH_ITEM										(MOUNT_MOTION_NS_PROPERTY->items+0)
+
+/** MOUNT_MOTION_NS.SOUTH property item pointer.
+ */
+#define  MOUNT_MOTION_SOUTH_ITEM						                (MOUNT_MOTION_NS_PROPERTY->items+1)
+
+/** MOUNT_MOTION_WE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
+ */
+#define MOUNT_MOTION_WE_PROPERTY											(MOUNT_CONTEXT->mount_slew_rate_property)
+
+/** MOUNT_MOTION_WE.WEST property item pointer.
+ */
+#define  MOUNT_MOTION_WEST_ITEM										(MOUNT_MOTION_WE_PROPERTY->items+0)
+
+/** MOUNT_MOTION_WE.EAST property item pointer.
+ */
+#define  MOUNT_MOTION_EAST_ITEM						                (MOUNT_MOTION_WE_PROPERTY->items+1)
+
 /** MOUNT_EQUATORIAL_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
  */
 #define MOUNT_EQUATORIAL_COORDINATES_PROPERTY					(MOUNT_CONTEXT->mount_equatorial_coordinates_property)
