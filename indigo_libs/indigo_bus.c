@@ -45,7 +45,6 @@ static indigo_client *clients[MAX_CLIENTS];
 static indigo_property *blobs[MAX_BLOBS];
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t blob_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool is_started = false;
 
 char *indigo_property_type_text[] = {

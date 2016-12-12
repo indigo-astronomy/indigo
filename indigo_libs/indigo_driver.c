@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <stdarg.h>
 #include <string.h>
 #include <pthread.h>
 #include <errno.h>
@@ -65,13 +64,13 @@
 #include "indigo_driver.h"
 #include "indigo_xml.h"
 #include "indigo_names.h"
-
-#define USE_POLL
+#include "indigo_io.h"
 
 #define NANO 1000000000L
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 
+#define USE_POLL
 #define time_diff(later, earier) ((later.tv_sec - earier.tv_sec) * 1000L + (later.tv_nsec - earier.tv_nsec) / 1000000L)
 
 static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -484,16 +483,6 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
-static void xprintf(int handle, const char *format, ...) {
-	char buffer[1024];
-	va_list args;
-	va_start(args, format);
-	int length = vsnprintf(buffer, 1024, format, args);
-	va_end(args);
-	write(handle, buffer, length);
-	INDIGO_DEBUG(indigo_debug("saved: %s", buffer));
-}
-
 extern int indigo_server_tcp_port;
 	
 static int open_config_file(char *device_name, int mode, const char *suffix) {
@@ -547,28 +536,28 @@ indigo_result indigo_save_property(indigo_device*device, int *file_handle, indig
 	}
 	switch (property->type) {
 	case INDIGO_TEXT_VECTOR:
-		xprintf(handle, "<newTextVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+		indigo_printf(handle, "<newTextVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			xprintf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, item->text.value);
+			indigo_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, item->text.value);
 		}
-		xprintf(handle, "</newTextVector>\n");
+		indigo_printf(handle, "</newTextVector>\n");
 		break;
 	case INDIGO_NUMBER_VECTOR:
-		xprintf(handle, "<newNumberVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+		indigo_printf(handle, "<newNumberVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			xprintf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number.value);
+			indigo_printf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", item->name, item->number.value);
 		}
-		xprintf(handle, "</newNumberVector>\n");
+		indigo_printf(handle, "</newNumberVector>\n");
 		break;
 	case INDIGO_SWITCH_VECTOR:
-		xprintf(handle, "<newSwitchVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
+		indigo_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", property->device, property->name, indigo_property_state_text[property->state]);
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
-			xprintf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
+			indigo_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
 		}
-		xprintf(handle, "</newSwitchVector>\n");
+		indigo_printf(handle, "</newSwitchVector>\n");
 		break;
 	default:
 		break;

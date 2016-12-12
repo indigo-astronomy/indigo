@@ -1018,7 +1018,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			int rc = libusb_get_device_descriptor(dev, &descriptor);
+			libusb_get_device_descriptor(dev, &descriptor);
 			for (int i = 0; i < asi_id_count; i++) {
 				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct) continue;
 
