@@ -56,24 +56,25 @@ typedef struct {
 	double currentDec;
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
+	char product[64];
 } lx200_private_data;
 
 bool meade_command(indigo_device *device, char *command, char *response, int max);
 
 bool meade_open(indigo_device *device) {
 	char *name = PRIVATE_DATA->device_port->items->text.value;
-	
-	if (!strncmp(name, "/dev", 4)) {
+	if (strncmp(name, "lx200://", 8)) {
 		PRIVATE_DATA->handle = indigo_open_serial(name);
 	} else {
-		char *colon = strchr(name, ':');
+		char *host = name + 8;
+		char *colon = strchr(host, ':');
 		if (colon == NULL) {
-			PRIVATE_DATA->handle = indigo_open_tcp(name, 4030);
+			PRIVATE_DATA->handle = indigo_open_tcp(host, 4030);
 		} else {
-			char host[INDIGO_NAME_SIZE];
-			strncpy(host, name, colon - name);
+			char host_name[INDIGO_NAME_SIZE];
+			strncpy(host_name, host, colon - host);
 			int port = atoi(colon + 1);
-			PRIVATE_DATA->handle = indigo_open_tcp(host, port);
+			PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
 		}
 	}
 	if (PRIVATE_DATA->handle >= 0) {
@@ -85,12 +86,15 @@ bool meade_open(indigo_device *device) {
 		}
 		if (meade_command(device, ":GVP#", response, 127)) {
 			INDIGO_LOG(indigo_log("lx200: product:  %s", response));
-		}
-		if (meade_command(device, ":GVN#", response, 127)) {
-			INDIGO_LOG(indigo_log("lx200: firmware: %s", response));
-		}
-		if (meade_command(device, ":GW#", response, 127)) {
-			INDIGO_LOG(indigo_log("lx200: status:   %s", response));
+			strncpy(PRIVATE_DATA->product, response, 64);
+			if (strcmp(PRIVATE_DATA->product, "EQMac")) {
+				if (meade_command(device, ":GVN#", response, 127)) {
+					INDIGO_LOG(indigo_log("lx200: firmware: %s", response));
+				}
+				if (meade_command(device, ":GW#", response, 127)) {
+					INDIGO_LOG(indigo_log("lx200: status:   %s", response));
+				}
+			}
 		}
 		return true;
 	} else {
