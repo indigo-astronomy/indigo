@@ -29,6 +29,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <errno.h>
+#include <math.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <limits.h>
