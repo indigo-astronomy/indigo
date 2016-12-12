@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <math.h>
 #include <assert.h>
 
@@ -124,6 +125,7 @@ static bool mount_cancel_slew(indigo_device *device) {
 	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	return true;
 }
 
 

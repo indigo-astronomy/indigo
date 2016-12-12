@@ -95,15 +95,16 @@ typedef struct {
 static void stop_camera(indigo_device *device) {
 	if (PRIVATE_DATA->connected) {
 		dc1394video_frame_t *frame;
+		dc1394error_t err;
 		while (true) {
-			dc1394error_t err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_POLL, &frame);
+			err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_POLL, &frame);
 			INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_capture_dequeue() [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
 			if (err != DC1394_SUCCESS || frame == NULL)
 				break;
 			err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
 			INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_capture_enqueue() [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
 		}
-		dc1394error_t err=dc1394_capture_stop(PRIVATE_DATA->camera);
+		err = dc1394_capture_stop(PRIVATE_DATA->camera);
 		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_capture_stop() [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
 	}
 	PRIVATE_DATA->connected = false;
@@ -115,7 +116,7 @@ static void setup_camera(indigo_device *device) {
 		stop_camera(device);
 	}
 	if (!PRIVATE_DATA->connected) {
-		dc1394error_t err = dc1394_capture_setup(PRIVATE_DATA->camera, 2, DC1394_CAPTURE_FLAGS_DEFAULT);
+		INDIGO_DEBUG_DRIVER(dc1394error_t err =) dc1394_capture_setup(PRIVATE_DATA->camera, 2, DC1394_CAPTURE_FLAGS_DEFAULT);
 		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_capture_setup() [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
 		//		dc1394speed_t speed;
 		//		dc1394_video_get_iso_speed(PRIVATE_DATA->camera, &speed);
