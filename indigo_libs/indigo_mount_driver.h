@@ -115,7 +115,7 @@
 
 /** MOUNT_MOTION_NS property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
-#define MOUNT_MOTION_NS_PROPERTY											(MOUNT_CONTEXT->mount_slew_rate_property)
+#define MOUNT_MOTION_NS_PROPERTY											(MOUNT_CONTEXT->mount_motion_ns_property)
 
 /** MOUNT_MOTION_NS.NORTH property item pointer.
  */
@@ -127,7 +127,7 @@
 
 /** MOUNT_MOTION_WE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
-#define MOUNT_MOTION_WE_PROPERTY											(MOUNT_CONTEXT->mount_slew_rate_property)
+#define MOUNT_MOTION_WE_PROPERTY											(MOUNT_CONTEXT->mount_motion_we_property)
 
 /** MOUNT_MOTION_WE.WEST property item pointer.
  */
@@ -211,6 +211,8 @@ typedef struct {
 	indigo_property *mount_equatorial_coordinates_property;	///< MOUNT_EQUATORIAL_COORDINATES property pointer
 	indigo_property *mount_horizontal_coordinates_property;	///< MOUNT_HORIZONTAL_COORDINATES property pointer
 	indigo_property *mount_abort_motion_property;						///< MOUNT_ABORT_MOTION property pointer
+	indigo_property *mount_motion_ns_property;							///< MOUNT_MOTION_NS property pointer
+	indigo_property *mount_motion_we_property;							///< MOUNT_MOTION_WE property pointer
 } indigo_mount_context;
 
 /** Attach callback function.
