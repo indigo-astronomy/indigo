@@ -305,7 +305,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		if (DEVICE_PORT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DEVICE_PORT_PROPERTY->hidden = true;
-		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Serial port", DEFAULT_TTY);
+		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Device name or host:port", DEFAULT_TTY);
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 #define MAX_DEVICE_PORTS	20
 		DEVICE_PORTS_PROPERTY = indigo_init_switch_property(NULL, device->name, DEVICE_PORTS_PROPERTY_NAME, MAIN_GROUP, "Serial ports", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_DEVICE_PORTS);
@@ -436,12 +436,17 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(DEVICE_PORT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		indigo_property_copy_values(DEVICE_PORT_PROPERTY, property, false);
-		if (!access(DEVICE_PORT_ITEM->text.value, R_OK)) {
+		if (!strncmp(DEVICE_PORT_ITEM->text.value, "/dev", 4)) {
+			if (!access(DEVICE_PORT_ITEM->text.value, R_OK)) {
+				DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+			} else {
+				DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, DEVICE_PORT_PROPERTY, "%s does not exists", DEVICE_PORT_ITEM->text.value);
+			}
+		} else {
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
-		} else {
-			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DEVICE_PORT_PROPERTY, "%s does not exists", DEVICE_PORT_ITEM->text.value);
 		}
 	} else if (indigo_property_match(DEVICE_PORTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
