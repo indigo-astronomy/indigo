@@ -148,12 +148,9 @@ static void slew_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (tc_goto_in_progress(dev_id)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		PRIVATE_DATA->slew_timer = NULL;
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.2, slew_timer_callback);
 	}
-
 	int res = tc_get_rade_p(dev_id, &ra, &dec);
 	if (res != RC_OK) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_rade_p(%d) = %d", dev_id, res));
@@ -162,6 +159,7 @@ static void slew_timer_callback(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+	PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.2, slew_timer_callback);
 }
 
 static indigo_result mount_attach(indigo_device *device) {
@@ -202,11 +200,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+				slew_timer_callback(device);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
+			PRIVATE_DATA->slew_timer = NULL;
 			mount_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -236,8 +236,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		if(mount_handle_coordinates(device)) slew_timer_callback(device);
-		else MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		if(!mount_handle_coordinates(device)) MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
