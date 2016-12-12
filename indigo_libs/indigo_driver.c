@@ -305,7 +305,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		if (DEVICE_PORT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DEVICE_PORT_PROPERTY->hidden = true;
-		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Device name or host:port", DEFAULT_TTY);
+		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Device name or URL", DEFAULT_TTY);
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 #define MAX_DEVICE_PORTS	20
 		DEVICE_PORTS_PROPERTY = indigo_init_switch_property(NULL, device->name, DEVICE_PORTS_PROPERTY_NAME, MAIN_GROUP, "Serial ports", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_DEVICE_PORTS);
