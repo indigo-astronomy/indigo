@@ -44,6 +44,12 @@
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((lx200_private_data *)DEVICE_CONTEXT->private_data)
 
+#undef INDIGO_DEBUG_DRIVER
+#define INDIGO_DEBUG_DRIVER(c) c
+
+#undef INDIGO_LOG
+#define INDIGO_LOG(c) c
+
 #define RA_MIN_DIF					(1/24/60/10)
 #define DEC_MIN_DIF					(1/60/60)
 
@@ -87,13 +93,34 @@ bool meade_open(indigo_device *device) {
 		if (meade_command(device, ":GVP#", response, 127)) {
 			INDIGO_LOG(indigo_log("lx200: product:  %s", response));
 			strncpy(PRIVATE_DATA->product, response, 64);
-			if (strcmp(PRIVATE_DATA->product, "EQMac")) {
+			if (!strcmp(PRIVATE_DATA->product, "EQMac")) {
+				MOUNT_PARK_PROPERTY->count = 2; // Can unpark!
+				if (meade_command(device, ":GR#", response, 127))
+					PRIVATE_DATA->currentRA = indigo_stod(response);
+				if (meade_command(device, ":GD#", response, 127))
+					PRIVATE_DATA->currentDec = indigo_stod(response);
+				if (PRIVATE_DATA->currentRA == 0 && PRIVATE_DATA->currentDec == 0) {
+					MOUNT_PARK_PARKED_ITEM->sw.value = true;
+					MOUNT_PARK_UNPARKED_ITEM->sw.value = false;
+					PRIVATE_DATA->parked = true;
+				} else {
+					MOUNT_PARK_PARKED_ITEM->sw.value = false;
+					MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
+					PRIVATE_DATA->parked = false;
+				}
+			} else {
+				MOUNT_PARK_PARKED_ITEM->sw.value = false;
+				PRIVATE_DATA->parked = false;
 				if (meade_command(device, ":GVN#", response, 127)) {
 					INDIGO_LOG(indigo_log("lx200: firmware: %s", response));
 				}
 				if (meade_command(device, ":GW#", response, 127)) {
 					INDIGO_LOG(indigo_log("lx200: status:   %s", response));
 				}
+				if (meade_command(device, ":Gt#", response, 127))
+					MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
+				if (meade_command(device, ":Gg#", response, 127))
+					MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = indigo_stod(response);
 			}
 		}
 		return true;
@@ -172,7 +199,7 @@ bool meade_command(indigo_device *device, char *command, char *response, int max
 		response[index] = 0;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_LOG(indigo_log("lx200: Command %s -> %s", command, response != NULL ? response : "NULL"));
+	INDIGO_DEBUG_DRIVER(indigo_debug("lx200: Command %s -> %s", command, response != NULL ? response : "NULL"));
 	return true;
 }
 
@@ -185,7 +212,7 @@ void meade_close(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
 		char response[128];
 		if (meade_command(device, ":GR#", response, 127))
 			PRIVATE_DATA->currentRA = indigo_stod(response);
@@ -244,7 +271,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				result = meade_open(device);
-				position_timer_callback(device);
+				if (!PRIVATE_DATA->parked)
+					position_timer_callback(device);
 			}
 			if (result) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -268,44 +296,87 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 			meade_command(device, ":hP#", NULL, 0);
 			PRIVATE_DATA->parked = true;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			if (PRIVATE_DATA->position_timer != NULL)
+				indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 		}
+		if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
+			meade_command(device, ":hU#", NULL, 0);
+			PRIVATE_DATA->parked = false;
+			position_timer_callback(device);
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+			// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
+		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
+		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		char command[128], response[128];
+		sprintf(command, ":St%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d"));
+		if (!meade_command(device, command, response, 1) || *response != '1') {
+			INDIGO_LOG(indigo_log("lx200: %s failed", command));
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			double longitude = 360-MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+			if (longitude > 360)
+				longitude -= 360;
+			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%0d*%02d"));
+			if (!meade_command(device, command, response, 1) || *response != '1') {
+				INDIGO_LOG(indigo_log("lx200: %s failed", command));
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			char command[128], response[128];
-			sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, "%02d:%02d:%02.0f"));
-			if (!meade_command(device, command, response, 1) || *response != '1') {
-				INDIGO_LOG(indigo_log("lx200: %s failed", command));
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, "%+03d*%02d:%02.0f"));
+		if (PRIVATE_DATA->parked) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mout is parked!");
+		} else {
+			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				char command[128], response[128];
+				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				if (!meade_command(device, command, response, 1) || *response != '1') {
 					INDIGO_LOG(indigo_log("lx200: %s failed", command));
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else if (!meade_command(device, ":MS#", response, 1) || *response != '0') {
-					INDIGO_LOG(indigo_log("lx200: :MS# failed"));
-					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
+					if (!meade_command(device, command, response, 1) || *response != '1') {
+						INDIGO_LOG(indigo_log("lx200: %s failed", command));
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						if (!meade_command(device, ":MS#", response, 1) || *response != '0') {
+							INDIGO_LOG(indigo_log("lx200: :MS# failed"));
+							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+						} else {
+							usleep(100000);
+						}
+					}
 				}
 			}
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		}
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
-		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-		if (PRIVATE_DATA->position_timer != NULL) {
-			indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
-			PRIVATE_DATA->position_timer = NULL;
-			meade_command(device, ":Q#", NULL, 0);
+		if (PRIVATE_DATA->parked) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mout is parked!");
+		} else {
+			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
+			if (PRIVATE_DATA->position_timer != NULL) {
+				indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
+				PRIVATE_DATA->position_timer = NULL;
+				meade_command(device, ":Q#", NULL, 0);
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+			}
+			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		}
-		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
