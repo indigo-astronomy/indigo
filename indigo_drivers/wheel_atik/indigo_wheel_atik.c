@@ -98,10 +98,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if ((PRIVATE_DATA->handle = hid_open(ATIK_VENDOR_ID, ATIK_PRODUC_ID, NULL)) != NULL) {
-				INDIGO_DEBUG_DRIVER(indigo_debug("atik_open: hid_open [%d] ->  ok", __LINE__));
+				INDIGO_DRIVER_DEBUG(indigo_debug("atik_open: hid_open [%d] ->  ok", __LINE__));
 				while (true) {
 					libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-					if (PRIVATE_DATA->slot_count < 99)
+					if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9)
 						break;
 					sleep(1);
 				}
@@ -109,7 +109,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				INDIGO_DEBUG_DRIVER(indigo_debug("atik_open: hid_open [%d] ->  failed", __LINE__));
+				INDIGO_DRIVER_DEBUG(indigo_debug("atik_open: hid_open [%d] ->  failed", __LINE__));
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
@@ -198,13 +198,13 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 		hid_init();
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VENDOR_ID, ATIK_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_atik: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(indigo_debug("indigo_wheel_atik: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_atik: libusb_hotplug_deregister_callback [%d]", __LINE__));
+		INDIGO_DRIVER_DEBUG(indigo_debug("indigo_wheel_atik: libusb_hotplug_deregister_callback [%d]", __LINE__));
 		if (device)
 			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 		hid_exit();
