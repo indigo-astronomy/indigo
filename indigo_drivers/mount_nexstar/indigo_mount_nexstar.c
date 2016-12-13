@@ -53,7 +53,7 @@ typedef struct {
 	//double currentRA, requestedRA;
 	//double currentDec, requestedDec;
 	pthread_mutex_t serial_mutex;
-	indigo_timer *slew_timer, *guider_timer;
+	indigo_timer *position_timer, *guider_timer;
 } nexstar_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -124,6 +124,23 @@ static bool mount_cancel_slew(indigo_device *device) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_goto_cancel(%d) = %d", PRIVATE_DATA->dev_id, res));
 	}
 
+	MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+	MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+	MOUNT_MOTION_NS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, NULL);
+	MOUNT_MOTION_WEST_ITEM->sw.value = false;
+	MOUNT_MOTION_EAST_ITEM->sw.value = false;
+	MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+
+	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
+	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
+
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	return true;
 }
@@ -141,7 +158,7 @@ static void mount_close(indigo_device *device) {
 }
 
 
-static void slew_timer_callback(indigo_device *device) {
+static void position_timer_callback(indigo_device *device) {
 	double ra, dec;
 	int dev_id = PRIVATE_DATA->dev_id;
 
@@ -159,7 +176,7 @@ static void slew_timer_callback(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-	PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.2, slew_timer_callback);
+	PRIVATE_DATA->position_timer = indigo_set_timer(device, 0.2, position_timer_callback);
 }
 
 static indigo_result mount_attach(indigo_device *device) {
@@ -200,13 +217,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
-				slew_timer_callback(device);
+				position_timer_callback(device);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			PRIVATE_DATA->slew_timer = NULL;
+			indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
+			PRIVATE_DATA->position_timer = NULL;
 			mount_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -244,13 +262,25 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if(mount_handle_slew_rate(device)) MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		else MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_MOTION_NS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
+		indigo_property_copy_values(MOUNT_MOTION_NS_PROPERTY, property, false);
+		// HANDLE start stop motion
+		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_MOTION_WE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
+		indigo_property_copy_values(MOUNT_MOTION_WE_PROPERTY, property, false);
+		// HANDLE start stop motion
+		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-		if (PRIVATE_DATA->slew_timer != NULL) {
+		if (PRIVATE_DATA->position_timer != NULL) {
 			mount_cancel_slew(device);
-			indigo_cancel_timer(device, PRIVATE_DATA->slew_timer);
-			PRIVATE_DATA->slew_timer = NULL;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		}
