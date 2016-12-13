@@ -41,6 +41,8 @@
 #define h2d(h) (h * 15.0)
 #define d2h(d) (d / 15.0)
 
+#define REFRESH_SECONDS (0.5)
+
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((nexstar_private_data *)DEVICE_CONTEXT->private_data)
 
@@ -237,7 +239,7 @@ static void position_timer_callback(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-	PRIVATE_DATA->position_timer = indigo_set_timer(device, 0.2, position_timer_callback);
+	PRIVATE_DATA->position_timer = indigo_set_timer(device, REFRESH_SECONDS, position_timer_callback);
 }
 
 static indigo_result mount_attach(indigo_device *device) {
@@ -318,7 +320,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if(!mount_handle_coordinates(device)) MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
+		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
 		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
 		if(mount_handle_slew_rate(device)) MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		else MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
