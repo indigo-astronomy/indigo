@@ -116,6 +116,64 @@ static bool mount_handle_slew_rate(indigo_device *device) {
 }
 
 
+static void mount_handle_motion_ns(indigo_device *device) {
+	int dev_id = PRIVATE_DATA->dev_id;
+	int res = RC_OK;
+	char message[INDIGO_VALUE_SIZE];
+
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	if(MOUNT_MOTION_NORTH_ITEM->sw.value) {
+		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
+		strncpy(message,"Moving North...",sizeof(message));
+	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
+		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
+		strncpy(message,"Moving South...",sizeof(message));
+	} else {
+		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
+		strncpy(message,"Stopped moving",sizeof(message));
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+
+	if (res != RC_OK) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
+		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_OK_STATE;
+	}
+
+	indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, message);
+}
+
+
+static void mount_handle_motion_ne(indigo_device *device) {
+	int dev_id = PRIVATE_DATA->dev_id;
+	int res = RC_OK;
+	char message[INDIGO_VALUE_SIZE];
+
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	if(MOUNT_MOTION_EAST_ITEM->sw.value) {
+		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
+		strncpy(message,"Moving East...",sizeof(message));
+	} else if (MOUNT_MOTION_WEST_ITEM->sw.value) {
+		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
+		strncpy(message,"Moving West...",sizeof(message));
+	} else {
+		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
+		strncpy(message,"Stopped moving",sizeof(message));
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+
+	if (res != RC_OK) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
+		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
+	}
+
+	indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, message);
+}
+
+
 static bool mount_cancel_slew(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 
@@ -265,16 +323,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_MOTION_NS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
 		indigo_property_copy_values(MOUNT_MOTION_NS_PROPERTY, property, false);
-		// HANDLE start stop motion
-		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, NULL);
+		mount_handle_motion_ns(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_WE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
 		indigo_property_copy_values(MOUNT_MOTION_WE_PROPERTY, property, false);
-		// HANDLE start stop motion
-		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
+		mount_handle_motion_ne(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
