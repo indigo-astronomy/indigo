@@ -38,6 +38,9 @@
 #include "nexstar.h"
 #include "indigo_mount_nexstar.h"
 
+#define h2d(h) (h * 15.0)
+#define d2h(d) (d / 15.0)
+
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((nexstar_private_data *)DEVICE_CONTEXT->private_data)
 
@@ -80,14 +83,14 @@ static bool mount_handle_coordinates(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	// GOTO requested
 	if(MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-		res = tc_goto_rade_p(PRIVATE_DATA->dev_id, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+		res = tc_goto_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		if (res != RC_OK) {
 			INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_goto_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res));
 		}
 	}
 	// SYNC requested
 	else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		res = tc_sync_rade_p(PRIVATE_DATA->dev_id, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+		res = tc_sync_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		if (res != RC_OK) {
 			INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_sync_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res));
 		}
@@ -107,7 +110,7 @@ static bool mount_handle_slew_rate(indigo_device *device) {
 		PRIVATE_DATA->slew_rate = 4;
 	} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = 6;
-	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
+	} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = 9;
 	}
 	//pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
@@ -126,7 +129,7 @@ static void mount_handle_motion_ns(indigo_device *device) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving North...",sizeof(message));
 	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
-		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
+		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving South...",sizeof(message));
 	} else {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
@@ -155,7 +158,7 @@ static void mount_handle_motion_ne(indigo_device *device) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving East...",sizeof(message));
 	} else if (MOUNT_MOTION_WEST_ITEM->sw.value) {
-		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
+		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving West...",sizeof(message));
 	} else {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
@@ -170,7 +173,7 @@ static void mount_handle_motion_ne(indigo_device *device) {
 		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
 	}
 
-	indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, message);
+	indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, message);
 }
 
 
@@ -222,16 +225,16 @@ static void position_timer_callback(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (tc_goto_in_progress(dev_id)) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	int res = tc_get_rade_p(dev_id, &ra, &dec);
 	if (res != RC_OK) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_rade_p(%d) = %d", dev_id, res));
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	PRIVATE_DATA->position_timer = indigo_set_timer(device, 0.2, position_timer_callback);
@@ -350,6 +353,11 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device);
+	if(PRIVATE_DATA->position_timer) {
+		indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
+		PRIVATE_DATA->position_timer = NULL;
+	}
+	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_mount_detach(device);
 }
