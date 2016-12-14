@@ -72,7 +72,6 @@ static bool mount_open(indigo_device *device) {
 			INDIGO_LOG(indigo_log("indigo_mount_nexstar: open_telescope(%s) = %d", DEVICE_PORT_ITEM->text.value, dev_id));
 			return false;
 		} else {
-			INDIGO_LOG(indigo_log("indigo_mount_nexstar: open_telescope(%s) = %d", DEVICE_PORT_ITEM->text.value, dev_id));
 			PRIVATE_DATA->dev_id = dev_id;
 		}
 	}
@@ -103,9 +102,7 @@ static bool mount_handle_coordinates(indigo_device *device) {
 }
 
 
-static bool mount_handle_slew_rate(indigo_device *device) {
-	int res = RC_OK;
-	//pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+static void mount_handle_slew_rate(indigo_device *device) {
 	if(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = 2;
 	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
@@ -115,9 +112,8 @@ static bool mount_handle_slew_rate(indigo_device *device) {
 	} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = 9;
 	}
-	//pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	if (res) return false;
-	else return true;
+	MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, "slew speed = %d", PRIVATE_DATA->slew_rate);
 }
 
 
@@ -306,7 +302,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				MOUNT_LST_TIME_PROPERTY->hidden = false;
+				MOUNT_LST_TIME_PROPERTY->hidden = true;
 				MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
@@ -348,22 +344,24 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPTHIC_COORDINATES
 		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		if (mount_set_location(device)) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		if(!mount_handle_coordinates(device)) MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		if(!mount_handle_coordinates(device)) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
 		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
-		if(mount_handle_slew_rate(device)) MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		else MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		mount_handle_slew_rate(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_NS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
@@ -383,8 +381,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		}
-		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
