@@ -55,10 +55,9 @@ typedef struct {
 	char tty_name[INDIGO_VALUE_SIZE];
 	int count_open;
 	int slew_rate;
-	//double currentRA, requestedRA;
-	//double currentDec, requestedDec;
 	pthread_mutex_t serial_mutex;
-	indigo_timer *position_timer, *guider_timer;
+	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec;
+	int guide_rate;
 } nexstar_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -104,13 +103,16 @@ static bool mount_handle_coordinates(indigo_device *device) {
 
 static void mount_handle_slew_rate(indigo_device *device) {
 	if(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
-		PRIVATE_DATA->slew_rate = 2;
+		PRIVATE_DATA->slew_rate = PRIVATE_DATA->guide_rate;
 	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = 4;
 	} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = 6;
 	} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = 9;
+	} else {
+		MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value = true;
+		PRIVATE_DATA->slew_rate = PRIVATE_DATA->guide_rate;
 	}
 	MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, "slew speed = %d", PRIVATE_DATA->slew_rate);
@@ -121,6 +123,8 @@ static void mount_handle_motion_ns(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	int res = RC_OK;
 	char message[INDIGO_VALUE_SIZE];
+
+	if (PRIVATE_DATA->slew_rate == 0) mount_handle_slew_rate(device);
 
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if(MOUNT_MOTION_NORTH_ITEM->sw.value) {
@@ -400,23 +404,47 @@ static indigo_result mount_detach(indigo_device *device) {
 	return indigo_mount_detach(device);
 }
 
+
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
-static void guider_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->guider_timer = NULL;
-	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
-		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+
+static void guider_timer_callback_ra(indigo_device *device) {
+	PRIVATE_DATA->guider_timer_ra = NULL;
+	int dev_id = PRIVATE_DATA->dev_id;
+	int res;
+
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	if (res != RC_OK) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
 	}
-	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
-		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-	}
+
+	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
+
+
+static void guider_timer_callback_dec(indigo_device *device) {
+	PRIVATE_DATA->guider_timer_dec = NULL;
+	int dev_id = PRIVATE_DATA->dev_id;
+	int res;
+
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	if (res != RC_OK) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
+	}
+
+	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+}
+
 
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -440,6 +468,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (mount_open(device)) {
+				PRIVATE_DATA->guider_timer_ra = NULL;
+				PRIVATE_DATA->guider_timer_dec = NULL;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
@@ -453,38 +483,62 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		if (PRIVATE_DATA->guider_timer != NULL)
-			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
+		if (PRIVATE_DATA->guider_timer_dec != NULL)
+			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer_dec);
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
+			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
+			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			if (res != RC_OK) {
+				INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res));
+			}
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 		} else {
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
+				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				if (res != RC_OK) {
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res));
+				}
 				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 			}
 		}
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		if (PRIVATE_DATA->guider_timer != NULL)
-			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
+		if (PRIVATE_DATA->guider_timer_ra != NULL)
+			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer_ra);
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
+			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
+			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			if (res != RC_OK) {
+				INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res));
+			}
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 		} else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
+				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				if (res != RC_OK) {
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res));
+				}
 				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 			}
 		}
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
@@ -537,7 +591,9 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 		last_action = action;
 		private_data = malloc(sizeof(nexstar_private_data));
 		assert(private_data != NULL);
+		memset(private_data, 0, sizeof(nexstar_private_data));
 		private_data->dev_id = -1;
+		private_data->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
 		private_data->count_open = 0;
 		mount = malloc(sizeof(indigo_device));
 		assert(mount != NULL);
