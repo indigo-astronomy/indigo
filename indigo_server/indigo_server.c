@@ -132,9 +132,18 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 
 static indigo_result detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_delete_property(device, driver_property, NULL);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }
+
+static indigo_device server_device = {
+	SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	attach,
+	enumerate_properties,
+	change_property,
+	detach
+};
 
 void signal_handler(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
@@ -154,6 +163,7 @@ void signal_handler(int signo) {
 		if (indigo_available_servers[i].thread_started)
 			indigo_disconnect_server(indigo_available_servers[i].host, indigo_available_servers[i].port);
 	}
+	indigo_detach_device(&server_device);
 	INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 	exit(0);
 }
@@ -204,19 +214,11 @@ int main(int argc, const char * argv[]) {
 
 	signal(SIGINT, signal_handler);
 
-	static indigo_device device = {
-		SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-		attach,
-		enumerate_properties,
-		change_property,
-		detach
-	};
-
 	if (strstr(argv[0], "MacOS"))
 		indigo_use_syslog = true; // embeded into INDIGO Server for macOS
 
 	indigo_start();
-	indigo_attach_device(&device);
+	indigo_attach_device(&server_device);
 
 	indigo_server_tcp(server_callback);
 	return 0;
