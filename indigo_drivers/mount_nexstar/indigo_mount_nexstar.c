@@ -130,20 +130,21 @@ static void mount_handle_motion_ns(indigo_device *device) {
 	if(MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving North...",sizeof(message));
+		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving South...",sizeof(message));
+		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
 		strncpy(message,"Stopped moving",sizeof(message));
+		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
 		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_OK_STATE;
 	}
 
 	indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, message);
@@ -159,20 +160,21 @@ static void mount_handle_motion_ne(indigo_device *device) {
 	if(MOUNT_MOTION_EAST_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving East...",sizeof(message));
+		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (MOUNT_MOTION_WEST_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving West...",sizeof(message));
+		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
 		strncpy(message,"Stopped moving",sizeof(message));
+		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
 		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
 	}
 
 	indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, message);
