@@ -181,6 +181,19 @@ static void mount_handle_motion_ne(indigo_device *device) {
 }
 
 
+static bool mount_set_location(indigo_device *device) {
+	int res;
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	res = tc_set_location(PRIVATE_DATA->dev_id, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	if (res != RC_OK) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_set_location(%d) = %d", PRIVATE_DATA->dev_id, res));
+		return false;
+	}
+	return true;
+}
+
+
 static bool mount_cancel_slew(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 
@@ -224,7 +237,8 @@ static void mount_close(indigo_device *device) {
 
 
 static void position_timer_callback(indigo_device *device) {
-	double ra, dec;
+	int res;
+	double ra, dec, lon, lat;
 	int dev_id = PRIVATE_DATA->dev_id;
 
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
@@ -233,14 +247,26 @@ static void position_timer_callback(indigo_device *device) {
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	int res = tc_get_rade_p(dev_id, &ra, &dec);
+
+	res = tc_get_rade_p(dev_id, &ra, &dec);
 	if (res != RC_OK) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_rade_p(%d) = %d", dev_id, res));
 	}
+
+	res = tc_get_location(dev_id, &lon, &lat);
+	if (res != RC_OK) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_location(%d) = %d", dev_id, res));
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+
+	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+
 	PRIVATE_DATA->position_timer = indigo_set_timer(device, REFRESH_SECONDS, position_timer_callback);
 }
 
@@ -277,6 +303,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (mount_open(device)) {
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				MOUNT_LST_TIME_PROPERTY->hidden = false;
 				MOUNT_SLEW_RATE_PROPERTY->hidden = false;
@@ -315,6 +343,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
 			PRIVATE_DATA->parked = false;
 		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPTHIC_COORDINATES
+		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
+		if (mount_set_location(device)) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
