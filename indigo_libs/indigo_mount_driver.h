@@ -184,6 +184,19 @@
 #define MOUNT_TRACK_RATE_LUNAR_ITEM										(MOUNT_TRACK_RATE_PROPERTY->items+2)
 
 //-----------------------------------------------
+/** MOUNT_TRACKING property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
+ */
+#define MOUNT_TRACKING_PROPERTY											(MOUNT_CONTEXT->mount_tracking_property)
+
+/** MOUNT_TRACKING.ON property item pointer.
+ */
+#define MOUNT_TRACKING_ON_ITEM										(MOUNT_TRACKING_PROPERTY->items+0)
+
+/** MOUNT_TRACKING.OFF property item pointer.
+ */
+#define MOUNT_TRACKING_OFF_ITEM										(MOUNT_TRACKING_PROPERTY->items+1)
+
+//-----------------------------------------------
 /** MOUNT_GUIDE_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
 #define MOUNT_GUIDE_RATE_PROPERTY											(MOUNT_CONTEXT->mount_guide_rate_property)
@@ -244,6 +257,7 @@ typedef struct {
 	indigo_property *mount_on_coordinates_set_property;			///< MOUNT_ON_COORDINATES_SET property pointer
 	indigo_property *mount_slew_rate_property;							///< MOUNT_SLEW_RATE property pointer
 	indigo_property *mount_track_rate_property;							///< MOUNT_TRACK_RATE property pointer
+	indigo_property *mount_tracking_property;							///< MOUNT_TRACKING property pointer
 	indigo_property *mount_guide_rate_property;							///< MOUNT_GUIDE_RATE property pointer
 	indigo_property *mount_equatorial_coordinates_property;	///< MOUNT_EQUATORIAL_COORDINATES property pointer
 	indigo_property *mount_horizontal_coordinates_property;	///< MOUNT_HORIZONTAL_COORDINATES property pointer

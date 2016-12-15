@@ -309,6 +309,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
 		MOUNT_UTC_FROM_HOST_PROPERTY->hidden = false;
+		MOUNT_TRACK_RATE_PROPERTY->hidden = true;
 		MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 
 		INDIGO_LOG(indigo_log("%s attached", device->name));

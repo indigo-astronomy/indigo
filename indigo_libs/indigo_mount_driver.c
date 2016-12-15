@@ -113,6 +113,12 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			indigo_init_switch_item(MOUNT_TRACK_RATE_SIDEREAL_ITEM, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, "Sidereal rate", true);
 			indigo_init_switch_item(MOUNT_TRACK_RATE_SOLAR_ITEM, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, "Solar rate", false);
 			indigo_init_switch_item(MOUNT_TRACK_RATE_LUNAR_ITEM, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, "Lunar rate", false);
+			// -------------------------------------------------------------------------------- MOUNT_TRACKING
+			MOUNT_TRACKING_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Tracking", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			if (MOUNT_TRACKING_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_switch_item(MOUNT_TRACKING_ON_ITEM, MOUNT_TRACKING_ON_ITEM_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+			indigo_init_switch_item(MOUNT_TRACKING_OFF_ITEM, MOUNT_TRACKING_OFF_ITEM_NAME, MOUNT_TRACKING_OFF_ITEM_NAME , false);
 			// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
 			MOUNT_GUIDE_RATE_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Guide rate", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (MOUNT_GUIDE_RATE_PROPERTY == NULL)
@@ -168,6 +174,8 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 				indigo_define_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property))
 				indigo_define_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property))
+				indigo_define_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_GUIDE_RATE_PROPERTY, property))
 				indigo_define_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_ON_COORDINATES_SET_PROPERTY, property))
@@ -202,6 +210,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, MOUNT_MOTION_NS_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_ON_COORDINATES_SET_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
@@ -221,6 +230,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_delete_property(device, MOUNT_MOTION_NS_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_ON_COORDINATES_SET_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
@@ -239,6 +249,12 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_TRACKING
+		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
@@ -259,8 +275,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 				indigo_save_property(device, NULL, MOUNT_SLEW_RATE_PROPERTY);
 			if (MOUNT_TRACK_RATE_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, MOUNT_TRACK_RATE_PROPERTY);
-			if (MOUNT_TRACK_RATE_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, NULL, MOUNT_TRACK_RATE_PROPERTY);
+			if (MOUNT_TRACKING_PROPERTY->perm == INDIGO_RW_PERM)
+				indigo_save_property(device, NULL, MOUNT_TRACKING_PROPERTY);
 			if (MOUNT_GUIDE_RATE_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, MOUNT_GUIDE_RATE_PROPERTY);
 		}
@@ -280,6 +296,7 @@ indigo_result indigo_mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_MOTION_NS_PROPERTY);
 	indigo_release_property(MOUNT_MOTION_WE_PROPERTY);
 	indigo_release_property(MOUNT_TRACK_RATE_PROPERTY);
+	indigo_release_property(MOUNT_TRACKING_PROPERTY);
 	indigo_release_property(MOUNT_GUIDE_RATE_PROPERTY);
 	indigo_release_property(MOUNT_ON_COORDINATES_SET_PROPERTY);
 	indigo_release_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
