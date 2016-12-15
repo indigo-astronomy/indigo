@@ -502,15 +502,15 @@
 //----------------------------------------------------------------------
 /** MOUNT_UTC_TIME property name.
  */
-#define MOUNT_UTC_TIME_PROPERTY_NAME						"UTC_TIME"
+#define MOUNT_UTC_TIME_PROPERTY_NAME						"MOUNT_UTC_TIME"
 
 /** MOUNT_UTC_TIME.UTC property item name.
  */
-#define MOUNT_UTC_ITEM_NAME								"UTC"
+#define MOUNT_UTC_TIME_ITEM_NAME								"TIME"
 
 /** MOUNT_UTC_TIME.OFFSET property item name.
  */
-#define MOUNT_UTC_OFFSET_ITEM_NAME								"OFFSET"
+#define MOUNT_UTC_OFFSET_ITEM_NAME							"OFFSET"
 
 //----------------------------------------------------------------------
 /** MOUNT_PARK property name.

@@ -221,6 +221,12 @@ static struct property_mapping legacy[] = {
 			NULL
 		}
 	},
+	{	"TIME_UTC", MOUNT_UTC_TIME_PROPERTY_NAME, {
+			{ "UTC", MOUNT_UTC_TIME_ITEM_NAME },
+			{ "OFFSET", MOUNT_UTC_OFFSET_ITEM_NAME },
+			NULL
+		}
+	},
 	{	"TELESCOPE_PARK", MOUNT_PARK_PROPERTY_NAME, {
 			{ "PARK", MOUNT_PARK_PARKED_ITEM_NAME },
 			{ "UNPARK", MOUNT_PARK_UNPARKED_ITEM_NAME },
