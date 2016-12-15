@@ -331,12 +331,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_define_property(device, SET_UTC_PROPERTY, NULL);
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				MOUNT_LST_TIME_PROPERTY->hidden = true;
+				MOUNT_UTC_TIME_PROPERTY->hidden = false;
 				MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
 				MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				position_timer_callback(device);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
