@@ -65,7 +65,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			MOUNT_UTC_TIME_PROPERTY->hidden = true;
 			indigo_init_number_item(MOUNT_UTC_ITEM, MOUNT_UTC_ITEM_NAME, "UTC Time", 0, 24, 0, 0);
-			indigo_init_number_item(MOUNT_UTC_OFFEST_ITEM, MOUNT_UTC_OFFSET_ITEM_NAME, "UTC Offset", -12, 12, 0, 0);
+			indigo_init_number_item(MOUNT_UTC_OFFEST_ITEM, MOUNT_UTC_OFFSET_ITEM_NAME, "UTC Offset", -12, 12, 0.5, 0); /* step is 0.5 as there are timezones at 30 min */
 			// -------------------------------------------------------------------------------- MOUNT_PARK
 			MOUNT_PARK_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Park", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (MOUNT_PARK_PROPERTY == NULL)
