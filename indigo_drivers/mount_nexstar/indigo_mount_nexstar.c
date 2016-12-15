@@ -49,6 +49,9 @@
 #define RA_MIN_DIFF         (1/24/60/10)
 #define DEC_MIN_DIFF        (1/60/60)
 
+#define SET_UTC_PROPERTY    (PRIVATE_DATA->set_utc_property)
+#define SET_UTC_ITEM		(SET_UTC_PROPERTY->items+0)
+
 typedef struct {
 	int dev_id;
 	bool parked;
@@ -58,9 +61,19 @@ typedef struct {
 	pthread_mutex_t serial_mutex;
 	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec;
 	int guide_rate;
+	indigo_property *set_utc_property;
 } nexstar_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
+
+static indigo_result nexstar_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (indigo_property_match(SET_UTC_PROPERTY, property))
+			indigo_define_property(device, SET_UTC_PROPERTY, NULL);
+	}
+	return indigo_mount_enumerate_properties(device, NULL, NULL);
+}
+
 
 static bool mount_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
@@ -77,6 +90,7 @@ static bool mount_open(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	return true;
 }
+
 
 static bool mount_handle_coordinates(indigo_device *device) {
 	int res = RC_OK;
@@ -194,6 +208,11 @@ static bool mount_set_location(indigo_device *device) {
 }
 
 
+static bool mount_set_utc_from_host(indigo_device *device) {
+	return true;
+}
+
+
 static bool mount_cancel_slew(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 
@@ -279,6 +298,12 @@ static indigo_result mount_attach(indigo_device *device) {
 	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
+
+		SET_UTC_PROPERTY = indigo_init_switch_property(NULL, device->name, "SET_UTC", MOUNT_MAIN_GROUP, "Set mount UTC", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		if (SET_UTC_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(SET_UTC_PROPERTY->items+0, "Copy from host", "Copy from host", false);
+
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
@@ -303,10 +328,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (mount_open(device)) {
+				indigo_define_property(device, SET_UTC_PROPERTY, NULL);
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				MOUNT_LST_TIME_PROPERTY->hidden = true;
+				MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
 				MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
@@ -318,6 +345,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
 			PRIVATE_DATA->position_timer = NULL;
+			indigo_delete_property(device, SET_UTC_PROPERTY, NULL);
 			mount_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -353,6 +381,20 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(SET_UTC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- SET_UTC_PROPERTY
+		indigo_property_copy_values(SET_UTC_PROPERTY, property, false);
+		if(SET_UTC_ITEM->sw.value) {
+			if(mount_set_utc_from_host(device)) {
+				SET_UTC_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				SET_UTC_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		SET_UTC_ITEM->sw.value = false;
+		SET_UTC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, SET_UTC_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
@@ -399,6 +441,8 @@ static indigo_result mount_detach(indigo_device *device) {
 		indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
 		PRIVATE_DATA->position_timer = NULL;
 	}
+
+	indigo_release_property(SET_UTC_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_mount_detach(device);
@@ -567,7 +611,7 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 	static indigo_device mount_template = {
 		MOUNT_NEXSTAR_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
-		indigo_mount_enumerate_properties,
+		nexstar_enumerate_properties,
 		mount_change_property,
 		mount_detach
 	};
