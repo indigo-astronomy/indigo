@@ -124,6 +124,29 @@ static void mount_handle_coordinates(indigo_device *device) {
 }
 
 
+static void mount_handle_tracking(indigo_device *device) {
+	int res = RC_OK;
+
+	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+		res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
+		if (res != RC_OK) {
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res));
+		}
+	} else if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+		res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_OFF);
+		if (res != RC_OK) {
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res));
+		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+}
+
+
 static void mount_handle_slew_rate(indigo_device *device) {
 	if(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = PRIVATE_DATA->guide_rate;
@@ -343,6 +366,24 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (mount_open(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+
+				/* initialize tracking */
+				int mode = tc_get_tracking_mode(PRIVATE_DATA->dev_id);
+				if (mode < 0) {
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, mode));
+				} else if (mode == TC_TRACK_OFF) {
+					MOUNT_TRACKING_OFF_ITEM->sw.value = true;
+					MOUNT_TRACKING_ON_ITEM->sw.value = false;
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				} else {
+					MOUNT_TRACKING_OFF_ITEM->sw.value = false;
+					MOUNT_TRACKING_ON_ITEM->sw.value = true;
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				}
+
+				/* start updates */
 				position_timer_callback(device);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -405,6 +446,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		mount_handle_coordinates(device);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_TRACKING
+		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
+		mount_handle_tracking(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
