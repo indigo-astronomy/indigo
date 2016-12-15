@@ -616,6 +616,19 @@
 #define MOUNT_TRACK_RATE_LUNAR_ITEM_NAME				"LUNAR"
 
 //----------------------------------------------------------------------
+/** MOUNT_TRACKING property name.
+ */
+#define MOUNT_TRACKING_PROPERTY_NAME					"MOUNT_TRACKING"
+
+/** MOUNT_TRACKING.ON property item name.
+ */
+#define MOUNT_TRACKING_ON_ITEM_NAME			"ON"
+
+/** MOUNT_TRACKING.OFF property item name.
+ */
+#define MOUNT_TRACKING_OFF_ITEM_NAME				"OFF"
+
+//----------------------------------------------------------------------
 /** MOUNT_GUIDE_RATE property name.
  */
 #define MOUNT_GUIDE_RATE_PROPERTY_NAME					"MOUNT_GUIDE_RATE"
