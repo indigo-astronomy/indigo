@@ -81,6 +81,15 @@
 #define MOUNT_UTC_OFFEST_ITEM												(MOUNT_UTC_TIME_PROPERTY->items+1)
 
 //----------------------------------------------
+/** MOUNT_UTC_FROM_HOST property pointer, property is optional, property change request should be fully handled by the device driver.
+ */
+#define MOUNT_UTC_FROM_HOST_PROPERTY										(MOUNT_CONTEXT->mount_utc_from_host_property)
+
+/** MOUNT_UTC_FROM_HOST.SET_UTC property item pointer.
+ */
+#define MOUNT_SET_UTC_ITEM													(MOUNT_UTC_FROM_HOST_PROPERTY->items+0)
+
+//----------------------------------------------
 /** MOUNT_PARK property pointer, property is mandatory, property change request should be fully handled by device driver.
  */
 #define MOUNT_PARK_PROPERTY														(MOUNT_CONTEXT->mount_park_property)
@@ -230,6 +239,7 @@ typedef struct {
 	indigo_property *mount_geographic_coordinates_property;	///< MOUNT_GEOGRAPHIC_COORDINATES property pointer
 	indigo_property *mount_lst_time_property;								///< MOUNT_LST_TIME property pointer
 	indigo_property *mount_utc_time_property;                ///< MOUNT_UTC_TIME property_pointer
+	indigo_property *mount_utc_from_host_property;                ///< MOUNT_UTC_FROM_HOST property_pointer
 	indigo_property *mount_park_property;										///< MOUNT_PARK property pointer
 	indigo_property *mount_on_coordinates_set_property;			///< MOUNT_ON_COORDINATES_SET property pointer
 	indigo_property *mount_slew_rate_property;							///< MOUNT_SLEW_RATE property pointer
