@@ -313,6 +313,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
+		
+		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
+		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
+		MOUNT_LST_TIME_PROPERTY->hidden = true;
+		MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
+		MOUNT_SLEW_RATE_PROPERTY->hidden = false;
+
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
@@ -329,14 +336,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (mount_open(device)) {
 				indigo_define_property(device, SET_UTC_PROPERTY, NULL);
-				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
-				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				MOUNT_LST_TIME_PROPERTY->hidden = true;
-				MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
-				MOUNT_SLEW_RATE_PROPERTY->hidden = false;
-				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
-				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 				position_timer_callback(device);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
