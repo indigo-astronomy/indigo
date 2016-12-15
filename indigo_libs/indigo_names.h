@@ -513,6 +513,15 @@
 #define MOUNT_UTC_OFFSET_ITEM_NAME							"OFFSET"
 
 //----------------------------------------------------------------------
+/** MOUNT_UTC_FROM_HOST property name.
+ */
+#define MOUNT_UTC_FROM_HOST_PROPERTY_NAME					"SET_UTC_FROM_HOST"
+
+/**  MOUNT_UTC_FROM_HOST.SET_UTC property item name.
+ */
+#define MOUNT_SET_UTC_ITEM_NAME								"SET_UTC"
+
+//----------------------------------------------------------------------
 /** MOUNT_PARK property name.
  */
 #define MOUNT_PARK_PROPERTY_NAME								"MOUNT_PARK"
