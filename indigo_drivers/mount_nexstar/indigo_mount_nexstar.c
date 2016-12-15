@@ -86,26 +86,41 @@ static bool mount_open(indigo_device *device) {
 }
 
 
-static bool mount_handle_coordinates(indigo_device *device) {
+static void mount_handle_coordinates(indigo_device *device) {
 	int res = RC_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	// GOTO requested
+
+	/* return if mount not aligned */
+	int aligned = tc_check_align(PRIVATE_DATA->dev_id);
+	if (aligned < 0) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_check_align(%d) = %d", PRIVATE_DATA->dev_id, res));
+	} else if (aligned == 0) {
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is not aligned, please align it first.");
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: Mount is not aligned, please align it first."));
+		return;
+	}
+
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	/* GOTO requested */
 	if(MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		res = tc_goto_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		if (res != RC_OK) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_goto_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res));
 		}
 	}
-	// SYNC requested
+	/* SYNC requested */
 	else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		res = tc_sync_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		if (res != RC_OK) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_sync_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res));
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	if (res) return false;
-	else return true;
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 }
 
 
@@ -389,10 +404,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		if(!mount_handle_coordinates(device)) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		}
+		mount_handle_coordinates(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
