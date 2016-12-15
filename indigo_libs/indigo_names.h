@@ -9,6 +9,7 @@
 #ifndef indigo_names_h
 #define indigo_names_h
 
+//----------------------------------------------------------------------
 /** CONNECTION property name.
  */
 #define CONNECTION_PROPERTY_NAME							"CONNECTION"
@@ -21,6 +22,7 @@
  */
 #define CONNECTION_DISCONNECTED_ITEM_NAME			"DISCONNECTED"
 
+//----------------------------------------------------------------------
 /** INFO property name.
  */
 #define INFO_PROPERTY_NAME										"INFO"
@@ -45,6 +47,7 @@
  */
 #define INFO_FRAMEWORK_VERSION_ITEM_NAME			"FRAMEWORK_VERSION"
 
+//----------------------------------------------------------------------
 /** DEBUG property name.
  */
 #define DEBUG_PROPERTY_NAME										"DEBUG"
@@ -57,6 +60,7 @@
  */
 #define DEBUG_DISABLED_ITEM_NAME							"DISABLED"
 
+//----------------------------------------------------------------------
 /** SIMULATION property name.
  */
 #define SIMULATION_PROPERTY_NAME							"SIMULATION"
@@ -69,6 +73,7 @@
  */
 #define SIMULATION_DISABLED_ITEM_NAME					"DISABLED"
 
+//----------------------------------------------------------------------
 /** CONFIG property name.
  */
 #define CONFIG_PROPERTY_NAME									"CONFIG"
@@ -85,6 +90,7 @@
  */
 #define CONFIG_DEFAULT_ITEM_NAME							"DEFAULT"
 
+//----------------------------------------------------------------------
 /** DEVICE_PORT property name.
  */
 #define DEVICE_PORT_PROPERTY_NAME							"DEVICE_PORT"
@@ -93,10 +99,12 @@
  */
 #define DEVICE_PORT_ITEM_NAME									"DEVICE_PORT"
 
+//----------------------------------------------------------------------
 /** DEVICE_PORTS property name.
  */
 #define DEVICE_PORTS_PROPERTY_NAME						"DEVICE_PORTS"
 
+//----------------------------------------------------------------------
 /** CCD_INFO property name.
  */
 #define CCD_INFO_PROPERTY_NAME                "CCD_INFO"
@@ -149,6 +157,7 @@
  */
 #define CCD_UPLOAD_MODE_BOTH_ITEM_NAME        "BOTH"
 
+//----------------------------------------------------------------------
 /** CCD_LOCAL_MODE property name.
  */
 #define CCD_LOCAL_MODE_PROPERTY_NAME          "CCD_LOCAL_MODE"
@@ -161,6 +170,7 @@
  */
 #define CCD_LOCAL_MODE_PREFIX_ITEM_NAME       "PREFIX"
 
+//----------------------------------------------------------------------
 /** CCD_EXPOSURE property name.
  */
 #define CCD_EXPOSURE_PROPERTY_NAME            "CCD_EXPOSURE"
@@ -169,6 +179,7 @@
  */
 #define CCD_EXPOSURE_ITEM_NAME                "EXPOSURE"
 
+//----------------------------------------------------------------------
 /** CCD_ABORT_EXPOSURE property name.
  */
 #define CCD_ABORT_EXPOSURE_PROPERTY_NAME      "CCD_ABORT_EXPOSURE"
@@ -177,6 +188,7 @@
  */
 #define CCD_ABORT_EXPOSURE_ITEM_NAME          "ABORT_EXPOSURE"
 
+//----------------------------------------------------------------------
 /** CCD_FRAME property name.
  */
 #define CCD_FRAME_PROPERTY_NAME               "CCD_FRAME"
@@ -201,6 +213,7 @@
  */
 #define CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME    "BITS_PER_PIXEL"
 
+//----------------------------------------------------------------------
 /** CCD_BIN property name.
  */
 #define CCD_BIN_PROPERTY_NAME                 "CCD_BIN"
@@ -213,10 +226,12 @@
  */
 #define CCD_BIN_VERTICAL_ITEM_NAME            "VERTICAL"
 
+//----------------------------------------------------------------------
 /** CCD_MODE property name.
  */
 #define CCD_MODE_PROPERTY_NAME								"CCD_MODE"
 
+//----------------------------------------------------------------------
 /** CCD_GAIN property name.
  */
 #define CCD_GAIN_PROPERTY_NAME                "CCD_GAIN"
@@ -225,6 +240,7 @@
  */
 #define CCD_GAIN_ITEM_NAME                    "GAIN"
 
+//----------------------------------------------------------------------
 /** CCD_OFFSET property name.
  */
 #define CCD_OFFSET_PROPERTY_NAME              "CCD_OFFSET"
@@ -233,6 +249,7 @@
  */
 #define CCD_OFFSET_ITEM_NAME									"OFFSET"
 
+//----------------------------------------------------------------------
 /** CCD_GAMMA property name.
  */
 #define CCD_GAMMA_PROPERTY_NAME               "CCD_GAMMA"
@@ -241,6 +258,7 @@
  */
 #define CCD_GAMMA_ITEM_NAME                   "GAMMA"
 
+//----------------------------------------------------------------------
 /** CCD_FRAME_TYPE property name.
  */
 #define CCD_FRAME_TYPE_PROPERTY_NAME          "CCD_FRAME_TYPE"
@@ -261,6 +279,7 @@
  */
 #define CCD_FRAME_TYPE_FLAT_ITEM_NAME         "FLAT"
 
+//----------------------------------------------------------------------
 /** CCD_IMAGE_FORMAT property name.
  */
 #define CCD_IMAGE_FORMAT_PROPERTY_NAME        "CCD_IMAGE_FORMAT"
@@ -277,6 +296,7 @@
  */
 #define CCD_IMAGE_FORMAT_JPEG_ITEM_NAME       "JPEG"
 
+//----------------------------------------------------------------------
 /** CCD_IMAGE_FILE property name.
  */
 #define CCD_IMAGE_FILE_PROPERTY_NAME          "CCD_IMAGE_FILE"
@@ -293,6 +313,7 @@
  */
 #define CCD_IMAGE_ITEM_NAME                   "IMAGE"
 
+//----------------------------------------------------------------------
 /** CCD_TEMPERATURE property name.
  */
 #define CCD_TEMPERATURE_PROPERTY_NAME         "CCD_TEMPERATURE"
@@ -301,6 +322,7 @@
  */
 #define CCD_TEMPERATURE_ITEM_NAME             "TEMPERATURE"
 
+//----------------------------------------------------------------------
 /** CCD_COOLER property name.
  */
 #define CCD_COOLER_PROPERTY_NAME              "CCD_COOLER"
@@ -313,6 +335,7 @@
  */
 #define CCD_COOLER_OFF_ITEM_NAME              "OFF"
 
+//----------------------------------------------------------------------
 /** CCD_COOLER_POWER property name.
  */
 #define CCD_COOLER_POWER_PROPERTY_NAME        "CCD_COOLER_POWER"
@@ -321,6 +344,7 @@
  */
 #define CCD_COOLER_POWER_ITEM_NAME            "POWER"
 
+//----------------------------------------------------------------------
 /** GUIDER_GUIDE_DEC property name.
  */
 #define GUIDER_GUIDE_DEC_PROPERTY_NAME        "GUIDER_GUIDE_DEC"
@@ -333,6 +357,7 @@
  */
 #define GUIDER_GUIDE_SOUTH_ITEM_NAME          "SOUTH"
 
+//----------------------------------------------------------------------
 /** GUIDER_GUIDE_RA property name.
  */
 #define GUIDER_GUIDE_RA_PROPERTY_NAME         "GUIDER_GUIDE_RA"
@@ -345,6 +370,7 @@
  */
 #define GUIDER_GUIDE_WEST_ITEM_NAME           "WEST"
 
+//----------------------------------------------------------------------
 /** WHEEL_SLOT property name.
  */
 #define WHEEL_SLOT_PROPERTY_NAME							"WHEEL_SLOT"
@@ -353,6 +379,7 @@
  */
 #define WHEEL_SLOT_ITEM_NAME									"SLOT"
 
+//----------------------------------------------------------------------
 /** WHEEL_SLOT_NAME property name.
  */
 #define WHEEL_SLOT_NAME_PROPERTY_NAME					"WHEEL_SLOT_NAME"
@@ -397,6 +424,7 @@
  */
 #define WHEEL_SLOT_NAME_9_ITEM_NAME						"SLOT_NAME_9"
 
+//----------------------------------------------------------------------
 /** FOCUSER_SPEED property name.
  */
 #define FOCUSER_SPEED_PROPERTY_NAME						"FOCUSER_SPEED"
@@ -405,6 +433,7 @@
  */
 #define FOCUSER_SPEED_ITEM_NAME								"SPEED"
 
+//----------------------------------------------------------------------
 /** FOCUSER_DIRECTION property name.
  */
 #define FOCUSER_DIRECTION_PROPERTY_NAME				"FOCUSER_DIRECTION"
@@ -417,6 +446,7 @@
  */
 #define FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME	"MOVE_OUTWARD"
 
+//----------------------------------------------------------------------
 /** FOCUSER_STEPS property name.
  */
 #define FOCUSER_STEPS_PROPERTY_NAME						"FOCUSER_STEPS"
@@ -425,6 +455,7 @@
  */
 #define FOCUSER_STEPS_ITEM_NAME								"STEPS"
 
+//----------------------------------------------------------------------
 /** FOCUSER_POSITION property name.
  */
 #define FOCUSER_POSITION_PROPERTY_NAME				"FOCUSER_POSITION"
@@ -433,6 +464,7 @@
  */
 #define FOCUSER_POSITION_ITEM_NAME						"POSITION"
 
+//----------------------------------------------------------------------
 /** FOCUSER_ABORT_MOTION property name.
  */
 #define FOCUSER_ABORT_MOTION_PROPERTY_NAME		"FOCUSER_ABORT_MOTION"
@@ -441,6 +473,7 @@
  */
 #define FOCUSER_ABORT_MOTION_ITEM_NAME				"ABORT_MOTION"
 
+//----------------------------------------------------------------------
 /** MOUNT_GEOGRAPHIC_COORDINATES property name.
  */
 #define MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY_NAME	"MOUNT_GEOGRAPHIC_COORDINATES"
@@ -457,6 +490,7 @@
  */
 #define MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME	"ELEVATION"
 
+//----------------------------------------------------------------------
 /** MOUNT_LST_TIME property name.
  */
 #define MOUNT_LST_TIME_PROPERTY_NAME						"MOUNT_LST_TIME"
@@ -465,6 +499,20 @@
  */
 #define MOUNT_LST_TIME_ITEM_NAME								"TIME"
 
+//----------------------------------------------------------------------
+/** MOUNT_UTC_TIME property name.
+ */
+#define MOUNT_UTC_TIME_PROPERTY_NAME						"UTC_TIME"
+
+/** MOUNT_UTC_TIME.UTC property item name.
+ */
+#define MOUNT_UTC_ITEM_NAME								"UTC"
+
+/** MOUNT_UTC_TIME.OFFSET property item name.
+ */
+#define MOUNT_UTC_OFFSET_ITEM_NAME								"OFFSET"
+
+//----------------------------------------------------------------------
 /** MOUNT_PARK property name.
  */
 #define MOUNT_PARK_PROPERTY_NAME								"MOUNT_PARK"
@@ -477,6 +525,7 @@
  */
 #define MOUNT_PARK_UNPARKED_ITEM_NAME						"UNPARKED"
 
+//----------------------------------------------------------------------
 /** MOUNT_ON_COORDINATES_SET property name.
  */
 #define MOUNT_ON_COORDINATES_SET_PROPERTY_NAME	"MOUNT_ON_COORDINATES_SET"
@@ -493,6 +542,7 @@
  */
 #define MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME		"SLEW"
 
+//----------------------------------------------------------------------
 /** MOUNT_SLEW_RATE property name.
  */
 #define MOUNT_SLEW_RATE_PROPERTY_NAME						"MOUNT_SLEW_RATE"
@@ -513,6 +563,7 @@
  */
 #define MOUNT_SLEW_RATE_MAX_ITEM_NAME						"MAX"
 
+//----------------------------------------------------------------------
 /** MOUNT_MOTION_NS_PROPERTY_NAME property name.
  */
 #define MOUNT_MOTION_NS_PROPERTY_NAME                "MOUNT_MOTION_NS"
@@ -525,6 +576,7 @@
  */
 #define MOUNT_MOTION_SOUTH_ITEM_NAME                 "MOTION_SOUTH"
 
+//----------------------------------------------------------------------
 /** MOUNT_MOTION_WE_PROPERTY_NAME property name.
  */
 #define MOUNT_MOTION_WE_PROPERTY_NAME                "MOUNT_MOTION_WE"
@@ -537,6 +589,7 @@
  */
 #define MOUNT_MOTION_EAST_ITEM_NAME                 "MOTION_EAST"
 
+//----------------------------------------------------------------------
 /** MOUNT_TRACK_RATE property name.
  */
 #define MOUNT_TRACK_RATE_PROPERTY_NAME					"MOUNT_TRACK_RATE"
@@ -553,6 +606,7 @@
  */
 #define MOUNT_TRACK_RATE_LUNAR_ITEM_NAME				"LUNAR"
 
+//----------------------------------------------------------------------
 /** MOUNT_GUIDE_RATE property name.
  */
 #define MOUNT_GUIDE_RATE_PROPERTY_NAME					"MOUNT_GUIDE_RATE"
@@ -565,6 +619,7 @@
  */
 #define MOUNT_GUIDE_RATE_DEC_ITEM_NAME					"DEC"
 
+//----------------------------------------------------------------------
 /** MOUNT_EQUATORIAL_COORDINATES property name.
  */
 #define MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME	"MOUNT_EQUATORIAL_COORDINATES"
@@ -577,6 +632,7 @@
  */
 #define MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME	"DEC"
 
+//----------------------------------------------------------------------
 /** MOUNT_HORIZONTAL_COORDINATES property name.
  */
 #define MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME	"MOUNT_HORIZONTAL_COORDINATES"
@@ -589,6 +645,7 @@
  */
 #define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME	"AZ"
 
+//----------------------------------------------------------------------
 /** MOUNT_ABORT_MOTION property name.
  */
 #define MOUNT_ABORT_MOTION_PROPERTY_NAME				"MOUNT_ABORT_MOTION"
