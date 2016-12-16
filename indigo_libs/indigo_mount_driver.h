@@ -68,6 +68,24 @@
 #define MOUNT_LST_TIME_ITEM														(MOUNT_LST_TIME_PROPERTY->items+0)
 
 //---------------------------------------------
+/** MOUNT_INFO property pointer, property is optional, property change request should be fully handled by device driver.
+ */
+#define MOUNT_INFO_PROPERTY												(MOUNT_CONTEXT->mount_info_property)
+
+/** MOUNT_INFO.VENDOR property item pointer.
+ */
+#define MOUNT_INFO_VENDOR_ITEM														(MOUNT_INFO_PROPERTY->items+0)
+
+/** MOUNT_INFO.MODEL property item pointer.
+ */
+#define MOUNT_INFO_MODEL_ITEM														(MOUNT_INFO_PROPERTY->items+1)
+
+/** MOUNT_INFO.MODEL property item pointer.
+ */
+#define MOUNT_INFO_FIRMWARE_ITEM														(MOUNT_INFO_PROPERTY->items+2)
+
+
+//---------------------------------------------
 /** MOUNT_UTC_TIME property pointer, property is optional, property change request should be fully handled by the device driver.
  */
 #define MOUNT_UTC_TIME_PROPERTY												(MOUNT_CONTEXT->mount_utc_time_property)
@@ -250,6 +268,7 @@
 typedef struct {
 	indigo_device_context device_context;										///< device context base
 	indigo_property *mount_geographic_coordinates_property;	///< MOUNT_GEOGRAPHIC_COORDINATES property pointer
+	indigo_property *mount_info_property;                   ///< MOUNT_INFO property pointer
 	indigo_property *mount_lst_time_property;								///< MOUNT_LST_TIME property pointer
 	indigo_property *mount_utc_time_property;                ///< MOUNT_UTC_TIME property_pointer
 	indigo_property *mount_utc_from_host_property;                ///< MOUNT_UTC_FROM_HOST property_pointer
