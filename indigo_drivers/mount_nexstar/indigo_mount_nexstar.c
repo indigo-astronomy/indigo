@@ -292,6 +292,9 @@ static void position_timer_callback(indigo_device *device) {
 	double ra, dec, lon, lat;
 	int dev_id = PRIVATE_DATA->dev_id;
 
+	/* indigo_cancel_timer() does not always work, so this is a WORK AROUND */
+	if (dev_id < 0) return;
+
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (tc_goto_in_progress(dev_id)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
