@@ -370,6 +370,29 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (mount_open(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
+				int vendor_id = guess_mount_vendor(PRIVATE_DATA->dev_id);
+				if (vendor_id < 0) {
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: guess_mount_vendor(%d) = %d", PRIVATE_DATA->dev_id, vendor_id));
+				} else if (vendor_id == VNDR_SKYWATCHER) {
+					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher", INDIGO_VALUE_SIZE);
+				} else if (vendor_id == VNDR_CELESTRON) {
+					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron", INDIGO_VALUE_SIZE);
+				}
+
+				int model_id = tc_get_model(PRIVATE_DATA->dev_id);
+				if (model_id < 0) {
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_model(%d) = %d", PRIVATE_DATA->dev_id, model_id));
+				} else {
+					get_model_name(model_id,MOUNT_INFO_MODEL_ITEM->text.value,  INDIGO_VALUE_SIZE);
+				}
+
+				int firmware = tc_get_version(PRIVATE_DATA->dev_id, NULL, NULL);
+				if (firmware < 0) {
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_version(%d) = %d", PRIVATE_DATA->dev_id, firmware));
+				} else {
+					snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware), GET_PATCH(firmware));
+				}
+
 				/* initialize tracking */
 				int mode = tc_get_tracking_mode(PRIVATE_DATA->dev_id);
 				if (mode < 0) {
