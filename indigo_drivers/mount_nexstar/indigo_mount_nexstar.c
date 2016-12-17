@@ -183,7 +183,7 @@ static void mount_handle_motion_ns(indigo_device *device) {
 		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
-		strncpy(message,"Stopped moving",sizeof(message));
+		strncpy(message,"Stopped moving.",sizeof(message));
 		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
@@ -213,7 +213,7 @@ static void mount_handle_motion_ne(indigo_device *device) {
 		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
-		strncpy(message,"Stopped moving",sizeof(message));
+		strncpy(message,"Stopped moving.",sizeof(message));
 		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
@@ -268,7 +268,7 @@ static bool mount_cancel_slew(indigo_device *device) {
 
 	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
+	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted.");
 
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	return true;
@@ -346,11 +346,16 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
+
 		MOUNT_LST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
 		MOUNT_UTC_FROM_HOST_PROPERTY->hidden = false;
+
+		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
+
 		MOUNT_TRACK_RATE_PROPERTY->hidden = true;
+
 		MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 
 		INDIGO_LOG(indigo_log("%s attached", device->name));
@@ -390,7 +395,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				if (firmware < 0) {
 					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_version(%d) = %d", PRIVATE_DATA->dev_id, firmware));
 				} else {
-					snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware), GET_PATCH(firmware));
+					if (vendor_id == VNDR_SKYWATCHER) {
+						snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware), GET_PATCH(firmware));
+					} else {
+						snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware));
+					}
 				}
 
 				/* initialize tracking */
