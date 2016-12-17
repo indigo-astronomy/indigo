@@ -55,6 +55,8 @@ typedef struct {
 	char tty_name[INDIGO_VALUE_SIZE];
 	int count_open;
 	int slew_rate;
+	int st4_ra_rate, st4_dec_rate;
+	int vendor_id;
 	pthread_mutex_t serial_mutex;
 	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec;
 	int guide_rate;
@@ -240,6 +242,59 @@ static bool mount_set_location(indigo_device *device) {
 }
 
 
+static void mount_handle_st4_guiding_rate(indigo_device *device) {
+	int dev_id = PRIVATE_DATA->dev_id;
+	int res = RC_OK;
+
+	int offset = 1;                                             /* for Ceslestron 0 is 1% and 99 is 100% */
+	if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) offset = 0; /* there is no offset for Sky-Watcher */
+
+	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
+
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	/* reset only if input value is changed - better begaviour for Sky-Watcher as there are no separate RA and DEC rates */
+	if ((int)(MOUNT_GUIDE_RATE_RA_ITEM->number.value) != PRIVATE_DATA->st4_ra_rate) {
+		res = tc_set_autoguide_rate(dev_id, TC_AXIS_RA, (int)(MOUNT_GUIDE_RATE_RA_ITEM->number.value)-1);
+		if (res != RC_OK) {
+			INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_set_autoguide_rate(%d) = %d", dev_id, res));
+			MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			PRIVATE_DATA->st4_ra_rate = (int)(MOUNT_GUIDE_RATE_RA_ITEM->number.value);
+		}
+	}
+
+	/* reset only if input value is changed - better begaviour for Sky-Watcher as there are no separate RA and DEC rates */
+	if ((int)(MOUNT_GUIDE_RATE_DEC_ITEM->number.value) != PRIVATE_DATA->st4_dec_rate) {
+		res = tc_set_autoguide_rate(dev_id, TC_AXIS_DE, (int)(MOUNT_GUIDE_RATE_DEC_ITEM->number.value)-1);
+		if (res != RC_OK) {
+			INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_set_autoguide_rate(%d) = %d", dev_id, res));
+			MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			PRIVATE_DATA->st4_dec_rate = (int)(MOUNT_GUIDE_RATE_DEC_ITEM->number.value);
+		}
+	}
+
+	/* read set values as Sky-Watcher rounds to 12, 25 ,50, 75 and 100 % */
+	int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
+	if (st4_ra_rate < 0) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_autoguide_rate(%d) = %d", dev_id, st4_ra_rate));
+	} else {
+		MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
+	}
+
+	int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
+	if (st4_dec_rate < 0) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_autoguide_rate(%d) = %d", dev_id, st4_dec_rate));
+	} else {
+		MOUNT_GUIDE_RATE_DEC_ITEM->number.value = st4_dec_rate + offset;
+	}
+
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+
+	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
+}
+
+
 static bool mount_set_utc_from_host(indigo_device *device) {
 	return true;
 }
@@ -373,27 +428,30 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (mount_open(device)) {
+				int dev_id = PRIVATE_DATA->dev_id;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
-				int vendor_id = guess_mount_vendor(PRIVATE_DATA->dev_id);
+				/* initialize info prop */
+				int vendor_id = guess_mount_vendor(dev_id);
 				if (vendor_id < 0) {
-					INDIGO_LOG(indigo_log("indigo_mount_nexstar: guess_mount_vendor(%d) = %d", PRIVATE_DATA->dev_id, vendor_id));
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: guess_mount_vendor(%d) = %d", dev_id, vendor_id));
 				} else if (vendor_id == VNDR_SKYWATCHER) {
 					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher", INDIGO_VALUE_SIZE);
 				} else if (vendor_id == VNDR_CELESTRON) {
 					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron", INDIGO_VALUE_SIZE);
 				}
+				PRIVATE_DATA->vendor_id = vendor_id;
 
-				int model_id = tc_get_model(PRIVATE_DATA->dev_id);
+				int model_id = tc_get_model(dev_id);
 				if (model_id < 0) {
-					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_model(%d) = %d", PRIVATE_DATA->dev_id, model_id));
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_model(%d) = %d", dev_id, model_id));
 				} else {
 					get_model_name(model_id,MOUNT_INFO_MODEL_ITEM->text.value,  INDIGO_VALUE_SIZE);
 				}
 
-				int firmware = tc_get_version(PRIVATE_DATA->dev_id, NULL, NULL);
+				int firmware = tc_get_version(dev_id, NULL, NULL);
 				if (firmware < 0) {
-					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_version(%d) = %d", PRIVATE_DATA->dev_id, firmware));
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_version(%d) = %d", dev_id, firmware));
 				} else {
 					if (vendor_id == VNDR_SKYWATCHER) {
 						snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware), GET_PATCH(firmware));
@@ -402,7 +460,27 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 				}
 
-				/* initialize tracking */
+				/* initialize guidingrate prop */
+				int offset = 1;                                             /* for Ceslestron 0 is 1% and 99 is 100% */
+				if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) offset = 0; /* there is no offset for Sky-Watcher */
+
+				int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
+				if (st4_ra_rate < 0) {
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_autoguide_rate(%d) = %d", dev_id, st4_ra_rate));
+				} else {
+					MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
+					PRIVATE_DATA->st4_ra_rate = st4_ra_rate + offset;
+				}
+
+				int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
+				if (st4_dec_rate < 0) {
+					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_autoguide_rate(%d) = %d", dev_id, st4_dec_rate));
+				} else {
+					MOUNT_GUIDE_RATE_DEC_ITEM->number.value = st4_dec_rate + offset;
+					PRIVATE_DATA->st4_dec_rate = st4_dec_rate + offset;
+				}
+
+				/* initialize tracking prop */
 				int mode = tc_get_tracking_mode(PRIVATE_DATA->dev_id);
 				if (mode < 0) {
 					INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, mode));
@@ -486,6 +564,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
 		mount_handle_tracking(device);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_GUIDE_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_GUIDING
+		indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
+		mount_handle_st4_guiding_rate(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
