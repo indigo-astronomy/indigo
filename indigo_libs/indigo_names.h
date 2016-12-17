@@ -474,6 +474,24 @@
 #define FOCUSER_ABORT_MOTION_ITEM_NAME				"ABORT_MOTION"
 
 //----------------------------------------------------------------------
+
+/** MOUNT_INFO property name.
+ */
+#define MOUNT_INFO_PROPERTY_NAME										"MOUNT_INFO"
+
+/** MOUNT_INFO.MODEL property item name.
+ */
+#define MOUNT_INFO_MODEL_ITEM_NAME						"MODEL"
+
+/** MOUNT_INFO.VENDOR property item name.
+ */
+#define MOUNT_INFO_VENDOR_ITEM_NAME						"VENDOR"
+
+/** MOUNT_INFO.FIRMWARE property item name.
+ */
+#define MOUNT_INFO_FIRMWARE_ITEM_NAME					"FIRMWARE_VERSION"
+
+//----------------------------------------------------------------------
 /** MOUNT_GEOGRAPHIC_COORDINATES property name.
  */
 #define MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY_NAME	"MOUNT_GEOGRAPHIC_COORDINATES"
@@ -511,6 +529,15 @@
 /** MOUNT_UTC_TIME.OFFSET property item name.
  */
 #define MOUNT_UTC_OFFSET_ITEM_NAME							"OFFSET"
+
+//----------------------------------------------------------------------
+/** MOUNT_UTC_FROM_HOST property name.
+ */
+#define MOUNT_UTC_FROM_HOST_PROPERTY_NAME					"SET_UTC_FROM_HOST"
+
+/**  MOUNT_UTC_FROM_HOST.SET_UTC property item name.
+ */
+#define MOUNT_SET_UTC_ITEM_NAME								"SET_UTC"
 
 //----------------------------------------------------------------------
 /** MOUNT_PARK property name.
@@ -605,6 +632,19 @@
 /** MOUNT_TRACK_RATE.LUNAR property item name.
  */
 #define MOUNT_TRACK_RATE_LUNAR_ITEM_NAME				"LUNAR"
+
+//----------------------------------------------------------------------
+/** MOUNT_TRACKING property name.
+ */
+#define MOUNT_TRACKING_PROPERTY_NAME					"MOUNT_TRACKING"
+
+/** MOUNT_TRACKING.ON property item name.
+ */
+#define MOUNT_TRACKING_ON_ITEM_NAME			"ON"
+
+/** MOUNT_TRACKING.OFF property item name.
+ */
+#define MOUNT_TRACKING_OFF_ITEM_NAME				"OFF"
 
 //----------------------------------------------------------------------
 /** MOUNT_GUIDE_RATE property name.
