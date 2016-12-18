@@ -117,7 +117,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
-	PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
+	indigo_reschedule_timer(device, TEMP_UPDATE, PRIVATE_DATA->temperature_timer);
 }
 
 static indigo_result ccd_attach(indigo_device *device) {
@@ -185,10 +185,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value)
 			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 		else {
-			if (PRIVATE_DATA->temperature_timer) {
-				indigo_cancel_timer(device, PRIVATE_DATA->temperature_timer);
-				PRIVATE_DATA->temperature_timer = NULL;
-			}
+			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -207,7 +204,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
+			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 		}
 	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
@@ -300,8 +297,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		if (PRIVATE_DATA->guider_timer != NULL)
-			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);		
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
@@ -319,8 +315,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		if (PRIVATE_DATA->guider_timer != NULL)
-			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;

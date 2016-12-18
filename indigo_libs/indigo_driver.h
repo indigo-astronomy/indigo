@@ -261,9 +261,13 @@ extern indigo_result indigo_save_property(indigo_device*device, int *file_handle
  */
 extern indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback);
 
+/** Rescheduled timer (if not null).
+ */
+extern bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *timer);
+
 /** Cancel timer.
  */
-extern void indigo_cancel_timer(indigo_device *device, indigo_timer *timer);
+extern bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer);
 
 /** Start USB event handler thread.
  */

@@ -201,7 +201,7 @@ static void position_timer_callback(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		PRIVATE_DATA->position_timer = indigo_set_timer(device, 0.2, position_timer_callback);
+		indigo_reschedule_timer(device, 0.2, PRIVATE_DATA->position_timer);
 	}
 }
 
@@ -286,8 +286,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			if (PRIVATE_DATA->position_timer != NULL)
-				indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
+			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 			PRIVATE_DATA->position_timer = NULL;
 			if (--PRIVATE_DATA->device_count == 0) {
 				meade_close(device);
@@ -300,8 +299,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (!PRIVATE_DATA->parked && MOUNT_PARK_PARKED_ITEM->sw.value) {
 			meade_command(device, ":hP#", NULL, 0, 0);
 			PRIVATE_DATA->parked = true;
-			if (PRIVATE_DATA->position_timer != NULL)
-				indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
+			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 		}
 		if (PRIVATE_DATA->parked && MOUNT_PARK_UNPARKED_ITEM->sw.value) {
@@ -380,8 +378,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 			if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
-				if (PRIVATE_DATA->position_timer != NULL) {
-					indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
+				if (indigo_cancel_timer(device, &PRIVATE_DATA->position_timer)) {
 					PRIVATE_DATA->position_timer = NULL;
 					meade_command(device, ":Q#", NULL, 0, 0);
 					MOUNT_MOTION_NORTH_ITEM->sw.value = false;

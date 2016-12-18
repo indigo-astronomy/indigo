@@ -68,7 +68,7 @@ static void slew_timer_callback(indigo_device *device) {
 		else if (diffDec < 0)
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value -= speedDec;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0.2, slew_timer_callback);
+		indigo_reschedule_timer(device, 0.2, PRIVATE_DATA->slew_timer);
 	}
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 }
@@ -144,9 +144,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-		if (PRIVATE_DATA->slew_timer != NULL) {
-			indigo_cancel_timer(device, PRIVATE_DATA->slew_timer);
-			PRIVATE_DATA->slew_timer = NULL;
+		if (indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		}
@@ -207,8 +205,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		if (PRIVATE_DATA->guider_timer != NULL)
-			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
@@ -226,8 +223,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		if (PRIVATE_DATA->guider_timer != NULL)
-			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;

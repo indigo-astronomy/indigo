@@ -192,7 +192,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (err == DC1394_SUCCESS) {
 		CCD_TEMPERATURE_ITEM->number.value = (temperature & 0xFFF)/10.0-273.15;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-		PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
+		PRIVATE_DATA->temperture_timer = indigo_reschedule_timer(device, 5, ccd_temperature_callback);
 	} else {
 		PRIVATE_DATA->temperture_timer = NULL;
 	}
@@ -298,10 +298,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				ccd_temperature_callback(device);
 			}
 		} else {
-			if (PRIVATE_DATA->temperture_timer != NULL) {
-				indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
-				PRIVATE_DATA->temperture_timer = NULL;
-			}
+			indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
 			stop_camera(device);
 			if (PRIVATE_DATA->buffer != NULL) {
 				free(PRIVATE_DATA->buffer);
@@ -405,7 +402,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
+			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			dc1394video_frame_t *frame;
 			while (true) {
 				dc1394error_t err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_POLL, &frame);

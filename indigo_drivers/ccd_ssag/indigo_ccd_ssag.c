@@ -361,10 +361,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			if (PRIVATE_DATA->exposure_timer != NULL) {
+			if (indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer)) {
 				ssag_abort_exposure(device);
-				indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
-				PRIVATE_DATA->exposure_timer = NULL;
 			}
 		}
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
