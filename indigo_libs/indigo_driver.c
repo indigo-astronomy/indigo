@@ -193,7 +193,7 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 	return timer;
 }
 
-void indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *timer) {
+bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *timer) {
 	pthread_mutex_lock(&cancel_timer_mutex);
 	if (timer) {
 		indigo_set_timer(device, delay, timer->callback);
@@ -204,7 +204,7 @@ void indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *
 	return false;
 }
 
-void indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
+bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 	assert(device != NULL);
 	pthread_mutex_lock(&cancel_timer_mutex);
 	pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
