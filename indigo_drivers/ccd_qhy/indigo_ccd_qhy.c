@@ -137,10 +137,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				ccd_temperature_callback(device);
 			} else {
-				if (PRIVATE_DATA->temperture_timer) {
-					indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
-					PRIVATE_DATA->temperture_timer = NULL;
-				}
+				indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
 				if (PRIVATE_DATA->buffer != NULL) {
 					free(PRIVATE_DATA->buffer);
 					PRIVATE_DATA->buffer = NULL;
@@ -150,10 +147,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			if (PRIVATE_DATA->temperture_timer != NULL) {
-				indigo_cancel_timer(device, PRIVATE_DATA->temperture_timer);
-				PRIVATE_DATA->temperture_timer = NULL;
-			}
+			indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
 			if (PRIVATE_DATA->buffer != NULL) {
 				free(PRIVATE_DATA->buffer);
 				PRIVATE_DATA->buffer = NULL;
@@ -183,7 +177,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		// libqhy_abort_exposure(PRIVATE_DATA->device_context);
-			indigo_cancel_timer(device, PRIVATE_DATA->exposure_timer);
+			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 		}
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {

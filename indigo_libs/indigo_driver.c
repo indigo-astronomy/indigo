@@ -69,6 +69,8 @@
 
 #define NANO 1000000000L
 
+static pthread_mutex_t cancel_timer_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
 
 #define USE_POLL
@@ -191,37 +193,58 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 	return timer;
 }
 
-void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
-	assert(device != NULL);
-
-	pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
-	indigo_timer *queue = DEVICE_CONTEXT->timer_queue, *end = NULL;
-	while (queue != NULL && queue != timer) {
-		end = queue;
-		queue = queue->next;
+void indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *timer) {
+	pthread_mutex_lock(&cancel_timer_mutex);
+	if (timer) {
+		indigo_set_timer(device, delay, timer->callback);
+		pthread_mutex_unlock(&cancel_timer_mutex);
+		return true;
 	}
-	if (queue != NULL) {
-		pthread_mutex_lock(&timer_mutex);
-		if (end == NULL) {
-			DEVICE_CONTEXT->timer_queue = queue->next;
-		} else {
-			end->next = queue->next;
+	pthread_mutex_unlock(&cancel_timer_mutex);
+	return false;
+}
+
+void indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
+	assert(device != NULL);
+	pthread_mutex_lock(&cancel_timer_mutex);
+	pthread_mutex_lock(&DEVICE_CONTEXT->timer_mutex);
+	indigo_timer *t = *timer;
+	bool result = false;
+	if (t != NULL) {
+		indigo_timer *queue = DEVICE_CONTEXT->timer_queue, *end = NULL;
+		while (queue != NULL && queue != t) {
+			end = queue;
+			queue = queue->next;
 		}
-		queue->next = free_timers;
-		free_timers = queue;
-		pthread_mutex_unlock(&timer_mutex);
-		INDIGO_TRACE(indigo_trace("timer canceled"));
+		if (queue != NULL) {
+			pthread_mutex_lock(&timer_mutex);
+			if (end == NULL) {
+				DEVICE_CONTEXT->timer_queue = queue->next;
+			} else {
+				end->next = queue->next;
+			}
+			queue->next = free_timers;
+			free_timers = queue;
+			pthread_mutex_unlock(&timer_mutex);
+			INDIGO_TRACE(indigo_trace("timer canceled"));
+			result = true;
+		}
+		*timer = NULL;
 	}
 	pthread_mutex_unlock(&DEVICE_CONTEXT->timer_mutex);
+	pthread_mutex_unlock(&cancel_timer_mutex);
+	return result;
 }
 
 #elif defined(INDIGO_MACOS)
 
 void *dispatch_function(indigo_timer *timer) {
 	if (!timer->canceled) {
+		timer->canceled = true;
 		timer->callback(timer->device);
 	}
-	free(timer);
+	if (timer->canceled)
+		free(timer);
 	return NULL;
 }
 
@@ -237,9 +260,31 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 	return timer;
 }
 
-void indigo_cancel_timer(indigo_device *device, indigo_timer *timer) {
-	timer->canceled = true;
-	INDIGO_TRACE(indigo_trace("timer canceled"));
+bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *timer) {
+	pthread_mutex_lock(&cancel_timer_mutex);
+	if (timer) {
+		timer->canceled = false;
+		long nanos = delay * NANO;
+		dispatch_after_f(dispatch_time(0, nanos), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), timer, (dispatch_function_t)dispatch_function);
+		INDIGO_TRACE(indigo_trace("timer queued to fire in %ldms", nanos/1000000));
+		pthread_mutex_unlock(&cancel_timer_mutex);
+		return true;
+	}
+	pthread_mutex_unlock(&cancel_timer_mutex);
+	return false;
+}
+
+bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
+	pthread_mutex_lock(&cancel_timer_mutex);
+	if (*timer != NULL) {
+		(*timer)->canceled = true;
+		*timer = NULL;
+		pthread_mutex_unlock(&cancel_timer_mutex);
+		INDIGO_TRACE(indigo_trace("timer canceled"));
+		return true;
+	}
+	pthread_mutex_unlock(&cancel_timer_mutex);
+	return false;
 }
 
 #endif

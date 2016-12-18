@@ -379,7 +379,7 @@ static void position_timer_callback(indigo_device *device) {
 	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 
-	PRIVATE_DATA->position_timer = indigo_set_timer(device, REFRESH_SECONDS, position_timer_callback);
+	indigo_reschedule_timer(device, REFRESH_SECONDS, PRIVATE_DATA->position_timer);
 }
 
 static indigo_result mount_attach(indigo_device *device) {
@@ -506,8 +506,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
-			PRIVATE_DATA->position_timer = NULL;
+			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 			mount_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -606,10 +605,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device);
-	if(PRIVATE_DATA->position_timer) {
-		indigo_cancel_timer(device, PRIVATE_DATA->position_timer);
-		PRIVATE_DATA->position_timer = NULL;
-	}
+	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
@@ -729,8 +725,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		if (PRIVATE_DATA->guider_timer_dec != NULL)
-			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer_dec);
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
@@ -760,8 +755,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		if (PRIVATE_DATA->guider_timer_ra != NULL)
-			indigo_cancel_timer(device, PRIVATE_DATA->guider_timer_ra);
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
