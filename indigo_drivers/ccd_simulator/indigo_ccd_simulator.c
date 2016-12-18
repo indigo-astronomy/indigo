@@ -117,7 +117,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, TEMP_UPDATE, PRIVATE_DATA->temperature_timer);
+	indigo_reschedule_timer(device, TEMP_UPDATE, &PRIVATE_DATA->temperature_timer);
 }
 
 static indigo_result ccd_attach(indigo_device *device) {

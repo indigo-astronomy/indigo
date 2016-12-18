@@ -201,7 +201,7 @@ static void position_timer_callback(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		indigo_reschedule_timer(device, 0.2, PRIVATE_DATA->position_timer);
+		indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->position_timer);
 	}
 }
 

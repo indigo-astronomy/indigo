@@ -402,7 +402,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, 5, PRIVATE_DATA->temperture_timer);
+	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperture_timer);
 }
 
 
