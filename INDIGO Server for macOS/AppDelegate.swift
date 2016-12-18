@@ -35,7 +35,6 @@ func serverCallback(count: Int32) {
   }
 
 	let serverId = "eu.cloudmakers.indi.indigo_server"
-	let service = NetService(domain: "", type: "_indi._tcp", name: "", port: 7624)
 	
   func applicationDidFinishLaunching(_ notification: Notification) {
 		var error: Unmanaged<CFError>? = nil

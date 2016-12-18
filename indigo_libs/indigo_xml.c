@@ -349,6 +349,8 @@ static void *set_one_number_vector_handler(parser_state state, char *name, char 
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
+		} else if (!strcmp(name, "target")) {
+			property->items[property->count-1].number.target = atof(value);
 		}
 	} else if (state == TEXT) {
 		property->items[property->count-1].number.value = atof(value);
