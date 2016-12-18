@@ -192,7 +192,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (err == DC1394_SUCCESS) {
 		CCD_TEMPERATURE_ITEM->number.value = (temperature & 0xFFF)/10.0-273.15;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-		PRIVATE_DATA->temperture_timer = indigo_reschedule_timer(device, 5, ccd_temperature_callback);
+		PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 5, ccd_temperature_callback);
 	} else {
 		PRIVATE_DATA->temperture_timer = NULL;
 	}
