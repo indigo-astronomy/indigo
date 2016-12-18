@@ -500,7 +500,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				}
 
 				/* start updates */
-				position_timer_callback(device);
+				PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
