@@ -55,10 +55,6 @@
 #define GUIDE_50_ITEM_NAME                 "GUIDE_50"
 #define GUIDE_100_ITEM_NAME                "GUIDE_100"
 
-
-#define RA_MIN_DIFF         (1/24/60/10)
-#define DEC_MIN_DIFF        (1/60/60)
-
 typedef struct {
 	int dev_id;
 	bool parked;
@@ -300,6 +296,9 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 
 
 static bool mount_set_utc_from_host(indigo_device *device) {
+
+	// TODO
+
 	return true;
 }
 
