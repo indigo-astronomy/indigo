@@ -46,6 +46,16 @@
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((nexstar_private_data *)DEVICE_CONTEXT->private_data)
 
+
+#define COMMAND_GUIDE_RATE_PROPERTY     (PRIVATE_DATA->command_guide_rate_property)
+#define GUIDE_50_ITEM                   (COMMAND_GUIDE_RATE_PROPERTY->items+0)
+#define GUIDE_100_ITEM                  (COMMAND_GUIDE_RATE_PROPERTY->items+1)
+
+#define COMMAND_GUIDE_RATE_PROPERTY_NAME   "COMMAND_GUIDE_RATE"
+#define GUIDE_50_ITEM_NAME                 "GUIDE_50"
+#define GUIDE_100_ITEM_NAME                "GUIDE_100"
+
+
 #define RA_MIN_DIFF         (1/24/60/10)
 #define DEC_MIN_DIFF        (1/60/60)
 
@@ -60,16 +70,10 @@ typedef struct {
 	pthread_mutex_t serial_mutex;
 	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec;
 	int guide_rate;
+	indigo_property *command_guide_rate_property;
 } nexstar_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
-
-static indigo_result nexstar_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-	}
-	return indigo_mount_enumerate_properties(device, NULL, NULL);
-}
-
 
 static bool mount_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
@@ -616,6 +620,14 @@ static indigo_result mount_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
+static indigo_result nexstar_guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (indigo_property_match(COMMAND_GUIDE_RATE_PROPERTY, property))
+			indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
+	}
+	return indigo_guider_enumerate_properties(device, NULL, NULL);
+}
+
 
 static void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_ra = NULL;
@@ -655,6 +667,22 @@ static void guider_timer_callback_dec(indigo_device *device) {
 }
 
 
+static void guider_handle_guide_rate(indigo_device *device) {
+	if(GUIDE_50_ITEM->sw.value) {
+		PRIVATE_DATA->guide_rate = 1;
+	} else if (GUIDE_100_ITEM->sw.value) {
+		PRIVATE_DATA->guide_rate = 2;
+	}
+	COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	if (PRIVATE_DATA->guide_rate == 1)
+		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (50%% sidereal).");
+	else if (PRIVATE_DATA->guide_rate == 2)
+		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (100%% sidereal).");
+	else
+		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set.");
+}
+
+
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
@@ -662,7 +690,15 @@ static indigo_result guider_attach(indigo_device *device) {
 	device->device_context = NULL;
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+
+		PRIVATE_DATA->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
+		COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (COMMAND_GUIDE_RATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(GUIDE_50_ITEM, GUIDE_50_ITEM_NAME, "50% sidereal", true);
+		indigo_init_switch_item(GUIDE_100_ITEM, GUIDE_100_ITEM_NAME, "100% sidereal", false);
+
+		INDIGO_LOG(indigo_log("%s attached.", device->name));
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -677,6 +713,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (mount_open(device)) {
+				indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
 				PRIVATE_DATA->guider_timer_ra = NULL;
 				PRIVATE_DATA->guider_timer_dec = NULL;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -688,6 +725,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		} else {
 			mount_close(device);
+			indigo_delete_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
@@ -752,8 +790,13 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
+	} else if (indigo_property_match(COMMAND_GUIDE_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- COMMAND_GUIDE_RATE
+		indigo_property_copy_values(COMMAND_GUIDE_RATE_PROPERTY, property, false);
+		guider_handle_guide_rate(device);
+		return INDIGO_OK;
 	}
+	// --------------------------------------------------------------------------------
 	return indigo_guider_change_property(device, client, property);
 }
 
@@ -761,7 +804,9 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+
+	indigo_release_property(COMMAND_GUIDE_RATE_PROPERTY);
+	INDIGO_LOG(indigo_log("%s detached.", device->name));
 	return indigo_guider_detach(device);
 }
 
@@ -776,14 +821,14 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 	static indigo_device mount_template = {
 		MOUNT_NEXSTAR_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
-		nexstar_enumerate_properties,
+		indigo_mount_enumerate_properties,
 		mount_change_property,
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
 		MOUNT_NEXSTAR_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
-		indigo_guider_enumerate_properties,
+		nexstar_guider_enumerate_properties,
 		guider_change_property,
 		guider_detach
 	};
@@ -802,7 +847,6 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(nexstar_private_data));
 		private_data->dev_id = -1;
-		private_data->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
 		private_data->count_open = 0;
 		mount = malloc(sizeof(indigo_device));
 		assert(mount != NULL);
