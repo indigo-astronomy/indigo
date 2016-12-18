@@ -379,7 +379,7 @@ static void position_timer_callback(indigo_device *device) {
 	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 
-	indigo_reschedule_timer(device, REFRESH_SECONDS, PRIVATE_DATA->position_timer);
+	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->position_timer);
 }
 
 static indigo_result mount_attach(indigo_device *device) {
@@ -590,11 +590,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-		if (PRIVATE_DATA->position_timer != NULL) {
-			mount_cancel_slew(device);
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		}
+		mount_cancel_slew(device);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}

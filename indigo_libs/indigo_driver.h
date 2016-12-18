@@ -263,7 +263,7 @@ extern indigo_timer *indigo_set_timer(indigo_device *device, double delay, indig
 
 /** Rescheduled timer (if not null).
  */
-extern bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *timer);
+extern bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer);
 
 /** Cancel timer.
  */

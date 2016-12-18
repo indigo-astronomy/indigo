@@ -68,7 +68,7 @@ static void slew_timer_callback(indigo_device *device) {
 		else if (diffDec < 0)
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value -= speedDec;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_reschedule_timer(device, 0.2, PRIVATE_DATA->slew_timer);
+		indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->slew_timer);
 	}
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 }
