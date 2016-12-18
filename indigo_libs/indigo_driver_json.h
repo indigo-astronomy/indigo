@@ -32,5 +32,6 @@
 /** Create initialized instance of JSON wire protocol device side adapter.
  */
 extern indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket);
+extern void indigo_release_json_device_adapter(indigo_client *client);
 
 #endif /* indigo_driver_json_h */

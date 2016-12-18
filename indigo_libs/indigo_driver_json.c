@@ -381,3 +381,10 @@ indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket)
 	client->client_context = client_context;
 	return client;
 }
+
+void indigo_release_json_device_adapter(indigo_client *client) {
+	assert(client != NULL);
+	assert(client->client_context != NULL);
+	free(client->client_context);
+	free(client);
+}
