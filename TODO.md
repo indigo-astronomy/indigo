@@ -22,7 +22,7 @@
 7. Windows port
 8. Android port
 9. JPEG format support __DONE__
-10. smart serial port selection 
+10. smart serial port selection __DONE__
 
 ### Utilities
 
@@ -81,7 +81,7 @@
 
 #### Mounts
 
-1. NexStar protocol mount driver (based on libnexstar)
+1. NexStar protocol mount driver (based on libnexstar) __DONE__
 2. NexStar EVO protocol mount driver
 3. LX200 protocol mount driver
 4. EQMod mount driver
