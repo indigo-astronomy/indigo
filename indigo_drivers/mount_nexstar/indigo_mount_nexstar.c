@@ -296,9 +296,21 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 
 
 static bool mount_set_utc_from_host(indigo_device *device) {
+	time_t utc_time = indigo_utc(NULL);
+	if (utc_time == -1) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: can not get host UT"));
+		return false;
+	}
 
-	// TODO
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	/* set mount time to UTC */
+	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, 0, 0);
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
+	if (res != RC_OK) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res));
+		return false;
+	}
 	return true;
 }
 
@@ -350,7 +362,6 @@ static void position_timer_callback(indigo_device *device) {
 	double ra, dec, lon, lat;
 	int dev_id = PRIVATE_DATA->dev_id;
 
-	/* indigo_cancel_timer() does not always work, so this is a WORK AROUND */
 	if (dev_id < 0) return;
 
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
@@ -369,6 +380,16 @@ static void position_timer_callback(indigo_device *device) {
 	if (res != RC_OK) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_location(%d) = %d", dev_id, res));
 	}
+
+	time_t ttime;
+	int tz, dst;
+	res = tc_get_time(dev_id, &ttime, &tz, &dst);
+	if (res == -1) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_time(%d) = %d", dev_id, res));
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
@@ -378,6 +399,9 @@ static void position_timer_callback(indigo_device *device) {
 	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
 	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+
+	indigo_timetoiso(ttime - 3600 * (tz + dst), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->position_timer);
 }
