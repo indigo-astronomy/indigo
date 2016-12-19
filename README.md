@@ -24,20 +24,20 @@ This is the list of requirements taken into the consideration:
 1. CCD (with wheel, guider and focuser) simulator
 2. Mount simulator
 3. Atik CCD (Titan, 3xx/4xx/One with built in wheel, VS/Infinity, 11000/4000) driver
-4. SX CCD driver
-5. SX wheel driver
-6. Shoestring FCUSB focuser driver
-7. SSAG/QHY5 CCD driver 
-8. ASI wheel driver
-9. IIDC CCD driver
-10. ASI CCD driver
-11. NexStar mount driver (supports Celestron NexStar and Sky-Watcher mounts)
+4. Atik EFW2 filterwheel driver
+5. SX CCD driver
+6. SX wheel driver
+7. Shoestring FCUSB focuser driver
+8. SSAG/QHY5 CCD driver 
+9. ASI wheel driver
+10. IIDC CCD driver
+11. ASI CCD driver
+12. NexStar mount driver (supports Celestron NexStar and Sky-Watcher mounts)
+13. LX200 mount driver (supports Meade mounts and EQMac)
 
 ## This is under development
 
 1. QHY (5II-L) CCD driver
-2. Atik EFW2 filterwheel driver
-3. LX200 mount driver
 
 ------------------------------------------------------------------------------------------------
 
