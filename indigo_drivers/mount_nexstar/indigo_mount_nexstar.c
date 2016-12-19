@@ -235,8 +235,10 @@ static void mount_handle_motion_ne(indigo_device *device) {
 
 static bool mount_set_location(indigo_device *device) {
 	int res;
+	double lon = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+	if (lon > 180) lon -= 360.0;
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	res = tc_set_location(PRIVATE_DATA->dev_id, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
+	res = tc_set_location(PRIVATE_DATA->dev_id, lon, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res != RC_OK) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_set_location(%d) = %d", PRIVATE_DATA->dev_id, res));
@@ -443,6 +445,7 @@ static void position_timer_callback(indigo_device *device) {
 	if (res != RC_OK) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_location(%d) = %d", dev_id, res));
 	}
+	if (lon < 0) lon += 360;
 
 	time_t ttime;
 	int tz, dst;
