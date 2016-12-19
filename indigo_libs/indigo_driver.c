@@ -676,3 +676,32 @@ char* indigo_dtos(double value, char *format) {
 	return string;
 }
 
+time_t indigo_utc(time_t *ltime) {
+	struct tm tm_now;
+	time_t now;
+
+	if (ltime != NULL) now = *ltime;
+	else time(&now);
+
+	gmtime_r(&now, &tm_now);
+	return mktime(&tm_now);
+}
+
+void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len) {
+	struct tm tm_stamp;
+
+	localtime_r(&tstamp, &tm_stamp);
+	strftime(isotime, isotime_len, "%Y-%m-%dT%H:%M:%S", &tm_stamp);
+}
+
+time_t indigo_isototime(char *isotime) {
+	struct tm tm_ts;
+
+	if (sscanf(isotime, "%d-%d-%dT%d:%d:%d", &tm_ts.tm_year, &tm_ts.tm_mon, &tm_ts.tm_mday, &tm_ts.tm_hour, &tm_ts.tm_min, &tm_ts.tm_sec) == 6) {
+		tm_ts.tm_mon -= 1;             /* mon is 0..11 */
+		tm_ts.tm_year -= 1900;         /* year since 1900 */
+		return (mktime(&tm_ts));
+	}
+
+	return -1;
+}
