@@ -285,5 +285,17 @@ extern double indigo_stod(char *string);
  */
 extern char* indigo_dtos(double value, char *format);
 
+/** get current utc.
+ */
+time_t indigo_utc(time_t *ltime);
+
+/** Convert time_t to ISO 8601 string.
+ */
+void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len);
+
+/** Convert ISO 8601 string to time_t.
+ */
+time_t indigo_isototime(char *isotime);
+
 #endif /* indigo_device_h */
 
