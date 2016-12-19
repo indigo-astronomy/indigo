@@ -697,6 +697,7 @@ void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len) {
 time_t indigo_isototime(char *isotime) {
 	struct tm tm_ts;
 
+	memset(&tm_ts, 0, sizeof(tm_ts));
 	if (sscanf(isotime, "%d-%d-%dT%d:%d:%d", &tm_ts.tm_year, &tm_ts.tm_mon, &tm_ts.tm_mday, &tm_ts.tm_hour, &tm_ts.tm_min, &tm_ts.tm_sec) == 6) {
 		tm_ts.tm_mon -= 1;             /* mon is 0..11 */
 		tm_ts.tm_year -= 1900;         /* year since 1900 */

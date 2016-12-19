@@ -457,7 +457,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_LST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_PARK_PROPERTY->hidden = true;
-		MOUNT_UTC_TIME_PROPERTY->count = 1;
+		//MOUNT_UTC_TIME_PROPERTY->count = 1;
 		//MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
 		MOUNT_UTC_FROM_HOST_PROPERTY->hidden = false;
 
