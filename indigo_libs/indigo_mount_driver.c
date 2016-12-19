@@ -67,13 +67,12 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			MOUNT_LST_TIME_PROPERTY->hidden = true;
 			indigo_init_number_item(MOUNT_LST_TIME_ITEM, MOUNT_LST_TIME_ITEM_NAME, "LST Time", 0, 24, 0, 0);
 			// -------------------------------------------------------------------------------- MOUNT_UTC_TIME
-			MOUNT_UTC_TIME_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_UTC_TIME_PROPERTY_NAME, MOUNT_SITE_GROUP, "UTC time", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+			MOUNT_UTC_TIME_PROPERTY = indigo_init_text_property(NULL, device->name, MOUNT_UTC_TIME_PROPERTY_NAME, MOUNT_SITE_GROUP, "UTC time", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (MOUNT_UTC_TIME_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_UTC_TIME_PROPERTY->hidden = true;
-			/* to be fixed to proper time/date format */
-			indigo_init_number_item(MOUNT_UTC_ITEM, MOUNT_UTC_TIME_ITEM_NAME, "UTC Time", 0, 0, 0, 1);
-			indigo_init_number_item(MOUNT_UTC_OFFEST_ITEM, MOUNT_UTC_OFFSET_ITEM_NAME, "UTC Offset", -12, 12, 0.5, 0); /* step is 0.5 as there are timezones at 30 min */
+			indigo_init_text_item(MOUNT_UTC_ITEM, MOUNT_UTC_TIME_ITEM_NAME, "UTC Time", "0000-00-00T00:00:00");
+			indigo_init_text_item(MOUNT_UTC_OFFEST_ITEM, MOUNT_UTC_OFFSET_ITEM_NAME, "UTC Offset", "0"); /* step is 0.5 as there are timezones at 30 min */
 			// -------------------------------------------------------------------------------- MOUNT_UTC_FROM_HOST
 			MOUNT_UTC_FROM_HOST_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_UTC_FROM_HOST_PROPERTY_NAME, MOUNT_SITE_GROUP, "Set UTC", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (MOUNT_UTC_FROM_HOST_PROPERTY == NULL)
