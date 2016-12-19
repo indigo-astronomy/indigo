@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
@@ -224,7 +225,10 @@ static indigo_result mount_attach(indigo_device *device) {
 		PRIVATE_DATA->device_port = DEVICE_PORT_PROPERTY;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_UTC_FROM_HOST
+		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
+		
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -273,9 +277,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						INDIGO_LOG(indigo_log("lx200: status:   %s", response));
 					}
 					if (meade_command(device, ":Gt#", response, 127, 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
+						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
 					if (meade_command(device, ":Gg#", response, 127, 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = indigo_stod(response);
+						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = indigo_stod(response);
 				}
 				if (!PRIVATE_DATA->parked)
 					position_timer_callback(device);
@@ -470,6 +474,40 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 			MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_SET_HOST_TIME_PROPERTY
+		indigo_property_copy_values(MOUNT_SET_HOST_TIME_PROPERTY, property, false);
+		if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
+			time_t secs = time(NULL);
+			struct tm tm = *localtime(&secs);
+			char command[20], response[2];
+			sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
+			if (!meade_command(device, command, response, 1, 0) || *response != '1')
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			else
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
+		indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_UTC_TIME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_UTC_TIME_PROPERTY
+		indigo_property_copy_values(MOUNT_UTC_TIME_PROPERTY, property, false);
+		time_t secs = indigo_isototime(MOUNT_UTC_ITEM->text.value);
+		if (secs == -1) {
+			INDIGO_LOG(indigo_log("indigo_mount_lx200: Wrong date/time format!"));
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
+		} else {
+			struct tm tm = *localtime(&secs);
+			char command[20], response[2];
+			sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
+			if (!meade_command(device, command, response, 1, 0) || *response != '1')
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			else
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------

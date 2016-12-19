@@ -459,7 +459,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_PARK_PROPERTY->hidden = true;
 		//MOUNT_UTC_TIME_PROPERTY->count = 1;
 		//MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
-		MOUNT_UTC_FROM_HOST_PROPERTY->hidden = false;
+		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 
 		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
 
@@ -594,19 +594,19 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_UTC_FROM_HOST_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_UTC_FROM_HOST_PROPERTY
-		indigo_property_copy_values(MOUNT_UTC_FROM_HOST_PROPERTY, property, false);
-		if(MOUNT_SET_UTC_ITEM->sw.value) {
+	} else if (indigo_property_match(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_SET_HOST_TIME_PROPERTY
+		indigo_property_copy_values(MOUNT_SET_HOST_TIME_PROPERTY, property, false);
+		if(MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 			if(mount_set_utc_from_host(device)) {
-				MOUNT_UTC_FROM_HOST_PROPERTY->state = INDIGO_OK_STATE;
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				MOUNT_UTC_FROM_HOST_PROPERTY->state = INDIGO_ALERT_STATE;
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
-		MOUNT_SET_UTC_ITEM->sw.value = false;
-		MOUNT_UTC_FROM_HOST_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_UTC_FROM_HOST_PROPERTY, NULL);
+		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
+		MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
