@@ -294,6 +294,31 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 }
 
+static void mount_handle_utc(indigo_device *device) {
+	time_t utc_time = indigo_isototime(MOUNT_UTC_ITEM->text.value);
+	if (utc_time == -1) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: Wrong date/time format!"));
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
+		return;
+	}
+
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	/* set mount time to UTC */
+	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, 0, 0);
+	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+
+	if (res != RC_OK) {
+		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res));
+		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Can not set mount date/time.");
+		return;
+	}
+
+	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+	return;
+}
 
 static bool mount_set_utc_from_host(indigo_device *device) {
 	time_t utc_time = indigo_utc(NULL);
@@ -431,7 +456,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		MOUNT_LST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
-		MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
+		//MOUNT_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
 		MOUNT_UTC_FROM_HOST_PROPERTY->hidden = false;
 
 		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
@@ -585,6 +610,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		mount_handle_coordinates(device);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_UTC_TIME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_UTC_TIME_PROPERTY
+		indigo_property_copy_values(MOUNT_UTC_TIME_PROPERTY, property, false);
+		mount_handle_utc(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
