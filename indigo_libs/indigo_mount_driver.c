@@ -192,7 +192,7 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 				indigo_define_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_HORIZONTAL_COORDINATES_PROPERTY, property) && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden)
 				indigo_define_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property) && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden)
+			if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property) && !MOUNT_ABORT_MOTION_PROPERTY->hidden)
 				indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 		}
 	}
@@ -225,7 +225,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden)
 				indigo_define_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+			if (!MOUNT_ABORT_MOTION_PROPERTY->hidden)
+				indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 		} else {
 			indigo_delete_property(device, MOUNT_INFO_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
@@ -246,7 +247,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_delete_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden)
 				indigo_delete_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			indigo_delete_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+			if (!MOUNT_ABORT_MOTION_PROPERTY->hidden)
+				indigo_delete_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(MOUNT_ON_COORDINATES_SET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
