@@ -37,15 +37,18 @@
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <signal.h>
 
 #include "indigo_client_xml.h"
 #include "indigo_client.h"
 
 indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
 indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
+indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
 
 static int used_driver_slots = 0;
 static int used_server_slots = 0;
+static int used_subprocess_slots = 0;
 
 static indigo_result add_driver(driver_entry_point driver, void *dl_handle, bool init) {
 	int empty_slot = used_driver_slots; /* the first slot after the last used is a good candidate */
@@ -230,3 +233,81 @@ indigo_result indigo_disconnect_server(const char *host, int port) {
 	}
 	return INDIGO_NOT_FOUND;
 }
+
+void *subprocess_thread(indigo_subprocess_entry *subprocess) {
+	INDIGO_LOG(indigo_log("Subprocess %s thread started.", subprocess->executable));
+	while (subprocess->pid >= 0) {
+		int input[2], output[2];
+		if (pipe(input) < 0 || pipe(output) < 0) {
+			INDIGO_LOG(indigo_log("Can't create local pipe for subprocess %s (%s)", subprocess->executable, strerror(errno)));
+			return NULL;
+		}
+		subprocess->pid = fork();
+		if (subprocess->pid == -1) {
+			INDIGO_LOG(indigo_log("Can't create subprocess %s (%s)", subprocess->executable, strerror(errno)));
+			return NULL;
+		} else if (subprocess->pid == 0) {
+			close(0);
+			dup2(output[0], 0);
+			close(1);
+			dup2(input[1], 1);
+			execl(subprocess->executable, subprocess->executable, NULL);
+		} else {
+			close(input[1]);
+			close(output[0]);
+			subprocess->protocol_adapter = indigo_xml_client_adapter(input[0], output[1]);
+			indigo_attach_device(subprocess->protocol_adapter);
+			indigo_xml_parse(subprocess->protocol_adapter, NULL);
+			indigo_detach_device(subprocess->protocol_adapter);
+			free(subprocess->protocol_adapter->device_context);
+			free(subprocess->protocol_adapter);
+		}
+		if (subprocess->pid >= 0)
+			sleep(5);
+	}
+	subprocess->thread_started = false;
+	INDIGO_LOG(indigo_log("Subprocess %s thread stopped.", subprocess->executable));
+	return NULL;
+}
+
+indigo_result indigo_start_subprocess(const char *executable) {
+	int empty_slot = used_subprocess_slots;
+	for (int dc = 0; dc < used_subprocess_slots;  dc++) {
+		if (indigo_available_subprocesses[dc].thread_started && !strcmp(indigo_available_subprocesses[dc].executable, executable)) {
+			INDIGO_LOG(indigo_log("Subprocess %s already started.", indigo_available_subprocesses[dc].executable));
+			return INDIGO_OK;
+		} else if (!indigo_available_subprocesses[dc].thread_started) {
+			empty_slot = dc;
+		}
+	}
+	
+	if (empty_slot > INDIGO_MAX_SERVERS)
+		return INDIGO_TOO_MANY_ELEMENTS;
+	
+	strncpy(indigo_available_subprocesses[empty_slot].executable, executable, INDIGO_NAME_SIZE);
+	indigo_available_subprocesses[empty_slot].pid = 0;
+	if (pthread_create(&indigo_available_subprocesses[empty_slot].thread, NULL, (void*)(void *)subprocess_thread, &indigo_available_subprocesses[empty_slot]) != 0) {
+		indigo_available_subprocesses[empty_slot].thread_started = false;
+		return INDIGO_FAILED;
+	}
+	indigo_available_subprocesses[empty_slot].thread_started = true;
+	
+	if (empty_slot == used_subprocess_slots)
+		used_subprocess_slots++;
+	
+	return INDIGO_OK;
+}
+
+indigo_result indigo_kill_subprocess(const char *executable) {
+	for (int dc = 0; dc < used_subprocess_slots;  dc++) {
+		if (indigo_available_subprocesses[dc].thread_started && !strcmp(indigo_available_subprocesses[dc].executable, executable)) {
+			if (indigo_available_subprocesses[dc].pid > 0)
+				kill(indigo_available_subprocesses[dc].pid, SIGKILL);
+			indigo_available_subprocesses[dc].pid = -1;
+			indigo_available_subprocesses[dc].thread_started = false;
+			return INDIGO_OK;
+		}
+	}
+	return INDIGO_NOT_FOUND;
+}
+

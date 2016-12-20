@@ -55,6 +55,16 @@ typedef struct {
 	indigo_device *protocol_adapter;        ///< server protocol adapter
 } indigo_server_entry;
 
+/** Remote server entry type.
+ */
+typedef struct {
+	char executable[INDIGO_NAME_SIZE];      ///< executable path name
+	pthread_t thread;                       ///< client thread ID
+	bool thread_started;                    ///< client thread started/stopped
+	int pid;                             ///< stream socket
+	indigo_device *protocol_adapter;        ///< server protocol adapter
+} indigo_subprocess_entry;
+
 /** Array of all available drivers (statically & dynamically linked).
  */
 extern indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
@@ -62,6 +72,10 @@ extern indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
 /** Array of all available servers.
  */
 extern indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
+
+/** Array of all available subprocesses.
+ */
+extern indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
 
 /** Add statically linked driver.
  */
@@ -86,5 +100,13 @@ extern indigo_result indigo_connect_server(const char *host, int port);
 /** Disconnect and stop thread for remote server.
  */
 extern indigo_result indigo_disconnect_server(const char *host, int port);
+
+/** Start thread for subprocess.
+ */
+extern indigo_result indigo_start_subprocess(const char *executable);
+
+/** Stop thread for subprocess.
+ */
+extern indigo_result indigo_kill_subprocess(const char *executable);
 
 #endif /* indigo_client_h */

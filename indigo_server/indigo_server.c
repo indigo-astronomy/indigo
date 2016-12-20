@@ -163,6 +163,10 @@ void signal_handler(int signo) {
 		if (indigo_available_servers[i].thread_started)
 			indigo_disconnect_server(indigo_available_servers[i].host, indigo_available_servers[i].port);
 	}
+	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
+		if (indigo_available_subprocesses[i].thread_started)
+			indigo_kill_subprocess(indigo_available_subprocesses[i].executable);
+	}
 	indigo_detach_device(&server_device);
 	INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 	exit(0);
@@ -173,6 +177,15 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
+
+	indigo_start_usb_event_handler();
+	
+	signal(SIGINT, signal_handler);
+	
+	if (strstr(argv[0], "MacOS"))
+		indigo_use_syslog = true; // embeded into INDIGO Server for macOS
+	
+	indigo_start();
 
 	for (int i = 1; i < argc; i++) {
 		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
@@ -191,8 +204,14 @@ int main(int argc, const char * argv[]) {
 			}
 			indigo_connect_server(host, port);
 			i++;
+		} else if ((!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indi-driver")) && i < argc - 1) {
+			char executable[INDIGO_NAME_SIZE];
+			strncpy(executable, argv[i + 1], INDIGO_NAME_SIZE);
+			indigo_start_subprocess(executable);
+			i++;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-h|--help] driver_name driver_name ...\n\n", argv[0]);
+			printf("\n%s [-h|--help]\n\n", argv[0]);
+			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n\n", argv[0]);
 			exit(0);
 		} else if(argv[i][0] != '-') {
 			indigo_load_driver(argv[i], false);
@@ -210,14 +229,6 @@ int main(int argc, const char * argv[]) {
 		indigo_add_driver(static_drivers[i], false);
 	}
 
-	indigo_start_usb_event_handler();
-
-	signal(SIGINT, signal_handler);
-
-	if (strstr(argv[0], "MacOS"))
-		indigo_use_syslog = true; // embeded into INDIGO Server for macOS
-
-	indigo_start();
 	indigo_attach_device(&server_device);
 
 	indigo_server_tcp(server_callback);
