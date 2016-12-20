@@ -57,7 +57,7 @@
 #include <linux/mm.h>
 #include <linux/pagemap.h>
 #include <linux/scatterlist.h>
-#include <asm/scatterlist.h>
+//#include <asm/scatterlist.h>
 #endif
 
 #include "fliusb.h"
