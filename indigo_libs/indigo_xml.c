@@ -125,6 +125,10 @@ static void *set_switch_vector_handler(parser_state state, char *name, char *val
 static void *set_light_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
 static void *set_blob_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
 
+#define MAX_BLOBS		32
+
+static indigo_property *blobs[MAX_BLOBS];
+
 static void *enable_blob_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
 	assert(client != NULL);
 	INDIGO_DEBUG_PROTOCOL(indigo_trace("XML Parser: enable_blob_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
@@ -481,6 +485,68 @@ static void *set_one_blob_vector_handler(parser_state state, char *name, char *v
 	return set_one_blob_vector_handler;
 }
 
+static indigo_property *retain_blob(indigo_property *property) {
+	indigo_property *blob = NULL;
+	for (int i = 0; i < MAX_BLOBS; i++) {
+		if (blobs[i] != NULL && indigo_property_match(blobs[i], property)) {
+			blob = blobs[i];
+			if (blob->count!= property->count) {
+				for (int j = 0; j < blob->count; j++)
+					free(blob->items[j].blob.value);
+				free(blob);
+				blobs[i] = blob = NULL;
+			}
+			break;
+		}
+	}
+	if (blob == NULL) {
+		for (int i = 0; i < MAX_BLOBS; i++) {
+			if (blobs[i] == NULL) {
+				INDIGO_LOG(indigo_log("XML Parser: allocating BLOB for %s", property->device));
+				blobs[i] = blob = indigo_init_blob_property(NULL, property->device, property->name, NULL, NULL, 0, property->count);
+				blob->state = INDIGO_OK_STATE;
+				for (int j = 0; j < blob->count; j++) {
+					blob->items[j].blob.size = property->items[j].blob.size;
+					blob->items[j].blob.value = malloc(property->items[j].blob.size);
+				}
+				break;
+			}
+		}
+	} else {
+		for (int j = 0; j < blob->count; j++) {
+			if (blob->items[j].blob.size != property->items[j].blob.size) {
+				blob->items[j].blob.size = property->items[j].blob.size;
+				blob->items[j].blob.value = realloc(blob->items[j].blob.value, property->items[j].blob.size);
+			}
+		}
+	}
+	if (blob == NULL) {
+		INDIGO_LOG(indigo_log("XML Parser: can't retain BLOB for %s", property->device));
+		return property;
+	}
+	for (int j = 0; j < blob->count; j++) {
+		strcpy(blob->items[j].name, property->items[j].name);
+		strcpy(blob->items[j].blob.format, property->items[j].blob.format);
+		memcpy(blob->items[j].blob.value, property->items[j].blob.value, property->items[j].blob.size);
+	}
+	INDIGO_LOG(indigo_log("XML Parser: retaining BLOB for %s", property->device));
+	return blob;
+}
+
+static void release_blob(indigo_property *property) {
+	for (int i = 0; i < MAX_BLOBS; i++) {
+		if (blobs[i] != NULL && indigo_property_match(blobs[i], property)) {
+			INDIGO_LOG(indigo_log("XML Parser: releasing BLOB for %s", property->device));
+			indigo_property *blob = blobs[i];
+			for (int j = 0; j < blob->count; j++)
+				free(blob->items[j].blob.value);
+			indigo_release_property(blob);
+			blobs[i] = NULL;
+			break;
+		}
+	}
+}
+
 static void *set_blob_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
 	INDIGO_DEBUG_PROTOCOL(indigo_trace("XML Parser: set_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
@@ -499,7 +565,11 @@ static void *set_blob_vector_handler(parser_state state, char *name, char *value
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
 	} else if (state == END_TAG) {
-		indigo_update_property(device, property, *message ? message : NULL);
+		if (property->state == INDIGO_OK_STATE && property->count > 0) {
+			indigo_update_property(device, retain_blob(property), *message ? message : NULL);
+		} else {
+			indigo_update_property(device, property, *message ? message : NULL);
+		}
 		memset(property, 0, PROPERTY_SIZE);
 		return top_level_handler;
 	}
@@ -758,6 +828,7 @@ static void *del_property_handler(parser_state state, char *name, char *value, i
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
 	} else if (state == END_TAG) {
+		release_blob(property);
 		indigo_delete_property(device, property, *message ? message : NULL);
 		memset(property, 0, PROPERTY_SIZE);
 		return top_level_handler;
