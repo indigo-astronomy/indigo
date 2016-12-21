@@ -560,6 +560,21 @@ drivers/indigo_ccd_iidc.$(SOEXT): indigo_drivers/ccd_iidc/indigo_ccd_iidc.o lib/
 
 #---------------------------------------------------------------------
 #
+#	Build FLI driver
+#
+#---------------------------------------------------------------------
+
+drivers/indigo_ccd_fli.a: indigo_drivers/ccd_fli/indigo_ccd_fli.o
+	$(AR) $(ARFLAGS) $@ $^
+
+drivers/indigo_ccd_fli: indigo_drivers/ccd_fli/indigo_ccd_fli_main.o drivers/indigo_ccd_fli.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+drivers/indigo_ccd_fli.$(SOEXT): indigo_drivers/ccd_fli/indigo_ccd_fli.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------
