@@ -444,6 +444,7 @@
 				console.log("DISCONNECTED");
 				$scope.model = [];
 				$scope.$apply();
+				setTimeout($scope.init, 1000);
 			}
 			$scope.onMessage = function (event) {
 			console.log("MESSAGE "+event.data);
