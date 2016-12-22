@@ -29,7 +29,7 @@
 #### indigo_server
 
 1. posibility to run external drivers dynamic libraries in indigo_server (INDI style drivers) __DONE__
-2. posibility to run external drivers executables in indigo_server (INDI style drivers)
+2. posibility to run external drivers executables in indigo_server (INDI style drivers) __DONE__
 3. posibility to add driver to indigo_server over INDIGO protocol
 4. server chaining __DONE__
 
@@ -64,7 +64,7 @@
 
 #### Wheels
 
-1. Atik EFW wheel driver
+1. Atik EFW wheel driver __DONE__
 2. FLI wheel driver (based on FLI SDK)
 3. SBIG wheel driver
 4. ASI EFW Driver __DONE__
@@ -83,7 +83,7 @@
 
 1. NexStar protocol mount driver (based on libnexstar) __DONE__
 2. NexStar EVO protocol mount driver
-3. LX200 protocol mount driver
+3. LX200 protocol mount driver __DONE__
 4. EQMod mount driver
 5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft)
 
