@@ -313,9 +313,9 @@ static indigo_result json_delete_property(indigo_client *client, struct indigo_d
 	char *pnt = output_buffer;
 	int size;
 	if (*property->name == 0)
-		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", device->name);
+		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", property->device);
 	else
-		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", device->name, property->name);
+		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", property->device, property->name);
 	pnt += size;
 	if (message) {
 		size = sprintf(pnt, ", \"message\": \"%s\" } }", message);
