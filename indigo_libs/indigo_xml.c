@@ -60,7 +60,9 @@ typedef enum {
 	BLOB_END,
 	END_TAG1,
 	END_TAG2,
-	END_TAG
+	END_TAG,
+	HEADER,
+	HEADER1
 } parser_state;
 
 
@@ -79,7 +81,9 @@ static char *parser_state_name[] = {
 	"BLOB_END",
 	"END_TAG1",
 	"END_TAG2",
-	"END_TAG"
+	"END_TAG",
+	"HEADER",
+	"HEADER1"
 };
 
 static indigo_property_state parse_state(char *value) {
@@ -940,11 +944,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	int depth = 0;
 	char c = 0;
 	/* (void)parser_state_name; */
-
+	
 	parser_handler handler = top_level_handler;
 	indigo_property *property = (indigo_property *)property_buffer;
 	memset(property_buffer, 0, PROPERTY_SIZE);
-
+	
 	int handle = 0;
 	if (device != NULL) {
 		handle = ((indigo_adapter_context *)device->device_context)->input;
@@ -972,258 +976,278 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 			INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
 		}
 		switch (state) {
-		case IDLE:
-			if (c == '<') {
-				state = BEGIN_TAG1;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' IDLE -> BEGIN_TAG1", c));
-			}
-			break;
-		case BEGIN_TAG1:
-			name_pointer = name_buffer;
-			if (isalpha(c)) {
-				*name_pointer++ = c;
-				state = BEGIN_TAG;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG1 -> BEGIN_TAG", c));
-			} else if (c == '/') {
-				state = END_TAG;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG1 -> END_TAG", c));
-			}
-			break;
-		case BEGIN_TAG:
-			if (name_pointer - name_buffer <INDIGO_NAME_SIZE && isalpha(c)) {
-				*name_pointer++ = c;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG", c));
-			} else {
-				*name_pointer = 0;
-				depth++;
-				handler = handler(BEGIN_TAG, name_buffer, NULL, property, device, client, message);
-				if (isspace(c)) {
-					state = ATTRIBUTE_NAME1;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> ATTRIBUTE_NAME1", c));
-				} else if (c == '/') {
-					state = END_TAG1;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> END_TAG1", c));
-				} else if (c == '>') {
-					state = TEXT;
-					value_pointer = value_buffer;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> TEXT", c));
+			case IDLE:
+				if (c == '<') {
+					state = BEGIN_TAG1;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' IDLE -> BEGIN_TAG1", c));
+				}
+				break;
+			case BEGIN_TAG1:
+				if (c == '?') {
+					state = HEADER;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG1 -> HEADER", c));
+				} else {
+					name_pointer = name_buffer;
+					if (isalpha(c)) {
+						*name_pointer++ = c;
+						state = BEGIN_TAG;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG1 -> BEGIN_TAG", c));
+					} else if (c == '/') {
+						state = END_TAG;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG1 -> END_TAG", c));
+					}
+				}
+				break;
+			case HEADER:
+				if (c == '?') {
+					state = HEADER1;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' HEADER -> HEADER1", c));
+				}
+				break;
+			case HEADER1:
+				if (c == '>') {
+					state = IDLE;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' HEADER1 -> IDLE", c));
 				} else {
 					state = ERROR;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error BEGIN_TAG", c));
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' HEADER1 -> ERROR", c));
 				}
-			}
-			break;
-		case END_TAG1:
-			if (c == '>') {
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG1 -> IDLE", c));
-				handler = handler(END_TAG, NULL, NULL, property, device, client, message);
-				depth--;
-				state = IDLE;
-			} else {
-				state = ERROR;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error END_TAG1", c));
-			}
-			break;
-		case END_TAG2:
-			if (c == '/') {
-				state = END_TAG;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG2 -> END_TAG", c));
-			} else {
-				state = ERROR;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error END_TAG2", c));
-			}
-			break;
-		case END_TAG:
-			if (isalpha(c)) {
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG", c));
-			} else if (c == '>') {
-				handler = handler(END_TAG, NULL, NULL, property, device, client, message);
-				depth--;
-				state = IDLE;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG -> IDLE", c));
-			} else {
-				state = ERROR;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error END_TAG", c));
-			}
-			break;
-		case TEXT:
-			if (c == '<') {
-				if (depth == 2) {
-					*value_pointer-- = 0;
-					while (value_pointer >= value_buffer && isspace(*value_pointer))
-						*value_pointer-- = 0;
-					value_pointer = value_buffer;
-					while (*value_pointer && isspace(*value_pointer))
-						value_pointer++;
-					handler = handler(TEXT, NULL, value_pointer, property, device, client, message);
-				}
-				state = TEXT1;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d TEXT -> TEXT1", c, depth));
 				break;
-			} else {
-				if (depth == 2) {
-					if (value_pointer - value_buffer < INDIGO_VALUE_SIZE) {
-						*value_pointer++ = c;
+			case BEGIN_TAG:
+				if (name_pointer - name_buffer <INDIGO_NAME_SIZE && isalpha(c)) {
+					*name_pointer++ = c;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG", c));
+				} else {
+					*name_pointer = 0;
+					depth++;
+					handler = handler(BEGIN_TAG, name_buffer, NULL, property, device, client, message);
+					if (isspace(c)) {
+						state = ATTRIBUTE_NAME1;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> ATTRIBUTE_NAME1", c));
+					} else if (c == '/') {
+						state = END_TAG1;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> END_TAG1", c));
+					} else if (c == '>') {
+						state = TEXT;
+						value_pointer = value_buffer;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BEGIN_TAG -> TEXT", c));
+					} else {
+						state = ERROR;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error BEGIN_TAG", c));
 					}
 				}
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d TEXT", c, depth));
-			}
-			break;
-		case TEXT1:
-			if (c=='/') {
-				state = END_TAG;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' TEXT -> END_TAG", c));
-			} else if (isalpha(c)) {
-				name_pointer = name_buffer;
-				*name_pointer++ = c;
-				state = BEGIN_TAG;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' TEXT -> BEGIN_TAG", c));
-			}
-			break;
-		case BLOB_END:
-			if (c == '<') {
-				state = TEXT1;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BLOB_END -> TEXT1", c));
-			}
-			*name_pointer++ = c;
-			break;
-		case BLOB:
-			if (device->version >= INDIGO_VERSION_2_0) {
-				ssize_t count;
-				pointer--;
-				while (isspace(*pointer)) pointer++;
-				unsigned long blob_len = (blob_size + 2) / 3 * 4;
-				unsigned long len = (long)(buffer_end - pointer);
-				len = (len < blob_len) ? len : blob_len;
-				ssize_t bytes_needed = len % 4;
-				if(bytes_needed) bytes_needed = 4 - bytes_needed;
-				while (bytes_needed) {
-					count = (int)read(handle, (void *)buffer_end, bytes_needed);
-					if (count <= 0)
-						goto exit_loop;
-					len += count;
-					bytes_needed -= count;
-					buffer_end += count;
-				}
-				blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)pointer, len);
-				pointer += len;
-				blob_len -= len;
-				while(blob_len) {
-					len = ((BUFFER_SIZE) < blob_len) ? (BUFFER_SIZE) : blob_len;
-					ssize_t to_read = len;
-					char *ptr = buffer;
-					while(to_read) {
-						count = (int)read(handle, (void *)ptr, to_read);
-						if (count <= 0)
-							goto exit_loop;
-						ptr += count;
-						to_read -= count;
-					}
-					blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)buffer, len);
-					blob_len -= len;
-				}
-
-				handler = handler(BLOB, NULL, (char *)blob_buffer, property, device, client, message);
-				pointer = buffer;
-				*pointer = 0;
-				state = BLOB_END;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d BLOB -> BLOB_END", c, depth));
 				break;
-			} else {
+			case END_TAG1:
+				if (c == '>') {
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG1 -> IDLE", c));
+					handler = handler(END_TAG, NULL, NULL, property, device, client, message);
+					depth--;
+					state = IDLE;
+				} else {
+					state = ERROR;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error END_TAG1", c));
+				}
+				break;
+			case END_TAG2:
+				if (c == '/') {
+					state = END_TAG;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG2 -> END_TAG", c));
+				} else {
+					state = ERROR;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error END_TAG2", c));
+				}
+				break;
+			case END_TAG:
+				if (isalpha(c)) {
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG", c));
+				} else if (c == '>') {
+					handler = handler(END_TAG, NULL, NULL, property, device, client, message);
+					depth--;
+					state = IDLE;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' END_TAG -> IDLE", c));
+				} else {
+					state = ERROR;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error END_TAG", c));
+				}
+				break;
+			case TEXT:
 				if (c == '<') {
 					if (depth == 2) {
-						*value_pointer = 0;
-						blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)value_buffer, (int)(value_pointer-value_buffer));
-						handler = handler(BLOB, NULL, (char *)blob_buffer, property, device, client, message);
+						*value_pointer-- = 0;
+						while (value_pointer >= value_buffer && isspace(*value_pointer))
+							*value_pointer-- = 0;
+						value_pointer = value_buffer;
+						while (*value_pointer && isspace(*value_pointer))
+							value_pointer++;
+						handler = handler(TEXT, NULL, value_pointer, property, device, client, message);
 					}
 					state = TEXT1;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d BLOB -> TEXT1", c, depth));
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d TEXT -> TEXT1", c, depth));
 					break;
-				} else if (c != '\n') {
+				} else {
 					if (depth == 2) {
-						if (value_pointer - value_buffer < BUFFER_SIZE) {
+						if (value_pointer - value_buffer < INDIGO_VALUE_SIZE) {
 							*value_pointer++ = c;
-						} else {
+						}
+					}
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d TEXT", c, depth));
+				}
+				break;
+			case TEXT1:
+				if (c=='/') {
+					state = END_TAG;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' TEXT -> END_TAG", c));
+				} else if (isalpha(c)) {
+					name_pointer = name_buffer;
+					*name_pointer++ = c;
+					state = BEGIN_TAG;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' TEXT -> BEGIN_TAG", c));
+				}
+				break;
+			case BLOB_END:
+				if (c == '<') {
+					state = TEXT1;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' BLOB_END -> TEXT1", c));
+				}
+				*name_pointer++ = c;
+				break;
+			case BLOB:
+				if (device->version >= INDIGO_VERSION_2_0) {
+					ssize_t count;
+					pointer--;
+					while (isspace(*pointer)) pointer++;
+					unsigned long blob_len = (blob_size + 2) / 3 * 4;
+					unsigned long len = (long)(buffer_end - pointer);
+					len = (len < blob_len) ? len : blob_len;
+					ssize_t bytes_needed = len % 4;
+					if(bytes_needed) bytes_needed = 4 - bytes_needed;
+					while (bytes_needed) {
+						count = (int)read(handle, (void *)buffer_end, bytes_needed);
+						if (count <= 0)
+							goto exit_loop;
+						len += count;
+						bytes_needed -= count;
+						buffer_end += count;
+					}
+					blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)pointer, len);
+					pointer += len;
+					blob_len -= len;
+					while(blob_len) {
+						len = ((BUFFER_SIZE) < blob_len) ? (BUFFER_SIZE) : blob_len;
+						ssize_t to_read = len;
+						char *ptr = buffer;
+						while(to_read) {
+							count = (int)read(handle, (void *)ptr, to_read);
+							if (count <= 0)
+								goto exit_loop;
+							ptr += count;
+							to_read -= count;
+						}
+						blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)buffer, len);
+						blob_len -= len;
+					}
+					
+					handler = handler(BLOB, NULL, (char *)blob_buffer, property, device, client, message);
+					pointer = buffer;
+					*pointer = 0;
+					state = BLOB_END;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d BLOB -> BLOB_END", c, depth));
+					break;
+				} else {
+					if (c == '<') {
+						if (depth == 2) {
 							*value_pointer = 0;
 							blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)value_buffer, (int)(value_pointer-value_buffer));
-							value_pointer = value_buffer;
-							*value_pointer++ = c;
+							handler = handler(BLOB, NULL, (char *)blob_buffer, property, device, client, message);
 						}
+						state = TEXT1;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d BLOB -> TEXT1", c, depth));
+						break;
+					} else if (c != '\n') {
+						if (depth == 2) {
+							if (value_pointer - value_buffer < BUFFER_SIZE) {
+								*value_pointer++ = c;
+							} else {
+								*value_pointer = 0;
+								blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)value_buffer, (int)(value_pointer-value_buffer));
+								value_pointer = value_buffer;
+								*value_pointer++ = c;
+							}
+						}
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d BLOB", c, depth));
 					}
-					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d BLOB", c, depth));
 				}
-			}
-			break;
-		case ATTRIBUTE_NAME1:
-			if (isspace(c)) {
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1", c));
-			} else if (isalpha(c)) {
-				name_pointer = name_buffer;
-				*name_pointer++ = c;
-				state = ATTRIBUTE_NAME;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> ATTRIBUTE_NAME", c));
-			} else if (c == '/') {
-				state = END_TAG1;
-			} else if (c == '>') {
-				value_pointer = value_buffer;
-				if (property->type == INDIGO_BLOB_VECTOR) {
-					blob_size = property->items[property->count-1].blob.size;
-					if (blob_size > 0) {
-						state = BLOB;
-						if (blob_buffer != NULL) {
-							unsigned char *ptmp = realloc(blob_buffer, blob_size);
-							assert(ptmp != NULL);
-							blob_buffer = ptmp;
+				break;
+			case ATTRIBUTE_NAME1:
+				if (isspace(c)) {
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1", c));
+				} else if (isalpha(c)) {
+					name_pointer = name_buffer;
+					*name_pointer++ = c;
+					state = ATTRIBUTE_NAME;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> ATTRIBUTE_NAME", c));
+				} else if (c == '/') {
+					state = END_TAG1;
+				} else if (c == '>') {
+					value_pointer = value_buffer;
+					if (property->type == INDIGO_BLOB_VECTOR) {
+						blob_size = property->items[property->count-1].blob.size;
+						if (blob_size > 0) {
+							state = BLOB;
+							if (blob_buffer != NULL) {
+								unsigned char *ptmp = realloc(blob_buffer, blob_size);
+								assert(ptmp != NULL);
+								blob_buffer = ptmp;
+							} else {
+								blob_buffer = malloc(blob_size);
+								assert(blob_buffer != NULL);
+							}
+							blob_pointer = blob_buffer;
 						} else {
-							blob_buffer = malloc(blob_size);
-							assert(blob_buffer != NULL);
+							state = TEXT;
 						}
-						blob_pointer = blob_buffer;
-					} else {
+					} else
 						state = TEXT;
-					}
-				} else
-					state = TEXT;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> TEXT", c));
-			}
-			break;
-		case ATTRIBUTE_NAME:
-			if (name_pointer - name_buffer <INDIGO_NAME_SIZE && isalpha(c)) {
-				*name_pointer++ = c;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME", c));
-			} else {
-				*name_pointer = 0;
-				if (c == '=') {
-					state = ATTRIBUTE_VALUE1;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME -> ATTRIBUTE_VALUE1", c));
-				} else {
-					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME", c));
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> TEXT", c));
 				}
-			}
-			break;
-		case ATTRIBUTE_VALUE1:
-			if (c == '"' || c == '\'') {
-				q = c;
-				value_pointer = value_buffer;
-				state = ATTRIBUTE_VALUE;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE1 -> ATTRIBUTE_VALUE2", c));
-			} else {
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE1", c));
-			}
-			break;
-		case ATTRIBUTE_VALUE:
-			if (c == q) {
-				*value_pointer = 0;
-				state = ATTRIBUTE_NAME1;
-				handler = handler(ATTRIBUTE_VALUE, name_buffer, value_buffer, property, device, client, message);
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE -> ATTRIBUTE_NAME1", c));
-			} else {
-				*value_pointer++ = c;
-				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE", c));
-			}
-			break;
-		default:
-			break;
+				break;
+			case ATTRIBUTE_NAME:
+				if (name_pointer - name_buffer <INDIGO_NAME_SIZE && isalpha(c)) {
+					*name_pointer++ = c;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME", c));
+				} else {
+					*name_pointer = 0;
+					if (c == '=') {
+						state = ATTRIBUTE_VALUE1;
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME -> ATTRIBUTE_VALUE1", c));
+					} else {
+						INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME", c));
+					}
+				}
+				break;
+			case ATTRIBUTE_VALUE1:
+				if (c == '"' || c == '\'') {
+					q = c;
+					value_pointer = value_buffer;
+					state = ATTRIBUTE_VALUE;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE1 -> ATTRIBUTE_VALUE2", c));
+				} else {
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE1", c));
+				}
+				break;
+			case ATTRIBUTE_VALUE:
+				if (c == q) {
+					*value_pointer = 0;
+					state = ATTRIBUTE_NAME1;
+					handler = handler(ATTRIBUTE_VALUE, name_buffer, value_buffer, property, device, client, message);
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE -> ATTRIBUTE_NAME1", c));
+				} else {
+					*value_pointer++ = c;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_VALUE", c));
+				}
+				break;
+			default:
+				break;
 		}
 	}
 exit_loop:
