@@ -82,6 +82,7 @@ static bool mount_open(indigo_device *device) {
 		if (dev_id == -1) {
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			INDIGO_LOG(indigo_log("indigo_mount_nexstar: open_telescope(%s) = %d", DEVICE_PORT_ITEM->text.value, dev_id));
+			PRIVATE_DATA->count_open--;
 			return false;
 		} else {
 			PRIVATE_DATA->dev_id = dev_id;

@@ -186,12 +186,14 @@ static bool asi_open(indigo_device *device) {
 		if (res) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIOpenCamera(%d) = %d", id, res));
+			PRIVATE_DATA->count_open--;
 			return false;
 		}
 		res = ASIInitCamera(id);
 		if (res) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIInitCamera(%d) = %d", id, res));
+			PRIVATE_DATA->count_open--;
 			return false;
 		}
 		if (PRIVATE_DATA->buffer == NULL) {
