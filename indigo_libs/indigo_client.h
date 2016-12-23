@@ -61,7 +61,7 @@ typedef struct {
 	char executable[INDIGO_NAME_SIZE];      ///< executable path name
 	pthread_t thread;                       ///< client thread ID
 	bool thread_started;                    ///< client thread started/stopped
-	int pid;                             ///< stream socket
+	int pid;																///< process pid
 	indigo_device *protocol_adapter;        ///< server protocol adapter
 } indigo_subprocess_entry;
 

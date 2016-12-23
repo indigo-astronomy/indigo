@@ -77,6 +77,7 @@ driver_entry_point static_drivers[] = {
 
 static int first_driver = 2;
 static indigo_property *driver_property;
+static indigo_property *server_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 
@@ -97,6 +98,23 @@ static indigo_result attach(indigo_device *device) {
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 		if (indigo_available_drivers[i].driver != NULL)
 			indigo_init_switch_item(&driver_property->items[driver_property->count++], indigo_available_drivers[i].description, indigo_available_drivers[i].description, true);
+
+	server_property = indigo_init_switch_property(NULL, "INDIGO Server", "SERVERS", "Main", "Active servers", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 2 * INDIGO_MAX_SERVERS);
+	server_property->count = 0;
+	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
+		indigo_server_entry *entry = indigo_available_servers + i;
+		if (*entry->host) {
+			char buf[128];
+			snprintf(buf, 128, "%s:%d", entry->host, entry->port);
+			indigo_init_switch_item(&server_property->items[server_property->count++], buf, buf, true);
+		}
+	}
+	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
+		indigo_subprocess_entry *entry = indigo_available_subprocesses + i;
+		if (*entry->executable) {
+			indigo_init_switch_item(&server_property->items[server_property->count++], entry->executable, entry->executable, true);
+		}
+	}
 	if (indigo_load_properties(device, false) == INDIGO_FAILED)
 		change_property(device, NULL, driver_property);
 	INDIGO_LOG(indigo_log("%s attached", device->name));
@@ -106,6 +124,7 @@ static indigo_result attach(indigo_device *device) {
 static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	indigo_define_property(device, driver_property, NULL);
+	indigo_define_property(device, server_property, NULL);
 	return INDIGO_OK;
 }
 
@@ -133,6 +152,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 static indigo_result detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_delete_property(device, driver_property, NULL);
+	indigo_delete_property(device, server_property, NULL);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }

@@ -48,20 +48,15 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	if (property != NULL) {
 		if (*property->device && *indigo_property_name(device->version, property)) {
 			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF, property->device, indigo_property_name(device->version, property));
-			indigo_printf(handle, "<enableBLOB device='%s'>Also</enableBLOB>\n", property->device);
 		} else if (*property->device) {
 			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF, property->device);
-			indigo_printf(handle, "<enableBLOB device='%s'>Also</enableBLOB>\n", property->device);
 		} else if (*indigo_property_name(device->version, property)) {
 			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF, indigo_property_name(device->version, property));
-			indigo_printf(handle, "<enableBLOB>Also</enableBLOB>\n");
 		} else {
 			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF);
-			indigo_printf(handle, "<enableBLOB>Also</enableBLOB>\n");
 		}
 	} else {
 		indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF);
-		indigo_printf(handle, "<enableBLOB>Also</enableBLOB>\n");
 	}
 	pthread_mutex_unlock(&xml_mutex);
 	return INDIGO_OK;

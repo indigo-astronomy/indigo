@@ -815,6 +815,10 @@ static void *def_blob_vector_handler(parser_state state, char *name, char *value
 		}
 	} else if (state == END_TAG) {
 		indigo_define_property(device, property, *message ? message : NULL);
+		if (device != NULL) {
+			int handle = ((indigo_adapter_context *)device->device_context)->output;
+			indigo_printf(handle, "<enableBLOB device='%s' name='%s'>Also</enableBLOB>\n", property->device, indigo_property_name(device->version, property));
+		}
 		memset(property, 0, PROPERTY_SIZE);
 		return top_level_handler;
 	}
