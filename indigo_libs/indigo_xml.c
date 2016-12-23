@@ -856,7 +856,7 @@ static void *top_level_handler(parser_state state, char *name, char *value, indi
 		*message = 0;
 		if (!strcmp(name, "enableBLOB"))
 			return enable_blob_handler;
-		if (!strcmp(name, "getProperties"))
+		if (!strcmp(name, "getProperties") && client != NULL)
 			return get_properties_handler;
 		if (!strcmp(name, "newTextVector")) {
 			property->type = INDIGO_TEXT_VECTOR;
