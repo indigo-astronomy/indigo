@@ -33,13 +33,17 @@
  */
 #define MOUNT_MAIN_GROUP															"Mount"
 
+/** Mount alignment group name string.
+ */
+#define MOUNT_ALIGNMENT_GROUP													"Alignment"
+
 /** Main site group name string.
  */
 #define MOUNT_SITE_GROUP															"Site"
 
 /** Device context pointer.
  */
-#define MOUNT_CONTEXT													((indigo_mount_context *)device->device_context)
+#define MOUNT_CONTEXT																	((indigo_mount_context *)device->device_context)
 
 //-------------------------------------------
 /** MOUNT_GEOGRAPHIC_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
@@ -70,19 +74,19 @@
 //---------------------------------------------
 /** MOUNT_INFO property pointer, property is optional, property change request should be fully handled by device driver.
  */
-#define MOUNT_INFO_PROPERTY												(MOUNT_CONTEXT->mount_info_property)
+#define MOUNT_INFO_PROPERTY														(MOUNT_CONTEXT->mount_info_property)
 
 /** MOUNT_INFO.VENDOR property item pointer.
  */
-#define MOUNT_INFO_VENDOR_ITEM														(MOUNT_INFO_PROPERTY->items+0)
+#define MOUNT_INFO_VENDOR_ITEM												(MOUNT_INFO_PROPERTY->items+0)
 
 /** MOUNT_INFO.MODEL property item pointer.
  */
-#define MOUNT_INFO_MODEL_ITEM														(MOUNT_INFO_PROPERTY->items+1)
+#define MOUNT_INFO_MODEL_ITEM													(MOUNT_INFO_PROPERTY->items+1)
 
 /** MOUNT_INFO.MODEL property item pointer.
  */
-#define MOUNT_INFO_FIRMWARE_ITEM														(MOUNT_INFO_PROPERTY->items+2)
+#define MOUNT_INFO_FIRMWARE_ITEM											(MOUNT_INFO_PROPERTY->items+2)
 
 
 //---------------------------------------------
@@ -92,20 +96,20 @@
 
 /** MOUNT_UTC_TIME.UTC property item pointer.
  */
-#define MOUNT_UTC_ITEM														(MOUNT_UTC_TIME_PROPERTY->items+0)
+#define MOUNT_UTC_ITEM																(MOUNT_UTC_TIME_PROPERTY->items+0)
 
 /** MOUNT_UTC_TIME.UTC property item pointer.
  */
-#define MOUNT_UTC_OFFEST_ITEM												(MOUNT_UTC_TIME_PROPERTY->items+1)
+#define MOUNT_UTC_OFFEST_ITEM													(MOUNT_UTC_TIME_PROPERTY->items+1)
 
 //----------------------------------------------
 /** MOUNT_SET_HOST_TIME property pointer, property is optional, property change request should be fully handled by the device driver.
  */
-#define MOUNT_SET_HOST_TIME_PROPERTY										(MOUNT_CONTEXT->mount_set_host_time_property)
+#define MOUNT_SET_HOST_TIME_PROPERTY									(MOUNT_CONTEXT->mount_set_host_time_property)
 
 /** MOUNT_SET_HOST_TIME.SET property item pointer.
  */
-#define MOUNT_SET_HOST_TIME_ITEM													(MOUNT_SET_HOST_TIME_PROPERTY->items+0)
+#define MOUNT_SET_HOST_TIME_ITEM											(MOUNT_SET_HOST_TIME_PROPERTY->items+0)
 
 //----------------------------------------------
 /** MOUNT_PARK property pointer, property is mandatory, property change request should be fully handled by device driver.
@@ -204,15 +208,15 @@
 //-----------------------------------------------
 /** MOUNT_TRACKING property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
-#define MOUNT_TRACKING_PROPERTY											(MOUNT_CONTEXT->mount_tracking_property)
+#define MOUNT_TRACKING_PROPERTY												(MOUNT_CONTEXT->mount_tracking_property)
 
 /** MOUNT_TRACKING.ON property item pointer.
  */
-#define MOUNT_TRACKING_ON_ITEM										(MOUNT_TRACKING_PROPERTY->items+0)
+#define MOUNT_TRACKING_ON_ITEM												(MOUNT_TRACKING_PROPERTY->items+0)
 
 /** MOUNT_TRACKING.OFF property item pointer.
  */
-#define MOUNT_TRACKING_OFF_ITEM										(MOUNT_TRACKING_PROPERTY->items+1)
+#define MOUNT_TRACKING_OFF_ITEM												(MOUNT_TRACKING_PROPERTY->items+1)
 
 //-----------------------------------------------
 /** MOUNT_GUIDE_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
@@ -263,10 +267,67 @@
 #define MOUNT_ABORT_MOTION_ITEM												(MOUNT_ABORT_MOTION_PROPERTY->items+0)
 
 //------------------------------------------------
-/** Wheel device context structure.
+/** MOUNT_ALIGNMENT_MODE property pointer, property is mandatory, property change request is fully handled by indigo_mount_change_property
+ */
+#define MOUNT_ALIGNMENT_MODE_PROPERTY									(MOUNT_CONTEXT->mount_alignment_mode_property)
+
+/** MOUNT_ALIGNMENT_MODE.CONTROLLER property item pointer.
+ */
+#define MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+0)
+
+/** MOUNT_ALIGNMENT_MODE.SINGLE_POINT property item pointer.
+ */
+#define MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM				(MOUNT_ALIGNMENT_MODE_PROPERTY->items+1)
+
+/** MOUNT_ALIGNMENT_MODE.MULTI_POINT property item pointer.
+ */
+#define MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM					(MOUNT_ALIGNMENT_MODE_PROPERTY->items+2)
+
+//-----------------------------------------------
+/** MOUNT_MAPED_COORDINATES property pointer, property is mandatory, read-only and should be fully controlled by device driver.
+ */
+#define MOUNT_MAPPED_COORDINATES_PROPERTY							(MOUNT_CONTEXT->mount_mapped_coordinates_property)
+
+/** MOUNT_MAPPED_COORDINATES.RA property item pointer.
+ */
+#define MOUNT_MAPPED_COORDINATES_RA_ITEM							(MOUNT_MAPPED_COORDINATES_PROPERTY->items+0)
+
+/** MOUNT_EQUATORIAL_COORDINATES.DEC property item pointer.
+ */
+#define MOUNT_MAPPED_COORDINATES_DEC_ITEM							(MOUNT_MAPPED_COORDINATES_PROPERTY->items+1)
+
+//------------------------------------------------
+/** MOUNT_ALIGNMENT_SELECT_POINTS property pointer, property is mandatory, property change request is fully handled by indigo_mount_change_property
+ */
+#define MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY				(MOUNT_CONTEXT->mount_alignment_select_points_property)
+
+//------------------------------------------------
+/** MOUNT_ALIGNMENT_DELETE_POINTS property pointer, property is mandatory, property change request is fully handled by indigo_mount_change_property
+ */
+#define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY				(MOUNT_CONTEXT->mount_alignment_delete_points_property)
+
+//------------------------------------------------
+/** Max number of alignment points.
+ */
+
+#define MOUNT_MAX_ALIGNMENT_POINTS										10
+
+/** Aligment point structure.
+ */
+
+typedef struct {
+	bool used;
+	double ra, dec;
+	double mapped_ra, mapped_dec;
+} indigo_alignment_point;
+
+//------------------------------------------------
+/** Mount device context structure.
  */
 typedef struct {
 	indigo_device_context device_context;										///< device context base
+	int alignment_point_count;															///< number of defined alignment points
+	indigo_alignment_point alignment_points[MOUNT_MAX_ALIGNMENT_POINTS]; ///< alignment points
 	indigo_property *mount_geographic_coordinates_property;	///< MOUNT_GEOGRAPHIC_COORDINATES property pointer
 	indigo_property *mount_info_property;                   ///< MOUNT_INFO property pointer
 	indigo_property *mount_lst_time_property;								///< MOUNT_LST_TIME property pointer
@@ -283,6 +344,10 @@ typedef struct {
 	indigo_property *mount_abort_motion_property;						///< MOUNT_ABORT_MOTION property pointer
 	indigo_property *mount_motion_ns_property;							///< MOUNT_MOTION_NS property pointer
 	indigo_property *mount_motion_we_property;							///< MOUNT_MOTION_WE property pointer
+	indigo_property *mount_alignment_mode_property;					///< MOUNT_ALIGNMENT_MODE property pointer
+	indigo_property *mount_mapped_coordinates_property;			///< MOUNT_MAPPED_COORDINATES property pointer
+	indigo_property *mount_alignment_select_points_property;///< MOUNT_ALIGNMENT_SELECT_POINTS property pointer
+	indigo_property *mount_alignment_delete_points_property;///< MOUNT_ALIGNMENT_DELETE_POINTS property pointer
 } indigo_mount_context;
 
 /** Attach callback function.

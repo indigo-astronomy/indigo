@@ -43,6 +43,7 @@
 #include "indigo_server_tcp.h"
 #include "indigo_driver_xml.h"
 #include "indigo_driver_json.h"
+#include "indigo_client_xml.h"
 #include "indigo_base64.h"
 #include "indigo_io.h"
 
