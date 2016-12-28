@@ -683,7 +683,20 @@
 
 /** MOUNT_HORIZONTAL_COORDINATES.AZ property item name.
  */
-#define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME	"AZ"
+#define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME		"AZ"
+
+//----------------------------------------------------------------------
+/** MOUNT_MAPPED_COORDINATES property name.
+ */
+#define MOUNT_MAPPED_COORDINATES_PROPERTY_NAME			"MOUNT_MAPPED_COORDINATES"
+
+/** MOUNT_MAPPED_COORDINATES.RA property item name.
+ */
+#define MOUNT_MAPPED_COORDINATES_RA_ITEM_NAME				"RA"
+
+/** MOUNT_MAPPED_COORDINATES.DEC property item name.
+ */
+#define MOUNT_MAPPED_COORDINATES_DEC_ITEM_NAME			"DEC"
 
 //----------------------------------------------------------------------
 /** MOUNT_ABORT_MOTION property name.
@@ -693,6 +706,33 @@
 /** MOUN_ABORT_MOTION.ABORT_MOTION property item name.
  */
 #define MOUNT_ABORT_MOTION_ITEM_NAME						"ABORT_MOTION"
+
+//----------------------------------------------------------------------
+/** MOUNT_ALIGNMENT_MODE property name.
+ */
+#define MOUNT_ALIGNMENT_MODE_PROPERTY_NAME			"MOUNT_ALIGNMENT_MODE"
+
+/** MOUNT_ALIGNMENT_MODE.CONTROLLER property item name.
+ */
+#define MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM_NAME		"CONTROLLER"
+
+/** MOUNT_ALIGNMENT_MODE.SINLE_POINT property item name.
+ */
+#define MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM_NAME	"SINLE_POINT"
+
+/** MOUNT_ALIGNMENT_MODE.MULTI_POINT property item name.
+ */
+#define MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM_NAME	"MULTI_POINT"
+
+//----------------------------------------------------------------------
+/** MOUNT_ALIGNMENT_SELCT_POINTS property name.
+ */
+#define MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_SELECT_POINTS"
+
+//----------------------------------------------------------------------
+/** MOUNT_ALIGNMENT_DELETE_POINTS property name.
+ */
+#define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
 
 
 #endif /* indigo_names_h */
