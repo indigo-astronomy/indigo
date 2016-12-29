@@ -286,15 +286,15 @@
 //-----------------------------------------------
 /** MOUNT_MAPED_COORDINATES property pointer, property is mandatory, read-only and should be fully controlled by device driver.
  */
-#define MOUNT_MAPPED_COORDINATES_PROPERTY							(MOUNT_CONTEXT->mount_mapped_coordinates_property)
+#define MOUNT_RAW_COORDINATES_PROPERTY							(MOUNT_CONTEXT->mount_raw_coordinates_property)
 
-/** MOUNT_MAPPED_COORDINATES.RA property item pointer.
+/** MOUNT_RAW_COORDINATES.RA property item pointer.
  */
-#define MOUNT_MAPPED_COORDINATES_RA_ITEM							(MOUNT_MAPPED_COORDINATES_PROPERTY->items+0)
+#define MOUNT_RAW_COORDINATES_RA_ITEM							(MOUNT_RAW_COORDINATES_PROPERTY->items+0)
 
 /** MOUNT_EQUATORIAL_COORDINATES.DEC property item pointer.
  */
-#define MOUNT_MAPPED_COORDINATES_DEC_ITEM							(MOUNT_MAPPED_COORDINATES_PROPERTY->items+1)
+#define MOUNT_RAW_COORDINATES_DEC_ITEM							(MOUNT_RAW_COORDINATES_PROPERTY->items+1)
 
 //------------------------------------------------
 /** MOUNT_ALIGNMENT_SELECT_POINTS property pointer, property is mandatory, property change request is fully handled by indigo_mount_change_property
@@ -318,7 +318,7 @@
 typedef struct {
 	bool used;
 	double ra, dec;
-	double mapped_ra, mapped_dec;
+	double raw_ra, raw_dec;
 } indigo_alignment_point;
 
 //------------------------------------------------
@@ -345,7 +345,7 @@ typedef struct {
 	indigo_property *mount_motion_ns_property;							///< MOUNT_MOTION_NS property pointer
 	indigo_property *mount_motion_we_property;							///< MOUNT_MOTION_WE property pointer
 	indigo_property *mount_alignment_mode_property;					///< MOUNT_ALIGNMENT_MODE property pointer
-	indigo_property *mount_mapped_coordinates_property;			///< MOUNT_MAPPED_COORDINATES property pointer
+	indigo_property *mount_raw_coordinates_property;				///< MOUNT_RAW_COORDINATES property pointer
 	indigo_property *mount_alignment_select_points_property;///< MOUNT_ALIGNMENT_SELECT_POINTS property pointer
 	indigo_property *mount_alignment_delete_points_property;///< MOUNT_ALIGNMENT_DELETE_POINTS property pointer
 } indigo_mount_context;
@@ -362,6 +362,16 @@ extern indigo_result indigo_mount_change_property(indigo_device *device, indigo_
 /** Detach callback function.
  */
 extern indigo_result indigo_mount_detach(indigo_device *device);
+
+/** Translate coordinates to native.
+ */
+
+extern indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double dec, double *raw_ra, double *raw_dec);
+
+/** Translate coordinates from native.
+ */
+
+extern indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec);
 
 #endif /* indigo_mount_h */
 

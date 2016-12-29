@@ -686,17 +686,17 @@
 #define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME		"AZ"
 
 //----------------------------------------------------------------------
-/** MOUNT_MAPPED_COORDINATES property name.
+/** MOUNT_RAW_COORDINATES property name.
  */
-#define MOUNT_MAPPED_COORDINATES_PROPERTY_NAME			"MOUNT_MAPPED_COORDINATES"
+#define MOUNT_RAW_COORDINATES_PROPERTY_NAME			"MOUNT_RAW_COORDINATES"
 
-/** MOUNT_MAPPED_COORDINATES.RA property item name.
+/** MOUNT_RAW_COORDINATES.RA property item name.
  */
-#define MOUNT_MAPPED_COORDINATES_RA_ITEM_NAME				"RA"
+#define MOUNT_RAW_COORDINATES_RA_ITEM_NAME				"RA"
 
-/** MOUNT_MAPPED_COORDINATES.DEC property item name.
+/** MOUNT_RAW_COORDINATES.DEC property item name.
  */
-#define MOUNT_MAPPED_COORDINATES_DEC_ITEM_NAME			"DEC"
+#define MOUNT_RAW_COORDINATES_DEC_ITEM_NAME			"DEC"
 
 //----------------------------------------------------------------------
 /** MOUNT_ABORT_MOTION property name.
