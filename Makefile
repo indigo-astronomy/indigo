@@ -63,6 +63,7 @@ ifeq ($(OS_DETECTED),Linux)
 	INSTALL_PREFIX=/usr/local
 	PACKAGE_TYPE=deb
 endif
+LIBFLI=indigo_drivers/ccd_fli/externals/libfli-1.104/libfli.a
 
 #---------------------------------------------------------------------
 #
@@ -78,7 +79,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a lib/libnexstar.a
+	EXTERNALS=lib/libusb-1.0.$(SOEXT) $(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a lib/libnexstar.a lib/libfli.a
 endif
 
 #---------------------------------------------------------------------
@@ -99,7 +100,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=lib/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a lib/libnexstar.a
+	EXTERNALS=$(LIBHIDAPI) lib/libjpeg.a lib/libatik.a lib/libqhy.a lib/libfcusb.a lib/libnovas.a lib/libEFWFilter.a lib/libASICamera2.a lib/libdc1394.a lib/libnexstar.a lib/libfli.a
 endif
 
 #---------------------------------------------------------------------
@@ -305,6 +306,22 @@ indigo_drivers/mount_nexstar/externals/libnexstar/Makefile: indigo_drivers/mount
 
 lib/libnexstar.a: indigo_drivers/mount_nexstar/externals/libnexstar/Makefile
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make install; cd ../../../..
+
+#---------------------------------------------------------------------
+#
+#	Build libfli
+#
+#---------------------------------------------------------------------
+
+include/libfli/libfli.h: indigo_drivers/ccd_fli/externals/libfli-1.104/libfli.h
+	install -d include
+	install -d include/libfli
+	cp indigo_drivers/ccd_fli/externals/libfli-1.104/libfli.h include/libfli
+
+lib/libfli.a: include/libfli/libfli.h
+	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; make; cd ../../../..
+	install -d lib
+	cp $(LIBFLI) lib
 
 #---------------------------------------------------------------------
 #
@@ -560,7 +577,7 @@ drivers/indigo_ccd_iidc.$(SOEXT): indigo_drivers/ccd_iidc/indigo_ccd_iidc.o lib/
 
 #---------------------------------------------------------------------
 #
-#	Build FLI driver
+#	Build FLI CCD driver
 #
 #---------------------------------------------------------------------
 
@@ -571,6 +588,21 @@ drivers/indigo_ccd_fli: indigo_drivers/ccd_fli/indigo_ccd_fli_main.o drivers/ind
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
 drivers/indigo_ccd_fli.$(SOEXT): indigo_drivers/ccd_fli/indigo_ccd_fli.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build FLI wheel driver
+#
+#---------------------------------------------------------------------
+
+drivers/indigo_wheel_fli.a: indigo_drivers/wheel_fli/indigo_wheel_fli.o
+	$(AR) $(ARFLAGS) $@ $^
+
+drivers/indigo_wheel_fli: indigo_drivers/wheel_fli/indigo_wheel_fli_main.o drivers/indigo_wheel_fli.a lib/libfli.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+drivers/indigo_wheel_fli.$(SOEXT): indigo_drivers/wheel_fli/indigo_wheel_fli.o lib/libfli.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
@@ -685,3 +717,4 @@ clean: init
 	cd externals/libjpeg; make distclean; cd ../..
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; cd ../../../..
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; cd ../../../..
+	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; cd ../../../..
