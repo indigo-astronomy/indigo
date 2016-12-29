@@ -276,7 +276,7 @@
 				for (var i = 0; i < model.length; i++) {
 					var dev = model[i];
 					if (dev.device === device)
-					return dev;
+						return dev;
 				}
 				var dev = { "device": device, "groups": [] };
 				model.push(dev);
@@ -288,7 +288,7 @@
 			for (var i = 0; i < groups.length; i++) {
 				var grp = groups[i];
 				if (grp.group === group)
-				return grp;
+					return grp;
 			}
 			var grp = { "group": group, "properties": [] };
 			groups.push(grp);
@@ -299,8 +299,10 @@
 			var properties = group.properties;
 			for (var i = 0; i < properties.length; i++) {
 				var prop = properties[i];
-				if (prop.property === prop)
-				return prop;
+				if (prop.property === prop) {
+					property.items = [];
+					return prop;
+				}
 			}
 			var prop = { "property": property, "items": [] };
 			properties.push(prop);
@@ -312,7 +314,7 @@
 			for (var i = 0; i < items.length; i++) {
 				var itm = items[i];
 				if (itm.item === item)
-				return itm;
+					return itm;
 			}
 			var itm = { "item": item, "modified": false };
 			items.push(itm);
@@ -330,7 +332,7 @@
 						for (var k = 0; k < properties.length; k++) {
 							var prop = properties[k];
 							if (prop.property === property)
-							return prop;
+								return prop;
 						}
 					}
 				}
@@ -343,7 +345,7 @@
 			for (var i = 0; i < items.length; i++) {
 				var itm = items[i];
 				if (itm.item === item)
-				return itm;
+					return itm;
 			}
 			return undefined;
 		}
@@ -387,11 +389,11 @@
 				return function(input) {
 					switch (input) {
 						case 'Ok':
-						return 'success';
+							return 'success';
 						case 'Busy':
-						return 'warning';
+							return 'warning';
 						case 'Alert':
-						return 'danger';
+							return 'danger';
 					}
 					return 'default';
 				};
@@ -475,21 +477,21 @@
 							property.state = vector.state;
 							property.message = vector.message;
 							for (var i = 0; i < vector.oneSwitch.length; i++) {
-									var item = getItem(property, vector.oneSwitch[i].name);
-									if (item != undefined)
-									item.value = item.oldValue = vector.oneSwitch[i].value;
-								}
+								var item = getItem(property, vector.oneSwitch[i].name);
+								if (item != undefined)
+								item.value = item.oldValue = vector.oneSwitch[i].value;
 							}
-						} else if ((vector = message.defTextVector) != undefined) {
-							var device = addDevice($scope.model, vector.device);
-							var group = addGroup(device, vector.group);
-							var property = addProperty(group, vector.name);
-							property.label = vector.label;
-							property.type = "TEXT";
-							property.perm = vector.perm;
-							property.state = vector.state;
-							property.message = vector.message;
-							for (var i = 0; i < vector.defText.length; i++) {
+						}
+					} else if ((vector = message.defTextVector) != undefined) {
+						var device = addDevice($scope.model, vector.device);
+						var group = addGroup(device, vector.group);
+						var property = addProperty(group, vector.name);
+						property.label = vector.label;
+						property.type = "TEXT";
+						property.perm = vector.perm;
+						property.state = vector.state;
+						property.message = vector.message;
+						for (var i = 0; i < vector.defText.length; i++) {
 							var item = addItem(property, vector.defText[i].name);
 							item.value = item.oldValue = vector.defText[i].value;
 							item.label = vector.defText[i].label;
@@ -572,10 +574,10 @@
 						property.state = vector.state;
 						property.message = vector.message;
 						for (var i = 0; i < vector.defBLOB.length; i++) {
-								var item = addItem(property, vector.defBLOB[i].name);
-								item.label = vector.defBLOB[i].label;
-							}
-						} else if ((vector = message.setBLOBVector) != undefined) {
+							var item = addItem(property, vector.defBLOB[i].name);
+							item.label = vector.defBLOB[i].label;
+						}
+					} else if ((vector = message.setBLOBVector) != undefined) {
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 							property.state = vector.state;
