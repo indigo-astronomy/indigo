@@ -295,8 +295,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_save_property(device, NULL, CCD_UPLOAD_MODE_PROPERTY);
 			if (CCD_LOCAL_MODE_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, CCD_LOCAL_MODE_PROPERTY);
-			if (CCD_MODE_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, NULL, CCD_MODE_PROPERTY);
 			if (CCD_FRAME_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, CCD_FRAME_PROPERTY);
 			if (CCD_BIN_PROPERTY->perm == INDIGO_RW_PERM)
