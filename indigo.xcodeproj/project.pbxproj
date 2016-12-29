@@ -273,6 +273,7 @@
 		599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_main.c; sourceTree = "<group>"; };
 		599C9A6D1DA05063008BBCC1 /* BridgingHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
 		59A40A371DCBB46E00F4A894 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59BFB3DB1E11845900064E9C /* iOptron Telescope RS-232 Command language.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "iOptron Telescope RS-232 Command language.pdf"; sourceTree = "<group>"; };
 		59C8E7EE1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_sx.rules; sourceTree = "<group>"; };
 		59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_ssag.rules; sourceTree = "<group>"; };
 		59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_asi.rules; sourceTree = "<group>"; };
@@ -814,6 +815,7 @@
 				9DB918001DF8546800678721 /* indigo_mount_lx200.c */,
 				9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */,
 				9DB918051DF8647800678721 /* TelescopeProtocol_2010-10.pdf */,
+				59BFB3DB1E11845900064E9C /* iOptron Telescope RS-232 Command language.pdf */,
 			);
 			path = mount_lx200;
 			sourceTree = "<group>";
