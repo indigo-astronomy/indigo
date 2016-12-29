@@ -88,7 +88,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		SIMULATION_ENABLED_ITEM->sw.value = true;
 		SIMULATION_DISABLED_ITEM->sw.value = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
+		DEVICE_PORT_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		PRIVATE_DATA->parked = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET

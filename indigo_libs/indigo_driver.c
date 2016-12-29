@@ -538,7 +538,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 
 extern int indigo_server_tcp_port;
 	
-static int open_config_file(char *device_name, int mode, const char *suffix) {
+int indigo_open_config_file(char *device_name, int mode, const char *suffix) {
 	static char path[128];
 	int path_end = snprintf(path, sizeof(path), "%s/.indigo", getenv("HOME"));
 	int handle = mkdir(path, 0777);
@@ -563,7 +563,7 @@ static int open_config_file(char *device_name, int mode, const char *suffix) {
 
 indigo_result indigo_load_properties(indigo_device *device, bool default_properties) {
 	assert(device != NULL);
-	int handle = open_config_file(device->name, O_RDONLY, default_properties ? ".default" : ".config");
+	int handle = indigo_open_config_file(device->name, O_RDONLY, default_properties ? ".default" : ".config");
 	if (handle > 0) {
 		indigo_client *client = malloc(sizeof(indigo_client));
 		memset(client, 0, sizeof(indigo_client));
@@ -583,7 +583,7 @@ indigo_result indigo_save_property(indigo_device*device, int *file_handle, indig
 		file_handle = &DEVICE_CONTEXT->property_save_file_handle;
 	int handle = *file_handle;
 	if (handle == 0) {
-		*file_handle = handle = open_config_file(property->device, O_WRONLY | O_CREAT | O_TRUNC, ".config");
+		*file_handle = handle = indigo_open_config_file(property->device, O_WRONLY | O_CREAT | O_TRUNC, ".config");
 		if (handle == 0)
 			return INDIGO_FAILED;
 	}

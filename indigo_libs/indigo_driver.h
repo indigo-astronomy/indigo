@@ -249,6 +249,11 @@ extern indigo_result indigo_device_change_property(indigo_device *device, indigo
  */
 extern indigo_result indigo_device_detach(indigo_device *device);
 
+/** Open config file.
+ */
+
+extern int indigo_open_config_file(char *device_name, int mode, const char *suffix);
+
 /** Load properties.
  */
 extern indigo_result indigo_load_properties(indigo_device *device, bool default_properties);
