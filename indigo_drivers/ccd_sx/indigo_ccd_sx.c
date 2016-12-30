@@ -536,6 +536,7 @@ static void sx_close(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -556,6 +557,8 @@ static void clear_reg_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->can_check_temperature = false;
 		sx_clear_regs(device);
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 3, exposure_timer_callback);
+	} else {
+		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
 
@@ -631,7 +634,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_COOLER_PROPERTY->hidden = false;
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
 					PRIVATE_DATA->target_temperature = 0;
-					ccd_temperature_callback(device);
+					PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 				}
 				PRIVATE_DATA->can_check_temperature = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -652,13 +655,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		sx_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		} else {
-			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		}
 		if (CCD_EXPOSURE_ITEM->number.target > 3)
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 3, clear_reg_timer_callback);
 		else {

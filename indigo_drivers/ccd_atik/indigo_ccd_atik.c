@@ -66,6 +66,7 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -85,6 +86,8 @@ static void pre_exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 2, exposure_timer_callback);
+	} else {
+		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
 
@@ -173,7 +176,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					bool status;
 					libatik_check_cooler(PRIVATE_DATA->device_context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature);
 					PRIVATE_DATA->target_temperature = 0;
-					ccd_temperature_callback(device);
+					PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 				}
 				PRIVATE_DATA->can_check_temperature = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -203,13 +206,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		} else {
-			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		}
 		if (CCD_EXPOSURE_ITEM->number.target < PRIVATE_DATA->device_context->min_exposure)
 			CCD_EXPOSURE_ITEM->number.target = PRIVATE_DATA->device_context->min_exposure;
 		if (CCD_EXPOSURE_ITEM->number.target <= 1) {

@@ -162,13 +162,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		} else {
-			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		}
 		libqhy_set_gain(PRIVATE_DATA->device_context, CCD_GAIN_ITEM->number.value);
 		libqhy_set_exposure_time(PRIVATE_DATA->device_context, CCD_EXPOSURE_ITEM->number.value);
 		libqhy_start(PRIVATE_DATA->device_context);

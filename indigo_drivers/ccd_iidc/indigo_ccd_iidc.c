@@ -160,6 +160,7 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		dc1394video_frame_t *frame;
 		dc1394error_t err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
@@ -295,7 +296,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			PRIVATE_DATA->buffer = malloc(FITS_HEADER_SIZE + 2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value);
 			assert(PRIVATE_DATA->buffer != NULL);
 			if (PRIVATE_DATA->temperature_is_present) {
-				ccd_temperature_callback(device);
+				PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 			}
 		} else {
 			indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
