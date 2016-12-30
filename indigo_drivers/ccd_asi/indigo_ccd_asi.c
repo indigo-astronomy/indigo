@@ -348,6 +348,7 @@ static void asi_close(indigo_device *device) {
 
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -379,6 +380,8 @@ static void clear_reg_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 4, exposure_timer_callback);
+	} else {
+		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
 
@@ -697,7 +700,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
 
 				if (PRIVATE_DATA->has_temperature_sensor) {
-					ccd_temperature_callback(device);
+					PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 				}
 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -734,8 +737,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			asi_abort_exposure(device);
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
+			asi_abort_exposure(device);
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);

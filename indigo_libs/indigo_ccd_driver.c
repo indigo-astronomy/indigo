@@ -317,6 +317,17 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+				if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE) {
+					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+				}
+			} else {
+				if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE) {
+					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+				}
+			}
 			if (CCD_EXPOSURE_ITEM->number.value >= 1) {
 				indigo_set_timer(device, 1.0, countdown_timer_callback);
 			}
