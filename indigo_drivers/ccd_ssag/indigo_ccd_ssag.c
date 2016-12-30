@@ -347,8 +347,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_ITEM->number.target < 0.1) {
 			usleep(CCD_EXPOSURE_ITEM->number.target * 1000000);
-			exposure_timer_callback(device);
-			PRIVATE_DATA->exposure_timer = NULL;
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, exposure_timer_callback);
 		}
 		else
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);

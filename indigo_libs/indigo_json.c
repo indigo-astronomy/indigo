@@ -361,7 +361,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					state = TEXT_VALUE;
 					value_pointer = value_buffer;
 					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> TEXT_VALUE", c));
-				} else if (isdigit(c)) {
+				} else if (isdigit(c) || c == '-') {
 					state = NUMBER_VALUE;
 					value_pointer = value_buffer;
 					*value_pointer++ = c;
