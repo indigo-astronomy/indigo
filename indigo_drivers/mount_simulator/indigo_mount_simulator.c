@@ -41,16 +41,14 @@
 
 typedef struct {
 	bool parked;
-	double target_ra, target_dec;
-	double ra, dec;
 	indigo_timer *slew_timer, *guider_timer;
 } simulator_private_data;
 
 	// -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void slew_timer_callback(indigo_device *device) {
-	double diffRA = PRIVATE_DATA->target_ra - PRIVATE_DATA->ra;
-	double diffDec = PRIVATE_DATA->target_dec - PRIVATE_DATA->dec;
+	double diffRA = MOUNT_RAW_COORDINATES_RA_ITEM->number.target - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
+	double diffDec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target - MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
 	if (diffRA == 0 && diffDec == 0) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->slew_timer = NULL;
@@ -58,23 +56,21 @@ static void slew_timer_callback(indigo_device *device) {
 		double speedRA = 0.1;
 		double speedDec = 1.5;
 		if (fabs(diffRA) < speedRA)
-			PRIVATE_DATA->ra = PRIVATE_DATA->target_ra;
+			MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_RAW_COORDINATES_RA_ITEM->number.target;
 		else if (diffRA > 0)
-			PRIVATE_DATA->ra += speedRA;
+			MOUNT_RAW_COORDINATES_RA_ITEM->number.value += speedRA;
 		else if (diffRA < 0)
-			PRIVATE_DATA->ra -= speedRA;
+			MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= speedRA;
 		if (fabs(diffDec) < speedDec)
-			PRIVATE_DATA->dec = PRIVATE_DATA->target_dec;
+			MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target;
 		else if (diffDec > 0)
-			PRIVATE_DATA->dec += speedDec;
+			MOUNT_RAW_COORDINATES_DEC_ITEM->number.value += speedDec;
 		else if (diffDec < 0)
-			PRIVATE_DATA->dec -= speedDec;
+			MOUNT_RAW_COORDINATES_DEC_ITEM->number.value -= speedDec;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->slew_timer);
 	}
-	MOUNT_RAW_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->ra;
-	MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->dec;
-	indigo_raw_to_translated(device, PRIVATE_DATA->ra, PRIVATE_DATA->dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+	indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 }
@@ -100,10 +96,10 @@ static indigo_result mount_attach(indigo_device *device) {
 			// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 			// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		PRIVATE_DATA->ra = PRIVATE_DATA->target_ra = 0;
-		PRIVATE_DATA->dec = PRIVATE_DATA->target_dec = 90;
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = PRIVATE_DATA->ra;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = PRIVATE_DATA->dec;
+		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_RAW_COORDINATES_RA_ITEM->number.target = 0;
+		MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = 90;
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
 			// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -118,8 +114,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		indigo_raw_to_translated(device, PRIVATE_DATA->ra, PRIVATE_DATA->dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-		indigo_raw_to_translated(device, PRIVATE_DATA->target_ra, PRIVATE_DATA->target_dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
+		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.target, MOUNT_RAW_COORDINATES_DEC_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- MOUNT_PARK
@@ -130,8 +126,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			sleep(1);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = 0;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = 90;
-			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &PRIVATE_DATA->ra, &PRIVATE_DATA->dec);
-			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &PRIVATE_DATA->target_ra, &PRIVATE_DATA->target_dec);
+			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &MOUNT_RAW_COORDINATES_RA_ITEM->number.value, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.value);
+			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 			PRIVATE_DATA->parked = true;
@@ -149,10 +145,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 			if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
 				indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-				PRIVATE_DATA->target_ra = PRIVATE_DATA->ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-				PRIVATE_DATA->target_dec = PRIVATE_DATA->dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-				indigo_raw_to_translated(device, PRIVATE_DATA->ra, PRIVATE_DATA->dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-				indigo_raw_to_translated(device, PRIVATE_DATA->target_ra, PRIVATE_DATA->target_dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
+				MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+				MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			} else {
@@ -164,36 +158,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &PRIVATE_DATA->target_ra, &PRIVATE_DATA->target_dec);
+			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 			indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer);
 			PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0, slew_timer_callback);
 		}
-		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_ALIGNMENT_MODE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
-		indigo_mount_change_property(device, client, property);
-		indigo_raw_to_translated(device, PRIVATE_DATA->ra, PRIVATE_DATA->dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-		indigo_raw_to_translated(device, PRIVATE_DATA->target_ra, PRIVATE_DATA->target_dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_SELECT_POINTS
-		indigo_mount_change_property(device, client, property);
-		indigo_raw_to_translated(device, PRIVATE_DATA->ra, PRIVATE_DATA->dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-		indigo_raw_to_translated(device, PRIVATE_DATA->target_ra, PRIVATE_DATA->target_dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_DELETE_POINTS
-		indigo_mount_change_property(device, client, property);
-		indigo_raw_to_translated(device, PRIVATE_DATA->ra, PRIVATE_DATA->dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-		indigo_raw_to_translated(device, PRIVATE_DATA->target_ra, PRIVATE_DATA->target_dec, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
