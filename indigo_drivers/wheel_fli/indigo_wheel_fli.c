@@ -167,7 +167,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 #define MAX_DEVICES                   32
 #define NO_DEVICE                 (-1000)
 
-flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
+const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
 int num_devices = 0;
 char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
 char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
@@ -190,6 +190,15 @@ static int enumerate_devices() {
 		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
 	}
 	FLIDeleteList();
+/* FOR DEBUG only!
+	FLICreateList(FLIDOMAIN_USB | FLIDEVICE_CAMERA);
+	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
+		do {
+			num_devices++;
+		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
+	}
+	FLIDeleteList();
+*/
 }
 
 static int find_plugged_device(char *fname) {
@@ -300,10 +309,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 
 			indigo_device *device = malloc(sizeof(indigo_device));
-				//EFWGetProperty(id, &info);
 			assert(device != NULL);
 			memcpy(device, &wheel_template, sizeof(indigo_device));
-			sprintf(device->name, "%s #%d", fli_dev_names[idx], idx);
+			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
 			INDIGO_LOG(indigo_log("indigo_wheel_fli: '%s' @ %s attached.", device->name , fli_file_names[idx]));
 			device->device_context = malloc(sizeof(asi_private_data));
 			assert(device->device_context);
