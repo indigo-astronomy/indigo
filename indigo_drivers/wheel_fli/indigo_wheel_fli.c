@@ -46,7 +46,7 @@
 #include "indigo_driver_xml.h"
 #include "indigo_wheel_fli.h"
 
-#define ASI_VENDOR_ID                   0x0f18
+#define FLI_VENDOR_ID                   0x0f18
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA        ((asi_private_data *)DEVICE_CONTEXT->private_data)
@@ -173,8 +173,8 @@ char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
 char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
 flidomain_t fli_domains[MAX_DEVICES] = {0};
 
-static int efw_products[100];
-static int efw_id_count = 0;
+//static int efw_products[100];
+//static int efw_id_count = 0;
 
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
@@ -248,9 +248,9 @@ static int find_unplugged_device(char *fname) {
 	enumerate_devices();
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		bool found = false;
+		indigo_device *device = devices[slot];
+		if (device == NULL) continue;
 		for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-			indigo_device *device = devices[slot];
-			if (device == NULL) continue;
 			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
 				found = true;
 				break;
@@ -260,7 +260,7 @@ static int find_unplugged_device(char *fname) {
 			continue;
 		} else {
 			assert(fname==NULL);
-			strncpy(fname, fli_file_names[slot], MAX_PATH);
+			strncpy(fname, PRIVATE_DATA->dev_file_name, MAX_PATH);
 			return slot;
 		}
 	}
@@ -284,35 +284,36 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
-			for (int i = 0; i < efw_id_count; i++) {
-				if (descriptor.idVendor != ASI_VENDOR_ID || efw_products[i] != descriptor.idProduct) continue;
+			if (descriptor.idVendor != FLI_VENDOR_ID) break;
 
-				int slot = find_available_device_slot();
-				if (slot < 0) {
-					INDIGO_LOG(indigo_log("indigo_wheel_fli: No available device slots available."));
-					return 0;
-				}
-
-				char file_name[MAX_PATH];
-				int id = find_plugged_device(file_name);
-				if (id == NO_DEVICE) {
-					INDIGO_LOG(indigo_log("indigo_wheel_fli: No plugged device found."));
-					return 0;
-				}
-
-				indigo_device *device = malloc(sizeof(indigo_device));
-				//EFWGetProperty(id, &info);
-				assert(device != NULL);
-				memcpy(device, &wheel_template, sizeof(indigo_device));
-				//sprintf(device->name, "%s #%d", info.Name, id);
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: '%s' attached.", device->name));
-				device->device_context = malloc(sizeof(asi_private_data));
-				assert(device->device_context);
-				memset(device->device_context, 0, sizeof(asi_private_data));
-				((asi_private_data*)device->device_context)->dev_id = id;
-				indigo_attach_device(device);
-				devices[slot]=device;
+			int slot = find_available_device_slot();
+			if (slot < 0) {
+				INDIGO_LOG(indigo_log("indigo_wheel_fli: No available device slots available."));
+				return 0;
 			}
+
+			char file_name[MAX_PATH];
+			int idx = find_plugged_device(file_name);
+			if (idx == NO_DEVICE) {
+				INDIGO_LOG(indigo_log("indigo_wheel_fli: No plugged device found."));
+				return 0;
+			}
+
+			indigo_device *device = malloc(sizeof(indigo_device));
+				//EFWGetProperty(id, &info);
+			assert(device != NULL);
+			memcpy(device, &wheel_template, sizeof(indigo_device));
+			sprintf(device->name, "%s #%d", fli_dev_names[idx], idx);
+			INDIGO_LOG(indigo_log("indigo_wheel_fli: '%s' attached.", device->name));
+			device->device_context = malloc(sizeof(asi_private_data));
+			assert(device->device_context);
+			memset(device->device_context, 0, sizeof(asi_private_data));
+			((asi_private_data*)device->device_context)->dev_id = 0;
+			((asi_private_data*)device->device_context)->domain = fli_domains[idx];
+			strncpy(((asi_private_data*)device->device_context)->dev_file_name, fli_file_names[idx], MAX_PATH);
+			strncpy(((asi_private_data*)device->device_context)->dev_name, fli_dev_names[idx], MAX_PATH);
+			indigo_attach_device(device);
+			devices[slot]=device;
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
@@ -369,13 +370,8 @@ indigo_result indigo_wheel_fli(indigo_driver_action action, indigo_driver_info *
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		//efw_id_count = EFWGetProductIDs(efw_products);
-		if (efw_id_count <= 0) {
-			INDIGO_LOG(indigo_log("indigo_wheel_fli: Can not get the list of supported IDs."));
-			return INDIGO_FAILED;
-		}
 		indigo_start_usb_event_handler();
-		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FLI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_fli: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
