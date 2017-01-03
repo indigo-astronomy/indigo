@@ -207,6 +207,9 @@ int main(int argc, const char * argv[]) {
 	
 	indigo_start();
 
+	bool use_bonjour = true;
+	bool use_control_panel = true;
+	
 	for (int i = 1; i < argc; i++) {
 		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
 			indigo_server_tcp_port = atoi(argv[i + 1]);
@@ -231,20 +234,32 @@ int main(int argc, const char * argv[]) {
 			i++;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("\n%s [-h|--help]\n\n", argv[0]);
-			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n\n", argv[0]);
+			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-debug] [-vv|--enable-debug] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n\n", argv[0]);
 			exit(0);
+		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-trace")) {
+			indigo_trace_level = true;
+		} else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--enable-debug")) {
+			indigo_debug_level = true;
+		} else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--enable-debug")) {
+			indigo_debug_level = true;
+		} else if (!strcmp(argv[i], "-b-") || !strcmp(argv[i], "--disable-bonjour")) {
+			use_bonjour = false;
+		} else if (!strcmp(argv[i], "-c-") || !strcmp(argv[i], "--disable-control-panel")) {
+			use_control_panel = false;
 		} else if(argv[i][0] != '-') {
 			indigo_load_driver(argv[i], false);
 		}
 	}
 	
-	indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
+	if (use_control_panel)
+		indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
 
-	/* UGLY but the only way to suppress compat mode warning messages on Linux */
-	setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-	DNSServiceRegister(&sd_http, 0, 0, NULL, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
-	DNSServiceRegister(&sd_indigo, 0, 0, NULL, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
-
+	if (use_bonjour) {
+		/* UGLY but the only way to suppress compat mode warning messages on Linux */
+		setenv("AVAHI_COMPAT_NOWARN", "1", 1);
+		DNSServiceRegister(&sd_http, 0, 0, NULL, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+		DNSServiceRegister(&sd_indigo, 0, 0, NULL, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+	}
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i], false);
 	}
