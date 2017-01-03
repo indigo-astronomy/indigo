@@ -257,8 +257,11 @@ int main(int argc, const char * argv[]) {
 	if (use_bonjour) {
 		/* UGLY but the only way to suppress compat mode warning messages on Linux */
 		setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-		DNSServiceRegister(&sd_http, 0, 0, NULL, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
-		DNSServiceRegister(&sd_indigo, 0, 0, NULL, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+		char hostname[128], servicename[128];
+		gethostname(hostname, sizeof(hostname));
+		snprintf(servicename, sizeof(servicename), "%s (%d)", hostname, indigo_server_tcp_port);
+		DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+		DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 	}
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i], false);

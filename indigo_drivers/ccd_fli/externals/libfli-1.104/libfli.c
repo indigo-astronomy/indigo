@@ -187,6 +187,9 @@ static long fli_freelist(char **names)
 /* This is for FLI INTERNAL USE ONLY */
 #ifdef _WIN32
 long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
+#elif defined(__APPLE__)
+long mac_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
+#define usb_bulktransfer mac_bulktransfer
 #else
 long linux_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
 #define usb_bulktransfer linux_bulktransfer
@@ -267,7 +270,7 @@ LIBFLIAPI FLIEndExposure(flidev_t dev)
 }
 
 /**
-   Trigger an exposure that is awaiting an external trigger. This is a 
+   Trigger an exposure that is awaiting an external trigger. This is a
 	 software override for the external trigger option.
 
    @param dev Camera to trigger the exposure of.
@@ -737,7 +740,7 @@ LIBFLIAPI FLISetFrameType(flidev_t dev, fliframe_t frametype)
   return DEVICE->fli_command(dev, FLI_SET_FRAME_TYPE, 1, &frametype);
 }
 
-LIBFLIAPI FLISetTDI(flidev_t dev, flitdirate_t tdi_rate, flitdiflags_t flags) 
+LIBFLIAPI FLISetTDI(flidev_t dev, flitdirate_t tdi_rate, flitdiflags_t flags)
 {
   CHKDEVICE(dev);
 
@@ -1478,7 +1481,7 @@ LIBFLIAPI FLIGetStepperPosition(flidev_t dev, long *position)
 #ifdef SHOWFUNCTIONS
 	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
 #endif
-	
+
 	return r;
 }
 
