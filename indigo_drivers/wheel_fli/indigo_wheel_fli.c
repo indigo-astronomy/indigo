@@ -207,7 +207,7 @@ static int find_plugged_device(char *fname) {
 		if (found) {
 			continue;
 		} else {
-			assert(fname==NULL);
+			assert(fname!=NULL);
 			strncpy(fname, fli_file_names[dev_no], MAX_PATH);
 			return dev_no;
 		}
@@ -259,7 +259,7 @@ static int find_unplugged_device(char *fname) {
 		if (found) {
 			continue;
 		} else {
-			assert(fname==NULL);
+			assert(fname!=NULL);
 			strncpy(fname, PRIVATE_DATA->dev_file_name, MAX_PATH);
 			return slot;
 		}
@@ -304,7 +304,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			assert(device != NULL);
 			memcpy(device, &wheel_template, sizeof(indigo_device));
 			sprintf(device->name, "%s #%d", fli_dev_names[idx], idx);
-			INDIGO_LOG(indigo_log("indigo_wheel_fli: '%s' attached.", device->name));
+			INDIGO_LOG(indigo_log("indigo_wheel_fli: '%s' @ %s attached.", device->name , fli_file_names[idx]));
 			device->device_context = malloc(sizeof(asi_private_data));
 			assert(device->device_context);
 			memset(device->device_context, 0, sizeof(asi_private_data));
