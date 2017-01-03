@@ -17,7 +17,7 @@ endif
 DIR	= $(shell pwd)
 CC	= gcc
 INC	= $(DIR) $(DIR)/unix
-CFLAGS	= -Wall -O2 -g $(patsubst %, -I%, $(INC))
+CFLAGS	= -Wall -O3 -fPIC -g $(patsubst %, -I%, $(INC))
 
 ifeq ($(UNAME), Darwin)
 	CFLAGS += -arch i386 -arch x86_64
