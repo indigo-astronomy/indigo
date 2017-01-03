@@ -40,8 +40,9 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
+#define MAX_PATH 255
 #define EFW_ID_MAX 0
-//#include <asi_efw/EFW_filter.h>
+#include <libfli/libfli.h>
 #include "indigo_driver_xml.h"
 #include "indigo_wheel_fli.h"
 
@@ -51,12 +52,15 @@
 #define PRIVATE_DATA        ((asi_private_data *)DEVICE_CONTEXT->private_data)
 
 typedef struct {
-	int dev_id;
+	flidev_t dev_id;
+	char dev_file_name[MAX_PATH];
+	char dev_name[MAX_PATH];
+	flidomain_t domain;
 	int current_slot, target_slot;
 	int count;
 } asi_private_data;
 
-static int find_index_by_device_id(int id);
+static int find_index_by_device_fname(char *fname);
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
 
@@ -96,7 +100,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 
-		int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
+		int index = find_index_by_device_fname(PRIVATE_DATA->dev_file_name);
 		if (index < 0) {
 			return INDIGO_NOT_FOUND;
 		}
@@ -160,9 +164,14 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-#define MAX_DEVICES                   10
+#define MAX_DEVICES                   32
 #define NO_DEVICE                 (-1000)
 
+flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
+int num_devices = 0;
+char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
+char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
+flidomain_t fli_domains[MAX_DEVICES] = {0};
 
 static int efw_products[100];
 static int efw_id_count = 0;
@@ -172,31 +181,48 @@ static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL
 static bool connected_ids[EFW_ID_MAX];
 
 
-static int find_index_by_device_id(int id) {
-	int count = 0;
-	int cur_id;
-	for(int index = 0; index < count; index++) {
-		//EFWGetID(index,&cur_id);
-		if (cur_id == id) return index;
+static int enumerate_devices() {
+	num_devices = 0;
+	FLICreateList(enum_domain);
+	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
+		do {
+			num_devices++;
+		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
+	}
+	FLIDeleteList();
+}
+
+static int find_plugged_device(char *fname) {
+	enumerate_devices();
+	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
+		bool found = false;
+		for(int slot = 0; slot < MAX_DEVICES; slot++) {
+			indigo_device *device = devices[slot];
+			if (device == NULL) continue;
+			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+				found = true;
+				break;
+			}
+		}
+		if (found) {
+			continue;
+		} else {
+			assert(fname==NULL);
+			strncpy(fname, fli_file_names[dev_no], MAX_PATH);
+			return dev_no;
+		}
 	}
 	return -1;
 }
 
 
-static int find_plugged_device_id() {
-	int i, id = NO_DEVICE, new_id = NO_DEVICE;
-
-	int count = 0;
-	for(i = 0; i < count; i++) {
-		//EFWGetID(i, &id);
-		if(!connected_ids[id]) {
-			new_id = id;
-			connected_ids[id] = true;
-			break;
+static int find_index_by_device_fname(char *fname) {
+	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
+		if (!strncmp(fli_file_names[dev_no], fname, MAX_PATH)) {
+			return dev_no;
 		}
 	}
-
-	return new_id;
+	return -1;
 }
 
 
@@ -208,35 +234,37 @@ static int find_available_device_slot() {
 }
 
 
-static int find_device_slot(int id) {
+static int find_device_slot(char *fname) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
 		if (device == NULL) continue;
-		if (PRIVATE_DATA->dev_id == id) return slot;
+		if (!strncmp(PRIVATE_DATA->dev_file_name, fname, 255)) return slot;
 	}
 	return -1;
 }
 
 
-static int find_unplugged_device_id() {
-	bool dev_tmp[EFW_ID_MAX] = {false};
-	int i, id = -1;
-
-	int count = 0;
-	for(i = 0; i < count; i++) {
-		//EFWGetID(i, &id);
-		dev_tmp[id] = true;
-	}
-
-	id = -1;
-	for(i = 0; i < EFW_ID_MAX; i++) {
-		if(connected_ids[i] && !dev_tmp[i]){
-			id = i;
-			connected_ids[id] = false;
-			break;
+static int find_unplugged_device(char *fname) {
+	enumerate_devices();
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		bool found = false;
+		for (int dev_no = 0; dev_no < num_devices; dev_no++) {
+			indigo_device *device = devices[slot];
+			if (device == NULL) continue;
+			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+				found = true;
+				break;
+			}
+		}
+		if (found) {
+			continue;
+		} else {
+			assert(fname==NULL);
+			strncpy(fname, fli_file_names[slot], MAX_PATH);
+			return slot;
 		}
 	}
-	return id;
+	return -1;
 }
 
 
@@ -265,7 +293,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					return 0;
 				}
 
-				int id = find_plugged_device_id();
+				char file_name[MAX_PATH];
+				int id = find_plugged_device(file_name);
 				if (id == NO_DEVICE) {
 					INDIGO_LOG(indigo_log("indigo_wheel_fli: No plugged device found."));
 					return 0;
@@ -288,9 +317,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			int slot, id;
+			char file_name[MAX_PATH];
 			bool removed = false;
-			while ((id = find_unplugged_device_id()) != -1) {
-				slot = find_device_slot(id);
+			while ((id = find_unplugged_device(file_name)) != -1) {
+				slot = find_device_slot(file_name);
 				if (slot < 0) continue;
 				indigo_device **device = &devices[slot];
 				if (*device == NULL)
