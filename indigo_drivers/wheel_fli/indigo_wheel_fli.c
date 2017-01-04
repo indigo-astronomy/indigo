@@ -56,7 +56,7 @@ typedef struct {
 	char dev_file_name[MAX_PATH];
 	char dev_name[MAX_PATH];
 	flidomain_t domain;
-	int current_slot, target_slot;
+	long int current_slot, target_slot;
 	int count;
 } asi_private_data;
 
@@ -65,8 +65,11 @@ static int find_index_by_device_fname(char *fname);
 
 
 static void wheel_timer_callback(indigo_device *device) {
-	//TODO ERROR CHECKING
-	FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
+	// MUTEX!!!
+	int res = FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
+	if (res) {
+		INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIGetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
+	}
 	//PRIVATE_DATA->current_slot++;
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
@@ -105,12 +108,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			//TODO ERROR_CHEKING
-			FLIOpen(PRIVATE_DATA->dev_id, PRIVATE_DATA->dev_file_name,PRIVATE_DATA->domain);
-			int res;
+			// MUTEX!!!
+			int res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 			if (!res) {
-				//TODO ERROR_CHECKING
-				int num_slots;
+				long int num_slots;
 				FLIGetFilterCount(PRIVATE_DATA->dev_id, &num_slots);
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = num_slots;
 				FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
@@ -118,14 +119,17 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: EFWOpen(%d) = %d", index, res));
+				INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res));
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				return INDIGO_FAILED;
 			}
 		} else {
-			//TODO ERROR CHECKING
-			FLIClose(PRIVATE_DATA->dev_id);
+			// MUTEX!!!
+			int res = FLIClose(PRIVATE_DATA->dev_id);
+			if (res) {
+				INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
+			}
 			PRIVATE_DATA->dev_id = -1;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -142,9 +146,12 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			//TODO ERROR CHECKING
+			// MUTEX!!!
 			// DO WE NEED -1 here?
-			FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot);
+			int res = FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot);
+			if (res) {
+				INDIGO_LOG(indigo_log("indigo_wheel_fli: FLISetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
+			}
 			indigo_set_timer(device, 0.5, wheel_timer_callback);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -179,7 +186,11 @@ static bool connected_ids[EFW_ID_MAX];
 
 static int enumerate_devices() {
 	num_devices = 0;
-	FLICreateList(enum_domain);
+	//MUTEX!!!
+	int res = FLICreateList(enum_domain);
+	if (res) {
+		INDIGO_LOG(indigo_log("indigo_wheel_fli: FLICreateList(%d) = %d",enum_domain , res));
+	}
 	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
 		do {
 			num_devices++;
