@@ -58,6 +58,7 @@ typedef struct {
 	flidomain_t domain;
 	long int current_slot, target_slot;
 	int count;
+	pthread_mutex_t usb_mutex;
 } asi_private_data;
 
 static int find_index_by_device_fname(char *fname);
@@ -65,8 +66,9 @@ static int find_index_by_device_fname(char *fname);
 
 
 static void wheel_timer_callback(indigo_device *device) {
-	// MUTEX!!!
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int res = FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) {
 		INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIGetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
 	}
@@ -88,6 +90,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 	device->device_context = NULL;
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
+		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -108,13 +111,16 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			// MUTEX!!!
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (!res) {
 				long int num_slots;
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				FLIGetFilterCount(PRIVATE_DATA->dev_id, &num_slots);
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = num_slots;
 				FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				// PRIVATE_DATA->target_slot++;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_timer(device, 0.5, wheel_timer_callback);
@@ -125,8 +131,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				return INDIGO_FAILED;
 			}
 		} else {
-			// MUTEX!!!
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = FLIClose(PRIVATE_DATA->dev_id);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (res) {
 				INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
 			}
@@ -146,9 +153,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			// MUTEX!!!
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			// DO WE NEED -1 here?
 			int res = FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (res) {
 				INDIGO_LOG(indigo_log("indigo_wheel_fli: FLISetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
 			}
@@ -186,7 +194,6 @@ static bool connected_ids[EFW_ID_MAX];
 
 static int enumerate_devices() {
 	num_devices = 0;
-	//MUTEX!!!
 	int res = FLICreateList(enum_domain);
 	if (res) {
 		INDIGO_LOG(indigo_log("indigo_wheel_fli: FLICreateList(%d) = %d",enum_domain , res));
