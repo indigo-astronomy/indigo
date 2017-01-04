@@ -65,9 +65,9 @@ static int find_index_by_device_fname(char *fname);
 
 
 static void wheel_timer_callback(indigo_device *device) {
-	//TODO GET POSITION
-	//EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
-	PRIVATE_DATA->current_slot++;
+	//TODO ERROR CHECKING
+	FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
+	//PRIVATE_DATA->current_slot++;
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -95,7 +95,6 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
-	//EFW_INFO info;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -106,16 +105,16 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			//TODO OPEN 
-			//EFWGetID(index, &(PRIVATE_DATA->dev_id));
-			//int res = EFWOpen(PRIVATE_DATA->dev_id);
+			//TODO ERROR_CHEKING
+			FLIOpen(PRIVATE_DATA->dev_id, PRIVATE_DATA->dev_file_name,PRIVATE_DATA->domain);
 			int res;
 			if (!res) {
-				//TODO GET INFO NEEDED
-				//EFWGetProperty(PRIVATE_DATA->dev_id, &info);
-				//WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
-				//EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
-				PRIVATE_DATA->target_slot++;
+				//TODO ERROR_CHECKING
+				int num_slots;
+				FLIGetFilterCount(PRIVATE_DATA->dev_id, &num_slots);
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = num_slots;
+				FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+				// PRIVATE_DATA->target_slot++;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
@@ -125,9 +124,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				return INDIGO_FAILED;
 			}
 		} else {
-			//TODO CLOSE
-			//EFWClose(PRIVATE_DATA->dev_id);
-			//EFWGetID(index, &(PRIVATE_DATA->dev_id));
+			//TODO ERROR CHECKING
+			FLIClose(PRIVATE_DATA->dev_id);
+			PRIVATE_DATA->dev_id = -1;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		
@@ -143,8 +142,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			//TODO SET_POSITION 
-			//EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
+			//TODO ERROR CHECKING
+			// DO WE NEED -1 here?
+			FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot);
 			indigo_set_timer(device, 0.5, wheel_timer_callback);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -172,10 +172,6 @@ int num_devices = 0;
 char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
 char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
 flidomain_t fli_domains[MAX_DEVICES] = {0};
-
-//static int efw_products[100];
-//static int efw_id_count = 0;
-
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 static bool connected_ids[EFW_ID_MAX];
@@ -278,7 +274,6 @@ static int find_unplugged_device(char *fname) {
 
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	//EFW_INFO info;
 
 	static indigo_device wheel_template = {
 		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
