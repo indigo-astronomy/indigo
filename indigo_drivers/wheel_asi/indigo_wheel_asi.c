@@ -81,8 +81,8 @@ static indigo_result wheel_attach(indigo_device *device) {
 	asi_private_data *private_data = device->device_context;
 	device->device_context = NULL;
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		DEVICE_CONTEXT->private_data = private_data;
+		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
