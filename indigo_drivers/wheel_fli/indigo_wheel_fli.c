@@ -184,7 +184,6 @@ static indigo_result wheel_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- hot-plug support
 
 #define MAX_DEVICES                   32
-#define NO_DEVICE                 (-1000)
 
 const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
 int num_devices = 0;
@@ -197,6 +196,7 @@ static bool connected_ids[EFW_ID_MAX];
 
 
 static int enumerate_devices() {
+	/* There is a mem leak heree!!! 8,192 constant + 12 bytes on every new connected device */
 	num_devices = 0;
 	int res = FLICreateList(enum_domain);
 	if (res) {
@@ -208,7 +208,7 @@ static int enumerate_devices() {
 		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
 	}
 	FLIDeleteList();
-/* FOR DEBUG only!
+	/* FOR DEBUG only!
 	FLICreateList(FLIDOMAIN_USB | FLIDEVICE_CAMERA);
 	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
 		do {
@@ -216,7 +216,7 @@ static int enumerate_devices() {
 		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
 	}
 	FLIDeleteList();
-*/
+	*/
 }
 
 static int find_plugged_device(char *fname) {
@@ -320,8 +320,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			char file_name[MAX_PATH];
 			int idx = find_plugged_device(file_name);
-			if (idx == NO_DEVICE) {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: No plugged device found."));
+			if (idx < 0) {
+				INDIGO_LOG(indigo_log("indigo_wheel_fli: No FLI FW plugged."));
 				return 0;
 			}
 
@@ -359,7 +359,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				removed = true;
 			}
 			if (!removed) {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: No FLI FW device unplugged (maybe ASI Camera)!"));
+				INDIGO_LOG(indigo_log("indigo_wheel_fli: No FLI FW unplugged!"));
 			}
 		}
 	}
