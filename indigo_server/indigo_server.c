@@ -49,6 +49,7 @@
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #include "mount_lx200/indigo_mount_lx200.h"
 #include "mount_nexstar/indigo_mount_nexstar.h"
+#include "wheel_fli/indigo_wheel_fli.h"
 #endif
 
 #define MDNS_INDIGO_TYPE    "_indigo._tcp"
@@ -71,6 +72,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_iidc,
 	indigo_mount_lx200,
 	indigo_mount_nexstar,
+	indigo_wheel_fli,
 #endif
 	NULL
 };
