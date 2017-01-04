@@ -72,7 +72,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (res) {
 		INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIGetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
 	}
-	//PRIVATE_DATA->current_slot++;
+	PRIVATE_DATA->current_slot++;
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -120,8 +120,13 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				FLIGetFilterCount(PRIVATE_DATA->dev_id, &num_slots);
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = num_slots;
 				FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+				if (PRIVATE_DATA->target_slot < 0) {
+					FLISetFilterPos(PRIVATE_DATA->dev_id, 0);
+					PRIVATE_DATA->target_slot = 1;
+				} else {
+					PRIVATE_DATA->target_slot++;
+				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				// PRIVATE_DATA->target_slot++;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
@@ -154,8 +159,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			// DO WE NEED -1 here?
-			int res = FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot);
+			int res = FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (res) {
 				INDIGO_LOG(indigo_log("indigo_wheel_fli: FLISetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
