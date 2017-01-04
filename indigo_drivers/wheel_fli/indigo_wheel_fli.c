@@ -41,7 +41,6 @@
 #endif
 
 #define MAX_PATH 255
-#define EFW_ID_MAX 0
 #include <libfli/libfli.h>
 #include "indigo_driver_xml.h"
 #include "indigo_wheel_fli.h"
@@ -192,7 +191,6 @@ char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
 flidomain_t fli_domains[MAX_DEVICES] = {0};
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
-static bool connected_ids[EFW_ID_MAX];
 
 
 static int enumerate_devices() {
@@ -377,8 +375,6 @@ static void remove_all_devices() {
 		free(*device);
 		*device = NULL;
 	}
-	for(i = 0; i < EFW_ID_MAX; i++)
-		connected_ids[i] = false;
 }
 
 

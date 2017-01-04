@@ -34,10 +34,12 @@ This is the list of requirements taken into the consideration:
 11. ASI CCD driver
 12. NexStar mount driver (supports Celestron NexStar and Sky-Watcher mounts)
 13. LX200 mount driver (supports Meade mounts and EQMac)
+12. FLI filter wheel driver
 
 ## This is under development
 
 1. QHY (5II-L) CCD driver
+2. FLI CCD driver
 
 ------------------------------------------------------------------------------------------------
 
