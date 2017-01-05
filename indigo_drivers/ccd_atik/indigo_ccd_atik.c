@@ -153,8 +153,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				result = libatik_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
 			}
 			if (result) {
-				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = PRIVATE_DATA->device_context->width;
-				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = PRIVATE_DATA->device_context->height;
+				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->device_context->width;
+				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->device_context->height;
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->device_context->pixel_width * 100)/100;
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(PRIVATE_DATA->device_context->pixel_height * 100) / 100;
 				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
