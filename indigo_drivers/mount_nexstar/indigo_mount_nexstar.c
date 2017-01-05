@@ -450,7 +450,7 @@ static void position_timer_callback(indigo_device *device) {
 
 	time_t ttime;
 	int tz, dst;
-	res = tc_get_time(dev_id, &ttime, &tz, &dst);
+	res = (int)tc_get_time(dev_id, &ttime, &tz, &dst);
 	if (res == -1) {
 		INDIGO_LOG(indigo_log("indigo_mount_nexstar: tc_get_time(%d) = %d", dev_id, res));
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
