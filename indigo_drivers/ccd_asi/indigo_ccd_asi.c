@@ -215,13 +215,13 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 	ASI_ERROR_CODE res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/horizontal_bin,  horizontal_bin, get_pixel_format(device));
+	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/vertical_bin,  horizontal_bin, get_pixel_format(device));
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetROIFormat(%d) = %d", id, res));
 		return false;
 	}
-	res = ASISetStartPos(id, frame_left, frame_top);
+	res = ASISetStartPos(id, frame_left/horizontal_bin, frame_top/vertical_bin);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetStartPos(%d) = %d", id, res));
@@ -782,6 +782,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
+		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
+		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
+		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64)
+			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
+		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
+			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
@@ -806,6 +812,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(ASI_ADVANCED_PROPERTY, property, false);
 		ASI_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, ASI_ADVANCED_PROPERTY, NULL);
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, PIXEL_FORMAT_PROPERTY);
+			indigo_save_property(device, NULL, ASI_ADVANCED_PROPERTY);
+		}
 	}
 	return indigo_ccd_change_property(device, client, property);
 }
