@@ -75,8 +75,6 @@
 
 
 typedef struct {
-	libusb_device *dev;
-	libusb_device_handle *handle;
 	int dev_id;
 	int count_open;
 	int count_connected;
