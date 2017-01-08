@@ -61,6 +61,9 @@
 #define us2s(s) ((s) / 1000000.0)
 #define s2us(us) ((us) * 1000000)
 
+typedef struct {
+	long ul_x, ul_y, lr_x, lr_y;
+} image_area;
 
 typedef struct {
 	flidev_t dev_id;
@@ -69,12 +72,13 @@ typedef struct {
 	flidomain_t domain;
 
 	int count_open;
-	int count_connected;
+	//int count_connected;
 	indigo_timer *exposure_timer, *temperture_timer;
 	double target_temperature, current_temperature;
 	long cooler_power;
 	unsigned char *buffer;
 	long int buffer_size;
+	image_area total_area;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
 } fli_private_data;
@@ -86,34 +90,34 @@ static indigo_result fli_enumerate_properties(indigo_device *device, indigo_clie
 
 
 static bool fli_open(indigo_device *device) {
-	int id = PRIVATE_DATA->dev_id;
-
+	flidev_t id;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (PRIVATE_DATA->count_open++ == 0) {
-	/*	res = ASIOpenCamera(id);
-		if (res) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIOpenCamera(%d) = %d", id, res));
-			PRIVATE_DATA->count_open--;
-			return false;
-		}
-		res = ASIInitCamera(id);
-		if (res) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIInitCamera(%d) = %d", id, res));
-			PRIVATE_DATA->count_open--;
-			return false;
-		}
-		if (PRIVATE_DATA->buffer == NULL) {
-			if(PRIVATE_DATA->info.IsColorCam)
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*3 + FITS_HEADER_SIZE;
-			else
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*2 + FITS_HEADER_SIZE;
 
-			PRIVATE_DATA->buffer = (unsigned char*)malloc(PRIVATE_DATA->buffer_size);
-		}
-		*/
+	long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
+	id = PRIVATE_DATA->dev_id;
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIOpen(%d) = %d", id, res));
+		return false;
 	}
+
+	res = FLIGetArrayArea(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->total_area.ul_x), &(PRIVATE_DATA->total_area.ul_y), &(PRIVATE_DATA->total_area.lr_x), &(PRIVATE_DATA->total_area.lr_y));
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetArrayArea(%d) = %d", id, res));
+		return false;
+	}
+
+	long height = PRIVATE_DATA->total_area.lr_y - PRIVATE_DATA->total_area.ul_y;
+	long width = PRIVATE_DATA->total_area.lr_x - PRIVATE_DATA->total_area.ul_x;
+
+	//INDIGO_LOG(indigo_log("indigo_ccd_fli: %ld %ld %ld %ld - %ld, %ld", PRIVATE_DATA->total_area.lr_x, PRIVATE_DATA->total_area.lr_y, PRIVATE_DATA->total_area.ul_x, PRIVATE_DATA->total_area.ul_y, height, width));
+
+	if (PRIVATE_DATA->buffer == NULL) {
+		PRIVATE_DATA->buffer_size = width * height * 2 + FITS_HEADER_SIZE;
+		PRIVATE_DATA->buffer = (unsigned char*)malloc(PRIVATE_DATA->buffer_size);
+	}
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -244,18 +248,15 @@ static bool fli_set_cooler(indigo_device *device, bool status, double target, do
 
 static void fli_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-	/*
-	if (--PRIVATE_DATA->count_open == 0) {
-		ASICloseCamera(PRIVATE_DATA->dev_id);
-		if (PRIVATE_DATA->buffer != NULL) {
-			free(PRIVATE_DATA->buffer);
-			PRIVATE_DATA->buffer = NULL;
-		}
-	}
-	*/
-
+	long res = FLIClose(PRIVATE_DATA->dev_id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res) {
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
+	}
+	if (PRIVATE_DATA->buffer != NULL) {
+		free(PRIVATE_DATA->buffer);
+		PRIVATE_DATA->buffer = NULL;
+	}
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
