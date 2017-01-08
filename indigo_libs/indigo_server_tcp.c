@@ -99,6 +99,8 @@ static void start_worker_thread(int *client_socket) {
 		} else if (c == 'G') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
+			struct timeval timeout = { .tv_sec =  10, .tv_usec =  0 };
+			setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(struct timeval));
 			while (indigo_read_line(socket, request, BUFFER_SIZE)) {
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;
