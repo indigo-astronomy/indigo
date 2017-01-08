@@ -48,7 +48,7 @@
 #define FLI_VENDOR_ID                   0x0f18
 
 #undef PRIVATE_DATA
-#define PRIVATE_DATA        ((asi_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA        ((fli_private_data *)DEVICE_CONTEXT->private_data)
 
 typedef struct {
 	flidev_t dev_id;
@@ -58,11 +58,10 @@ typedef struct {
 	long int current_slot, target_slot;
 	int count;
 	pthread_mutex_t usb_mutex;
-} asi_private_data;
+} fli_private_data;
 
 static int find_index_by_device_fname(char *fname);
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
-
 
 static void wheel_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -85,7 +84,7 @@ static void wheel_timer_callback(indigo_device *device) {
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
-	asi_private_data *private_data = device->device_context;
+	fli_private_data *private_data = device->device_context;
 	device->device_context = NULL;
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
@@ -319,7 +318,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			char file_name[MAX_PATH];
 			int idx = find_plugged_device(file_name);
 			if (idx < 0) {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: No FLI FW plugged."));
+				INDIGO_DEBUG(indigo_debug("indigo_wheel_fli: No FLI FW plugged."));
 				return 0;
 			}
 
@@ -328,13 +327,13 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			memcpy(device, &wheel_template, sizeof(indigo_device));
 			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
 			INDIGO_LOG(indigo_log("indigo_wheel_fli: '%s' @ %s attached.", device->name , fli_file_names[idx]));
-			device->device_context = malloc(sizeof(asi_private_data));
+			device->device_context = malloc(sizeof(fli_private_data));
 			assert(device->device_context);
-			memset(device->device_context, 0, sizeof(asi_private_data));
-			((asi_private_data*)device->device_context)->dev_id = 0;
-			((asi_private_data*)device->device_context)->domain = fli_domains[idx];
-			strncpy(((asi_private_data*)device->device_context)->dev_file_name, fli_file_names[idx], MAX_PATH);
-			strncpy(((asi_private_data*)device->device_context)->dev_name, fli_dev_names[idx], MAX_PATH);
+			memset(device->device_context, 0, sizeof(fli_private_data));
+			((fli_private_data*)device->device_context)->dev_id = 0;
+			((fli_private_data*)device->device_context)->domain = fli_domains[idx];
+			strncpy(((fli_private_data*)device->device_context)->dev_file_name, fli_file_names[idx], MAX_PATH);
+			strncpy(((fli_private_data*)device->device_context)->dev_name, fli_dev_names[idx], MAX_PATH);
 			indigo_attach_device(device);
 			devices[slot]=device;
 			break;
@@ -357,7 +356,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				removed = true;
 			}
 			if (!removed) {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: No FLI FW unplugged!"));
+				INDIGO_DEBUG(indigo_debug("indigo_wheel_fli: No FLI FW unplugged!"));
 			}
 		}
 	}
