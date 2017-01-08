@@ -43,7 +43,17 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#define MAX_PATH 255
+
+#define MAX_CCD_TEMP     45     /* Max CCD temperature */
+#define MIN_CCD_TEMP    -55     /* Min CCD temperature */
+#define MAX_X_BIN        16     /* Max Horizontal binning */
+#define MAX_Y_BIN        16     /* Max Vertical binning */
+#define DEFAULT_BPP      16     /* Default bits per pixel */
+
+
+#define MAX_PATH        255     /* Maximal Path Length */
+#define M2UM            1e6     /* meters to umeters */
+
 #include <libfli/libfli.h>
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_fli.h"
@@ -79,6 +89,7 @@ typedef struct {
 	unsigned char *buffer;
 	long int buffer_size;
 	image_area total_area;
+	image_area visible_area;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
 } fli_private_data;
@@ -103,8 +114,17 @@ static bool fli_open(indigo_device *device) {
 
 	res = FLIGetArrayArea(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->total_area.ul_x), &(PRIVATE_DATA->total_area.ul_y), &(PRIVATE_DATA->total_area.lr_x), &(PRIVATE_DATA->total_area.lr_y));
 	if (res) {
+		FLIClose(id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetArrayArea(%d) = %d", id, res));
+		return false;
+	}
+
+	res = FLIGetVisibleArea(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->visible_area.ul_x), &(PRIVATE_DATA->visible_area.ul_y), &(PRIVATE_DATA->visible_area.lr_x), &(PRIVATE_DATA->visible_area.lr_y));
+	if (res) {
+		FLIClose(id);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetVisibleArea(%d) = %d", id, res));
 		return false;
 	}
 
@@ -334,14 +354,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 			num++;
 		}
 		*/
-
-		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-		CCD_BIN_HORIZONTAL_ITEM->number.max = 8;
-		CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-		CCD_BIN_VERTICAL_ITEM->number.max = 8;
-
-		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -389,12 +401,48 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (fli_open(device)) {
 				flidev_t id = PRIVATE_DATA->dev_id;
 
+				//CCD_MODE_PROPERTY->hidden = false;
+				//CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+				//CCD_MODE_PROPERTY->count = 0;
+
+				CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->visible_area.lr_x - PRIVATE_DATA->visible_area.ul_x;
+				CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->visible_area.lr_y - PRIVATE_DATA->visible_area.ul_y;
+				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
+				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
+
+				double size_x, size_y;
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				long res = FLIGetPixelSize(id, &size_x, &size_y);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
+				}
+
+				//INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
+				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = size_x * M2UM;
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = size_y * M2UM;
+				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
+				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
+				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
+
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+
+				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+				CCD_BIN_HORIZONTAL_ITEM->number.max = MAX_X_BIN;
+				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+				CCD_BIN_VERTICAL_ITEM->number.max = MAX_Y_BIN;
+
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+
 				CCD_TEMPERATURE_PROPERTY->hidden = false;
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-				CCD_TEMPERATURE_ITEM->number.min = -55;
-				CCD_TEMPERATURE_ITEM->number.max = 45;
+				CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
+				CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
 				CCD_TEMPERATURE_ITEM->number.step = 0;
-				long res = FLIGetTemperature(id,&(CCD_TEMPERATURE_ITEM->number.value));
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				res = FLIGetTemperature(id,&(CCD_TEMPERATURE_ITEM->number.value));
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
 				}
