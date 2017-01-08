@@ -761,7 +761,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 			} */
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- GAIN
