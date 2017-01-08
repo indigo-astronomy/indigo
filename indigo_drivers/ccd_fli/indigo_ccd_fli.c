@@ -75,7 +75,7 @@ typedef struct {
 	//int count_connected;
 	indigo_timer *exposure_timer, *temperture_timer;
 	double target_temperature, current_temperature;
-	long cooler_power;
+	double cooler_power;
 	unsigned char *buffer;
 	long int buffer_size;
 	image_area total_area;
@@ -190,57 +190,33 @@ static bool fli_read_pixels(indigo_device *device) {
 static bool fli_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	int err;
-	// ASI_ERROR_CODE err = ASIStopExposure(PRIVATE_DATA->dev_id);
+	long err = FLICancelExposure(PRIVATE_DATA->dev_id);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if(err) return false;
 	else return true;
 }
 
-static bool fli_set_cooler(indigo_device *device, bool status, double target, double *current, long *cooler_power) {
-	//ASI_ERROR_CODE res;
-	//ASI_BOOL unused;
+static bool fli_set_cooler(indigo_device *device, double target, double *current, double *cooler_power) {
+	long res;
 
-	int id = PRIVATE_DATA->dev_id;
+	flidev_t id = PRIVATE_DATA->dev_id;
 	long current_status;
-	long temp_x10;
+	static double old_target = 100.0;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	/*
-	if (PRIVATE_DATA->has_temperature_sensor) {
-		res = ASIGetControlValue(id, ASI_TEMPERATURE, &temp_x10, &unused);
-		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res));
-		*current = temp_x10/10.0;
-	} else {
-		*current = 0;
+	res = FLIGetTemperature(id, current);
+	if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
+
+	if (target != old_target) {
+		res = FLISetTemperature(id, target);
+		if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
 	}
 
-	if (!PRIVATE_DATA->info.IsCoolerCam) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return true;
-	}
+	res = FLIGetCoolerPower(id, (double *)cooler_power);
+	if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetCoolerPower(%d) = %d", id, res));
 
-	res = ASIGetControlValue(id, ASI_COOLER_ON, &current_status, &unused);
-	if(res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_COOLER_ON) = %d", id, res));
-		return false;
-	}
-
-	if (current_status != status) {
-		res = ASISetControlValue(id, ASI_COOLER_ON, status, false);
-		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res));
-	} else if(status) {
-		res = ASISetControlValue(id, ASI_TARGET_TEMP, (long)target, false);
-		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res));
-	}
-
-	res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, cooler_power, &unused);
-	if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res));
-
-	*/
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -291,23 +267,16 @@ static void clear_reg_timer_callback(indigo_device *device) {
 
 static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
-		if (fli_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
+		if (fli_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			if (CCD_COOLER_ON_ITEM->sw.value)
-				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-			else
-				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.2 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
-			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_COOLER_POWER_ITEM->number.value = PRIVATE_DATA->cooler_power;
-			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
@@ -417,30 +386,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (fli_open(device)) {
-				int id = PRIVATE_DATA->dev_id;
-				int ctrl_count;
+				flidev_t id = PRIVATE_DATA->dev_id;
 
-				/*
-				ASI_CONTROL_CAPS ctrl_caps;
-
-				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-
-				int res = ASIGetNumOfControls(id, &ctrl_count);
+				CCD_TEMPERATURE_PROPERTY->hidden = false;
+				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_TEMPERATURE_ITEM->number.min = -55;
+				CCD_TEMPERATURE_ITEM->number.max = 45;
+				CCD_TEMPERATURE_ITEM->number.step = 0;
+				long res = FLIGetTemperature(id,&(CCD_TEMPERATURE_ITEM->number.value));
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
-					return INDIGO_NOT_FOUND;
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
 				}
-				ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
-				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
-					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-					init_camera_property(device, ctrl_caps);
-				}
-				indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
+				PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+				PRIVATE_DATA->can_check_temperature = true;
 
-				if (PRIVATE_DATA->has_temperature_sensor) {
-					PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-				}
-				*/
+				CCD_COOLER_POWER_PROPERTY->hidden = false;
+				CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+
+				PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -479,28 +442,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-	// -------------------------------------------------------------------------------- CCD_COOLER
-	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
-		//INDIGO_LOG(indigo_log("indigo_ccd_asi: COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
-		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
-			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
-		}
-		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
-			/* if (CCD_COOLER_OFF_ITEM->sw.value) {
-				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
-				CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
-			} */
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- CCD_FRAME
@@ -568,6 +517,7 @@ static void enumerate_devices() {
 	FLIDeleteList();
 	*/
 }
+
 
 static int find_plugged_device(char *fname) {
 	enumerate_devices();
