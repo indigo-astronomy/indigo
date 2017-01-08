@@ -185,6 +185,7 @@ static bool fli_read_pixels(indigo_device *device) {
 		return false;
 	}
 	*/
+	return true;
 }
 
 static bool fli_abort_exposure(indigo_device *device) {
