@@ -1,4 +1,4 @@
-// Copyright (c) 2016 Rumen G. Bogdanovski
+// Copyright (c) 2017 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -19,6 +19,7 @@
 // version history
 // 2.0 Build 0 - PoC by Rumen Bogdanovski <rumen@skyarchive.org>
 
+
 /** INDIGO CCD FLI driver
  \file indigo_ccd_fli.c
  */
@@ -31,165 +32,429 @@
 #include <math.h>
 #include <assert.h>
 
-#include "indigo_driver_xml.h"
+#include <pthread.h>
+#include <sys/time.h>
 
+#if defined(INDIGO_MACOS)
+#include <libusb-1.0/libusb.h>
+#elif defined(INDIGO_FREEBSD)
+#include <libusb.h>
+#else
+#include <libusb-1.0/libusb.h>
+#endif
+
+#define MAX_PATH 255
+#include <libfli/libfli.h>
+#include "indigo_driver_xml.h"
 #include "indigo_ccd_fli.h"
 
-#define WIDTH               1600
-#define HEIGHT              1200
-#define TEMP_UPDATE         5.0
-#define STARS               100
+#define FLI_VENDOR_ID              0x0f18
 
 #undef PRIVATE_DATA
-#define PRIVATE_DATA        ((simulator_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA               ((fli_private_data *)DEVICE_CONTEXT->private_data)
+
+#undef INDIGO_DEBUG_DRIVER
+#define INDIGO_DEBUG_DRIVER(c) c
+
+// -------------------------------------------------------------------------------- FLI USB interface implementation
+
+#define us2s(s) ((s) / 1000000.0)
+#define s2us(us) ((us) * 1000000)
+
 
 typedef struct {
-	int star_x[STARS], star_y[STARS], star_a[STARS];
-	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
+	flidev_t dev_id;
+	char dev_file_name[MAX_PATH];
+	char dev_name[MAX_PATH];
+	flidomain_t domain;
+
+	int count_open;
+	int count_connected;
+	indigo_timer *exposure_timer, *temperture_timer;
 	double target_temperature, current_temperature;
-	int target_slot, current_slot;
-	int target_position, current_position;
-	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
-} simulator_private_data;
+	long cooler_power;
+	unsigned char *buffer;
+	long int buffer_size;
+	pthread_mutex_t usb_mutex;
+	bool can_check_temperature, has_temperature_sensor;
+} fli_private_data;
+
+
+static indigo_result fli_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+}
+
+
+static bool fli_open(indigo_device *device) {
+	int id = PRIVATE_DATA->dev_id;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (PRIVATE_DATA->count_open++ == 0) {
+	/*	res = ASIOpenCamera(id);
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIOpenCamera(%d) = %d", id, res));
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+		res = ASIInitCamera(id);
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIInitCamera(%d) = %d", id, res));
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+		if (PRIVATE_DATA->buffer == NULL) {
+			if(PRIVATE_DATA->info.IsColorCam)
+				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*3 + FITS_HEADER_SIZE;
+			else
+				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*2 + FITS_HEADER_SIZE;
+
+			PRIVATE_DATA->buffer = (unsigned char*)malloc(PRIVATE_DATA->buffer_size);
+		}
+		*/
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
+}
+
+
+static bool fli_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
+	int id = PRIVATE_DATA->dev_id;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+    /*
+	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/vertical_bin,  horizontal_bin, get_pixel_format(device));
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetROIFormat(%d) = %d", id, res));
+		return false;
+	}
+	res = ASISetStartPos(id, frame_left/horizontal_bin, frame_top/vertical_bin);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetStartPos(%d) = %d", id, res));
+		return false;
+	}
+
+	res = ASISetControlValue(id, ASI_EXPOSURE, (long)s2us(exposure), ASI_FALSE);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res));
+		return false;
+	}
+	res = ASIStartExposure(id, dark);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIStartExposure(%d) = %d", id, res));
+		return false;
+	}
+	*/
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
+}
+
+static bool fli_read_pixels(indigo_device *device) {
+	int wait_cicles = 4000;    /* 4000*1000us = 4s */
+
+	/*
+	status = ASI_EXP_WORKING;
+	while((status == ASI_EXP_WORKING) && wait_cicles--) {
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			usleep(1000);
+	}
+	if(status == ASI_EXP_SUCCESS) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res));
+			return false;
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return true;
+	} else {
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: Exposure failed: dev_id = %d EC = %d", PRIVATE_DATA->dev_id, status));
+		return false;
+	}
+	*/
+}
+
+static bool fli_abort_exposure(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	int err;
+	// ASI_ERROR_CODE err = ASIStopExposure(PRIVATE_DATA->dev_id);
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if(err) return false;
+	else return true;
+}
+
+static bool fli_set_cooler(indigo_device *device, bool status, double target, double *current, long *cooler_power) {
+	//ASI_ERROR_CODE res;
+	//ASI_BOOL unused;
+
+	int id = PRIVATE_DATA->dev_id;
+	long current_status;
+	long temp_x10;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	/*
+	if (PRIVATE_DATA->has_temperature_sensor) {
+		res = ASIGetControlValue(id, ASI_TEMPERATURE, &temp_x10, &unused);
+		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res));
+		*current = temp_x10/10.0;
+	} else {
+		*current = 0;
+	}
+
+	if (!PRIVATE_DATA->info.IsCoolerCam) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return true;
+	}
+
+	res = ASIGetControlValue(id, ASI_COOLER_ON, &current_status, &unused);
+	if(res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_COOLER_ON) = %d", id, res));
+		return false;
+	}
+
+	if (current_status != status) {
+		res = ASISetControlValue(id, ASI_COOLER_ON, status, false);
+		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res));
+	} else if(status) {
+		res = ASISetControlValue(id, ASI_TARGET_TEMP, (long)target, false);
+		if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res));
+	}
+
+	res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, cooler_power, &unused);
+	if(res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res));
+
+	*/
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
+}
+
+
+static void fli_close(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	/*
+	if (--PRIVATE_DATA->count_open == 0) {
+		ASICloseCamera(PRIVATE_DATA->dev_id);
+		if (PRIVATE_DATA->buffer != NULL) {
+			free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
+		}
+	}
+	*/
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+}
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
+// callback for image download
 static void exposure_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		simulator_private_data *private_data = PRIVATE_DATA;
-		unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
-		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
-		int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
-		int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
-		int size = frame_width * frame_height;
-		for (int i = 0; i < size; i++)
-			raw[i] = (rand() & 0xFF); // noise
-		for (int i = 0; i < STARS; i++) {
-			double centerX = (private_data->star_x[i]+rand()/(double)RAND_MAX/5-0.5)/horizontal_bin;
-			double centerY = (private_data->star_y[i]+rand()/(double)RAND_MAX/5-0.5)/vertical_bin;
-			int a = private_data->star_a[i];
-			int xMax = (int)round(centerX)+4/horizontal_bin;
-			int yMax = (int)round(centerY)+4/vertical_bin;
-			for (int y = yMax-8/vertical_bin; y <= yMax; y++) {
-				int yw = y*frame_width;
-				for (int x = xMax-8/horizontal_bin; x <= xMax; x++) {
-					double xx = centerX-x;
-					double yy = centerY-y;
-					double v = a*exp(-(xx*xx/2.0+yy*yy/2.0));
-					raw[yw+x] += (unsigned short)v;
-				}
-			}
+		if (fli_read_pixels(device)) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+		} else {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
-		indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
+	}
+	PRIVATE_DATA->can_check_temperature = true;
+}
+
+// callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
+static void clear_reg_timer_callback(indigo_device *device) {
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		PRIVATE_DATA->can_check_temperature = false;
+		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 4, exposure_timer_callback);
+	} else {
+		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-	if (diff > 0) {
-		if (diff > 10) {
-			if (CCD_COOLER_ON_ITEM->sw.value && CCD_COOLER_POWER_ITEM->number.value != 100) {
-				CCD_COOLER_POWER_ITEM->number.value = 100;
-				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-			}
-		} else if (diff > 5) {
-			if (CCD_COOLER_ON_ITEM->sw.value && CCD_COOLER_POWER_ITEM->number.value != 50) {
-				CCD_COOLER_POWER_ITEM->number.value = 50;
-				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-			}
+	if (PRIVATE_DATA->can_check_temperature) {
+		if (fli_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
+			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
+			if (CCD_COOLER_ON_ITEM->sw.value)
+				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+			else
+				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
+			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_COOLER_POWER_ITEM->number.value = PRIVATE_DATA->cooler_power;
+			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			CCD_COOLER_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-		CCD_TEMPERATURE_ITEM->number.value = --(PRIVATE_DATA->current_temperature);
+		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-	} else if (diff < 0) {
-		if (CCD_COOLER_POWER_ITEM->number.value > 0) {
-			CCD_COOLER_POWER_ITEM->number.value = 0;
-			indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-		}
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-		CCD_TEMPERATURE_ITEM->number.value = ++(PRIVATE_DATA->current_temperature);
-		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-	} else {
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
-		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, TEMP_UPDATE, &PRIVATE_DATA->temperature_timer);
+	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperture_timer);
 }
+
 
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
-
-	simulator_private_data *private_data = device->device_context;
+	fli_private_data *private_data = device->device_context;
 	device->device_context = NULL;
-
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
-		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY->hidden = false;
-		SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
-		SIMULATION_ENABLED_ITEM->sw.value = true;
-		SIMULATION_DISABLED_ITEM->sw.value = false;
-		// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
-		CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
-		CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = HEIGHT;
-		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.max = 4;
-		CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.max = 4;
-		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_MODE_PROPERTY->count = 3;
-		char name[32];
-		sprintf(name, "RAW %dx%d", WIDTH, HEIGHT);
-		indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-		sprintf(name, "RAW %dx%d", WIDTH/2, HEIGHT/2);
-		indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-		sprintf(name, "RAW %dx%d", WIDTH/4, HEIGHT/4);
-		indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
-		CCD_INFO_PIXEL_SIZE_ITEM->number.value = 5.2;
-		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 5.2;
-		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 5.2;
-		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
-		// -------------------------------------------------------------------------------- CCD_IMAGE
-		for (int i = 0; i < STARS; i++) {
-			private_data->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions
-			private_data->star_y[i] = rand() % (HEIGHT - 20) + 10;
-			private_data->star_a[i] = 1000 * (rand() % 60);       // and brightness
+		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
+		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
+		/*
+		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, ASI_MAX_FORMATS);
+		if (PIXEL_FORMAT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		int format_count = 0;
+		if (pixel_format_supported(device, ASI_IMG_RAW8)) {
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RAW8_NAME, RAW8_NAME, true);
+			format_count++;
 		}
-		// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
-		CCD_COOLER_PROPERTY->hidden = false;
-		CCD_TEMPERATURE_PROPERTY->hidden = false;
-		CCD_COOLER_POWER_PROPERTY->hidden = false;
-		indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
-		private_data->target_temperature = private_data->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
-		CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-		CCD_COOLER_POWER_ITEM->number.value = 0;
-		// --------------------------------------------------------------------------------
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		if (pixel_format_supported(device, ASI_IMG_RGB24)) {
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RGB24_NAME, RGB24_NAME, false);
+			format_count++;
+		}
+		if (pixel_format_supported(device, ASI_IMG_RAW16)) {
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RAW16_NAME, RAW16_NAME, false);
+			format_count++;
+		}
+		if (pixel_format_supported(device, ASI_IMG_Y8)) {
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, Y8_NAME, Y8_NAME, false);
+			format_count++;
+		}
+		PIXEL_FORMAT_PROPERTY->count = format_count;
+
+		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+		CCD_MODE_PROPERTY->count = 0;
+		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
+		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
+		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
+		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
+		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
+
+		int max_bin = 1;
+		int num = 0;
+		while ((num < 16) && PRIVATE_DATA->info.SupportedBins[num]) {
+			max_bin = PRIVATE_DATA->info.SupportedBins[num];
+			num++;
+		}
+		*/
+
+		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+		CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+		CCD_BIN_HORIZONTAL_ITEM->number.max = 8;
+		CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+		CCD_BIN_VERTICAL_ITEM->number.max = 8;
+
+		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
 
+static indigo_result handle_advanced_property(indigo_device *device, indigo_property *property) {
+	int ctrl_count;
+	int id = PRIVATE_DATA->dev_id;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	/*
+	res = ASIGetNumOfControls(id, &ctrl_count);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
+		return INDIGO_NOT_FOUND;
+	}
+
+	for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+		ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+		for(int item = 0; item < property->count; item++) {
+			if(!strncmp(ctrl_caps.Name, property->items[item].name, INDIGO_NAME_SIZE)) {
+				res = ASISetControlValue(id, ctrl_caps.ControlType,property->items[item].number.value, ASI_FALSE);
+				if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res));
+			}
+		}
+	}
+	*/
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return INDIGO_OK;
+}
+
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
 	assert(property != NULL);
+
+	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
-			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
-		else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (fli_open(device)) {
+				int id = PRIVATE_DATA->dev_id;
+				int ctrl_count;
+
+				/*
+				ASI_CONTROL_CAPS ctrl_caps;
+
+				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+
+				int res = ASIGetNumOfControls(id, &ctrl_count);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
+					return INDIGO_NOT_FOUND;
+				}
+				ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
+				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+					init_camera_property(device, ctrl_caps);
+				}
+				indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
+
+				if (PRIVATE_DATA->has_temperature_sensor) {
+					PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+				}
+				*/
+
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		} else {
+			indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
+			fli_close(device);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+		fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
@@ -199,52 +464,59 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
+		if (CCD_EXPOSURE_ITEM->number.target > 4)
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+		else {
+			PRIVATE_DATA->can_check_temperature = false;
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+		}
+	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-		if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
+			fli_abort_exposure(device);
 		}
-	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_BIN
-		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int v = CCD_BIN_VERTICAL_ITEM->number.value;
-		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
-		if (!(CCD_BIN_HORIZONTAL_ITEM->number.value == 1 || CCD_BIN_HORIZONTAL_ITEM->number.value == 2 || CCD_BIN_HORIZONTAL_ITEM->number.value == 4) || CCD_BIN_HORIZONTAL_ITEM->number.value != CCD_BIN_VERTICAL_ITEM->number.value) {
-			CCD_BIN_HORIZONTAL_ITEM->number.value = h;
-			CCD_BIN_VERTICAL_ITEM->number.value = v;
-			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-			return INDIGO_OK;
-		}
+		PRIVATE_DATA->can_check_temperature = true;
+		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_COOLER
+		//INDIGO_LOG(indigo_log("indigo_ccd_asi: COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
-		if (CCD_COOLER_ON_ITEM->sw.value) {
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
-		} else {
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-			CCD_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-			CCD_COOLER_POWER_ITEM->number.value = 0;
-			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
+		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
+			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		}
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
-		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-		indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
-		PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
-		CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
-		CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
+		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
+			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
+			/* if (CCD_COOLER_OFF_ITEM->sw.value) {
+				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+				CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+			} */
+			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------- CCD_FRAME
+	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
+		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
+		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
+		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
+		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64)
+			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
+		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
+			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
+		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		return INDIGO_OK;
 	}
+	// -----------------------------------------------------------------------------
 	return indigo_ccd_change_property(device, client, property);
 }
 
@@ -252,387 +524,239 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+
+	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
+
 	return indigo_ccd_detach(device);
 }
 
-// -------------------------------------------------------------------------------- INDIGO guider device implementation
 
-static void guider_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->guider_timer = NULL;
-	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
-		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+// -------------------------------------------------------------------------------- hot-plug support
+
+#define MAX_DEVICES                   32
+
+const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_CAMERA;
+int num_devices = 0;
+char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
+char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
+flidomain_t fli_domains[MAX_DEVICES] = {0};
+
+static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+
+
+static void enumerate_devices() {
+	/* There is a mem leak heree!!! 8,192 constant + 20 bytes on every new connected device */
+	num_devices = 0;
+	long res = FLICreateList(enum_domain);
+	if (res) {
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLICreateList(%d) = %d",enum_domain , res));
 	}
-	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
-		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
+		do {
+			num_devices++;
+		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
 	}
+	FLIDeleteList();
+	/* FOR DEBUG only!
+	FLICreateList(FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL);
+	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
+		do {
+			num_devices++;
+		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
+	}
+	FLIDeleteList();
+	*/
 }
 
-static indigo_result guider_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(device->device_context != NULL);
-	simulator_private_data *private_data = device->device_context;
-	device->device_context = NULL;
-	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
-		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_guider_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(device->device_context != NULL);
-	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
-		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);		
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-		if (duration > 0) {
-			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
-		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
-			if (duration > 0) {
-				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+static int find_plugged_device(char *fname) {
+	enumerate_devices();
+	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
+		bool found = false;
+		for(int slot = 0; slot < MAX_DEVICES; slot++) {
+			indigo_device *device = devices[slot];
+			if (device == NULL) continue;
+			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+				found = true;
+				break;
 			}
 		}
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
-		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
-		if (duration > 0) {
-			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+		if (found) {
+			continue;
 		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
-			if (duration > 0) {
-				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-				PRIVATE_DATA->guider_timer = indigo_set_timer(device, duration/1000.0, guider_timer_callback);
+			assert(fname!=NULL);
+			strncpy(fname, fli_file_names[dev_no], MAX_PATH);
+			return dev_no;
+		}
+	}
+	return -1;
+}
+
+
+static int find_index_by_device_fname(char *fname) {
+	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
+		if (!strncmp(fli_file_names[dev_no], fname, MAX_PATH)) {
+			return dev_no;
+		}
+	}
+	return -1;
+}
+
+
+static int find_available_device_slot() {
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		if (devices[slot] == NULL) return slot;
+	}
+	return -1;
+}
+
+
+static int find_device_slot(char *fname) {
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL) continue;
+		if (!strncmp(PRIVATE_DATA->dev_file_name, fname, 255)) return slot;
+	}
+	return -1;
+}
+
+
+static int find_unplugged_device(char *fname) {
+	enumerate_devices();
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		bool found = false;
+		indigo_device *device = devices[slot];
+		if (device == NULL) continue;
+		for (int dev_no = 0; dev_no < num_devices; dev_no++) {
+			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+				found = true;
+				break;
 			}
 		}
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
-	}
-	return indigo_guider_change_property(device, client, property);
-}
-
-static indigo_result guider_detach(indigo_device *device) {
-	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_guider_detach(device);
-}
-
-// -------------------------------------------------------------------------------- INDIGO wheel device implementation
-
-#define FILTER_COUNT	5
-
-static void wheel_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->current_slot = (PRIVATE_DATA->current_slot) % (int)WHEEL_SLOT_ITEM->number.max + 1;
-	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		indigo_set_timer(device, 0.5, wheel_timer_callback);
-	}
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-}
-
-static indigo_result wheel_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(device->device_context != NULL);
-	simulator_private_data *private_data = device->device_context;
-	device->device_context = NULL;
-	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
-		// -------------------------------------------------------------------------------- WHEEL_SLOT, WHEEL_SLOT_NAME
-		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = FILTER_COUNT;
-		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot = 1;
-		// --------------------------------------------------------------------------------
-		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_wheel_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
-
-static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(device->device_context != NULL);
-	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- WHEEL_SLOT
-		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
-		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		if (found) {
+			continue;
 		} else {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			indigo_set_timer(device, 0.5, wheel_timer_callback);
-		}
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
-	}
-	return indigo_wheel_change_property(device, client, property);
-}
-
-static indigo_result wheel_detach(indigo_device *device) {
-	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_wheel_detach(device);
-}
-
-// -------------------------------------------------------------------------------- INDIGO focuser device implementation
-
-static void focuser_timer_callback(indigo_device *device) {
-	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	} else {
-		if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value && PRIVATE_DATA->current_position < PRIVATE_DATA->target_position) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_POSITION_ITEM->number.value = (PRIVATE_DATA->current_position += FOCUSER_SPEED_ITEM->number.value);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_set_timer(device, 0.1, focuser_timer_callback);
-		} else if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value && PRIVATE_DATA->current_position > PRIVATE_DATA->target_position) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_POSITION_ITEM->number.value = (PRIVATE_DATA->current_position -= FOCUSER_SPEED_ITEM->number.value);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_set_timer(device, 0.1, focuser_timer_callback);
-		} else {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			assert(fname!=NULL);
+			strncpy(fname, PRIVATE_DATA->dev_file_name, MAX_PATH);
+			return slot;
 		}
 	}
+	return -1;
 }
 
-static indigo_result focuser_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(device->device_context != NULL);
-	simulator_private_data *private_data = device->device_context;
-	device->device_context = NULL;
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
-		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		FOCUSER_SPEED_ITEM->number.value = 1;
-		// --------------------------------------------------------------------------------
-		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
-	}
-	return INDIGO_FAILED;
-}
 
-static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(device->device_context != NULL);
-	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
-		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+
+	static indigo_device ccd_template = {
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		ccd_attach,
+		indigo_ccd_enumerate_properties,
+		ccd_change_property,
+		ccd_detach
+	};
+
+	struct libusb_device_descriptor descriptor;
+
+	switch (event) {
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
+			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
+			if (descriptor.idVendor != FLI_VENDOR_ID) break;
+
+			int slot = find_available_device_slot();
+			if (slot < 0) {
+				INDIGO_LOG(indigo_log("indigo_camera_fli: No available device slots available."));
+				return 0;
+			}
+
+			char file_name[MAX_PATH];
+			int idx = find_plugged_device(file_name);
+			if (idx < 0) {
+				INDIGO_DEBUG(indigo_debug("indigo_ccd_fli: No FLI Camera plugged."));
+				return 0;
+			}
+
+			indigo_device *device = malloc(sizeof(indigo_device));
+			assert(device != NULL);
+			memcpy(device, &ccd_template, sizeof(indigo_device));
+			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
+			INDIGO_LOG(indigo_log("indigo_ccd_fli: '%s' @ %s attached.", device->name , fli_file_names[idx]));
+			device->device_context = malloc(sizeof(fli_private_data));
+			assert(device->device_context);
+			memset(device->device_context, 0, sizeof(fli_private_data));
+			((fli_private_data*)device->device_context)->dev_id = 0;
+			((fli_private_data*)device->device_context)->domain = fli_domains[idx];
+			strncpy(((fli_private_data*)device->device_context)->dev_file_name, fli_file_names[idx], MAX_PATH);
+			strncpy(((fli_private_data*)device->device_context)->dev_name, fli_dev_names[idx], MAX_PATH);
+			indigo_attach_device(device);
+			devices[slot]=device;
+			break;
 		}
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		indigo_set_timer(device, 0.5, focuser_timer_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.value;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_set_timer(device, 0.5, focuser_timer_callback);
-		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+			int slot, id;
+			char file_name[MAX_PATH];
+			bool removed = false;
+			while ((id = find_unplugged_device(file_name)) != -1) {
+				slot = find_device_slot(file_name);
+				if (slot < 0) continue;
+				indigo_device **device = &devices[slot];
+				if (*device == NULL)
+					return 0;
+				indigo_detach_device(*device);
+				free((*device)->device_context);
+				free(*device);
+				libusb_unref_device(dev);
+				*device = NULL;
+				removed = true;
+			}
+			if (!removed) {
+				INDIGO_DEBUG(indigo_debug("indigo_ccd_fli: No FLI Camera unplugged!"));
+			}
 		}
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
 	}
-	return indigo_focuser_change_property(device, client, property);
+	return 0;
+};
+
+
+static void remove_all_devices() {
+	int i;
+	for(i = 0; i < MAX_DEVICES; i++) {
+		indigo_device **device = &devices[i];
+		if (*device == NULL) continue;
+		indigo_detach_device(*device);
+		free((*device)->device_context);
+		free(*device);
+		*device = NULL;
+	}
 }
 
-static indigo_result focuser_detach(indigo_device *device) {
-	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_focuser_detach(device);
-}
 
-// --------------------------------------------------------------------------------
-
-static simulator_private_data *private_data = NULL;
-
-static indigo_device *imager_ccd = NULL;
-static indigo_device *imager_wheel = NULL;
-static indigo_device *imager_focuser = NULL;
-
-static indigo_device *guider_ccd = NULL;
-static indigo_device *guider_guider = NULL;
+static libusb_hotplug_callback_handle callback_handle;
 
 indigo_result indigo_ccd_fli(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_device imager_camera_template = {
-		CCD_SIMULATOR_IMAGER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-		ccd_attach,
-		indigo_ccd_enumerate_properties,
-		ccd_change_property,
-		ccd_detach
-	};
-	static indigo_device imager_wheel_template = {
-		CCD_SIMULATOR_WHEEL_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-		wheel_attach,
-		indigo_wheel_enumerate_properties,
-		wheel_change_property,
-		wheel_detach
-	};
-	static indigo_device imager_focuser_template = {
-		CCD_SIMULATOR_FOCUSER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-		focuser_attach,
-		indigo_focuser_enumerate_properties,
-		focuser_change_property,
-		focuser_detach
-	};
-	static indigo_device guider_camera_template = {
-		CCD_SIMULATOR_GUIDER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-		ccd_attach,
-		indigo_ccd_enumerate_properties,
-		ccd_change_property,
-		ccd_detach
-	};
-	static indigo_device guider_template = {
-		CCD_SIMULATOR_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-		guider_attach,
-		indigo_guider_enumerate_properties,
-		guider_change_property,
-		guider_detach
-	};
-
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "CCD Simulator", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "FLI Camera", __FUNCTION__, DRIVER_VERSION, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
 
-	switch(action) {
+	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		private_data = malloc(sizeof(simulator_private_data));
-		assert(private_data != NULL);
-		imager_ccd = malloc(sizeof(indigo_device));
-		assert(imager_ccd != NULL);
-		memcpy(imager_ccd, &imager_camera_template, sizeof(indigo_device));
-		imager_ccd->device_context = private_data;
-		indigo_attach_device(imager_ccd);
-		imager_wheel = malloc(sizeof(indigo_device));
-		assert(imager_wheel != NULL);
-		memcpy(imager_wheel, &imager_wheel_template, sizeof(indigo_device));
-		imager_wheel->device_context = private_data;
-		indigo_attach_device(imager_wheel);
-		imager_focuser = malloc(sizeof(indigo_device));
-		assert(imager_focuser != NULL);
-		memcpy(imager_focuser, &imager_focuser_template, sizeof(indigo_device));
-		imager_focuser->device_context = private_data;
-		indigo_attach_device(imager_focuser);
-		guider_ccd = malloc(sizeof(indigo_device));
-		assert(guider_ccd != NULL);
-		memcpy(guider_ccd, &guider_camera_template, sizeof(indigo_device));
-		guider_ccd->device_context = private_data;
-		indigo_attach_device(guider_ccd);		
-		guider_guider = malloc(sizeof(indigo_device));
-		assert(guider_guider != NULL);
-		memcpy(guider_guider, &guider_template, sizeof(indigo_device));
-		guider_guider->device_context = private_data;
-		indigo_attach_device(guider_guider);
-		break;
+		indigo_start_usb_event_handler();
+		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FLI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_fli: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
-		if (imager_ccd != NULL) {
-			indigo_detach_device(imager_ccd);
-			free(imager_ccd);
-			imager_ccd = NULL;
-		}
-		if (imager_wheel != NULL) {
-			indigo_detach_device(imager_wheel);
-			free(imager_wheel);
-			imager_wheel = NULL;
-		}
-		if (imager_focuser != NULL) {
-			indigo_detach_device(imager_focuser);
-			free(imager_focuser);
-			imager_focuser = NULL;
-		}
-		if (guider_ccd != NULL) {
-			indigo_detach_device(guider_ccd);
-			free(guider_ccd);
-			guider_ccd = NULL;
-		}
-		if (guider_guider != NULL) {
-			indigo_detach_device(guider_guider);
-			free(guider_guider);
-			guider_guider = NULL;
-		}
-		if (private_data != NULL) {
-			free(private_data);
-			private_data = NULL;
-		}
+		libusb_hotplug_deregister_callback(NULL, callback_handle);
+		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_fli: libusb_hotplug_deregister_callback [%d]", __LINE__));
+		remove_all_devices();
 		break;
 
 	case INDIGO_DRIVER_INFO:
 		break;
 	}
+
 	return INDIGO_OK;
 }
-
