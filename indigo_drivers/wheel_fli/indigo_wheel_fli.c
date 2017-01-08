@@ -319,7 +319,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			char file_name[MAX_PATH];
 			int idx = find_plugged_device(file_name);
 			if (idx < 0) {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: No FLI FW plugged."));
+				INDIGO_DEBUG(indigo_debug("indigo_wheel_fli: No FLI FW plugged."));
 				return 0;
 			}
 
@@ -357,7 +357,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				removed = true;
 			}
 			if (!removed) {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: No FLI FW unplugged!"));
+				INDIGO_DEBUG(indigo_debug("indigo_wheel_fli: No FLI FW unplugged!"));
 			}
 		}
 	}
