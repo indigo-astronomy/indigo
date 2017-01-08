@@ -158,7 +158,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_device_disconnect(NULL, device);
+	indigo_device_disconnect(NULL, device->name);
 	INDIGO_LOG(indigo_log("indigo_wheel_asi: '%s' detached.", device->name));
 	return indigo_wheel_detach(device);
 }

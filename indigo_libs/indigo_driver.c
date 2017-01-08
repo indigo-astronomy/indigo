@@ -243,8 +243,9 @@ void *dispatch_function(indigo_timer *timer) {
 		timer->canceled = true;
 		timer->callback(timer->device);
 	}
-	if (timer->canceled)
+	if (timer->canceled) {
 		free(timer);
+	}
 	return NULL;
 }
 

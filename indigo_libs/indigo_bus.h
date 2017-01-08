@@ -376,23 +376,23 @@ extern void indigo_property_copy_values(indigo_property *property, indigo_proper
 
 /** Request text property change.
  */
-extern indigo_result indigo_change_text_property(indigo_client *client, indigo_device *device, char *name, int count, char **items, const char **values);
+extern indigo_result indigo_change_text_property(indigo_client *client, char *device, char *name, int count, char **items, const char **values);
 
 /** Request number property change.
  */
-extern indigo_result indigo_change_number_property(indigo_client *client, indigo_device *device, char *name, int count, char **items, const double *values);
+extern indigo_result indigo_change_number_property(indigo_client *client, char *device, char *name, int count, char **items, const double *values);
 
 /** Request switch property change.
  */
-extern indigo_result indigo_change_switch_property(indigo_client *client, indigo_device *device, char *name, int count, char **items, const bool *values);
+extern indigo_result indigo_change_switch_property(indigo_client *client, char *device, char *name, int count, char **items, const bool *values);
 
 /** Send connect message.
  */
-extern indigo_result indigo_device_connect(indigo_client *client, indigo_device *device);
+extern indigo_result indigo_device_connect(indigo_client *client, char *device);
 
 /** Send disconnect message.
  */
-extern indigo_result indigo_device_disconnect(indigo_client *client, indigo_device *device);
+extern indigo_result indigo_device_disconnect(indigo_client *client, char *device);
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
