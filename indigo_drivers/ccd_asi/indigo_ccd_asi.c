@@ -504,6 +504,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
 		CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
 
+		CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+		CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
+
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
