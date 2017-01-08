@@ -709,8 +709,8 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 	}
 }
 
-indigo_result indigo_change_text_property(indigo_client *client, indigo_device *device, char *name, int count, char **items, const char **values) {
-	indigo_property *property = indigo_init_text_property(NULL, device->name, name, NULL, NULL, 0, 0, count);
+indigo_result indigo_change_text_property(indigo_client *client, char *device, char *name, int count, char **items, const char **values) {
+	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, count);
 	for (int i = 0; i < count; i++)
 		indigo_init_text_item(&property->items[i], items[i], NULL, values[i]);
 	indigo_result result = indigo_change_property(client, property);
@@ -718,8 +718,8 @@ indigo_result indigo_change_text_property(indigo_client *client, indigo_device *
 	return result;
 }
 
-indigo_result indigo_change_number_property(indigo_client *client, indigo_device *device, char *name, int count, char **items, const double *values) {
-	indigo_property *property = indigo_init_number_property(NULL, device->name, name, NULL, NULL, 0, 0, count);
+indigo_result indigo_change_number_property(indigo_client *client, char *device, char *name, int count, char **items, const double *values) {
+	indigo_property *property = indigo_init_number_property(NULL, device, name, NULL, NULL, 0, 0, count);
 	for (int i = 0; i < count; i++)
 		indigo_init_number_item(&property->items[i], items[i], NULL, 0, 0, 0, values[i]);
 	indigo_result result = indigo_change_property(client, property);
@@ -727,8 +727,8 @@ indigo_result indigo_change_number_property(indigo_client *client, indigo_device
 	return result;
 }
 
-indigo_result indigo_change_switch_property(indigo_client *client, indigo_device *device, char *name, int count, char **items, const bool *values) {
-	indigo_property *property = indigo_init_switch_property(NULL, device->name, name, NULL, NULL, 0, 0, 0, count);
+indigo_result indigo_change_switch_property(indigo_client *client, char *device, char *name, int count, char **items, const bool *values) {
+	indigo_property *property = indigo_init_switch_property(NULL, device, name, NULL, NULL, 0, 0, 0, count);
 	for (int i = 0; i < count; i++)
 		indigo_init_switch_item(&property->items[i], items[i], NULL, values[i]);
 	indigo_result result = indigo_change_property(client, property);
@@ -736,13 +736,13 @@ indigo_result indigo_change_switch_property(indigo_client *client, indigo_device
 	return result;
 }
 
-indigo_result indigo_device_connect(indigo_client *client, indigo_device *device) {
+indigo_result indigo_device_connect(indigo_client *client, char *device) {
 	static char *items[] = { CONNECTION_CONNECTED_ITEM_NAME, CONNECTION_DISCONNECTED_ITEM_NAME };
 	static bool values[] = { true, false };
 	return indigo_change_switch_property(client, device, CONNECTION_PROPERTY_NAME, 2, items, values);
 }
 
-indigo_result indigo_device_disconnect(indigo_client *client, indigo_device *device) {
+indigo_result indigo_device_disconnect(indigo_client *client, char *device) {
 	static char *items[] = { CONNECTION_CONNECTED_ITEM_NAME, CONNECTION_DISCONNECTED_ITEM_NAME };
 	static bool values[] = { false, true };
 	return indigo_change_switch_property(client, device, CONNECTION_PROPERTY_NAME, 2, items, values);

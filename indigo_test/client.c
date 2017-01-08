@@ -45,7 +45,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-		indigo_device_connect(client, device);
+		indigo_device_connect(client, property->device);
 		return INDIGO_OK;
 	}
 	return INDIGO_OK;
@@ -61,7 +61,7 @@ static indigo_result client_update_property(struct indigo_client *client, struct
 				indigo_log("connected...");
 				static char * items[] = { CCD_EXPOSURE_ITEM_NAME };
 				static double values[] = { 3.0 };
-				indigo_change_number_property(client, device, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+				indigo_change_number_property(client, property->device, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
 			}
 		} else {
 			if (connected) {
@@ -82,7 +82,7 @@ static indigo_result client_update_property(struct indigo_client *client, struct
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		indigo_log("image received (%d bytes)...", property->items[0].blob.size);
-		indigo_device_disconnect(client, device);
+		indigo_device_disconnect(client, property->device);
 	}
 	return INDIGO_OK;
 }

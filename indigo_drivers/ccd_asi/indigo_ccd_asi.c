@@ -825,7 +825,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device);
+		indigo_device_disconnect(NULL, device->name);
 
 	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
 
@@ -947,7 +947,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_device_disconnect(NULL, device);
+		indigo_device_disconnect(NULL, device->name);
 	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
 	return indigo_guider_detach(device);
 }
