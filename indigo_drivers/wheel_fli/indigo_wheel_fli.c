@@ -63,7 +63,6 @@ typedef struct {
 static int find_index_by_device_fname(char *fname);
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
-
 static void wheel_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	long res = FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
