@@ -1385,7 +1385,7 @@ exit_loop:
 		indigo_property *property = NULL;
 		int index;
 		for (index = 0; index < context.count; index++) {
-			indigo_property *property = context.properties[index];
+			property = context.properties[index];
 			if (property != NULL)
 				break;
 		}

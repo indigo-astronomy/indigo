@@ -99,8 +99,6 @@ static void start_worker_thread(int *client_socket) {
 		} else if (c == 'G') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
-			struct timeval timeout = { .tv_sec =  10, .tv_usec =  0 };
-			setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(struct timeval));
 			while (indigo_read_line(socket, request, BUFFER_SIZE)) {
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;
@@ -179,6 +177,7 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_LOG(indigo_log("%s -> Failed", request));
 								break;
 							} else {
+								keep_alive = false;
 								indigo_printf(socket, "HTTP/1.1 200 OK\r\n");
 								indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 								if (keep_alive)
