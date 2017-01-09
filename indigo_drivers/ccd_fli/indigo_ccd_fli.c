@@ -163,31 +163,37 @@ static bool fli_start_exposure(indigo_device *device, double exposure, bool dark
 	flidev_t id = PRIVATE_DATA->dev_id;
 	long res;
 
-	/* Not Sure if this is needed TO BE VERIFIED */
+	/* Skip the optical black area */
 	offset_x += PRIVATE_DATA->visible_area.ul_x;
 	offset_y += PRIVATE_DATA->visible_area.ul_y;
 
 	long right_x  = offset_x + (frame_width / bin_x);
 	long right_y = offset_y + (frame_height / bin_y);
 
+	/* FLISetBitDepth() does not seem to work! */
+	/*
 	flibitdepth_t bit_depth = FLI_MODE_16BIT;
 	if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12) bit_depth = FLI_MODE_8BIT;
+	*/
 
 	/* needed to read frame data */
 	PRIVATE_DATA->frame_params.width = frame_width;
 	PRIVATE_DATA->frame_params.height = frame_height;
 	PRIVATE_DATA->frame_params.bin_x = bin_x;
 	PRIVATE_DATA->frame_params.bin_y = bin_y;
-	PRIVATE_DATA->frame_params.bpp = bit_depth;
+	PRIVATE_DATA->frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
+	/* FLISetBitDepth() does not seem to work! */
+	/*
 	res = FLISetBitDepth(id, bit_depth);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetBitDepth(%d) = %d", id, res));
 		return false;
 	}
+	*/
 
 	res = FLISetHBin(id, bin_x);
 	if (res) {
@@ -290,6 +296,8 @@ static bool fli_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	long err = FLICancelExposure(PRIVATE_DATA->dev_id);
+	FLICancelExposure(PRIVATE_DATA->dev_id);
+	FLICancelExposure(PRIVATE_DATA->dev_id);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if(err) return false;
@@ -396,11 +404,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 
 		// -------------------------------------------------------------------------------- FLI_NFLUSHES
-		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", CCD_MAIN_GROUP, "Number of Flushes", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", CCD_MAIN_GROUP, "Flush CCD", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 		if (FLI_NFLUSHES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
-		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "Number of Flushes", "Number of Flushes before exposure", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
+		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "FLI_NFLUSHES", "Times (before exposure)", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
 		// --------------------------------------------------------------------------------
 
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -466,6 +474,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
 
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+				/* FLISetBitDepth() does not seem to work so set max and min to DEFAULT and do not chanage it! */
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
 
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
@@ -509,24 +520,27 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 
-		fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
+		if (fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
 		                           CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-		                           CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
-
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		                           CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value)) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+			} else {
+				CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			}
+			if (CCD_EXPOSURE_ITEM->number.target > 4)
+				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+			else {
+				PRIVATE_DATA->can_check_temperature = false;
+				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+			}
 		} else {
-			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		}
-		if (CCD_EXPOSURE_ITEM->number.target > 4)
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
-		else {
-			PRIVATE_DATA->can_check_temperature = false;
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed.");
 		}
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -561,10 +575,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
 		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
-		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12) {
-			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
+		/* FLISetBitDepth() does not seem to work so this should be always 16 bits */
+		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12.0) {
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8.0;
 		} else {
-			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16.0;
 		}
 
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
@@ -586,7 +601,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
+	INDIGO_LOG(indigo_log("indigo_ccd_fli: '%s' detached.", device->name));
 
 	indigo_release_property(FLI_NFLUSHES_PROPERTY);
 
