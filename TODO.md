@@ -47,7 +47,7 @@
 3. IIDC CCD driver (based on libdc1394) __DONE__
 4. MI CCD driver (based on MI SDK)
 5. QSI CCD driver (based on QSI SDK)
-6. FLI CCD driver (based on FLI SDK)
+6. FLI CCD driver (based on FLI SDK) __DONE__
 7. SBig CCD driver (based on SBIG SDK)
 8. Apogee CCD driver (based on Apogee SDK)
 9. Fishcamp CCD driver (based on Fishcamp SDK)
