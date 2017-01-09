@@ -154,21 +154,31 @@ static bool fli_start_exposure(indigo_device *device, double exposure, bool dark
 	flidev_t id = PRIVATE_DATA->dev_id;
 	long res;
 
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
 	/* Not Sure if this is needed TO BE VERIFIED */
 	offset_x += PRIVATE_DATA->visible_area.ul_x;
 	offset_y += PRIVATE_DATA->visible_area.ul_y;
+
+	long right_x  = offset_x + (frame_width / bin_x);
+	long right_y = offset_y + (frame_height / bin_y);
+
+	flibitdepth_t bit_depth = FLI_MODE_16BIT;
+	if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12) bit_depth = FLI_MODE_8BIT;
 
 	/* needed to read frame data */
 	PRIVATE_DATA->frame_params.width = frame_width;
 	PRIVATE_DATA->frame_params.height = frame_height;
 	PRIVATE_DATA->frame_params.bin_x = bin_x;
 	PRIVATE_DATA->frame_params.bin_y = bin_y;
-	PRIVATE_DATA->frame_params.bpp = 16;
+	PRIVATE_DATA->frame_params.bpp = bit_depth;
 
-	long right_x  = offset_x + (frame_width / bin_x);
-	long right_y = offset_y + (frame_height / bin_y);
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	res = FLISetBitDepth(id, bit_depth);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetBitDepth(%d) = %d", id, res));
+		return false;
+	}
 
 	res = FLISetHBin(id, bin_x);
 	if (res) {
@@ -573,8 +583,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
 		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
+		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12) {
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
+		} else {
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
+		}
+
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
