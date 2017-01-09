@@ -44,14 +44,16 @@
 #endif
 
 
-#define MAX_CCD_TEMP     45     /* Max CCD temperature */
-#define MIN_CCD_TEMP    -55     /* Min CCD temperature */
-#define MAX_X_BIN        16     /* Max Horizontal binning */
-#define MAX_Y_BIN        16     /* Max Vertical binning */
-#define DEFAULT_BPP      16     /* Default bits per pixel */
+#define MAX_CCD_TEMP         45     /* Max CCD temperature */
+#define MIN_CCD_TEMP        -55     /* Min CCD temperature */
+#define MAX_X_BIN            16     /* Max Horizontal binning */
+#define MAX_Y_BIN            16     /* Max Vertical binning */
+#define DEFAULT_BPP          16     /* Default bits per pixel */
+#define MIN_N_FLUSHES         0     /* Min number of array flushes before exposure */
+#define MAX_N_FLUSHES        16     /* Max number of array flushes before exposure */
+#define DEFAULT_N_FLUSHES     1     /* Default number of array flushes before exposure */
 
-
-#define MAX_PATH        255     /* Maximal Path Length */
+#define MAX_PATH            255     /* Maximal Path Length */
 
 #include <libfli/libfli.h>
 #include "indigo_driver_xml.h"
@@ -61,6 +63,9 @@
 
 #undef PRIVATE_DATA
 #define PRIVATE_DATA               ((fli_private_data *)DEVICE_CONTEXT->private_data)
+
+#define FLI_NFLUSHES_PROPERTY        (PRIVATE_DATA->fli_nflushes_property)
+#define FLI_NFLUSHES_PROPERTY_ITEM   (FLI_NFLUSHES_PROPERTY->items + 0)
 
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
@@ -88,7 +93,6 @@ typedef struct {
 	flidomain_t domain;
 
 	int count_open;
-	//int count_connected;
 	indigo_timer *exposure_timer, *temperture_timer;
 	double target_temperature, current_temperature;
 	double cooler_power;
@@ -98,11 +102,16 @@ typedef struct {
 	image_area visible_area;
 	cframe_params frame_params;
 	pthread_mutex_t usb_mutex;
-	bool can_check_temperature, has_temperature_sensor;
+	bool can_check_temperature;
+	indigo_property *fli_nflushes_property;
 } fli_private_data;
 
 
 static indigo_result fli_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property))
+			indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL);
+	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
 
@@ -287,6 +296,7 @@ static bool fli_abort_exposure(indigo_device *device) {
 	else return true;
 }
 
+
 static bool fli_set_cooler(indigo_device *device, double target, double *current, double *cooler_power) {
 	long res;
 
@@ -345,6 +355,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->can_check_temperature = true;
 }
 
+
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
 static void clear_reg_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -354,6 +365,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
+
 
 static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
@@ -382,79 +394,40 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
-		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
-		/*
-		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, ASI_MAX_FORMATS);
-		if (PIXEL_FORMAT_PROPERTY == NULL)
+
+		// -------------------------------------------------------------------------------- FLI_NFLUSHES
+		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", CCD_MAIN_GROUP, "Number of Flushes", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+		if (FLI_NFLUSHES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
-		int format_count = 0;
-		if (pixel_format_supported(device, ASI_IMG_RAW8)) {
-			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RAW8_NAME, RAW8_NAME, true);
-			format_count++;
-		}
-		if (pixel_format_supported(device, ASI_IMG_RGB24)) {
-			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RGB24_NAME, RGB24_NAME, false);
-			format_count++;
-		}
-		if (pixel_format_supported(device, ASI_IMG_RAW16)) {
-			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RAW16_NAME, RAW16_NAME, false);
-			format_count++;
-		}
-		if (pixel_format_supported(device, ASI_IMG_Y8)) {
-			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, Y8_NAME, Y8_NAME, false);
-			format_count++;
-		}
-		PIXEL_FORMAT_PROPERTY->count = format_count;
+		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "Number of Flushes", "Number of Flushes before exposure", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
+		// --------------------------------------------------------------------------------
 
-		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_MODE_PROPERTY->count = 0;
-		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
-		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
-		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
-		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
-		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
-		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
-
-		int max_bin = 1;
-		int num = 0;
-		while ((num < 16) && PRIVATE_DATA->info.SupportedBins[num]) {
-			max_bin = PRIVATE_DATA->info.SupportedBins[num];
-			num++;
-		}
-		*/
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
 
-static indigo_result handle_advanced_property(indigo_device *device, indigo_property *property) {
-	int ctrl_count;
+
+static bool handle_nflushes_property(indigo_device *device, indigo_property *property) {
 	int id = PRIVATE_DATA->dev_id;
+	long nflushes = (long)(FLI_NFLUSHES_PROPERTY_ITEM->number.value);
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-	/*
-	res = ASIGetNumOfControls(id, &ctrl_count);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetNumOfControls(%d) = %d", id, res));
-		return INDIGO_NOT_FOUND;
-	}
-
-	for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
-		ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-		for(int item = 0; item < property->count; item++) {
-			if(!strncmp(ctrl_caps.Name, property->items[item].name, INDIGO_NAME_SIZE)) {
-				res = ASISetControlValue(id, ctrl_caps.ControlType,property->items[item].number.value, ASI_FALSE);
-				if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res));
-			}
-		}
-	}
-	*/
-
+	long res = FLISetNFlushes(id, nflushes);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	return INDIGO_OK;
+
+	if (res) {
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetNFlushes(%d) = %d", id, res));
+		FLI_NFLUSHES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FLI_NFLUSHES_PROPERTY, "Can not set number of flushes to %ld", nflushes);
+		return false;
+	}
+
+	FLI_NFLUSHES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, FLI_NFLUSHES_PROPERTY, "Number of flushes set to %ld", nflushes);
+
+	return true;
 }
 
 
@@ -470,9 +443,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (fli_open(device)) {
 				flidev_t id = PRIVATE_DATA->dev_id;
 
-				//CCD_MODE_PROPERTY->hidden = false;
-				//CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-				//CCD_MODE_PROPERTY->count = 0;
+				indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 
 				CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->visible_area.lr_x - PRIVATE_DATA->visible_area.ul_x;
 				CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->visible_area.lr_y - PRIVATE_DATA->visible_area.ul_y;
@@ -530,6 +501,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
+			indigo_delete_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 			fli_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -564,6 +536,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+	// -------------------------------------------------------------------------------- FLI_NFLUSHES
+	} else if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property)) {
+		indigo_property_copy_values(FLI_NFLUSHES_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			handle_nflushes_property(device, property);
+		}
 	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
@@ -592,10 +570,16 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- CONFIG
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, FLI_NFLUSHES_PROPERTY);
+		}
 	}
 	// -----------------------------------------------------------------------------
 	return indigo_ccd_change_property(device, client, property);
 }
+
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
@@ -603,6 +587,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 
 	INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' detached.", device->name));
+
+	indigo_release_property(FLI_NFLUSHES_PROPERTY);
 
 	return indigo_ccd_detach(device);
 }
