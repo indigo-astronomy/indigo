@@ -221,7 +221,8 @@ static bool fli_start_exposure(indigo_device *device, double exposure, bool dark
 
 static bool fli_read_pixels(indigo_device *device) {
 	long timeleft = 0;
-	long res;
+	long res, dev_status;
+	long wait_cicles = 4000;
 	flidev_t id = PRIVATE_DATA->dev_id;
 
 	do {
@@ -230,6 +231,22 @@ static bool fli_read_pixels(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (timeleft) usleep(timeleft);
 	} while (timeleft*1000);
+
+	do {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		FLIGetDeviceStatus(id, &dev_status);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if((dev_status != FLI_CAMERA_STATUS_UNKNOWN) && ((dev_status & FLI_CAMERA_DATA_READY) != 0)) {
+			break;
+		}
+		usleep(10000);
+		wait_cicles--;
+	} while (wait_cicles);
+
+	if (wait_cicles == 0) {
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: Exposure Failed! id=%d", id));
+		return false;
+	}
 
 	long row_size = PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x * PRIVATE_DATA->frame_params.bpp / 8;
 	long width = PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x;
@@ -241,7 +258,7 @@ static bool fli_read_pixels(indigo_device *device) {
 		res = FLIGrabRow(id, image + (i * row_size), width);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGrabRow(%d) = %d at row %d. %s.", id, res, i));
+			INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGrabRow(%d) = %d at row %d.", id, res, i));
 			return false;
 		}
 	}
