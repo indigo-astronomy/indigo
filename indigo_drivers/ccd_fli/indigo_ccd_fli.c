@@ -52,7 +52,6 @@
 
 
 #define MAX_PATH        255     /* Maximal Path Length */
-#define M2UM            1e6     /* meters to umeters */
 
 #include <libfli/libfli.h>
 #include "indigo_driver_xml.h"
@@ -68,12 +67,19 @@
 
 // -------------------------------------------------------------------------------- FLI USB interface implementation
 
-#define us2s(s) ((s) / 1000000.0)
-#define s2us(us) ((us) * 1000000)
+#define ms2s(s)      ((s) / 1000.0)
+#define s2ms(ms)     ((ms) * 1000)
+#define m2um(m)      ((m) * 1e6)  /* meters to umeters */
 
 typedef struct {
 	long ul_x, ul_y, lr_x, lr_y;
 } image_area;
+
+typedef struct {
+	long bin_x, bin_y;
+	long width, height;
+	int bpp;
+} cframe_params;
 
 typedef struct {
 	flidev_t dev_id;
@@ -90,6 +96,7 @@ typedef struct {
 	long int buffer_size;
 	image_area total_area;
 	image_area visible_area;
+	cframe_params frame_params;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
 } fli_private_data;
@@ -143,70 +150,105 @@ static bool fli_open(indigo_device *device) {
 }
 
 
-static bool fli_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-	int id = PRIVATE_DATA->dev_id;
+static bool fli_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
+	flidev_t id = PRIVATE_DATA->dev_id;
+	long res;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-    /*
-	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/vertical_bin,  horizontal_bin, get_pixel_format(device));
+	/* Not Sure if this is needed TO BE VERIFIED */
+	offset_x += PRIVATE_DATA->visible_area.ul_x;
+	offset_y += PRIVATE_DATA->visible_area.ul_y;
+
+	/* needed to read frame data */
+	PRIVATE_DATA->frame_params.width = frame_width;
+	PRIVATE_DATA->frame_params.height = frame_height;
+	PRIVATE_DATA->frame_params.bin_x = bin_x;
+	PRIVATE_DATA->frame_params.bin_y = bin_y;
+	PRIVATE_DATA->frame_params.bpp = 16;
+
+	long right_x  = offset_x + (frame_width / bin_x);
+	long right_y = offset_y + (frame_height / bin_y);
+
+	res = FLISetHBin(id, bin_x);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetROIFormat(%d) = %d", id, res));
-		return false;
-	}
-	res = ASISetStartPos(id, frame_left/horizontal_bin, frame_top/vertical_bin);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetStartPos(%d) = %d", id, res));
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetHBin(%d) = %d", id, res));
 		return false;
 	}
 
-	res = ASISetControlValue(id, ASI_EXPOSURE, (long)s2us(exposure), ASI_FALSE);
+	res = FLISetVBin(id, bin_y);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res));
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetVBin(%d) = %d", id, res));
 		return false;
 	}
-	res = ASIStartExposure(id, dark);
+
+	res = FLISetImageArea(id, offset_x, offset_y, right_x, right_y);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIStartExposure(%d) = %d", id, res));
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetImageArea(%d) = %d", id, res));
 		return false;
 	}
-	*/
+
+	res = FLISetExposureTime(id, (long)s2ms(exposure));
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetExposureTime(%d) = %d", id, res));
+		return false;
+	}
+
+	fliframe_t frame_type = FLI_FRAME_TYPE_NORMAL;
+	if (dark) frame_type = FLI_FRAME_TYPE_DARK;
+	res = FLISetFrameType(id, frame_type);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetFrameType(%d) = %d", id, res));
+		return false;
+	}
+
+	res = FLIExposeFrame(id);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIExposeFrame(%d) = %d", id, res));
+		return false;
+	}
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
-static bool fli_read_pixels(indigo_device *device) {
-	int wait_cicles = 4000;    /* 4000*1000us = 4s */
 
-	/*
-	status = ASI_EXP_WORKING;
-	while((status == ASI_EXP_WORKING) && wait_cicles--) {
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			usleep(1000);
-	}
-	if(status == ASI_EXP_SUCCESS) {
+static bool fli_read_pixels(indigo_device *device) {
+	long timeleft = 0;
+	long res;
+	flidev_t id = PRIVATE_DATA->dev_id;
+
+	do {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
+		res = FLIGetExposureStatus(id, &timeleft);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (timeleft) usleep(timeleft);
+	} while (timeleft*1000);
+
+	long row_size = PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x * PRIVATE_DATA->frame_params.bpp / 8;
+	long width = PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x;
+	long height = PRIVATE_DATA->frame_params.height / PRIVATE_DATA->frame_params.bin_y ;
+	unsigned char *image = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
+
+	for (int i = 0; i < height; i++) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = FLIGrabRow(id, image + (i * row_size), width);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res));
+			INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGrabRow(%d) = %d at row %d. %s.", id, res, i));
 			return false;
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return true;
-	} else {
-		INDIGO_LOG(indigo_log("indigo_ccd_asi: Exposure failed: dev_id = %d EC = %d", PRIVATE_DATA->dev_id, status));
-		return false;
 	}
-	*/
+
 	return true;
 }
+
 
 static bool fli_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -419,8 +461,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 
 				//INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
-				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = size_x * M2UM;
-				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = size_y * M2UM;
+				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = m2um(size_x);
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = m2um(size_y);
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
 				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
 				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
@@ -467,7 +509,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
+
+		fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
+		                           CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
+		                           CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
+
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
