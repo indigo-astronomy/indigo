@@ -278,17 +278,19 @@ static bool fli_read_pixels(indigo_device *device) {
 	long height = PRIVATE_DATA->frame_params.height / PRIVATE_DATA->frame_params.bin_y ;
 	unsigned char *image = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
 
+	bool success = true;
 	for (int i = 0; i < height; i++) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = FLIGrabRow(id, image + (i * row_size), width);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGrabRow(%d) = %d at row %d.", id, res, i));
-			return false;
+			/* print this error once but read to the end to flush the array */
+			if (success) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGrabRow(%d) = %d at row %d.", id, res, i));
+			success = false;
 		}
 	}
 
-	return true;
+	return success;
 }
 
 
