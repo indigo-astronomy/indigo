@@ -148,7 +148,9 @@ DRIVER_SOLIBS=\
 SIMULATOR_LIBS=\
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/*_simulator))))
 
-.PHONY: init clean
+SO_LIBS= $(wildcard $(BUILD_LIB)/*.$(SOEXT))
+
+.PHONY: init clean macfixpath
 
 #---------------------------------------------------------------------
 #
@@ -156,7 +158,19 @@ SIMULATOR_LIBS=\
 #
 #---------------------------------------------------------------------
 
-all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) indigo_server/ctrl.data drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server
+all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) indigo_server/ctrl.data drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath
+
+#---------------------------------------------------------------------
+#
+#      Fix paths in Mac files
+#
+#---------------------------------------------------------------------
+
+macfixpath:
+ifeq ($(OS_DETECTED),Darwin)
+	$(foreach lib, $(DRIVERS) $(DRIVER_SOLIBS) $(SO_LIBS), install_name_tool -id @rpath/../`expr "$(lib)" : '[^/]*/\(.*\)'` $(lib) >/dev/null; install_name_tool -add_rpath @loader_path/../drivers $(lib) >/dev/null 2>&1; install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $(lib) >/dev/null 2>&1; install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib @rpath/../lib/libusb-1.0.0.dylib $(lib) >/dev/null 2>&1;)
+endif
+	@true
 
 #---------------------------------------------------------------------
 #
@@ -636,6 +650,7 @@ $(BUILD_BIN)/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS)
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
+	install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
 endif
 
 $(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS)
@@ -643,6 +658,7 @@ $(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LI
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
+	install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
 endif
 
 #---------------------------------------------------------------------
