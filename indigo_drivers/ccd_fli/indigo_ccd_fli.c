@@ -93,7 +93,7 @@ typedef struct {
 	flidomain_t domain;
 
 	int count_open;
-	indigo_timer *exposure_timer, *temperture_timer;
+	indigo_timer *exposure_timer, *temperature_timer;
 	double target_temperature, current_temperature;
 	double cooler_power;
 	unsigned char *buffer;
@@ -392,7 +392,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperture_timer);
+	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
 }
 
 
@@ -453,6 +453,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (fli_open(device)) {
 				flidev_t id = PRIVATE_DATA->dev_id;
 
+				CCD_MODE_PROPERTY->hidden = true;
+
 				indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 
 				CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->visible_area.lr_x - PRIVATE_DATA->visible_area.ul_x;
@@ -505,7 +507,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_COOLER_POWER_PROPERTY->hidden = false;
 				CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
 
-				PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -513,7 +515,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
+			PRIVATE_DATA->can_check_temperature = false;
+			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 			indigo_delete_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 			fli_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
