@@ -78,7 +78,7 @@ typedef struct {
 	int dev_id;
 	int count_open;
 	int count_connected;
-	indigo_timer *exposure_timer, *temperture_timer, *guider_timer_ra, *guider_timer_dec;
+	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	long cooler_power;
 	bool guide_relays[4];
@@ -405,7 +405,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperture_timer);
+	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
 }
 
 
@@ -481,8 +481,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		PIXEL_FORMAT_PROPERTY->count = format_count;
 
-		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_MODE_PROPERTY->count = 0;
+		CCD_MODE_PROPERTY->hidden = true;
+
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
@@ -701,7 +701,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
 
 				if (PRIVATE_DATA->has_temperature_sensor) {
-					PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 				}
 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -710,7 +710,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
+			PRIVATE_DATA->can_check_temperature = false;
+			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 			indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 			indigo_delete_property(device, ASI_ADVANCED_PROPERTY, NULL);
 			asi_close(device);
