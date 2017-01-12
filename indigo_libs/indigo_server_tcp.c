@@ -76,12 +76,12 @@ static struct resource {
 
 static void start_worker_thread(int *client_socket) {
 	int socket = *client_socket;
-	indigo_log("Worker thread started");
+	INDIGO_LOG(indigo_log("Worker thread started"));
 	server_callback(++client_count);
 	char c;
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
-			indigo_log("Protocol switched to XML");
+			INDIGO_LOG(indigo_log("Protocol switched to XML"));
 			indigo_client *protocol_adapter = indigo_xml_device_adapter(socket, socket);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
@@ -89,7 +89,7 @@ static void start_worker_thread(int *client_socket) {
 			indigo_detach_client(protocol_adapter);
 			indigo_release_xml_device_adapter(protocol_adapter);
 		} else if (c == '{') {
-			indigo_log("Protocol switched to JSON");
+			INDIGO_LOG(indigo_log("Protocol switched to JSON"));
 			indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, false);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
@@ -127,7 +127,7 @@ static void start_worker_thread(int *client_socket) {
 						base64_encode((unsigned char *)websocket_key, shaHash, 20);
 						indigo_printf(socket, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
 						indigo_printf(socket, "\r\n");
-						indigo_log("Protocol switched to JSON-over-WebSockets");
+						INDIGO_LOG(indigo_log("Protocol switched to JSON-over-WebSockets"));
 						indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, true);
 						assert(protocol_adapter != NULL);
 						indigo_attach_client(protocol_adapter);
@@ -198,12 +198,12 @@ static void start_worker_thread(int *client_socket) {
 				}
 			}
 		} else {
-			indigo_log("Unrecognised protocol");
+			INDIGO_LOG(indigo_log("Unrecognised protocol"));
 		}
 	}
 	server_callback(--client_count);
 	free(client_socket);
-	indigo_log("Worker thread finished");
+	INDIGO_LOG(indigo_log("Worker thread finished"));
 }
 
 void indigo_server_shutdown() {
@@ -212,7 +212,7 @@ void indigo_server_shutdown() {
 }
 
 void indigo_server_add_resource(char *path, unsigned char *data, unsigned length, char *content_type) {
-	indigo_log("Resource %s (%d, %s) added", path, length, content_type);
+	INDIGO_LOG(indigo_log("Resource %s (%d, %s) added", path, length, content_type));
 	struct resource *resource = malloc(sizeof(struct resource));
 	resource->path = path;
 	resource->data = data;
@@ -246,8 +246,8 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		indigo_error("Can't listen on server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
-	indigo_log("Server started on %d", indigo_server_tcp_port);
-	callback(client_count);
+	INDIGO_LOG(indigo_log("Server started on %d", indigo_server_tcp_port));
+	server_callback(client_count);
 	signal(SIGPIPE, SIG_IGN);
 	while (1) {
 		client_socket = accept(server_socket, (struct sockaddr *)&client_name, &name_len);
