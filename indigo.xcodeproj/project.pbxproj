@@ -1174,7 +1174,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "install -d \"${TARGET_BUILD_DIR}\"\ncp \"${PROJECT_DIR}/lib/libhidapi.0.dylib\" \"${TARGET_BUILD_DIR}/libhidapi.dylib\"\ninstall_name_tool -id @executable_path/libhidapi.dylib \"${TARGET_BUILD_DIR}/libhidapi.dylib\"\necho \"${TARGET_BUILD_DIR}/libhidapi.dylib\"\n";
+			shellScript = "install -d \"${TARGET_BUILD_DIR}\"\ncp \"${PROJECT_DIR}/build/lib/libhidapi.0.dylib\" \"${TARGET_BUILD_DIR}/libhidapi.dylib\"\ninstall_name_tool -id @executable_path/libhidapi.dylib \"${TARGET_BUILD_DIR}/libhidapi.dylib\"\necho \"${TARGET_BUILD_DIR}/libhidapi.dylib\"\n";
 		};
 		59F756151DCE4F83002CFC82 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1187,7 +1187,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "install -d \"${TARGET_BUILD_DIR}\"\ncp \"${PROJECT_DIR}/lib/libusb-1.0.0.dylib\" \"${TARGET_BUILD_DIR}/libusb.dylib\"\ninstall_name_tool -id @executable_path/libusb.dylib \"${TARGET_BUILD_DIR}/libusb.dylib\"\necho \"${TARGET_BUILD_DIR}/libusb.dylib\"\n";
+			shellScript = "install -d \"${TARGET_BUILD_DIR}\"\ncp \"${PROJECT_DIR}/build/lib/libusb-1.0.0.dylib\" \"${TARGET_BUILD_DIR}/libusb.dylib\"\ninstall_name_tool -id @executable_path/libusb.dylib \"${TARGET_BUILD_DIR}/libusb.dylib\"\necho \"${TARGET_BUILD_DIR}/libusb.dylib\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -1384,7 +1384,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				HEADER_SEARCH_PATHS = include;
+				HEADER_SEARCH_PATHS = build/include;
+				LIBRARY_SEARCH_PATHS = build/lib;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1434,7 +1435,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				HEADER_SEARCH_PATHS = include;
+				HEADER_SEARCH_PATHS = build/include;
+				LIBRARY_SEARCH_PATHS = build/lib;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				OTHER_LDFLAGS = "-w";
@@ -1525,16 +1527,6 @@
 			buildSettings = {
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				EXECUTABLE_PREFIX = lib;
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/externals/libatik",
-					"$(PROJECT_DIR)/externals/libfcusb",
-					"$(PROJECT_DIR)/lib",
-					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
-					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
-					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac",
-					"$(PROJECT_DIR)/indigo_drivers/ccd_fli/externals/libfli-1.104",
-				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -1544,16 +1536,6 @@
 			buildSettings = {
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				EXECUTABLE_PREFIX = lib;
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/externals/libatik",
-					"$(PROJECT_DIR)/externals/libfcusb",
-					"$(PROJECT_DIR)/lib",
-					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
-					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
-					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac",
-					"$(PROJECT_DIR)/indigo_drivers/ccd_fli/externals/libfli-1.104",
-				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
