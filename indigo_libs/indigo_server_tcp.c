@@ -206,7 +206,7 @@ static void start_worker_thread(int *client_socket) {
 	indigo_log("Worker thread finished");
 }
 
-static void server_shutdown() {
+void indigo_server_shutdown() {
 	shutdown_initiated = true;
 	close(server_socket);
 }
@@ -222,7 +222,7 @@ void indigo_server_add_resource(char *path, unsigned char *data, unsigned length
 	resources = resource;
 }
 
-indigo_result indigo_server_tcp(indigo_server_tcp_callback callback) {
+indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 	server_callback = callback;
 	int client_socket;
 	int reuse = 1;
@@ -247,7 +247,6 @@ indigo_result indigo_server_tcp(indigo_server_tcp_callback callback) {
 		return INDIGO_CANT_START_SERVER;
 	}
 	indigo_log("Server started on %d", indigo_server_tcp_port);
-	atexit(server_shutdown);
 	callback(client_count);
 	signal(SIGPIPE, SIG_IGN);
 	while (1) {

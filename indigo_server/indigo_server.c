@@ -80,8 +80,23 @@ driver_entry_point static_drivers[] = {
 static int first_driver = 2;
 static indigo_property *driver_property;
 static indigo_property *server_property;
+static indigo_property *restart_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
+static bool restart = false;
+
+static indigo_result attach(indigo_device *device);
+static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+static indigo_result detach(indigo_device *device);
+
+static indigo_device server_device = {
+	"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	attach,
+	enumerate_properties,
+	change_property,
+	detach
+};
 
 static unsigned char ctrl[] = {
 #include "ctrl.data"
@@ -91,17 +106,16 @@ static void server_callback(int count) {
 	INDIGO_LOG(indigo_log("%d clients", count));
 }
 
-static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+
 
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
-	driver_property = indigo_init_switch_property(NULL, "INDIGO Server", "DRIVERS", "Main", "Active drivers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
+	driver_property = indigo_init_switch_property(NULL, server_device.name, "DRIVERS", "Main", "Active drivers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
 	driver_property->count = 0;
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 		if (indigo_available_drivers[i].driver != NULL)
 			indigo_init_switch_item(&driver_property->items[driver_property->count++], indigo_available_drivers[i].description, indigo_available_drivers[i].description, true);
-
-	server_property = indigo_init_switch_property(NULL, "INDIGO Server", "SERVERS", "Main", "Active servers", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 2 * INDIGO_MAX_SERVERS);
+	server_property = indigo_init_switch_property(NULL, server_device.name, "SERVERS", "Main", "Active servers", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 2 * INDIGO_MAX_SERVERS);
 	server_property->count = 0;
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_server_entry *entry = indigo_available_servers + i;
@@ -117,6 +131,8 @@ static indigo_result attach(indigo_device *device) {
 			indigo_init_switch_item(&server_property->items[server_property->count++], entry->executable, entry->executable, true);
 		}
 	}
+	restart_property = indigo_init_switch_property(NULL, server_device.name, "RESTART", "Main", "Restart", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+	indigo_init_switch_item(restart_property->items, "RESTART", "Restart server", false);
 	if (indigo_load_properties(device, false) == INDIGO_FAILED)
 		change_property(device, NULL, driver_property);
 	INDIGO_LOG(indigo_log("%s attached", device->name));
@@ -127,6 +143,7 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	assert(device != NULL);
 	indigo_define_property(device, driver_property, NULL);
 	indigo_define_property(device, server_property, NULL);
+	indigo_define_property(device, restart_property, NULL);
 	return INDIGO_OK;
 }
 
@@ -146,6 +163,16 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		int handle = 0;
 		indigo_save_property(device, &handle, driver_property);
 		close(handle);
+	} else if (indigo_property_match(restart_property, property)) {
+	// -------------------------------------------------------------------------------- RESTART
+		indigo_property_copy_values(restart_property, property, false);
+		if (restart_property->items[0].sw.value) {
+			restart = true;
+			INDIGO_LOG(indigo_log("Restarting..."));
+			DNSServiceRemoveRecord(sd_indigo, NULL, 0);
+			DNSServiceRemoveRecord(sd_http, NULL, 0);
+			indigo_server_shutdown();
+		}
 	// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -158,14 +185,6 @@ static indigo_result detach(indigo_device *device) {
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }
-
-static indigo_device server_device = {
-	SERVER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-	attach,
-	enumerate_properties,
-	change_property,
-	detach
-};
 
 void signal_handler(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
@@ -259,9 +278,10 @@ int main(int argc, const char * argv[]) {
 	if (use_bonjour) {
 		/* UGLY but the only way to suppress compat mode warning messages on Linux */
 		setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-		char hostname[128], servicename[128];
+		char hostname[INDIGO_NAME_SIZE], servicename[INDIGO_NAME_SIZE];
 		gethostname(hostname, sizeof(hostname));
-		snprintf(servicename, sizeof(servicename), "%s (%d)", hostname, indigo_server_tcp_port);
+		snprintf(servicename, INDIGO_NAME_SIZE, "%s (%d)", hostname, indigo_server_tcp_port);
+		snprintf(server_device.name, INDIGO_NAME_SIZE, "Server %s (%d)", hostname, indigo_server_tcp_port);
 		DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 		DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 	}
@@ -271,7 +291,16 @@ int main(int argc, const char * argv[]) {
 
 	indigo_attach_device(&server_device);
 
-	indigo_server_tcp(server_callback);
+	indigo_server_start(server_callback);
+	
+	if (restart) {
+		long maxfd = sysconf(_SC_OPEN_MAX);
+		for(int fd = 3; fd < maxfd; fd++)
+			close(fd);
+		sleep(1);
+		execv(argv[0], (char * const *) argv);
+	}
+	
 	return 0;
 }
 
