@@ -42,7 +42,11 @@ extern void indigo_server_add_resource(char *path, unsigned char *data, unsigned
 
 /** Start network server (function will block until server is active).
  */
-extern indigo_result indigo_server_tcp(indigo_server_tcp_callback callback);
+extern indigo_result indigo_server_start(indigo_server_tcp_callback callback);
+
+/** Shutdown network server (function will block until server is active).
+ */
+extern void indigo_server_shutdown();
 
 #endif /* indigo_server_tcp_h */
 
