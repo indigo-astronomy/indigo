@@ -405,6 +405,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		DEVICE_CONTEXT->private_data = private_data;
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 
+		/* Use all info property fields */
+		INFO_PROPERTY->count = 7;
+
 		// -------------------------------------------------------------------------------- FLI_NFLUSHES
 		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", CCD_MAIN_GROUP, "Flush CCD", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 		if (FLI_NFLUSHES_PROPERTY == NULL)
@@ -465,10 +468,36 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				double size_x, size_y;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				long res = FLIGetPixelSize(id, &size_x, &size_y);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
 				}
+
+				res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
+				}
+
+				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
+				}
+
+				long hw_rev, fw_rev;
+				res = FLIGetFWRevision(id, &fw_rev);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
+				}
+
+				res = FLIGetHWRevision(id, &hw_rev);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
+				}
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+				sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
+				sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
+
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 
 				//INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
 				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = m2um(size_x);

@@ -47,6 +47,22 @@
  */
 #define INFO_FRAMEWORK_VERSION_ITEM_NAME			"FRAMEWORK_VERSION"
 
+/** INFO.DEVICE_MODEL_ITEM_NAME property item name.
+ */
+#define INFO_DEVICE_MODEL_ITEM_NAME					"DEVICE_MODEL"
+
+/** INFO.DEVICE_FW_REVISION_ITEM_NAME property item name.
+ */
+#define INFO_DEVICE_FW_REVISION_ITEM_NAME			"DEVICE_FIRMWARE_REVISION"
+
+/** INFO.DEVICE_HW_REVISION_ITEM_NAME property item name.
+ */
+#define INFO_DEVICE_HW_REVISION_ITEM_NAME			"DEVICE_HARDWARE_REVISION"
+
+/** INFO.DEVICE_SERIAL_NUM_ITEM_NAME property item name.
+ */
+#define INFO_DEVICE_SERIAL_NUM_ITEM_NAME			"DEVICE_SERIAL_NUMBER"
+
 //----------------------------------------------------------------------
 /** DEBUG property name.
  */
