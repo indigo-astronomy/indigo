@@ -89,6 +89,10 @@ static indigo_result wheel_attach(indigo_device *device) {
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_CONTEXT->private_data = private_data;
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
+
+		/* Use all info property fields */
+		INFO_PROPERTY->count = 7;
+
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -113,18 +117,47 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (!res) {
+				flidev_t id = PRIVATE_DATA->dev_id;
 				long int num_slots;
+
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				FLIGetFilterCount(PRIVATE_DATA->dev_id, &num_slots);
+
+				FLIGetFilterCount(id, &num_slots);
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = (int)num_slots;
 				FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
 				if (PRIVATE_DATA->target_slot < 0) {
-					FLISetFilterPos(PRIVATE_DATA->dev_id, 0);
+					FLISetFilterPos(id, 0);
 					PRIVATE_DATA->target_slot = 1;
 				} else {
 					PRIVATE_DATA->target_slot++;
 				}
+				res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
+				}
+
+				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
+				}
+
+				long hw_rev, fw_rev;
+				res = FLIGetFWRevision(id, &fw_rev);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
+				}
+
+				res = FLIGetHWRevision(id, &hw_rev);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
+				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+				sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
+				sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
+
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
