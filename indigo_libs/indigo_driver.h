@@ -80,6 +80,22 @@
  */
 #define INFO_DEVICE_INTERFACE_ITEM    (INFO_PROPERTY->items+2)
 
+/** INFO.DEVICE_MODEL property item pointer.
+ */
+#define INFO_DEVICE_MODEL_ITEM         (INFO_PROPERTY->items+3)
+
+/** INFO.DEVICE_FIRMWARE_REVISION property item pointer.
+ */
+#define INFO_DEVICE_FW_REVISION_ITEM   (INFO_PROPERTY->items+4)
+
+/** INFO.DEVICE_HARDWARE_REVISION property item pointer.
+ */
+#define INFO_DEVICE_HW_REVISION_ITEM   (INFO_PROPERTY->items+5)
+
+/** INFO.DEVICE_SERIAL_NUMBER property item pointer.
+ */
+#define INFO_DEVICE_SERIAL_NUM_ITEM    (INFO_PROPERTY->items+6)
+
 /** INFO.FRAMEWORK_NAME property item pointer.
  */
 #define INFO_FRAMEWORK_NAME_ITEM      (INFO_PROPERTY->items+3)
