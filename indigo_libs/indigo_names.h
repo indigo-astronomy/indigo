@@ -424,6 +424,67 @@
  */
 #define WHEEL_SLOT_NAME_9_ITEM_NAME						"SLOT_NAME_9"
 
+/** WHEEL_SLOT_NAME.NAME_10 property item name.
+ */
+#define WHEEL_SLOT_NAME_10_ITEM_NAME						"SLOT_NAME_10"
+
+/** WHEEL_SLOT_NAME.NAME_11 property item name.
+ */
+#define WHEEL_SLOT_NAME_11_ITEM_NAME						"SLOT_NAME_11"
+
+/** WHEEL_SLOT_NAME.NAME_12 property item name.
+ */
+#define WHEEL_SLOT_NAME_12_ITEM_NAME						"SLOT_NAME_12"
+
+/** WHEEL_SLOT_NAME.NAME_3 property item name.
+ */
+#define WHEEL_SLOT_NAME_13_ITEM_NAME						"SLOT_NAME_13"
+
+/** WHEEL_SLOT_NAME.NAME_4 property item name.
+ */
+#define WHEEL_SLOT_NAME_14_ITEM_NAME						"SLOT_NAME_14"
+
+/** WHEEL_SLOT_NAME.NAME_15 property item name.
+ */
+#define WHEEL_SLOT_NAME_15_ITEM_NAME						"SLOT_NAME_15"
+
+/** WHEEL_SLOT_NAME.NAME_16 property item name.
+ */
+#define WHEEL_SLOT_NAME_16_ITEM_NAME						"SLOT_NAME_16"
+
+/** WHEEL_SLOT_NAME.NAME_7 property item name.
+ */
+#define WHEEL_SLOT_NAME_17_ITEM_NAME						"SLOT_NAME_17"
+
+/** WHEEL_SLOT_NAME.NAME_18 property item name.
+ */
+#define WHEEL_SLOT_NAME_18_ITEM_NAME						"SLOT_NAME_18"
+
+/** WHEEL_SLOT_NAME.NAME_19 property item name.
+ */
+#define WHEEL_SLOT_NAME_19_ITEM_NAME						"SLOT_NAME_19"
+
+/** WHEEL_SLOT_NAME.NAME_20 property item name.
+ */
+#define WHEEL_SLOT_NAME_20_ITEM_NAME						"SLOT_NAME_20"
+
+/** WHEEL_SLOT_NAME.NAME_21 property item name.
+ */
+#define WHEEL_SLOT_NAME_21_ITEM_NAME						"SLOT_NAME_21"
+
+/** WHEEL_SLOT_NAME.NAME_22 property item name.
+ */
+#define WHEEL_SLOT_NAME_22_ITEM_NAME						"SLOT_NAME_22"
+
+/** WHEEL_SLOT_NAME.NAME_23 property item name.
+ */
+#define WHEEL_SLOT_NAME_23_ITEM_NAME						"SLOT_NAME_23"
+
+/** WHEEL_SLOT_NAME.NAME_24 property item name.
+ */
+#define WHEEL_SLOT_NAME_24_ITEM_NAME						"SLOT_NAME_24"
+
+
 //----------------------------------------------------------------------
 /** FOCUSER_SPEED property name.
  */
