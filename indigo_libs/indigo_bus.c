@@ -79,8 +79,8 @@ char *indigo_switch_rule_text[] = {
 
 indigo_property INDIGO_ALL_PROPERTIES;
 
-bool indigo_debug_level = true;
-bool indigo_trace_level = true;
+bool indigo_debug_level = false;
+bool indigo_trace_level = false;
 bool indigo_use_syslog = false;
 
 const char **indigo_main_argv = NULL;

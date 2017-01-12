@@ -36,7 +36,7 @@
 
 /** Conditional compilation wrapper for DEBUG log level
  */
-#define INDIGO_DEBUG(c)
+#define INDIGO_DEBUG(c) c
 
 /** Conditional compilation wrapper for ERROR log level
  */
@@ -52,7 +52,7 @@
 
 /** Conditional compilation wrapper for DEBUG log level (for wire protocol adapters)
  */
-#define INDIGO_DEBUG_PROTOCOL(c)
+#define INDIGO_DEBUG_PROTOCOL(c) c
 
 /** Conditional compilation wrapper for TRACE log level (for drivers)
  */
@@ -60,7 +60,7 @@
 
 /** Conditional compilation wrapper for DEBUG log level (for drivers)
  */
-#define INDIGO_DEBUG_DRIVER(c)
+#define INDIGO_DEBUG_DRIVER(c) c
 
 #endif /* indigo_config_h */
 

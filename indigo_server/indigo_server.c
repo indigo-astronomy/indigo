@@ -106,8 +106,6 @@ static void server_callback(int count) {
 	INDIGO_LOG(indigo_log("%d clients", count));
 }
 
-
-
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
 	driver_property = indigo_init_switch_property(NULL, server_device.name, "DRIVERS", "Main", "Active drivers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
