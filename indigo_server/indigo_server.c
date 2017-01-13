@@ -268,8 +268,8 @@ static void server_main(int argc, const char * argv[]) {
 #ifdef INDIGO_MACOS
 	DNSServiceRefDeallocate(sd_indigo);
 	DNSServiceRefDeallocate(sd_http);
-	sleep(1);
 #endif
+	sleep(1);
 	
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
