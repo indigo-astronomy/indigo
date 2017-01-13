@@ -212,7 +212,7 @@ void clean_exit(int signo) {
 	}
 	indigo_detach_device(&server_device);
 	if(signo == SIGHUP) {
-		INDIGO_LOG(indigo_log("Shutdown complete! Starting..."));
+		INDIGO_LOG(indigo_log("Shutdown complete! Starting up..."));
 		exit(RC_RESTART);
 	} else {
 		INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
@@ -315,6 +315,12 @@ int server_main(int argc, const char * argv[]) {
 pid_t server_pid = -1;
 
 void signal_handler(int signo) {
+	if (signo == SIGHUP) {
+		/* if SIGHUP resatart the server */
+		if (server_pid != -1) kill(server_pid, SIGHUP);
+		return;
+	}
+
 	if ((server_pid != -1) &&
 	    (signo != SIGCHLD) &&
 	    (signo != SIGINT)) {
