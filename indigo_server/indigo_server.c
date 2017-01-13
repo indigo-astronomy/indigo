@@ -28,6 +28,9 @@
 #include <signal.h>
 #include <dns_sd.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 
 #include "indigo_bus.h"
 #include "indigo_server_tcp.h"
@@ -51,6 +54,8 @@
 #include "mount_nexstar/indigo_mount_nexstar.h"
 #include "wheel_fli/indigo_wheel_fli.h"
 #endif
+
+#define RC_RESTART         (5)
 
 #define MDNS_INDIGO_TYPE    "_indigo._tcp"
 #define MDNS_HTTP_TYPE      "_http._tcp"
@@ -85,6 +90,7 @@ static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 static bool restart = false;
 
+void clean_exit(int signo);
 static indigo_result attach(indigo_device *device);
 static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -167,9 +173,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		if (restart_property->items[0].sw.value) {
 			restart = true;
 			INDIGO_LOG(indigo_log("Restarting..."));
-			DNSServiceRemoveRecord(sd_indigo, NULL, 0);
-			DNSServiceRemoveRecord(sd_http, NULL, 0);
-			indigo_server_shutdown();
+			clean_exit(SIGHUP);
 		}
 	// --------------------------------------------------------------------------------
 	}
@@ -184,7 +188,7 @@ static indigo_result detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
-void signal_handler(int signo) {
+void clean_exit(int signo) {
 	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
 
 	DNSServiceRefDeallocate(sd_indigo);
@@ -207,20 +211,32 @@ void signal_handler(int signo) {
 			indigo_kill_subprocess(indigo_available_subprocesses[i].executable);
 	}
 	indigo_detach_device(&server_device);
-	INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
-	exit(0);
+	if(signo == SIGHUP) {
+		INDIGO_LOG(indigo_log("Shutdown complete! Starting..."));
+		exit(RC_RESTART);
+	} else {
+		INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
+		exit(0);
+	}
 }
 
+
+#ifdef OSX_GUI_WRAPPED
 int main(int argc, const char * argv[]) {
+#else
+int server_main(int argc, const char * argv[]) {
+#endif
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 
 	indigo_start_usb_event_handler();
-	
-	signal(SIGINT, signal_handler);
-	
+
+	signal(SIGINT, clean_exit);
+	signal(SIGTERM, clean_exit);
+	signal(SIGHUP, clean_exit);
+
 	if (strstr(argv[0], "MacOS"))
 		indigo_use_syslog = true; // embeded into INDIGO Server for macOS
 	
@@ -290,15 +306,60 @@ int main(int argc, const char * argv[]) {
 	indigo_attach_device(&server_device);
 
 	indigo_server_start(server_callback);
-	
-	if (restart) {
-		long maxfd = sysconf(_SC_OPEN_MAX);
-		for(int fd = 3; fd < maxfd; fd++)
-			close(fd);
-		sleep(1);
-		execv(argv[0], (char * const *) argv);
-	}
-	
+
 	return 0;
 }
 
+#ifndef OSX_GUI_WRAPPED
+
+pid_t server_pid = -1;
+
+void signal_handler(int signo) {
+	if ((server_pid != -1) &&
+	    (signo != SIGCHLD) &&
+	    (signo != SIGINT)) {
+			kill(server_pid, SIGINT);
+		}
+	waitpid(server_pid, NULL, 0);
+	exit(0);
+}
+
+int main(int argc, const char * argv[]) {
+
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
+	signal(SIGHUP, signal_handler);
+
+	server_pid = fork();
+	if (server_pid == -1 ) {
+		INDIGO_LOG(indigo_log("Server start failed!"));
+		return EXIT_FAILURE;
+	} else if ( server_pid == 0 ) {
+        server_main(argc,argv);
+    }
+
+	while(1) {
+		int status;
+		if ( waitpid(server_pid, &status, 0) == -1 ) {
+			INDIGO_LOG(indigo_log("waitpid() failed."));
+			return EXIT_FAILURE;
+		}
+		server_pid -1;
+
+		if ( WIFEXITED(status) ) {
+			int rc = WEXITSTATUS(status);
+			if (rc == RC_RESTART) {
+				server_pid = fork();
+				if (server_pid == -1 ) {
+					INDIGO_LOG(indigo_log("Server start failed!"));
+					return EXIT_FAILURE;
+				} else if ( server_pid == 0 ) {
+					server_main(argc,argv);
+				}
+			} else {
+				return rc; /* exit with the exit code of the clild */
+			}
+		}
+	}
+}
+#endif /* Not OSX_GUI_WRAPPED */
