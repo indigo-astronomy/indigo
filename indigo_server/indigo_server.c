@@ -30,7 +30,9 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-
+#ifdef INDIGO_LINUX
+#include <sys/prctl.h>
+#endif
 
 #include "indigo_bus.h"
 #include "indigo_server_tcp.h"
@@ -317,6 +319,9 @@ int main(int argc, const char * argv[]) {
 				INDIGO_LOG(indigo_log("Server start failed!"));
 				return EXIT_FAILURE;
 			} else if (server_pid == 0) {
+#ifdef INDIGO_LINUX
+				prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
+#endif
 				server_main(argc, argv);
 				return EXIT_SUCCESS;
 			} else {
