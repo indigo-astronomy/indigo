@@ -199,7 +199,8 @@ static void server_main(int argc, const char * argv[]) {
 	bool use_control_panel = true;
 	
 	for (int i = 1; i < argc; i++) {
-		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
+		if (!strcmp(argv[i], "--")) {
+		} else if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
 			indigo_server_tcp_port = atoi(argv[i + 1]);
 			i++;
 		} else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators")) {
@@ -303,7 +304,7 @@ static void signal_handler(int signo) {
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	if (strstr(argv[0], "MacOS")) {  // embedded into INDIGO Server for macOS
+	if (strstr(argv[0], "MacOS") || !strcmp(argv[1], "--")) {  // embedded into INDIGO Server for macOS
 		indigo_use_syslog = true;
 		server_main(argc, argv);
 	} else {
