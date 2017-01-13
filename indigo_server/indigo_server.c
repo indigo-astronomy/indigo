@@ -88,9 +88,10 @@ static indigo_property *server_property;
 static indigo_property *restart_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
-static bool restart = false;
 
-void clean_exit(int signo);
+static pid_t server_pid = -1;
+static bool keep_server_running = true;
+
 static indigo_result attach(indigo_device *device);
 static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -171,9 +172,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	// -------------------------------------------------------------------------------- RESTART
 		indigo_property_copy_values(restart_property, property, false);
 		if (restart_property->items[0].sw.value) {
-			restart = true;
 			INDIGO_LOG(indigo_log("Restarting..."));
-			clean_exit(SIGHUP);
+			indigo_server_shutdown();
 		}
 	// --------------------------------------------------------------------------------
 	}
@@ -188,57 +188,10 @@ static indigo_result detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
-void clean_exit(int signo) {
-	INDIGO_LOG(indigo_log("Signal %d received. Shutting down!", signo));
-
-	DNSServiceRefDeallocate(sd_indigo);
-	DNSServiceRefDeallocate(sd_http);
-
-	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
-		if (indigo_available_drivers[i].driver) {
-			if (indigo_available_drivers[i].dl_handle != NULL)
-				indigo_unload_driver(indigo_available_drivers[i].name);
-			else
-				indigo_remove_driver(indigo_available_drivers[i].driver);
-		}
-	}
-	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
-		if (indigo_available_servers[i].thread_started)
-			indigo_disconnect_server(indigo_available_servers[i].host, indigo_available_servers[i].port);
-	}
-	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
-		if (indigo_available_subprocesses[i].thread_started)
-			indigo_kill_subprocess(indigo_available_subprocesses[i].executable);
-	}
-	indigo_detach_device(&server_device);
-	if(signo == SIGHUP) {
-		INDIGO_LOG(indigo_log("Shutdown complete! Starting up..."));
-		exit(RC_RESTART);
-	} else {
-		INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
-		exit(0);
-	}
-}
-
-
-#ifdef OSX_GUI_WRAPPED
-int main(int argc, const char * argv[]) {
-#else
-int server_main(int argc, const char * argv[]) {
-#endif
-	indigo_main_argc = argc;
-	indigo_main_argv = argv;
-
+static void server_main(int argc, const char * argv[]) {
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 
 	indigo_start_usb_event_handler();
-
-	signal(SIGINT, clean_exit);
-	signal(SIGTERM, clean_exit);
-	signal(SIGHUP, clean_exit);
-
-	if (strstr(argv[0], "MacOS"))
-		indigo_use_syslog = true; // embeded into INDIGO Server for macOS
 	
 	indigo_start();
 
@@ -295,14 +248,12 @@ int server_main(int argc, const char * argv[]) {
 		char hostname[INDIGO_NAME_SIZE], servicename[INDIGO_NAME_SIZE];
 		gethostname(hostname, sizeof(hostname));
 		snprintf(servicename, INDIGO_NAME_SIZE, "%s (%d)", hostname, indigo_server_tcp_port);
-
 		/* quick ugly HACK */
 		int i = 0;
 		while (hostname[i] != 0) {
 			if (hostname[i]=='\'') hostname[i]=' '; /* remove ' from name - breaks XML */
 			i++;
 		}
-
 		snprintf(server_device.name, INDIGO_NAME_SIZE, "Server %s (%d)", hostname, indigo_server_tcp_port);
 		DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 		DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
@@ -312,68 +263,71 @@ int server_main(int argc, const char * argv[]) {
 	}
 
 	indigo_attach_device(&server_device);
-
 	indigo_server_start(server_callback);
 
-	return 0;
+#ifdef INDIGO_MACOS
+	DNSServiceRefDeallocate(sd_indigo);
+	DNSServiceRefDeallocate(sd_http);
+	sleep(1);
+#endif
+	
+	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
+		if (indigo_available_drivers[i].driver) {
+			if (indigo_available_drivers[i].dl_handle != NULL)
+				indigo_unload_driver(indigo_available_drivers[i].name);
+			else
+				indigo_remove_driver(indigo_available_drivers[i].driver);
+		}
+	}
+	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
+		if (indigo_available_servers[i].thread_started)
+			indigo_disconnect_server(indigo_available_servers[i].host, indigo_available_servers[i].port);
+	}
+	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
+		if (indigo_available_subprocesses[i].thread_started)
+			indigo_kill_subprocess(indigo_available_subprocesses[i].executable);
+	}
+	indigo_detach_device(&server_device);
 }
 
-#ifndef OSX_GUI_WRAPPED
-
-pid_t server_pid = -1;
-
 void signal_handler(int signo) {
-	if (signo == SIGHUP) {
-		/* if SIGHUP resatart the server */
-		if (server_pid != -1) kill(server_pid, SIGHUP);
-		return;
+	keep_server_running = signo == SIGHUP;
+	if (server_pid == 0) {
+		indigo_server_shutdown();
+	} else {
+		INDIGO_LOG(indigo_log("Signal %d received...", signo));
+		kill(server_pid, SIGINT);
 	}
-
-	if ((server_pid != -1) &&
-	    (signo != SIGCHLD) &&
-	    (signo != SIGINT)) {
-			kill(server_pid, SIGINT);
-		}
-	waitpid(server_pid, NULL, 0);
-	exit(0);
 }
 
 int main(int argc, const char * argv[]) {
-
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-	signal(SIGHUP, signal_handler);
-
-	server_pid = fork();
-	if (server_pid == -1 ) {
-		INDIGO_LOG(indigo_log("Server start failed!"));
-		return EXIT_FAILURE;
-	} else if ( server_pid == 0 ) {
-        server_main(argc,argv);
-    }
-
-	while(1) {
-		int status;
-		if ( waitpid(server_pid, &status, 0) == -1 ) {
-			INDIGO_LOG(indigo_log("waitpid() failed."));
-			return EXIT_FAILURE;
-		}
-		server_pid = -1;
-
-		if ( WIFEXITED(status) ) {
-			int rc = WEXITSTATUS(status);
-			if (rc == RC_RESTART) {
-				server_pid = fork();
-				if (server_pid == -1 ) {
-					INDIGO_LOG(indigo_log("Server start failed!"));
-					return EXIT_FAILURE;
-				} else if ( server_pid == 0 ) {
-					server_main(argc,argv);
-				}
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	if (strstr(argv[0], "MacOS")) {  // embedded into INDIGO Server for macOS
+		indigo_use_syslog = true;
+		server_main(argc, argv);
+	} else {
+		signal(SIGINT, signal_handler);
+		signal(SIGTERM, signal_handler);
+		signal(SIGHUP, signal_handler);
+		while(keep_server_running) {
+			server_pid = fork();
+			if (server_pid == -1) {
+				INDIGO_LOG(indigo_log("Server start failed!"));
+				return EXIT_FAILURE;
+			} else if (server_pid == 0) {
+				server_main(argc, argv);
+				return EXIT_SUCCESS;
 			} else {
-				return rc; /* exit with the exit code of the clild */
+				if (waitpid(server_pid, NULL, 0) == -1 ) {
+					INDIGO_LOG(indigo_log("waitpid() failed."));
+					return EXIT_FAILURE;
+				}
+				if (keep_server_running) {
+					INDIGO_LOG(indigo_log("Shutdown complete! Starting up..."));
+				}
 			}
 		}
 	}
+	INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 }
-#endif /* Not OSX_GUI_WRAPPED */
