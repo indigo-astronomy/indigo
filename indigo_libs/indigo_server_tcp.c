@@ -207,8 +207,10 @@ static void start_worker_thread(int *client_socket) {
 }
 
 void indigo_server_shutdown() {
+	INDIGO_LOG(indigo_log("Shutdown initiated"));
 	shutdown_initiated = true;
 	close(server_socket);
+	kill(getpid(), SIGUSR1);
 }
 
 void indigo_server_add_resource(char *path, unsigned char *data, unsigned length, char *content_type) {
