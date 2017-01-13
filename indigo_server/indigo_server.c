@@ -295,6 +295,14 @@ int server_main(int argc, const char * argv[]) {
 		char hostname[INDIGO_NAME_SIZE], servicename[INDIGO_NAME_SIZE];
 		gethostname(hostname, sizeof(hostname));
 		snprintf(servicename, INDIGO_NAME_SIZE, "%s (%d)", hostname, indigo_server_tcp_port);
+
+		/* quick ugly HACK */
+		int i = 0;
+		while (hostname[i] != 0) {
+			if (hostname[i]=='\'') hostname[i]=' '; /* remove ' from name - breaks XML */
+			i++;
+		}
+
 		snprintf(server_device.name, INDIGO_NAME_SIZE, "Server %s (%d)", hostname, indigo_server_tcp_port);
 		DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 		DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
@@ -350,7 +358,7 @@ int main(int argc, const char * argv[]) {
 			INDIGO_LOG(indigo_log("waitpid() failed."));
 			return EXIT_FAILURE;
 		}
-		server_pid -1;
+		server_pid = -1;
 
 		if ( WIFEXITED(status) ) {
 			int rc = WEXITSTATUS(status);
