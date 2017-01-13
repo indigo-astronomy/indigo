@@ -210,7 +210,7 @@ void indigo_server_shutdown() {
 	INDIGO_LOG(indigo_log("Shutdown initiated"));
 	shutdown_initiated = true;
 	close(server_socket);
-	kill(getpid(), SIGUSR1);
+	raise(SIGUSR1);
 }
 
 void indigo_server_add_resource(char *path, unsigned char *data, unsigned length, char *content_type) {
@@ -224,8 +224,13 @@ void indigo_server_add_resource(char *path, unsigned char *data, unsigned length
 	resources = resource;
 }
 
+static void signal_handler(int signo) {
+	
+}
+
 indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 	server_callback = callback;
+	signal(SIGUSR1, signal_handler);
 	int client_socket;
 	int reuse = 1;
 	struct sockaddr_in client_name;
