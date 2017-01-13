@@ -290,8 +290,8 @@ static void server_main(int argc, const char * argv[]) {
 	indigo_detach_device(&server_device);
 }
 
-void signal_handler(int signo) {
-	keep_server_running = signo == SIGHUP;
+static void signal_handler(int signo) {
+	keep_server_running = (signo == SIGHUP);
 	if (server_pid == 0) {
 		indigo_server_shutdown();
 	} else {
