@@ -1058,6 +1058,9 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	char q = '"';
 	int depth = 0;
 	char c = 0;
+	char entity_buffer[8];
+	char *entity_pointer = NULL;
+	bool is_escaped = false;
 	/* (void)parser_state_name; */
 	
 	parser_handler handler = top_level_handler;
@@ -1104,6 +1107,35 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 			buffer_end = buffer + count;
 			buffer[count] = 0;
 			INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
+		}
+		if (c == '&') {
+			entity_pointer = entity_buffer;
+			continue;
+		}
+		if (entity_pointer != NULL) {
+			if (c == ';') {
+				*entity_pointer++ = 0;
+				if (!strcmp(entity_buffer, "amp"))
+					c = '&';
+				else if (!strcmp(entity_buffer, "lt"))
+					c = '<';
+				else if (!strcmp(entity_buffer, "gt"))
+					c = '>';
+				else if (!strcmp(entity_buffer, "quot"))
+					c = '"';
+				else if (!strcmp(entity_buffer, "apos"))
+					c = '\'';
+				entity_pointer = NULL;
+				is_escaped = true;
+			} else if (isalpha(c) && entity_pointer - entity_buffer < sizeof(entity_buffer)) {
+				*entity_pointer++ = c;
+				continue;
+			} else {
+				INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: invalid entity '&%s%c...'", entity_buffer, c));
+				continue;
+			}
+		} else {
+			is_escaped = false;
 		}
 		switch (state) {
 			case IDLE:
@@ -1201,7 +1233,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 				}
 				break;
 			case TEXT:
-				if (c == '<') {
+				if (c == '<' && !is_escaped) {
 					if (depth == 2) {
 						*value_pointer-- = 0;
 						while (value_pointer >= value_buffer && isspace(*value_pointer))
@@ -1366,7 +1398,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 				}
 				break;
 			case ATTRIBUTE_VALUE:
-				if (c == q) {
+				if (c == q && !is_escaped) {
 					*value_pointer = 0;
 					state = ATTRIBUTE_NAME1;
 					handler = handler(ATTRIBUTE_VALUE, &context, name_buffer, value_buffer, message);
@@ -1418,3 +1450,56 @@ exit_loop:
 	indigo_log("XML Parser: parser finished");
 }
 
+char *indigo_xml_escape(char *string) {
+	if (strpbrk(string, "%<>\"'")) {
+		static char buffers[5][INDIGO_VALUE_SIZE];
+		static int	buffer_index = 0;
+		char *buffer = buffers[buffer_index = (buffer_index + 1) % 5];
+		char *in = string;
+		char *out = buffer;
+		char c;
+		
+		while ((c = *in++) && out - buffer < INDIGO_VALUE_SIZE) {
+			switch (c) {
+				case '&':
+					*out++ = '&';
+					*out++ = 'a';
+					*out++ = 'm';
+					*out++ = 'p';
+					*out++ = ';';
+					break;
+				case '<':
+					*out++ = '&';
+					*out++ = 'l';
+					*out++ = 't';
+					*out++ = ';';
+					break;
+				case '>':
+					*out++ = '&';
+					*out++ = 'g';
+					*out++ = 't';
+					*out++ = ';';
+					break;
+				case '"':
+					*out++ = '&';
+					*out++ = 'l';
+					*out++ = 't';
+					*out++ = ';';
+					break;
+				case '\'':
+					*out++ = '&';
+					*out++ = 'a';
+					*out++ = 'p';
+					*out++ = 'o';
+					*out++ = 's';
+					*out++ = ';';
+					break;
+				default:
+					*out++ = c;
+			}
+		}
+		*out = 0;
+		return buffer;
+	}
+	return string;
+}
