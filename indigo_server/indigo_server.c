@@ -301,9 +301,10 @@ static void signal_handler(int signo) {
 int main(int argc, const char * argv[]) {
 	char const *server_argv[argc];
 	int server_argc = 1;
+	bool do_fork = true;
 	server_argv[0] = argv[0];
-	indigo_use_syslog = strstr(argv[0], "MacOS");
-	bool do_fork = !strstr(argv[0], "MacOS");
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--") || !strcmp(argv[i], "--do-not-fork")) {
 			do_fork = false;
@@ -317,8 +318,6 @@ int main(int argc, const char * argv[]) {
 			server_argv[server_argc++] = argv[i];
 		}
 	}
-	indigo_main_argc = server_argc;
-	indigo_main_argv = server_argv;
 	if (do_fork) {
 		signal(SIGINT, signal_handler);
 		signal(SIGTERM, signal_handler);
