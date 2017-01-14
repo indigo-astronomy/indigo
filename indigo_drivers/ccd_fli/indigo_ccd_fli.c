@@ -471,7 +471,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		indigo_init_number_item(FLI_RBI_FLUSH_EXPOSURE_ITEM, "EXOSURE", "NIR Flood time (s)", MIN_NIR_FLOOD, MAX_NIR_FLOOD, 1, DEFAULT_NIR_FLOOD);
 		indigo_init_number_item(FLI_RBI_FLUSH_COUNT_ITEM, "COUNT", "Count of flushes", MIN_FLUSH_COUNT, MAX_FLUSH_COUNT, 1, DEFAULT_FLUSH_COUNT);
-		// --------------------------------------------------------------------------------
+		// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
+		FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", FLI_ADVANCED_GROUP, "Camera mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
+				if (FLI_CAMERA_MODE_PROPERTY == NULL)
+				return INDIGO_FAILED;
+				/* will be populated on connect */
+		//---------------------------------------------------------------------------------
 
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -555,10 +560,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_define_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
 
 				// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
-				FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", FLI_ADVANCED_GROUP, "Camera mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
-				if (FLI_CAMERA_MODE_PROPERTY == NULL)
-				return INDIGO_FAILED;
-
 				flimode_t current_mode;
 				int i;
 				char mode_name[INDIGO_NAME_SIZE];
