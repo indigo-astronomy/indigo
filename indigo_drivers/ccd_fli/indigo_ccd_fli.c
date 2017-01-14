@@ -48,10 +48,20 @@
 #define MIN_CCD_TEMP        -55     /* Min CCD temperature */
 #define MAX_X_BIN            16     /* Max Horizontal binning */
 #define MAX_Y_BIN            16     /* Max Vertical binning */
+
 #define DEFAULT_BPP          16     /* Default bits per pixel */
+
 #define MIN_N_FLUSHES         0     /* Min number of array flushes before exposure */
 #define MAX_N_FLUSHES        16     /* Max number of array flushes before exposure */
 #define DEFAULT_N_FLUSHES     1     /* Default number of array flushes before exposure */
+
+#define MIN_NIR_FLOOD         0     /* Min seconds to flood the frame with NIR light */
+#define MAX_NIR_FLOOD        16     /* Max seconds to flood the frame with NIR light */
+#define DEFAULT_NIR_FLOOD     2     /* Default seconds to flood the frame with NIR light */
+
+#define MIN_FLUSH_COUNT       1     /* Min flushes after flood */
+#define MAX_FLUSH_COUNT      16     /* Max flushes after flood */
+#define DEFAULT_FLUSH_COUNT   3     /* Default flushes after flood */
 
 #define MAX_PATH            255     /* Maximal Path Length */
 
@@ -61,11 +71,25 @@
 
 #define FLI_VENDOR_ID              0x0f18
 
+#define MAX_MODES                  32
+
 #undef PRIVATE_DATA
 #define PRIVATE_DATA               ((fli_private_data *)DEVICE_CONTEXT->private_data)
 
-#define FLI_NFLUSHES_PROPERTY        (PRIVATE_DATA->fli_nflushes_property)
-#define FLI_NFLUSHES_PROPERTY_ITEM   (FLI_NFLUSHES_PROPERTY->items + 0)
+#define FLI_ADVANCED_GROUP              "Advanced"
+
+#define FLI_NFLUSHES_PROPERTY           (PRIVATE_DATA->fli_nflushes_property)
+#define FLI_NFLUSHES_PROPERTY_ITEM      (FLI_NFLUSHES_PROPERTY->items + 0)
+
+#define FLI_RBI_FLUSH_PROPERTY          (PRIVATE_DATA->fli_rbi_flush_property)
+#define FLI_RBI_FLUSH_EXPOSURE_ITEM     (FLI_RBI_FLUSH_PROPERTY->items + 0)
+#define FLI_RBI_FLUSH_COUNT_ITEM        (FLI_RBI_FLUSH_PROPERTY->items + 1)
+
+#define FLI_RBI_FLUSH_ENABLE_PROPERTY   (PRIVATE_DATA->fli_rbi_flush_enable_property)
+#define FLI_RBI_FLUSH_ENABLED_ITEM      (FLI_RBI_FLUSH_ENABLE_PROPERTY->items + 0)
+#define FLI_RBI_FLUSH_DISABLED_ITEM     (FLI_RBI_FLUSH_ENABLE_PROPERTY->items + 1)
+
+#define FLI_CAMERA_MODE_PROPERTY        (PRIVATE_DATA->fli_camera_mode_property)
 
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
@@ -91,6 +115,7 @@ typedef struct {
 	char dev_file_name[MAX_PATH];
 	char dev_name[MAX_PATH];
 	flidomain_t domain;
+	bool rbi_flood_supported;
 
 	int count_open;
 	indigo_timer *exposure_timer, *temperature_timer;
@@ -104,6 +129,9 @@ typedef struct {
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature;
 	indigo_property *fli_nflushes_property;
+	indigo_property *fli_rbi_flush_enable_property;
+	indigo_property *fli_rbi_flush_property;
+	indigo_property *fli_camera_mode_property;
 } fli_private_data;
 
 
@@ -111,6 +139,12 @@ static indigo_result fli_enumerate_properties(indigo_device *device, indigo_clie
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property))
 			indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL);
+		if (indigo_property_match(FLI_RBI_FLUSH_ENABLE_PROPERTY, property))
+			indigo_define_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
+		if (indigo_property_match(FLI_RBI_FLUSH_PROPERTY, property))
+			indigo_define_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
+		if (indigo_property_match(FLI_CAMERA_MODE_PROPERTY, property))
+			indigo_define_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -128,7 +162,7 @@ static bool fli_open(indigo_device *device) {
 		return false;
 	}
 
-	res = FLIGetArrayArea(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->total_area.ul_x), &(PRIVATE_DATA->total_area.ul_y), &(PRIVATE_DATA->total_area.lr_x), &(PRIVATE_DATA->total_area.lr_y));
+	res = FLIGetArrayArea(id, &(PRIVATE_DATA->total_area.ul_x), &(PRIVATE_DATA->total_area.ul_y), &(PRIVATE_DATA->total_area.lr_x), &(PRIVATE_DATA->total_area.lr_y));
 	if (res) {
 		FLIClose(id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -136,12 +170,19 @@ static bool fli_open(indigo_device *device) {
 		return false;
 	}
 
-	res = FLIGetVisibleArea(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->visible_area.ul_x), &(PRIVATE_DATA->visible_area.ul_y), &(PRIVATE_DATA->visible_area.lr_x), &(PRIVATE_DATA->visible_area.lr_y));
+	res = FLIGetVisibleArea(id, &(PRIVATE_DATA->visible_area.ul_x), &(PRIVATE_DATA->visible_area.ul_y), &(PRIVATE_DATA->visible_area.lr_x), &(PRIVATE_DATA->visible_area.lr_y));
 	if (res) {
 		FLIClose(id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetVisibleArea(%d) = %d", id, res));
 		return false;
+	}
+
+	res = FLISetFrameType(id, FLI_FRAME_TYPE_RBI_FLUSH);
+	if (res) {
+		PRIVATE_DATA->rbi_flood_supported = false;
+	} else {
+		PRIVATE_DATA->rbi_flood_supported = true;
 	}
 
 	long height = PRIVATE_DATA->total_area.lr_y - PRIVATE_DATA->total_area.ul_y;
@@ -409,11 +450,27 @@ static indigo_result ccd_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 7;
 
 		// -------------------------------------------------------------------------------- FLI_NFLUSHES
-		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", CCD_MAIN_GROUP, "Flush CCD", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", FLI_ADVANCED_GROUP, "Flush CCD", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 		if (FLI_NFLUSHES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "FLI_NFLUSHES", "Times (before exposure)", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
+
+		// -------------------------------------------------------------------------------- FLI_RBI_FLUSH_ENABLE
+		FLI_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_RBI_FLUSH_ENABLE", FLI_ADVANCED_GROUP, "RBI Flush", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (FLI_RBI_FLUSH_ENABLE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(FLI_RBI_FLUSH_ENABLED_ITEM, "ENABLED", "Enabled", false);
+		indigo_init_switch_item(FLI_RBI_FLUSH_DISABLED_ITEM, "DISABLED", "Disabled", true);
+
+		// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
+		FLI_RBI_FLUSH_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_RBI_FLUSH", FLI_ADVANCED_GROUP, "CCD RBI Flush params", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+		if (FLI_RBI_FLUSH_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_number_item(FLI_RBI_FLUSH_EXPOSURE_ITEM, "EXOSURE", "NIR Flood time (s)", MIN_NIR_FLOOD, MAX_NIR_FLOOD, 1, DEFAULT_NIR_FLOOD);
+		indigo_init_number_item(FLI_RBI_FLUSH_COUNT_ITEM, "COUNT", "Count of flushes", MIN_FLUSH_COUNT, MAX_FLUSH_COUNT, 1, DEFAULT_FLUSH_COUNT);
 		// --------------------------------------------------------------------------------
 
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -444,6 +501,32 @@ static bool handle_nflushes_property(indigo_device *device, indigo_property *pro
 }
 
 
+static bool handle_camera_mode_property(indigo_device *device, indigo_property *property) {
+	int id = PRIVATE_DATA->dev_id;
+	int mode;
+
+	for (mode = 0; mode < FLI_CAMERA_MODE_PROPERTY->count; mode++) {
+		if ((FLI_CAMERA_MODE_PROPERTY->items + mode)->sw.value) break;
+	}
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	long res = FLISetCameraMode(id, mode);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+	if (res) {
+		INDIGO_LOG(indigo_log("indigo_ccd_fli:FLISetCameraMode(%d) = %d", id, res));
+		FLI_CAMERA_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, "Can not set camera mode %d", mode);
+		return false;
+	}
+
+	FLI_CAMERA_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, "Camera mode set to %d", mode);
+
+	return true;
+}
+
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(device->device_context != NULL);
@@ -455,10 +538,47 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (fli_open(device)) {
 				flidev_t id = PRIVATE_DATA->dev_id;
+				long res;
 
 				CCD_MODE_PROPERTY->hidden = true;
 
+				if(PRIVATE_DATA->rbi_flood_supported) {
+					FLI_RBI_FLUSH_PROPERTY->hidden = false;
+					FLI_RBI_FLUSH_ENABLE_PROPERTY->hidden = false;
+				} else {
+					FLI_RBI_FLUSH_PROPERTY->hidden = true;
+					FLI_RBI_FLUSH_ENABLE_PROPERTY->hidden = true;
+				}
+
 				indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL);
+				indigo_define_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
+				indigo_define_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
+
+				// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
+				FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", FLI_ADVANCED_GROUP, "Camera mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
+				if (FLI_CAMERA_MODE_PROPERTY == NULL)
+				return INDIGO_FAILED;
+
+				flimode_t current_mode;
+				int i;
+				char mode_name[INDIGO_NAME_SIZE];
+
+				res = FLIGetCameraMode(id, &current_mode);
+				if (res) {
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetCameraMode(%d) = %d", id, res));
+				}
+				res = FLIGetCameraModeString(id, 0, mode_name, INDIGO_NAME_SIZE); /* check if we have at leaste one camera mode */
+				if (res == 0) {
+					for (i = 0; i < MAX_MODES; i++) {  /* populate property with camera modes */
+						res = FLIGetCameraModeString(id, i, mode_name, INDIGO_NAME_SIZE);
+						INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %d, %d => %s", id, res, i, mode_name));
+						if (res) break;
+						indigo_init_switch_item(FLI_CAMERA_MODE_PROPERTY->items + i, mode_name, mode_name, (i == current_mode));
+					}
+					FLI_CAMERA_MODE_PROPERTY = indigo_resize_property(FLI_CAMERA_MODE_PROPERTY, i);
+				}
+
+				indigo_define_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
 
 				CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->visible_area.lr_x - PRIVATE_DATA->visible_area.ul_x;
 				CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->visible_area.lr_y - PRIVATE_DATA->visible_area.ul_y;
@@ -467,7 +587,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				double size_x, size_y;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				long res = FLIGetPixelSize(id, &size_x, &size_y);
+				res = FLIGetPixelSize(id, &size_x, &size_y);
 				if (res) {
 					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
 				}
@@ -547,6 +667,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 			indigo_delete_property(device, FLI_NFLUSHES_PROPERTY, NULL);
+			indigo_delete_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
+			indigo_delete_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
+			indigo_delete_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
 			fli_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -590,6 +713,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			handle_nflushes_property(device, property);
 		}
+	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH_ENABLE
+	} else if (indigo_property_match(FLI_RBI_FLUSH_ENABLE_PROPERTY, property)) {
+		indigo_property_copy_values(FLI_RBI_FLUSH_ENABLE_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			//handle_nflushes_property(device, property);
+		}
+	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
+	} else if (indigo_property_match(FLI_RBI_FLUSH_PROPERTY, property)) {
+		indigo_property_copy_values(FLI_RBI_FLUSH_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			//handle_nflushes_property(device, property);
+		}
+	// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
+	} else if (indigo_property_match(FLI_CAMERA_MODE_PROPERTY, property)) {
+		indigo_property_copy_values(FLI_CAMERA_MODE_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			handle_camera_mode_property(device, property);
+		}
 	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
@@ -623,6 +764,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, FLI_NFLUSHES_PROPERTY);
+			indigo_save_property(device, NULL, FLI_RBI_FLUSH_ENABLE_PROPERTY);
+			indigo_save_property(device, NULL, FLI_RBI_FLUSH_PROPERTY);
+			indigo_save_property(device, NULL, FLI_CAMERA_MODE_PROPERTY);
 		}
 	}
 	// -----------------------------------------------------------------------------
@@ -638,6 +782,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	INDIGO_LOG(indigo_log("indigo_ccd_fli: '%s' detached.", device->name));
 
 	indigo_release_property(FLI_NFLUSHES_PROPERTY);
+	indigo_release_property(FLI_RBI_FLUSH_ENABLE_PROPERTY);
+	indigo_release_property(FLI_RBI_FLUSH_PROPERTY);
+	indigo_release_property(FLI_CAMERA_MODE_PROPERTY);
 
 	return indigo_ccd_detach(device);
 }
