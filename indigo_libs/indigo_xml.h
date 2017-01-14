@@ -33,5 +33,9 @@
  */
 extern void indigo_xml_parse(indigo_device *device, indigo_client *client);
 
+/** Escape XML string.
+ */
+extern char *indigo_xml_escape(char *string);
+
 #endif /* indigo_xml_h */
 
