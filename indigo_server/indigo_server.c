@@ -201,8 +201,7 @@ static void server_main(int argc, const char * argv[]) {
 	bool use_control_panel = true;
 	
 	for (int i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "--")) {
-		} else if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
+		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
 			indigo_server_tcp_port = atoi(argv[i + 1]);
 			i++;
 		} else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators")) {
@@ -223,16 +222,12 @@ static void server_main(int argc, const char * argv[]) {
 			strncpy(executable, argv[i + 1], INDIGO_NAME_SIZE);
 			indigo_start_subprocess(executable);
 			i++;
-		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-			printf("\n%s [-h|--help]\n\n", argv[0]);
-			printf("\n%s [-s|--enable-simulators] [-p|--port port] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-debug] [-vv|--enable-debug] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n\n", argv[0]);
-			exit(0);
 		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-trace")) {
 			indigo_trace_level = true;
 		} else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--enable-debug")) {
 			indigo_debug_level = true;
-		} else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--enable-debug")) {
-			indigo_debug_level = true;
+		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-trace")) {
+			indigo_trace_level = true;
 		} else if (!strcmp(argv[i], "-b-") || !strcmp(argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
 		} else if (!strcmp(argv[i], "-c-") || !strcmp(argv[i], "--disable-control-panel")) {
@@ -295,6 +290,7 @@ static void server_main(int argc, const char * argv[]) {
 static void signal_handler(int signo) {
 	keep_server_running = (signo == SIGHUP);
 	if (server_pid == 0) {
+		INDIGO_LOG(indigo_log("Shutdown initiated...", signo));
 		indigo_server_shutdown();
 	} else {
 		INDIGO_LOG(indigo_log("Signal %d received...", signo));
@@ -303,12 +299,27 @@ static void signal_handler(int signo) {
 }
 
 int main(int argc, const char * argv[]) {
-	indigo_main_argc = argc;
-	indigo_main_argv = argv;
-	if (strstr(argv[0], "MacOS") || !strcmp(argv[1], "--")) {  // embedded into INDIGO Server for macOS
-		indigo_use_syslog = true;
-		server_main(argc, argv);
-	} else {
+	char const *server_argv[argc];
+	int server_argc = 1;
+	server_argv[0] = argv[0];
+	indigo_use_syslog = strstr(argv[0], "MacOS");
+	bool do_fork = !strstr(argv[0], "MacOS");
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--") || !strcmp(argv[i], "--do-not-fork")) {
+			do_fork = false;
+		} else if (!strcmp(argv[i], "-l") || !strcmp(argv[i], "--use-syslog")) {
+			indigo_use_syslog = true;
+		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+			printf("%s [-h|--help]\n", argv[0]);
+			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-debug] [-vv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			return 0;
+		} else {
+			server_argv[server_argc++] = argv[i];
+		}
+	}
+	indigo_main_argc = server_argc;
+	indigo_main_argv = server_argv;
+	if (do_fork) {
 		signal(SIGINT, signal_handler);
 		signal(SIGTERM, signal_handler);
 		signal(SIGHUP, signal_handler);
@@ -321,7 +332,7 @@ int main(int argc, const char * argv[]) {
 #ifdef INDIGO_LINUX
 				prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
 #endif
-				server_main(argc, argv);
+				server_main(server_argc, server_argv);
 				return EXIT_SUCCESS;
 			} else {
 				if (waitpid(server_pid, NULL, 0) == -1 ) {
@@ -334,6 +345,8 @@ int main(int argc, const char * argv[]) {
 				}
 			}
 		}
+		INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
+	} else {
+		server_main(server_argc, server_argv);
 	}
-	INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 }
