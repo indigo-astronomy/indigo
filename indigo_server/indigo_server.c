@@ -57,8 +57,6 @@
 #include "wheel_fli/indigo_wheel_fli.h"
 #endif
 
-#define RC_RESTART         (5)
-
 #define MDNS_INDIGO_TYPE    "_indigo._tcp"
 #define MDNS_HTTP_TYPE      "_http._tcp"
 #define SERVER_NAME         "INDIGO Server"
@@ -91,7 +89,7 @@ static indigo_property *restart_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 
-static pid_t server_pid = -1;
+static pid_t server_pid = 0;
 static bool keep_server_running = true;
 
 static indigo_result attach(indigo_device *device);
@@ -318,10 +316,10 @@ int main(int argc, const char * argv[]) {
 			server_argv[server_argc++] = argv[i];
 		}
 	}
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
+	signal(SIGHUP, signal_handler);
 	if (do_fork) {
-		signal(SIGINT, signal_handler);
-		signal(SIGTERM, signal_handler);
-		signal(SIGHUP, signal_handler);
 		while(keep_server_running) {
 			server_pid = fork();
 			if (server_pid == -1) {

@@ -42,7 +42,7 @@ func serverCallback(count: Int32) {
 			NSLog("Failed to remove server job! \(error)")
 		}
 		if let executable = Bundle.main.path(forAuxiliaryExecutable: "indigo_server") {
-			let arguments: [String] = [ executable, "-s" ]
+			let arguments: [String] = [ executable, "--", "-l", "-s" ]
 			let plist: [String:Any] = [ "Label": serverId, "KeepAlive": true, "Program": executable, "ProgramArguments": arguments]
 			if SMJobSubmit(kSMDomainUserLaunchd, plist as CFDictionary, nil, &error) {				
 				NSLog("Server job was successfully installed!")
