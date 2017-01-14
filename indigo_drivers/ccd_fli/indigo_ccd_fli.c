@@ -571,7 +571,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (res == 0) {
 					for (i = 0; i < MAX_MODES; i++) {  /* populate property with camera modes */
 						res = FLIGetCameraModeString(id, i, mode_name, INDIGO_NAME_SIZE);
-						INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %d, %d => %s", id, res, i, mode_name));
 						if (res) break;
 						indigo_init_switch_item(FLI_CAMERA_MODE_PROPERTY->items + i, mode_name, mode_name, (i == current_mode));
 					}
