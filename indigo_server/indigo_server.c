@@ -91,6 +91,7 @@ static DNSServiceRef sd_indigo;
 
 static pid_t server_pid = 0;
 static bool keep_server_running = true;
+static bool use_sigkill = false;
 
 static indigo_result attach(indigo_device *device);
 static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -286,7 +287,11 @@ static void signal_handler(int signo) {
 		indigo_server_shutdown();
 	} else {
 		INDIGO_LOG(indigo_log("Signal %d received...", signo));
-		kill(server_pid, SIGINT);
+		if (use_sigkill)
+			kill(server_pid, SIGKILL);
+		else
+			kill(server_pid, SIGINT);
+		use_sigkill = true;
 	}
 }
 
@@ -330,6 +335,7 @@ int main(int argc, const char * argv[]) {
 					INDIGO_LOG(indigo_log("waitpid() failed."));
 					return EXIT_FAILURE;
 				}
+				use_sigkill = false;
 				if (keep_server_running) {
 					INDIGO_LOG(indigo_log("Shutdown complete! Starting up..."));
 					sleep(2);
