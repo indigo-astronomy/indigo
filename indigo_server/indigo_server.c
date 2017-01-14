@@ -272,7 +272,6 @@ static void server_main(int argc, const char * argv[]) {
 	DNSServiceRefDeallocate(sd_indigo);
 	DNSServiceRefDeallocate(sd_http);
 #endif
-	sleep(1);
 	
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
@@ -331,6 +330,7 @@ int main(int argc, const char * argv[]) {
 				}
 				if (keep_server_running) {
 					INDIGO_LOG(indigo_log("Shutdown complete! Starting up..."));
+					sleep(2);
 				}
 			}
 		}
