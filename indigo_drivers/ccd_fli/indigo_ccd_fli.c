@@ -531,6 +531,30 @@ static bool handle_camera_mode_property(indigo_device *device, indigo_property *
 	return true;
 }
 
+static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
+	if (fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
+	                           CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
+	                           CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value)) {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		} else {
+			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		}
+		if (CCD_EXPOSURE_ITEM->number.target > 4)
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+		else {
+			PRIVATE_DATA->can_check_temperature = false;
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+		}
+	} else {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed.");
+	}
+}
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -676,28 +700,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-
-		if (fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
-		                           CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-		                           CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value)) {
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
-				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-			} else {
-				CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-			}
-			if (CCD_EXPOSURE_ITEM->number.target > 4)
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
-			else {
-				PRIVATE_DATA->can_check_temperature = false;
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
-			}
-		} else {
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed.");
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			handle_exposure_property(device, property);
 		}
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
