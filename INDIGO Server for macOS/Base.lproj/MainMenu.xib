@@ -16,6 +16,7 @@
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
         <customObject id="Voe-Tx-rLC" customClass="AppDelegate" customModule="INDIGO_Server" customModuleProvider="target">
             <connections>
+                <outlet property="status" destination="Det-vQ-1iw" id="5ZB-0r-p1A"/>
                 <outlet property="web" destination="VmS-wJ-NIF" id="2HQ-Co-gmd"/>
                 <outlet property="window" destination="QvC-M9-y7g" id="gIp-Ho-8D9"/>
             </connections>
@@ -105,14 +106,31 @@
                 <rect key="frame" x="0.0" y="0.0" width="500" height="300"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <webView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="VmS-wJ-NIF">
+                    <webView translatesAutoresizingMaskIntoConstraints="NO" id="VmS-wJ-NIF">
                         <rect key="frame" x="0.0" y="20" width="500" height="280"/>
-                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <webPreferences key="preferences" defaultFontSize="12" defaultFixedFontSize="12">
                             <nil key="identifier"/>
                         </webPreferences>
                     </webView>
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Det-vQ-1iw">
+                        <rect key="frame" x="8" y="4" width="484" height="11"/>
+                        <textFieldCell key="cell" controlSize="mini" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Label" id="ptG-Rz-5Nj">
+                            <font key="font" metaFont="miniSystem"/>
+                            <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                        </textFieldCell>
+                    </textField>
                 </subviews>
+                <constraints>
+                    <constraint firstItem="VmS-wJ-NIF" firstAttribute="centerX" secondItem="Det-vQ-1iw" secondAttribute="centerX" id="DOi-AM-Lip"/>
+                    <constraint firstAttribute="trailing" secondItem="Det-vQ-1iw" secondAttribute="trailing" constant="10" id="FD5-fK-JUr"/>
+                    <constraint firstAttribute="bottom" secondItem="Det-vQ-1iw" secondAttribute="bottom" constant="4" id="Pqh-48-ewh"/>
+                    <constraint firstItem="Det-vQ-1iw" firstAttribute="top" secondItem="VmS-wJ-NIF" secondAttribute="bottom" constant="5" id="SC1-vL-YpB"/>
+                    <constraint firstItem="VmS-wJ-NIF" firstAttribute="leading" secondItem="EiT-Mj-1SZ" secondAttribute="leading" id="Ukm-V8-xEK"/>
+                    <constraint firstItem="Det-vQ-1iw" firstAttribute="top" secondItem="VmS-wJ-NIF" secondAttribute="bottom" constant="5" id="bPt-3T-RQL"/>
+                    <constraint firstItem="VmS-wJ-NIF" firstAttribute="top" secondItem="EiT-Mj-1SZ" secondAttribute="top" id="qtt-yI-v6x"/>
+                    <constraint firstItem="Det-vQ-1iw" firstAttribute="leading" secondItem="EiT-Mj-1SZ" secondAttribute="leading" constant="10" id="ruC-el-Hhj"/>
+                </constraints>
             </view>
             <point key="canvasLocation" x="-95" y="32"/>
         </window>
