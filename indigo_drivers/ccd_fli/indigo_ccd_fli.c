@@ -622,6 +622,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed.");
 	}
+	return false;
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
