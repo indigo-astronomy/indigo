@@ -172,7 +172,7 @@
 							<li initially-collapsed>
 								<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{indigoServer}}</span>
 								<ul>
-									<li ng-repeat="device in model" initially-collapsed>
+									<li ng-repeat="device in model" initially-expanded>
 										<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{device.device}}</span>
 										<ul>
 											<li ng-repeat="group in device.groups" initially-collapsed>
@@ -184,13 +184,13 @@
 															<div class="panel-body" ng-switch="property.type">
 																<form name="form" class="form-horizontal" ng-switch-when="TEXT">
 																	<div class="form-group row" ng-repeat="item in property.items">
-																		<label class="col-sm-6 control-label">{{item.label}}</label>
-																		<div class="col-sm-6">
+																		<label class="col-xs-4 control-label">{{item.label}}</label>
+																		<div class="col-xs-8">
 																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)"/>
 																		</div>
 																	</div>
 																	<div class="form-group row" ng-if="property.perm!='ro'">
-																		<div class="col-sm-offset-6 col-sm-6">
+																		<div class="col-xs-offset-4 col-sm-8">
 																			<button type="submit" class="btn btn-primary" ng-click="setText(form, device, property)">Submit</button>
 																			&nbsp;
 																			<button class="btn btn-default" ng-click="reset(form, property)">Reset</button>
@@ -199,19 +199,19 @@
 																</form>
 																<form name="form" class="form-horizontal" ng-switch-when="NUMBER">
 																	<div class="form-group row" ng-repeat="item in property.items">
-																		<label class="col-sm-6 control-label">{{item.label}}</label>
-																		<div class="col-sm-3" ng-if="property.perm!='ro'">
+																		<label class="col-xs-4 control-label">{{item.label}}</label>
+																		<div class="col-xs-4" ng-if="property.perm!='ro'">
 																			<input class="form-control" type="text" ng-disabled="true" ng-model="item.target"/>
 																		</div>
-																		<div class="col-sm-3" ng-if="property.perm=='ro'">
+																		<div class="col-xs-4" ng-if="property.perm=='ro'">
 																			&nbsp;
 																		</div>
-																		<div class="col-sm-3">
+																		<div class="col-xs-4">
 																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)"/>
 																		</div>
 																	</div>
 																	<div class="form-group row" ng-if="property.perm!='ro'">
-																		<div class="col-sm-offset-6 col-sm-6">
+																		<div class="col-xs-offset-4 col-sm-8">
 																			<button type="submit" class="btn btn-primary" ng-click="setNumber(form, device, property)">Submit</button>
 																			&nbsp;
 																			<button class="btn btn-default" ng-click="reset(form, property)">Reset</button>
@@ -233,19 +233,19 @@
 																</form>
 																<form class="form-horizontal" ng-switch-when="LIGHT">
 																	<div class="form-group row" ng-repeat="item in property.items">
-																		<div class="col-sm-2">
+																		<div class="col-xs-2">
 																			<button class="btn btn-default" type="button" ng-disabled="true" ng-if="item.value=='Idle'">Idle</button>
 																			<button class="btn btn-warning" type="button" ng-disabled="true" ng-if="item.value=='Busy'">Busy</button>
 																			<button class="btn btn-success" type="button" ng-disabled="true" ng-if="item.value=='Ok'">Ok</button>
 																			<button class="btn btn-danger" type="button" ng-disabled="true" ng-if="item.value=='Alert'">Alert</button>
 																		</div>
-																		<label class="col-sm-10 control-label">{{item.label}}</label>
+																		<label class="col-xs-10 control-label">{{item.label}}</label>
 																	</div>
 																</form>
 																<form class="form-horizontal" ng-switch-when="BLOB">
 																	<div class="form-group row" ng-repeat="item in property.items">
-																		<label class="col-sm-6 control-label">{{item.label}}</label>
-																		<div class="col-sm-6" ng-if="property.state=='Ok' && item.value!=undefined">
+																		<label class="col-xs-4 control-label">{{item.label}}</label>
+																		<div class="col-xs-8" ng-if="property.state=='Ok' && item.value!=undefined">
 																			<img width="100%" ng-src="{{'http://' + indigoServer + item.value}}" ng-if="item.jpeg"/>
 																			<a ng-href="{{'http://' + indigoServer + item.value}}" ng-if="!item.jpeg">{{'http://' + indigoServer + item.value}}</a>
 																		</div>
@@ -409,6 +409,11 @@
 		.directive('initiallyCollapsed', function() {
 			return function(scope, node, attrs) {
 				node.addClass("closed");
+			}
+		})
+		.directive('initiallyExpanded', function() {
+			return function(scope, node, attrs) {
+			  node.addClass("open");
 			}
 		})
 		.controller('INDIGOController', function($scope) {

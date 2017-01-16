@@ -37,12 +37,21 @@
 
 #include "indigo_ccd_driver.h"
 
-void indigo_ccd_countdown_timer_callback(indigo_device *device) {
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
+static void countdown_timer_callback(indigo_device *device) {
+	if (CCD_CONTEXT->countdown_enabled && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
 		indigo_reschedule_timer(device, 1.0, &CCD_CONTEXT->countdown_timer);
 		CCD_EXPOSURE_ITEM->number.value -= 1;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
+}
+
+void indigo_ccd_suspend_countdown(indigo_device *device) {
+	CCD_CONTEXT->countdown_enabled = false;
+}
+
+void indigo_ccd_resume_countdown(indigo_device *device) {
+	CCD_CONTEXT->countdown_enabled = true;
+	CCD_CONTEXT->countdown_timer = indigo_set_timer(device, 1.0, countdown_timer_callback);
 }
 
 indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
@@ -93,6 +102,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 10000, 1, 0);
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%f");
+			CCD_CONTEXT->countdown_enabled = true;
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			if (CCD_ABORT_EXPOSURE_PROPERTY == NULL)
@@ -329,7 +339,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				}
 			}
 			if (CCD_EXPOSURE_ITEM->number.value >= 1) {
-				CCD_CONTEXT->countdown_timer = indigo_set_timer(device, 1.0, indigo_ccd_countdown_timer_callback);
+				CCD_CONTEXT->countdown_timer = indigo_set_timer(device, 1.0, countdown_timer_callback);
 			}
 		}
 		return INDIGO_OK;
