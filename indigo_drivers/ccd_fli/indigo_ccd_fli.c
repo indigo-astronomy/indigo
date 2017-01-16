@@ -443,7 +443,7 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 
 			if(PRIVATE_DATA->abort_flag) return;
 			PRIVATE_DATA->can_check_temperature = true;
-
+			indigo_ccd_resume_countdown(device);
 			/* The sensor is flushed -> start real exposure */
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Taking exposure...");
 			if (fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, false,
@@ -606,6 +606,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		if (rbi_flush) {
+			indigo_ccd_suspend_countdown(device);
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Flushing CCD to remove RBI, this takes some time...");
 			PRIVATE_DATA->can_check_temperature = false;
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, FLI_RBI_FLUSH_EXPOSURE_ITEM->number.value, rbi_exposure_timer_callback);
