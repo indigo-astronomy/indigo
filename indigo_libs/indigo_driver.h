@@ -205,6 +205,7 @@ typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_
 typedef struct {
 	void *private_data;                       ///< private data
 	int property_save_file_handle;            ///< handle for property save
+	indigo_timer *timers;											///< active timer list
 	indigo_property *connection_property;     ///< CONNECTION property pointer
 	indigo_property *info_property;           ///< INFO property pointer
 	indigo_property *debug_property;          ///< DEBUG property pointer

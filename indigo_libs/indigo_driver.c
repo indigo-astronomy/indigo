@@ -185,14 +185,6 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
     /* freebsd */
 #endif
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-		if (pipe(DEVICE_CONTEXT->timer_pipe) != 0)
-			return INDIGO_FAILED;
-		if (pthread_mutex_init(&DEVICE_CONTEXT->timer_mutex, NULL) != 0)
-			return INDIGO_FAILED;
-		if (pthread_create(&DEVICE_CONTEXT->timer_thread, NULL, (void*)(void *)timer_thread, device) != 0)
-			return INDIGO_FAILED;
-#endif
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
@@ -300,6 +292,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 
 indigo_result indigo_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_cancel_all_timers(device);
 	indigo_delete_property(device, &INDIGO_ALL_PROPERTIES, NULL);
 	indigo_release_property(CONNECTION_PROPERTY);
 	indigo_release_property(INFO_PROPERTY);

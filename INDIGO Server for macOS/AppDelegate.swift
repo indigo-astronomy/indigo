@@ -21,6 +21,7 @@
 
 import Cocoa
 import ServiceManagement
+import WebKit
 
 func serverCallback(count: Int32) {
   NSLog("%d clients", count)
@@ -29,6 +30,7 @@ func serverCallback(count: Int32) {
 @NSApplicationMain class AppDelegate: NSObject, NSApplicationDelegate, NetServiceDelegate {
 
   @IBOutlet weak var window: NSWindow!
+	@IBOutlet weak var web: WebView!
 	
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     return true
@@ -46,6 +48,11 @@ func serverCallback(count: Int32) {
 			let plist: [String:Any] = [ "Label": serverId, "KeepAlive": true, "Program": executable, "ProgramArguments": arguments]
 			if SMJobSubmit(kSMDomainUserLaunchd, plist as CFDictionary, nil, &error) {				
 				NSLog("Server job was successfully installed!")
+				DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+					self.web.mainFrameURL = "http://localhost:7624/ctrl"
+//					self.web.mainFrame.frameView.documentView.scaleUnitSquare(to: NSMakeSize(0.7, 0.7))
+//					self.web.mainFrame.frameView.documentView.needsDisplay = true
+				}
 			} else {
 				NSLog("Failed to install server job! \(error)")
 			}

@@ -45,6 +45,8 @@ extern bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_
  */
 extern bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer);
 
-
+/** Cancel all timers for given device.
+ */
+extern void indigo_cancel_all_timers(indigo_device *device);
 
 #endif /* indigo_timer_h */
