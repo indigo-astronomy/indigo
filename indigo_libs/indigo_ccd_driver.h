@@ -281,7 +281,8 @@
  */
 typedef struct {
 	indigo_device_context device_context;         ///< device context base
-	indigo_timer *countdown_timer;
+	bool countdown_enabled;												///< countdown enabled
+	indigo_timer *countdown_timer;								///< countdown timer
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
 	indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer
@@ -302,13 +303,13 @@ typedef struct {
 	indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
 } indigo_ccd_context;
 
-/** Countdown callback function.
+/** Suspend countdown.
  */
+extern void indigo_ccd_suspend_countdown(indigo_device *device);
 
-extern void indigo_ccd_countdown_timer_callback(indigo_device *device);
-
-#define indigo_ccd_suspend_countdown() indigo_cancel_timer(device, &CCD_CONTEXT->countdown_timer)
-#define indigo_ccd_resume_countdown() CCD_CONTEXT->countdown_timer = indigo_set_timer(device, 1.0, indigo_ccd_countdown_timer_callback) 
+/** Resume countdown.
+ */
+extern void indigo_ccd_resume_countdown(indigo_device *device);
 
 /** Attach callback function.
  */
