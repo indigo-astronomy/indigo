@@ -39,6 +39,7 @@
 
 #include "indigo_bus.h"
 #include "indigo_names.h"
+#include "indigo_timer.h"
 
 /** Main group name string.
  */
@@ -199,34 +200,11 @@ typedef struct {
  */
 typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_info*);
 
-/** Timer callback function prototype.
- */
-typedef void (*indigo_timer_callback)(indigo_device *device);
-
-/** Timer structure.
- */
-typedef struct indigo_timer {
-	indigo_device *device;                    ///< device associated with timer
-	indigo_timer_callback callback;           ///< callback function pointer
-#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-	struct timespec time;                     ///< time to fire (linux only)
-	struct indigo_timer *next;                ///< next timer in the queue (linux only)
-#elif defined(INDIGO_MACOS)
-	bool canceled;                            ///< timer is canceled (darwin only)
-#endif
-} indigo_timer;
-
 /** Device context structure.
  */
 typedef struct {
 	void *private_data;                       ///< private data
 	int property_save_file_handle;            ///< handle for property save
-#if defined(INDIGO_LINUX) || defined(INDIGO_FREEBSD)
-	pthread_t timer_thread;                   ///< timer thread (linux only)
-	pthread_mutex_t timer_mutex;              ///< timer mutex (linux only)
-	int timer_pipe[2];                        ///< timer pipe (linux only)
-	indigo_timer *timer_queue;                ///< timer queue (linux only)
-#endif
 	indigo_property *connection_property;     ///< CONNECTION property pointer
 	indigo_property *info_property;           ///< INFO property pointer
 	indigo_property *debug_property;          ///< DEBUG property pointer
@@ -277,18 +255,6 @@ extern indigo_result indigo_load_properties(indigo_device *device, bool default_
 /** Save single property.
  */
 extern indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property);
-
-/** Set timer.
- */
-extern indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback);
-
-/** Rescheduled timer (if not null).
- */
-extern bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer);
-
-/** Cancel timer.
- */
-extern bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer);
 
 /** Start USB event handler thread.
  */
