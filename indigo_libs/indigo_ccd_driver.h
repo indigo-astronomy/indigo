@@ -281,6 +281,7 @@
  */
 typedef struct {
 	indigo_device_context device_context;         ///< device context base
+	indigo_timer *count_down_timer;
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
 	indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer

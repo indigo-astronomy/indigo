@@ -10,15 +10,13 @@
 #include <time.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "indigo_timer.h"
 
 #include "indigo_driver.h"
 
 #define NANO	1000000000L
-
-// TODO: abort timer on cancel
-// TODO: cancel timers on detach_device
 
 int timer_count = 0;
 indigo_timer *free_timer;
@@ -29,40 +27,55 @@ pthread_mutex_t cancel_timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void *timer_func(indigo_timer *timer) {
 	while (true) {
 		while (timer->scheduled) {
-			indigo_log("timer #%d (of %d) used for %gs", timer->timer_id, timer_count, timer->delay);
+			INDIGO_DEBUG(indigo_debug("timer #%d (of %d) used for %gs", timer->timer_id, timer_count, timer->delay));
 			if (timer->delay > 0) {
-				struct timespec end, now;
-				clock_gettime(CLOCK_REALTIME, &now);
-				end.tv_sec = now.tv_sec + (int)timer->delay;
-				end.tv_nsec = now.tv_nsec + NANO * (timer->delay - (int)timer->delay);
-				while (true) {
-					long udelay = 1000000L * (end.tv_sec - now.tv_sec) + (end.tv_nsec - now.tv_nsec) / 1000L;
-					if (udelay <= 0) {
-						if (udelay < -100000L)
-							indigo_log("timer #%d fired %ldms late", timer->timer_id, -udelay / 1000L);
+				struct timespec end;
+				clock_gettime(CLOCK_REALTIME, &end);
+				end.tv_sec += (int)timer->delay;
+				end.tv_nsec += NANO * (timer->delay - (int)timer->delay);
+				while (!timer->canceled) {
+					pthread_mutex_lock(&timer->mutex);
+					int rc = pthread_cond_timedwait(&timer->cond, &timer->mutex, &end);
+					pthread_mutex_unlock(&timer->mutex);
+					if (rc == ETIMEDOUT)
 						break;
-					}
-					usleep((unsigned int)udelay);
-					clock_gettime(CLOCK_REALTIME, &now);
 				}
 			}
 
+			timer->scheduled = false;
 			if (!timer->canceled) {
-				timer->scheduled = false;
 				timer->callback(timer->device);
 			}
 		}
 		
+		INDIGO_DEBUG(indigo_debug("timer #%d done", timer->timer_id));
+
+		pthread_mutex_lock(&cancel_timer_mutex);
+		indigo_device *device = timer->device;
+		if (device != NULL) {
+			if (DEVICE_CONTEXT->timers == timer) {
+				DEVICE_CONTEXT->timers = timer->next;
+			} else {
+				indigo_timer *previous = DEVICE_CONTEXT->timers;
+				while (previous->next != NULL) {
+					if (previous->next == timer) {
+						previous->next = timer->next;
+						break;
+					}
+					previous = previous->next;
+				}
+			}
+		}
+		pthread_mutex_unlock(&cancel_timer_mutex);
 		pthread_mutex_lock(&free_timer_mutex);
-		timer->wake = false;
 		timer->next = free_timer;
 		free_timer = timer;
+		timer->wake = false;
 		pthread_mutex_unlock(&free_timer_mutex);
 		
 		pthread_mutex_lock(&timer->mutex);
 		while (!timer->wake)
 			 pthread_cond_wait(&timer->cond, &timer->mutex);
-		timer->wake = false;
 		pthread_mutex_unlock(&timer->mutex);
 	}
 	return NULL;
@@ -74,12 +87,16 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 	if (free_timer != NULL) {
 		timer = free_timer;
 		free_timer = free_timer->next;
-		timer->next = NULL;
 		timer->wake = true;
 		timer->canceled = false;
 		timer->scheduled = true;
-		timer->device = device;
 		timer->delay = delay;
+		if ((timer->device = device) != NULL) {
+			timer->next = DEVICE_CONTEXT->timers;
+			DEVICE_CONTEXT->timers = timer;
+		} else {
+			timer->next = NULL;
+		}
 		timer->callback = callback;
 		pthread_mutex_lock(&timer->mutex);
 		pthread_cond_signal(&timer->cond);
@@ -91,7 +108,12 @@ indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer
 		pthread_cond_init(&timer->cond, NULL);
 		timer->canceled = false;
 		timer->scheduled = true;
-		timer->device = device;
+		if ((timer->device = device) != NULL) {
+			timer->next = DEVICE_CONTEXT->timers;
+			DEVICE_CONTEXT->timers = timer;
+		} else {
+			timer->next = NULL;
+		}
 		timer->delay = delay;
 		timer->callback = callback;
 		pthread_create(&timer->thread, NULL, (void * (*)(void*))timer_func, timer);
@@ -121,9 +143,29 @@ bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 	pthread_mutex_lock(&cancel_timer_mutex);
 	if (*timer != NULL) {
 		(*timer)->canceled = true;
+		(*timer)->scheduled = false;
+		pthread_mutex_lock(&(*timer)->mutex);
+		pthread_cond_signal(&(*timer)->cond);
+		pthread_mutex_unlock(&(*timer)->mutex);
 		*timer = NULL;
 		result = true;
 	}
 	pthread_mutex_unlock(&cancel_timer_mutex);
 	return result;
+}
+
+void indigo_cancel_all_timers(indigo_device *device) {
+	pthread_mutex_lock(&cancel_timer_mutex);
+	indigo_timer *timer;
+	while ((timer = DEVICE_CONTEXT->timers) != NULL) {
+		DEVICE_CONTEXT->timers = timer->next;
+		timer->device = NULL;
+		timer->next = NULL;
+		timer->canceled = true;
+		timer->scheduled = true;
+		pthread_mutex_lock(&timer->mutex);
+		pthread_cond_signal(&timer->cond);
+		pthread_mutex_unlock(&timer->mutex);
+	}
+	pthread_mutex_unlock(&cancel_timer_mutex);
 }
