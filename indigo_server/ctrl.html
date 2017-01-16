@@ -169,10 +169,10 @@
 						<a href="http://www.indigo-astronomy.org/"><img class="pull-right" height="120" alt="INDIGO" src="http://www.indigo-astronomy.org/assets/logo.png"></a>
 					<div class="tree">
 						<ul>
-							<li initially-collapsed>
+							<li initially-expanded>
 								<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{indigoServer}}</span>
 								<ul>
-									<li ng-repeat="device in model" initially-expanded>
+									<li ng-repeat="device in model" initially-collapsed>
 										<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{device.device}}</span>
 										<ul>
 											<li ng-repeat="group in device.groups" initially-collapsed>
