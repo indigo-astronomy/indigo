@@ -57,11 +57,11 @@
 
 #define MIN_NIR_FLOOD         0     /* Min seconds to flood the frame with NIR light */
 #define MAX_NIR_FLOOD        16     /* Max seconds to flood the frame with NIR light */
-#define DEFAULT_NIR_FLOOD     2     /* Default seconds to flood the frame with NIR light */
+#define DEFAULT_NIR_FLOOD     3     /* Default seconds to flood the frame with NIR light */
 
 #define MIN_FLUSH_COUNT       1     /* Min flushes after flood */
-#define MAX_FLUSH_COUNT      16     /* Max flushes after flood */
-#define DEFAULT_FLUSH_COUNT   3     /* Default flushes after flood */
+#define MAX_FLUSH_COUNT      10     /* Max flushes after flood */
+#define DEFAULT_FLUSH_COUNT   2     /* Default flushes after flood */
 
 #define MAX_PATH            255     /* Maximal Path Length */
 
@@ -506,7 +506,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "FLI_NFLUSHES", "Times (before exposure)", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
 
 		// -------------------------------------------------------------------------------- FLI_RBI_FLUSH_ENABLE
-		FLI_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_RBI_FLUSH_ENABLE", FLI_ADVANCED_GROUP, "RBI Flush", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		FLI_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_RBI_FLUSH_ENABLE", FLI_ADVANCED_GROUP, "RBI flush", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (FLI_RBI_FLUSH_ENABLE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -518,8 +518,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (FLI_RBI_FLUSH_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
-		indigo_init_number_item(FLI_RBI_FLUSH_EXPOSURE_ITEM, "EXOSURE", "NIR Flood time (s)", MIN_NIR_FLOOD, MAX_NIR_FLOOD, 1, DEFAULT_NIR_FLOOD);
-		indigo_init_number_item(FLI_RBI_FLUSH_COUNT_ITEM, "COUNT", "Count of flushes", MIN_FLUSH_COUNT, MAX_FLUSH_COUNT, 1, DEFAULT_FLUSH_COUNT);
+		indigo_init_number_item(FLI_RBI_FLUSH_EXPOSURE_ITEM, "EXOSURE", "NIR flood time (s)", MIN_NIR_FLOOD, MAX_NIR_FLOOD, 0, DEFAULT_NIR_FLOOD);
+		indigo_init_number_item(FLI_RBI_FLUSH_COUNT_ITEM, "COUNT", "Number of flushes", MIN_FLUSH_COUNT, MAX_FLUSH_COUNT, 1, DEFAULT_FLUSH_COUNT);
 		// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
 		FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", FLI_ADVANCED_GROUP, "Camera mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
 				if (FLI_CAMERA_MODE_PROPERTY == NULL)
@@ -986,7 +986,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	static indigo_device ccd_template = {
 		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
-		indigo_ccd_enumerate_properties,
+		fli_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
