@@ -65,6 +65,9 @@
 
 #define MAX_PATH            255     /* Maximal Path Length */
 
+#define TEMP_THRESHOLD      0.2
+#define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
+
 #include <libfli/libfli.h>
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_fli.h"
@@ -117,6 +120,7 @@ typedef struct {
 	flidomain_t domain;
 	bool rbi_flood_supported;
 
+	bool abort_flag;
 	int count_open;
 	indigo_timer *exposure_timer, *temperature_timer;
 	double target_temperature, current_temperature;
@@ -343,6 +347,7 @@ static bool fli_abort_exposure(indigo_device *device) {
 	FLICancelExposure(PRIVATE_DATA->dev_id);
 	FLICancelExposure(PRIVATE_DATA->dev_id);
 	PRIVATE_DATA->can_check_temperature == true;
+	PRIVATE_DATA->abort_flag = true;
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if(err) return false;
@@ -423,28 +428,33 @@ static void clear_reg_timer_callback(indigo_device *device) {
 static void rbi_exposure_timer_callback(indigo_device *device) {
 	bool ok;
 	PRIVATE_DATA->exposure_timer = NULL;
+	if(PRIVATE_DATA->abort_flag) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (fli_read_pixels(device)) { /* read the NIR flooded frame and discard it */
 			for( int i = 0; i < (int)(FLI_RBI_FLUSH_COUNT_ITEM->number.value); i++) { /* Take bias exposures to flush the RBI and discard them */
 				if (fli_start_exposure(device, 0, true, false, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
-									CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-				                    CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
+				                       CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
+				                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
 				{
+					if(PRIVATE_DATA->abort_flag) return;
 					fli_read_pixels(device);
 				}
 			}
 
+			if(PRIVATE_DATA->abort_flag) return;
 			PRIVATE_DATA->can_check_temperature = true;
 
 			/* The sensor is flushed -> start real exposure */
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Taking exposure...");
 			if (fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, false,
-	                                    CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-	                                    CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
-	        {
+			                       CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
+			                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
+			{
+				if(PRIVATE_DATA->abort_flag) return;
 				if (CCD_EXPOSURE_ITEM->number.target > 4) {
 					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
 				} else {
-					//PRIVATE_DATA->can_check_temperature = false;
+					PRIVATE_DATA->can_check_temperature = false;
 					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
 				}
 			} else {
@@ -461,7 +471,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (fli_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.2 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+			CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > TEMP_THRESHOLD ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_COOLER_POWER_ITEM->number.value = PRIVATE_DATA->cooler_power;
@@ -472,7 +482,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
+	indigo_reschedule_timer(device, TEMP_CHECK_TIME, &PRIVATE_DATA->temperature_timer);
 }
 
 
@@ -504,7 +514,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(FLI_RBI_FLUSH_DISABLED_ITEM, "DISABLED", "Disabled", true);
 
 		// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
-		FLI_RBI_FLUSH_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_RBI_FLUSH", FLI_ADVANCED_GROUP, "CCD RBI Flush params", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+		FLI_RBI_FLUSH_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_RBI_FLUSH", FLI_ADVANCED_GROUP, "RBI flush params", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 		if (FLI_RBI_FLUSH_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -573,6 +583,8 @@ static bool handle_camera_mode_property(indigo_device *device, indigo_property *
 static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
 	long ok;
 	bool rbi_flush = FLI_RBI_FLUSH_ENABLED_ITEM->sw.value;
+	PRIVATE_DATA->abort_flag = false;
+
 	if (rbi_flush) {
 		ok = fli_start_exposure(device, FLI_RBI_FLUSH_EXPOSURE_ITEM->number.value, true, rbi_flush, CCD_FRAME_LEFT_ITEM->number.value,
 		                                CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
@@ -584,8 +596,6 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	}
 
 	if (ok) {
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
@@ -594,14 +604,17 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
 
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		if (rbi_flush) {
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Flushing CCD to remove RBI, this takes some time...");
 			PRIVATE_DATA->can_check_temperature = false;
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, FLI_RBI_FLUSH_EXPOSURE_ITEM->number.value, rbi_exposure_timer_callback);
 		} else {
-			if (CCD_EXPOSURE_ITEM->number.target > 4)
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			if (CCD_EXPOSURE_ITEM->number.target > 4) {
 				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
-			else {
-				//PRIVATE_DATA->can_check_temperature = false;
+			} else {
+				PRIVATE_DATA->can_check_temperature = false;
 				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
 			}
 		}
@@ -761,7 +774,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			fli_abort_exposure(device);
 		}
 		PRIVATE_DATA->can_check_temperature = true;
