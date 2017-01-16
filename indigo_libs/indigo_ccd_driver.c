@@ -37,9 +37,9 @@
 
 #include "indigo_ccd_driver.h"
 
-static void indigo_ccd_countdown_timer_callback(indigo_device *device) {
+void indigo_ccd_countdown_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
-		indigo_reschedule_timer(device, 1.0, &CCD_CONTEXT->count_down_timer);
+		indigo_reschedule_timer(device, 1.0, &CCD_CONTEXT->countdown_timer);
 		CCD_EXPOSURE_ITEM->number.value -= 1;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
@@ -329,7 +329,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				}
 			}
 			if (CCD_EXPOSURE_ITEM->number.value >= 1) {
-				CCD_CONTEXT->count_down_timer = indigo_set_timer(device, 1.0, indigo_ccd_countdown_timer_callback);
+				CCD_CONTEXT->countdown_timer = indigo_set_timer(device, 1.0, indigo_ccd_countdown_timer_callback);
 			}
 		}
 		return INDIGO_OK;
