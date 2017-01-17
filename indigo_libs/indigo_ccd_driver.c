@@ -35,6 +35,7 @@
 #include <sys/stat.h>
 #include <jpeglib.h>
 
+#include "indigo_io.h"
 #include "indigo_ccd_driver.h"
 #include "indigo_io.h"
 
