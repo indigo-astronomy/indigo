@@ -284,16 +284,23 @@ static void server_main(int argc, const char * argv[]) {
 }
 
 static void signal_handler(int signo) {
-	keep_server_running = (signo == SIGHUP);
 	if (server_pid == 0) {
-		INDIGO_LOG(indigo_log("Shutdown initiated...", signo));
+		/* SIGINT is delivered twise with CTRL-C
+		   this leads to freeze during shutdown so
+		   we ignore the second SIGINT */
+		if (signo == SIGINT) {
+			signal(SIGINT, SIG_IGN);
+		}
+		INDIGO_LOG(indigo_log("Shutdown initiated (signal %d)...", signo));
 		indigo_server_shutdown();
 	} else {
 		INDIGO_LOG(indigo_log("Signal %d received...", signo));
+		keep_server_running = (signo == SIGHUP);
 		if (use_sigkill)
 			kill(server_pid, SIGKILL);
 		else
 			kill(server_pid, SIGINT);
+
 		use_sigkill = true;
 	}
 }
