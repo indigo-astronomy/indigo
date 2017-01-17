@@ -121,20 +121,20 @@ static indigo_result attach(indigo_device *device) {
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 		if (indigo_available_drivers[i].driver != NULL)
 			indigo_init_switch_item(&driver_property->items[driver_property->count++], indigo_available_drivers[i].description, indigo_available_drivers[i].description, true);
-	server_property = indigo_init_switch_property(NULL, server_device.name, "SERVERS", "Main", "Active servers", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 2 * INDIGO_MAX_SERVERS);
+	server_property = indigo_init_light_property(NULL, server_device.name, "SERVERS", "Main", "Active servers", INDIGO_IDLE_STATE, 2 * INDIGO_MAX_SERVERS);
 	server_property->count = 0;
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_server_entry *entry = indigo_available_servers + i;
 		if (*entry->host) {
 			char buf[128];
 			snprintf(buf, 128, "%s:%d", entry->host, entry->port);
-			indigo_init_switch_item(&server_property->items[server_property->count++], buf, buf, true);
+			indigo_init_light_item(&server_property->items[server_property->count++], buf, buf, INDIGO_IDLE_STATE);
 		}
 	}
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_subprocess_entry *entry = indigo_available_subprocesses + i;
 		if (*entry->executable) {
-			indigo_init_switch_item(&server_property->items[server_property->count++], entry->executable, entry->executable, true);
+			indigo_init_light_item(&server_property->items[server_property->count++], entry->executable, entry->executable, INDIGO_IDLE_STATE);
 		}
 	}
 	restart_property = indigo_init_switch_property(NULL, server_device.name, "RESTART", "Main", "Restart", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);

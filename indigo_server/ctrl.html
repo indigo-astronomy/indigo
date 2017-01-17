@@ -157,6 +157,9 @@
 			.form-horizontal .control-label {
 				text-align: left;
 			}
+			.label {
+				font-weight: bold;
+			}
 			.btn-switch {
 				width: 100%;
 			}
@@ -242,16 +245,15 @@
 																		</div>
 																	</div>
 																</form>
-																
+
 																<form class="form-horizontal" ng-switch-when="LIGHT">
-																	<div class="form-group row" ng-repeat="item in property.items">
-																		<div class="col-sm-2">
-																			<button class="btn btn-default" type="button" ng-disabled="true" ng-if="item.value=='Idle'">Idle</button>
-																			<button class="btn btn-warning" type="button" ng-disabled="true" ng-if="item.value=='Busy'">Busy</button>
-																			<button class="btn btn-success" type="button" ng-disabled="true" ng-if="item.value=='Ok'">Ok</button>
-																			<button class="btn btn-danger" type="button" ng-disabled="true" ng-if="item.value=='Alert'">Alert</button>
+																	<div class="form-group row">
+																		<div class="col-sm-4" ng-switch="item.value" ng-repeat="item in property.items">
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default btn-switch" ng-disabled="true" ng-switch-when="Idle">{{item.label}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-warning btn-switch" ng-disabled="true" ng-switch-when="Busy">{{item.label}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-success btn-switch" ng-disabled="true" ng-switch-when="Ok">{{item.label}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-danger btn-switch" ng-disabled="true" ng-switch-when="Alert">{{item.label}}</button>
 																		</div>
-																		<label class="col-sm-10 control-label">{{item.label}}</label>
 																	</div>
 																</form>
 																
