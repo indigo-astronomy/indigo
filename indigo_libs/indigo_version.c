@@ -36,7 +36,7 @@ struct property_mapping {
 	struct item_mapping {
 		char *legacy;
 		char *current;
-	} items[10];
+	} items[25];
 };
 
 static struct property_mapping legacy[] = {
