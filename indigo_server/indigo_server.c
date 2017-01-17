@@ -255,7 +255,7 @@ static void server_main(int argc, const char * argv[]) {
 		indigo_add_driver(static_drivers[i], false);
 	}
 
-	indigo_attach_device(&server_device);
+	indigo_attach_device(&server_device);	
 	indigo_server_start(server_callback);
 
 #ifdef INDIGO_MACOS
@@ -280,6 +280,7 @@ static void server_main(int argc, const char * argv[]) {
 			indigo_kill_subprocess(indigo_available_subprocesses[i].executable);
 	}
 	indigo_detach_device(&server_device);
+	indigo_stop();
 }
 
 static void signal_handler(int signo) {
