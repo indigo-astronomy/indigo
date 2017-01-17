@@ -148,7 +148,8 @@ static indigo_result attach(indigo_device *device) {
 static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	indigo_define_property(device, driver_property, NULL);
-	indigo_define_property(device, server_property, NULL);
+	if (server_property->count > 0)
+		indigo_define_property(device, server_property, NULL);
 	indigo_define_property(device, restart_property, NULL);
 	return INDIGO_OK;
 }
@@ -184,7 +185,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 static indigo_result detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_delete_property(device, driver_property, NULL);
-	indigo_delete_property(device, server_property, NULL);
+	if (server_property->count > 0)
+		indigo_delete_property(device, server_property, NULL);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }

@@ -115,25 +115,35 @@ static void start_worker_thread(int *client_socket) {
 						if (!strcasecmp(header, "Connection: keep-alive"))
 							keep_alive = true;
 					}
-					if (!strcmp(path, "/") && *websocket_key) {
-						unsigned char shaHash[20];
-						memset(shaHash, 0, sizeof(shaHash));
-						strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-						sha1(shaHash, websocket_key, strlen(websocket_key));
-						indigo_printf(socket, "HTTP/1.1 101 Switching Protocols\r\n");
-						indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-						indigo_printf(socket, "Upgrade: websocket\r\n");
-						indigo_printf(socket, "Connection: upgrade\r\n");
-						base64_encode((unsigned char *)websocket_key, shaHash, 20);
-						indigo_printf(socket, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
-						indigo_printf(socket, "\r\n");
-						INDIGO_LOG(indigo_log("Protocol switched to JSON-over-WebSockets"));
-						indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, true);
-						assert(protocol_adapter != NULL);
-						indigo_attach_client(protocol_adapter);
-						indigo_json_parse(NULL, protocol_adapter);
-						indigo_detach_client(protocol_adapter);
-						break;
+					if (!strcmp(path, "/")) {
+						if (*websocket_key) {
+							unsigned char shaHash[20];
+							memset(shaHash, 0, sizeof(shaHash));
+							strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+							sha1(shaHash, websocket_key, strlen(websocket_key));
+							indigo_printf(socket, "HTTP/1.1 101 Switching Protocols\r\n");
+							indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							indigo_printf(socket, "Upgrade: websocket\r\n");
+							indigo_printf(socket, "Connection: upgrade\r\n");
+							base64_encode((unsigned char *)websocket_key, shaHash, 20);
+							indigo_printf(socket, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
+							indigo_printf(socket, "\r\n");
+							INDIGO_LOG(indigo_log("Protocol switched to JSON-over-WebSockets"));
+							indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, true);
+							assert(protocol_adapter != NULL);
+							indigo_attach_client(protocol_adapter);
+							indigo_json_parse(NULL, protocol_adapter);
+							indigo_detach_client(protocol_adapter);
+							break;
+						} else {
+							indigo_printf(socket, "HTTP/1.1 301 OK\r\n");
+							indigo_printf(socket, "Server: INDIGO/%d.%d-%d\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							indigo_printf(socket, "Location: /ctrl\r\n");
+							indigo_printf(socket, "Content-type: text/html\r\n");
+							indigo_printf(socket, "\r\n");
+							indigo_printf(socket, "<a href='/ctrl'>INDIGO Control Panel</a>");
+							break;
+						}
 					} else {
 						if (!strncmp(path, "/blob/", 6)) {
 							indigo_item *item;
@@ -186,7 +196,7 @@ static void start_worker_thread(int *client_socket) {
 								indigo_printf(socket, "Content-Length: %d\r\n", resource->length);
 								indigo_printf(socket, "Content-Encoding: gzip\r\n");
 								indigo_printf(socket, "\r\n");
-								indigo_write(socket, resource->data, resource->length);
+								indigo_write(socket, (const char *)resource->data, resource->length);
 								INDIGO_LOG(indigo_log("%s -> OK (%d bytes)", request, resource->length));
 							}
 						}
