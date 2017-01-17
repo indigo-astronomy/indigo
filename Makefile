@@ -644,16 +644,16 @@ $(BUILD_BIN)/client: indigo_test/client.o
 #
 #---------------------------------------------------------------------
 
-$(BUILD_BIN)/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS)
-	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
+$(BUILD_BIN)/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS) indigo_server/ctrl.data
+	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.o $(SIMULATOR_LIBS) $(LDFLAGS) -lstdc++ -lindigo
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
 	install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
 endif
 
-$(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS)
-	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++
+$(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS) indigo_server/ctrl.data
+	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) -lstdc++
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@

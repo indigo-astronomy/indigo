@@ -8,7 +8,7 @@
 		<style>
 			body {
 				padding: 10px 2% 0 2%;
-				zoom: 0.7;
+				zoom: 0.8;
 			}
 			
 			.navbar-offset {
@@ -157,6 +157,13 @@
 			.form-horizontal .control-label {
 				text-align: left;
 			}
+			.btn-switch {
+				width: 100%;
+			}
+			.btn, .control-label, .form-control {
+				margin-top: 10px;
+			}
+		}
 		</style>
 		<title>INDIGO Control Panel</title>
 		<script language="javascript" type="text/javascript">
@@ -185,13 +192,13 @@
 																
 																<form name="form" class="form-horizontal" ng-switch-when="TEXT">
 																	<div class="form-group row" ng-repeat="item in property.items">
-																		<label class="col-xs-4 control-label">{{item.label}}</label>
-																		<div class="col-xs-8">
+																		<label class="col-sm-4 control-label">{{item.label}}</label>
+																		<div class="col-sm-8">
 																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)"/>
 																		</div>
 																	</div>
 																	<div class="form-group row" ng-if="property.perm!='ro'">
-																		<div class="col-xs-offset-4 col-sm-8">
+																		<div class="col-sm-offset-4 col-sm-8">
 																			<button type="submit" class="btn btn-primary" ng-click="setText(form, device, property)">Submit</button>
 																			&nbsp;
 																			<button class="btn btn-default" ng-click="reset(form, property)">Reset</button>
@@ -201,19 +208,19 @@
 																
 																<form name="form" class="form-horizontal" ng-switch-when="NUMBER">
 																	<div class="form-group row" ng-repeat="item in property.items">
-																		<label class="col-xs-4 control-label">{{item.label}}</label>
-																		<div class="col-xs-4" ng-if="property.perm!='ro'">
+																		<label class="col-sm-4 control-label">{{item.label}}</label>
+																		<div class="col-sm-4" ng-if="property.perm!='ro'">
 																			<input class="form-control" type="text" ng-disabled="true" ng-model="item.target"/>
 																		</div>
-																		<div class="col-xs-4" ng-if="property.perm=='ro'">
-																			&nbsp;
+																		<div class="col-sm-4" ng-if="property.perm!='ro'">
+																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)"/>
 																		</div>
-																		<div class="col-xs-4">
+																		<div class="col-sm-8" ng-if="property.perm=='ro'">
 																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)"/>
 																		</div>
 																	</div>
 																	<div class="form-group row" ng-if="property.perm!='ro'">
-																		<div class="col-xs-offset-4 col-sm-8">
+																		<div class="col-sm-offset-4 col-sm-8">
 																			<button type="submit" class="btn btn-primary" ng-click="setNumber(form, device, property)">Submit</button>
 																			&nbsp;
 																			<button class="btn btn-default" ng-click="reset(form, property)">Reset</button>
@@ -222,35 +229,36 @@
 																</form>
 																
 																<form class="form-horizontal" ng-switch-when="SWITCH">
-																	<div class="form-group row" ng-repeat="item in property.items">
-																		<div class="col-xs-2" ng-switch="item.value" ng-if="property.rule=='OneOfMany'">
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-disabled="property.perm=='ro'" ng-switch-when="true">{{item.value | switch}}</button>
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-disabled="property.perm=='ro'" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																	<div class="form-group row" ng-if="property.rule=='OneOfMany'">
+																		<div class="col-sm-4" ng-switch="item.value" ng-repeat="item in property.items">
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary btn-switch" ng-disabled="property.perm=='ro'" ng-switch-when="true">{{item.label}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default btn-switch" ng-disabled="property.perm=='ro'" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.label}}</button>
 																		</div>
-																		<div class="col-xs-2" ng-switch="item.value" ng-if="property.rule!='OneOfMany'">
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary" ng-disabled="property.perm=='ro'" ng-switch-when="true" ng-click="setSwitch(device, property, item, false)">{{item.value | switch}}</button>
-																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default" ng-disabled="property.perm=='ro'" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.value | switch}}</button>
+																	</div>
+																	<div class="form-group row" ng-if="property.rule!='OneOfMany'">
+																		<div class="col-sm-4" ng-switch="item.value" ng-repeat="item in property.items">
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-primary btn-switch" ng-disabled="property.perm=='ro'" ng-switch-when="true" ng-click="setSwitch(device, property, item, false)">{{item.label}}</button>
+																			<button name="{{device.device+'.'+property.property+'.'+item.item}}" type="button" class="btn btn-default btn-switch" ng-disabled="property.perm=='ro'" ng-switch-when="false" ng-click="setSwitch(device, property, item, true)">{{item.label}}</button>
 																		</div>
-																		<label class="col-xs-10 control-label">{{item.label}}</label>
 																	</div>
 																</form>
 																
 																<form class="form-horizontal" ng-switch-when="LIGHT">
 																	<div class="form-group row" ng-repeat="item in property.items">
-																		<div class="col-xs-2">
+																		<div class="col-sm-2">
 																			<button class="btn btn-default" type="button" ng-disabled="true" ng-if="item.value=='Idle'">Idle</button>
 																			<button class="btn btn-warning" type="button" ng-disabled="true" ng-if="item.value=='Busy'">Busy</button>
 																			<button class="btn btn-success" type="button" ng-disabled="true" ng-if="item.value=='Ok'">Ok</button>
 																			<button class="btn btn-danger" type="button" ng-disabled="true" ng-if="item.value=='Alert'">Alert</button>
 																		</div>
-																		<label class="col-xs-10 control-label">{{item.label}}</label>
+																		<label class="col-sm-10 control-label">{{item.label}}</label>
 																	</div>
 																</form>
 																
 																<form class="form-horizontal" ng-switch-when="BLOB">
 																	<div class="form-group row" ng-repeat="item in property.items">
-																		<label class="col-xs-4 control-label">{{item.label}}</label>
-																		<div class="col-xs-8" ng-if="property.state=='Ok' && item.value!=undefined">
+																		<label class="col-sm-4 control-label">{{item.label}}</label>
+																		<div class="col-sm-8" ng-if="property.state=='Ok' && item.value!=undefined">
 																			<img width="100%" ng-src="{{'http://' + indigoServer + item.value}}" ng-if="item.jpeg"/>
 																			<a ng-href="{{'http://' + indigoServer + item.value}}" ng-if="!item.jpeg">{{'http://' + indigoServer + item.value}}</a>
 																		</div>

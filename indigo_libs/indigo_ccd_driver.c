@@ -36,6 +36,7 @@
 #include <jpeglib.h>
 
 #include "indigo_ccd_driver.h"
+#include "indigo_io.h"
 
 static void countdown_timer_callback(indigo_device *device) {
 	if (CCD_CONTEXT->countdown_enabled && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
@@ -82,7 +83,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			indigo_init_switch_item(CCD_UPLOAD_MODE_CLIENT_ITEM, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, "Upload to client", true);
 			indigo_init_switch_item(CCD_UPLOAD_MODE_LOCAL_ITEM, CCD_UPLOAD_MODE_LOCAL_ITEM_NAME, "Save locally", false);
-			indigo_init_switch_item(CCD_UPLOAD_MODE_BOTH_ITEM, CCD_UPLOAD_MODE_BOTH_ITEM_NAME, "Both upload to client and save locally", false);
+			indigo_init_switch_item(CCD_UPLOAD_MODE_BOTH_ITEM, CCD_UPLOAD_MODE_BOTH_ITEM_NAME, "Upload and save locally", false);
 			// -------------------------------------------------------------------------------- CCD_LOCAL_MODE
 			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Local mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_LOCAL_MODE_PROPERTY == NULL)
@@ -397,8 +398,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			if (item->sw.value) {
 				int h, v;
 				if (sscanf(item->name, "BIN_%dx%d", &h, &v) == 2) {
-					CCD_BIN_HORIZONTAL_ITEM->number.value = h;
-					CCD_BIN_VERTICAL_ITEM->number.value = v;
+					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = h;
+					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = v;
 					update_bin = true;
 				}
 				break;
@@ -770,17 +771,17 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			if (handle) {
 				if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-					if (indigo_write(handle, data, FITS_HEADER_SIZE + blobsize) < 0) {
+					if (!indigo_write(handle, data, FITS_HEADER_SIZE + blobsize)) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
 				} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-					if (indigo_write(handle, data + FITS_HEADER_SIZE, blobsize) < 0) {
+					if (!indigo_write(handle, data + FITS_HEADER_SIZE, blobsize)) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
 				} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-					if (indigo_write(handle, data, blobsize) < 0) {
+					if (!indigo_write(handle, data, blobsize)) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
