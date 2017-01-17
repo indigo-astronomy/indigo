@@ -182,6 +182,7 @@
 														<div class="panel panel-{{property.state | status}}">
 															<div class="panel-heading"><i class="glyphicon glyphicon-th-list"></i>{{property.label}}</div>
 															<div class="panel-body" ng-switch="property.type">
+																
 																<form name="form" class="form-horizontal" ng-switch-when="TEXT">
 																	<div class="form-group row" ng-repeat="item in property.items">
 																		<label class="col-xs-4 control-label">{{item.label}}</label>
@@ -197,6 +198,7 @@
 																		</div>
 																	</div>
 																</form>
+																
 																<form name="form" class="form-horizontal" ng-switch-when="NUMBER">
 																	<div class="form-group row" ng-repeat="item in property.items">
 																		<label class="col-xs-4 control-label">{{item.label}}</label>
@@ -218,6 +220,7 @@
 																		</div>
 																	</div>
 																</form>
+																
 																<form class="form-horizontal" ng-switch-when="SWITCH">
 																	<div class="form-group row" ng-repeat="item in property.items">
 																		<div class="col-xs-2" ng-switch="item.value" ng-if="property.rule=='OneOfMany'">
@@ -231,6 +234,7 @@
 																		<label class="col-xs-10 control-label">{{item.label}}</label>
 																	</div>
 																</form>
+																
 																<form class="form-horizontal" ng-switch-when="LIGHT">
 																	<div class="form-group row" ng-repeat="item in property.items">
 																		<div class="col-xs-2">
@@ -242,6 +246,7 @@
 																		<label class="col-xs-10 control-label">{{item.label}}</label>
 																	</div>
 																</form>
+																
 																<form class="form-horizontal" ng-switch-when="BLOB">
 																	<div class="form-group row" ng-repeat="item in property.items">
 																		<label class="col-xs-4 control-label">{{item.label}}</label>
@@ -251,6 +256,7 @@
 																		</div>
 																	</div>
 																</form>
+																
 																<div class="alert alert-warning alert-dismissible" role="alert" ng-if="property.message!=null">
 																	<button type="button" class="close" ng-click="property.message=null"><span>&times;</span></button>
 																	{{property.message}}
@@ -386,6 +392,7 @@
 		}
 		
 		angular.module('INDIGO', [])
+		
 		.filter('status', function() {
 				return function(input) {
 					switch (input) {
@@ -399,6 +406,7 @@
 					return 'default';
 				};
 		})
+		
 		.filter('switch', function() {
 			return function(input) {
 				if (input)
@@ -406,16 +414,19 @@
 				return 'Off';
 			};
 		})
+		
 		.directive('initiallyCollapsed', function() {
 			return function(scope, node, attrs) {
 				node.addClass("closed");
 			}
 		})
+		
 		.directive('initiallyExpanded', function() {
 			return function(scope, node, attrs) {
 			  node.addClass("open");
 			}
 		})
+		
 		.controller('INDIGOController', function($scope) {
 			$scope.expand = function(event) {
 				var node = $(event.target);
@@ -430,12 +441,14 @@
 				}
 				event.stopPropagation();
 			}
+			
 			$scope.markModified = function(item) {
 				console.log("MARK " + JSON.stringify(item));
 				if (!item.modified) {
 					item.modified = true;
 				}
 			}
+			
 			$scope.reset = function(form, property) {
 				console.log("RESET");
 				for (i = 0; i < property.items.length; i++) {
@@ -445,18 +458,21 @@
 				}
 				form.$setPristine();
 			}
+			
 			$scope.onOpen = function (event) {
 				console.log("CONNECTED");
 				$scope.model = [];
 				$scope.$apply();
 				doSend('{ "getProperties": { "version": 512 } }');
 			}
+			
 			$scope.onClose = function (event) {
 				console.log("DISCONNECTED");
 				$scope.model = [];
 				$scope.$apply();
 				setTimeout($scope.init, 1000);
 			}
+			
 			$scope.onMessage = function (event) {
 			console.log("MESSAGE "+event.data);
 				try {
@@ -607,16 +623,19 @@
 				}
 				$scope.$apply();
 			}
+			
 			$scope.onError = function(event) {
 				console.log("ERROR "+event.data);
 				alert(event.data);
 			}
+			
 			$scope.setSwitch = function(device, property, item, value) {
 				var message = { "newSwitchVector": { "device": device.device, "name": property.property, "oneSwitch": [ { "name": item.item, "value": value } ] } }
 				message = JSON.stringify(message);
 				doSend(message);
 				console.log("SEND "+message);
 			}
+			
 			$scope.setText = function(form, device, property) {
 				var message = { "newTextVector": { "device": device.device, "name": property.property, "oneText": [ ] } }
 				for (var i = 0; i < property.items.length; i++) {
@@ -628,6 +647,7 @@
 				doSend(message);
 				console.log("SEND "+message);
 			}
+			
 			$scope.setNumber = function(form, device, property) {
 				var message = { "newNumberVector": { "device": device.device, "name": property.property, "oneNumber": [ ] } }
 				for (var i = 0; i < property.items.length; i++) {
@@ -639,7 +659,9 @@
 				doSend(message);
 				console.log("SEND "+message);
 			}
+			
 			$scope.indigoServer = window.location.hostname+":"+window.location.port;
+			
 			$scope.init = function() {
 				console.log("INIT "+$scope.indigoServer);
 				$scope.model = [];
@@ -649,6 +671,7 @@
 				websocket.onmessage = $scope.onMessage;
 				websocket.onerror = $scope.onError;
 			};
+			
 			$scope.init();
 		});
 		</script>

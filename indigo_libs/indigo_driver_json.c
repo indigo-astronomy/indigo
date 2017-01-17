@@ -173,7 +173,7 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 	if (client_context->web_socket)
 		ws_write(handle, output_buffer, size);
 	else
-		write(handle, output_buffer, size);
+		indigo_write(handle, output_buffer, size);
 	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", output_buffer));
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
@@ -293,7 +293,7 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 	if (client_context->web_socket)
 		ws_write(handle, output_buffer, size);
 	else
-		write(handle, output_buffer, size);
+		indigo_write(handle, output_buffer, size);
 	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", output_buffer));
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
@@ -326,7 +326,7 @@ static indigo_result json_delete_property(indigo_client *client, struct indigo_d
 	if (client_context->web_socket)
 		ws_write(handle, output_buffer, size);
 	else
-		write(handle, output_buffer, size);
+		indigo_write(handle, output_buffer, size);
 	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", output_buffer));
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
@@ -345,7 +345,7 @@ static indigo_result json_message_property(indigo_client *client, struct indigo_
 	if (client_context->web_socket)
 		ws_write(handle, output_buffer, size);
 	else
-		write(handle, output_buffer, size);
+		indigo_write(handle, output_buffer, size);
 	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", output_buffer));
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;

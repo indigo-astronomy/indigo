@@ -150,7 +150,7 @@ static void start_worker_thread(int *client_socket) {
 									indigo_printf(socket, "Connection: keep-alive\r\n");
 								indigo_printf(socket, "Content-Length: %ld\r\n", item->blob.size);
 								indigo_printf(socket, "\r\n");
-								write(socket, item->blob.value, item->blob.size);
+								indigo_write(socket, item->blob.value, item->blob.size);
 								INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)\r\n", request, item->blob.size));
 							} else {
 								indigo_printf(socket, "HTTP/1.1 404 Not found\r\n");
@@ -186,7 +186,7 @@ static void start_worker_thread(int *client_socket) {
 								indigo_printf(socket, "Content-Length: %d\r\n", resource->length);
 								indigo_printf(socket, "Content-Encoding: gzip\r\n");
 								indigo_printf(socket, "\r\n");
-								write(socket, resource->data, resource->length);
+								indigo_write(socket, resource->data, resource->length);
 								INDIGO_LOG(indigo_log("%s -> OK (%d bytes)", request, resource->length));
 							}
 						}

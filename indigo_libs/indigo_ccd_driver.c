@@ -770,17 +770,17 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			if (handle) {
 				if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-					if (write(handle, data, FITS_HEADER_SIZE + blobsize) < 0) {
+					if (indigo_write(handle, data, FITS_HEADER_SIZE + blobsize) < 0) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
 				} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-					if (write(handle, data + FITS_HEADER_SIZE, blobsize) < 0) {
+					if (indigo_write(handle, data + FITS_HEADER_SIZE, blobsize) < 0) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
 				} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-					if (write(handle, data, blobsize) < 0) {
+					if (indigo_write(handle, data, blobsize) < 0) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
