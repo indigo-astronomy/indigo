@@ -16,6 +16,27 @@
 
 #include "indigo_driver.h"
 
+
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
+
+void utc_time(struct timespec *ts) {
+#ifdef __MACH__ // OS X does not have clock_gettime, use clock_get_time
+  clock_serv_t cclock;
+  mach_timespec_t mts;
+  host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+  clock_get_time(cclock, &mts);
+  mach_port_deallocate(mach_task_self(), cclock);
+  ts->tv_sec = mts.tv_sec;
+  ts->tv_nsec = mts.tv_nsec;
+#else
+  clock_gettime(CLOCK_REALTIME, ts);
+#endif
+}
+
 #define NANO	1000000000L
 
 int timer_count = 0;
@@ -30,7 +51,7 @@ static void *timer_func(indigo_timer *timer) {
 			INDIGO_DEBUG(indigo_debug("timer #%d (of %d) used for %gs", timer->timer_id, timer_count, timer->delay));
 			if (timer->delay > 0) {
 				struct timespec end;
-				clock_gettime(CLOCK_REALTIME, &end);
+				utc_time(&end);
 				end.tv_sec += (int)timer->delay;
 				end.tv_nsec += NANO * (timer->delay - (int)timer->delay);
 				while (!timer->canceled) {
