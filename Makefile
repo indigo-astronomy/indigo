@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 28
+INDIGO_BUILD := 29
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -70,7 +70,6 @@ ifeq ($(OS_DETECTED),Linux)
 	INSTALL_PREFIX=/usr/local
 	PACKAGE_TYPE=deb
 endif
-LIBFLI=indigo_drivers/ccd_fli/externals/libfli-1.104/libfli.a
 
 #---------------------------------------------------------------------
 #
@@ -285,7 +284,7 @@ $(BUILD_LIB)/libEFWFilter.a: $(BUILD_INCLUDE)/asi_efw/EFW_filter.h
 
 #---------------------------------------------------------------------
 #
-#       Install libasicamera2
+# Install libasicamera2
 #
 #---------------------------------------------------------------------
 
@@ -341,7 +340,7 @@ $(BUILD_INCLUDE)/libfli/libfli.h: indigo_drivers/ccd_fli/externals/libfli-1.104/
 $(BUILD_LIB)/libfli.a: $(BUILD_INCLUDE)/libfli/libfli.h
 	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; make; cd ../../../..
 	install -d $(BUILD_LIB)
-	cp $(LIBFLI) $(BUILD_LIB)
+	cp indigo_drivers/ccd_fli/externals/libfli-1.104/libfli.a $(BUILD_LIB)
 
 #---------------------------------------------------------------------
 #
@@ -353,7 +352,6 @@ init:
 	$(info -------------------- $(OS_DETECTED) build --------------------)
 	$(info drivers: $(notdir $(DRIVERS)))
 	git submodule update --init --recursive
-#	git submodule update --remote
 	install -d $(BUILD_ROOT)
 	install -d $(BUILD_BIN)
 	install -d $(BUILD_LIB)
@@ -721,24 +719,32 @@ $(PACKAGE_NAME).deb: all
 
 #---------------------------------------------------------------------
 #
-#	Clean
+#	Clean indigo build
 #
 #---------------------------------------------------------------------
 
 clean: init
-	#rm -f $(BUILD_BIN)/*
-	#rm -rf $(BUILD_LIB)/*
-	#rm -rf $(BUILD_DRIVERS)/*
-	#rm -rf $(BUILD_INCLUDE)/*
-	#rm -rf $(BUILD_SHARE)/*
-	rm -rf $(BUILD_ROOT)
+	rm -f $(BUILD_ROOT)/bin/indigo_server*
+	rm -f $(BUILD_ROOT)/lib/libindigo*
+	rm -rf $(BUILD_ROOT)/drivers
 	rm -f indigo_libs/*.o
 	rm -f indigo_server/*.o
 	rm -f $(wildcard indigo_drivers/*/*.o)
 	rm -f $(wildcard indigo_test/*.o)
+
+#---------------------------------------------------------------------
+#
+#	Clean indigo & externals build
+#
+#---------------------------------------------------------------------
+
+clean-all: clean
+	rm -rf $(BUILD_ROOT)
 	cd externals/hidapi; make maintainer-clean; cd ../..
 	cd externals/libusb; make maintainer-clean; cd ../..
 	cd externals/libjpeg; make distclean; cd ../..
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; cd ../../../..
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; cd ../../../..
+
+
