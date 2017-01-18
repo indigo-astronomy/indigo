@@ -346,7 +346,7 @@ static bool fli_abort_exposure(indigo_device *device) {
 	long err = FLICancelExposure(PRIVATE_DATA->dev_id);
 	FLICancelExposure(PRIVATE_DATA->dev_id);
 	FLICancelExposure(PRIVATE_DATA->dev_id);
-	PRIVATE_DATA->can_check_temperature == true;
+	PRIVATE_DATA->can_check_temperature = true;
 	PRIVATE_DATA->abort_flag = true;
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
