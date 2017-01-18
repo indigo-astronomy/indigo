@@ -1,10 +1,27 @@
+// Copyright (c) 2017 CloudMakers, s. r. o.
+// All rights reserved.
 //
-//  indigo_timer.c
-//  indigo
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
 //
-//  Created by Peter Polakovic on 16/01/2017.
-//  Copyright © 2017 CloudMakers, s. r. o. All rights reserved.
-//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// version history
+// 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+/** INDIGO timers
+ \file indigo_timer.c
+ */
 
 #include <signal.h>
 #include <time.h>
@@ -17,7 +34,7 @@
 #include "indigo_driver.h"
 
 
-#ifdef __MACH__ /* Mac OSX prior Sierra is missling clock_gettime() */
+#ifdef __MACH__ /* Mac OSX prior Sierra is missing clock_gettime() */
 #include <mach/clock.h>
 #include <mach/mach.h>
 void utc_time(struct timespec *ts) {
@@ -85,6 +102,7 @@ static void *timer_func(indigo_timer *timer) {
 			}
 		}
 		pthread_mutex_unlock(&cancel_timer_mutex);
+		
 		pthread_mutex_lock(&free_timer_mutex);
 		timer->next = free_timer;
 		free_timer = timer;
