@@ -177,7 +177,7 @@ endif
 #---------------------------------------------------------------------
 
 externals/libusb/configure: externals/libusb/configure.ac
-	cd externals/libusb; autoreconf -i; cd ../..
+	cd externals/libusb; autoreconf -fiv; cd ../..
 
 externals/libusb/Makefile: externals/libusb/configure
 	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) --with-pic; cd ../..
@@ -192,7 +192,7 @@ $(BUILD_LIB)/libusb-1.0.$(SOEXT): externals/libusb/Makefile
 #---------------------------------------------------------------------
 
 externals/hidapi/configure: externals/hidapi/configure.ac
-	cd externals/hidapi; ./bootstrap; cd ../..
+	cd externals/hidapi; autoreconf -fiv; cd ../..
 
 externals/hidapi/Makefile: externals/hidapi/configure
 	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) --with-pic; cd ../..
@@ -207,7 +207,7 @@ $(LIBHIDAPI): externals/hidapi/Makefile
 #---------------------------------------------------------------------
 
 indigo_drivers/ccd_iidc/externals/libdc1394/configure: indigo_drivers/ccd_iidc/externals/libdc1394/configure.ac
-	cd indigo_drivers/ccd_iidc/externals/libdc1394; autoreconf -i; cd ../../../..
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; autoreconf -fiv; cd ../../../..
 
 indigo_drivers/ccd_iidc/externals/libdc1394/Makefile: indigo_drivers/ccd_iidc/externals/libdc1394/configure
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)" $(LIBUSB_CFLAGS) $(LIBUSB_LIBS); cd ../../../..
@@ -318,7 +318,7 @@ $(BUILD_LIB)/libfcusb.a: $(BUILD_INCLUDE)/libfcusb/libfcusb.h
 #---------------------------------------------------------------------
 
 indigo_drivers/mount_nexstar/externals/libnexstar/configure: indigo_drivers/mount_nexstar/externals/libnexstar/configure.in
-	cd indigo_drivers/mount_nexstar/externals/libnexstar; autoreconf -i; cd ../../../..
+	cd indigo_drivers/mount_nexstar/externals/libnexstar; autoreconf -fiv; cd ../../../..
 
 indigo_drivers/mount_nexstar/externals/libnexstar/Makefile: indigo_drivers/mount_nexstar/externals/libnexstar/configure
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)"; cd ../../../..
@@ -740,11 +740,11 @@ clean: init
 
 clean-all: clean
 	rm -rf $(BUILD_ROOT)
-	cd externals/hidapi; make maintainer-clean; cd ../..
-	cd externals/libusb; make maintainer-clean; cd ../..
+	cd externals/hidapi; make maintainer-clean; rm configure; cd ../..
+	cd externals/libusb; make maintainer-clean; rm configure; cd ../..
 	cd externals/libjpeg; make distclean; cd ../..
-	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; cd ../../../..
-	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; cd ../../../..
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; rm configure; cd ../../../..
+	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; cd ../../../..
 
 
