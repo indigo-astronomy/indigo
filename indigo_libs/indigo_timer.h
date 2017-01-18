@@ -10,6 +10,7 @@
 #define indigo_timer_h
 
 #include <stdio.h>
+#include <pthread.h>
 
 #include "indigo_bus.h"
 
