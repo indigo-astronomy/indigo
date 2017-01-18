@@ -29,6 +29,9 @@
 #include "ccd_simulator/indigo_ccd_simulator.h"
 
 #include "indigo_json.h"
+#include "indigo_driver_json.h"
+
+#define CCD_SIMULATOR "CCD Imager Simulator"
 
 static bool connected = false;
 
@@ -42,7 +45,7 @@ static indigo_result test_define_property(struct indigo_client *client, struct i
 	if (strcmp(property->device, CCD_SIMULATOR_IMAGER_CAMERA_NAME))
 		return INDIGO_OK;
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-		indigo_device_connect(client, device);
+		indigo_device_connect(client, CCD_SIMULATOR);
 		return INDIGO_OK;
 	}
 	return INDIGO_OK;
@@ -58,7 +61,7 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
 				indigo_log("connected...");
 				static char * items[] = { CCD_EXPOSURE_ITEM_NAME };
 				static double values[] = { 3.0 };
-				indigo_change_number_property(client, device, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+				indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
 			}
 		} else {
 			if (connected) {
@@ -79,7 +82,7 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		indigo_log("image received (%d bytes)...", property->items[0].blob.size);
-		indigo_device_disconnect(client, device);
+		indigo_device_disconnect(client, CCD_SIMULATOR);
 	}
 	return INDIGO_OK;
 }
@@ -106,7 +109,7 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 	indigo_start();
 	
-	indigo_client *protocol_adapter = indigo_json_device_adapter(0, 1);
+	indigo_client *protocol_adapter = indigo_json_device_adapter(0, 1, 0);
 	indigo_attach_client(protocol_adapter);
 
 	
