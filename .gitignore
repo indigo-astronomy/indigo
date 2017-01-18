@@ -8,3 +8,4 @@ build/*
 **/*.o
 **/.hg
 **/.hgignore
+**/*externals/**/*.a
