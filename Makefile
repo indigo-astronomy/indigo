@@ -626,6 +626,21 @@ $(BUILD_DRIVERS)/indigo_wheel_fli.$(SOEXT): indigo_drivers/wheel_fli/indigo_whee
 
 #---------------------------------------------------------------------
 #
+#	Build Shoestring FLI focuser driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_fli.a: indigo_drivers/focuser_fli/indigo_focuser_fli.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_fli: indigo_drivers/focuser_fli/indigo_focuser_fli_main.o $(BUILD_DRIVERS)/indigo_focuser_fli.a $(BUILD_LIB)/libfli.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_fli.$(SOEXT): indigo_drivers/focuser_fli/indigo_focuser_fli.o $(BUILD_LIB)/libfli.a
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------
