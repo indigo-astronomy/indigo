@@ -63,6 +63,16 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 
+static void fli_close(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	long res = FLIClose(PRIVATE_DATA->dev_id);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res) {
+		INDIGO_LOG(indigo_log("indigo_focuser_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
+	}
+}
+
+
 static void focuser_timer_callback(indigo_device *device) {
 	// libfcusb_stop(PRIVATE_DATA->device_context);
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -112,7 +122,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else {
-			//libfcusb_close(PRIVATE_DATA->device_context);
+			fli_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
