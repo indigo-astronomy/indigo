@@ -144,7 +144,7 @@ long unix_fli_connect(flidev_t dev, char *name, long domain)
            break;
 
          case FLIDEVICE_FILTERWHEEL:
-           if (usbdesc.idProduct != FLIUSB_FILTER_ID || usbdesc.idProduct != FLIUSB_CFW4_ID)
+           if (!(usbdesc.idProduct == FLIUSB_FILTER_ID) || (usbdesc.idProduct == FLIUSB_CFW4_ID))
              return -ENODEV;
            break;
       }
