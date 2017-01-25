@@ -53,6 +53,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <glob.h>
+#include <sys/ioctl.h>
 
 #include "libfli-libfli.h"
 #include "libfli-debug.h"
@@ -64,6 +65,11 @@
 #include "libfli-usb.h"
 #include "libfli-serial.h"
 
+#ifdef __linux__
+#include "linux/fliusb_ioctl.h"
+#include "linux/fli-usb.h"
+#endif
+
 static long unix_fli_list_parport(flidomain_t domain, char ***names);
 static long unix_fli_list_usb(flidomain_t domain, char ***names);
 static long unix_fli_list_serial(flidomain_t domain, char ***names);
@@ -71,6 +77,9 @@ static long unix_fli_list_serial(flidomain_t domain, char ***names);
 long unix_fli_connect(flidev_t dev, char *name, long domain)
 {
   fli_unixio_t *io;
+#ifdef __linux__
+  struct usb_device_descriptor usbdesc;
+#endif
 
   CHKDEVICE(dev);
 
@@ -108,10 +117,39 @@ long unix_fli_connect(flidev_t dev, char *name, long domain)
 
       if ((r = unix_usb_connect(dev, io, name)))
       {
-	close(io->fd);
-	xfree(io);
-	return r;
+         close(io->fd);
+         xfree(io);
+         return r;
       }
+
+#ifdef __linux__
+      if (ioctl(io->fd, FLIUSB_GET_DEVICE_DESCRIPTOR, &usbdesc) == -1)
+      {
+        debug(FLIDEBUG_FAIL, "%s: Could not read descriptor: %s",
+              __PRETTY_FUNCTION__, strerror(errno));
+        return -EIO;
+      }
+
+      // try to open only device with correct idProduct
+      switch (DEVICE->devinfo.type)
+      {
+         case FLIDEVICE_CAMERA:
+           if (!(usbdesc.idProduct == FLIUSB_CAM_ID || usbdesc.idProduct == FLIUSB_PROLINE_ID))
+             return -ENODEV;
+           break;
+
+         case FLIDEVICE_FOCUSER:
+           if (usbdesc.idProduct != FLIUSB_FOCUSER_ID)
+             return -ENODEV;
+           break;
+
+         case FLIDEVICE_FILTERWHEEL:
+           if (usbdesc.idProduct != FLIUSB_FILTER_ID || usbdesc.idProduct != FLIUSB_CFW4_ID)
+             return -ENODEV;
+           break;
+      }
+#endif
+
       DEVICE->fli_io = unix_usbio;
     }
     break;
@@ -422,7 +460,8 @@ static long unix_fli_list_glob(char *pattern, flidomain_t domain,
       continue;
 
     if ((list[found] = xmalloc(strlen(g.gl_pathv[i]) +
-			       strlen(DEVICE->devinfo.model) + 2)) == NULL)
+        (DEVICE->devinfo.model ? strlen(DEVICE->devinfo.model) : 6) + 2)) == NULL)
+
     {
       int j;
 
