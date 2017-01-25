@@ -127,6 +127,8 @@ long unix_fli_connect(flidev_t dev, char *name, long domain)
       {
         debug(FLIDEBUG_FAIL, "%s: Could not read descriptor: %s",
               __PRETTY_FUNCTION__, strerror(errno));
+        close(io->fd);
+        xfree(io);
         return -EIO;
       }
 
@@ -134,18 +136,27 @@ long unix_fli_connect(flidev_t dev, char *name, long domain)
       switch (DEVICE->devinfo.type)
       {
          case FLIDEVICE_CAMERA:
-           if (!(usbdesc.idProduct == FLIUSB_CAM_ID || usbdesc.idProduct == FLIUSB_PROLINE_ID))
+           if (!(usbdesc.idProduct == FLIUSB_CAM_ID || usbdesc.idProduct == FLIUSB_PROLINE_ID)) {
+             close(io->fd);
+             xfree(io);
              return -ENODEV;
+           }
            break;
 
          case FLIDEVICE_FOCUSER:
-           if (usbdesc.idProduct != FLIUSB_FOCUSER_ID)
+           if (usbdesc.idProduct != FLIUSB_FOCUSER_ID) {
+             close(io->fd);
+             xfree(io);
              return -ENODEV;
+           }
            break;
 
          case FLIDEVICE_FILTERWHEEL:
-           if (!(usbdesc.idProduct == FLIUSB_FILTER_ID) || (usbdesc.idProduct == FLIUSB_CFW4_ID))
+           if (!(usbdesc.idProduct == FLIUSB_FILTER_ID) || (usbdesc.idProduct == FLIUSB_CFW4_ID)) {
+             close(io->fd);
+             xfree(io);
              return -ENODEV;
+           }
            break;
       }
 #endif
