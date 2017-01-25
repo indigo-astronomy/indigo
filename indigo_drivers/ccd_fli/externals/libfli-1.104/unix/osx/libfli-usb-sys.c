@@ -151,6 +151,25 @@ long mac_fli_list(flidomain_t domain, char ***names)
                     continue;
             }
             
+            long devtype = domain & 0xff00;
+            switch(devtype)
+            {
+            case FLIDEVICE_CAMERA:
+                if (!(usbProduct == FLIUSB_CAM_ID || usbProduct == FLIUSB_PROLINE_ID))
+                    continue;
+                break;
+
+            case FLIDEVICE_FOCUSER:
+                if (usbProduct != FLIUSB_FOCUSER_ID)
+                    continue;
+                break;
+
+            case FLIDEVICE_FILTERWHEEL:
+                if (!(usbProduct == FLIUSB_FILTER_ID) || (usbProduct == FLIUSB_CFW4_ID))
+                    continue;
+                break;
+            }
+
             ioret = (*dev_int)->GetLocationID(dev_int, &locationID);
             if(ioret)
             {
