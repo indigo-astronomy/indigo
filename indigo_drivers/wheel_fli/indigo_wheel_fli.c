@@ -216,11 +216,11 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 #define MAX_DEVICES                   32
 
-const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
-int num_devices = 0;
-char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
-char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
-flidomain_t fli_domains[MAX_DEVICES] = {0};
+static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
+static int num_devices = 0;
+static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
+static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
+static flidomain_t fli_domains[MAX_DEVICES] = {0};
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
