@@ -53,6 +53,7 @@ typedef struct {
 	int dev_id;
 	int current_slot, target_slot;
 	int count;
+	indigo_timer *wheel_timer;
 	pthread_mutex_t usb_mutex;
 } asi_private_data;
 
@@ -69,7 +70,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		indigo_set_timer(device, 0.5, wheel_timer_callback);
+		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->wheel_timer));
 	}
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
@@ -116,7 +117,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				PRIVATE_DATA->target_slot++;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_set_timer(device, 0.5, wheel_timer_callback);
+				PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
 				INDIGO_LOG(indigo_log("indigo_wheel_asi: EFWOpen(%d) = %d", index, res));
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -130,7 +131,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		
+
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
@@ -146,7 +147,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			indigo_set_timer(device, 0.5, wheel_timer_callback);
+			PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
