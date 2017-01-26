@@ -51,6 +51,28 @@ typedef struct indigo_timer {
 	struct indigo_timer *next;
 } indigo_timer;
 
+/* fix timespec so that tv_nsec < 1s */
+#define SEC_NS    1000000000LL
+static inline void normalize_timespec(struct timespec *ts) {
+	if((1 <= ts->tv_sec ) || ((0 == ts->tv_sec) && (0 <= ts->tv_nsec))) {
+		if (SEC_NS <= ts->tv_nsec) {
+			ts->tv_nsec -= SEC_NS;
+			ts->tv_sec++;
+		} else if ( 0 > (ts)->tv_nsec ) {
+			ts->tv_nsec += SEC_NS;
+			ts->tv_sec--;
+		}
+	} else {
+		if ( (-1 * SEC_NS) >= ts->tv_nsec ) {
+			ts->tv_nsec += SEC_NS;
+			ts->tv_sec--;
+		} else if ( 0 < ts->tv_nsec ) {
+			ts->tv_nsec -= SEC_NS;
+			ts->tv_sec++;
+		}
+	}
+}
+
 /** Set timer.
  */
 extern indigo_timer *indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback);
