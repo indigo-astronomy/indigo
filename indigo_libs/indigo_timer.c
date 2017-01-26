@@ -68,6 +68,7 @@ static void *timer_func(indigo_timer *timer) {
 				utc_time(&end);
 				end.tv_sec += (int)timer->delay;
 				end.tv_nsec += NANO * (timer->delay - (int)timer->delay);
+				normalize_timespec(&end);
 				while (!timer->canceled) {
 					pthread_mutex_lock(&timer->mutex);
 					int rc = pthread_cond_timedwait(&timer->cond, &timer->mutex, &end);
