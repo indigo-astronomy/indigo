@@ -122,12 +122,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 7;
 		FOCUSER_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
-		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		//FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
-		//strncpy(FOCUSER_SPEED_ITEM->label, "Power (0-255)", INDIGO_VALUE_SIZE);
-		//strncpy(FOCUSER_SPEED_PROPERTY->label, "Power", INDIGO_VALUE_SIZE);
-		// --------------------------------------------------------------------------------
+		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+
 		strncpy(FOCUSER_STEPS_ITEM->label, "Relative move (steps)", INDIGO_VALUE_SIZE);
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -183,8 +179,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetFocuserExtent(%d) = %d", id, res));
 					value = 1000;
 				}
+				INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuse Extent %d", value));
 				FOCUSER_POSITION_ITEM->number.max = value;
 				FOCUSER_POSITION_ITEM->number.min = 0;
+				FOCUSER_POSITION_ITEM->number.step = 1;
 
 				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
 				if (res) {
@@ -238,6 +236,29 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		res = 0;
+		long value = 0;
+		if (FOCUSER_POSITION_ITEM->number.value >= 0) {
+			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &value);
+			if (res) {
+				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
+			}
+
+			value = FOCUSER_POSITION_ITEM->number.value - value;
+			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
+			if (res) {
+				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIStepMotorAsync(%d) = %d", id, res));
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			}
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
 		}
 		return INDIGO_OK;
