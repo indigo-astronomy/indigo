@@ -67,7 +67,6 @@ static int find_index_by_device_fname(char *fname);
 static void wheel_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 	long res = FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
 	if (res) {
 		INDIGO_LOG(indigo_log("indigo_wheel_fli: FLISetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
@@ -197,14 +196,15 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0, wheel_timer_callback);
 		}
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
