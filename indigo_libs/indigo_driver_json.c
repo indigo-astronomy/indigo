@@ -80,10 +80,10 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"defTextVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"defText\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"defText\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -98,18 +98,18 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"defNumberVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"defNumber\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"defNumber\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
 				if (property->perm != INDIGO_RO_PERM)
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"min\": %g, \"max\": %g, \"step\": %g, \"target\": %g, \"value\": %g }",  i > 0 ? "," : "", item->name, item->label, item->number.min, item->number.max, item->number.step, item->number.target, item->number.value);
+					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"min\": %g, \"max\": %g, \"step\": %g, \"format\": \"%s\", \"target\": %g, \"value\": %g }",  i > 0 ? "," : "", item->name, item->label, item->number.min, item->number.max, item->number.step, item->number.format, item->number.target, item->number.value);
 				else
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"min\": %g, \"max\": %g, \"step\": %g, \"value\": %g }",  i > 0 ? "," : "", item->name, item->label, item->number.min, item->number.max, item->number.step, item->number.value);
+					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"min\": %g, \"max\": %g, \"step\": %g, \"format\": \"%s\", \"value\": %g }",  i > 0 ? "," : "", item->name, item->label, item->number.min, item->number.max, item->number.step, item->number.format, item->number.value);
 				pnt += size;
 			}
 			size = sprintf(pnt, " ] } }");
@@ -119,10 +119,10 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"defSwitchVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\", \"rule\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"defSwitch\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"defSwitch\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -137,10 +137,10 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"defLightVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_state_text[property->state]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"defLight\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"defLight\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -155,10 +155,10 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"defBLOBVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, property->label, indigo_property_state_text[property->state]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"defBLOB\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"defBLOB\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -197,10 +197,10 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"setTextVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"oneText\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"oneText\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -215,10 +215,10 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"setNumberVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"oneNumber\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"oneNumber\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -236,10 +236,10 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"setSwitchVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"oneSwitch\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"oneSwitch\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -254,10 +254,10 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"setLightVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"oneLight\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"oneLight\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {
@@ -272,10 +272,10 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 			size = sprintf(pnt, "{ \"setBLOBVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			pnt += size;
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"oneBLOB\": [ ", message);
+				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 				pnt += size;
 			} else {
-				size = sprintf(pnt, ", \"oneBLOB\": [ ");
+				size = sprintf(pnt, ", \"items\": [ ");
 				pnt += size;
 			}
 			for (int i = 0; i < property->count; i++) {

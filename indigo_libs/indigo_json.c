@@ -142,7 +142,7 @@ static void *one_text_handler(parser_state state, char *name, char *value, indig
 
 static void *new_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
 	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
-	if (state == BEGIN_ARRAY && !strcmp(name, "oneText")) {
+	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_text_handler;
 	}
@@ -175,7 +175,7 @@ static void *one_number_handler(parser_state state, char *name, char *value, ind
 
 static void *new_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
 	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
-	if (state == BEGIN_ARRAY && !strcmp(name, "oneNumber")) {
+	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_number_handler;
 	}
@@ -208,7 +208,7 @@ static void *one_switch_handler(parser_state state, char *name, char *value, ind
 
 static void *new_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
 	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
-	if (state == BEGIN_ARRAY && !strcmp(name, "oneSwitch")) {
+	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_switch_handler;
 	}
