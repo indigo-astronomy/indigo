@@ -501,20 +501,20 @@
 						property.state = vector.state;
 						property.rule = vector.rule;
 						property.message = vector.message;
-						for (var i = 0; i < vector.defSwitch.length; i++) {
-							var item = addItem(property, vector.defSwitch[i].name);
-							item.value = item.oldValue = vector.defSwitch[i].value;
-							item.label = vector.defSwitch[i].label;
+						for (var i = 0; i < vector.items.length; i++) {
+							var item = addItem(property, vector.items[i].name);
+							item.value = item.oldValue = vector.items[i].value;
+							item.label = vector.items[i].label;
 						}
 					} else if ((vector = message.setSwitchVector) != undefined) {
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 							property.state = vector.state;
 							property.message = vector.message;
-							for (var i = 0; i < vector.oneSwitch.length; i++) {
-								var item = getItem(property, vector.oneSwitch[i].name);
+							for (var i = 0; i < vector.items.length; i++) {
+								var item = getItem(property, vector.items[i].name);
 								if (item != undefined)
-								item.value = item.oldValue = vector.oneSwitch[i].value;
+								item.value = item.oldValue = vector.items[i].value;
 							}
 						}
 					} else if ((vector = message.defTextVector) != undefined) {
@@ -526,20 +526,20 @@
 						property.perm = vector.perm;
 						property.state = vector.state;
 						property.message = vector.message;
-						for (var i = 0; i < vector.defText.length; i++) {
-							var item = addItem(property, vector.defText[i].name);
-							item.value = item.oldValue = vector.defText[i].value;
-							item.label = vector.defText[i].label;
+						for (var i = 0; i < vector.items.length; i++) {
+							var item = addItem(property, vector.items[i].name);
+							item.value = item.oldValue = vector.items[i].value;
+							item.label = vector.items[i].label;
 						}
 					} else if ((vector = message.setTextVector) != undefined) {
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 							property.state = vector.state;
 							property.message = vector.message;
-							for (var i = 0; i < vector.oneText.length; i++) {
-								var item = getItem(property, vector.oneText[i].name);
+							for (var i = 0; i < vector.items.length; i++) {
+								var item = getItem(property, vector.items[i].name);
 								if (item != undefined && !item.modified)
-									item.value = item.oldValue = vector.oneText[i].value;
+									item.value = item.oldValue = vector.items[i].value;
 							}
 						}
 					} else if ((vector = message.defNumberVector) != undefined) {
@@ -551,28 +551,28 @@
 						property.perm = vector.perm;
 						property.state = vector.state;
 						property.message = vector.message;
-						for (var i = 0; i < vector.defNumber.length; i++) {
-							var item = addItem(property, vector.defNumber[i].name);
-							item.min = vector.defNumber[i].min;
-							item.max = vector.defNumber[i].max;
-							item.step = vector.defNumber[i].step;
-							item.value = item.oldValue = vector.defNumber[i].value;
+						for (var i = 0; i < vector.items.length; i++) {
+							var item = addItem(property, vector.items[i].name);
+							item.min = vector.items[i].min;
+							item.max = vector.items[i].max;
+							item.step = vector.items[i].step;
+							item.value = item.oldValue = vector.items[i].value;
 							if (vector.perm != "ro")
-								item.target = vector.defNumber[i].target;
-							item.label = vector.defNumber[i].label;
+								item.target = vector.items[i].target;
+							item.label = vector.items[i].label;
 						}
 					} else if ((vector = message.setNumberVector) != undefined) {
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 							property.state = vector.state;
 							property.message = vector.message;
-							for (var i = 0; i < vector.oneNumber.length; i++) {
-								var item = getItem(property, vector.oneNumber[i].name);
+							for (var i = 0; i < vector.items.length; i++) {
+								var item = getItem(property, vector.items[i].name);
 								if (item != undefined) {
 									if (!item.modified)
-										item.value = item.oldValue = vector.oneNumber[i].value;
+										item.value = item.oldValue = vector.items[i].value;
 									if (vector.perm != "ro")
-										item.target = vector.oneNumber[i].target;
+										item.target = vector.items[i].target;
 								}
 							}
 						}
@@ -608,22 +608,22 @@
 						property.type = "BLOB";
 						property.state = vector.state;
 						property.message = vector.message;
-						for (var i = 0; i < vector.defBLOB.length; i++) {
-							var item = addItem(property, vector.defBLOB[i].name);
-							item.label = vector.defBLOB[i].label;
+						for (var i = 0; i < vector.items.length; i++) {
+							var item = addItem(property, vector.items[i].name);
+							item.label = vector.items[i].label;
 						}
 					} else if ((vector = message.setBLOBVector) != undefined) {
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 							property.state = vector.state;
 							property.message = vector.message;
-							for (var i = 0; i < vector.oneBLOB.length; i++) {
-								var item = getItem(property, vector.oneBLOB[i].name);
+							for (var i = 0; i < vector.items.length; i++) {
+								var item = getItem(property, vector.items[i].name);
 								item.jpeg = false;
 								if (item != undefined) {
-									if (vector.oneBLOB[i].value != undefined) {
-										item.value = vector.oneBLOB[i].value;
-										item.jpeg = vector.oneBLOB[i].value.substr(-5) === ".jpeg";
+									if (vector.items[i].value != undefined) {
+										item.value = vector.items[i].value;
+										item.jpeg = vector.items[i].value.substr(-5) === ".jpeg";
 									}
 								}
 							}
@@ -643,17 +643,17 @@
 			}
 			
 			$scope.setSwitch = function(device, property, item, value) {
-				var message = { "newSwitchVector": { "device": device.device, "name": property.property, "oneSwitch": [ { "name": item.item, "value": value } ] } }
+				var message = { "newSwitchVector": { "device": device.device, "name": property.property, "items": [ { "name": item.item, "value": value } ] } }
 				message = JSON.stringify(message);
 				doSend(message);
 				console.log("SEND "+message);
 			}
 			
 			$scope.setText = function(form, device, property) {
-				var message = { "newTextVector": { "device": device.device, "name": property.property, "oneText": [ ] } }
+				var message = { "newTextVector": { "device": device.device, "name": property.property, "items": [ ] } }
 				for (var i = 0; i < property.items.length; i++) {
 					var item = property.items[i];
-					message.newTextVector.oneText.push({ "name": item.item, "value": item.value });
+					message.newTextVector.items.push({ "name": item.item, "value": item.value });
 					item.modified = false;
 				}
 				message = JSON.stringify(message);
@@ -662,10 +662,10 @@
 			}
 			
 			$scope.setNumber = function(form, device, property) {
-				var message = { "newNumberVector": { "device": device.device, "name": property.property, "oneNumber": [ ] } }
+				var message = { "newNumberVector": { "device": device.device, "name": property.property, "items": [ ] } }
 				for (var i = 0; i < property.items.length; i++) {
 					var item = property.items[i];
-					message.newNumberVector.oneNumber.push({ "name": item.item, "value": Number(item.value) });
+					message.newNumberVector.items.push({ "name": item.item, "value": Number(item.value) });
 					item.modified = false;
 				}
 				message = JSON.stringify(message);
