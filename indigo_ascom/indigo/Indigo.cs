@@ -610,7 +610,7 @@ namespace INDIGO {
     public void Add(Property property) {
       property.Group = this;
       properties.Add(property);
-      PropertyAdded(property);
+      PropertyAdded?.Invoke(property);
     }
 
     public void Update(Property property) {
@@ -889,7 +889,9 @@ namespace INDIGO {
           } while (!result.EndOfMessage);
           OnMessage(stringResult.ToString(), this);
         }
-      } catch (Exception) {
+      } catch (Exception exception) {
+        Console.WriteLine(exception.Message);
+        Console.WriteLine(exception.StackTrace);
         OnDisconnect(this);
       } finally {
         socket.Dispose();
@@ -933,7 +935,7 @@ namespace INDIGO {
     private void OnConnect(Server server) {
       Console.WriteLine("Connected to " + Host + ":" + Port);
       client.Mutex.WaitOne();
-      ServerConnected(server);
+      ServerConnected?.Invoke(server);
       server.SendMessageAsync(getProperties);
       client.Mutex.ReleaseMutex();
     }
@@ -941,7 +943,7 @@ namespace INDIGO {
     private void OnDisconnect(Server server) {
       client.Mutex.WaitOne();
       devices.Clear();
-      ServerDisconnected(server);
+      ServerDisconnected?.Invoke(server);
       client.Mutex.ReleaseMutex();
       Console.WriteLine("Disconnected from " + Host + ":" + Port);
     }

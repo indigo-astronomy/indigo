@@ -4,22 +4,22 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("INDIGO")]
-[assembly: AssemblyDescription("INDIGO for .Net")]
+[assembly: AssemblyTitle("ASCOM Driver Test Forms Application")]
+[assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("CloudMakers, s. r. o.")]
-[assembly: AssemblyProduct("INDIGO")]
-[assembly: AssemblyCopyright("Copyright ©  2017 CloudMakers, s. r. o")]
+[assembly: AssemblyCompany("ASCOM Initiative")]
+[assembly: AssemblyProduct("Driver Test Forms Application Template CSharp")]
+[assembly: AssemblyCopyright("Copyright © ASCOM Initiative 2014")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
 // to COM components.  If you need to access a type in this assembly from 
 // COM, set the ComVisible attribute to true on that type.
-[assembly: ComVisible(true)]
+[assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("36648bad-b851-4049-ba6c-a017213f6e34")]
+[assembly: Guid("e6c7b090-1f16-486f-bdba-d45785e9f6f1")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -31,5 +31,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("6.2.0.0")]
+[assembly: AssemblyFileVersion("6.2.0.0")]
