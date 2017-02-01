@@ -102,7 +102,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			}
 		}
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		CCD_TEMPERATURE_ITEM->number.value = --(PRIVATE_DATA->current_temperature);
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	} else if (diff < 0) {
@@ -110,11 +110,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 			CCD_COOLER_POWER_ITEM->number.value = 0;
 			indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 		}
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		CCD_TEMPERATURE_ITEM->number.value = ++(PRIVATE_DATA->current_temperature);
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	} else {
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+		CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
 	indigo_reschedule_timer(device, TEMP_UPDATE, &PRIVATE_DATA->temperature_timer);
