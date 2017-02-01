@@ -4,12 +4,14 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("INDIGO")]
-[assembly: AssemblyDescription("INDIGO for .Net")]
+//
+// TODO - Add your authorship information here
+[assembly: AssemblyTitle("ASCOM.INDIGO.FilterWheel")]
+[assembly: AssemblyDescription("ASCOM FilterWheel driver for INDIGO")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("CloudMakers, s. r. o.")]
-[assembly: AssemblyProduct("INDIGO")]
-[assembly: AssemblyCopyright("Copyright ©  2017 CloudMakers, s. r. o")]
+[assembly: AssemblyProduct("ASCOM FilterWheel driver for INDIGO")]
+[assembly: AssemblyCopyright("Copyright © 2017 CloudMakers, s. r. o.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -19,7 +21,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(true)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("36648bad-b851-4049-ba6c-a017213f6e34")]
+[assembly: Guid("34b4a4bb-5e6b-4a29-9b4a-420d5fcb5522")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -28,8 +30,9 @@ using System.Runtime.InteropServices;
 //      Build Number
 //      Revision
 //
-// You can specify all the values or you can default the Build and Revision Numbers 
+// You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
-// [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+//
+// TODO - Set your driver's version here
+[assembly: AssemblyVersion("6.2.*")]
+[assembly: AssemblyFileVersion("6.2.0.0")]
