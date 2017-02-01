@@ -751,7 +751,7 @@ namespace INDIGO {
   }
 
   public class Server {
-
+    private Client client;
     private Dictionary<string, Device> devices = new Dictionary<string, Device>();
 
     private const string getProperties = "{ 'getProperties': { 'version': 512 } }";
@@ -792,6 +792,12 @@ namespace INDIGO {
       }
     }
 
+    public Client Client {
+      get {
+        return client;
+      }
+    }
+
     [DataContract]
     private class ServerMessage {
       [DataMember(Name = "defSwitchVector")]
@@ -818,10 +824,11 @@ namespace INDIGO {
       public Property DeleteProperty;
     }
 
-    public Server(string name, string host, int port) {
+    public Server(string name, string host, int port, Client client) {
       this.name = name;
       this.host = host;
       this.port = port;
+      this.client = client;
       uri = new Uri("ws://" + host + ":" + port);
       socket = new ClientWebSocket();
       socket.Options.KeepAliveInterval = new TimeSpan(365, 0, 0, 0, 0);
@@ -894,6 +901,7 @@ namespace INDIGO {
       DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(ServerMessage));
       MemoryStream stream = new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(message));
       ServerMessage serverMessage = (ServerMessage)serializer.ReadObject(stream);
+      client.Mutex.WaitOne();
       if (serverMessage.DefSwitchVector != null) {
         DefProperty(serverMessage.DefSwitchVector);
       } else if (serverMessage.DefTextVector != null) {
@@ -919,24 +927,29 @@ namespace INDIGO {
       } else {
         Console.WriteLine("Failed to process message: " + message);
       }
+      client.Mutex.ReleaseMutex();
     }
 
     private void OnConnect(Server server) {
       Console.WriteLine("Connected to " + Host + ":" + Port);
+      client.Mutex.WaitOne();
       ServerConnected(server);
       server.SendMessageAsync(getProperties);
+      client.Mutex.ReleaseMutex();
     }
 
     private void OnDisconnect(Server server) {
+      client.Mutex.WaitOne();
       devices.Clear();
       ServerDisconnected(server);
+      client.Mutex.ReleaseMutex();
       Console.WriteLine("Disconnected from " + Host + ":" + Port);
     }
   }
 
   public class Client {
+    public readonly Mutex Mutex = new Mutex();
     public List<Server> Servers = new List<Server>();
-
     public event ServerAddedHandler ServerAdded;
     public event ServerRemovedHandler ServerRemoved;
 
@@ -958,6 +971,7 @@ namespace INDIGO {
     private void ServiceLost(DNSSDService browser, DNSSDFlags flags, uint ifIndex, string serviceName, string regType, string domain) {
       Console.WriteLine("Service " + serviceName + " lost");
       Server server = null;
+      Mutex.WaitOne();
       foreach (Server item in Servers)
         if (item.Name == serviceName) {
           server = item;
@@ -967,16 +981,19 @@ namespace INDIGO {
         Servers.Remove(server);
         ServerRemoved?.Invoke(server);
       }
+      Mutex.ReleaseMutex();
     }
 
     private void ServiceResolved(DNSSDService resolver, DNSSDFlags flags, uint ifIndex, string fullName, string hostName, ushort port, TXTRecord txtRecord) {
       Console.WriteLine("Service " + hostName + ":" + port + " resolved");
       resolver.Stop();
       string serviceName = resolvers[resolver];
-      Server server = new Server(serviceName, hostName, port);
+      Server server = new Server(serviceName, hostName, port, this);
+      Mutex.WaitOne();
       Servers.Add(server);
       resolvers.Remove(resolver);
       ServerAdded?.Invoke(server);
+      Mutex.ReleaseMutex();
     }
 
     private void OperationFailed(DNSSDService service, DNSSDError error) {
