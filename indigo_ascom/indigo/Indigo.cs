@@ -20,117 +20,490 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Json;
-using System.Net.WebSockets;
 using System.Threading;
 using System.Text;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
+using System.Net.WebSockets;
 using Bonjour;
+
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
 
 namespace INDIGO {
 
-  public delegate void ServerAdded(Server server);
-  public delegate void ServerRemoved(Server server);
-  public delegate void DeviceAdded(Device device);
-  public delegate void DeviceRemoved(Device device);
-  public delegate void GroupAdded(Group group);
-  public delegate void GroupRemoved(Group group);
-  public delegate void PropertyAdded(Property property);
-  public delegate void PropertyRemoved(Property property);
+  public delegate void ServerAddedHandler(Server server);
+  public delegate void ServerRemovedHandler(Server server);
+  public delegate void ServerConnectedHandler(Server server);
+  public delegate void ServerDisconnectedHandler(Server server);
+  public delegate void DeviceAddedHandler(Device device);
+  public delegate void DeviceRemovedHandler(Device device);
+  public delegate void GroupAddedHandler(Group group);
+  public delegate void GroupRemovedHandler(Group group);
+  public delegate void PropertyAddedHandler(Property property);
+  public delegate void PropertyUpdatedHandler(Property property);
+  public delegate void PropertyRemovedHandler(Property property);
 
   [DataContract]
   public class Item {
-    [DataMember]
-    public string name;
-    [DataMember]
-    public string label;
+    private Property property;
+    [DataMember(Name = "name")]
+    private string name;
+    [DataMember(Name = "label")]
+    private string label;
 
-    public override bool Equals(object other) {
-      return name.Equals(((Item)other).name);
+    [DataContract]
+    internal class ChangeItem {
+      [DataMember(Name = "name")]
+      internal string name;
+    }
+
+    virtual internal ChangeItem changeItem() {
+      return null;
+    }
+
+    public string Name {
+      get {
+        return name;
+      }
+    }
+
+    public string Label {
+      get {
+        return label;
+      }
+    }
+
+    public Property Property {
+      get {
+        return property;
+      }
+
+      set {
+        if (property == null)
+          property = value;
+      }
+    }
+
+    virtual public void Update(Item item) {
+    }
+
+    override public bool Equals(object other) {
+      return Name.Equals(((Item)other).Name);
+    }
+
+    override public int GetHashCode() {
+      return name.GetHashCode();
     }
   }
 
   [DataContract]
   public class SwitchItem : Item {
-    [DataMember]
-    public bool value;
+    [DataMember(Name = "value")]
+    private bool value;
+    private bool modifiedValue;
+    private bool modified = false;
+
+    [DataContract]
+    internal class ChangeSwitchItem : ChangeItem {
+      [DataMember(Name = "value")]
+      internal bool value;
+    }
+
+    override internal ChangeItem changeItem() {
+      if (!modified)
+        return null;
+      modified = false;
+      return new ChangeSwitchItem() { name = this.Name, value = modifiedValue };
+    }
+
+    public bool Value {
+      get {
+        return value;
+      }
+
+      set {
+        modifiedValue = value;
+        modified = true;
+      }
+    }
+
+    override public void Update(Item item) {
+      value = ((SwitchItem)item).value;
+    }
   }
 
   [DataContract]
   public class TextItem : Item {
-    [DataMember]
-    public string value;
+    [DataMember(Name = "value")]
+    private string value;
+    private string modifiedValue;
+    private bool modified = false;
+
+    [DataContract]
+    internal class ChangeTextItem : ChangeItem {
+      [DataMember(Name = "value")]
+      internal string value;
+    }
+
+    override internal ChangeItem changeItem() {
+      if (!modified)
+        return null;
+      modified = false;
+      return new ChangeTextItem() { name = this.Name, value = modifiedValue };
+    }
+
+    public string Value {
+      get {
+        return value;
+      }
+
+      set {
+        modifiedValue = value;
+        modified = true;
+      }
+    }
+
+    override public void Update(Item item) {
+      value = ((TextItem)item).value;
+    }
   }
 
   [DataContract]
   public class NumberItem : Item {
-    [DataMember]
-    public double min;
-    [DataMember]
-    public double max;
-    [DataMember]
-    public double step;
-    [DataMember]
-    public double value;
-    [DataMember]
-    public string format;
+    [DataMember(Name = "min")]
+    private double min;
+    [DataMember(Name = "max")]
+    private double max;
+    [DataMember(Name = "step")]
+    private double step;
+    [DataMember(Name = "target")]
+    private double target;
+    [DataMember(Name = "format")]
+    private string format;
+    [DataMember(Name = "value")]
+    private double value;
+    private double modifiedValue;
+    private bool modified = false;
+
+    [DataContract]
+    internal class ChangeNumberItem : ChangeItem {
+      [DataMember(Name = "value")]
+      internal double value;
+    }
+
+    override internal ChangeItem changeItem() {
+      if (!modified)
+        return null;
+      modified = false;
+      return new ChangeNumberItem() { name = this.Name, value = modifiedValue };
+    }
+
+    public double Min {
+      get {
+        return min;
+      }
+    }
+
+    public double Max {
+      get {
+        return max;
+      }
+    }
+
+    public double Step {
+      get {
+        return step;
+      }
+    }
+
+    public double Target {
+      get {
+        return target;
+      }
+    }
+
+    public string Format {
+      get {
+        return format;
+      }
+    }
+
+    public double Value {
+      get {
+        return value;
+      }
+
+      set {
+        modifiedValue = value;
+        modified = true;
+      }
+    }
+
+    override public void Update(Item item) {
+      value = ((NumberItem)item).value;
+      target = ((NumberItem)item).target;
+    }
   }
 
   [DataContract]
   public class LightItem : Item {
-    [DataMember]
-    public string value;
+    [DataMember(Name = "value")]
+    private string value;
+
+    public string Value {
+      get {
+        return value;
+      }
+    }
+
+    override public void Update(Item item) {
+      value = ((LightItem)item).value;
+    }
   }
 
   [DataContract]
   public class BLOBItem : Item {
-    [DataMember]
-    public string value;
+    [DataMember(Name = "value")]
+    private string value;
+
+    public string Value {
+      get {
+        return value;
+      }
+    }
+
+    override public void Update(Item item) {
+      value = ((BLOBItem)item).value;
+    }
   }
 
   [DataContract]
   public class Property {
-    [DataMember]
-    public int version;
-    [DataMember]
-    public string device;
-    [DataMember]
-    public string name;
-    [DataMember]
-    public string group;
-    [DataMember]
-    public string label;
-    [DataMember]
-    public string perm;
-    [DataMember]
-    public string state;
-    [DataMember]
-    public string message;
 
-    public virtual List<Item> items {
+    public enum Permissions {
+      ReadOnly, WriteOnly, ReadWrite
+    }
+
+    public enum States {
+      Idle, Busy, Alert, Ok
+    }
+
+    private Device device;
+    private Group group;
+    [DataMember(Name = "version")]
+    private int version;
+    [DataMember(Name = "device")]
+    private string deviceName;
+    [DataMember(Name = "name")]
+    private string name;
+    [DataMember(Name = "group")]
+    private string groupName;
+    [DataMember(Name = "label")]
+    private string label;
+    [DataMember(Name = "perm")]
+    private string permission;
+    [DataMember(Name = "state")]
+    private string state;
+    [DataMember(Name = "message")]
+    private string message;
+
+    [DataContract]
+    internal class ChangeProperty {
+      [DataMember(Name = "device")]
+      internal string device;
+      [DataMember(Name = "name")]
+      internal string name;
+      [DataMember(Name = "items")]
+      internal List<Item.ChangeItem> items;
+    }
+
+    [DataContract]
+    [KnownType(typeof(SwitchItem.ChangeSwitchItem))]
+    [KnownType(typeof(TextItem.ChangeTextItem))]
+    [KnownType(typeof(NumberItem.ChangeNumberItem))]
+    internal class ChangeMessage {
+      [DataMember(Name = "newSwitchVector", EmitDefaultValue = false)]
+      internal ChangeProperty newSwitchVector;
+      [DataMember(Name = "newTextVector", EmitDefaultValue = false)]
+      internal ChangeProperty newTextVector;
+      [DataMember(Name = "newNumberVector", EmitDefaultValue = false)]
+      internal ChangeProperty newNumberVector;
+    }
+
+    virtual internal ChangeMessage changeMessage() {
+      return null;
+    }
+
+    public virtual IReadOnlyList<Item> Items {
       get {
         return null;
       }
     }
 
-    public override bool Equals(object other) {
-      return name.Equals(((Property)other).name);
+    public Device Device {
+      get {
+        return device;
+      }
+
+      set {
+        if (device == null)
+          device = value;
+      }
+    }
+
+    public Group Group {
+      get {
+        return group;
+      }
+
+      set {
+        if (group == null)
+          group = value;
+      }
+    }
+
+    public int Version {
+      get {
+        return version;
+      }
+    }
+
+    public string DeviceName {
+      get {
+        return deviceName;
+      }
+    }
+
+    public string Name {
+      get {
+        return name;
+      }
+    }
+
+    public string GroupName {
+      get {
+        return groupName;
+      }
+    }
+
+    public string Label {
+      get {
+        return label;
+      }
+    }
+
+    public Permissions Permission {
+      get {
+        switch (permission) {
+          case "wo":
+            return Permissions.WriteOnly;
+          case "rw":
+            return Permissions.ReadWrite;
+        }
+        return Permissions.ReadOnly;
+      }
+    }
+
+    public States State {
+      get {
+        switch (state) {
+          case "Busy":
+            return States.Busy;
+          case "Alert":
+            return States.Alert;
+          case "Ok":
+            return States.Ok;
+        }
+        return States.Idle;
+      }
+    }
+
+    public string Message {
+      get {
+        return message;
+      }
+    }
+
+    public void Update(Property property) {
+      state = property.state;
+      message = property.message;
+      foreach (Item item in property.Items) {
+        foreach (Item cachedItem in Items) {
+          if (item.Name == cachedItem.Name) {
+            cachedItem.Update(item);
+            break;
+          }
+        }
+      }
+    }
+
+    override public bool Equals(object other) {
+      return Name.Equals(((Property)other).Name);
+    }
+
+    override public int GetHashCode() {
+      return name.GetHashCode();
+    }
+
+    private static DataContractJsonSerializerSettings settings = new DataContractJsonSerializerSettings() {
+      EmitTypeInformation = EmitTypeInformation.Never };
+
+    virtual public void change() {
+      ChangeMessage message = changeMessage();
+      if (message == null)
+        return;
+      
+      Server server = device.Server;
+      MemoryStream stream = new MemoryStream();
+      DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(ChangeMessage), settings);
+      serializer.WriteObject(stream, message);
+      String json = System.Text.Encoding.Default.GetString(stream.GetBuffer());
+      server.SendMessageAsync(json);
     }
   }
 
   [DataContract]
   public class SwitchProperty : Property {
-    [DataMember]
-    public string rule;
-    [DataMember(Name = "items")]
-    public List<SwitchItem> switches;
 
-    override public List<Item> items {
+    public enum Rules {
+      AnyOfMany, OneOfMany, AtMostOne
+    }
+
+    [DataMember(Name = "rule")]
+    private string rule;
+    [DataMember(Name = "items")]
+    private List<SwitchItem> items;
+
+    override internal ChangeMessage changeMessage() {
+      List<Item.ChangeItem> changeItems = new List<Item.ChangeItem>();
+      foreach (Item item in items) {
+        Item.ChangeItem changeItem = item.changeItem();
+        if (changeItem != null)
+          changeItems.Add(changeItem);
+      }
+      if (changeItems.Count == 0)
+        return null;
+      return new ChangeMessage() { newSwitchVector = new ChangeProperty() { device = DeviceName, name = Name, items = changeItems } };
+    }
+
+    override public IReadOnlyList<Item> Items {
       get {
-       return switches.Cast<Item>().ToList();
+        return items.Cast<Item>().ToList().AsReadOnly();
+      }
+    }
+
+    public Rules Rule {
+      get {
+        switch (rule) {
+          case "OneOfMany":
+            return Rules.OneOfMany;
+          case "AtMostOne":
+            return Rules.AtMostOne;
+        }
+        return Rules.AnyOfMany;
       }
     }
   }
@@ -138,11 +511,23 @@ namespace INDIGO {
   [DataContract]
   public class TextProperty : Property {
     [DataMember(Name = "items")]
-    public List<TextItem> texts;
+    private List<TextItem> items;
 
-    override public List<Item> items {
+    override internal ChangeMessage changeMessage() {
+      List<Item.ChangeItem> changeItems = new List<Item.ChangeItem>();
+      foreach (Item item in items) {
+        Item.ChangeItem changeItem = item.changeItem();
+        if (changeItem != null)
+          changeItems.Add(changeItem);
+      }
+      if (changeItems.Count == 0)
+        return null;
+      return new ChangeMessage() { newTextVector = new ChangeProperty() { device = DeviceName, name = Name, items = changeItems } };
+    }
+
+    override public IReadOnlyList<Item> Items {
       get {
-        return texts.Cast<Item>().ToList();
+        return items.Cast<Item>().ToList().AsReadOnly();
       }
     }
   }
@@ -150,11 +535,23 @@ namespace INDIGO {
   [DataContract]
   public class NumberProperty : Property {
     [DataMember(Name = "items")]
-    public List<NumberItem> numbers;
+    private List<NumberItem> items;
 
-    override public List<Item> items {
+    override internal ChangeMessage changeMessage() {
+      List<Item.ChangeItem> changeItems = new List<Item.ChangeItem>();
+      foreach (Item item in items) {
+        Item.ChangeItem changeItem = item.changeItem();
+        if (changeItem != null)
+          changeItems.Add(changeItem);
+      }
+      if (changeItems.Count == 0)
+        return null;
+      return new ChangeMessage() { newNumberVector = new ChangeProperty() { device = DeviceName, name = Name, items = changeItems } };
+    }
+
+    override public IReadOnlyList<Item> Items {
       get {
-        return numbers.Cast<Item>().ToList();
+        return items.Cast<Item>().ToList().AsReadOnly();
       }
     }
   }
@@ -162,11 +559,11 @@ namespace INDIGO {
   [DataContract]
   public class LightProperty : Property {
     [DataMember(Name = "items")]
-    public List<LightItem> lights;
+    private List<LightItem> items;
 
-    override public List<Item> items {
+    override public IReadOnlyList<Item> Items {
       get {
-        return lights.Cast<Item>().ToList();
+        return items.Cast<Item>().ToList().AsReadOnly();
       }
     }
   }
@@ -174,276 +571,378 @@ namespace INDIGO {
   [DataContract]
   public class BLOBProperty : Property {
     [DataMember(Name = "items")]
-    public List<BLOBItem> blobs;
+    private List<BLOBItem> items;
 
-    override public List<Item> items {
+    override public IReadOnlyList<Item> Items {
       get {
-        return blobs.Cast<Item>().ToList();
+        return items.Cast<Item>().ToList().AsReadOnly();
       }
     }
   }
 
   public class Group {
-    public string group;
-    public List<Property> properties;
-    public PropertyAdded propertyAdded;
-    public PropertyRemoved propertyRemoved;
+    private string name;
+    private List<Property> properties = new List<Property>();
+    private Device parentDevice;
 
-    public Group(string group) {
-      this.group = group;
-      properties = new List<Property>();
+    public event PropertyAddedHandler PropertyAdded;
+    public event PropertyUpdatedHandler PropertyUpdated;
+    public event PropertyRemovedHandler PropertyRemoved;
+
+    public string Name {
+      get {
+        return name;
+      }
+    }
+
+    public IReadOnlyList<Property> Properties {
+      get {
+        return properties.AsReadOnly();
+      }
+    }
+
+    public Device ParentDevice {
+      get {
+        return parentDevice;
+      }
+    }
+
+    public void Add(Property property) {
+      property.Group = this;
+      properties.Add(property);
+      PropertyAdded(property);
+    }
+
+    public void Update(Property property) {
+      Property cachedProperty = properties.Find(x => x.Name == property.Name);
+      if (cachedProperty != null) {
+        cachedProperty.Update(property);
+        PropertyUpdated?.Invoke(cachedProperty);
+        return;
+      }
+    }
+
+    public void Delete(Property property) {
+      Property cachedProperty = properties.Find(x => x.Name == property.Name);
+      if (cachedProperty != null) {
+        properties.Remove(cachedProperty);
+        PropertyRemoved?.Invoke(cachedProperty);
+      }
+    }
+
+    public Group(string name, Device parentDevice) {
+      this.name = name;
+      this.parentDevice = parentDevice;
+    }
+
+    override public bool Equals(object other) {
+      return Name.Equals(((Group)other).Name);
+    }
+
+    override public int GetHashCode() {
+      return name.GetHashCode();
     }
   }
 
   public class Device {
-    public string device;
-    public Dictionary<string, Group> groups;
-    public List<Property> properties;
+    private string name;
+    private Server server;
+    private Dictionary<string, Group> groups = new Dictionary<string, Group>();
+    private List<Property> properties = new List<Property>();
 
-    public GroupAdded groupAdded;
-    public GroupRemoved groupRemoved;
-    public PropertyAdded propertyAdded;
-    public PropertyRemoved propertyRemoved;
+    public event GroupAddedHandler GroupAdded;
+    public event GroupRemovedHandler GroupRemoved;
+
+    public event PropertyAddedHandler PropertyAdded;
+    public event PropertyUpdatedHandler PropertyUpdated;
+    public event PropertyRemovedHandler PropertyRemoved;
+
+    public string Name {
+      get {
+        return name;
+      }
+    }
+
+    public IReadOnlyList<Group> Groups {
+      get {
+        return groups.Values.Cast<Group>().ToList().AsReadOnly();
+      }
+    }
+
+    public IReadOnlyList<Property> Properties {
+      get {
+        return properties.AsReadOnly();
+      }
+    }
+
+    public Server Server {
+      get {
+        return server;
+      }
+    }
+
+    private Group GetGroup(string name) {
+      Group group = null;
+      if (!groups.TryGetValue(name, out group)) {
+        group = new Group(name, this);
+        groups.Add(group.Name, group);
+        GroupAdded?.Invoke(group);
+      }
+      return group;
+    }
+
+    public void Add(Property property) {
+      if (properties.Contains(property))
+        return;
+      property.Device = this;
+      foreach (Item item in property.Items)
+        item.Property = property;
+      properties.Add(property);
+      PropertyAdded?.Invoke(property);
+      Group group = GetGroup(property.GroupName);
+      group.Add(property);
+    }
+
+    public void Update(Property property) {
+      Property cachedProperty = properties.Find(x => x.Name == property.Name);
+      if (cachedProperty != null) {
+        cachedProperty.Update(property);
+        PropertyUpdated?.Invoke(cachedProperty);
+        GetGroup(cachedProperty.GroupName).Update(property);
+        return;
+      }
+      Console.WriteLine("'" + property.DeviceName + "' '" + property.Name + "' not found!");
+    }
+
+    public void Delete(Property property) {
+      if (property.Name == null) {
+        properties.Clear();
+        groups.Clear();
+      } else {
+        Property cachedProperty = properties.Find(x => x.Name == property.Name);
+        if (cachedProperty != null) {
+          properties.Remove(cachedProperty);
+          PropertyRemoved?.Invoke(cachedProperty);
+          Group group = GetGroup(cachedProperty.GroupName);
+          group.Delete(property);
+          if (group.Properties.Count == 0) {
+            groups.Remove(group.Name);
+            GroupRemoved?.Invoke(group);
+          }
+        }
+      }
+    }
 
     public Device() {
     }
 
-    public Device(string device) {
-      this.device = device;
-      groups = new Dictionary<string, Group>();
-      properties = new List<Property>();
+    public Device(string name, Server parentServer) {
+      this.name = name;
+      this.server = parentServer;
+    }
+
+    override public bool Equals(object other) {
+      return Name.Equals(((Device)other).Name);
+    }
+
+    override public int GetHashCode() {
+      return name.GetHashCode();
     }
   }
 
   public class Server {
 
-    public Dictionary<string, Device> devices;
+    private Dictionary<string, Device> devices = new Dictionary<string, Device>();
 
-    public string name;
-    public string host;
-    public int port;
+    private const string getProperties = "{ 'getProperties': { 'version': 512 } }";
+    private ClientWebSocket socket;
+    private Uri uri;
+    private CancellationToken cancellationToken = new CancellationTokenSource().Token;
 
-    public DeviceAdded deviceAdded;
-    public DeviceRemoved deviceRemoved;
+    private string name;
+    private string host;
+    private int port;
 
-    private const string GET_PROPERTIES = "{ 'getProperties': { 'version': 512 } }";
+    public event ServerConnectedHandler ServerConnected;
+    public event ServerDisconnectedHandler ServerDisconnected;
+    public event DeviceAddedHandler DeviceAdded;
+    public event DeviceRemovedHandler DeviceRemoved;
 
-    private readonly ClientWebSocket ws;
-    private readonly Uri uri;
-    private readonly CancellationToken cancellationToken = new CancellationTokenSource().Token;
+    public IReadOnlyList<Device> Devices {
+      get {
+        return devices.Values.Cast<Device>().ToList().AsReadOnly();
+      }
+    }
+
+    public string Name {
+      get {
+        return name;
+      }
+    }
+
+    public string Host {
+      get {
+        return host;
+      }
+    }
+
+    public int Port {
+      get {
+        return port;
+      }
+    }
 
     [DataContract]
     private class ServerMessage {
-      [DataMember]
-      public SwitchProperty defSwitchVector;
-      [DataMember]
-      public TextProperty defTextVector;
-      [DataMember]
-      public NumberProperty defNumberVector;
-      [DataMember]
-      public LightProperty defLightVector;
-      [DataMember]
-      public BLOBProperty defBLOBVector;
-      [DataMember]
-      public SwitchProperty setSwitchVector;
-      [DataMember]
-      public TextProperty setTextVector;
-      [DataMember]
-      public NumberProperty setNumberVector;
-      [DataMember]
-      public LightProperty setLightVector;
-      [DataMember]
-      public BLOBProperty setBLOBVector;
-      [DataMember]
-      public Property deleteProperty;
+      [DataMember(Name = "defSwitchVector")]
+      public SwitchProperty DefSwitchVector;
+      [DataMember(Name = "defTextVector")]
+      public TextProperty DefTextVector;
+      [DataMember(Name = "defNumberVector")]
+      public NumberProperty DefNumberVector;
+      [DataMember(Name = "defLightVector")]
+      public LightProperty DefLightVector;
+      [DataMember(Name = "defBLOBVector")]
+      public BLOBProperty DefBLOBVector;
+      [DataMember(Name = "setSwitchVector")]
+      public SwitchProperty SetSwitchVector;
+      [DataMember(Name = "setTextVector")]
+      public TextProperty SetTextVector;
+      [DataMember(Name = "setNumberVector")]
+      public NumberProperty SetNumberVector;
+      [DataMember(Name = "setLightVector")]
+      public LightProperty SetLightVector;
+      [DataMember(Name = "setBLOBVector")]
+      public BLOBProperty SetBLOBVector;
+      [DataMember(Name = "deleteProperty")]
+      public Property DeleteProperty;
     }
 
     public Server(string name, string host, int port) {
       this.name = name;
       this.host = host;
       this.port = port;
-      devices = new Dictionary<string, Device>();
       uri = new Uri("ws://" + host + ":" + port);
-      ws = new ClientWebSocket();
-      ws.Options.KeepAliveInterval = new TimeSpan(365, 0, 0, 0, 0);
+      socket = new ClientWebSocket();
+      socket.Options.KeepAliveInterval = new TimeSpan(365, 0, 0, 0, 0);
       new Thread(new ThreadStart(ConnectAsync)).Start();
     }
 
-    private void defProperty(Property property) {
-      Console.WriteLine("def(" + property + ") '" + property.device + "' '" + property.name + "'");
+    private Device GetDevice(string name) {
       Device device = null;
-      if (!devices.TryGetValue(property.device, out device)) {
-        device = new Device(property.device);
-        devices.Add(device.device, device);
-        if (deviceAdded != null)
-          deviceAdded(device);
+      if (!devices.TryGetValue(name, out device)) {
+        device = new Device(name, this);
+        devices.Add(device.Name, device);
+        DeviceAdded?.Invoke(device);
       }
-      if (device.properties.Contains(property)) {
-        Console.WriteLine("def(" + property + ") '" + property.device + "' '" + property.name + "' - duplicate def");
-        return;
-      }
-      device.properties.Add(property);
-      if (device.propertyAdded != null)
-        device.propertyAdded(property);
-      Group group = null;
-      if (!device.groups.TryGetValue(property.group, out group)) {
-        group = new Group(property.group);
-        device.groups.Add(group.group, group);
-        if (device.groupAdded != null)
-          device.groupAdded(group);
-      }
-      group.properties.Add(property);
-      if (group.propertyAdded != null)
-        group.propertyAdded(property);
+      return device;
     }
 
-    private void setProperty(Property property) {
-      Console.WriteLine("set(" + property + ") '" + property.device + "' '" + property.name + "'");
-      Device device = null;
-      if (devices.TryGetValue(property.device, out device)) {
-        foreach (Property prop in device.properties) {
-          if (prop.Equals(property)) {
-            prop.message = property.message;
-            foreach (Item item in property.items) {
-              foreach (Item itm in prop.items) {
-                if (item.name == itm.name) {
-                  if (item is SwitchItem)
-                    ((SwitchItem)item).value = ((SwitchItem)itm).value;
-                  else if (item is TextItem)
-                    ((TextItem)item).value = ((TextItem)itm).value;
-                  else if (item is NumberItem)
-                    ((NumberItem)item).value = ((NumberItem)itm).value;
-                  else if (item is LightItem)
-                    ((LightItem)item).value = ((LightItem)itm).value;
-                  else if (item is BLOBItem)
-                    ((BLOBItem)item).value = ((BLOBItem)itm).value;
-                  break;
-                }
-              }
-            }
-            return;
-          }
-        }
-        Console.WriteLine("set(" + property + ") '" + property.device + "' '" + property.name + "' - not found!");
+    private void DefProperty(Property property) {
+      //Console.WriteLine("def(" + property + ") '" + property.Device + "' '" + property.Name + "'");
+      GetDevice(property.DeviceName).Add(property);
+    }
+
+    private void SetProperty(Property property) {
+      //Console.WriteLine("set(" + property + ") '" + property.Device + "' '" + property.Name + "'");
+      GetDevice(property.DeviceName).Update(property);
+    }
+
+    private void DeleteProperty(Property property) {
+      //Console.WriteLine("delete(" + property + ") '" + property.Device + "' '" + property.Name + "'");
+      Device device = GetDevice(property.DeviceName);
+      device.Delete(property);
+      if (device.Properties.Count == 0) {
+        devices.Remove(device.Name);
+        DeviceRemoved?.Invoke(device);
       }
     }
 
-    private void deleteProperty(Property property) {
-      Console.WriteLine("delete(" + property + ") '" + property.device + "' '" + property.name + "'");
-      Device device = null;
-      if (devices.TryGetValue(property.device, out device)) {
-        if (property.name == null) {
-          device.properties.Clear();
-          device.groups.Clear();
-        } else {
-          foreach (Property prop in device.properties) {
-            if (prop.Equals(property)) {
-              device.properties.Remove(prop);
-              if (device.propertyRemoved != null)
-                device.propertyRemoved(prop);
-              Group group = null;
-              if (device.groups.TryGetValue(prop.group, out group)) {
-                group.properties.Remove(prop);
-                if (group.propertyRemoved != null)
-                  group.propertyRemoved(prop);
-                if (group.properties.Count == 0) {
-                  device.groups.Remove(group.group);
-                  if (device.groupRemoved != null)
-                    device.groupRemoved(group);                
-                }
-              }
-              break;
-            }
-          }
-        }
-        if (device.properties.Count == 0) {
-          devices.Remove(device.device);
-          if (deviceRemoved != null)
-            deviceRemoved(device);
-        }
-      }
-    }
-
-    private async void SendMessageAsync(string message) {
-      await ws.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(message)), WebSocketMessageType.Text, true, cancellationToken);
+    public async void SendMessageAsync(string message) {
+      await socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(message)), WebSocketMessageType.Text, true, cancellationToken);
     }
 
     private async void ConnectAsync() {
       var buffer = new byte[16 * 1024];
       try {
-        await ws.ConnectAsync(uri, cancellationToken);
-        onConnect(this);
-        while (ws.State == WebSocketState.Open) {
+        await socket.ConnectAsync(uri, cancellationToken);
+        OnConnect(this);
+        while (socket.State == WebSocketState.Open) {
           var stringResult = new StringBuilder();
           WebSocketReceiveResult result;
           do {
-            result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+            result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
             if (result.MessageType == WebSocketMessageType.Close) {
-              await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-              onDisconnect(this);
+              await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+              OnDisconnect(this);
             } else {
               var str = Encoding.UTF8.GetString(buffer, 0, result.Count);
               stringResult.Append(str);
             }
           } while (!result.EndOfMessage);
-          onMessage(stringResult.ToString(), this);
+          OnMessage(stringResult.ToString(), this);
         }
-      } catch (Exception exception) {
-        Console.WriteLine(exception.StackTrace);
-        onDisconnect(this);
+      } catch (Exception) {
+        OnDisconnect(this);
       } finally {
-        ws.Dispose();
+        socket.Dispose();
       }
     }
 
-    private void onMessage(string message, Server server) {
+    private void OnMessage(string message, Server server) {
+      //Console.WriteLine(message);
       DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(ServerMessage));
       MemoryStream stream = new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(message));
       ServerMessage serverMessage = (ServerMessage)serializer.ReadObject(stream);
-      if (serverMessage.defSwitchVector != null) {
-        defProperty(serverMessage.defSwitchVector);
-      } else if (serverMessage.defTextVector != null) {
-        defProperty(serverMessage.defTextVector);
-      } else if (serverMessage.defNumberVector != null) {
-        defProperty(serverMessage.defNumberVector);
-      } else if (serverMessage.defLightVector != null) {
-        defProperty(serverMessage.defLightVector);
-      } else if (serverMessage.defBLOBVector != null) {
-        defProperty(serverMessage.defBLOBVector);
-      } else if (serverMessage.setSwitchVector != null) {
-        setProperty(serverMessage.setSwitchVector);
-      } else if (serverMessage.setTextVector != null) {
-        setProperty(serverMessage.setTextVector);
-      } else if (serverMessage.setNumberVector != null) {
-        setProperty(serverMessage.setNumberVector);
-      } else if (serverMessage.setLightVector != null) {
-        setProperty(serverMessage.setLightVector);
-      } else if (serverMessage.setBLOBVector != null) {
-        setProperty(serverMessage.setBLOBVector);
-      } else if (serverMessage.deleteProperty != null) {
-        deleteProperty(serverMessage.deleteProperty);
+      if (serverMessage.DefSwitchVector != null) {
+        DefProperty(serverMessage.DefSwitchVector);
+      } else if (serverMessage.DefTextVector != null) {
+        DefProperty(serverMessage.DefTextVector);
+      } else if (serverMessage.DefNumberVector != null) {
+        DefProperty(serverMessage.DefNumberVector);
+      } else if (serverMessage.DefLightVector != null) {
+        DefProperty(serverMessage.DefLightVector);
+      } else if (serverMessage.DefBLOBVector != null) {
+        DefProperty(serverMessage.DefBLOBVector);
+      } else if (serverMessage.SetSwitchVector != null) {
+        SetProperty(serverMessage.SetSwitchVector);
+      } else if (serverMessage.SetTextVector != null) {
+        SetProperty(serverMessage.SetTextVector);
+      } else if (serverMessage.SetNumberVector != null) {
+        SetProperty(serverMessage.SetNumberVector);
+      } else if (serverMessage.SetLightVector != null) {
+        SetProperty(serverMessage.SetLightVector);
+      } else if (serverMessage.SetBLOBVector != null) {
+        SetProperty(serverMessage.SetBLOBVector);
+      } else if (serverMessage.DeleteProperty != null) {
+        DeleteProperty(serverMessage.DeleteProperty);
       } else {
         Console.WriteLine("Failed to process message: " + message);
       }
     }
 
-    private void onConnect(Server server) {
-      Console.WriteLine("Connected to " + host + ":" + port);
-      server.SendMessageAsync(GET_PROPERTIES);
+    private void OnConnect(Server server) {
+      Console.WriteLine("Connected to " + Host + ":" + Port);
+      ServerConnected(server);
+      server.SendMessageAsync(getProperties);
     }
 
-    private void onDisconnect(Server server) {
-      Console.WriteLine("Disconnected from " + host + ":" + port);
+    private void OnDisconnect(Server server) {
+      devices.Clear();
+      ServerDisconnected(server);
+      Console.WriteLine("Disconnected from " + Host + ":" + Port);
     }
   }
 
   public class Client {
-    public List<Server> servers = new List<Server>();
+    public List<Server> Servers = new List<Server>();
 
-    public ServerAdded serverAdded;
-    public ServerRemoved serverRemoved;
+    public event ServerAddedHandler ServerAdded;
+    public event ServerRemovedHandler ServerRemoved;
 
-    private DNSSDEventManager eventManager = null;
+    private DNSSDEventManager eventManager = new DNSSDEventManager();
+    private DNSSDService service = new DNSSDService();
+    private DNSSDService browser;
     private Dictionary<DNSSDService, string> resolvers = new Dictionary<DNSSDService, string>();
 
     private void ServiceFound(DNSSDService browser, DNSSDFlags flags, uint ifIndex, string serviceName, string regType, string domain) {
@@ -457,16 +956,16 @@ namespace INDIGO {
     }
 
     private void ServiceLost(DNSSDService browser, DNSSDFlags flags, uint ifIndex, string serviceName, string regType, string domain) {
-      Console.WriteLine("Service " + serviceName + " found");
+      Console.WriteLine("Service " + serviceName + " lost");
       Server server = null;
-      foreach (Server item in servers)
-        if (item.name == serviceName) {
+      foreach (Server item in Servers)
+        if (item.Name == serviceName) {
           server = item;
           break;
         }
       if (server != null) {
-        servers.Remove(server);
-        serverRemoved(server);
+        Servers.Remove(server);
+        ServerRemoved?.Invoke(server);
       }
     }
 
@@ -475,9 +974,9 @@ namespace INDIGO {
       resolver.Stop();
       string serviceName = resolvers[resolver];
       Server server = new Server(serviceName, hostName, port);
-      servers.Add(server);
+      Servers.Add(server);
       resolvers.Remove(resolver);
-      serverAdded(server);
+      ServerAdded?.Invoke(server);
     }
 
     private void OperationFailed(DNSSDService service, DNSSDError error) {
@@ -487,13 +986,12 @@ namespace INDIGO {
     }
 
     public Client() {
-      eventManager = new DNSSDEventManager();
       eventManager.ServiceFound += new _IDNSSDEvents_ServiceFoundEventHandler(ServiceFound);
       eventManager.ServiceLost += new _IDNSSDEvents_ServiceLostEventHandler(ServiceLost);
       eventManager.ServiceResolved += new _IDNSSDEvents_ServiceResolvedEventHandler(ServiceResolved);
       eventManager.OperationFailed += new _IDNSSDEvents_OperationFailedEventHandler(OperationFailed);
       try {
-        new DNSSDService().Browse(0, 0, "_indigo._tcp", null, eventManager);
+        browser = service.Browse(0, 0, "_indigo._tcp", null, eventManager);
       } catch {
         Console.WriteLine("DNSSDService.Browse() failed");
       }

@@ -1,4 +1,5 @@
 ﻿using INDIGO;
+using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 
@@ -13,15 +14,23 @@ namespace indigo_test {
 
       public void update() {
         if (item is SwitchItem)
-          Text = "SWITCH '" + item.name + "' label = '" + item.label + "' value = " + ((SwitchItem)item).value;
+          Text = "SWITCH '" + item.Name + "' label = '" + item.Label + "' value = " + ((SwitchItem)item).Value;
         else if (item is TextItem)
-          Text = "TEXT '" + item.name + "' label = '" + item.label + "' value = " + ((TextItem)item).value;
+          Text = "TEXT '" + item.Name + "' label = '" + item.Label + "' value = " + ((TextItem)item).Value;
         else if (item is NumberItem)
-          Text = "NUMBER '" + item.name + "' label = '" + item.label + "' value = " + ((NumberItem)item).value + " min = " + ((NumberItem)item).min + " max = " + ((NumberItem)item).max + " step = " + ((NumberItem)item).step + " format = '" + ((NumberItem)item).format + "'";
+          Text = "NUMBER '" + item.Name + "' label = '" + item.Label + "' value = " + ((NumberItem)item).Value + " target = " + ((NumberItem)item).Target + " min = " + ((NumberItem)item).Min + " max = " + ((NumberItem)item).Max + " step = " + ((NumberItem)item).Step + " format = '" + ((NumberItem)item).Format + "'";
         else if (item is LightItem)
-          Text = "LIGHT '" + item.name + "' label = '" + item.label + "' value = " + ((LightItem)item).value;
+          Text = "LIGHT '" + item.Name + "' label = '" + item.Label + "' value = " + ((LightItem)item).Value;
         else if (item is BLOBItem)
-          Text = "BLOB '" + item.name + "' label = '" + item.label + "' value = " + ((BLOBItem)item).value;
+          Text = "BLOB '" + item.Name + "' label = '" + item.Label + "' value = " + ((BLOBItem)item).Value;
+      }
+
+      public void Action() {
+        if (item is SwitchItem) {
+          SwitchItem switchItem = (SwitchItem)item;
+          switchItem.Value = !switchItem.Value;
+          item.Property.change();
+        }
       }
 
       public ItemNode(Item item) {
@@ -37,10 +46,10 @@ namespace indigo_test {
       public PropertyNode(TreeView tree, Property property) {
         this.tree = tree;
         this.property = property;
-        Text = "PROPERTY '" + property.name + "' label = '" + property.label + "' state = " + property.state + " perm = " + property.perm;
+        Text = "PROPERTY '" + property.Name + "' label = '" + property.Label + "' state = " + property.State + " perm = " + property.Permission;
         if (property is SwitchProperty)
-          Text += " rule = " + ((SwitchProperty)property).rule;
-        foreach (Item item in property.items) {
+          Text += " rule = " + ((SwitchProperty)property).Rule;
+        foreach (Item item in property.Items) {
           Nodes.Add(new ItemNode(item));
         }
       }
@@ -54,9 +63,27 @@ namespace indigo_test {
       public GroupNode(TreeView tree, Group group) {
         this.tree = tree;
         this.group = group;
-        Text = "GROUP '" + group.group + "'";
-        group.propertyAdded += propertyAdded;
-        group.propertyRemoved += propertyRemoved;
+        Text = "GROUP '" + group.Name + "'";
+        group.PropertyAdded += propertyAdded;
+        group.PropertyUpdated += propertyChanged;
+        group.PropertyRemoved += propertyRemoved;
+      }
+
+      private void updateState(PropertyNode node, Property.States state) {
+        if (state == Property.States.Ok)
+          node.ForeColor = System.Drawing.Color.Green;
+        else if (state == Property.States.Busy)
+          node.ForeColor = System.Drawing.Color.DarkOrange;
+        else if (state == Property.States.Alert)
+          node.ForeColor = System.Drawing.Color.Red;
+        else
+          node.ForeColor = DefaultForeColor;
+        if (state != Property.States.Idle) {
+          node.Parent.Parent.Parent.Expand();
+          node.Parent.Parent.Expand();
+          node.Parent.Expand();
+          node.Expand();
+        }
       }
 
       private void propertyAdded(Property property) {
@@ -65,8 +92,22 @@ namespace indigo_test {
         tree.BeginInvoke(new MethodInvoker(() => {
           tree.BeginUpdate();
           Nodes.Add(node);
+          updateState(node, property.State);
           tree.EndUpdate();
         }));
+      }
+
+      private void propertyChanged(Property property) {
+        PropertyNode node;
+        if (properties.TryGetValue(property, out node)) {
+          tree.BeginInvoke(new MethodInvoker(() => {
+            tree.BeginUpdate();
+            foreach (TreeNode item in node.Nodes)
+              ((ItemNode)item).update();
+            updateState(node, property.State);
+            tree.EndUpdate();
+          }));
+        }
       }
 
       private void propertyRemoved(Property property) {
@@ -90,9 +131,9 @@ namespace indigo_test {
       public DeviceNode(TreeView tree, Device device) {
         this.tree = tree;
         this.device = device;
-        Text = "DEVICE '" + device.device + "'";
-        device.groupAdded += groupAdded;
-        device.groupRemoved += groupRemoved;
+        Text = "DEVICE '" + device.Name + "'";
+        device.GroupAdded += groupAdded;
+        device.GroupRemoved += groupRemoved;
       }
 
       private void groupAdded(Group group) {
@@ -126,9 +167,9 @@ namespace indigo_test {
       public ServerNode(TreeView tree, Server server) {
         this.tree = tree;
         this.server = server;
-        Text = "SERVER '" + server.name + "'";
-        server.deviceAdded += deviceAdded;
-        server.deviceRemoved += deviceRemoved;
+        Text = "SERVER '" + server.Name + "'";
+        server.DeviceAdded += deviceAdded;
+        server.DeviceRemoved += deviceRemoved;
       }
 
       private void deviceAdded(Device device) {
@@ -138,7 +179,6 @@ namespace indigo_test {
           tree.BeginUpdate();
           Nodes.Add(node);
           tree.EndUpdate();
-          Expand();
         }));
       }
 
@@ -156,13 +196,39 @@ namespace indigo_test {
     }
 
     private void serverAdded(Server server) {
+      server.ServerConnected += serverConnected;
+      server.ServerDisconnected += serverDisconnected;
       ServerNode node = new ServerNode(tree, server);
       servers.Add(server, node);
       BeginInvoke(new MethodInvoker(() => {
         tree.BeginUpdate();
         tree.Nodes.Add(node);
+        node.ForeColor = System.Drawing.Color.LightGray;
         tree.EndUpdate();
       }));
+    }
+
+    private void serverConnected(Server server) {
+      ServerNode node;
+      if (servers.TryGetValue(server, out node)) {
+        BeginInvoke(new MethodInvoker(() => {
+          tree.BeginUpdate();
+          node.ForeColor = DefaultForeColor;
+          tree.EndUpdate();
+        }));
+      }
+    }
+
+    private void serverDisconnected(Server server) {
+      ServerNode node;
+      if (servers.TryGetValue(server, out node)) {
+        BeginInvoke(new MethodInvoker(() => {
+          tree.BeginUpdate();
+          node.ForeColor = System.Drawing.Color.LightGray;
+          node.Nodes.Clear();
+          tree.EndUpdate();
+        }));
+      }
     }
 
     private void serverRemoved(Server server) {
@@ -180,8 +246,17 @@ namespace indigo_test {
     public TestForm() {
       InitializeComponent();
       client = new Client();
-      client.serverAdded += serverAdded;
-      client.serverRemoved += serverRemoved;
+      client.ServerAdded += serverAdded;
+      client.ServerRemoved += serverRemoved;
+    }
+
+    private void tree_NodeMouseDoubleClick(object sender, TreeNodeMouseClickEventArgs e) {
+      TreeView tree = (TreeView)sender;
+      TreeNode node = tree.SelectedNode;
+      Console.WriteLine(node);
+      if (node is ItemNode)
+        ((ItemNode)node).Action();
+      
     }
   }
 }

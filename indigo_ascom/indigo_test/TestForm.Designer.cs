@@ -35,6 +35,7 @@
       this.tree.Name = "tree";
       this.tree.Size = new System.Drawing.Size(632, 373);
       this.tree.TabIndex = 0;
+      this.tree.NodeMouseDoubleClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.tree_NodeMouseDoubleClick);
       // 
       // TestForm
       // 
