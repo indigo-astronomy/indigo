@@ -36,7 +36,8 @@ namespace ASCOM.INDIGO
       }
       else
       {
-        driver = new ASCOM.DriverAccess.FilterWheel(Properties.Settings.Default.DriverId);
+        if (driver == null)
+          driver = new ASCOM.DriverAccess.FilterWheel(Properties.Settings.Default.DriverId);
         driver.Connected = true;
       }
       SetUIState();

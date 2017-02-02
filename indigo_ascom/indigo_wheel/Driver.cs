@@ -37,54 +37,71 @@ using ASCOM.Utilities;
 using ASCOM.DeviceInterface;
 using System.Globalization;
 using System.Collections;
+using INDIGO;
+using System.Threading;
 
 namespace ASCOM.INDIGO {
 
-  /// <summary>
-  /// ASCOM FilterWheel Driver for INDIGO.
-  /// </summary>
   [Guid("fd8e1019-78d3-4b3b-9eae-08a76af88b4d")]
   [ClassInterface(ClassInterfaceType.None)]
   public class FilterWheel : IFilterWheelV2 {
-    /// <summary>
-    /// ASCOM DeviceID (COM ProgID) for this driver.
-    /// The DeviceID is used by ASCOM applications to load the driver at runtime.
-    /// </summary>
     internal static string driverID = "ASCOM.INDIGO.FilterWheel";
-    // TODO Change the descriptive string for your driver then remove this line
-    /// <summary>
-    /// Driver description that displays in the ASCOM Chooser.
-    /// </summary>
-    private static string driverDescription = "INDIGO FilterWheel";
+    internal static string driverDescription = "INDIGO FilterWheel";
 
-    internal static string indigoDeviceProfileName = "INDIGO Device";
-    internal static string indigoDeviceDefault = "";
+    internal string indigoDeviceProfileName = "INDIGO Device";
+    internal string indigoDeviceDefault = "";
 
-    internal static string traceStateProfileName = "Trace Level";
-    internal static string traceStateDefault = "false";
+    internal string traceStateProfileName = "Trace Level";
+    internal string traceStateDefault = "true";
 
-    internal static string indigoDevice;
-    internal static bool traceState;
+    internal string indigoDevice;
+    internal bool traceState = true;
 
-    /// <summary>
-    /// Private variable to hold the connected state
-    /// </summary>
     private bool connectedState;
-
-    /// <summary>
-    /// Private variable to hold an ASCOM Utilities object
-    /// </summary>
     private Util utilities;
-
-    /// <summary>
-    /// Private variable to hold the trace logger object (creates a diagnostic log file with information that you specify)
-    /// </summary>
     private TraceLogger tl;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="INDIGO"/> class.
-    /// Must be public for COM registration.
-    /// </summary>
+    internal Client client;
+    internal Device device;
+    internal bool connecting = false;
+
+    private Property connectionProperty;
+
+    private void propertyAdded(Property property) {
+    }
+
+    private void propertyUpdated(Property property) {
+    }
+
+    private void propertyRemoved(Property property) {
+    }
+
+    private void deviceAdded(Device device) {
+      device.PropertyAdded += propertyAdded;
+      device.PropertyUpdated += propertyUpdated;
+      device.PropertyRemoved += propertyRemoved;
+      if (device.Name == indigoDevice) {
+        this.device = device;
+        tl.LogMessage("deviceAdded", "Device \"" + device.Name + "\" found on \"" + device.Server.Name + "\"");
+      }
+    }
+
+    private void deviceRemoved(Device device) {
+      if (this.device == device) {
+        this.device = null;
+        connectedState = false;
+        tl.LogMessage("deviceRemoved", "Device \"" + device.Name + "\" lost");
+      }
+    }
+
+    private void serverAdded(Server server) {
+      server.DeviceAdded += deviceAdded;
+      server.DeviceRemoved += deviceRemoved;
+    }
+
+    private void serverRemoved(Server server) {
+    }
+
     public FilterWheel() {
       ReadProfile();
 
@@ -92,8 +109,11 @@ namespace ASCOM.INDIGO {
       tl.Enabled = traceState;
       tl.LogMessage("FilterWheel", "Starting initialisation");
 
-      connectedState = false; // Initialise connected to false
-      utilities = new Util(); //Initialise util object
+      connectedState = false;
+      utilities = new Util();
+      client = new Client();
+      client.ServerAdded += serverAdded;
+      client.ServerRemoved += serverRemoved;
 
       //TODO: Implement your additional construction here
 
@@ -102,20 +122,17 @@ namespace ASCOM.INDIGO {
 
     #region Common properties and methods.
 
-    /// <summary>
-    /// Displays the Setup Dialog form.
-    /// If the user clicks the OK button to dismiss the form, then
-    /// the new settings are saved, otherwise the old values are reloaded.
-    /// THIS IS THE ONLY PLACE WHERE SHOWING USER INTERFACE IS ALLOWED!
-    /// </summary>
     public void SetupDialog() {
       if (IsConnected)
-        System.Windows.Forms.MessageBox.Show("Already connected, just press OK");
-
-      using (SetupDialogForm F = new SetupDialogForm()) {
-        var result = F.ShowDialog();
-        if (result == System.Windows.Forms.DialogResult.OK) {
-          WriteProfile();
+        System.Windows.Forms.MessageBox.Show("Device is connected");
+      else {
+        using (SetupDialogForm F = new SetupDialogForm(this)) {
+          var result = F.ShowDialog();
+          if (result == System.Windows.Forms.DialogResult.OK) {
+            WriteProfile();
+            tl.LogMessage("SetupDialog", "Device \"" + device.Name + "\" on \"" + device.Server.Name + "\" selected");
+          }
+          F.Dispose();
         }
       }
     }
@@ -144,10 +161,11 @@ namespace ASCOM.INDIGO {
     }
 
     public void Dispose() {
-      // Clean up the tracelogger and util objects
       tl.Enabled = false;
       tl.Dispose();
       tl = null;
+      client.Dispose();
+      client = null;
       utilities.Dispose();
       utilities = null;
     }
@@ -163,13 +181,22 @@ namespace ASCOM.INDIGO {
           return;
 
         if (value) {
-          connectedState = true;
-          tl.LogMessage("Connected Set", "Connecting to " + indigoDevice);
-          // TODO connect to the device
+          if (device == null) {
+            connecting = true;
+            SetupDialog();
+            connecting = false;
+          }
+          if (device == null) {
+            tl.LogMessage("Connected Set", "Can't connect to " + indigoDevice);
+          } else {
+            connectedState = true;
+            tl.LogMessage("Connected Set", "Connecting to " + indigoDevice);
+            device.Connect();
+          }
         } else {
           connectedState = false;
           tl.LogMessage("Connected Set", "Disconnecting from port " + indigoDevice);
-          // TODO disconnect from the device
+          device.Disconnect();
         }
       }
     }
@@ -259,19 +286,9 @@ namespace ASCOM.INDIGO {
     #endregion
 
     #region Private properties and methods
-    // here are some useful properties and methods that can be used as required
-    // to help with driver development
 
     #region ASCOM Registration
 
-    // Register or unregister driver for ASCOM. This is harmless if already
-    // registered or unregistered. 
-    //
-    /// <summary>
-    /// Register or unregister the driver with the ASCOM Platform.
-    /// This is harmless if the driver is already registered/unregistered.
-    /// </summary>
-    /// <param name="bRegister">If <c>true</c>, registers the driver, otherwise unregisters it.</param>
     private static void RegUnregASCOM(bool bRegister) {
       using (var P = new ASCOM.Utilities.Profile()) {
         P.DeviceType = "FilterWheel";
@@ -329,9 +346,6 @@ namespace ASCOM.INDIGO {
 
     #endregion
 
-    /// <summary>
-    /// Returns true if there is a valid connection to the driver hardware
-    /// </summary>
     private bool IsConnected {
       get {
         // TODO check that the driver hardware connection exists and is connected to the hardware
@@ -339,19 +353,12 @@ namespace ASCOM.INDIGO {
       }
     }
 
-    /// <summary>
-    /// Use this function to throw an exception if we aren't connected to the hardware
-    /// </summary>
-    /// <param name="message"></param>
     private void CheckConnected(string message) {
       if (!IsConnected) {
         throw new ASCOM.NotConnectedException(message);
       }
     }
 
-    /// <summary>
-    /// Read the device configuration from the ASCOM Profile store
-    /// </summary>
     internal void ReadProfile() {
       using (Profile driverProfile = new Profile()) {
         driverProfile.DeviceType = "FilterWheel";
@@ -360,9 +367,6 @@ namespace ASCOM.INDIGO {
       }
     }
 
-    /// <summary>
-    /// Write the device configuration to the  ASCOM  Profile store
-    /// </summary>
     internal void WriteProfile() {
       using (Profile driverProfile = new Profile()) {
         driverProfile.DeviceType = "FilterWheel";

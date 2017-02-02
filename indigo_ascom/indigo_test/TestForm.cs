@@ -29,7 +29,7 @@ namespace indigo_test {
         if (item is SwitchItem) {
           SwitchItem switchItem = (SwitchItem)item;
           switchItem.Value = !switchItem.Value;
-          item.Property.change();
+          item.Property.Change();
         }
       }
 
