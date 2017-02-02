@@ -451,7 +451,7 @@ namespace INDIGO {
     private static DataContractJsonSerializerSettings settings = new DataContractJsonSerializerSettings() {
       EmitTypeInformation = EmitTypeInformation.Never };
 
-    virtual public void change() {
+    virtual public void Change() {
       ChangeMessage message = changeMessage();
       if (message == null)
         return;
@@ -741,6 +741,30 @@ namespace INDIGO {
       this.server = parentServer;
     }
 
+    public void Connect() {
+      Property connection = properties.Find(x => x.Name == "CONNECTION");
+      foreach (Item item in connection.Items) {
+        if (item.Name == "CONNECTED") {
+          ((SwitchItem)item).Value = true;
+        } else {
+          ((SwitchItem)item).Value = false;
+        }
+      }
+      connection.Change();
+    }
+
+    public void Disconnect() {
+      Property connection = properties.Find(x => x.Name == "CONNECTION");
+      foreach (Item item in connection.Items) {
+        if (item.Name == "DISCONNECTED") {
+          ((SwitchItem)item).Value = true;
+        } else {
+          ((SwitchItem)item).Value = false;
+        }
+      }
+      connection.Change();
+    }
+
     override public bool Equals(object other) {
       return Name.Equals(((Device)other).Name);
     }
@@ -758,6 +782,7 @@ namespace INDIGO {
     private ClientWebSocket socket;
     private Uri uri;
     private CancellationToken cancellationToken = new CancellationTokenSource().Token;
+    private bool aborted = false;
 
     private string name;
     private string host;
@@ -835,6 +860,18 @@ namespace INDIGO {
       new Thread(new ThreadStart(ConnectAsync)).Start();
     }
 
+    public void Close() {
+      aborted = true;
+      socket.Abort();
+    }
+
+    public Device FindDevice(string name) {
+      Device device = null;
+      if (devices.TryGetValue(name, out device))
+        return device;
+      return null;
+    }
+
     private Device GetDevice(string name) {
       Device device = null;
       if (!devices.TryGetValue(name, out device)) {
@@ -890,9 +927,13 @@ namespace INDIGO {
           OnMessage(stringResult.ToString(), this);
         }
       } catch (Exception exception) {
-        Console.WriteLine(exception.Message);
-        Console.WriteLine(exception.StackTrace);
-        OnDisconnect(this);
+        if (aborted)
+          Console.WriteLine("Socket aborted");
+        else {
+          Console.WriteLine(exception.Message);
+          Console.WriteLine(exception.StackTrace);
+          OnDisconnect(this);
+        }
       } finally {
         socket.Dispose();
       }
@@ -950,8 +991,9 @@ namespace INDIGO {
   }
 
   public class Client {
+    private List<Server> servers = new List<Server>();
+
     public readonly Mutex Mutex = new Mutex();
-    public List<Server> Servers = new List<Server>();
     public event ServerAddedHandler ServerAdded;
     public event ServerRemovedHandler ServerRemoved;
 
@@ -960,8 +1002,15 @@ namespace INDIGO {
     private DNSSDService browser;
     private Dictionary<DNSSDService, string> resolvers = new Dictionary<DNSSDService, string>();
 
+    public IReadOnlyList<Server> Servers {
+      get {
+        return servers.Cast<Server>().ToList().AsReadOnly();
+        ;
+      }
+    }
+
     private void ServiceFound(DNSSDService browser, DNSSDFlags flags, uint ifIndex, string serviceName, string regType, string domain) {
-      Console.WriteLine("Service " + serviceName + " found");
+      Console.WriteLine("Service " + serviceName + " found ");
       try {
         DNSSDService resolver = browser.Resolve(0, ifIndex, serviceName, regType, domain, eventManager);
         resolvers.Add(resolver, serviceName);
@@ -974,13 +1023,13 @@ namespace INDIGO {
       Console.WriteLine("Service " + serviceName + " lost");
       Server server = null;
       Mutex.WaitOne();
-      foreach (Server item in Servers)
+      foreach (Server item in servers)
         if (item.Name == serviceName) {
           server = item;
           break;
         }
       if (server != null) {
-        Servers.Remove(server);
+        servers.Remove(server);
         ServerRemoved?.Invoke(server);
       }
       Mutex.ReleaseMutex();
@@ -992,7 +1041,7 @@ namespace INDIGO {
       string serviceName = resolvers[resolver];
       Server server = new Server(serviceName, hostName, port, this);
       Mutex.WaitOne();
-      Servers.Add(server);
+      servers.Add(server);
       resolvers.Remove(resolver);
       ServerAdded?.Invoke(server);
       Mutex.ReleaseMutex();
@@ -1005,6 +1054,7 @@ namespace INDIGO {
     }
 
     public Client() {
+      Console.WriteLine("Client started ");
       eventManager.ServiceFound += new _IDNSSDEvents_ServiceFoundEventHandler(ServiceFound);
       eventManager.ServiceLost += new _IDNSSDEvents_ServiceLostEventHandler(ServiceLost);
       eventManager.ServiceResolved += new _IDNSSDEvents_ServiceResolvedEventHandler(ServiceResolved);
@@ -1014,6 +1064,28 @@ namespace INDIGO {
       } catch {
         Console.WriteLine("DNSSDService.Browse() failed");
       }
+    }
+
+    public Device FindDevice(string name) {
+      Device device = null;
+      foreach (Server server in servers)
+        if ((device = server.FindDevice(name)) != null)
+          break;
+      return device;
+    }
+
+    public void Dispose() {
+      foreach (Server server in servers)
+        server.Close();
+      foreach (DNSSDService resolver in resolvers.Keys)
+        resolver.Stop();
+      resolvers.Clear();
+      if (browser != null)
+        browser.Stop();
+      browser = null;
+      if (service != null)
+        service.Stop();
+      Console.WriteLine("Client disposed");
     }
   }
 }

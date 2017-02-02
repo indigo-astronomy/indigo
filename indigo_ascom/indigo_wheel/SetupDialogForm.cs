@@ -7,13 +7,12 @@ using INDIGO;
 namespace ASCOM.INDIGO {
   [ComVisible(false)]
   public partial class SetupDialogForm : Form {
-
-    private Client client;
+    private FilterWheel driver;
     private Dictionary<Server, ServerNode> servers = new Dictionary<Server, ServerNode>();
 
-    private class DeviceNode : TreeNode {
-      private Device device;
-      private TreeView tree;
+    internal class DeviceNode : TreeNode {
+      internal Device device;
+      private SetupDialogForm form;
 
       private void propertyAdded(Property property) {
         if (property.Name == "INFO") {
@@ -21,9 +20,13 @@ namespace ASCOM.INDIGO {
             if (item.Name == "DEVICE_INTERFACE") {
               int interfaceMask = Convert.ToInt32(((TextItem)item).Value);
               if ((interfaceMask & 16) == 16) {
-                tree.BeginInvoke(new MethodInvoker(() => {
+                form.BeginInvoke(new MethodInvoker(() => {
                   ForeColor = DefaultForeColor;
                   Parent.Expand();
+                  if (form.driver.indigoDevice == property.DeviceName) {
+                    form.tree.SelectedNode = this;
+                    form.tree.Focus();
+                  }
                 }));
               }
               break;
@@ -32,8 +35,8 @@ namespace ASCOM.INDIGO {
         }
       }
 
-      public DeviceNode(TreeView tree, Device device) {
-        this.tree = tree;
+      internal DeviceNode(SetupDialogForm tree, Device device) {
+        this.form = tree;
         this.device = device;
         Text = device.Name;
         ForeColor = System.Drawing.Color.LightGray;
@@ -41,13 +44,13 @@ namespace ASCOM.INDIGO {
       }
     }
 
-    private class ServerNode : TreeNode {
+    internal class ServerNode : TreeNode {
       private Server server;
-      private TreeView tree;
+      private SetupDialogForm form;
       private Dictionary<Device, DeviceNode> devices = new Dictionary<Device, DeviceNode>();
 
-      public ServerNode(TreeView tree, Server server) {
-        this.tree = tree;
+      internal ServerNode(SetupDialogForm tree, Server server) {
+        this.form = tree;
         this.server = server;
         Text = server.Name;
         ForeColor = System.Drawing.Color.LightGray;
@@ -55,13 +58,15 @@ namespace ASCOM.INDIGO {
         server.DeviceRemoved += deviceRemoved;
       }
 
-      private void deviceAdded(Device device) {
-        DeviceNode node = new DeviceNode(tree, device);
+      internal void deviceAdded(Device device) {
+        if (devices.ContainsKey(device))
+          return;
+        DeviceNode node = new DeviceNode(form, device);
         devices.Add(device, node);
-        tree.BeginInvoke(new MethodInvoker(() => {
-          tree.BeginUpdate();
+        form.BeginInvoke(new MethodInvoker(() => {
+          form.tree.BeginUpdate();
           Nodes.Add(node);
-          tree.EndUpdate();
+          form.tree.EndUpdate();
         }));
       }
 
@@ -69,19 +74,21 @@ namespace ASCOM.INDIGO {
         DeviceNode node;
         if (devices.TryGetValue(device, out node)) {
           devices.Remove(device);
-          tree.BeginInvoke(new MethodInvoker(() => {
-            tree.BeginUpdate();
+          form.BeginInvoke(new MethodInvoker(() => {
+            form.tree.BeginUpdate();
             Nodes.Remove(node);
-            tree.EndUpdate();
+            form.tree.EndUpdate();
           }));
         }
       }
     }
 
     private void serverAdded(Server server) {
+      if (servers.ContainsKey(server))
+        return;
       server.ServerConnected += serverConnected;
       server.ServerDisconnected += serverDisconnected;
-      ServerNode node = new ServerNode(tree, server);
+      ServerNode node = new ServerNode(this, server);
       servers.Add(server, node);
       BeginInvoke(new MethodInvoker(() => {
         tree.BeginUpdate();
@@ -97,6 +104,9 @@ namespace ASCOM.INDIGO {
           tree.BeginUpdate();
           node.ForeColor = DefaultForeColor;
           tree.EndUpdate();
+          foreach (Device device in server.Devices) {
+            node.deviceAdded(device);
+          }
         }));
       }
     }
@@ -125,15 +135,23 @@ namespace ASCOM.INDIGO {
       }
     }
 
-    public SetupDialogForm() {
+    public SetupDialogForm(FilterWheel driver) {
       InitializeComponent();
-      client = new Client();
+      this.driver = driver;
+      Client client = driver.client;
+      client.Mutex.WaitOne();
+      foreach (Server server in client.Servers) {
+        serverAdded(server);
+      }
+      client.Mutex.ReleaseMutex();
       client.ServerAdded += serverAdded;
       client.ServerRemoved += serverRemoved;
     }
 
     private void okClick(object sender, EventArgs e) {
-      FilterWheel.indigoDevice = tree.SelectedNode.Text;
+      DeviceNode node = (DeviceNode)tree.SelectedNode;
+      driver.indigoDevice = node.Text;
+      driver.device = node.device;
     }
 
     private void cancelClick(object sender, EventArgs e) {
@@ -155,6 +173,11 @@ namespace ASCOM.INDIGO {
       TreeNode node = ((TreeView)sender).SelectedNode;
       if (node is DeviceNode && (node.ForeColor == DefaultForeColor)) {
         okButton.Enabled = true;
+        if (driver.connecting) {
+          driver.indigoDevice = node.Text;
+          driver.device = ((DeviceNode)node).device;
+          Close();
+        }
       } else {
         okButton.Enabled = false;
       }
