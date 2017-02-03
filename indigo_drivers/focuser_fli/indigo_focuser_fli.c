@@ -125,7 +125,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
 
 		strncpy(FOCUSER_STEPS_ITEM->label, "Relative move (steps)", INDIGO_VALUE_SIZE);
-		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -218,11 +217,29 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		res = 0;
 		long value = 0;
+		long current_value;
 		if (FOCUSER_STEPS_ITEM->number.value >= 0) {
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 				value = -1 * (long)(FOCUSER_STEPS_ITEM->number.value);
 			} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
 				value = (long)(FOCUSER_STEPS_ITEM->number.value);
+			}
+
+			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &current_value);
+			if (res) {
+				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
+			}
+
+			/* do not go over the max extent */
+			if (FOCUSER_POSITION_ITEM->number.max < (current_value + value)) {
+				value -= current_value + value - FOCUSER_POSITION_ITEM->number.max;
+				FOCUSER_STEPS_ITEM->number.value = (double)abs(value);
+			}
+
+			/* do not go below 0 */
+			if ((current_value + value) < 0) {
+				value -= current_value + value;
+				FOCUSER_STEPS_ITEM->number.value = (double)abs(value);
 			}
 
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
@@ -267,7 +284,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-			//libfcusb_stop(PRIVATE_DATA->device_context);
+			/* HOW TO STOP FLI ? */
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
