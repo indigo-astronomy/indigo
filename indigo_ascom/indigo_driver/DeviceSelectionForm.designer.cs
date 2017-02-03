@@ -1,6 +1,6 @@
 namespace ASCOM.INDIGO
 {
-  partial class SetupDialogForm
+  partial class DeviceSelectionForm
   {
     /// <summary>
     /// Required designer variable.
@@ -28,7 +28,7 @@ namespace ASCOM.INDIGO
     /// </summary>
     private void InitializeComponent()
     {
-      System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SetupDialogForm));
+      System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(DeviceSelectionForm));
       this.okButton = new System.Windows.Forms.Button();
       this.cancelButton = new System.Windows.Forms.Button();
       this.indigoLogo = new System.Windows.Forms.PictureBox();
@@ -84,7 +84,7 @@ namespace ASCOM.INDIGO
       this.tree.TabIndex = 102;
       this.tree.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.tree_AfterSelect);
       // 
-      // SetupDialogForm
+      // DeviceSelectionForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -96,10 +96,10 @@ namespace ASCOM.INDIGO
       this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
       this.MaximizeBox = false;
       this.MinimizeBox = false;
-      this.Name = "SetupDialogForm";
+      this.Name = "DeviceSelectionForm";
       this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
       this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-      this.Text = "INDIGO FilterWheel Selection";
+      this.Text = "INDIGO Device Selection";
       ((System.ComponentModel.ISupportInitialize)(this.indigoLogo)).EndInit();
       this.ResumeLayout(false);
 
