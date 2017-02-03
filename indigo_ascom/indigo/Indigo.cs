@@ -427,15 +427,18 @@ namespace INDIGO {
       }
     }
 
+    public Item GetItem(string name) {
+      return Items.FirstOrDefault(x => x.Name == name);
+    }
+
     public void Update(Property property) {
       state = property.state;
       message = property.message;
       foreach (Item item in property.Items) {
-        foreach (Item cachedItem in Items) {
-          if (item.Name == cachedItem.Name) {
-            cachedItem.Update(item);
-            break;
-          }
+        Item cachedItem = Items.FirstOrDefault(x => x.Name == item.Name);
+        if (cachedItem != null) {
+          cachedItem.Update(item);
+          break;
         }
       }
     }
@@ -449,13 +452,14 @@ namespace INDIGO {
     }
 
     private static DataContractJsonSerializerSettings settings = new DataContractJsonSerializerSettings() {
-      EmitTypeInformation = EmitTypeInformation.Never };
+      EmitTypeInformation = EmitTypeInformation.Never
+    };
 
     virtual public void Change() {
       ChangeMessage message = changeMessage();
       if (message == null)
         return;
-      
+
       Server server = device.Server;
       MemoryStream stream = new MemoryStream();
       DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(ChangeMessage), settings);
@@ -614,7 +618,7 @@ namespace INDIGO {
     }
 
     public void Update(Property property) {
-      Property cachedProperty = properties.Find(x => x.Name == property.Name);
+      Property cachedProperty = properties.FirstOrDefault(x => x.Name == property.Name);
       if (cachedProperty != null) {
         cachedProperty.Update(property);
         PropertyUpdated?.Invoke(cachedProperty);
@@ -623,7 +627,7 @@ namespace INDIGO {
     }
 
     public void Delete(Property property) {
-      Property cachedProperty = properties.Find(x => x.Name == property.Name);
+      Property cachedProperty = properties.FirstOrDefault(x => x.Name == property.Name);
       if (cachedProperty != null) {
         properties.Remove(cachedProperty);
         PropertyRemoved?.Invoke(cachedProperty);
@@ -701,6 +705,10 @@ namespace INDIGO {
       return group;
     }
 
+    public Property GetProperty(string name) {
+      return properties.FirstOrDefault(x => x.Name == name);
+    }
+
     public void Add(Property property) {
       if (properties.Contains(property))
         return;
@@ -714,7 +722,7 @@ namespace INDIGO {
     }
 
     public void Update(Property property) {
-      Property cachedProperty = properties.Find(x => x.Name == property.Name);
+      Property cachedProperty = properties.FirstOrDefault(x => x.Name == property.Name);
       if (cachedProperty != null) {
         cachedProperty.Update(property);
         PropertyUpdated?.Invoke(cachedProperty);
@@ -729,7 +737,7 @@ namespace INDIGO {
         properties.Clear();
         groups.Clear();
       } else {
-        Property cachedProperty = properties.Find(x => x.Name == property.Name);
+        Property cachedProperty = properties.FirstOrDefault(x => x.Name == property.Name);
         if (cachedProperty != null) {
           properties.Remove(cachedProperty);
           PropertyRemoved?.Invoke(cachedProperty);
@@ -752,7 +760,7 @@ namespace INDIGO {
     }
 
     public void Connect() {
-      Property connection = properties.Find(x => x.Name == "CONNECTION");
+      Property connection = properties.FirstOrDefault(x => x.Name == "CONNECTION");
       foreach (Item item in connection.Items) {
         if (item.Name == "CONNECTED") {
           ((SwitchItem)item).Value = true;
@@ -764,7 +772,7 @@ namespace INDIGO {
     }
 
     public void Disconnect() {
-      Property connection = properties.Find(x => x.Name == "CONNECTION");
+      Property connection = properties.FirstOrDefault(x => x.Name == "CONNECTION");
       foreach (Item item in connection.Items) {
         if (item.Name == "DISCONNECTED") {
           ((SwitchItem)item).Value = true;

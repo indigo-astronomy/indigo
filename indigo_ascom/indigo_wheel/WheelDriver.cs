@@ -1,7 +1,5 @@
-//tabs=4
-// --------------------------------------------------------------------------------
 //
-// ASCOM FilterWheel driver for INDIGO
+// ASCOM FilterWheel Driver for INDIGO
 //
 // Copyright (c) 2017 CloudMakers, s. r. o.
 // All rights reserved.
@@ -20,23 +18,12 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Author:		(PPO) Peter Polakovic, CloudMakers, s. r. o. <peter.polakovic@cloumakers.eu>
-//
-// Date			Who	Vers	Description
-// -----------	---	-----	-------------------------------------------------------
-// 21-jan-2017	PPO	6.0.0	Initial edit, created from ASCOM driver template
-// --------------------------------------------------------------------------------
-//
-
-#define FilterWheel
 
 using System;
 using System.Runtime.InteropServices;
+using System.Globalization;
 using ASCOM.Utilities;
 using ASCOM.DeviceInterface;
-using System.Globalization;
-using System.Collections;
 using INDIGO;
 
 namespace ASCOM.INDIGO {
@@ -47,76 +34,8 @@ namespace ASCOM.INDIGO {
     internal static string driverID = "ASCOM.INDIGO.FilterWheel";
     internal static string driverDescription = "INDIGO FilterWheel";
 
-
     public FilterWheel() {
       deviceInterface = Device.InterfaceMask.FilterWheel;
-    }
-
-    #region Common properties and methods.
-
-
-    public ArrayList SupportedActions {
-      get {
-        return new ArrayList();
-      }
-    }
-
-    public string Action(string actionName, string actionParameters) {
-      throw new ASCOM.ActionNotImplementedException("Action " + actionName + " is not implemented by this driver");
-    }
-
-    public void CommandBlind(string command, bool raw) {
-      CheckConnected("CommandBlind");
-      // TODO
-    }
-
-    public bool CommandBool(string command, bool raw) {
-      throw new ASCOM.MethodNotImplementedException("CommandBool");
-    }
-
-    public string CommandString(string command, bool raw) {
-      throw new ASCOM.MethodNotImplementedException("CommandString");
-    }
-
-    public void Dispose() {
-      client.Dispose();
-      client = null;
-      utilities.Dispose();
-      utilities = null;
-    }
-
-    public bool Connected {
-      get {
-        return IsConnected;
-      }
-      set {
-        if (value == IsConnected)
-          return;
-
-        if (value) {
-          if (device == null) {
-            using (DeviceSelectionForm F = new DeviceSelectionForm(this, deviceName)) {
-              var result = F.ShowDialog();
-              if (result == System.Windows.Forms.DialogResult.OK) {
-                WriteProfile();
-                Console.WriteLine("Device \"" + device.Name + "\" on \"" + device.Server.Name + "\" selected");
-              }
-              F.Dispose();
-            }
-          }
-          if (device == null) {
-            Console.WriteLine("Can't connect to " + deviceName);
-          } else {
-            connectedState = true;
-            Console.WriteLine("Connecting to " + deviceName);
-            device.Connect();
-          }
-        } else {
-          connectedState = false;
-          Console.WriteLine("Disconnecting from port " + deviceName);
-          device.Disconnect();
-        }
-      }
     }
 
     public string Description {
@@ -127,17 +46,14 @@ namespace ASCOM.INDIGO {
 
     public string DriverInfo {
       get {
-        Version version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        string driverInfo = "INDIGO FilterWheel driver. Version: " + String.Format(CultureInfo.InvariantCulture, "{0}.{1}", version.Major, version.Minor);
-        return driverInfo;
+        return Name + " driver, version " + DriverVersion;
       }
     }
 
     public string DriverVersion {
       get {
         Version version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        string driverVersion = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", version.Major, version.Minor);
-        return driverVersion;
+        return String.Format(CultureInfo.InvariantCulture, "{0}.{1}", version.Major, version.Minor);
       }
     }
 
@@ -149,47 +65,83 @@ namespace ASCOM.INDIGO {
 
     public string Name {
       get {
-        string name = "INDIGO FilterWheel";
-        return name;
+        return "INDIGO FilterWheel";
       }
     }
 
-    #endregion
-
-    #region IFilerWheel Implementation
-    private int[] fwOffsets = new int[4] { 0, 0, 0, 0 }; //class level variable to hold focus offsets
-    private string[] fwNames = new string[4] { "Red", "Green", "Blue", "Clear" }; //class level variable to hold the filter names
-    private short fwPosition = 0; // class level variable to retain the current filterwheel position
+    private int[] offsets = new int[0];
+    private string[] names = new string[0];
+    private short position = 0;
 
     public int[] FocusOffsets {
       get {
-        return fwOffsets;
+        return offsets;
       }
     }
 
     public string[] Names {
       get {
-        return fwNames;
+        return names;
       }
     }
 
     public short Position {
       get {
-        return fwPosition;
+        return position;
       }
       set {
-        if ((value < 0) | (value > fwNames.Length - 1)) {
-          throw new InvalidValueException("Position", value.ToString(), "0 to " + (fwNames.Length - 1).ToString());
+        if ((value < 0) | (value > names.Length - 1)) {
+          throw new InvalidValueException("Position", value.ToString(), "0 to " + (names.Length - 1).ToString());
         }
-        fwPosition = value;
+        position = -1;
+        if (IsConnected) {
+          Property property = device.GetProperty("WHEEL_SLOT");
+          if (property != null) {
+            NumberItem item = (NumberItem)property.GetItem("SLOT");
+            item.Value = value + 1;
+            property.Change();
+          }
+        }       
       }
     }
 
-    #endregion
-
-    #region Private properties and methods
-
-    #region ASCOM Registration
+    override protected void propertyChanged(Property property) {
+      base.propertyChanged(property);
+      if (property.DeviceName == deviceName) {
+        if (property.Name == "WHEEL_SLOT") {
+          NumberItem slot = (NumberItem)property.GetItem("SLOT");
+          if (slot != null) {
+            if (property.State == Property.States.Busy) {
+              position = -1;
+              Console.WriteLine("Wheel is moving");
+            } else {
+              int count = (int)slot.Max;
+              if (names.Length != count) {
+                Console.WriteLine("Wheel position count " + count);
+                names = new string[count];
+                offsets = new int[count];
+                for (int i = 0; i < count; i++) {
+                  names[i] = "NAME #" + i;
+                  offsets[i] = 0;
+                }
+              }
+              position = (short)(slot.Value - 1);
+              Console.WriteLine("Wheel position is " + position);
+            }
+          }
+        } else if (property.Name == "WHEEL_SLOT_NAME") {
+          if (property.State == Property.States.Idle || property.State == Property.States.Ok) {
+            for (int i = 0; i < names.Length; i++) {
+              TextItem slotName = (TextItem)property.GetItem("SLOT_NAME_" + (i + 1));
+              if (slotName != null) {
+                names[i] = slotName.Value;
+                Console.WriteLine("Wheel slot name " + i + ": " + slotName.Value);
+              }
+            }
+          }
+        }
+      }
+    }
 
     private static void RegUnregASCOM(bool bRegister) {
       using (var P = new ASCOM.Utilities.Profile()) {
@@ -212,22 +164,18 @@ namespace ASCOM.INDIGO {
       RegUnregASCOM(false);
     }
 
-    #endregion
-
     override protected void ReadProfile() {
       using (Profile driverProfile = new Profile()) {
         driverProfile.DeviceType = "FilterWheel";
-        deviceName = driverProfile.GetValue(driverID, indigoDeviceProfileName, string.Empty, indigoDeviceDefault);
+        deviceName = driverProfile.GetValue(driverID, deviceNameProfileName, string.Empty, string.Empty);
       }
     }
 
     override protected void WriteProfile() {
       using (Profile driverProfile = new Profile()) {
         driverProfile.DeviceType = "FilterWheel";
-        driverProfile.WriteValue(driverID, indigoDeviceProfileName, deviceName);
+        driverProfile.WriteValue(driverID, deviceNameProfileName, deviceName);
       }
     }
-
-    #endregion
   }
 }
