@@ -61,15 +61,16 @@ namespace ASCOM.INDIGO {
       }
 
       internal void deviceAdded(Device device) {
-        if (devices.ContainsKey(device))
-          return;
-        DeviceNode node = new DeviceNode(form, device);
-        devices.Add(device, node);
-        form.BeginInvoke(new MethodInvoker(() => {
-          form.tree.BeginUpdate();
-          Nodes.Add(node);
-          form.tree.EndUpdate();
-        }));
+        try {
+          DeviceNode node = new DeviceNode(form, device);
+          devices.Add(device, node);
+          form.BeginInvoke(new MethodInvoker(() => {
+            form.tree.BeginUpdate();
+            Nodes.Add(node);
+            form.tree.EndUpdate();
+          }));
+        } catch {
+        }
       }
 
       private void deviceRemoved(Device device) {
@@ -86,17 +87,18 @@ namespace ASCOM.INDIGO {
     }
 
     private void serverAdded(Server server) {
-      if (servers.ContainsKey(server))
-        return;
-      server.ServerConnected += serverConnected;
-      server.ServerDisconnected += serverDisconnected;
-      ServerNode node = new ServerNode(this, server);
-      servers.Add(server, node);
-      BeginInvoke(new MethodInvoker(() => {
-        tree.BeginUpdate();
-        tree.Nodes.Add(node);
-        tree.EndUpdate();
-      }));
+      try {
+        server.ServerConnected += serverConnected;
+        server.ServerDisconnected += serverDisconnected;
+        ServerNode node = new ServerNode(this, server);
+        servers.Add(server, node);
+        BeginInvoke(new MethodInvoker(() => {
+          tree.BeginUpdate();
+          tree.Nodes.Add(node);
+          tree.EndUpdate();
+        }));
+      } catch {
+      }
     }
 
     private void serverConnected(Server server) {

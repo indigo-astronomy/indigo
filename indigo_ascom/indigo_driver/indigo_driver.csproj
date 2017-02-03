@@ -62,6 +62,12 @@
     <Compile Include="DeviceSelectionForm.designer.cs">
       <DependentUpon>DeviceSelectionForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="WaitForForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="WaitForForm.Designer.cs">
+      <DependentUpon>WaitForForm.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\indigo\indigo.csproj">
@@ -76,6 +82,9 @@
     <EmbeddedResource Include="DeviceSelectionForm.resx">
       <DependentUpon>DeviceSelectionForm.cs</DependentUpon>
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="WaitForForm.resx">
+      <DependentUpon>WaitForForm.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
