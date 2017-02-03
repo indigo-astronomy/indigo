@@ -178,7 +178,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetFocuserExtent(%d) = %d", id, res));
 					value = 1000;
 				}
-				INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuse Extent %d", value));
+				INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuser Extent %d", value));
 				FOCUSER_POSITION_ITEM->number.max = value;
 				FOCUSER_POSITION_ITEM->number.min = 0;
 				FOCUSER_POSITION_ITEM->number.step = 1;
@@ -301,7 +301,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_LOG(indigo_log("indigo_focuser_fli: %s detached.", device->name));
 
 	return indigo_focuser_detach(device);
 }
@@ -484,7 +484,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				removed = true;
 			}
 			if (!removed) {
-				INDIGO_DEBUG(indigo_debug("indigo_focuser_fli: No FLI Camera unplugged!"));
+				INDIGO_DEBUG(indigo_debug("indigo_focuser_fli: No FLI Focuser unplugged!"));
 			}
 		}
 	}
