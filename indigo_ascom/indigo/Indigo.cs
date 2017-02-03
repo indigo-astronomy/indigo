@@ -33,7 +33,6 @@ using Bonjour;
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
 
 namespace INDIGO {
-
   public delegate void ServerAddedHandler(Server server);
   public delegate void ServerRemovedHandler(Server server);
   public delegate void ServerConnectedHandler(Server server);
@@ -344,6 +343,7 @@ namespace INDIGO {
     }
 
     public Device Device {
+
       get {
         return device;
       }
@@ -645,6 +645,16 @@ namespace INDIGO {
   }
 
   public class Device {
+
+    public enum InterfaceMask {
+      Mount = 1 << 0,
+      CCD = 1 << 1,
+      Guider = 1 << 2,
+      Focuser = 1 << 3,
+      FilterWheel = 1 << 4,
+      Dome = 1 << 5
+    }
+
     private string name;
     private Server server;
     private Dictionary<string, Group> groups = new Dictionary<string, Group>();
