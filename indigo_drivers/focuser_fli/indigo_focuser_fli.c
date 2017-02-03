@@ -233,13 +233,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			/* do not go over the max extent */
 			if (FOCUSER_POSITION_ITEM->number.max < (current_value + value)) {
 				value -= current_value + value - FOCUSER_POSITION_ITEM->number.max;
-				FOCUSER_STEPS_ITEM->number.value = (double)abs(value);
+				FOCUSER_STEPS_ITEM->number.value = (double)labs(value);
 			}
 
 			/* do not go below 0 */
 			if ((current_value + value) < 0) {
 				value -= current_value + value;
-				FOCUSER_STEPS_ITEM->number.value = (double)abs(value);
+				FOCUSER_STEPS_ITEM->number.value = (double)labs(value);
 			}
 
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
