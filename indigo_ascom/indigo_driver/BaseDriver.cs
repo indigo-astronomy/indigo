@@ -43,7 +43,7 @@ namespace ASCOM.INDIGO {
     public Device.InterfaceMask deviceInterface;
 
     virtual protected void propertyChanged(Property property) {
-      Console.WriteLine("Property \"" + property.DeviceName + "\" \"" + property.Name + "\"");
+      //Console.WriteLine("Property \"" + property.DeviceName + "\" \"" + property.Name + "\"");
       if (property.DeviceName == deviceName && property.Name == "CONNECTION" && property.State == Property.States.Ok) {
         waitFor.Hide(ref waitingForDevice);
         SwitchItem item = (SwitchItem)property.GetItem("CONNECTED");

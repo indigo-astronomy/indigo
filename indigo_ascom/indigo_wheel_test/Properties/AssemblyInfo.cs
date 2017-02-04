@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("ASCOM Driver Test Forms Application")]
+[assembly: AssemblyTitle("ASCOM Wheel Driver Test Application")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("ASCOM Initiative")]
-[assembly: AssemblyProduct("Driver Test Forms Application Template CSharp")]
-[assembly: AssemblyCopyright("Copyright © ASCOM Initiative 2014")]
+[assembly: AssemblyCompany("CloudMakers, s. r. o.")]
+[assembly: AssemblyProduct("ASCOM Wheel Driver Test Application")]
+[assembly: AssemblyCopyright("Copyright © 2017 CloudMakers, s. r. o.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

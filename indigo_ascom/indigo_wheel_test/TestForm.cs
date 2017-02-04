@@ -42,10 +42,12 @@ namespace ASCOM.INDIGO {
       buttonConnect.Enabled = !string.IsNullOrEmpty(Properties.Settings.Default.DriverId);
       if (IsConnected) {
         buttonChoose.Enabled = false;
+        buttonGo.Enabled = true;
         buttonConnect.Text = "Disconnect";
         listBoxSlots.Items.AddRange(driver.Names);
       } else {
         buttonChoose.Enabled = true;
+        buttonGo.Enabled = false;
         buttonConnect.Text = "Connect";
         listBoxSlots.Items.Clear();
       }
