@@ -4,7 +4,7 @@ using System.Windows.Forms;
 namespace ASCOM.INDIGO {
   public partial class TestForm : Form {
 
-    private ASCOM.DriverAccess.FilterWheel driver;
+    private ASCOM.DriverAccess.Camera driver;
 
     public TestForm() {
       InitializeComponent();
@@ -19,7 +19,7 @@ namespace ASCOM.INDIGO {
     }
 
     private void buttonChoose_Click(object sender, EventArgs e) {
-      Properties.Settings.Default.DriverId = ASCOM.DriverAccess.FilterWheel.Choose(Properties.Settings.Default.DriverId);
+      Properties.Settings.Default.DriverId = ASCOM.DriverAccess.Camera.Choose(Properties.Settings.Default.DriverId);
       SetUIState();
     }
 
@@ -27,29 +27,20 @@ namespace ASCOM.INDIGO {
       if (IsConnected) {
         driver.Connected = false;
       } else {
-        if (driver == null)
-          driver = new ASCOM.DriverAccess.FilterWheel(Properties.Settings.Default.DriverId);
+        driver = new ASCOM.DriverAccess.Camera(Properties.Settings.Default.DriverId);
         driver.Connected = true;
       }
       SetUIState();
-    }
-
-    private void buttonGo_Click(object sender, EventArgs e) {
-      driver.Position = (short)listBoxSlots.SelectedIndex;
     }
 
     private void SetUIState() {
       buttonConnect.Enabled = !string.IsNullOrEmpty(Properties.Settings.Default.DriverId);
       if (IsConnected) {
         buttonChoose.Enabled = false;
-        buttonGo.Enabled = true;
         buttonConnect.Text = "Disconnect";
-        listBoxSlots.Items.AddRange(driver.Names);
       } else {
         buttonChoose.Enabled = true;
-        buttonGo.Enabled = false;
         buttonConnect.Text = "Connect";
-        listBoxSlots.Items.Clear();
       }
     }
 
