@@ -31,6 +31,8 @@
       this.buttonChoose = new System.Windows.Forms.Button();
       this.buttonConnect = new System.Windows.Forms.Button();
       this.labelDriverId = new System.Windows.Forms.Label();
+      this.listBoxSlots = new System.Windows.Forms.ListBox();
+      this.buttonGo = new System.Windows.Forms.Button();
       this.SuspendLayout();
       // 
       // buttonChoose
@@ -57,6 +59,8 @@
       // 
       // labelDriverId
       // 
+      this.labelDriverId.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
       this.labelDriverId.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
       this.labelDriverId.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ASCOM.INDIGO.Properties.Settings.Default, "DriverId", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
       this.labelDriverId.Location = new System.Drawing.Point(12, 12);
@@ -66,11 +70,35 @@
       this.labelDriverId.Text = global::ASCOM.INDIGO.Properties.Settings.Default.DriverId;
       this.labelDriverId.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
       // 
+      // listBoxSlots
+      // 
+      this.listBoxSlots.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+      this.listBoxSlots.FormattingEnabled = true;
+      this.listBoxSlots.Location = new System.Drawing.Point(12, 69);
+      this.listBoxSlots.Name = "listBoxSlots";
+      this.listBoxSlots.Size = new System.Drawing.Size(307, 95);
+      this.listBoxSlots.TabIndex = 3;
+      // 
+      // buttonGo
+      // 
+      this.buttonGo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+      this.buttonGo.Location = new System.Drawing.Point(325, 141);
+      this.buttonGo.Name = "buttonGo";
+      this.buttonGo.Size = new System.Drawing.Size(72, 23);
+      this.buttonGo.TabIndex = 4;
+      this.buttonGo.Text = "Go";
+      this.buttonGo.UseVisualStyleBackColor = true;
+      this.buttonGo.Click += new System.EventHandler(this.buttonGo_Click);
+      // 
       // TestForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-      this.ClientSize = new System.Drawing.Size(409, 262);
+      this.ClientSize = new System.Drawing.Size(409, 179);
+      this.Controls.Add(this.buttonGo);
+      this.Controls.Add(this.listBoxSlots);
       this.Controls.Add(this.labelDriverId);
       this.Controls.Add(this.buttonConnect);
       this.Controls.Add(this.buttonChoose);
@@ -86,6 +114,8 @@
     private System.Windows.Forms.Button buttonChoose;
     private System.Windows.Forms.Button buttonConnect;
     private System.Windows.Forms.Label labelDriverId;
+    private System.Windows.Forms.ListBox listBoxSlots;
+    private System.Windows.Forms.Button buttonGo;
   }
 }
 
