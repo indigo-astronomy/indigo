@@ -32,7 +32,7 @@ namespace ASCOM.INDIGO {
   [ClassInterface(ClassInterfaceType.None)]
   public class FilterWheel : BaseDriver, IFilterWheelV2 {
     internal static string driverID = "ASCOM.INDIGO.FilterWheel";
-    internal static string driverDescription = "INDIGO FilterWheel";
+    internal static string driverName = "INDIGO FilterWheel";
 
     public FilterWheel() {
       deviceInterface = Device.InterfaceMask.FilterWheel;
@@ -40,7 +40,7 @@ namespace ASCOM.INDIGO {
 
     public string Description {
       get {
-        return driverDescription;
+        return driverName + " (" + deviceName + ")";
       }
     }
 
@@ -65,7 +65,7 @@ namespace ASCOM.INDIGO {
 
     public string Name {
       get {
-        return "INDIGO FilterWheel";
+        return driverName;
       }
     }
 
@@ -101,7 +101,7 @@ namespace ASCOM.INDIGO {
             item.Value = value + 1;
             property.Change();
           }
-        }       
+        }
       }
     }
 
@@ -147,7 +147,7 @@ namespace ASCOM.INDIGO {
       using (var P = new ASCOM.Utilities.Profile()) {
         P.DeviceType = "FilterWheel";
         if (bRegister) {
-          P.Register(driverID, driverDescription);
+          P.Register(driverID, driverName);
         } else {
           P.Unregister(driverID);
         }
