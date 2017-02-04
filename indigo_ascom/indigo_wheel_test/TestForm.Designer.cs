@@ -38,9 +38,9 @@
       // buttonChoose
       // 
       this.buttonChoose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.buttonChoose.Location = new System.Drawing.Point(325, 10);
+      this.buttonChoose.Location = new System.Drawing.Point(325, 12);
       this.buttonChoose.Name = "buttonChoose";
-      this.buttonChoose.Size = new System.Drawing.Size(72, 23);
+      this.buttonChoose.Size = new System.Drawing.Size(72, 21);
       this.buttonChoose.TabIndex = 0;
       this.buttonChoose.Text = "Choose";
       this.buttonChoose.UseVisualStyleBackColor = true;
@@ -49,9 +49,9 @@
       // buttonConnect
       // 
       this.buttonConnect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.buttonConnect.Location = new System.Drawing.Point(325, 39);
+      this.buttonConnect.Location = new System.Drawing.Point(325, 56);
       this.buttonConnect.Name = "buttonConnect";
-      this.buttonConnect.Size = new System.Drawing.Size(72, 23);
+      this.buttonConnect.Size = new System.Drawing.Size(72, 21);
       this.buttonConnect.TabIndex = 1;
       this.buttonConnect.Text = "Connect";
       this.buttonConnect.UseVisualStyleBackColor = true;
@@ -76,17 +76,17 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
       this.listBoxSlots.FormattingEnabled = true;
-      this.listBoxSlots.Location = new System.Drawing.Point(12, 69);
+      this.listBoxSlots.Location = new System.Drawing.Point(12, 56);
       this.listBoxSlots.Name = "listBoxSlots";
-      this.listBoxSlots.Size = new System.Drawing.Size(307, 95);
+      this.listBoxSlots.Size = new System.Drawing.Size(307, 134);
       this.listBoxSlots.TabIndex = 3;
       // 
       // buttonGo
       // 
       this.buttonGo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.buttonGo.Location = new System.Drawing.Point(325, 141);
+      this.buttonGo.Location = new System.Drawing.Point(325, 83);
       this.buttonGo.Name = "buttonGo";
-      this.buttonGo.Size = new System.Drawing.Size(72, 23);
+      this.buttonGo.Size = new System.Drawing.Size(72, 21);
       this.buttonGo.TabIndex = 4;
       this.buttonGo.Text = "Go";
       this.buttonGo.UseVisualStyleBackColor = true;
@@ -96,7 +96,7 @@
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-      this.ClientSize = new System.Drawing.Size(409, 179);
+      this.ClientSize = new System.Drawing.Size(409, 202);
       this.Controls.Add(this.buttonGo);
       this.Controls.Add(this.listBoxSlots);
       this.Controls.Add(this.labelDriverId);

@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("indigo_test")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("INDIGO Test Application")]
+[assembly: AssemblyDescription("INDIGO Test Application")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("indigo_test")]
-[assembly: AssemblyCopyright("Copyright ©  2017")]
+[assembly: AssemblyCompany("CloudMakers, s. r. o.")]
+[assembly: AssemblyProduct("INDIGO Test Application")]
+[assembly: AssemblyCopyright("Copyright © 2017 CloudMakers, s. r. o.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
