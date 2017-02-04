@@ -59,7 +59,7 @@ namespace INDIGO {
       internal string name;
     }
 
-    virtual internal ChangeItem changeItem() {
+    virtual internal ChangeItem NewChangeItem() {
       return null;
     }
 
@@ -86,7 +86,7 @@ namespace INDIGO {
       }
     }
 
-    virtual public void Update(Item item) {
+    virtual internal void Update(Item item) {
     }
 
     override public bool Equals(object other) {
@@ -111,7 +111,7 @@ namespace INDIGO {
       internal bool value;
     }
 
-    override internal ChangeItem changeItem() {
+    override internal ChangeItem NewChangeItem() {
       if (!modified)
         return null;
       modified = false;
@@ -129,7 +129,7 @@ namespace INDIGO {
       }
     }
 
-    override public void Update(Item item) {
+    override internal void Update(Item item) {
       value = ((SwitchItem)item).value;
     }
   }
@@ -147,7 +147,7 @@ namespace INDIGO {
       internal string value;
     }
 
-    override internal ChangeItem changeItem() {
+    override internal ChangeItem NewChangeItem() {
       if (!modified)
         return null;
       modified = false;
@@ -165,7 +165,7 @@ namespace INDIGO {
       }
     }
 
-    override public void Update(Item item) {
+    override internal void Update(Item item) {
       value = ((TextItem)item).value;
     }
   }
@@ -193,7 +193,7 @@ namespace INDIGO {
       internal double value;
     }
 
-    override internal ChangeItem changeItem() {
+    override internal ChangeItem NewChangeItem() {
       if (!modified)
         return null;
       modified = false;
@@ -241,7 +241,7 @@ namespace INDIGO {
       }
     }
 
-    override public void Update(Item item) {
+    override internal void Update(Item item) {
       value = ((NumberItem)item).value;
       target = ((NumberItem)item).target;
     }
@@ -258,7 +258,7 @@ namespace INDIGO {
       }
     }
 
-    override public void Update(Item item) {
+    override internal void Update(Item item) {
       value = ((LightItem)item).value;
     }
   }
@@ -274,7 +274,7 @@ namespace INDIGO {
       }
     }
 
-    override public void Update(Item item) {
+    override internal void Update(Item item) {
       value = ((BLOBItem)item).value;
     }
   }
@@ -332,7 +332,7 @@ namespace INDIGO {
       internal ChangeProperty newNumberVector;
     }
 
-    virtual internal ChangeMessage changeMessage() {
+    virtual internal ChangeMessage NewChangeMessage() {
       return null;
     }
 
@@ -456,7 +456,7 @@ namespace INDIGO {
     };
 
     virtual public void Change() {
-      ChangeMessage message = changeMessage();
+      ChangeMessage message = NewChangeMessage();
       if (message == null)
         return;
 
@@ -481,10 +481,10 @@ namespace INDIGO {
     [DataMember(Name = "items")]
     private List<SwitchItem> items;
 
-    override internal ChangeMessage changeMessage() {
+    override internal ChangeMessage NewChangeMessage() {
       List<Item.ChangeItem> changeItems = new List<Item.ChangeItem>();
       foreach (Item item in items) {
-        Item.ChangeItem changeItem = item.changeItem();
+        Item.ChangeItem changeItem = item.NewChangeItem();
         if (changeItem != null)
           changeItems.Add(changeItem);
       }
@@ -517,10 +517,10 @@ namespace INDIGO {
     [DataMember(Name = "items")]
     private List<TextItem> items;
 
-    override internal ChangeMessage changeMessage() {
+    override internal ChangeMessage NewChangeMessage() {
       List<Item.ChangeItem> changeItems = new List<Item.ChangeItem>();
       foreach (Item item in items) {
-        Item.ChangeItem changeItem = item.changeItem();
+        Item.ChangeItem changeItem = item.NewChangeItem();
         if (changeItem != null)
           changeItems.Add(changeItem);
       }
@@ -541,10 +541,10 @@ namespace INDIGO {
     [DataMember(Name = "items")]
     private List<NumberItem> items;
 
-    override internal ChangeMessage changeMessage() {
+    override internal ChangeMessage NewChangeMessage() {
       List<Item.ChangeItem> changeItems = new List<Item.ChangeItem>();
       foreach (Item item in items) {
-        Item.ChangeItem changeItem = item.changeItem();
+        Item.ChangeItem changeItem = item.NewChangeItem();
         if (changeItem != null)
           changeItems.Add(changeItem);
       }
@@ -695,7 +695,7 @@ namespace INDIGO {
       }
     }
 
-    private Group GetGroup(string name) {
+    private Group GetOrAddGroup(string name) {
       Group group = null;
       if (!groups.TryGetValue(name, out group)) {
         group = new Group(name, this);
@@ -717,7 +717,7 @@ namespace INDIGO {
         item.Property = property;
       properties.Add(property);
       PropertyAdded?.Invoke(property);
-      Group group = GetGroup(property.GroupName);
+      Group group = GetOrAddGroup(property.GroupName);
       group.Add(property);
     }
 
@@ -726,7 +726,7 @@ namespace INDIGO {
       if (cachedProperty != null) {
         cachedProperty.Update(property);
         PropertyUpdated?.Invoke(cachedProperty);
-        GetGroup(cachedProperty.GroupName).Update(property);
+        GetOrAddGroup(cachedProperty.GroupName).Update(property);
         return;
       }
       Console.WriteLine("'" + property.DeviceName + "' '" + property.Name + "' not found!");
@@ -741,7 +741,7 @@ namespace INDIGO {
         if (cachedProperty != null) {
           properties.Remove(cachedProperty);
           PropertyRemoved?.Invoke(cachedProperty);
-          Group group = GetGroup(cachedProperty.GroupName);
+          Group group = GetOrAddGroup(cachedProperty.GroupName);
           group.Delete(property);
           if (group.Properties.Count == 0) {
             groups.Remove(group.Name);
@@ -883,14 +883,14 @@ namespace INDIGO {
       socket.Abort();
     }
 
-    public Device FindDevice(string name) {
+    public Device GetDevice(string name) {
       Device device = null;
       if (devices.TryGetValue(name, out device))
         return device;
       return null;
     }
 
-    private Device GetDevice(string name) {
+    private Device GetOrAddDevice(string name) {
       Device device = null;
       if (!devices.TryGetValue(name, out device)) {
         device = new Device(name, this);
@@ -902,17 +902,17 @@ namespace INDIGO {
 
     private void DefProperty(Property property) {
       //Console.WriteLine("def(" + property + ") '" + property.Device + "' '" + property.Name + "'");
-      GetDevice(property.DeviceName).Add(property);
+      GetOrAddDevice(property.DeviceName).Add(property);
     }
 
     private void SetProperty(Property property) {
       //Console.WriteLine("set(" + property + ") '" + property.Device + "' '" + property.Name + "'");
-      GetDevice(property.DeviceName).Update(property);
+      GetOrAddDevice(property.DeviceName).Update(property);
     }
 
     private void DeleteProperty(Property property) {
       //Console.WriteLine("delete(" + property + ") '" + property.Device + "' '" + property.Name + "'");
-      Device device = GetDevice(property.DeviceName);
+      Device device = GetOrAddDevice(property.DeviceName);
       device.Delete(property);
       if (device.Properties.Count == 0) {
         devices.Remove(device.Name);
@@ -1023,7 +1023,6 @@ namespace INDIGO {
     public IReadOnlyList<Server> Servers {
       get {
         return servers.Cast<Server>().ToList().AsReadOnly();
-        ;
       }
     }
 
@@ -1084,10 +1083,10 @@ namespace INDIGO {
       }
     }
 
-    public Device FindDevice(string name) {
+    public Device GetDevice(string name) {
       Device device = null;
       foreach (Server server in servers)
-        if ((device = server.FindDevice(name)) != null)
+        if ((device = server.GetDevice(name)) != null)
           break;
       return device;
     }
