@@ -32,39 +32,54 @@ namespace ASCOM.INDIGO {
 
     protected WaitForForm waitFor = new WaitForForm();
     protected bool waitingForDevice;
+    protected bool waitingForConnectionProperty;
     protected bool waitingForConnected;
     protected bool waitingForDisconnected;
 
     public static string deviceNameProfileName = "INDIGO Device";
 
-    public Client client;
+    public static Client client = null;
     public Device device;
     public string deviceName;
     public Device.InterfaceMask deviceInterface;
 
+    private SwitchProperty connectionProperty;
+
     virtual protected void propertyChanged(Property property) {
       //Console.WriteLine("Property \"" + property.DeviceName + "\" \"" + property.Name + "\"");
-      if (property.DeviceName == deviceName && property.Name == "CONNECTION" && property.State == Property.States.Ok) {
-        waitFor.Hide(ref waitingForDevice);
-        SwitchItem item = (SwitchItem)property.GetItem("CONNECTED");
-        connectedState = item != null && item.Value;
-        if (connectedState) {
-          waitFor.Hide(ref waitingForConnected);
-        } else if (!connectedState) {
-          waitFor.Hide(ref waitingForDisconnected);
-        }
-      }
     }
 
-    private void propertyAdded(Property property) {
+    virtual protected void propertyAdded(Property property) {
+      if (property.DeviceName == deviceName) {
+        Console.WriteLine("defProperty \"" +property.Name + "\"");
+        if (property.Name == "CONNECTION") {
+          connectionProperty = (SwitchProperty)property;
+          waitFor.Hide(ref waitingForConnectionProperty);
+        }
+      }
       propertyChanged(property);
     }
 
-    private void propertyUpdated(Property property) {
+    virtual protected void propertyUpdated(Property property) {
+      if (property.DeviceName == deviceName) {
+        Console.WriteLine("setProperty \"" + property.Name + "\"");
+        if (property == connectionProperty) {
+          SwitchItem item = (SwitchItem)property.GetItem("CONNECTED");
+          connectedState = item != null && item.Value;
+          if (connectedState) {
+            waitFor.Hide(ref waitingForConnected);
+          } else if (!connectedState) {
+            waitFor.Hide(ref waitingForDisconnected);
+          }
+        }
+      }
       propertyChanged(property);
     }
 
     private void propertyRemoved(Property property) {
+      if (property.DeviceName == deviceName && property.Name == "CONNECTION") {
+        connectionProperty = null;
+      }
     }
 
     private void deviceAdded(Device device) {
@@ -73,8 +88,11 @@ namespace ASCOM.INDIGO {
       device.PropertyRemoved += propertyRemoved;
       if (device.Name == deviceName) {
         this.device = device;
+        waitFor.Hide(ref waitingForDevice);
         Console.WriteLine("Device \"" + device.Name + "\" found on \"" + device.Server.Name + "\"");
       }
+      foreach (Property property in device.Properties)
+        propertyAdded(property);
     }
 
     private void deviceRemoved(Device device) {
@@ -88,18 +106,41 @@ namespace ASCOM.INDIGO {
     private void serverAdded(Server server) {
       server.DeviceAdded += deviceAdded;
       server.DeviceRemoved += deviceRemoved;
+      foreach (Device device in server.Devices)
+        deviceAdded(device);
     }
 
     private void serverRemoved(Server server) {
     }
 
     protected BaseDriver() {
-      client = new Client();
+      if (client == null)
+        client = new Client();
+      client.Mutex.WaitOne();
+      foreach (Server server in client.Servers)
+        serverAdded(server);
+      client.Mutex.ReleaseMutex();
       client.ServerAdded += serverAdded;
       client.ServerRemoved += serverRemoved;
       connectedState = false;
       utilities = new Util();
       ReadProfile();
+    }
+
+    public void Dispose() {
+      client.ServerAdded -= serverAdded;
+      client.ServerRemoved -= serverRemoved;
+      foreach (Server server in client.Servers) {
+        server.DeviceAdded -= deviceAdded;
+        server.DeviceRemoved -= deviceRemoved;
+        foreach (Device device in server.Devices) {
+          device.PropertyAdded -= propertyAdded;
+          device.PropertyUpdated -= propertyUpdated;
+          device.PropertyRemoved -= propertyRemoved;
+        }
+      }
+      utilities.Dispose();
+      utilities = null;
     }
 
     protected bool IsConnected {
@@ -132,20 +173,34 @@ namespace ASCOM.INDIGO {
 
         if (value) {
           if (device == null) {
-            waitFor.Wait(out waitingForDevice, "Waiting for \"" + deviceName + "\"");
+            if (deviceName == string.Empty)
+              SetupDialog();
+            else {
+              device = client.GetDevice(deviceName);
+              if (device == null)
+                waitFor.Wait(out waitingForDevice, "Waiting for \"" + deviceName + "\"");
+            }
           }
           if (device == null) {
             Console.WriteLine("Can't connect to \"" + deviceName + "\"");
           } else {
+            connectionProperty = (SwitchProperty) device.GetProperty("CONNECTION");
+            if (connectionProperty == null)
+              waitFor.Wait(out waitingForConnectionProperty, "Waiting for CONNECTION property");
             if (!IsConnected) {
-              device.Connect();
+              foreach (Property property in device.Properties)
+                propertyAdded(property);
+              connectionProperty.SetSingleValue("CONNECTED", true);
               waitFor.Wait(out waitingForConnected, "Connecting to \"" + deviceName + "\"");
             }
             Console.WriteLine("Connected to \"" + deviceName + "\"");
           }
         } else {
-          device.Disconnect();
-          waitFor.Wait(out waitingForDisconnected, "Disconnecting from \"" + deviceName + "\"");
+          if (connectionProperty != null) {
+            connectionProperty.SetSingleValue("DISCONNECTED", true);
+          }
+          device = null;
+          connectedState = false;
           Console.WriteLine("Disconnected from \"" + deviceName + "\"");
         }
       }
@@ -155,7 +210,7 @@ namespace ASCOM.INDIGO {
       if (IsConnected)
         System.Windows.Forms.MessageBox.Show("Device is connected");
       else {
-        using (DeviceSelectionForm F = new DeviceSelectionForm(this, string.Empty)) {
+        using (DeviceSelectionForm F = new DeviceSelectionForm(this)) {
           var result = F.ShowDialog();
           if (result == System.Windows.Forms.DialogResult.OK) {
             WriteProfile();
@@ -186,13 +241,6 @@ namespace ASCOM.INDIGO {
 
     public string Action(string actionName, string actionParameters) {
       throw new ASCOM.ActionNotImplementedException("Action " + actionName + " is not implemented by this driver");
-    }
-
-    public void Dispose() {
-      client.Dispose();
-      client = null;
-      utilities.Dispose();
-      utilities = null;
     }
   }
 }

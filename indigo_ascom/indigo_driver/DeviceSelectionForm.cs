@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using INDIGO;
+using System.Drawing;
 
 namespace ASCOM.INDIGO {
   [ComVisible(false)]
   public partial class DeviceSelectionForm : Form {
     private BaseDriver driver;
-    private string waitForDevice;
     private int interfaceMask;
     private Dictionary<Server, ServerNode> servers = new Dictionary<Server, ServerNode>();
 
@@ -16,20 +16,29 @@ namespace ASCOM.INDIGO {
       internal Device device;
       private DeviceSelectionForm form;
 
-      private void propertyAdded(Property property) {
+      internal void propertyAdded(Property property) {
         if (property.Name == "INFO") {
           foreach (Item item in property.Items) {
             if (item.Name == "DEVICE_INTERFACE") {
               int interfaceMask = Convert.ToInt32(((TextItem)item).Value);
               if ((interfaceMask & form.interfaceMask) == form.interfaceMask) {
-                form.BeginInvoke(new MethodInvoker(() => {
+                if (!form.Visible) {
                   ForeColor = DefaultForeColor;
                   Parent.Expand();
                   if (form.driver.deviceName == property.DeviceName) {
                     form.tree.SelectedNode = this;
                     form.tree.Focus();
                   }
-                }));
+                } else {
+                  form.BeginInvoke(new MethodInvoker(() => {
+                    ForeColor = DefaultForeColor;
+                    Parent.Expand();
+                    if (form.driver.deviceName == property.DeviceName) {
+                      form.tree.SelectedNode = this;
+                      form.tree.Focus();
+                    }
+                  }));
+                }
               }
               break;
             }
@@ -37,22 +46,26 @@ namespace ASCOM.INDIGO {
         }
       }
 
-      internal DeviceNode(DeviceSelectionForm tree, Device device) {
-        this.form = tree;
+      internal DeviceNode(DeviceSelectionForm form, Device device) {
+        this.form = form;
         this.device = device;
         Text = device.Name;
         ForeColor = System.Drawing.Color.LightGray;
         device.PropertyAdded += propertyAdded;
       }
+
+      internal void removeEvenHandlers() {
+        device.PropertyAdded -= propertyAdded;
+      }
     }
 
     internal class ServerNode : TreeNode {
-      private Server server;
+      public Server server;
       private DeviceSelectionForm form;
       private Dictionary<Device, DeviceNode> devices = new Dictionary<Device, DeviceNode>();
 
-      internal ServerNode(DeviceSelectionForm tree, Server server) {
-        this.form = tree;
+      internal ServerNode(DeviceSelectionForm form, Server server) {
+        this.form = form;
         this.server = server;
         Text = server.Name;
         ForeColor = System.Drawing.Color.LightGray;
@@ -64,16 +77,23 @@ namespace ASCOM.INDIGO {
         try {
           DeviceNode node = new DeviceNode(form, device);
           devices.Add(device, node);
-          form.BeginInvoke(new MethodInvoker(() => {
-            form.tree.BeginUpdate();
+          if (!form.Visible) {
             Nodes.Add(node);
-            form.tree.EndUpdate();
-          }));
-        } catch {
+          } else {
+            form.BeginInvoke(new MethodInvoker(() => {
+              form.tree.BeginUpdate();
+              Nodes.Add(node);
+              form.tree.EndUpdate();
+            }));
+          }
+          foreach (Property property in device.Properties)
+            node.propertyAdded(property);
+        } catch  (Exception exception) {
+          Console.WriteLine(exception);
         }
       }
 
-      private void deviceRemoved(Device device) {
+      internal void deviceRemoved(Device device) {
         DeviceNode node;
         if (devices.TryGetValue(device, out node)) {
           devices.Remove(device);
@@ -84,6 +104,14 @@ namespace ASCOM.INDIGO {
           }));
         }
       }
+
+      internal void removeEventHandlers() {
+        server.DeviceAdded -= deviceAdded;
+        server.DeviceRemoved -= deviceRemoved;
+        foreach (TreeNode node in Nodes) {
+          ((DeviceNode)node).removeEvenHandlers();
+        }
+      }
     }
 
     private void serverAdded(Server server) {
@@ -92,12 +120,20 @@ namespace ASCOM.INDIGO {
         server.ServerDisconnected += serverDisconnected;
         ServerNode node = new ServerNode(this, server);
         servers.Add(server, node);
-        BeginInvoke(new MethodInvoker(() => {
-          tree.BeginUpdate();
+        if (!Visible) {
           tree.Nodes.Add(node);
-          tree.EndUpdate();
-        }));
-      } catch {
+        } else {
+          BeginInvoke(new MethodInvoker(() => {
+            tree.BeginUpdate();
+            tree.Nodes.Add(node);
+            tree.EndUpdate();
+          }));
+        }
+        foreach (Device device in server.Devices) {
+          node.deviceAdded(device);
+        }
+      } catch (Exception exception) {
+        Console.WriteLine(exception);
       }
     }
 
@@ -108,9 +144,6 @@ namespace ASCOM.INDIGO {
           tree.BeginUpdate();
           node.ForeColor = DefaultForeColor;
           tree.EndUpdate();
-          foreach (Device device in server.Devices) {
-            node.deviceAdded(device);
-          }
         }));
       }
     }
@@ -139,16 +172,12 @@ namespace ASCOM.INDIGO {
       }
     }
 
-    public DeviceSelectionForm(BaseDriver driver, string waitForDevice) {
+    public DeviceSelectionForm(BaseDriver driver) {
       InitializeComponent();
       this.driver = driver;
-      this.waitForDevice = waitForDevice;
       interfaceMask = (int)driver.deviceInterface;
-      if (waitForDevice == string.Empty)
-        Text = "INDIGO " + driver.deviceInterface.ToString("g") + " selection";
-      else
-        Text = "Waiting for " + waitForDevice;
-      Client client = driver.client;
+      Text = "INDIGO " + driver.deviceInterface.ToString("g") + " selection";
+      Client client = BaseDriver.client;
       client.Mutex.WaitOne();
       foreach (Server server in client.Servers) {
         serverAdded(server);
@@ -162,9 +191,11 @@ namespace ASCOM.INDIGO {
       DeviceNode node = (DeviceNode)tree.SelectedNode;
       driver.deviceName = node.Text;
       driver.device = node.device;
+      removeEventHandlers();
     }
 
     private void cancelClick(object sender, EventArgs e) {
+      removeEventHandlers();
       Close();
     }
 
@@ -180,14 +211,21 @@ namespace ASCOM.INDIGO {
       if (((TreeView)sender).SelectedNode is DeviceNode) {
         DeviceNode node = (DeviceNode)((TreeView)sender).SelectedNode;
         if (node.ForeColor == DefaultForeColor) {
-          if (node.Text == waitForDevice) {
-            driver.deviceName = node.Text;
-            driver.device = ((DeviceNode)node).device;
-            Close();
-          } else {
-            okButton.Enabled = true;
-          }
+          okButton.Enabled = true;
         }
+      }
+    }
+
+    private void removeEventHandlers() {
+      Client client = BaseDriver.client;
+      client.ServerAdded -= serverAdded;
+      client.ServerRemoved -= serverRemoved;
+      foreach (TreeNode node in tree.Nodes) {
+        ServerNode serverNode = (ServerNode)node;
+        Server server = serverNode.server;
+        server.ServerConnected -= serverConnected;
+        server.ServerDisconnected -= serverDisconnected;
+        serverNode.removeEventHandlers();
       }
     }
   }

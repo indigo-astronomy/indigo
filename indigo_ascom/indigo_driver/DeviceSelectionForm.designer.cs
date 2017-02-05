@@ -44,7 +44,7 @@ namespace ASCOM.INDIGO
       this.okButton.Location = new System.Drawing.Point(250, 13);
       this.okButton.Name = "okButton";
       this.okButton.Size = new System.Drawing.Size(72, 23);
-      this.okButton.TabIndex = 100;
+      this.okButton.TabIndex = 1;
       this.okButton.Text = "OK";
       this.okButton.UseVisualStyleBackColor = true;
       this.okButton.Click += new System.EventHandler(this.okClick);
@@ -56,7 +56,7 @@ namespace ASCOM.INDIGO
       this.cancelButton.Location = new System.Drawing.Point(250, 42);
       this.cancelButton.Name = "cancelButton";
       this.cancelButton.Size = new System.Drawing.Size(72, 23);
-      this.cancelButton.TabIndex = 101;
+      this.cancelButton.TabIndex = 2;
       this.cancelButton.Text = "Cancel";
       this.cancelButton.UseVisualStyleBackColor = true;
       this.cancelButton.Click += new System.EventHandler(this.cancelClick);
@@ -81,7 +81,7 @@ namespace ASCOM.INDIGO
       this.tree.Location = new System.Drawing.Point(13, 13);
       this.tree.Name = "tree";
       this.tree.Size = new System.Drawing.Size(231, 286);
-      this.tree.TabIndex = 102;
+      this.tree.TabIndex = 0;
       this.tree.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.tree_AfterSelect);
       // 
       // DeviceSelectionForm

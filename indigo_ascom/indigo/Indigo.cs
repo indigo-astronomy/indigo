@@ -29,6 +29,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Net.WebSockets;
 using Bonjour;
+using System.Threading.Tasks;
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
 
@@ -465,7 +466,7 @@ namespace INDIGO {
       DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(ChangeMessage), settings);
       serializer.WriteObject(stream, message);
       String json = System.Text.Encoding.Default.GetString(stream.GetBuffer());
-      server.SendMessageAsync(json);
+      server.SendMessage(json);
     }
   }
 
@@ -510,6 +511,17 @@ namespace INDIGO {
         return Rules.AnyOfMany;
       }
     }
+
+    public void SetSingleValue(string name, bool value) {
+      if (rule != "AnyOfMany") {
+        foreach (SwitchItem item in items)
+          item.Value = false;
+      }
+      foreach (SwitchItem item in items)
+        if (item.Name == name)
+          item.Value = value;
+      Change();
+    }
   }
 
   [DataContract]
@@ -534,6 +546,14 @@ namespace INDIGO {
         return items.Cast<Item>().ToList().AsReadOnly();
       }
     }
+
+    public void SetSingleValue(string name, string value) {
+      TextItem item = items.FirstOrDefault(x => x.Name == name);
+      if (item != null) {
+        item.Value = value;
+        Change();
+      }
+    }
   }
 
   [DataContract]
@@ -556,6 +576,14 @@ namespace INDIGO {
     override public IReadOnlyList<Item> Items {
       get {
         return items.Cast<Item>().ToList().AsReadOnly();
+      }
+    }
+
+    public void SetSingleValue(string name, double value) {
+      NumberItem item = items.FirstOrDefault(x => x.Name == name);
+      if (item != null) {
+        item.Value = value;
+        Change();
       }
     }
   }
@@ -612,6 +640,8 @@ namespace INDIGO {
     }
 
     public void Add(Property property) {
+      if (properties.Contains(property))
+        return;
       property.Group = this;
       properties.Add(property);
       PropertyAdded?.Invoke(property);
@@ -759,28 +789,8 @@ namespace INDIGO {
       this.server = parentServer;
     }
 
-    public void Connect() {
-      Property connection = properties.FirstOrDefault(x => x.Name == "CONNECTION");
-      foreach (Item item in connection.Items) {
-        if (item.Name == "CONNECTED") {
-          ((SwitchItem)item).Value = true;
-        } else {
-          ((SwitchItem)item).Value = false;
-        }
-      }
-      connection.Change();
-    }
-
-    public void Disconnect() {
-      Property connection = properties.FirstOrDefault(x => x.Name == "CONNECTION");
-      foreach (Item item in connection.Items) {
-        if (item.Name == "DISCONNECTED") {
-          ((SwitchItem)item).Value = true;
-        } else {
-          ((SwitchItem)item).Value = false;
-        }
-      }
-      connection.Change();
+    public void GetProperties() {
+      server.SendMessage("{ 'getProperties': { 'version': 512, 'device': '" + name + "' } }");
     }
 
     override public bool Equals(object other) {
@@ -796,7 +806,6 @@ namespace INDIGO {
     private Client client;
     private Dictionary<string, Device> devices = new Dictionary<string, Device>();
 
-    private const string getProperties = "{ 'getProperties': { 'version': 512 } }";
     private ClientWebSocket socket;
     private Uri uri;
     private CancellationToken cancellationToken = new CancellationTokenSource().Token;
@@ -920,8 +929,9 @@ namespace INDIGO {
       }
     }
 
-    public async void SendMessageAsync(string message) {
-      await socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(message)), WebSocketMessageType.Text, true, cancellationToken);
+    public void SendMessage(string message) {
+      Task task = socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(message)), WebSocketMessageType.Text, true, cancellationToken);
+      task.Wait();
     }
 
     private async void ConnectAsync() {
@@ -995,7 +1005,7 @@ namespace INDIGO {
       Console.WriteLine("Connected to " + Host + ":" + Port);
       client.Mutex.WaitOne();
       ServerConnected?.Invoke(server);
-      server.SendMessageAsync(getProperties);
+      server.SendMessage("{ 'getProperties': { 'version': 512 } }");
       client.Mutex.ReleaseMutex();
     }
 

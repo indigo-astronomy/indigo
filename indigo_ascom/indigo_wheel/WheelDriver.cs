@@ -95,11 +95,9 @@ namespace ASCOM.INDIGO {
         }
         position = -1;
         if (IsConnected) {
-          Property property = device.GetProperty("WHEEL_SLOT");
+          NumberProperty property = (NumberProperty)device.GetProperty("WHEEL_SLOT");
           if (property != null) {
-            NumberItem item = (NumberItem)property.GetItem("SLOT");
-            item.Value = value + 1;
-            property.Change();
+            property.SetSingleValue("SLOT", value + 1);
           }
         }
       }

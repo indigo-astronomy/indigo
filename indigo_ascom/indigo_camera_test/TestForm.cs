@@ -26,6 +26,8 @@ namespace ASCOM.INDIGO {
     private void buttonConnect_Click(object sender, EventArgs e) {
       if (IsConnected) {
         driver.Connected = false;
+          driver.Dispose();
+        driver = null;
       } else {
         driver = new ASCOM.DriverAccess.Camera(Properties.Settings.Default.DriverId);
         driver.Connected = true;
@@ -37,9 +39,15 @@ namespace ASCOM.INDIGO {
       buttonConnect.Enabled = !string.IsNullOrEmpty(Properties.Settings.Default.DriverId);
       if (IsConnected) {
         buttonChoose.Enabled = false;
+        labelDescription.Text = driver.Description;
+        labelCCD.Text = driver.CameraXSize + " x " + driver.CameraYSize + " pixels, max binning " + driver.MaxBinX + " x " + driver.MaxBinY + ", pixel size " + driver.PixelSizeX +" x " + driver.PixelSizeY;
+        labelFrame.Text = "left " + driver.StartX + ", top " + driver.StartY + " width " + driver.NumX + ", height " + driver.NumY;
         buttonConnect.Text = "Disconnect";
       } else {
         buttonChoose.Enabled = true;
+        labelDescription.Text = string.Empty;
+        labelCCD.Text = string.Empty;
+        labelFrame.Text = string.Empty;
         buttonConnect.Text = "Connect";
       }
     }

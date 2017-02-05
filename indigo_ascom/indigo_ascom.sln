@@ -21,6 +21,7 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "indigo_camera_test", "indigo_camera_test\indigo_camera_test.csproj", "{716249C9-5431-4E4C-A638-3E2FE0014732}"
 	ProjectSection(ProjectDependencies) = postProject
 		{C07A000F-3E10-4CEA-B632-113EA860C880} = {C07A000F-3E10-4CEA-B632-113EA860C880}
+		{93BD8641-60BD-48C4-AC6E-284ED81505BF} = {93BD8641-60BD-48C4-AC6E-284ED81505BF}
 	EndProjectSection
 EndProject
 Global
