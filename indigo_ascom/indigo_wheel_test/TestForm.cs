@@ -35,7 +35,9 @@ namespace ASCOM.INDIGO {
     }
 
     private void buttonGo_Click(object sender, EventArgs e) {
-      driver.Position = (short)listBoxSlots.SelectedIndex;
+      short position = (short)listBoxSlots.SelectedIndex;
+      if (position > 0)
+        driver.Position = position;
     }
 
     private void SetUIState() {
