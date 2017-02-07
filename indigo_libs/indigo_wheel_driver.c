@@ -108,6 +108,8 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			if (WHEEL_SLOT_NAME_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, WHEEL_SLOT_NAME_PROPERTY);
+			if (WHEEL_SLOT_PROPERTY->perm == INDIGO_RW_PERM)
+				indigo_save_property(device, NULL, WHEEL_SLOT_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}

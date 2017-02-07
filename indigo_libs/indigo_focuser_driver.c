@@ -138,6 +138,8 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 				indigo_save_property(device, NULL, FOCUSER_SPEED_PROPERTY);
 			if (FOCUSER_DIRECTION_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, FOCUSER_DIRECTION_PROPERTY);
+			if (FOCUSER_POSITION_PROPERTY->perm == INDIGO_RW_PERM)
+				indigo_save_property(device, NULL, FOCUSER_POSITION_PROPERTY);
 		}
 	}
 	return indigo_device_change_property(device, client, property);
