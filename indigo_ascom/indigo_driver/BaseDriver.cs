@@ -32,6 +32,7 @@ namespace ASCOM.INDIGO {
 
     protected WaitForForm waitFor = new WaitForForm();
     protected bool waitingForDevice;
+    protected bool waitingForConfigProperty;
     protected bool waitingForConnectionProperty;
     protected bool waitingForConnected;
     protected bool waitingForDisconnected;
@@ -43,7 +44,7 @@ namespace ASCOM.INDIGO {
     public string deviceName;
     public Device.InterfaceMask deviceInterface;
 
-    private SwitchProperty connectionProperty;
+    private SwitchProperty configProperty, connectionProperty;
 
     virtual protected void propertyChanged(Property property) {
       //Console.WriteLine("Property \"" + property.DeviceName + "\" \"" + property.Name + "\"");
@@ -52,7 +53,10 @@ namespace ASCOM.INDIGO {
     virtual protected void propertyAdded(Property property) {
       if (property.DeviceName == deviceName) {
         Console.WriteLine("defProperty \"" +property.Name + "\"");
-        if (property.Name == "CONNECTION") {
+        if (property.Name == "CONFIG") {
+          configProperty = (SwitchProperty)property;
+          waitFor.Hide(ref waitingForConfigProperty);
+        } else if (property.Name == "CONNECTION") {
           connectionProperty = (SwitchProperty)property;
           waitFor.Hide(ref waitingForConnectionProperty);
         }
@@ -77,7 +81,9 @@ namespace ASCOM.INDIGO {
     }
 
     private void propertyRemoved(Property property) {
-      if (property.DeviceName == deviceName && property.Name == "CONNECTION") {
+      if (property.DeviceName == deviceName && property.Name == "CONFIG") {
+        connectionProperty = null;
+      } else if (property.DeviceName == deviceName && property.Name == "CONNECTION") {
         connectionProperty = null;
       }
     }
@@ -184,6 +190,11 @@ namespace ASCOM.INDIGO {
           if (device == null) {
             Console.WriteLine("Can't connect to \"" + deviceName + "\"");
           } else {
+            configProperty = (SwitchProperty)device.GetProperty("CONFIG");
+            if (configProperty == null)
+              waitFor.Wait(out waitingForConfigProperty, "Waiting for CONFIG property");
+            if (configProperty != null)
+              configProperty.SetSingleValue("LOAD", true);
             connectionProperty = (SwitchProperty) device.GetProperty("CONNECTION");
             if (connectionProperty == null)
               waitFor.Wait(out waitingForConnectionProperty, "Waiting for CONNECTION property");
