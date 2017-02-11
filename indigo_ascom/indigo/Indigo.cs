@@ -30,6 +30,7 @@ using System.Runtime.Serialization.Json;
 using System.Net.WebSockets;
 using Bonjour;
 using System.Threading.Tasks;
+using ASCOM.Utilities;
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value null
 
@@ -47,7 +48,16 @@ namespace INDIGO {
   public delegate void PropertyRemovedHandler(Property property);
 
   [DataContract]
-  public class Item {
+  public class Indigo {
+    private static TraceLogger logger = new TraceLogger("", "INDIGO") { Enabled = true };
+
+    public void Log(string message) {
+      logger.LogMessage(GetType().ToString(), message);
+    }
+  }
+
+  [DataContract]
+  public class Item : Indigo {
     private Property property;
     [DataMember(Name = "name")]
     private string name;
@@ -133,6 +143,10 @@ namespace INDIGO {
     override internal void Update(Item item) {
       value = ((SwitchItem)item).value;
     }
+
+    public override string ToString() {
+      return Name + "=" + value;
+    }
   }
 
   [DataContract]
@@ -168,6 +182,10 @@ namespace INDIGO {
 
     override internal void Update(Item item) {
       value = ((TextItem)item).value;
+    }
+
+    public override string ToString() {
+      return Name + "='" + value + "'";
     }
   }
 
@@ -246,6 +264,10 @@ namespace INDIGO {
       value = ((NumberItem)item).value;
       target = ((NumberItem)item).target;
     }
+
+    public override string ToString() {
+      return Name + "=" + value;
+    }
   }
 
   [DataContract]
@@ -261,6 +283,10 @@ namespace INDIGO {
 
     override internal void Update(Item item) {
       value = ((LightItem)item).value;
+    }
+
+    public override string ToString() {
+      return Name + "=" + value;
     }
   }
 
@@ -278,10 +304,14 @@ namespace INDIGO {
     override internal void Update(Item item) {
       value = ((BLOBItem)item).value;
     }
+
+    public override string ToString() {
+      return Name + "='" + value + "'";
+    }
   }
 
   [DataContract]
-  public class Property {
+  public class Property: Indigo {
 
     public enum Permissions {
       ReadOnly, WriteOnly, ReadWrite
@@ -468,6 +498,19 @@ namespace INDIGO {
       String json = System.Text.Encoding.Default.GetString(stream.GetBuffer());
       server.SendMessage(json);
     }
+
+    public override string ToString() {
+      IEnumerator<Item> e = Items.GetEnumerator();
+      StringBuilder s = new StringBuilder("'" + deviceName + "'.'" + name + "' " + state + " { ");
+      if (e.MoveNext()) {
+        s.Append(e.Current);
+        while (e.MoveNext()) {
+          s.Append(", " + e.Current);
+        }
+      }
+      s.Append(" }");
+      return s.ToString();
+    }
   }
 
   [DataContract]
@@ -522,6 +565,10 @@ namespace INDIGO {
           item.Value = value;
       Change();
     }
+
+    public override string ToString() {
+      return "Switch " + base.ToString();
+    }
   }
 
   [DataContract]
@@ -553,6 +600,10 @@ namespace INDIGO {
         item.Value = value;
         Change();
       }
+    }
+
+    public override string ToString() {
+      return "Text " + base.ToString();
     }
   }
 
@@ -586,6 +637,10 @@ namespace INDIGO {
         Change();
       }
     }
+
+    public override string ToString() {
+      return "Number " + base.ToString();
+    }
   }
 
   [DataContract]
@@ -597,6 +652,10 @@ namespace INDIGO {
       get {
         return items.Cast<Item>().ToList().AsReadOnly();
       }
+    }
+
+    public override string ToString() {
+      return "Light " + base.ToString();
     }
   }
 
@@ -610,9 +669,13 @@ namespace INDIGO {
         return items.Cast<Item>().ToList().AsReadOnly();
       }
     }
+
+    public override string ToString() {
+      return "BLOB " + base.ToString();
+    }
   }
 
-  public class Group {
+  public class Group: Indigo {
     private string name;
     private List<Property> properties = new List<Property>();
     private Device parentDevice;
@@ -678,7 +741,7 @@ namespace INDIGO {
     }
   }
 
-  public class Device {
+  public class Device: Indigo {
 
     public enum InterfaceMask {
       Mount = 1 << 0,
@@ -759,7 +822,7 @@ namespace INDIGO {
         GetOrAddGroup(cachedProperty.GroupName).Update(property);
         return;
       }
-      Console.WriteLine("'" + property.DeviceName + "' '" + property.Name + "' not found!");
+      Log("'" + property.DeviceName + "' '" + property.Name + "' not found!");
     }
 
     public void Delete(Property property) {
@@ -802,7 +865,7 @@ namespace INDIGO {
     }
   }
 
-  public class Server {
+  public class Server: Indigo {
     private Client client;
     private Dictionary<string, Device> devices = new Dictionary<string, Device>();
 
@@ -910,17 +973,14 @@ namespace INDIGO {
     }
 
     private void DefProperty(Property property) {
-      //Console.WriteLine("def(" + property + ") '" + property.Device + "' '" + property.Name + "'");
       GetOrAddDevice(property.DeviceName).Add(property);
     }
 
     private void SetProperty(Property property) {
-      //Console.WriteLine("set(" + property + ") '" + property.Device + "' '" + property.Name + "'");
       GetOrAddDevice(property.DeviceName).Update(property);
     }
 
     private void DeleteProperty(Property property) {
-      //Console.WriteLine("delete(" + property + ") '" + property.Device + "' '" + property.Name + "'");
       Device device = GetOrAddDevice(property.DeviceName);
       device.Delete(property);
       if (device.Properties.Count == 0) {
@@ -930,6 +990,7 @@ namespace INDIGO {
     }
 
     public void SendMessage(string message) {
+      Log("Send:" + message);
       Task task = socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(message)), WebSocketMessageType.Text, true, cancellationToken);
       task.Wait();
     }
@@ -956,10 +1017,10 @@ namespace INDIGO {
         }
       } catch (Exception exception) {
         if (aborted)
-          Console.WriteLine("Socket aborted");
+          Log("Socket aborted");
         else {
-          Console.WriteLine(exception.Message);
-          Console.WriteLine(exception.StackTrace);
+          Log(exception.Message);
+          Log(exception.StackTrace);
           OnDisconnect(this);
         }
       } finally {
@@ -968,7 +1029,7 @@ namespace INDIGO {
     }
 
     private void OnMessage(string message, Server server) {
-      //Console.WriteLine(message);
+      Log("Received:" + message);
       DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(ServerMessage));
       MemoryStream stream = new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(message));
       ServerMessage serverMessage = (ServerMessage)serializer.ReadObject(stream);
@@ -996,13 +1057,13 @@ namespace INDIGO {
       } else if (serverMessage.DeleteProperty != null) {
         DeleteProperty(serverMessage.DeleteProperty);
       } else {
-        Console.WriteLine("Failed to process message: " + message);
+        Log("Failed to process message: " + message);
       }
       client.Mutex.ReleaseMutex();
     }
 
     private void OnConnect(Server server) {
-      Console.WriteLine("Connected to " + Host + ":" + Port);
+      Log("Connected to " + Host + ":" + Port);
       client.Mutex.WaitOne();
       ServerConnected?.Invoke(server);
       server.SendMessage("{ 'getProperties': { 'version': 512 } }");
@@ -1014,11 +1075,11 @@ namespace INDIGO {
       devices.Clear();
       ServerDisconnected?.Invoke(server);
       client.Mutex.ReleaseMutex();
-      Console.WriteLine("Disconnected from " + Host + ":" + Port);
+      Log("Disconnected from " + Host + ":" + Port);
     }
   }
 
-  public class Client {
+  public class Client: Indigo {
     private List<Server> servers = new List<Server>();
 
     public readonly Mutex Mutex = new Mutex();
@@ -1037,17 +1098,17 @@ namespace INDIGO {
     }
 
     private void ServiceFound(DNSSDService browser, DNSSDFlags flags, uint ifIndex, string serviceName, string regType, string domain) {
-      Console.WriteLine("Service " + serviceName + " found ");
+      Log("Service " + serviceName + " found ");
       try {
         DNSSDService resolver = browser.Resolve(0, ifIndex, serviceName, regType, domain, eventManager);
         resolvers.Add(resolver, serviceName);
       } catch {
-        Console.WriteLine("DNSSDService.Resolve() failed");
+        Log("DNSSDService.Resolve() failed");
       }
     }
 
     private void ServiceLost(DNSSDService browser, DNSSDFlags flags, uint ifIndex, string serviceName, string regType, string domain) {
-      Console.WriteLine("Service " + serviceName + " lost");
+      Log("Service " + serviceName + " lost");
       Server server = null;
       Mutex.WaitOne();
       foreach (Server item in servers)
@@ -1063,7 +1124,7 @@ namespace INDIGO {
     }
 
     private void ServiceResolved(DNSSDService resolver, DNSSDFlags flags, uint ifIndex, string fullName, string hostName, ushort port, TXTRecord txtRecord) {
-      Console.WriteLine("Service " + hostName + ":" + port + " resolved");
+      Log("Service " + hostName + ":" + port + " resolved");
       resolver.Stop();
       string serviceName = resolvers[resolver];
       Server server = new Server(serviceName, hostName, port, this);
@@ -1075,13 +1136,13 @@ namespace INDIGO {
     }
 
     private void OperationFailed(DNSSDService service, DNSSDError error) {
-      Console.WriteLine("Operation failed: " + error);
+      Log("Operation failed: " + error);
       service.Stop();
       resolvers.Remove(service);
     }
 
     public Client() {
-      Console.WriteLine("Client started ");
+      Log("Client started ");
       eventManager.ServiceFound += new _IDNSSDEvents_ServiceFoundEventHandler(ServiceFound);
       eventManager.ServiceLost += new _IDNSSDEvents_ServiceLostEventHandler(ServiceLost);
       eventManager.ServiceResolved += new _IDNSSDEvents_ServiceResolvedEventHandler(ServiceResolved);
@@ -1089,7 +1150,7 @@ namespace INDIGO {
       try {
         browser = service.Browse(0, 0, "_indigo._tcp", null, eventManager);
       } catch {
-        Console.WriteLine("DNSSDService.Browse() failed");
+        Log("DNSSDService.Browse() failed");
       }
     }
 
@@ -1112,7 +1173,7 @@ namespace INDIGO {
       browser = null;
       if (service != null)
         service.Stop();
-      Console.WriteLine("Client disposed");
+      Log("Client disposed");
     }
   }
 }
