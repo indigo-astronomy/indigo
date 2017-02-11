@@ -46,6 +46,7 @@
       this.progressBarComplete = new System.Windows.Forms.ProgressBar();
       this.label6 = new System.Windows.Forms.Label();
       this.labelState = new System.Windows.Forms.Label();
+      this.buttonSetup = new System.Windows.Forms.Button();
       this.SuspendLayout();
       // 
       // buttonChoose
@@ -62,7 +63,7 @@
       // buttonConnect
       // 
       this.buttonConnect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.buttonConnect.Location = new System.Drawing.Point(500, 36);
+      this.buttonConnect.Location = new System.Drawing.Point(500, 63);
       this.buttonConnect.Name = "buttonConnect";
       this.buttonConnect.Size = new System.Drawing.Size(72, 21);
       this.buttonConnect.TabIndex = 1;
@@ -210,7 +211,7 @@
       // buttonStart
       // 
       this.buttonStart.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.buttonStart.Location = new System.Drawing.Point(500, 86);
+      this.buttonStart.Location = new System.Drawing.Point(500, 90);
       this.buttonStart.Name = "buttonStart";
       this.buttonStart.Size = new System.Drawing.Size(72, 21);
       this.buttonStart.TabIndex = 18;
@@ -221,7 +222,7 @@
       // buttonAbort
       // 
       this.buttonAbort.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.buttonAbort.Location = new System.Drawing.Point(500, 113);
+      this.buttonAbort.Location = new System.Drawing.Point(500, 117);
       this.buttonAbort.Name = "buttonAbort";
       this.buttonAbort.Size = new System.Drawing.Size(72, 21);
       this.buttonAbort.TabIndex = 19;
@@ -254,11 +255,23 @@
       this.labelState.Size = new System.Drawing.Size(0, 13);
       this.labelState.TabIndex = 22;
       // 
+      // buttonSetup
+      // 
+      this.buttonSetup.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+      this.buttonSetup.Location = new System.Drawing.Point(500, 36);
+      this.buttonSetup.Name = "buttonSetup";
+      this.buttonSetup.Size = new System.Drawing.Size(72, 21);
+      this.buttonSetup.TabIndex = 23;
+      this.buttonSetup.Text = "Setup";
+      this.buttonSetup.UseVisualStyleBackColor = true;
+      this.buttonSetup.Click += new System.EventHandler(this.buttonSetup_Click);
+      // 
       // TestForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.ClientSize = new System.Drawing.Size(584, 675);
+      this.Controls.Add(this.buttonSetup);
       this.Controls.Add(this.labelState);
       this.Controls.Add(this.label6);
       this.Controls.Add(this.progressBarComplete);
@@ -315,6 +328,7 @@
     private System.Windows.Forms.ProgressBar progressBarComplete;
     private System.Windows.Forms.Label label6;
     private System.Windows.Forms.Label labelState;
+    private System.Windows.Forms.Button buttonSetup;
   }
 }
 
