@@ -26,7 +26,7 @@ using System.Collections;
 using System.Windows.Forms;
 
 namespace ASCOM.INDIGO {
-  public class BaseDriver {
+  public class BaseDriver: Indigo {
     protected bool connectedState;
     protected Util utilities;
 
@@ -47,12 +47,12 @@ namespace ASCOM.INDIGO {
     private SwitchProperty configProperty, connectionProperty;
 
     virtual protected void propertyChanged(Property property) {
-      //Console.WriteLine("Property \"" + property.DeviceName + "\" \"" + property.Name + "\"");
+      //Log("Property \"" + property.DeviceName + "\" \"" + property.Name + "\"");
     }
 
     virtual protected void propertyAdded(Property property) {
       if (property.DeviceName == deviceName) {
-        Console.WriteLine("defProperty \"" +property.Name + "\"");
+        Log("def" + property);
         if (property.Name == "CONFIG") {
           configProperty = (SwitchProperty)property;
           waitFor.Hide(ref waitingForConfigProperty);
@@ -66,7 +66,7 @@ namespace ASCOM.INDIGO {
 
     virtual protected void propertyUpdated(Property property) {
       if (property.DeviceName == deviceName) {
-        Console.WriteLine("setProperty \"" + property.Name + "\"");
+        Log("set" + property);
         if (property == connectionProperty) {
           SwitchItem item = (SwitchItem)property.GetItem("CONNECTED");
           connectedState = item != null && item.Value;
@@ -81,6 +81,7 @@ namespace ASCOM.INDIGO {
     }
 
     private void propertyRemoved(Property property) {
+      Log("del" + property);
       if (property.DeviceName == deviceName && property.Name == "CONFIG") {
         connectionProperty = null;
       } else if (property.DeviceName == deviceName && property.Name == "CONNECTION") {
@@ -95,7 +96,7 @@ namespace ASCOM.INDIGO {
       if (device.Name == deviceName) {
         this.device = device;
         waitFor.Hide(ref waitingForDevice);
-        Console.WriteLine("Device \"" + device.Name + "\" found on \"" + device.Server.Name + "\"");
+        Log("Device \"" + device.Name + "\" found on \"" + device.Server.Name + "\"");
       }
       foreach (Property property in device.Properties)
         propertyAdded(property);
@@ -105,7 +106,7 @@ namespace ASCOM.INDIGO {
       if (this.device == device) {
         this.device = null;
         connectedState = false;
-        Console.WriteLine("Device \"" + device.Name + "\" lost");
+        Log("Device \"" + device.Name + "\" lost");
       }
     }
 
@@ -188,7 +189,7 @@ namespace ASCOM.INDIGO {
             }
           }
           if (device == null) {
-            Console.WriteLine("Can't connect to \"" + deviceName + "\"");
+            Log("Can't connect to \"" + deviceName + "\"");
           } else {
             configProperty = (SwitchProperty)device.GetProperty("CONFIG");
             if (configProperty == null)
@@ -204,7 +205,7 @@ namespace ASCOM.INDIGO {
               connectionProperty.SetSingleValue("CONNECTED", true);
               waitFor.Wait(out waitingForConnected, "Connecting to \"" + deviceName + "\"");
             }
-            Console.WriteLine("Connected to \"" + deviceName + "\"");
+            Log("Connected to \"" + deviceName + "\"");
           }
         } else {
           if (connectionProperty != null) {
@@ -212,7 +213,7 @@ namespace ASCOM.INDIGO {
           }
           device = null;
           connectedState = false;
-          Console.WriteLine("Disconnected from \"" + deviceName + "\"");
+          Log("Disconnected from \"" + deviceName + "\"");
         }
       }
     }
@@ -225,7 +226,7 @@ namespace ASCOM.INDIGO {
           var result = F.ShowDialog();
           if (result == System.Windows.Forms.DialogResult.OK) {
             WriteProfile();
-            Console.WriteLine("Device \"" + device.Name + "\" on \"" + device.Server.Name + "\" selected");
+            Log("Device \"" + device.Name + "\" on \"" + device.Server.Name + "\" selected");
           }
           F.Dispose();
         }

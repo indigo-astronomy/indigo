@@ -23,7 +23,6 @@
 
 using System;
 using System.Runtime.InteropServices;
-using ASCOM.Astrometry.AstroUtils;
 using ASCOM.Utilities;
 using ASCOM.DeviceInterface;
 using System.Globalization;
@@ -134,10 +133,10 @@ namespace ASCOM.INDIGO {
           if (blobItem != null) {
             Server server = property.Device.Server;
             String url = "http://" + server.Host + ":" + server.Port + blobItem.Value;
-            Console.WriteLine(url);
+            Log("Request" + url);
             WebRequest request = WebRequest.Create(url);
             WebResponse response = request.GetResponse();
-            Console.WriteLine(response.ContentLength + " bytes");
+            Log("Response ContentLength " + response.ContentLength);
             BinaryReader reader = new BinaryReader(response.GetResponseStream());
             cameraImageArray = new int[frameWidth, frameHeight];
             for (int y = 0; y < frameHeight; y++)
