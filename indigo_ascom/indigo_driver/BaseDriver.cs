@@ -26,7 +26,7 @@ using System.Collections;
 using System.Windows.Forms;
 
 namespace ASCOM.INDIGO {
-  public class BaseDriver: Indigo {
+  public class BaseDriver : Indigo {
     protected bool connectedState;
     protected Util utilities;
 
@@ -196,7 +196,7 @@ namespace ASCOM.INDIGO {
               waitFor.Wait(out waitingForConfigProperty, "Waiting for CONFIG property");
             if (configProperty != null)
               configProperty.SetSingleValue("LOAD", true);
-            connectionProperty = (SwitchProperty) device.GetProperty("CONNECTION");
+            connectionProperty = (SwitchProperty)device.GetProperty("CONNECTION");
             if (connectionProperty == null)
               waitFor.Wait(out waitingForConnectionProperty, "Waiting for CONNECTION property");
             if (!IsConnected) {
@@ -220,16 +220,14 @@ namespace ASCOM.INDIGO {
 
     public void SetupDialog() {
       if (IsConnected)
-        System.Windows.Forms.MessageBox.Show("Device is connected");
-      else {
-        using (DeviceSelectionForm F = new DeviceSelectionForm(this)) {
-          var result = F.ShowDialog();
-          if (result == System.Windows.Forms.DialogResult.OK) {
-            WriteProfile();
-            Log("Device \"" + device.Name + "\" on \"" + device.Server.Name + "\" selected");
-          }
-          F.Dispose();
+        Connected = false;
+      using (DeviceSelectionForm F = new DeviceSelectionForm(this)) {
+        var result = F.ShowDialog();
+        if (result == System.Windows.Forms.DialogResult.OK) {
+          WriteProfile();
+          Log("Device \"" + device.Name + "\" on \"" + device.Server.Name + "\" selected");
         }
+        F.Dispose();
       }
     }
 
