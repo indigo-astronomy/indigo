@@ -293,7 +293,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 indigo_result indigo_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_cancel_all_timers(device);
-	indigo_delete_property(device, &INDIGO_ALL_PROPERTIES, NULL);
 	indigo_release_property(CONNECTION_PROPERTY);
 	indigo_release_property(INFO_PROPERTY);
 	indigo_release_property(DEVICE_PORT_PROPERTY);
@@ -302,6 +301,9 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(SIMULATION_PROPERTY);
 	indigo_release_property(CONFIG_PROPERTY);
 	indigo_device_context *context = DEVICE_CONTEXT;
+	indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
+	indigo_delete_property(device, all_properties, NULL);
+	indigo_release_property(all_properties);
 	device->device_context = context->private_data;
 	free(context);
 	return INDIGO_OK;
