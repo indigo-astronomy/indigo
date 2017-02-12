@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using INDIGO;
+using System;
 using System.Windows.Forms;
-using INDIGO;
 
 namespace ASCOM.INDIGO {
   public partial class WaitForForm : Form {
@@ -16,10 +9,10 @@ namespace ASCOM.INDIGO {
       StartPosition = FormStartPosition.CenterScreen;
     }
 
-    public DialogResult Wait(out bool key, string reason) {
+    public DialogResult Wait(out bool key, string reason, BaseDriver driver) {
       this.reason.Text = reason;
       key = true;
-      Console.WriteLine(reason);
+      driver.Log("Wait for: " + reason);
       DialogResult result = ShowDialog();
       key = false;
       return result;

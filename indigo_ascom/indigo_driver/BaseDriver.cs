@@ -185,7 +185,7 @@ namespace ASCOM.INDIGO {
             else {
               device = client.GetDevice(deviceName);
               if (device == null)
-                waitFor.Wait(out waitingForDevice, "Waiting for \"" + deviceName + "\"");
+                waitFor.Wait(out waitingForDevice, "Waiting for \"" + deviceName + "\"", this);
             }
           }
           if (device == null) {
@@ -193,17 +193,19 @@ namespace ASCOM.INDIGO {
           } else {
             configProperty = (SwitchProperty)device.GetProperty("CONFIG");
             if (configProperty == null)
-              waitFor.Wait(out waitingForConfigProperty, "Waiting for CONFIG property");
+              waitFor.Wait(out waitingForConfigProperty, "Waiting for CONFIG property", this);
             if (configProperty != null)
               configProperty.SetSingleValue("LOAD", true);
             connectionProperty = (SwitchProperty)device.GetProperty("CONNECTION");
             if (connectionProperty == null)
-              waitFor.Wait(out waitingForConnectionProperty, "Waiting for CONNECTION property");
+              waitFor.Wait(out waitingForConnectionProperty, "Waiting for CONNECTION property", this);
             if (!IsConnected) {
+              client.Mutex.WaitOne();
               foreach (Property property in device.Properties)
                 propertyAdded(property);
+              client.Mutex.ReleaseMutex();
               connectionProperty.SetSingleValue("CONNECTED", true);
-              waitFor.Wait(out waitingForConnected, "Connecting to \"" + deviceName + "\"");
+              waitFor.Wait(out waitingForConnected, "Connecting to \"" + deviceName + "\"", this);
             }
             Log("Connected to \"" + deviceName + "\"");
           }

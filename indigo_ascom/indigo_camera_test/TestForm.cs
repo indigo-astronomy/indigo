@@ -87,13 +87,14 @@ namespace ASCOM.INDIGO {
       driver.AbortExposure();
     }
 
-
     private void buttonSetup_Click(object sender, EventArgs e) {
       driver.SetupDialog();
       SetUIState();
     }
+
     private void SetUIState() {
       buttonConnect.Enabled = !string.IsNullOrEmpty(Properties.Settings.Default.DriverId);
+      buttonSetup.Enabled = driver != null;
       if (IsConnected) {
         buttonChoose.Enabled = false;
         labelDescription.Text = driver.Description;
