@@ -30,8 +30,23 @@
       this.label1 = new System.Windows.Forms.Label();
       this.label2 = new System.Windows.Forms.Label();
       this.labelCCD = new System.Windows.Forms.Label();
-      this.labelFrame = new System.Windows.Forms.Label();
       this.label4 = new System.Windows.Forms.Label();
+      this.textBoxLeft = new System.Windows.Forms.TextBox();
+      this.textBoxTop = new System.Windows.Forms.TextBox();
+      this.textBoxWidth = new System.Windows.Forms.TextBox();
+      this.textBoxHeight = new System.Windows.Forms.TextBox();
+      this.label3 = new System.Windows.Forms.Label();
+      this.textBoxVerticalBin = new System.Windows.Forms.TextBox();
+      this.textBoxHorizontalBin = new System.Windows.Forms.TextBox();
+      this.checkBoxLight = new System.Windows.Forms.CheckBox();
+      this.textBoxDuration = new System.Windows.Forms.TextBox();
+      this.label5 = new System.Windows.Forms.Label();
+      this.buttonStart = new System.Windows.Forms.Button();
+      this.buttonAbort = new System.Windows.Forms.Button();
+      this.progressBarComplete = new System.Windows.Forms.ProgressBar();
+      this.label6 = new System.Windows.Forms.Label();
+      this.labelState = new System.Windows.Forms.Label();
+      this.buttonSetup = new System.Windows.Forms.Button();
       this.SuspendLayout();
       // 
       // buttonChoose
@@ -48,7 +63,7 @@
       // buttonConnect
       // 
       this.buttonConnect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-      this.buttonConnect.Location = new System.Drawing.Point(500, 36);
+      this.buttonConnect.Location = new System.Drawing.Point(500, 63);
       this.buttonConnect.Name = "buttonConnect";
       this.buttonConnect.Size = new System.Drawing.Size(72, 21);
       this.buttonConnect.TabIndex = 1;
@@ -105,15 +120,6 @@
       this.labelCCD.TabIndex = 6;
       this.labelCCD.Text = "ccd";
       // 
-      // labelFrame
-      // 
-      this.labelFrame.AutoSize = true;
-      this.labelFrame.Location = new System.Drawing.Point(90, 90);
-      this.labelFrame.Name = "labelFrame";
-      this.labelFrame.Size = new System.Drawing.Size(33, 13);
-      this.labelFrame.TabIndex = 8;
-      this.labelFrame.Text = "frame";
-      // 
       // label4
       // 
       this.label4.AutoSize = true;
@@ -123,12 +129,164 @@
       this.label4.TabIndex = 7;
       this.label4.Text = "Frame:";
       // 
+      // textBoxLeft
+      // 
+      this.textBoxLeft.Location = new System.Drawing.Point(93, 87);
+      this.textBoxLeft.Name = "textBoxLeft";
+      this.textBoxLeft.Size = new System.Drawing.Size(55, 20);
+      this.textBoxLeft.TabIndex = 8;
+      // 
+      // textBoxTop
+      // 
+      this.textBoxTop.Location = new System.Drawing.Point(154, 87);
+      this.textBoxTop.Name = "textBoxTop";
+      this.textBoxTop.Size = new System.Drawing.Size(55, 20);
+      this.textBoxTop.TabIndex = 9;
+      // 
+      // textBoxWidth
+      // 
+      this.textBoxWidth.Location = new System.Drawing.Point(215, 87);
+      this.textBoxWidth.Name = "textBoxWidth";
+      this.textBoxWidth.Size = new System.Drawing.Size(55, 20);
+      this.textBoxWidth.TabIndex = 10;
+      // 
+      // textBoxHeight
+      // 
+      this.textBoxHeight.Location = new System.Drawing.Point(276, 87);
+      this.textBoxHeight.Name = "textBoxHeight";
+      this.textBoxHeight.Size = new System.Drawing.Size(55, 20);
+      this.textBoxHeight.TabIndex = 11;
+      // 
+      // label3
+      // 
+      this.label3.AutoSize = true;
+      this.label3.Location = new System.Drawing.Point(12, 116);
+      this.label3.Name = "label3";
+      this.label3.Size = new System.Drawing.Size(45, 13);
+      this.label3.TabIndex = 12;
+      this.label3.Text = "Binning:";
+      // 
+      // textBoxVerticalBin
+      // 
+      this.textBoxVerticalBin.Location = new System.Drawing.Point(154, 113);
+      this.textBoxVerticalBin.Name = "textBoxVerticalBin";
+      this.textBoxVerticalBin.Size = new System.Drawing.Size(55, 20);
+      this.textBoxVerticalBin.TabIndex = 14;
+      // 
+      // textBoxHorizontalBin
+      // 
+      this.textBoxHorizontalBin.Location = new System.Drawing.Point(93, 113);
+      this.textBoxHorizontalBin.Name = "textBoxHorizontalBin";
+      this.textBoxHorizontalBin.Size = new System.Drawing.Size(55, 20);
+      this.textBoxHorizontalBin.TabIndex = 13;
+      // 
+      // checkBoxLight
+      // 
+      this.checkBoxLight.AutoSize = true;
+      this.checkBoxLight.Checked = true;
+      this.checkBoxLight.CheckState = System.Windows.Forms.CheckState.Checked;
+      this.checkBoxLight.Location = new System.Drawing.Point(93, 140);
+      this.checkBoxLight.Name = "checkBoxLight";
+      this.checkBoxLight.Size = new System.Drawing.Size(78, 17);
+      this.checkBoxLight.TabIndex = 15;
+      this.checkBoxLight.Text = "Light frame";
+      this.checkBoxLight.UseVisualStyleBackColor = true;
+      // 
+      // textBoxDuration
+      // 
+      this.textBoxDuration.Location = new System.Drawing.Point(93, 163);
+      this.textBoxDuration.Name = "textBoxDuration";
+      this.textBoxDuration.Size = new System.Drawing.Size(55, 20);
+      this.textBoxDuration.TabIndex = 16;
+      // 
+      // label5
+      // 
+      this.label5.AutoSize = true;
+      this.label5.Location = new System.Drawing.Point(12, 166);
+      this.label5.Name = "label5";
+      this.label5.Size = new System.Drawing.Size(50, 13);
+      this.label5.TabIndex = 17;
+      this.label5.Text = "Duration:";
+      // 
+      // buttonStart
+      // 
+      this.buttonStart.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+      this.buttonStart.Location = new System.Drawing.Point(500, 90);
+      this.buttonStart.Name = "buttonStart";
+      this.buttonStart.Size = new System.Drawing.Size(72, 21);
+      this.buttonStart.TabIndex = 18;
+      this.buttonStart.Text = "Start";
+      this.buttonStart.UseVisualStyleBackColor = true;
+      this.buttonStart.Click += new System.EventHandler(this.buttonStart_Click);
+      // 
+      // buttonAbort
+      // 
+      this.buttonAbort.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+      this.buttonAbort.Location = new System.Drawing.Point(500, 117);
+      this.buttonAbort.Name = "buttonAbort";
+      this.buttonAbort.Size = new System.Drawing.Size(72, 21);
+      this.buttonAbort.TabIndex = 19;
+      this.buttonAbort.Text = "Abort";
+      this.buttonAbort.UseVisualStyleBackColor = true;
+      this.buttonAbort.Click += new System.EventHandler(this.buttonAbort_Click);
+      // 
+      // progressBarComplete
+      // 
+      this.progressBarComplete.Location = new System.Drawing.Point(93, 189);
+      this.progressBarComplete.Name = "progressBarComplete";
+      this.progressBarComplete.Size = new System.Drawing.Size(238, 23);
+      this.progressBarComplete.Style = System.Windows.Forms.ProgressBarStyle.Continuous;
+      this.progressBarComplete.TabIndex = 20;
+      // 
+      // label6
+      // 
+      this.label6.AutoSize = true;
+      this.label6.Location = new System.Drawing.Point(12, 195);
+      this.label6.Name = "label6";
+      this.label6.Size = new System.Drawing.Size(60, 13);
+      this.label6.TabIndex = 21;
+      this.label6.Text = "Completed:";
+      // 
+      // labelState
+      // 
+      this.labelState.AutoSize = true;
+      this.labelState.Location = new System.Drawing.Point(338, 194);
+      this.labelState.Name = "labelState";
+      this.labelState.Size = new System.Drawing.Size(0, 13);
+      this.labelState.TabIndex = 22;
+      // 
+      // buttonSetup
+      // 
+      this.buttonSetup.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+      this.buttonSetup.Location = new System.Drawing.Point(500, 36);
+      this.buttonSetup.Name = "buttonSetup";
+      this.buttonSetup.Size = new System.Drawing.Size(72, 21);
+      this.buttonSetup.TabIndex = 23;
+      this.buttonSetup.Text = "Setup";
+      this.buttonSetup.UseVisualStyleBackColor = true;
+      this.buttonSetup.Click += new System.EventHandler(this.buttonSetup_Click);
+      // 
       // TestForm
       // 
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.ClientSize = new System.Drawing.Size(584, 675);
-      this.Controls.Add(this.labelFrame);
+      this.Controls.Add(this.buttonSetup);
+      this.Controls.Add(this.labelState);
+      this.Controls.Add(this.label6);
+      this.Controls.Add(this.progressBarComplete);
+      this.Controls.Add(this.buttonAbort);
+      this.Controls.Add(this.buttonStart);
+      this.Controls.Add(this.label5);
+      this.Controls.Add(this.textBoxDuration);
+      this.Controls.Add(this.checkBoxLight);
+      this.Controls.Add(this.textBoxVerticalBin);
+      this.Controls.Add(this.textBoxHorizontalBin);
+      this.Controls.Add(this.label3);
+      this.Controls.Add(this.textBoxHeight);
+      this.Controls.Add(this.textBoxWidth);
+      this.Controls.Add(this.textBoxTop);
+      this.Controls.Add(this.textBoxLeft);
       this.Controls.Add(this.label4);
       this.Controls.Add(this.labelCCD);
       this.Controls.Add(this.label2);
@@ -154,8 +312,23 @@
     private System.Windows.Forms.Label label1;
     private System.Windows.Forms.Label label2;
     private System.Windows.Forms.Label labelCCD;
-    private System.Windows.Forms.Label labelFrame;
     private System.Windows.Forms.Label label4;
+    private System.Windows.Forms.TextBox textBoxLeft;
+    private System.Windows.Forms.TextBox textBoxTop;
+    private System.Windows.Forms.TextBox textBoxWidth;
+    private System.Windows.Forms.TextBox textBoxHeight;
+    private System.Windows.Forms.Label label3;
+    private System.Windows.Forms.TextBox textBoxVerticalBin;
+    private System.Windows.Forms.TextBox textBoxHorizontalBin;
+    private System.Windows.Forms.CheckBox checkBoxLight;
+    private System.Windows.Forms.TextBox textBoxDuration;
+    private System.Windows.Forms.Label label5;
+    private System.Windows.Forms.Button buttonStart;
+    private System.Windows.Forms.Button buttonAbort;
+    private System.Windows.Forms.ProgressBar progressBarComplete;
+    private System.Windows.Forms.Label label6;
+    private System.Windows.Forms.Label labelState;
+    private System.Windows.Forms.Button buttonSetup;
   }
 }
 

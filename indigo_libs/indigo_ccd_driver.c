@@ -320,10 +320,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_save_property(device, NULL, CCD_FRAME_TYPE_PROPERTY);
 			if (CCD_IMAGE_FORMAT_PROPERTY->perm == INDIGO_RW_PERM)
 				indigo_save_property(device, NULL, CCD_IMAGE_FORMAT_PROPERTY);
-			if (CCD_COOLER_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, NULL, CCD_COOLER_PROPERTY);
-			if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, NULL, CCD_TEMPERATURE_PROPERTY);
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE

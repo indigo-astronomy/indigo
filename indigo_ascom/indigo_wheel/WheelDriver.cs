@@ -111,11 +111,11 @@ namespace ASCOM.INDIGO {
           if (slot != null) {
             if (property.State == Property.States.Busy) {
               position = -1;
-              Console.WriteLine("Wheel is moving");
+              Log("Wheel is moving");
             } else {
               int count = (int)slot.Max;
               if (names.Length != count) {
-                Console.WriteLine("Wheel position count " + count);
+                Log("Wheel position count " + count);
                 names = new string[count];
                 offsets = new int[count];
                 for (int i = 0; i < count; i++) {
@@ -124,7 +124,7 @@ namespace ASCOM.INDIGO {
                 }
               }
               position = (short)(slot.Value - 1);
-              Console.WriteLine("Wheel position is " + position);
+              Log("Wheel position is " + position);
             }
           }
         } else if (property.Name == "WHEEL_SLOT_NAME") {
@@ -133,7 +133,7 @@ namespace ASCOM.INDIGO {
               TextItem slotName = (TextItem)property.GetItem("SLOT_NAME_" + (i + 1));
               if (slotName != null) {
                 names[i] = slotName.Value;
-                Console.WriteLine("Wheel slot name " + i + ": " + slotName.Value);
+                Log("Wheel slot name " + i + ": " + slotName.Value);
               }
             }
           }

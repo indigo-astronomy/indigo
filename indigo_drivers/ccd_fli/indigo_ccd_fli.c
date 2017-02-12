@@ -65,7 +65,7 @@
 
 #define MAX_PATH            255     /* Maximal Path Length */
 
-#define TEMP_THRESHOLD      0.2
+#define TEMP_THRESHOLD     0.15
 #define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
 
 #include <libfli/libfli.h>
@@ -367,8 +367,13 @@ static bool fli_set_cooler(indigo_device *device, double target, double *current
 	res = FLIGetTemperature(id, current);
 	if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
 
-	if (target != old_target) {
+	if ((target != old_target) && CCD_COOLER_ON_ITEM->sw.value) {
 		res = FLISetTemperature(id, target);
+		if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
+	} else if(CCD_COOLER_OFF_ITEM->sw.value) {
+		/* There is no ON and OFF for FLI clooler when you set temp it is turned on,
+		 * so to disable cooling set some hight temperature like +45 */
+		res = FLISetTemperature(id, 45);
 		if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
 	}
 
@@ -471,7 +476,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (fli_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > TEMP_THRESHOLD ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+			if(CCD_COOLER_ON_ITEM->sw.value) {
+				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > TEMP_THRESHOLD ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+			} else {
+				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_COOLER_POWER_ITEM->number.value = PRIVATE_DATA->cooler_power;
@@ -479,6 +488,12 @@ static void ccd_temperature_callback(indigo_device *device) {
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+
+		if (CCD_COOLER_PROPERTY->state != INDIGO_OK_STATE) {
+			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		}
+
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
@@ -640,6 +655,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				long res;
 
 				CCD_MODE_PROPERTY->hidden = true;
+				CCD_COOLER_PROPERTY->hidden = false;
 
 				if(PRIVATE_DATA->rbi_flood_supported) {
 					FLI_RBI_FLUSH_PROPERTY->hidden = false;
@@ -808,6 +824,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			handle_camera_mode_property(device, property);
 		}
+	// -------------------------------------------------------------------------------- CCD_COOLER
+	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
+		//INDIGO_LOG(indigo_log("indigo_ccd_asi: COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
+		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
+			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
@@ -815,7 +840,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
+			if (CCD_COOLER_ON_ITEM->sw.value)
+				indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
+			else
+				indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f but the cooler is OFF, ", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- CCD_FRAME

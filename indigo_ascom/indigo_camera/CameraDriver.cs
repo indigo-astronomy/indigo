@@ -23,12 +23,14 @@
 
 using System;
 using System.Runtime.InteropServices;
-using ASCOM.Astrometry.AstroUtils;
 using ASCOM.Utilities;
 using ASCOM.DeviceInterface;
 using System.Globalization;
 using System.Collections;
 using INDIGO;
+using System.Net;
+using System.IO;
+using System.Threading;
 
 namespace ASCOM.INDIGO {
 
@@ -76,7 +78,7 @@ namespace ASCOM.INDIGO {
     private int ccdWidth, ccdHeight;
     private double pixelWidth, pixelHeight;
     private int frameLeft, frameTop, frameWidth, frameHeight;
-    private short maxHorizontalBin, maxVerticalBin, horizontalBin, verticalBin;
+    private short maxHorizontalBin, maxVerticalBin, horizontalBin = 1, verticalBin = 1;
     private int bitsPerPixel;
     private double minExposure, maxExposure;
     private bool canAbort = false, hasCooler = false, hasGain = false, hasCoolerPower = false, canSetTemperature = false;
@@ -84,9 +86,10 @@ namespace ASCOM.INDIGO {
     private short minGain, maxGain, gain;
     private double temperature, targetTemperature, coolerPower;
     private CameraStates cameraState;
-
+    private short percentCompleted;
+    private bool firstExposure = true;
     private DateTime exposureStart = DateTime.MinValue;
-    private double cameraLastExposureDuration = 0.0;
+    private double exposureDuration = 0.0;
     private bool cameraImageReady = false;
     private int[,] cameraImageArray;
     private object[,] cameraImageArrayVariant;
@@ -122,6 +125,42 @@ namespace ASCOM.INDIGO {
       }
     }
 
+    override protected void propertyUpdated(Property property) {
+      base.propertyUpdated(property);
+      if (property.DeviceName == deviceName) {
+        if (property.Name == "CCD_IMAGE" && property.State == Property.States.Ok) {
+          BLOBItem blobItem = ((BLOBItem)property.GetItem("IMAGE"));
+          if (blobItem != null) {
+            Server server = property.Device.Server;
+            String url = "http://" + server.Host + ":" + server.Port + blobItem.Value;
+            Log("Request" + url);
+            WebRequest request = WebRequest.Create(url);
+            WebResponse response = request.GetResponse();
+            Log("Response ContentLength " + response.ContentLength);
+            BinaryReader reader = new BinaryReader(response.GetResponseStream());
+            cameraImageArray = new int[frameWidth, frameHeight];
+            for (int y = 0; y < frameHeight; y++)
+              for (int x = 0; x < frameWidth; x++)
+                cameraImageArray[x, y] = reader.ReadUInt16();
+            reader.Close();
+            percentCompleted = 100;
+            cameraImageReady = true;
+            cameraState = CameraStates.cameraIdle;
+          }
+        } else if (property.Name == "CCD_EXPOSURE") {
+          NumberItem item = ((NumberItem)property.GetItem("EXPOSURE"));
+          if (property.State == Property.States.Ok) {
+          } else if (property.State == Property.States.Busy) {
+            cameraState = CameraStates.cameraExposing;
+            percentCompleted = (short)(100 - 100 * item.Value / item.Target);
+          } else {
+            cameraState = CameraStates.cameraError;
+            percentCompleted = 0;
+          }
+        }
+      }
+    }
+
     override protected void propertyChanged(Property property) {
       base.propertyChanged(property);
       if (property.DeviceName == deviceName) {
@@ -131,9 +170,13 @@ namespace ASCOM.INDIGO {
             switch (numberItem.Name) {
               case "WIDTH":
                 ccdWidth = (int)numberItem.Value;
+                frameLeft = 0;
+                frameWidth = ccdWidth;
                 break;
               case "HEIGHT":
                 ccdHeight = (int)numberItem.Value;
+                frameTop = 0;
+                frameHeight = ccdHeight;
                 break;
               case "MAX_HORIZONTAL_BIN":
                 maxHorizontalBin = (short)numberItem.Value;
@@ -164,24 +207,6 @@ namespace ASCOM.INDIGO {
                 break;
             }
           }
-        } else if (property.Name == "CCD_FRAME") {
-          foreach (Item item in property.Items) {
-            NumberItem numberItem = (NumberItem)item;
-            switch (numberItem.Name) {
-              case "LEFT":
-                frameLeft = (int)numberItem.Value;
-                break;
-              case "TOP":
-                frameTop = (int)numberItem.Value;
-                break;
-              case "WIDTH":
-                frameWidth = (int)numberItem.Value;
-                break;
-              case "HEIGHT":
-                frameHeight = (int)numberItem.Value;
-                break;
-            }
-          }
         } else if (property.Name == "CCD_GAIN") {
           gain = (short)((NumberItem)property.GetItem("GAIN")).Value;
         } else if (property.Name == "CCD_COOLER") {
@@ -192,14 +217,6 @@ namespace ASCOM.INDIGO {
           NumberItem item = ((NumberItem)property.GetItem("TEMPERATURE"));
           temperature = item.Value;
           targetTemperature = item.Target;
-        } else if (property.Name == "CCD_EXPOSURE") {
-          if (property.State == Property.States.Busy)
-            cameraState = CameraStates.cameraExposing;
-          else if (property.State == Property.States.Alert)
-            cameraState = CameraStates.cameraError;
-          else
-            cameraState = CameraStates.cameraIdle;
-          NumberItem item = ((NumberItem)property.GetItem("EXPOSURE"));
         }
       }
     }
@@ -221,9 +238,13 @@ namespace ASCOM.INDIGO {
         return horizontalBin;
       }
       set {
-        if (value < 1 || value > maxHorizontalBin)
-          throw new ASCOM.InvalidValueException("BinX", value.ToString(), "1.." + maxHorizontalBin);
-        horizontalBin = value;
+        for (int i = 1; i <= maxHorizontalBin; i = i << 1) {
+          if (i == value) {
+            horizontalBin = value;
+            return;
+          }
+        }
+        throw new ASCOM.InvalidValueException("BinX", value.ToString(), "1.." + maxHorizontalBin);
       }
     }
 
@@ -232,9 +253,13 @@ namespace ASCOM.INDIGO {
         return verticalBin;
       }
       set {
-        if (value < 1 || value > maxVerticalBin)
-          throw new ASCOM.InvalidValueException("BinY", value.ToString(), "1.." + maxVerticalBin);
-        verticalBin = value;
+        for (int i = 1; i <= maxVerticalBin; i = i << 1) {
+          if (i == value) {
+            verticalBin = value;
+            return;
+          }
+        }
+        throw new ASCOM.InvalidValueException("BinY", value.ToString(), "1.." + maxVerticalBin);
       }
     }
 
@@ -252,37 +277,37 @@ namespace ASCOM.INDIGO {
 
     public int StartX {
       get {
-        return frameLeft / horizontalBin;
+        return frameLeft;
       }
       set {
-        frameLeft = value * horizontalBin;
+        frameLeft = value;
       }
     }
 
     public int StartY {
       get {
-        return frameTop / verticalBin;
+        return frameTop;
       }
       set {
-        frameTop = value * verticalBin;
+        frameTop = value;
       }
     }
 
     public int NumX {
       get {
-        return frameWidth / horizontalBin;
+        return frameWidth;
       }
       set {
-        frameWidth = value * horizontalBin;
+        frameWidth = value;
       }
     }
 
     public int NumY {
       get {
-        return frameHeight / verticalBin;
+        return frameHeight;
       }
       set {
-        frameHeight = value * verticalBin;
+        frameHeight = value;
       }
     }
 
@@ -313,7 +338,7 @@ namespace ASCOM.INDIGO {
 
     public double CCDTemperature {
       get {
-       return temperature;
+        return temperature;
       }
     }
 
@@ -475,8 +500,6 @@ namespace ASCOM.INDIGO {
         if (!cameraImageReady) {
           throw new ASCOM.InvalidOperationException("Call to ImageArray before the first image has been taken!");
         }
-
-        cameraImageArray = new int[frameWidth, frameHeight];
         return cameraImageArray;
       }
     }
@@ -487,13 +510,12 @@ namespace ASCOM.INDIGO {
           throw new ASCOM.InvalidOperationException("Call to ImageArrayVariant before the first image has been taken!");
         }
         cameraImageArrayVariant = new object[frameWidth, frameHeight];
-        for (int i = 0; i < cameraImageArray.GetLength(1); i++) {
-          for (int j = 0; j < cameraImageArray.GetLength(0); j++) {
+        for (int j = 0; j < frameWidth; j++) {
+          for (int i = 0; i < frameHeight; i++) {
             cameraImageArrayVariant[j, i] = cameraImageArray[j, i];
           }
 
         }
-
         return cameraImageArrayVariant;
       }
     }
@@ -506,22 +528,22 @@ namespace ASCOM.INDIGO {
 
     public bool IsPulseGuiding {
       get {
-        throw new ASCOM.PropertyNotImplementedException("IsPulseGuiding", false);
+        return false;
       }
     }
 
     public double LastExposureDuration {
       get {
-        if (!cameraImageReady) {
+        if (firstExposure) {
           throw new ASCOM.InvalidOperationException("Call to LastExposureDuration before the first image has been taken!");
         }
-        return cameraLastExposureDuration;
+        return exposureDuration;
       }
     }
 
     public string LastExposureStartTime {
       get {
-        if (!cameraImageReady) {
+        if (firstExposure) {
           throw new ASCOM.InvalidOperationException("Call to LastExposureStartTime before the first image has been taken!");
         }
         string exposureStartString = exposureStart.ToString("yyyy-MM-ddTHH:mm:ss");
@@ -537,7 +559,7 @@ namespace ASCOM.INDIGO {
 
     public short PercentCompleted {
       get {
-        throw new ASCOM.PropertyNotImplementedException("PercentCompleted", false);
+        return percentCompleted;
       }
     }
 
@@ -547,28 +569,27 @@ namespace ASCOM.INDIGO {
 
     public short ReadoutMode {
       get {
-        throw new ASCOM.PropertyNotImplementedException("ReadoutMode", false);
+        return 0;
       }
       set {
-        throw new ASCOM.PropertyNotImplementedException("ReadoutMode", true);
       }
     }
 
     public ArrayList ReadoutModes {
       get {
-        throw new ASCOM.PropertyNotImplementedException("ReadoutModes", false);
+        return new ArrayList() { "Normal" };
       }
     }
 
     public string SensorName {
       get {
-        throw new ASCOM.PropertyNotImplementedException("SensorName", false);
+        return "UNKNOWN";
       }
     }
 
     public SensorType SensorType {
       get {
-        throw new ASCOM.PropertyNotImplementedException("SensorType", false);
+        return SensorType.Monochrome;
       }
     }
 
@@ -577,9 +598,13 @@ namespace ASCOM.INDIGO {
         return targetTemperature;
       }
       set {
-        NumberProperty property = (NumberProperty)device.GetProperty("CCD_TEMPERATURE");
-        if (property != null) {
-          property.SetSingleValue("TEMPERATURE", value);
+        if (CanSetCCDTemperature) {
+          NumberProperty property = (NumberProperty)device.GetProperty("CCD_TEMPERATURE");
+          if (property != null) {
+            property.SetSingleValue("TEMPERATURE", value);
+          }
+        } else {
+          throw new PropertyNotImplementedException("SetCCDTemperature", true);
         }
       }
     }
@@ -587,19 +612,52 @@ namespace ASCOM.INDIGO {
     public void StartExposure(double Duration, bool Light) {
       if (Duration < 0.0)
         throw new InvalidValueException("StartExposure", Duration.ToString(), "0.0 upwards");
-      if (frameWidth > ccdWidth)
-        throw new InvalidValueException("StartExposure", frameWidth.ToString(), ccdWidth.ToString());
-      if (frameHeight > ccdHeight)
-        throw new InvalidValueException("StartExposure", frameHeight.ToString(), ccdHeight.ToString());
-      if (frameLeft > ccdWidth)
-        throw new InvalidValueException("StartExposure", frameLeft.ToString(), ccdWidth.ToString());
-      if (frameTop > ccdHeight)
-        throw new InvalidValueException("StartExposure", frameTop.ToString(), ccdHeight.ToString());
-
-      cameraLastExposureDuration = Duration;
+      if (frameWidth * horizontalBin > ccdWidth)
+        throw new InvalidValueException("StartExposure " + frameWidth + "*" + horizontalBin, frameWidth.ToString(), ccdWidth.ToString());
+      if (frameHeight * verticalBin > ccdHeight)
+        throw new InvalidValueException("StartExposure " + frameHeight + "*" + verticalBin, frameHeight.ToString(), ccdHeight.ToString());
+      if (frameLeft * horizontalBin > ccdWidth)
+        throw new InvalidValueException("StartExposure " + frameLeft + "*" + horizontalBin, frameLeft.ToString(), ccdWidth.ToString());
+      if (frameTop * verticalBin > ccdHeight)
+        throw new InvalidValueException("StartExposure " + frameHeight + "*" + verticalBin, frameTop.ToString(), ccdHeight.ToString());
+      exposureDuration = Duration;
       exposureStart = DateTime.Now;
-      System.Threading.Thread.Sleep((int)Duration * 1000);  // Sleep for the duration to simulate exposure 
-      cameraImageReady = true;
+      cameraImageReady = false;
+      firstExposure = false;
+      NumberProperty n = (NumberProperty)device.GetProperty("CCD_BIN");
+      if (n != null) {
+        ((NumberItem)n.GetItem("HORIZONTAL")).Value = horizontalBin;
+        ((NumberItem)n.GetItem("VERTICAL")).Value = verticalBin;
+        n.Change();
+      }
+      n = (NumberProperty)device.GetProperty("CCD_FRAME");
+      if (n != null) {
+        ((NumberItem)n.GetItem("LEFT")).Value = frameLeft * horizontalBin;
+        ((NumberItem)n.GetItem("TOP")).Value = frameTop * verticalBin;
+        ((NumberItem)n.GetItem("WIDTH")).Value = frameWidth * horizontalBin;
+        ((NumberItem)n.GetItem("HEIGHT")).Value = frameHeight * verticalBin;
+        n.Change();
+      }
+      if (hasGain) {
+        n = (NumberProperty)device.GetProperty("CCD_GAIN");
+        n.SetSingleValue("GAIN", gain);
+      }
+      SwitchProperty s = (SwitchProperty)device.GetProperty("CCD_FRAME_TYPE");
+      if (s != null) {
+        if (Light)
+          s.SetSingleValue("LIGHT", true);
+        else
+          s.SetSingleValue("DARK", true);
+      }
+      s = (SwitchProperty)device.GetProperty("CCD_IMAGE_FORMAT");
+      if (s != null)
+        s.SetSingleValue("RAW", true);
+      n = (NumberProperty)device.GetProperty("CCD_EXPOSURE");
+      cameraState = CameraStates.cameraExposing;
+      n.SetSingleValue("EXPOSURE", Duration);
+      while (cameraState == CameraStates.cameraExposing) {
+        Thread.Sleep(100);
+      }
     }
 
     public void AbortExposure() {
