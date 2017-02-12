@@ -87,9 +87,9 @@ namespace ASCOM.INDIGO {
     private double temperature, targetTemperature, coolerPower;
     private CameraStates cameraState;
     private short percentCompleted;
-
+    private bool firstExposure = true;
     private DateTime exposureStart = DateTime.MinValue;
-    private double cameraLastExposureDuration = 0.0;
+    private double exposureDuration = 0.0;
     private bool cameraImageReady = false;
     private int[,] cameraImageArray;
     private object[,] cameraImageArrayVariant;
@@ -534,16 +534,16 @@ namespace ASCOM.INDIGO {
 
     public double LastExposureDuration {
       get {
-        if (!cameraImageReady) {
+        if (firstExposure) {
           throw new ASCOM.InvalidOperationException("Call to LastExposureDuration before the first image has been taken!");
         }
-        return cameraLastExposureDuration;
+        return exposureDuration;
       }
     }
 
     public string LastExposureStartTime {
       get {
-        if (!cameraImageReady) {
+        if (firstExposure) {
           throw new ASCOM.InvalidOperationException("Call to LastExposureStartTime before the first image has been taken!");
         }
         string exposureStartString = exposureStart.ToString("yyyy-MM-ddTHH:mm:ss");
@@ -620,9 +620,10 @@ namespace ASCOM.INDIGO {
         throw new InvalidValueException("StartExposure " + frameLeft + "*" + horizontalBin, frameLeft.ToString(), ccdWidth.ToString());
       if (frameTop * verticalBin > ccdHeight)
         throw new InvalidValueException("StartExposure " + frameHeight + "*" + verticalBin, frameTop.ToString(), ccdHeight.ToString());
-      cameraLastExposureDuration = Duration;
+      exposureDuration = Duration;
       exposureStart = DateTime.Now;
       cameraImageReady = false;
+      firstExposure = false;
       NumberProperty n = (NumberProperty)device.GetProperty("CCD_BIN");
       if (n != null) {
         ((NumberItem)n.GetItem("HORIZONTAL")).Value = horizontalBin;
