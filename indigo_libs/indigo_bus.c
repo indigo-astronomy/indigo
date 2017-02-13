@@ -309,8 +309,13 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device != NULL && device->enumerate_properties != NULL && (!*property->device || !*device->name || !strcmp(property->device, device->name)))
-			device->last_result = device->enumerate_properties(device, client, property);
+		if (device != NULL && device->enumerate_properties != NULL) {
+			bool route = *property->device == 0;
+			route = route || !strcmp(property->device, device->name);
+			route = route || (*device->name == '@' && strstr(property->device, device->name));
+			if (route)
+				device->last_result = device->enumerate_properties(device, client, property);
+		}
 	}
 	return INDIGO_OK;
 }
@@ -321,8 +326,13 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device != NULL && device->change_property != NULL && (!*property->device || !*device->name || !strcmp(property->device, device->name)))
-			device->last_result = device->change_property(device, client, property);
+		if (device != NULL && device->enumerate_properties != NULL) {
+			bool route = *property->device == 0;
+			route = route || !strcmp(property->device, device->name);
+			route = route || (*device->name == '@' && strstr(property->device, device->name));
+			if (route)
+				device->last_result = device->change_property(device, client, property);
+		}
 	}
 	return INDIGO_OK;
 }
