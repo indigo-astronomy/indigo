@@ -443,6 +443,8 @@
 		.controller('INDIGOController', function($scope) {
 			$scope.expand = function(event) {
 				var node = $(event.target);
+				if (node.hasClass("glyphicon"))
+					node = node.parent();
 				var parent = node.parent();
 				var children = parent.find('>ul>li');
 				if (parent.hasClass("open")) {
@@ -584,20 +586,20 @@
 						property.type = "LIGHT";
 						property.state = vector.state;
 						property.message = vector.message;
-						for (var i = 0; i < vector.defLight.length; i++) {
-							var item = addItem(property, vector.defLight[i].name);
-							item.value = vector.defLight[i].value;
-							item.label = vector.defLight[i].label;
+						for (var i = 0; i < vector.items.length; i++) {
+							var item = addItem(property, vector.items[i].name);
+							item.value = vector.items[i].value;
+							item.label = vector.items[i].label;
 						}
 					} else if ((vector = message.setLightVector) != undefined) {
 						var property = getProperty($scope.model, vector.device, vector.name);
 						if (property != undefined) {
 						property.state = vector.state;
 						property.message = vector.message;
-						for (var i = 0; i < vector.oneLight.length; i++) {
-							var item = getItem(property, vector.oneLight[i].name);
+						for (var i = 0; i < vector.items.length; i++) {
+							var item = getItem(property, vector.items[i].name);
 							if (item != undefined)
-								item.value = vector.oneLight[i].value;
+								item.value = vector.items[i].value;
 							}
 						}
 					} else if ((vector = message.defBLOBVector) != undefined) {
