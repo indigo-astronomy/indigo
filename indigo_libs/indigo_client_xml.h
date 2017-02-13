@@ -31,7 +31,7 @@
 
 /** Create initialized instance of XML wire protocol driver side adapter.
  */
-extern indigo_device *indigo_xml_client_adapter(int input, int ouput);
+extern indigo_device *indigo_xml_client_adapter(char *name, int input, int ouput);
 extern void indigo_release_xml_device_adapter(indigo_client *client);
 
 #endif /* indigo_client_xml_h */

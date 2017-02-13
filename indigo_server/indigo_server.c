@@ -101,7 +101,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 static indigo_result detach(indigo_device *device);
 
 static indigo_device server_device = {
-	"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	"Server", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 	attach,
 	enumerate_properties,
 	change_property,
@@ -128,8 +128,11 @@ static indigo_result attach(indigo_device *device) {
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_server_entry *entry = indigo_available_servers + i;
 		if (*entry->host) {
-			char buf[128];
-			snprintf(buf, 128, "%s:%d", entry->host, entry->port);
+			char buf[INDIGO_NAME_SIZE];
+			if (entry->port == 7624)
+				strncpy(buf, entry->host, sizeof(buf));
+			else
+				snprintf(buf, sizeof(buf), "%s:%d", entry->host, entry->port);
 			indigo_init_light_item(&server_property->items[server_property->count++], buf, buf, INDIGO_IDLE_STATE);
 		}
 	}
@@ -249,7 +252,6 @@ static void server_main(int argc, const char * argv[]) {
 		char hostname[INDIGO_NAME_SIZE], servicename[INDIGO_NAME_SIZE];
 		gethostname(hostname, sizeof(hostname));
 		snprintf(servicename, INDIGO_NAME_SIZE, "%s (%d)", hostname, indigo_server_tcp_port);
-		snprintf(server_device.name, INDIGO_NAME_SIZE, "Server %s (%d)", hostname, indigo_server_tcp_port);
 		DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 		DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 	}
