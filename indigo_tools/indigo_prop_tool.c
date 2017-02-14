@@ -40,7 +40,34 @@ static indigo_result client_attach(indigo_client *client) {
 }
 
 static indigo_result client_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
-	printf("%s.%s\n", property->device, property->name);
+	indigo_item *item;
+	int i;
+	printf("Protocol version = %x\n", property->version);
+
+	for (i == 0; i < property->count; i++) {
+		item = &(property->items[i]);
+		switch (property->type) {
+		case INDIGO_TEXT_VECTOR:
+			printf("%s.%s.%s = \"%s\"\n", property->device, property->name, item->name, item->text.value);
+			break;
+		case INDIGO_NUMBER_VECTOR:
+			printf("%s.%s.%s = %f\n", property->device, property->name, item->name, item->number.value);
+			break;
+		case INDIGO_SWITCH_VECTOR:
+			if (item->sw.value)
+				printf("%s.%s.%s = ON\n", property->device, property->name, item->name);
+			else
+				printf("%s.%s.%s = OFF\n", property->device, property->name, item->name);
+			break;
+		case INDIGO_LIGHT_VECTOR:
+			printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
+			break;
+		case INDIGO_BLOB_VECTOR:
+			printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
+			break;
+		}
+	}
+
 	return INDIGO_OK;
 }
 
@@ -70,8 +97,8 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 	
 	indigo_start();
-	indigo_connect_server("localhost", 7624);
 	indigo_attach_client(&client);
+	indigo_connect_server("localhost", 7624);
 	sleep(2);
 	indigo_stop();
 	indigo_disconnect_server("localhost", 7624);
