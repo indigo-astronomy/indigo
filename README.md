@@ -36,6 +36,7 @@ This is the list of requirements taken into the consideration:
 13. LX200 mount driver (supports Meade mounts and EQMac)
 14. FLI filter wheel driver
 15. FLI CCD driver
+16. FLI focuser driver (testers needed)
 
 ## This is under development
 
