@@ -48,11 +48,13 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	char device_name[INDIGO_NAME_SIZE];
 	if (property != NULL && *property->device) {
 		strcpy(device_name, property->device);
-		char *at = strchr(device_name, '@');
-		if (at != NULL) {
-			while (at > device_name && at[-1] == ' ')
-				at--;
-			*at = 0;
+		if (indigo_use_host_suffix) {
+			char *at = strchr(device_name, '@');
+			if (at != NULL) {
+				while (at > device_name && at[-1] == ' ')
+					at--;
+				*at = 0;
+			}
 		}
 	}
 	if (property != NULL) {
@@ -81,11 +83,13 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
 	strcpy(device_name, property->device);
-	char *at = strchr(device_name, '@');
-	if (at != NULL) {
-		while (at > device_name && at[-1] == ' ')
-			at--;
-		*at = 0;
+	if (indigo_use_host_suffix) {
+		char *at = strchr(device_name, '@');
+		if (at != NULL) {
+			while (at > device_name && at[-1] == ' ')
+				at--;
+			*at = 0;
+		}
 	}
 	switch (property->type) {
 	case INDIGO_TEXT_VECTOR:

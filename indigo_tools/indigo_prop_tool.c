@@ -96,6 +96,8 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	
+	indigo_use_host_suffix = false;
+
 	indigo_start();
 	indigo_attach_client(&client);
 	indigo_connect_server("localhost", 7624);

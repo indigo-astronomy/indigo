@@ -413,7 +413,10 @@ static void *set_text_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -458,7 +461,10 @@ static void *set_number_vector_handler(parser_state state, parser_context *conte
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -501,7 +507,10 @@ static void *set_switch_vector_handler(parser_state state, parser_context *conte
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -544,7 +553,10 @@ static void *set_light_vector_handler(parser_state state, parser_context *contex
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -591,7 +603,10 @@ static void *set_blob_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -693,7 +708,10 @@ static void *def_text_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -752,7 +770,10 @@ static void *def_number_vector_handler(parser_state state, parser_context *conte
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -803,7 +824,10 @@ static void *def_switch_vector_handler(parser_state state, parser_context *conte
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -856,7 +880,10 @@ static void *def_light_vector_handler(parser_state state, parser_context *contex
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -903,7 +930,10 @@ static void *def_blob_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -931,7 +961,10 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: del_property_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strncmp(name, "device",INDIGO_NAME_SIZE)) {
-			snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			if (indigo_use_host_suffix)
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
+			else
+				strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strncmp(name, "name",INDIGO_NAME_SIZE)) {
 			indigo_copy_property_name(device->version, property, value);;
 		} else if (!strcmp(name, "message")) {

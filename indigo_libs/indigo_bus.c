@@ -83,6 +83,8 @@ bool indigo_debug_level = false;
 bool indigo_trace_level = false;
 bool indigo_use_syslog = false;
 
+bool indigo_use_host_suffix = true;
+
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
 
@@ -312,7 +314,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 		if (device != NULL && device->enumerate_properties != NULL) {
 			bool route = *property->device == 0;
 			route = route || !strcmp(property->device, device->name);
-			route = route || (*device->name == '@' && strstr(property->device, device->name));
+			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
 			if (route)
 				device->last_result = device->enumerate_properties(device, client, property);
 		}
@@ -329,7 +331,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 		if (device != NULL && device->enumerate_properties != NULL) {
 			bool route = *property->device == 0;
 			route = route || !strcmp(property->device, device->name);
-			route = route || (*device->name == '@' && strstr(property->device, device->name));
+			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
 			if (route)
 				device->last_result = device->change_property(device, client, property);
 		}
