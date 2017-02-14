@@ -74,6 +74,7 @@ int main(int argc, const char * argv[]) {
 	indigo_attach_client(&client);
 	sleep(2);
 	indigo_stop();
+	indigo_disconnect_server("localhost", 7624);
 	return 0;
 }
 
