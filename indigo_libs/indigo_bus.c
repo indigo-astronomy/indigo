@@ -315,6 +315,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 			bool route = *property->device == 0;
 			route = route || !strcmp(property->device, device->name);
 			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
+			route = route || (!indigo_use_host_suffix && *device->name == '@');
 			if (route)
 				device->last_result = device->enumerate_properties(device, client, property);
 		}
@@ -332,6 +333,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 			bool route = *property->device == 0;
 			route = route || !strcmp(property->device, device->name);
 			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
+			route = route || (!indigo_use_host_suffix && *device->name == '@');
 			if (route)
 				device->last_result = device->change_property(device, client, property);
 		}
