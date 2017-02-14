@@ -157,7 +157,7 @@ SO_LIBS= $(wildcard $(BUILD_LIB)/*.$(SOEXT))
 #
 #---------------------------------------------------------------------
 
-all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) indigo_server/ctrl.data drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath
+all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) indigo_server/ctrl.data drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath
 
 #---------------------------------------------------------------------
 #
@@ -672,6 +672,21 @@ ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
 	install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
 endif
+
+#---------------------------------------------------------------------
+#
+#       Build indigo_prop_tool
+#
+#---------------------------------------------------------------------
+
+$(BUILD_BIN)/indigo_prop_tool: indigo_tools/indigo_prop_tool.o
+	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_tools/indigo_prop_tool.o $(LDFLAGS) -lindigo
+ifeq ($(OS_DETECTED),Darwin)
+	install_name_tool -add_rpath @loader_path/../drivers $@
+	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
+	#install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
+endif
+
 
 #---------------------------------------------------------------------
 #
