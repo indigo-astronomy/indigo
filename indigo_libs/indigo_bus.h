@@ -418,5 +418,9 @@ extern bool indigo_trace_level;
  */
 extern bool indigo_use_syslog;
 
+/** Do not add @ host:port suffix to remote devices - for case with single remote server and no local devices only.
+ */
+extern bool indigo_use_host_suffix;
+
 #endif /* indigo_bus_h */
 
