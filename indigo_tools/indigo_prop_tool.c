@@ -42,7 +42,11 @@ static indigo_result client_attach(indigo_client *client) {
 static indigo_result client_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
-	printf("Protocol version = %x\n", property->version);
+	static bool called = false;
+	if (!called) {
+		printf("Protocol version = %x.%x\n", property->version >> 8, property->version & 0xff);
+		called = true;
+	}
 
 	for (i == 0; i < property->count; i++) {
 		item = &(property->items[i]);
