@@ -27,11 +27,43 @@
 #include <pthread.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <ctype.h>
 
 #include "indigo_bus.h"
 #include "indigo_client.h"
 
-static bool connected = false;
+static bool change_requested = false;
+
+typedef struct {
+	char device_name[INDIGO_NAME_SIZE];
+	char property_name[INDIGO_NAME_SIZE];
+	char item_name[INDIGO_NAME_SIZE];
+	char value_string[INDIGO_VALUE_SIZE];
+} property_change_request;
+
+static property_change_request change_request;
+
+
+void trim_ending_spaces(char * str) {
+    int len = strlen(str);
+    while(isspace(str[len - 1])) str[--len] = 0;
+}
+
+
+int parse_property_string(const char *prop_string, property_change_request *scr) {
+	int res;
+	char format[1024];
+	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^=]=%%%ds", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_VALUE_SIZE);
+	//printf("%s\n", format);
+	res = sscanf(prop_string, format, scr->device_name, scr->property_name, scr->item_name, scr->value_string);
+	if (res != 4) {
+		errno = EINVAL;
+		return -1;
+	}
+	trim_ending_spaces(scr->item_name);
+	return res;
+}
+
 
 static indigo_result client_attach(indigo_client *client) {
 	indigo_log("attached to INDI bus...");
@@ -39,43 +71,54 @@ static indigo_result client_attach(indigo_client *client) {
 	return INDIGO_OK;
 }
 
+
 static indigo_result client_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
 	static bool called = false;
+
 	if (!called) {
 		printf("Protocol version = %x.%x\n", property->version >> 8, property->version & 0xff);
 		called = true;
 	}
 
-	for (i == 0; i < property->count; i++) {
-		item = &(property->items[i]);
-		switch (property->type) {
-		case INDIGO_TEXT_VECTOR:
-			printf("%s.%s.%s = \"%s\"\n", property->device, property->name, item->name, item->text.value);
-			break;
-		case INDIGO_NUMBER_VECTOR:
-			printf("%s.%s.%s = %f\n", property->device, property->name, item->name, item->number.value);
-			break;
-		case INDIGO_SWITCH_VECTOR:
-			if (item->sw.value)
-				printf("%s.%s.%s = ON\n", property->device, property->name, item->name);
-			else
-				printf("%s.%s.%s = OFF\n", property->device, property->name, item->name);
-			break;
-		case INDIGO_LIGHT_VECTOR:
-			printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
-			break;
-		case INDIGO_BLOB_VECTOR:
-			printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
-			break;
+	if (change_requested) {
+		if( !strcmp(property->device, change_request.device_name) &&
+		    !strcmp(property->name, change_request.property_name) ){
+			printf("MATCHED %s * %s * %s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name, change_request.value_string);
+		}
+		return INDIGO_OK;
+	} else {
+		for (i == 0; i < property->count; i++) {
+			item = &(property->items[i]);
+			switch (property->type) {
+			case INDIGO_TEXT_VECTOR:
+				printf("%s.%s.%s = \"%s\"\n", property->device, property->name, item->name, item->text.value);
+				break;
+			case INDIGO_NUMBER_VECTOR:
+				printf("%s.%s.%s = %f\n", property->device, property->name, item->name, item->number.value);
+				break;
+			case INDIGO_SWITCH_VECTOR:
+				if (item->sw.value)
+					printf("%s.%s.%s = ON\n", property->device, property->name, item->name);
+				else
+					printf("%s.%s.%s = OFF\n", property->device, property->name, item->name);
+				break;
+			case INDIGO_LIGHT_VECTOR:
+				printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
+				break;
+			case INDIGO_BLOB_VECTOR:
+				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
+				break;
+			}
 		}
 	}
-
 	return INDIGO_OK;
 }
 
+
 static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+	indigo_log("CHANGING...");
 	return INDIGO_OK;
 }
 
@@ -85,6 +128,7 @@ static indigo_result client_detach(indigo_client *client) {
 	exit(0);
 	return INDIGO_OK;
 }
+
 
 static indigo_client client = {
 	"indigo_prop_tool", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
@@ -96,11 +140,21 @@ static indigo_client client = {
 	client_detach
 };
 
+
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	
+
 	indigo_use_host_suffix = false;
+
+	if (argc == 2) {
+		if (parse_property_string(argv[1], &change_request) < 0) {
+			perror("parse_property_string()");
+			return 1;
+		}
+		printf("MATCHED %s * %s * %s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name, change_request.value_string);
+		change_requested = true;
+	}
 
 	indigo_start();
 	indigo_attach_client(&client);
