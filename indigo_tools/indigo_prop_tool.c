@@ -89,7 +89,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 		}
 		return INDIGO_OK;
 	} else {
-		for (i == 0; i < property->count; i++) {
+		for (i = 0; i < property->count; i++) {
 			item = &(property->items[i]);
 			switch (property->type) {
 			case INDIGO_TEXT_VECTOR:
