@@ -276,7 +276,8 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 				indigo_error("Can't create worker thread for connection (%s)", strerror(errno));
 		}
 	}
-	return shutdown_initiated ? INDIGO_OK : INDIGO_FAILED;
+	shutdown_initiated = false;
+	return INDIGO_OK;
 }
 
 /*
