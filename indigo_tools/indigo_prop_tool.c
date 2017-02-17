@@ -53,7 +53,7 @@ void trim_ending_spaces(char * str) {
 int parse_property_string(const char *prop_string, property_change_request *scr) {
 	int res;
 	char format[1024];
-	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^=]=%%%ds", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_VALUE_SIZE);
+	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_VALUE_SIZE);
 	//printf("%s\n", format);
 	res = sscanf(prop_string, format, scr->device_name, scr->property_name, scr->item_name, scr->value_string);
 	if (res != 4) {
@@ -66,7 +66,7 @@ int parse_property_string(const char *prop_string, property_change_request *scr)
 
 
 static indigo_result client_attach(indigo_client *client) {
-	indigo_log("attached to INDI bus...");
+	//indigo_log("attached to INDI bus...");
 	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 	return INDIGO_OK;
 }
@@ -84,7 +84,41 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 
 	if (change_requested) {
 		if( !strcmp(property->device, change_request.device_name) &&
-		    !strcmp(property->name, change_request.property_name) ){
+		    !strcmp(property->name, change_request.property_name) ) {
+			static char *items[INDIGO_MAX_ITEMS];
+			static char *txt_values[INDIGO_MAX_ITEMS];
+			double dbl_values[1];
+			items[0] = (char *)malloc(INDIGO_NAME_SIZE);
+			strncpy(items[0], change_request.item_name, INDIGO_NAME_SIZE);
+			switch (property->type) {
+			case INDIGO_TEXT_VECTOR:
+				txt_values[0] = (char *)malloc(INDIGO_VALUE_SIZE);
+				strncpy(txt_values[0], change_request.value_string, INDIGO_VALUE_SIZE);
+				txt_values[0][INDIGO_VALUE_SIZE-1] = 0;
+				indigo_change_text_property(client, property->device, property->name, 1, (const char **)items, (const char **)txt_values);
+				free(txt_values[0]);
+				break;
+			case INDIGO_NUMBER_VECTOR:
+				dbl_values[0] = strtod(change_request.value_string, NULL);
+				indigo_change_number_property(client, property->device, property->name, 1, (const char **)items, (const double *)dbl_values);
+				break;
+			case INDIGO_SWITCH_VECTOR:
+				printf("5\n");
+				if (item->sw.value)
+					printf("%s.%s.%s = ON\n", property->device, property->name, item->name);
+				else
+					printf("%s.%s.%s = OFF\n", property->device, property->name, item->name);
+				break;
+			case INDIGO_LIGHT_VECTOR:
+				printf("6\n");
+				printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
+				break;
+			case INDIGO_BLOB_VECTOR:
+				printf("7\n");
+				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
+				break;
+			}
+			free(items[0]);
 			printf("MATCHED %s * %s * %s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name, change_request.value_string);
 		}
 		return INDIGO_OK;
@@ -118,13 +152,37 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 
 
 static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
-	indigo_log("CHANGING...");
+	indigo_item *item;
+	int i;
+	for (i = 0; i < property->count; i++) {
+		item = &(property->items[i]);
+		switch (property->type) {
+		case INDIGO_TEXT_VECTOR:
+			printf("%s.%s.%s = \"%s\"\n", property->device, property->name, item->name, item->text.value);
+			break;
+		case INDIGO_NUMBER_VECTOR:
+			printf("%s.%s.%s = %f\n", property->device, property->name, item->name, item->number.value);
+			break;
+		case INDIGO_SWITCH_VECTOR:
+			if (item->sw.value)
+				printf("%s.%s.%s = ON\n", property->device, property->name, item->name);
+			else
+				printf("%s.%s.%s = OFF\n", property->device, property->name, item->name);
+			break;
+		case INDIGO_LIGHT_VECTOR:
+			printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
+			break;
+		case INDIGO_BLOB_VECTOR:
+			printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
+			break;
+		}
+	}
 	return INDIGO_OK;
 }
 
 
 static indigo_result client_detach(indigo_client *client) {
-	indigo_log("detached from INDI bus...");
+	//indigo_log("detached from INDI bus...");
 	exit(0);
 	return INDIGO_OK;
 }
@@ -152,7 +210,6 @@ int main(int argc, const char * argv[]) {
 			perror("parse_property_string()");
 			return 1;
 		}
-		printf("MATCHED %s * %s * %s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name, change_request.value_string);
 		change_requested = true;
 	}
 
