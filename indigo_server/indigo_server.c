@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <dns_sd.h>
+#include <libgen.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -195,7 +196,11 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 						indigo_init_switch_item(&drivers_property->items[drivers_property->count++], indigo_available_drivers[i].description, indigo_available_drivers[i].description, true);
 				indigo_define_property(device, drivers_property, NULL);
 				load_property->state = INDIGO_OK_STATE;
-				indigo_update_property(device, load_property, "Driver %s loaded", load_property->items[0].text.value);
+				char *name = basename(load_property->items[0].text.value);
+				for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
+					if (indigo_available_drivers[i].driver != NULL && !strcmp(name, indigo_available_drivers[i].name)) {
+						indigo_update_property(device, load_property, "Driver %s (%s) loaded", name, indigo_available_drivers[i].description);
+					}
 			} else {
 				load_property->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, load_property, indigo_last_message);
