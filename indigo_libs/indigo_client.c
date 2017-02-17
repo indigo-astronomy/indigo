@@ -112,7 +112,8 @@ indigo_result indigo_load_driver(const char *name, bool init) {
 
 	dl_handle = dlopen(so_name, RTLD_LAZY);
 	if (!dl_handle) {
-		INDIGO_LOG(indigo_log("Driver %s can't be loaded.", entry_point_name));
+		const char* dlsym_error = dlerror();
+		INDIGO_LOG(indigo_log("Driver %s can't be loaded (%s).", entry_point_name, dlsym_error));
 		return INDIGO_FAILED;
 	}
 	driver = dlsym(dl_handle, entry_point_name);
