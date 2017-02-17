@@ -65,93 +65,7 @@ int parse_property_string(const char *prop_string, property_change_request *scr)
 }
 
 
-static indigo_result client_attach(indigo_client *client) {
-	//indigo_log("attached to INDI bus...");
-	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
-	return INDIGO_OK;
-}
-
-
-static indigo_result client_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
-	indigo_item *item;
-	int i;
-	static bool called = false;
-
-	if (!called) {
-		printf("Protocol version = %x.%x\n", property->version >> 8, property->version & 0xff);
-		called = true;
-	}
-
-	if (change_requested) {
-		if( !strcmp(property->device, change_request.device_name) &&
-		    !strcmp(property->name, change_request.property_name) ) {
-			static char *items[INDIGO_MAX_ITEMS];
-			static char *txt_values[INDIGO_MAX_ITEMS];
-			double dbl_values[1];
-			items[0] = (char *)malloc(INDIGO_NAME_SIZE);
-			strncpy(items[0], change_request.item_name, INDIGO_NAME_SIZE);
-			switch (property->type) {
-			case INDIGO_TEXT_VECTOR:
-				txt_values[0] = (char *)malloc(INDIGO_VALUE_SIZE);
-				strncpy(txt_values[0], change_request.value_string, INDIGO_VALUE_SIZE);
-				txt_values[0][INDIGO_VALUE_SIZE-1] = 0;
-				indigo_change_text_property(client, property->device, property->name, 1, (const char **)items, (const char **)txt_values);
-				free(txt_values[0]);
-				break;
-			case INDIGO_NUMBER_VECTOR:
-				dbl_values[0] = strtod(change_request.value_string, NULL);
-				indigo_change_number_property(client, property->device, property->name, 1, (const char **)items, (const double *)dbl_values);
-				break;
-			case INDIGO_SWITCH_VECTOR:
-				printf("5\n");
-				if (item->sw.value)
-					printf("%s.%s.%s = ON\n", property->device, property->name, item->name);
-				else
-					printf("%s.%s.%s = OFF\n", property->device, property->name, item->name);
-				break;
-			case INDIGO_LIGHT_VECTOR:
-				printf("6\n");
-				printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
-				break;
-			case INDIGO_BLOB_VECTOR:
-				printf("7\n");
-				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
-				break;
-			}
-			free(items[0]);
-			printf("MATCHED %s * %s * %s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name, change_request.value_string);
-		}
-		return INDIGO_OK;
-	} else {
-		for (i = 0; i < property->count; i++) {
-			item = &(property->items[i]);
-			switch (property->type) {
-			case INDIGO_TEXT_VECTOR:
-				printf("%s.%s.%s = \"%s\"\n", property->device, property->name, item->name, item->text.value);
-				break;
-			case INDIGO_NUMBER_VECTOR:
-				printf("%s.%s.%s = %f\n", property->device, property->name, item->name, item->number.value);
-				break;
-			case INDIGO_SWITCH_VECTOR:
-				if (item->sw.value)
-					printf("%s.%s.%s = ON\n", property->device, property->name, item->name);
-				else
-					printf("%s.%s.%s = OFF\n", property->device, property->name, item->name);
-				break;
-			case INDIGO_LIGHT_VECTOR:
-				printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
-				break;
-			case INDIGO_BLOB_VECTOR:
-				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
-				break;
-			}
-		}
-	}
-	return INDIGO_OK;
-}
-
-
-static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+void print_property_string(indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
 	for (i = 0; i < property->count; i++) {
@@ -177,6 +91,80 @@ static indigo_result client_update_property(struct indigo_client *client, struct
 			break;
 		}
 	}
+}
+
+
+static indigo_result client_attach(indigo_client *client) {
+	//indigo_log("attached to INDI bus...");
+	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
+	return INDIGO_OK;
+}
+
+
+static indigo_result client_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+	indigo_item *item;
+	int i;
+	static bool called = false;
+
+	if (!called) {
+		printf("Protocol version = %x.%x\n", property->version >> 8, property->version & 0xff);
+		called = true;
+	}
+
+	if (change_requested) {
+		if (!strcmp(property->device, change_request.device_name) && !strcmp(property->name, change_request.property_name)) {
+			static char *items[INDIGO_MAX_ITEMS];
+			static char *txt_values[INDIGO_MAX_ITEMS];
+			static bool bool_values[INDIGO_MAX_ITEMS];
+			double dbl_values[INDIGO_MAX_ITEMS];
+
+			items[0] = (char *)malloc(INDIGO_NAME_SIZE);
+			strncpy(items[0], change_request.item_name, INDIGO_NAME_SIZE);
+
+			switch (property->type) {
+			case INDIGO_TEXT_VECTOR:
+				txt_values[0] = (char *)malloc(INDIGO_VALUE_SIZE);
+				strncpy(txt_values[0], change_request.value_string, INDIGO_VALUE_SIZE);
+				txt_values[0][INDIGO_VALUE_SIZE-1] = 0;
+				indigo_change_text_property(client, property->device, property->name, 1, (const char **)items, (const char **)txt_values);
+				free(txt_values[0]);
+				break;
+			case INDIGO_NUMBER_VECTOR:
+				dbl_values[0] = strtod(change_request.value_string, NULL);
+				indigo_change_number_property(client, property->device, property->name, 1, (const char **)items, (const double *)dbl_values);
+				break;
+			case INDIGO_SWITCH_VECTOR:
+				if (!strcmp("ON", change_request.value_string))
+					bool_values[0] = true;
+				else if (!strcmp("ON", change_request.value_string))
+					bool_values[0] = false;
+				else {
+					/* should indicate error */
+				}
+				indigo_change_switch_property(client, property->device, property->name, 1, (const char **)items, (const bool *)bool_values);
+				break;
+			case INDIGO_LIGHT_VECTOR:
+				printf("6\n");
+				printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
+				break;
+			case INDIGO_BLOB_VECTOR:
+				printf("7\n");
+				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
+				break;
+			}
+			free(items[0]);
+			printf("MATCHED %s * %s * %s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name, change_request.value_string);
+		}
+		return INDIGO_OK;
+	} else {
+		print_property_string(property, message);
+	}
+	return INDIGO_OK;
+}
+
+
+static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+	print_property_string(property, message);
 	return INDIGO_OK;
 }
 
