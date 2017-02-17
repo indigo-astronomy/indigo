@@ -88,12 +88,13 @@ bool indigo_use_host_suffix = true;
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
 
+char indigo_last_message[1024];
+
 static void log_message(const char *format, va_list args) {
-	static char buffer[1024];
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
-	vsnprintf(buffer, sizeof(buffer), format, args);
-	char *line = buffer;
+	vsnprintf(indigo_last_message, sizeof(indigo_last_message), format, args);
+	char *line = indigo_last_message;
 	if (indigo_use_syslog) {
 		static bool initialize = true;
 		if (initialize)
@@ -103,7 +104,7 @@ static void log_message(const char *format, va_list args) {
 			if (eol)
 				*eol = 0;
 			if (eol > line)
-				syslog (LOG_NOTICE, "%s", buffer);
+				syslog (LOG_NOTICE, "%s", indigo_last_message);
 			syslog (LOG_NOTICE, "%s", line);
 			if (eol)
 				line = eol + 1;

@@ -242,6 +242,11 @@ typedef struct {
 	bool web_socket;			///< connection over WebSocket (RFC6455)
 } indigo_adapter_context;
 
+
+/** Last diagnostic messages.
+ */
+extern char indigo_last_message[1024];
+
 /** Print diagnostic messages on trace level, wrap calls to INDIGO_TRACE() macro.
  */
 extern void indigo_trace(const char *format, ...);
