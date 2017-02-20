@@ -300,11 +300,10 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(DEBUG_PROPERTY);
 	indigo_release_property(SIMULATION_PROPERTY);
 	indigo_release_property(CONFIG_PROPERTY);
-	indigo_device_context *context = DEVICE_CONTEXT;
 	indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
 	indigo_delete_property(device, all_properties, NULL);
 	indigo_release_property(all_properties);
-	free(context);
+	free(DEVICE_CONTEXT);
 	return INDIGO_OK;
 }
 
