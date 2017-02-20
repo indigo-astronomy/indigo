@@ -188,6 +188,7 @@ typedef struct {
 typedef struct indigo_device {
 	char name[INDIGO_NAME_SIZE];        ///< device name
 	void *device_context;               ///< any device specific data
+	void *private_data;                 ///< private data
 	indigo_result last_result;          ///< result of last bus operation
 	indigo_version version;             ///< device version
 

@@ -43,8 +43,7 @@
 
 #define REFRESH_SECONDS (0.5)
 
-#undef PRIVATE_DATA
-#define PRIVATE_DATA        ((nexstar_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA        ((nexstar_private_data *)device->private_data)
 
 
 #define COMMAND_GUIDE_RATE_PROPERTY     (PRIVATE_DATA->command_guide_rate_property)
@@ -476,14 +475,9 @@ static void position_timer_callback(indigo_device *device) {
 
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	nexstar_private_data *private_data = device->device_context;
-	device->device_context = NULL;
-
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
-
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
@@ -521,7 +515,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
@@ -813,12 +807,8 @@ static void guider_handle_guide_rate(indigo_device *device) {
 
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	nexstar_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
-
 		PRIVATE_DATA->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
 		COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (COMMAND_GUIDE_RATE_PROPERTY == NULL)
@@ -834,7 +824,7 @@ static indigo_result guider_attach(indigo_device *device) {
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
@@ -945,14 +935,14 @@ static indigo_device *mount_guider = NULL;
 
 indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = {
-		MOUNT_NEXSTAR_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_NEXSTAR_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
 		indigo_mount_enumerate_properties,
 		mount_change_property,
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
-		MOUNT_NEXSTAR_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_NEXSTAR_GUIDER_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		nexstar_guider_enumerate_properties,
 		guider_change_property,
@@ -977,12 +967,12 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 		mount = malloc(sizeof(indigo_device));
 		assert(mount != NULL);
 		memcpy(mount, &mount_template, sizeof(indigo_device));
-		mount->device_context = private_data;
+		mount->private_data = private_data;
 		indigo_attach_device(mount);
 		mount_guider = malloc(sizeof(indigo_device));
 		assert(mount_guider != NULL);
 		memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
-		mount_guider->device_context = private_data;
+		mount_guider->private_data = private_data;
 		indigo_attach_device(mount_guider);
 		break;
 

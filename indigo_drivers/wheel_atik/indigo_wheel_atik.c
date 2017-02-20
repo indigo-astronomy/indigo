@@ -55,8 +55,7 @@
 #define ATIK_VENDOR_ID                  0x04D8
 #define ATIK_PRODUC_ID                  0x003F
 
-#undef PRIVATE_DATA
-#define PRIVATE_DATA        ((atik_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA        ((atik_private_data *)device->private_data)
 
 typedef struct {
 	hid_device *handle;
@@ -78,11 +77,8 @@ static void wheel_timer_callback(indigo_device *device) {
 
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	atik_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
@@ -91,7 +87,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -150,7 +146,7 @@ static indigo_device *device = NULL;
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device wheel_template = {
-		"ATIK Filter Wheel", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"ATIK Filter Wheel", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
@@ -163,9 +159,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			device = malloc(sizeof(indigo_device));
 			assert(device != NULL);
 			memcpy(device, &wheel_template, sizeof(indigo_device));
-			device->device_context = malloc(sizeof(atik_private_data));
-			assert(device->device_context);
-			memset(device->device_context, 0, sizeof(atik_private_data));
+			atik_private_data *private_data = malloc(sizeof(atik_private_data));
+			assert(private_data != NULL);
+			memset(private_data, 0, sizeof(atik_private_data));
+			device->private_data = private_data;
 			indigo_attach_device(device);
 			break;
 		}
@@ -173,7 +170,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			if (device == NULL)
 				return 0;
 			indigo_detach_device(device);
-			free(device->device_context);
+			free(device->private_data);
 			free(device);
 			device = NULL;
 		}

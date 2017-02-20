@@ -46,8 +46,7 @@
 #include "indigo_driver_xml.h"
 #include "indigo_focuser_fcusb.h"
 
-#undef PRIVATE_DATA
-#define PRIVATE_DATA													((fcusb_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA													((fcusb_private_data *)device->private_data)
 
 #define X_FOCUSER_FREQUENCY_PROPERTY					(PRIVATE_DATA->frequency_property)
 #define X_FOCUSER_FREQUENCY_1_ITEM						(X_FOCUSER_FREQUENCY_PROPERTY->items+0)
@@ -72,11 +71,8 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	fcusb_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- X_FOCUSER_FREQUENCY
 		X_FOCUSER_FREQUENCY_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_FREQUENCY", FOCUSER_MAIN_GROUP, "Frequency", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (X_FOCUSER_FREQUENCY_PROPERTY == NULL)
@@ -107,7 +103,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	libfcusb_debug_level = DEBUG_ENABLED_ITEM->sw.value;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
@@ -197,7 +193,7 @@ static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device focuser_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
 		focuser_enumerate_properties,
 		focuser_change_property,
@@ -216,7 +212,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			assert(device != NULL);
 			memcpy(device, &focuser_template, sizeof(indigo_device));
 			strcpy(device->name, name);
-			device->device_context = private_data;
+			device->private_data = private_data;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] == NULL) {
 					indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);

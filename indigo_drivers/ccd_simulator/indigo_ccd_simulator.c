@@ -40,8 +40,7 @@
 #define TEMP_UPDATE         5.0
 #define STARS               100
 
-#undef PRIVATE_DATA
-#define PRIVATE_DATA        ((simulator_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
 typedef struct {
 	int star_x[STARS], star_y[STARS], star_a[STARS];
@@ -122,13 +121,8 @@ static void ccd_temperature_callback(indigo_device *device) {
 
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-
-	simulator_private_data *private_data = device->device_context;
-	device->device_context = NULL;
-
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = false;
 		SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
@@ -155,16 +149,16 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		// -------------------------------------------------------------------------------- CCD_IMAGE
 		for (int i = 0; i < STARS; i++) {
-			private_data->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions
-			private_data->star_y[i] = rand() % (HEIGHT - 20) + 10;
-			private_data->star_a[i] = 1000 * (rand() % 60);       // and brightness
+			PRIVATE_DATA->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions
+			PRIVATE_DATA->star_y[i] = rand() % (HEIGHT - 20) + 10;
+			PRIVATE_DATA->star_a[i] = 1000 * (rand() % 60);       // and brightness
 		}
 		// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
 		CCD_COOLER_PROPERTY->hidden = false;
 		CCD_TEMPERATURE_PROPERTY->hidden = false;
 		CCD_COOLER_POWER_PROPERTY->hidden = false;
 		indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
-		private_data->target_temperature = private_data->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
+		PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
 		CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_COOLER_POWER_ITEM->number.value = 0;
 		// --------------------------------------------------------------------------------
@@ -176,7 +170,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -270,11 +264,8 @@ static void guider_timer_callback(indigo_device *device) {
 
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	simulator_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -283,7 +274,7 @@ static indigo_result guider_attach(indigo_device *device) {
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -355,11 +346,8 @@ static void wheel_timer_callback(indigo_device *device) {
 
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	simulator_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- WHEEL_SLOT, WHEEL_SLOT_NAME
 		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = FILTER_COUNT;
 		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot = 1;
@@ -372,7 +360,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -433,11 +421,8 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	simulator_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = 1;
 		// --------------------------------------------------------------------------------
@@ -449,7 +434,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -517,35 +502,35 @@ static indigo_device *guider_guider = NULL;
 
 indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device imager_camera_template = {
-		CCD_SIMULATOR_IMAGER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_IMAGER_CAMERA_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device imager_wheel_template = {
-		CCD_SIMULATOR_WHEEL_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_WHEEL_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
 		wheel_detach
 	};
 	static indigo_device imager_focuser_template = {
-		CCD_SIMULATOR_FOCUSER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_FOCUSER_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,
 		focuser_detach
 	};
 	static indigo_device guider_camera_template = {
-		CCD_SIMULATOR_GUIDER_CAMERA_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_GUIDER_CAMERA_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		CCD_SIMULATOR_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_GUIDER_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -567,27 +552,27 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		imager_ccd = malloc(sizeof(indigo_device));
 		assert(imager_ccd != NULL);
 		memcpy(imager_ccd, &imager_camera_template, sizeof(indigo_device));
-		imager_ccd->device_context = private_data;
+		imager_ccd->private_data = private_data;
 		indigo_attach_device(imager_ccd);
 		imager_wheel = malloc(sizeof(indigo_device));
 		assert(imager_wheel != NULL);
 		memcpy(imager_wheel, &imager_wheel_template, sizeof(indigo_device));
-		imager_wheel->device_context = private_data;
+		imager_wheel->private_data = private_data;
 		indigo_attach_device(imager_wheel);
 		imager_focuser = malloc(sizeof(indigo_device));
 		assert(imager_focuser != NULL);
 		memcpy(imager_focuser, &imager_focuser_template, sizeof(indigo_device));
-		imager_focuser->device_context = private_data;
+		imager_focuser->private_data = private_data;
 		indigo_attach_device(imager_focuser);
 		guider_ccd = malloc(sizeof(indigo_device));
 		assert(guider_ccd != NULL);
 		memcpy(guider_ccd, &guider_camera_template, sizeof(indigo_device));
-		guider_ccd->device_context = private_data;
+		guider_ccd->private_data = private_data;
 		indigo_attach_device(guider_ccd);		
 		guider_guider = malloc(sizeof(indigo_device));
 		assert(guider_guider != NULL);
 		memcpy(guider_guider, &guider_template, sizeof(indigo_device));
-		guider_guider->device_context = private_data;
+		guider_guider->private_data = private_data;
 		indigo_attach_device(guider_guider);
 		break;
 

@@ -36,8 +36,7 @@
 
 #include "indigo_mount_simulator.h"
 
-#undef PRIVATE_DATA
-#define PRIVATE_DATA        ((simulator_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
 typedef struct {
 	bool parked;
@@ -77,13 +76,8 @@ static void slew_timer_callback(indigo_device *device) {
 
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	
-	simulator_private_data *private_data = device->device_context;
-	device->device_context = NULL;
-	
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 			// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = false;
 		SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
@@ -109,7 +103,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- CONNECTION
@@ -208,11 +202,8 @@ static void guider_timer_callback(indigo_device *device) {
 
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	simulator_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -221,7 +212,7 @@ static indigo_result guider_attach(indigo_device *device) {
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- CONNECTION
@@ -285,14 +276,14 @@ static indigo_device *mount_guider = NULL;
 
 indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = {
-		MOUNT_SIMULATOR_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_SIMULATOR_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
 		indigo_mount_enumerate_properties,
 		mount_change_property,
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
-		MOUNT_SIMULATOR_GUIDER_NAME, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_SIMULATOR_GUIDER_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -315,12 +306,12 @@ indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_
 			mount = malloc(sizeof(indigo_device));
 			assert(mount != NULL);
 			memcpy(mount, &mount_template, sizeof(indigo_device));
-			mount->device_context = private_data;
+			mount->private_data = private_data;
 			indigo_attach_device(mount);
 			mount_guider = malloc(sizeof(indigo_device));
 			assert(mount_guider != NULL);
 			memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
-			mount_guider->device_context = private_data;
+			mount_guider->private_data = private_data;
 			indigo_attach_device(mount_guider);
 			break;
 			

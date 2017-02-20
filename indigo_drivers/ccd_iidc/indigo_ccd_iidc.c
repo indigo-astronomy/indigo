@@ -48,8 +48,7 @@
 //#undef INDIGO_DRIVER_DEBUG
 //#define INDIGO_DRIVER_DEBUG(c) c
 
-#undef PRIVATE_DATA
-#define PRIVATE_DATA        ((iidc_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA        ((iidc_private_data *)device->private_data)
 
 struct {
 	char *name;
@@ -201,11 +200,8 @@ static void ccd_temperature_callback(indigo_device *device) {
 
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	iidc_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		// -------------------------------------------------------------------------------- CCD_MODE, CCD_INFO, CCD_FRAME
 		dc1394error_t err;
 		dc1394video_modes_t modes;
@@ -287,7 +283,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
@@ -438,7 +434,7 @@ static dc1394_t *context;
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
@@ -492,12 +488,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						memset(private_data, 0, sizeof(iidc_private_data));
 						private_data->camera = camera;
 						private_data->guid = guid;
-						libusb_ref_device(dev);
 						indigo_device *device = malloc(sizeof(indigo_device));
 						assert(device != NULL);
 						memcpy(device, &ccd_template, sizeof(indigo_device));
 						strcpy(device->name, camera->model);
-						device->device_context = private_data;
+						device->private_data = private_data;
 						for (int j = 0; j < MAX_DEVICES; j++) {
 							if (devices[j] == NULL) {
 								indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
