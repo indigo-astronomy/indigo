@@ -87,7 +87,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 	assert(device != NULL);
 	if (DEVICE_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_device_context));
-		assert(device->device_context != NULL);
+		assert(DEVICE_CONTEXT != NULL);
 		memset(device->device_context, 0, sizeof(indigo_device_context));
 	}
 	if (DEVICE_CONTEXT != NULL) {
@@ -192,7 +192,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 
 indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property) && !CONNECTION_PROPERTY->hidden)
 		indigo_define_property(device, CONNECTION_PROPERTY, NULL);
 	if (indigo_property_match(INFO_PROPERTY, property) && !INFO_PROPERTY->hidden)
@@ -212,7 +212,7 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
 
 indigo_result indigo_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -304,7 +304,6 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
 	indigo_delete_property(device, all_properties, NULL);
 	indigo_release_property(all_properties);
-	device->device_context = context->private_data;
 	free(context);
 	return INDIGO_OK;
 }

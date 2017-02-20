@@ -54,8 +54,7 @@
 
 #define CCD_ADVANCED_GROUP         "Advanced"
 
-#undef PRIVATE_DATA
-#define PRIVATE_DATA               ((asi_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA               ((asi_private_data *)device->private_data)
 
 #define PIXEL_FORMAT_PROPERTY      (PRIVATE_DATA->pixel_format_property)
 #define RAW8_NAME                  "RAW 8"
@@ -451,11 +450,8 @@ static void guider_timer_callback_dec(indigo_device *device) {
 
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	asi_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, ASI_MAX_FORMATS);
@@ -674,7 +670,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
@@ -841,11 +837,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	asi_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		//INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -854,7 +847,7 @@ static indigo_result guider_attach(indigo_device *device) {
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	ASI_ERROR_CODE res;
 	int id = PRIVATE_DATA->dev_id;
@@ -1041,14 +1034,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	ASI_CAMERA_INFO info;
 
 	static indigo_device ccd_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		asi_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -1086,12 +1079,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				memcpy(device, &ccd_template, sizeof(indigo_device));
 				sprintf(device->name, "%s #%d", info.Name, id);
 				INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
-				void *private_data_ptr = malloc(sizeof(asi_private_data));
-				device->device_context = private_data_ptr;
-				assert(device->device_context);
-				memset(device->device_context, 0, sizeof(asi_private_data));
-				((asi_private_data*)device->device_context)->dev_id = id;
-				memcpy(&(((asi_private_data*)device->device_context)->info), &info, sizeof(ASI_CAMERA_INFO));
+				asi_private_data *private_data = malloc(sizeof(asi_private_data));
+				assert(private_data);
+				memset(private_data, 0, sizeof(asi_private_data));
+				private_data->dev_id = id;
+				memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
+				device->private_data = private_data;
 				indigo_attach_device(device);
 				devices[slot]=device;
 
@@ -1106,8 +1099,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					memcpy(device, &guider_template, sizeof(indigo_device));
 					sprintf(device->name, "%s Guider #%d", info.Name, id);
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
-					device->device_context = private_data_ptr;
-					assert(device->device_context);
+					device->private_data = private_data;
 					indigo_attach_device(device);
 					devices[slot]=device;
 				}
@@ -1117,7 +1109,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			int id, slot;
 			bool removed = false;
-			asi_private_data *device_context = NULL;
+			asi_private_data *private_data = NULL;
 			while ((id = find_unplugged_device_id()) != -1) {
 				slot = find_device_slot(id);
 				while (slot >= 0) {
@@ -1126,8 +1118,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						return 0;
 
 					indigo_detach_device(*device);
-					if ((*device)->device_context) {
-						device_context = (*device)->device_context;
+					if ((*device)->private_data) {
+						private_data = (*device)->private_data;
 					}
 					free(*device);
 					*device = NULL;
@@ -1135,10 +1127,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					slot = find_device_slot(id);
 				}
 
-				if (device_context) {
+				if (private_data) {
 					ASICloseCamera(id);
-					free(device_context);
-					device_context = NULL;
+					free(private_data);
+					private_data = NULL;
 				}
 			}
 			if (!removed) {

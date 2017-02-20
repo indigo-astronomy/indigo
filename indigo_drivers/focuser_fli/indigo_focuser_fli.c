@@ -52,8 +52,7 @@
 #include "indigo_focuser_fli.h"
 
 
-#undef PRIVATE_DATA
-#define PRIVATE_DATA													((fli_private_data *)DEVICE_CONTEXT->private_data)
+#define PRIVATE_DATA													((fli_private_data *)device->private_data)
 
 typedef struct {
 	flidev_t dev_id;
@@ -111,13 +110,9 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
-	fli_private_data *private_data = device->device_context;
-	device->device_context = NULL;
+	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_CONTEXT->private_data = private_data;
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
-
 		/* Use all info property fields */
 		INFO_PROPERTY->count = 7;
 		FOCUSER_SPEED_PROPERTY->hidden = true;
@@ -133,7 +128,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	assert(device->device_context != NULL);
+	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	long res;
 	flidev_t id;
@@ -423,7 +418,7 @@ static int find_unplugged_device(char *fname) {
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 
 	static indigo_device focuser_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,
@@ -455,13 +450,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			memcpy(device, &focuser_template, sizeof(indigo_device));
 			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
 			INDIGO_LOG(indigo_log("indigo_focuser_fli: '%s' @ %s attached.", device->name , fli_file_names[idx]));
-			device->device_context = malloc(sizeof(fli_private_data));
-			assert(device->device_context);
-			memset(device->device_context, 0, sizeof(fli_private_data));
-			((fli_private_data*)device->device_context)->dev_id = 0;
-			((fli_private_data*)device->device_context)->domain = fli_domains[idx];
-			strncpy(((fli_private_data*)device->device_context)->dev_file_name, fli_file_names[idx], MAX_PATH);
-			strncpy(((fli_private_data*)device->device_context)->dev_name, fli_dev_names[idx], MAX_PATH);
+			fli_private_data *private_data = malloc(sizeof(fli_private_data));
+			assert(private_data);
+			memset(private_data, 0, sizeof(fli_private_data));
+			private_data->dev_id = 0;
+			private_data->domain = fli_domains[idx];
+			strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
+			strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
+			device->private_data = private_data;
 			indigo_attach_device(device);
 			devices[slot]=device;
 			break;
@@ -472,12 +468,13 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			bool removed = false;
 			while ((id = find_unplugged_device(file_name)) != -1) {
 				slot = find_device_slot(file_name);
-				if (slot < 0) continue;
+				if (slot < 0)
+					continue;
 				indigo_device **device = &devices[slot];
 				if (*device == NULL)
 					return 0;
 				indigo_detach_device(*device);
-				free((*device)->device_context);
+				free((*device)->private_data);
 				free(*device);
 				libusb_unref_device(dev);
 				*device = NULL;
@@ -496,9 +493,10 @@ static void remove_all_devices() {
 	int i;
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device **device = &devices[i];
-		if (*device == NULL) continue;
+		if (*device == NULL)
+			continue;
 		indigo_detach_device(*device);
-		free((*device)->device_context);
+		free((*device)->private_data);
 		free(*device);
 		*device = NULL;
 	}

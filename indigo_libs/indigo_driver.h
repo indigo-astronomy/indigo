@@ -49,10 +49,6 @@
  */
 #define DEVICE_CONTEXT                ((indigo_device_context *)device->device_context)
 
-/** Private data pointer.
- */
-#define PRIVATE_DATA                  (DEVICE_CONTEXT->private_data)
-
 /** CONNECTION property pointer, property is mandatory, property change request handler should set property items and state and call indigo_device_change_property() on exit.
  */
 #define CONNECTION_PROPERTY           (DEVICE_CONTEXT->connection_property)
@@ -203,7 +199,6 @@ typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_
 /** Device context structure.
  */
 typedef struct {
-	void *private_data;                       ///< private data
 	int property_save_file_handle;            ///< handle for property save
 	indigo_timer *timers;											///< active timer list
 	indigo_property *connection_property;     ///< CONNECTION property pointer
