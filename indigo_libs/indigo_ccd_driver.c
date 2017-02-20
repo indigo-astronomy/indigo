@@ -640,6 +640,16 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			free(raw);
 		}
 		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+		indigo_raw_header *header = (indigo_raw_header *)(data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
+		if (byte_per_pixel == 1)
+			header->signature = INDIGO_RAW_MONO8;
+		else if (byte_per_pixel == 2)
+			header->signature = INDIGO_RAW_MONO16;
+		else if (byte_per_pixel == 3)
+			header->signature = INDIGO_RAW_RGB24;
+		header->width = frame_width;
+		header->height = frame_height;
 	} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
 		INDIGO_DEBUG(clock_t start = clock());
 		unsigned char *mem = NULL;
@@ -767,12 +777,12 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			if (handle) {
 				if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-					if (!indigo_write(handle, data, FITS_HEADER_SIZE + blobsize)) {
+					if (!indigo_write(handle, data, blobsize + FITS_HEADER_SIZE)) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
 				} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-					if (!indigo_write(handle, data + FITS_HEADER_SIZE, blobsize)) {
+					if (!indigo_write(handle, data + FITS_HEADER_SIZE - sizeof(indigo_raw_header), blobsize + sizeof(indigo_raw_header))) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
 					}
@@ -800,8 +810,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			CCD_IMAGE_ITEM->blob.size = FITS_HEADER_SIZE + blobsize;
 			strncpy(CCD_IMAGE_ITEM->blob.format, ".fits", INDIGO_NAME_SIZE);
 		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-			CCD_IMAGE_ITEM->blob.value = data + FITS_HEADER_SIZE;
-			CCD_IMAGE_ITEM->blob.size = blobsize;
+			CCD_IMAGE_ITEM->blob.value = data + FITS_HEADER_SIZE - sizeof(indigo_raw_header);
+			CCD_IMAGE_ITEM->blob.size = blobsize + sizeof(indigo_raw_header);
 			strncpy(CCD_IMAGE_ITEM->blob.format, ".raw", INDIGO_NAME_SIZE);
 		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
 			CCD_IMAGE_ITEM->blob.value = data;

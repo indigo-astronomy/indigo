@@ -277,6 +277,21 @@
  */
 #define FITS_HEADER_SIZE  2880
 
+/** RAW header.
+ */
+
+typedef struct {
+	unsigned signature; // 8bit mono = RAW1 = 0x31574152, 16bit mono = RAW2 = 0x32574152, 24bit RGB = RAW3 = 0x33574152
+	unsigned width;
+	unsigned height;
+} indigo_raw_header;
+
+/**
+ RAW image type
+ */
+
+typedef enum { INDIGO_RAW_MONO8 = 0x31574152, INDIGO_RAW_MONO16 = 0x32574152, INDIGO_RAW_RGB24 = 0x33574152 } indigo_raw_type;
+
 /** CCD device context structure.
  */
 typedef struct {
