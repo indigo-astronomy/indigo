@@ -648,9 +648,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 		indigo_raw_header *header = (indigo_raw_header *)(data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
-		if (naxis == 1 && byte_per_pixel == 1)
+		if (naxis == 2 && byte_per_pixel == 1)
 			header->signature = INDIGO_RAW_MONO8;
-		else if (naxis == 1 && byte_per_pixel == 2)
+		else if (naxis == 2 && byte_per_pixel == 2)
 			header->signature = INDIGO_RAW_MONO16;
 		else if (naxis == 3 && byte_per_pixel == 1)
 			header->signature = INDIGO_RAW_RGB24;
