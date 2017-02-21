@@ -198,6 +198,7 @@ int main(int argc, const char * argv[]) {
 			perror("parse_property_string()");
 			return 1;
 		}
+		printf("%s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name,  change_request.value_string);
 		change_requested = true;
 	}
 
