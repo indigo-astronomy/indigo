@@ -560,7 +560,7 @@ static void errorlog_handler(dc1394log_t type, const char *message, void* user) 
 }
 
 static void debuglog_handler(dc1394log_t type, const char *message, void* user) {
-	INDIGO_DEBUG_DRIVER(indigo_log("dc1394: %s", message));
+	INDIGO_DEBUG_DRIVER(indigo_debug("dc1394: %s", message));
 }
 
 //#ifdef INDIGO_MACOS
