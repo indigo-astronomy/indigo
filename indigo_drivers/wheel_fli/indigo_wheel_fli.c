@@ -216,6 +216,8 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #define MAX_DEVICES                   32
 
 static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
@@ -339,6 +341,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	struct libusb_device_descriptor descriptor;
 
+	pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
@@ -397,6 +400,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 		}
 	}
+	pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 
