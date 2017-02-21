@@ -204,10 +204,11 @@ int main(int argc, const char * argv[]) {
 
 	indigo_start();
 	indigo_attach_client(&client);
-	indigo_connect_server("localhost", 7624);
+	indigo_server_entry *server;
+	indigo_connect_server("localhost", 7624, &server);
 	sleep(2);
 	indigo_stop();
-	indigo_disconnect_server("localhost", 7624);
+	indigo_disconnect_server(server);
 	return 0;
 }
 
