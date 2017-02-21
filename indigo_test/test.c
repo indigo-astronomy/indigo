@@ -112,11 +112,11 @@ int main(int argc, const char * argv[]) {
 	indigo_client *protocol_adapter = indigo_json_device_adapter(0, 1, 0);
 	indigo_attach_client(protocol_adapter);
 
-	
-	indigo_add_driver(&indigo_ccd_simulator, true);
+	indigo_driver_entry *driver;
+	indigo_add_driver(&indigo_ccd_simulator, true, &driver);
 	indigo_attach_client(&test);
 	sleep(1000);
-	indigo_remove_driver(&indigo_ccd_simulator);
+	indigo_remove_driver(driver);
 	indigo_stop();
 	return 0;
 }
