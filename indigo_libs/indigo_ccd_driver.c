@@ -500,17 +500,24 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	int naxis = 2;
 	int size = frame_width * frame_height;
 	int blobsize = byte_per_pixel * size;
-	if (byte_per_pixel == 3) {
-		byte_per_pixel = 1;
-		naxis = 3;
-		blobsize = 3 * size;
-	}
 	if (byte_per_pixel == 2 && !little_endian) {
 		short *raw = (short *)(data + FITS_HEADER_SIZE);
 		int size = CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value;
 		for (int i = 0; i < size; i++) {
 			int value = *raw;
 			*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+		}
+	} else if (byte_per_pixel == 3) {
+		byte_per_pixel = 1;
+		naxis = 3;
+		blobsize = 3 * size;
+		unsigned char *b8 = data + FITS_HEADER_SIZE;
+		for (int i = 0; i < size; i++) {
+			unsigned char b = *b8;
+			unsigned char r = *(b8 + 2);
+			*b8 = r;
+			*(b8 + 2) = b;
+			b8 += 3;
 		}
 	}
 
@@ -631,9 +638,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			unsigned char *blue = raw + 2 * size;
 			unsigned char *tmp = data + FITS_HEADER_SIZE;
 			for (int i = 0; i < size; i++) {
-				*blue++ = *tmp++;
-				*green++ = *tmp++;
 				*red++ = *tmp++;
+				*green++ = *tmp++;
+				*blue++ = *tmp++;
 			}
 			memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
 			free(raw);
@@ -641,11 +648,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 		indigo_raw_header *header = (indigo_raw_header *)(data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
-		if (byte_per_pixel == 1)
+		if (naxis == 1 && byte_per_pixel == 1)
 			header->signature = INDIGO_RAW_MONO8;
-		else if (byte_per_pixel == 2)
+		else if (naxis == 1 && byte_per_pixel == 2)
 			header->signature = INDIGO_RAW_MONO16;
-		else if (byte_per_pixel == 3)
+		else if (naxis == 3 && byte_per_pixel == 1)
 			header->signature = INDIGO_RAW_RGB24;
 		header->width = frame_width;
 		header->height = frame_height;
@@ -700,16 +707,6 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			cinfo.input_components = 1;
 			cinfo.in_color_space = JCS_GRAYSCALE;
 		} else if (naxis == 3 ) {
-			if (byte_per_pixel == 1) {
-				unsigned char *b8 = data + FITS_HEADER_SIZE;
-				for (int i = 0; i < size; i++) {
-					unsigned char b = *b8;
-					unsigned char r = *(b8 + 2);
-					*b8 = r;
-					*(b8 + 2) = b;
-					b8 += 3;
-				}
-			}
 			cinfo.input_components = 3;
 			cinfo.in_color_space = JCS_RGB;
 		}
