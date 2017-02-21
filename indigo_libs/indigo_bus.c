@@ -752,13 +752,13 @@ indigo_result indigo_change_switch_property(indigo_client *client, const char *d
 }
 
 indigo_result indigo_device_connect(indigo_client *client, char *device) {
-	static char *items[] = { CONNECTION_CONNECTED_ITEM_NAME, CONNECTION_DISCONNECTED_ITEM_NAME };
+	static const char *items[] = { CONNECTION_CONNECTED_ITEM_NAME, CONNECTION_DISCONNECTED_ITEM_NAME };
 	static bool values[] = { true, false };
 	return indigo_change_switch_property(client, device, CONNECTION_PROPERTY_NAME, 2, items, values);
 }
 
 indigo_result indigo_device_disconnect(indigo_client *client, char *device) {
-	static char *items[] = { CONNECTION_CONNECTED_ITEM_NAME, CONNECTION_DISCONNECTED_ITEM_NAME };
+	static const char *items[] = { CONNECTION_CONNECTED_ITEM_NAME, CONNECTION_DISCONNECTED_ITEM_NAME };
 	static bool values[] = { false, true };
 	return indigo_change_switch_property(client, device, CONNECTION_PROPERTY_NAME, 2, items, values);
 }
