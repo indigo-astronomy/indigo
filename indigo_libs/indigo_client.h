@@ -95,11 +95,11 @@ extern indigo_result indigo_unload_driver(const char *name);
 
 /** Connect and start thread for remote server.
  */
-extern indigo_result indigo_connect_server(const char *host, int port);
+extern indigo_result indigo_connect_server(const char *host, int port, indigo_server_entry **server);
 
 /** Disconnect and stop thread for remote server.
  */
-extern indigo_result indigo_disconnect_server(const char *host, int port);
+extern indigo_result indigo_disconnect_server(indigo_server_entry *server);
 
 /** Start thread for subprocess.
  */

@@ -201,20 +201,20 @@ void *server_thread(indigo_server_entry *server) {
 	return NULL;
 }
 
-indigo_result indigo_connect_server(const char *host, int port) {
+indigo_result indigo_connect_server(const char *host, int port, indigo_server_entry **server) {
 	int empty_slot = used_server_slots;
 	for (int dc = 0; dc < used_server_slots;  dc++) {
 		if (indigo_available_servers[dc].thread_started && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port) {
 			INDIGO_LOG(indigo_log("Server %s:%d already connected.", indigo_available_servers[dc].host, indigo_available_servers[dc].port));
+			if (server != NULL)
+				*server = &indigo_available_servers[dc];
 			return INDIGO_OK;
 		} else if (!indigo_available_servers[dc].thread_started) {
 			empty_slot = dc;
 		}
 	}
-
 	if (empty_slot > INDIGO_MAX_SERVERS)
 		return INDIGO_TOO_MANY_ELEMENTS;
-
 	strncpy(indigo_available_servers[empty_slot].host, host, INDIGO_NAME_SIZE);
 	indigo_available_servers[empty_slot].port = port;
 	indigo_available_servers[empty_slot].socket = 0;
@@ -223,24 +223,19 @@ indigo_result indigo_connect_server(const char *host, int port) {
 		return INDIGO_FAILED;
 	}
 	indigo_available_servers[empty_slot].thread_started = true;
-
+	if (server != NULL)
+		*server = &indigo_available_servers[empty_slot];
 	if (empty_slot == used_server_slots)
 		used_server_slots++;
-
 	return INDIGO_OK;
 }
 
-indigo_result indigo_disconnect_server(const char *host, int port) {
-	for (int dc = 0; dc < used_server_slots;  dc++) {
-		if (indigo_available_servers[dc].thread_started && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port) {
-			if (indigo_available_servers[dc].socket > 0)
-				close(indigo_available_servers[dc].socket);
-			indigo_available_servers[dc].socket = -1;
-			indigo_available_servers[dc].thread_started = false;
-			return INDIGO_OK;
-		}
-	}
-	return INDIGO_NOT_FOUND;
+indigo_result indigo_disconnect_server(indigo_server_entry *server) {
+	if (server->socket > 0)
+		close(server->socket);
+	server->socket = -1;
+	server->thread_started = false;
+	return INDIGO_OK;
 }
 
 void *subprocess_thread(indigo_subprocess_entry *subprocess) {

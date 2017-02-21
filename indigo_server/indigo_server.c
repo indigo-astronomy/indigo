@@ -272,7 +272,7 @@ static void server_main(int argc, const char * argv[]) {
 				*colon++ = 0;
 				port = atoi(colon);
 			}
-			indigo_connect_server(host, port);
+			indigo_connect_server(host, port, NULL);
 			i++;
 		} else if ((!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indi-driver")) && i < argc - 1) {
 			char executable[INDIGO_NAME_SIZE];
@@ -328,7 +328,7 @@ static void server_main(int argc, const char * argv[]) {
 	}
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		if (indigo_available_servers[i].thread_started)
-			indigo_disconnect_server(indigo_available_servers[i].host, indigo_available_servers[i].port);
+			indigo_disconnect_server(&indigo_available_servers[i]);
 	}
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		if (indigo_available_subprocesses[i].thread_started)
