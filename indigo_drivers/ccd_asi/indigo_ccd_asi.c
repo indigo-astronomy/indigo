@@ -1085,7 +1085,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				private_data->dev_id = id;
 				memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
 				device->private_data = private_data;
-				indigo_attach_device(device);
+				//indigo_attach_device(device);
+				indigo_async((void *)(void *)indigo_attach_device, device);
 				devices[slot]=device;
 
 				if (info.ST4Port) {
@@ -1100,7 +1101,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					sprintf(device->name, "%s Guider #%d", info.Name, id);
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
 					device->private_data = private_data;
-					indigo_attach_device(device);
+					//indigo_attach_device(device);
+					indigo_async((void *)(void *)indigo_attach_device, device);
 					devices[slot]=device;
 				}
 			}
