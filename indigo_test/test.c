@@ -59,7 +59,7 @@ static indigo_result test_update_property(struct indigo_client *client, struct i
 			if (!connected) {
 				connected = true;
 				indigo_log("connected...");
-				static char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+				static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
 				static double values[] = { 3.0 };
 				indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
 			}
