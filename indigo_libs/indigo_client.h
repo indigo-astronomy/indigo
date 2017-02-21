@@ -42,6 +42,7 @@ typedef struct {
 	char name[INDIGO_NAME_SIZE];            ///< driver name (entry point name)
 	driver_entry_point driver;              ///< driver entry point
 	void *dl_handle;                        ///< dynamic library handle (NULL for statically linked driver)
+	bool initialized;												///< driver is initialized
 } indigo_driver_entry;
 
 /** Remote server entry type.
@@ -79,19 +80,15 @@ extern indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS]
 
 /** Add statically linked driver.
  */
-extern indigo_result indigo_add_driver(driver_entry_point driver, bool init);
+extern indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indigo_driver_entry **driver);
 
-/** Remove statically linked driver.
+/** Remove statically linked driver or remove & unload dynamically linked driver
  */
-extern indigo_result indigo_remove_driver(driver_entry_point driver);
+extern indigo_result indigo_remove_driver(indigo_driver_entry *driver);
 
 /** Load & add dynamically linked driver.
  */
-extern indigo_result indigo_load_driver(const char *name, bool init);
-
-/** Remove & unload dynamically linked driver.
- */
-extern indigo_result indigo_unload_driver(const char *name);
+extern indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entry **driver);
 
 /** Connect and start thread for remote server.
  */
@@ -103,10 +100,10 @@ extern indigo_result indigo_disconnect_server(indigo_server_entry *server);
 
 /** Start thread for subprocess.
  */
-extern indigo_result indigo_start_subprocess(const char *executable);
+extern indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess);
 
 /** Stop thread for subprocess.
  */
-extern indigo_result indigo_kill_subprocess(const char *executable);
+extern indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess);
 
 #endif /* indigo_client_h */

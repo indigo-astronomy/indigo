@@ -38,6 +38,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <assert.h>
 
 #include "indigo_client_xml.h"
 #include "indigo_client.h"
@@ -50,13 +51,15 @@ static int used_driver_slots = 0;
 static int used_server_slots = 0;
 static int used_subprocess_slots = 0;
 
-static indigo_result add_driver(driver_entry_point driver, void *dl_handle, bool init) {
+static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle, bool init, indigo_driver_entry **driver) {
 	int empty_slot = used_driver_slots; /* the first slot after the last used is a good candidate */
 	for (int dc = 0; dc < used_driver_slots;  dc++) {
-		if (indigo_available_drivers[dc].driver == driver) {
+		if (indigo_available_drivers[dc].driver == entry_point) {
 			INDIGO_LOG(indigo_log("Driver %s already loaded.", indigo_available_drivers[dc].name));
 			if (dl_handle != NULL)
 				dlclose(dl_handle);
+			if (driver != NULL)
+				*driver = &indigo_available_drivers[dc];
 			return INDIGO_OK;
 		} else if (indigo_available_drivers[dc].driver == NULL) {
 			empty_slot = dc; /* if there is a gap - fill it */
@@ -70,23 +73,43 @@ static indigo_result add_driver(driver_entry_point driver, void *dl_handle, bool
 	}
 
 	indigo_driver_info info;
-	driver(INDIGO_DRIVER_INFO, &info);
+	entry_point(INDIGO_DRIVER_INFO, &info);
 	strncpy(indigo_available_drivers[empty_slot].description, info.description, INDIGO_NAME_SIZE); //TO BE CHANGED - DRIVER SHOULD REPORT NAME!!!
 	strncpy(indigo_available_drivers[empty_slot].name, info.name, INDIGO_NAME_SIZE);
-	indigo_available_drivers[empty_slot].driver = driver;
+	indigo_available_drivers[empty_slot].driver = entry_point;
 	indigo_available_drivers[empty_slot].dl_handle = dl_handle;
 	INDIGO_LOG(indigo_log("Driver %s %d.%d.%d.%d loaded.", info.name, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version)));
 
 	if (empty_slot == used_driver_slots)
 		used_driver_slots++; /* if we are not filling a gap - increase used_slots */
 
-	if (init)
-		return driver(INDIGO_DRIVER_INIT, NULL);
+	if (driver != NULL)
+		*driver = &indigo_available_drivers[empty_slot];
+
+	if (init) {
+		int result = entry_point(INDIGO_DRIVER_INIT, NULL);
+		indigo_available_drivers[empty_slot].initialized = result == INDIGO_OK;
+		return result;
+	}
 	return INDIGO_OK;
 }
 
-indigo_result indigo_add_driver(driver_entry_point driver, bool init) {
-	return add_driver(driver, NULL, init);
+indigo_result indigo_remove_driver(indigo_driver_entry *driver) {
+	assert(driver != NULL);
+	driver->driver(INDIGO_DRIVER_SHUTDOWN, NULL); /* deregister */
+	if (driver->dl_handle) {
+		dlclose(driver->dl_handle);
+	}
+	INDIGO_LOG(indigo_log("Driver %s unloaded.", driver->name));
+	driver->description[0] = '\0';
+	driver->name[0] = '\0';
+	driver->driver = NULL;
+	driver->dl_handle = NULL;
+	return INDIGO_OK;
+}
+
+indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indigo_driver_entry **driver) {
+	return add_driver(entry_point, NULL, init, driver);
 }
 
 #if defined(INDIGO_MACOS)
@@ -95,64 +118,35 @@ indigo_result indigo_add_driver(driver_entry_point driver, bool init) {
 #define SO_NAME ".so"
 #endif
 
-indigo_result indigo_load_driver(const char *name, bool init) {
+indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entry **driver) {
 	char driver_name[INDIGO_NAME_SIZE];
 	char so_name[INDIGO_NAME_SIZE];
 	char *entry_point_name, *cp;
 	void *dl_handle;
-	driver_entry_point driver;
-
+	driver_entry_point entry_point;
+	
 	strncpy(driver_name, name, sizeof(driver_name));
 	strncpy(so_name, name, sizeof(so_name));
-
+	
 	entry_point_name = basename(driver_name);
 	cp = strchr(entry_point_name, '.');
 	if (cp) *cp = '\0';
 	else strncat(so_name, SO_NAME, INDIGO_NAME_SIZE);
-
+	
 	dl_handle = dlopen(so_name, RTLD_LAZY);
 	if (!dl_handle) {
 		const char* dlsym_error = dlerror();
 		INDIGO_LOG(indigo_log("Driver %s can't be loaded (%s).", entry_point_name, dlsym_error));
 		return INDIGO_FAILED;
 	}
-	driver = dlsym(dl_handle, entry_point_name);
+	entry_point = dlsym(dl_handle, entry_point_name);
 	const char* dlsym_error = dlerror();
 	if (dlsym_error) {
 		INDIGO_LOG(indigo_log("Can't load %s() (%s)", entry_point_name, dlsym_error));
 		dlclose(dl_handle);
 		return INDIGO_NOT_FOUND;
 	}
-	return add_driver(driver, dl_handle, init);
-}
-
-indigo_result remove_driver(int dc) {
-	indigo_available_drivers[dc].driver(INDIGO_DRIVER_SHUTDOWN, NULL); /* deregister */
-	if (indigo_available_drivers[dc].dl_handle) {
-		dlclose(indigo_available_drivers[dc].dl_handle);
-	}
-	INDIGO_LOG(indigo_log("Driver %s unloaded.", indigo_available_drivers[dc].name));
-	indigo_available_drivers[dc].description[0] = '\0';
-	indigo_available_drivers[dc].name[0] = '\0';
-	indigo_available_drivers[dc].driver = NULL;
-	indigo_available_drivers[dc].dl_handle = NULL;
-	return INDIGO_OK;
-}
-
-indigo_result indigo_remove_driver(driver_entry_point driver) {
-	for (int dc = 0; dc < used_driver_slots; dc++)
-		if (indigo_available_drivers[dc].driver == driver)
-			return remove_driver(dc);
-	return INDIGO_NOT_FOUND;
-}
-
-indigo_result indigo_unload_driver(const char *entry_point_name) {
-	if (entry_point_name[0] == '\0') return INDIGO_OK;
-	for (int dc = 0; dc < used_driver_slots; dc++)
-		if (!strncmp(indigo_available_drivers[dc].name, entry_point_name, INDIGO_NAME_SIZE))
-			return remove_driver(dc);
-	INDIGO_LOG(indigo_log("Driver %s not found. Is it loaded?", entry_point_name));
-	return INDIGO_NOT_FOUND;
+	return add_driver(entry_point, dl_handle, init, driver);
 }
 
 void *server_thread(indigo_server_entry *server) {
@@ -223,14 +217,15 @@ indigo_result indigo_connect_server(const char *host, int port, indigo_server_en
 		return INDIGO_FAILED;
 	}
 	indigo_available_servers[empty_slot].thread_started = true;
-	if (server != NULL)
-		*server = &indigo_available_servers[empty_slot];
 	if (empty_slot == used_server_slots)
 		used_server_slots++;
+	if (server != NULL)
+		*server = &indigo_available_servers[empty_slot];
 	return INDIGO_OK;
 }
 
 indigo_result indigo_disconnect_server(indigo_server_entry *server) {
+	assert(server != NULL);
 	if (server->socket > 0)
 		close(server->socket);
 	server->socket = -1;
@@ -274,11 +269,13 @@ void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 	return NULL;
 }
 
-indigo_result indigo_start_subprocess(const char *executable) {
+indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess) {
 	int empty_slot = used_subprocess_slots;
 	for (int dc = 0; dc < used_subprocess_slots;  dc++) {
 		if (indigo_available_subprocesses[dc].thread_started && !strcmp(indigo_available_subprocesses[dc].executable, executable)) {
 			INDIGO_LOG(indigo_log("Subprocess %s already started.", indigo_available_subprocesses[dc].executable));
+			if (subprocess != NULL)
+				*subprocess = &indigo_available_subprocesses[dc];
 			return INDIGO_OK;
 		} else if (!indigo_available_subprocesses[dc].thread_started) {
 			empty_slot = dc;
@@ -295,23 +292,19 @@ indigo_result indigo_start_subprocess(const char *executable) {
 		return INDIGO_FAILED;
 	}
 	indigo_available_subprocesses[empty_slot].thread_started = true;
-	
 	if (empty_slot == used_subprocess_slots)
 		used_subprocess_slots++;
-	
+	if (subprocess != NULL)
+		*subprocess = &indigo_available_subprocesses[empty_slot];
 	return INDIGO_OK;
 }
 
-indigo_result indigo_kill_subprocess(const char *executable) {
-	for (int dc = 0; dc < used_subprocess_slots;  dc++) {
-		if (indigo_available_subprocesses[dc].thread_started && !strcmp(indigo_available_subprocesses[dc].executable, executable)) {
-			if (indigo_available_subprocesses[dc].pid > 0)
-				kill(indigo_available_subprocesses[dc].pid, SIGKILL);
-			indigo_available_subprocesses[dc].pid = -1;
-			indigo_available_subprocesses[dc].thread_started = false;
-			return INDIGO_OK;
-		}
-	}
-	return INDIGO_NOT_FOUND;
+indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess) {
+	assert(subprocess != NULL);
+	if (subprocess->pid > 0)
+		kill(subprocess->pid, SIGKILL);
+	subprocess->pid = -1;
+	subprocess->thread_started = false;
+	return INDIGO_OK;
 }
 
