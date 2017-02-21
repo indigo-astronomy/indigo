@@ -311,7 +311,7 @@
 		599A63AE1DEA2F4700ABC827 /* indigo_driver_json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_driver_json.c; sourceTree = "<group>"; };
 		599A63AF1DEA2F4700ABC827 /* indigo_driver_json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_driver_json.h; sourceTree = "<group>"; };
 		599A63B21DEB7BF500ABC827 /* ctrl.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = ctrl.html; sourceTree = "<group>"; };
-		599A63D41DF3670100ABC827 /* libjpeg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjpeg.a; path = lib/libjpeg.a; sourceTree = "<group>"; };
+		599A63D41DF3670100ABC827 /* libjpeg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjpeg.a; path = build/lib/libjpeg.a; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
 		599C9A371D9FF0A3008BBCC1 /* INDIGO Server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "INDIGO Server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -362,20 +362,20 @@
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
 		9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc.c; sourceTree = "<group>"; };
 		9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_iidc.h; sourceTree = "<group>"; };
-		9D976FDA1DD0C69D00782B32 /* dc1394.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dc1394.h; path = include/dc1394/dc1394.h; sourceTree = SOURCE_ROOT; };
-		9D976FDB1DD0C69D00782B32 /* libdc1394.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libdc1394.a; path = lib/libdc1394.a; sourceTree = SOURCE_ROOT; };
-		9D976FDE1DD0C6F200782B32 /* types.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = types.h; path = include/dc1394/types.h; sourceTree = SOURCE_ROOT; };
-		9D976FDF1DD0C70A00782B32 /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = camera.h; path = include/dc1394/camera.h; sourceTree = SOURCE_ROOT; };
-		9D976FE01DD0C70A00782B32 /* capture.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = capture.h; path = include/dc1394/capture.h; sourceTree = SOURCE_ROOT; };
-		9D976FE11DD0C70A00782B32 /* control.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = control.h; path = include/dc1394/control.h; sourceTree = SOURCE_ROOT; };
-		9D976FE21DD0C70A00782B32 /* conversions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = conversions.h; path = include/dc1394/conversions.h; sourceTree = SOURCE_ROOT; };
-		9D976FE31DD0C70A00782B32 /* format7.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = format7.h; path = include/dc1394/format7.h; sourceTree = SOURCE_ROOT; };
-		9D976FE41DD0C70A00782B32 /* iso.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = iso.h; path = include/dc1394/iso.h; sourceTree = SOURCE_ROOT; };
-		9D976FE51DD0C70A00782B32 /* log.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = log.h; path = include/dc1394/log.h; sourceTree = SOURCE_ROOT; };
-		9D976FE61DD0C70A00782B32 /* macosx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = macosx.h; path = include/dc1394/macosx.h; sourceTree = SOURCE_ROOT; };
-		9D976FE71DD0C70A00782B32 /* register.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = register.h; path = include/dc1394/register.h; sourceTree = SOURCE_ROOT; };
-		9D976FE81DD0C70A00782B32 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = utils.h; path = include/dc1394/utils.h; sourceTree = SOURCE_ROOT; };
-		9D976FE91DD0C70A00782B32 /* video.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = video.h; path = include/dc1394/video.h; sourceTree = SOURCE_ROOT; };
+		9D976FDA1DD0C69D00782B32 /* dc1394.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dc1394.h; path = build/include/dc1394/dc1394.h; sourceTree = SOURCE_ROOT; };
+		9D976FDB1DD0C69D00782B32 /* libdc1394.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libdc1394.a; path = build/lib/libdc1394.a; sourceTree = SOURCE_ROOT; };
+		9D976FDE1DD0C6F200782B32 /* types.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = types.h; path = build/include/dc1394/types.h; sourceTree = SOURCE_ROOT; };
+		9D976FDF1DD0C70A00782B32 /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = camera.h; path = build/include/dc1394/camera.h; sourceTree = SOURCE_ROOT; };
+		9D976FE01DD0C70A00782B32 /* capture.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = capture.h; path = build/include/dc1394/capture.h; sourceTree = SOURCE_ROOT; };
+		9D976FE11DD0C70A00782B32 /* control.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = control.h; path = build/include/dc1394/control.h; sourceTree = SOURCE_ROOT; };
+		9D976FE21DD0C70A00782B32 /* conversions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = conversions.h; path = build/include/dc1394/conversions.h; sourceTree = SOURCE_ROOT; };
+		9D976FE31DD0C70A00782B32 /* format7.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = format7.h; path = build/include/dc1394/format7.h; sourceTree = SOURCE_ROOT; };
+		9D976FE41DD0C70A00782B32 /* iso.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = iso.h; path = build/include/dc1394/iso.h; sourceTree = SOURCE_ROOT; };
+		9D976FE51DD0C70A00782B32 /* log.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = log.h; path = build/include/dc1394/log.h; sourceTree = SOURCE_ROOT; };
+		9D976FE61DD0C70A00782B32 /* macosx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = macosx.h; path = build/include/dc1394/macosx.h; sourceTree = SOURCE_ROOT; };
+		9D976FE71DD0C70A00782B32 /* register.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = register.h; path = build/include/dc1394/register.h; sourceTree = SOURCE_ROOT; };
+		9D976FE81DD0C70A00782B32 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = utils.h; path = build/include/dc1394/utils.h; sourceTree = SOURCE_ROOT; };
+		9D976FE91DD0C70A00782B32 /* video.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = video.h; path = build/include/dc1394/video.h; sourceTree = SOURCE_ROOT; };
 		9D97F8061D9A89ED00582EAF /* indigo_server_tcp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_server_tcp.c; sourceTree = "<group>"; };
 		9D97F8071D9A89ED00582EAF /* indigo_server_tcp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_server_tcp.h; sourceTree = "<group>"; };
 		9D97F8171D9A8A1900582EAF /* indigo_server */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_server; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -394,8 +394,8 @@
 		9D9EA6AF1DBFA30600E11841 /* indigo_guider_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_driver.h; sourceTree = "<group>"; };
 		9D9EA6B01DBFA30600E11841 /* indigo_wheel_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_driver.c; sourceTree = "<group>"; };
 		9D9EA6B11DBFA30600E11841 /* indigo_wheel_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_driver.h; sourceTree = "<group>"; };
-		9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhidapi.0.dylib; path = lib/libhidapi.0.dylib; sourceTree = SOURCE_ROOT; };
-		9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "lib/libusb-1.0.0.dylib"; sourceTree = SOURCE_ROOT; };
+		9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhidapi.0.dylib; path = build/lib/libhidapi.0.dylib; sourceTree = SOURCE_ROOT; };
+		9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "build/lib/libusb-1.0.0.dylib"; sourceTree = SOURCE_ROOT; };
 		9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_driver.c; sourceTree = "<group>"; };
 		9DAC59D21DC0A8AD00AE410D /* indigo_focuser_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_driver.h; sourceTree = "<group>"; };
 		9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fcusb_main.c; sourceTree = "<group>"; };
@@ -901,7 +901,8 @@
 				9D976FE91DD0C70A00782B32 /* video.h */,
 				9D976FDB1DD0C69D00782B32 /* libdc1394.a */,
 			);
-			path = externals;
+			name = externals;
+			path = externals/libdc1394;
 			sourceTree = "<group>";
 		};
 		9D9EA69F1DBE1F5000E11841 /* ccd_atik */ = {
