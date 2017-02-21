@@ -43,6 +43,8 @@
 #include "indigo_client_xml.h"
 #include "indigo_client.h"
 
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
 indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
 indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
@@ -53,13 +55,15 @@ static int used_subprocess_slots = 0;
 
 static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle, bool init, indigo_driver_entry **driver) {
 	int empty_slot = used_driver_slots; /* the first slot after the last used is a good candidate */
+	pthread_mutex_lock(&mutex);
 	for (int dc = 0; dc < used_driver_slots;  dc++) {
 		if (indigo_available_drivers[dc].driver == entry_point) {
-			INDIGO_LOG(indigo_log("Driver %s already loaded.", indigo_available_drivers[dc].name));
+			INDIGO_LOG(indigo_log("Driver %s already loaded", indigo_available_drivers[dc].name));
 			if (dl_handle != NULL)
 				dlclose(dl_handle);
 			if (driver != NULL)
 				*driver = &indigo_available_drivers[dc];
+			pthread_mutex_unlock(&mutex);
 			return INDIGO_OK;
 		} else if (indigo_available_drivers[dc].driver == NULL) {
 			empty_slot = dc; /* if there is a gap - fill it */
@@ -69,6 +73,7 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 	if (empty_slot > INDIGO_MAX_DRIVERS) {
 		if (dl_handle != NULL)
 			dlclose(dl_handle);
+		pthread_mutex_unlock(&mutex);
 		return INDIGO_TOO_MANY_ELEMENTS; /* no emty slot found, list is full */
 	}
 
@@ -78,10 +83,11 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 	strncpy(indigo_available_drivers[empty_slot].name, info.name, INDIGO_NAME_SIZE);
 	indigo_available_drivers[empty_slot].driver = entry_point;
 	indigo_available_drivers[empty_slot].dl_handle = dl_handle;
-	INDIGO_LOG(indigo_log("Driver %s %d.%d.%d.%d loaded.", info.name, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version)));
+	INDIGO_LOG(indigo_log("Driver %s %d.%d.%d.%d loaded", info.name, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version)));
 
 	if (empty_slot == used_driver_slots)
 		used_driver_slots++; /* if we are not filling a gap - increase used_slots */
+	pthread_mutex_unlock(&mutex);
 
 	if (driver != NULL)
 		*driver = &indigo_available_drivers[empty_slot];
@@ -96,15 +102,17 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 
 indigo_result indigo_remove_driver(indigo_driver_entry *driver) {
 	assert(driver != NULL);
+	pthread_mutex_lock(&mutex);
 	driver->driver(INDIGO_DRIVER_SHUTDOWN, NULL); /* deregister */
 	if (driver->dl_handle) {
 		dlclose(driver->dl_handle);
 	}
-	INDIGO_LOG(indigo_log("Driver %s unloaded.", driver->name));
+	INDIGO_LOG(indigo_log("Driver %s unloaded", driver->name));
 	driver->description[0] = '\0';
 	driver->name[0] = '\0';
 	driver->driver = NULL;
 	driver->dl_handle = NULL;
+	pthread_mutex_unlock(&mutex);
 	return INDIGO_OK;
 }
 
@@ -130,13 +138,15 @@ indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entr
 	
 	entry_point_name = basename(driver_name);
 	cp = strchr(entry_point_name, '.');
-	if (cp) *cp = '\0';
-	else strncat(so_name, SO_NAME, INDIGO_NAME_SIZE);
+	if (cp)
+		*cp = '\0';
+	else
+		strncat(so_name, SO_NAME, INDIGO_NAME_SIZE);
 	
 	dl_handle = dlopen(so_name, RTLD_LAZY);
 	if (!dl_handle) {
 		const char* dlsym_error = dlerror();
-		INDIGO_LOG(indigo_log("Driver %s can't be loaded (%s).", entry_point_name, dlsym_error));
+		INDIGO_LOG(indigo_log("Driver %s can't be loaded (%s)", entry_point_name, dlsym_error));
 		return INDIGO_FAILED;
 	}
 	entry_point = dlsym(dl_handle, entry_point_name);
@@ -150,7 +160,7 @@ indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entr
 }
 
 void *server_thread(indigo_server_entry *server) {
-	INDIGO_LOG(indigo_log("Server %s:%d thread started.", server->host, server->port));
+	INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
 	while (server->socket >= 0) {
 		server->socket = 0;
 		struct hostent *host_entry = gethostbyname(server->host);
@@ -169,7 +179,7 @@ void *server_thread(indigo_server_entry *server) {
 			}
 		}
 		if (server->socket > 0) {
-			INDIGO_LOG(indigo_log("Server %s:%d connected.", server->host, server->port));
+			INDIGO_LOG(indigo_log("Server %s:%d connected", server->host, server->port));
 			char name[128];
 			strncpy(name, server->host, sizeof(name));
 			char * local = strstr(name, ".local");
@@ -185,40 +195,46 @@ void *server_thread(indigo_server_entry *server) {
 			free(server->protocol_adapter->device_context);
 			free(server->protocol_adapter);
 			close(server->socket);
-			INDIGO_LOG(indigo_log("Server %s:%d disconnected.", server->host, server->port));
+			INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
 		} else {
 			sleep(5);
 		}
 	}
 	server->thread_started = false;
-	INDIGO_LOG(indigo_log("Server %s:%d thread stopped.", server->host, server->port));
+	INDIGO_LOG(indigo_log("Server %s:%d thread stopped", server->host, server->port));
 	return NULL;
 }
 
 indigo_result indigo_connect_server(const char *host, int port, indigo_server_entry **server) {
 	int empty_slot = used_server_slots;
+	pthread_mutex_lock(&mutex);
 	for (int dc = 0; dc < used_server_slots;  dc++) {
 		if (indigo_available_servers[dc].thread_started && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port) {
-			INDIGO_LOG(indigo_log("Server %s:%d already connected.", indigo_available_servers[dc].host, indigo_available_servers[dc].port));
+			INDIGO_LOG(indigo_log("Server %s:%d already connected", indigo_available_servers[dc].host, indigo_available_servers[dc].port));
 			if (server != NULL)
 				*server = &indigo_available_servers[dc];
+			pthread_mutex_unlock(&mutex);
 			return INDIGO_OK;
 		} else if (!indigo_available_servers[dc].thread_started) {
 			empty_slot = dc;
 		}
 	}
-	if (empty_slot > INDIGO_MAX_SERVERS)
+	if (empty_slot > INDIGO_MAX_SERVERS) {
+		pthread_mutex_unlock(&mutex);
 		return INDIGO_TOO_MANY_ELEMENTS;
+	}
 	strncpy(indigo_available_servers[empty_slot].host, host, INDIGO_NAME_SIZE);
 	indigo_available_servers[empty_slot].port = port;
 	indigo_available_servers[empty_slot].socket = 0;
 	if (pthread_create(&indigo_available_servers[empty_slot].thread, NULL, (void*)(void *)server_thread, &indigo_available_servers[empty_slot]) != 0) {
 		indigo_available_servers[empty_slot].thread_started = false;
+		pthread_mutex_unlock(&mutex);
 		return INDIGO_FAILED;
 	}
 	indigo_available_servers[empty_slot].thread_started = true;
 	if (empty_slot == used_server_slots)
 		used_server_slots++;
+	pthread_mutex_unlock(&mutex);
 	if (server != NULL)
 		*server = &indigo_available_servers[empty_slot];
 	return INDIGO_OK;
@@ -226,15 +242,17 @@ indigo_result indigo_connect_server(const char *host, int port, indigo_server_en
 
 indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 	assert(server != NULL);
+	pthread_mutex_lock(&mutex);
 	if (server->socket > 0)
 		close(server->socket);
 	server->socket = -1;
 	server->thread_started = false;
+	pthread_mutex_unlock(&mutex);
 	return INDIGO_OK;
 }
 
 void *subprocess_thread(indigo_subprocess_entry *subprocess) {
-	INDIGO_LOG(indigo_log("Subprocess %s thread started.", subprocess->executable));
+	INDIGO_LOG(indigo_log("Subprocess %s thread started", subprocess->executable));
 	while (subprocess->pid >= 0) {
 		int input[2], output[2];
 		if (pipe(input) < 0 || pipe(output) < 0) {
@@ -265,35 +283,41 @@ void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 			sleep(5);
 	}
 	subprocess->thread_started = false;
-	INDIGO_LOG(indigo_log("Subprocess %s thread stopped.", subprocess->executable));
+	INDIGO_LOG(indigo_log("Subprocess %s thread stopped", subprocess->executable));
 	return NULL;
 }
 
 indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess) {
 	int empty_slot = used_subprocess_slots;
+	pthread_mutex_lock(&mutex);
 	for (int dc = 0; dc < used_subprocess_slots;  dc++) {
 		if (indigo_available_subprocesses[dc].thread_started && !strcmp(indigo_available_subprocesses[dc].executable, executable)) {
-			INDIGO_LOG(indigo_log("Subprocess %s already started.", indigo_available_subprocesses[dc].executable));
+			INDIGO_LOG(indigo_log("Subprocess %s already started", indigo_available_subprocesses[dc].executable));
 			if (subprocess != NULL)
 				*subprocess = &indigo_available_subprocesses[dc];
+			pthread_mutex_unlock(&mutex);
 			return INDIGO_OK;
 		} else if (!indigo_available_subprocesses[dc].thread_started) {
 			empty_slot = dc;
 		}
 	}
 	
-	if (empty_slot > INDIGO_MAX_SERVERS)
+	if (empty_slot > INDIGO_MAX_SERVERS) {
+		pthread_mutex_unlock(&mutex);
 		return INDIGO_TOO_MANY_ELEMENTS;
+	}
 	
 	strncpy(indigo_available_subprocesses[empty_slot].executable, executable, INDIGO_NAME_SIZE);
 	indigo_available_subprocesses[empty_slot].pid = 0;
 	if (pthread_create(&indigo_available_subprocesses[empty_slot].thread, NULL, (void*)(void *)subprocess_thread, &indigo_available_subprocesses[empty_slot]) != 0) {
 		indigo_available_subprocesses[empty_slot].thread_started = false;
+		pthread_mutex_unlock(&mutex);
 		return INDIGO_FAILED;
 	}
 	indigo_available_subprocesses[empty_slot].thread_started = true;
 	if (empty_slot == used_subprocess_slots)
 		used_subprocess_slots++;
+	pthread_mutex_unlock(&mutex);
 	if (subprocess != NULL)
 		*subprocess = &indigo_available_subprocesses[empty_slot];
 	return INDIGO_OK;
@@ -301,10 +325,12 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 
 indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess) {
 	assert(subprocess != NULL);
+	pthread_mutex_lock(&mutex);
 	if (subprocess->pid > 0)
 		kill(subprocess->pid, SIGKILL);
 	subprocess->pid = -1;
 	subprocess->thread_started = false;
+	pthread_mutex_unlock(&mutex);
 	return INDIGO_OK;
 }
 
