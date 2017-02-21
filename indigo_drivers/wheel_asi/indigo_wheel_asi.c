@@ -284,7 +284,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				memset(private_data, 0, sizeof(asi_private_data));
 				private_data->dev_id = id;
 				device->private_data = private_data;
-				indigo_attach_device(device);
+				//indigo_attach_device(device);
+				indigo_async((void *)(void *)indigo_attach_device, device);
 				devices[slot]=device;
 			}
 			break;
