@@ -80,6 +80,7 @@ typedef struct {
 typedef struct {
 	dc1394camera_t *camera;
 	uint64_t guid;
+	uint16_t unit;
 	bool present;
 	bool connected;
 	bool force_setup;
@@ -450,20 +451,19 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			} else {
 				for (int i = 0; i < list->num; i++) {
 					uint64_t guid = list->ids[i].guid;
+					uint16_t unit = list->ids[i].unit;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						indigo_device *device = devices[j];
-						if (device!= NULL && PRIVATE_DATA->guid == guid) {
+						if (device!= NULL && PRIVATE_DATA->guid == guid && PRIVATE_DATA->unit == unit) {
 							guid = 0;
 							break;
 						}
 					}
 					if (guid == 0)
 						continue;
-					dc1394camera_t * camera = dc1394_camera_new(context, guid);
+					dc1394camera_t *camera = dc1394_camera_new_unit(context, guid, unit);
 					if (camera) {
-						INDIGO_LOG(indigo_log("Camera %llu detected", list->ids[i].guid));
-						INDIGO_DEBUG_DRIVER(indigo_debug("  vendor %s", camera->vendor));
-						INDIGO_DEBUG_DRIVER(indigo_debug("  model  %s", camera->model));
+						INDIGO_LOG(indigo_log("Camera %s detected", camera->model));
 						if (strstr(camera->model, "CMLN") != NULL || strstr(camera->model, "FMVU") != NULL) {
 							INDIGO_DEBUG_DRIVER(indigo_debug("  forced DC1394_OPERATION_MODE_LEGACY"));
 							camera->bmode_capable = false;
@@ -479,15 +479,18 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 							err = dc1394_video_set_iso_speed(camera, DC1394_ISO_SPEED_400);
 							INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_video_set_iso_speed(DC1394_ISO_SPEED_400) [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
 						}
-						INDIGO_DEBUG_DRIVER(dc1394_camera_print_info(camera, stderr));
-						INDIGO_DEBUG_DRIVER(dc1394featureset_t features);
-						INDIGO_DEBUG_DRIVER(dc1394_feature_get_all(camera, &features));
-						INDIGO_DEBUG_DRIVER(dc1394_feature_print_all(&features, stderr));
+						if (indigo_debug_level) {
+							INDIGO_DEBUG_DRIVER(dc1394_camera_print_info(camera, stderr));
+							INDIGO_DEBUG_DRIVER(dc1394featureset_t features);
+							INDIGO_DEBUG_DRIVER(dc1394_feature_get_all(camera, &features));
+							INDIGO_DEBUG_DRIVER(dc1394_feature_print_all(&features, stderr));
+						}
 						iidc_private_data *private_data = malloc(sizeof(iidc_private_data));
 						assert(private_data != NULL);
 						memset(private_data, 0, sizeof(iidc_private_data));
 						private_data->camera = camera;
 						private_data->guid = guid;
+						private_data->unit = unit;
 						indigo_device *device = malloc(sizeof(indigo_device));
 						assert(device != NULL);
 						memcpy(device, &ccd_template, sizeof(indigo_device));
@@ -534,11 +537,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					indigo_device *device = devices[j];
 					if (!PRIVATE_DATA->present) {
 						private_data = PRIVATE_DATA;
+						INDIGO_LOG(indigo_log("Camera %s removed", private_data->camera->model));
 						indigo_detach_device(device);
 						dc1394_camera_free(private_data->camera);
-						if (private_data != NULL) {
-							free(private_data);
-						}
+						free(private_data);
 						free(device);
 						devices[j] = NULL;
 					}
@@ -558,91 +560,83 @@ static void errorlog_handler(dc1394log_t type, const char *message, void* user) 
 }
 
 static void debuglog_handler(dc1394log_t type, const char *message, void* user) {
-	INDIGO_DEBUG_DRIVER(indigo_debug("dc1394: %s", message));
+	INDIGO_DEBUG_DRIVER(indigo_log("dc1394: %s", message));
 }
 
-
-#ifdef INDIGO_MACOS
-
-#include <IOKit/IOKitLib.h>
-#include <IOKit/IOMessage.h>
-#include <IOKit/IOCFPlugIn.h>
-#include <IOKit/usb/IOUSBLib.h>
-
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
-#include <objc/objc-auto.h>
-#endif
-
-static void firewire_devices_attached(void *ptr, io_iterator_t add_devices) {
-	INDIGO_LOG(indigo_log("indigo_ccd_iidc: firewire device attached"));
-	hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
-}
-
-static void firewire_devices_detached(void *ptr, io_iterator_t rem_devices) {
-	INDIGO_LOG(indigo_log("indigo_ccd_iidc: firewire device detached"));
-	hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
-}
-
-static void *firewire_hotplug_thread (void *arg0) {
-	IOReturn kresult;
-	CFRunLoopRef runloop;
-	
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
-	pthread_setname_np("indigo.firewire-hotplug");
-#endif
-	
-	CFRunLoopSourceRef firewire_notification_cfsource;
-	IONotificationPortRef firewire_notification_port;
-	io_iterator_t firewire_remove_device_iterator;
-	io_iterator_t firewire_add_device_iterator;
-	io_service_t device;
-	
-	runloop = CFRunLoopGetCurrent ();
-	CFRetain (runloop);
-	
-	firewire_notification_port = IONotificationPortCreate (kIOMasterPortDefault);
-	firewire_notification_cfsource = IONotificationPortGetRunLoopSource (firewire_notification_port);
-	CFRunLoopAddSource(runloop, firewire_notification_cfsource, kCFRunLoopDefaultMode);
-	
-	kresult = IOServiceAddMatchingNotification (firewire_notification_port, kIOTerminatedNotification, IOServiceMatching("IOFireWireDevice"), firewire_devices_detached, NULL, &firewire_remove_device_iterator);
-	if (kresult != kIOReturnSuccess) {
-		indigo_error("indigo_ccd_iidc: could not add hotplug event source: 0x%08x", kresult);
-		pthread_exit (NULL);
-	}
-	while ((device = IOIteratorNext (firewire_remove_device_iterator)) != 0)
-		IOObjectRelease (device);
-
-
-	kresult = IOServiceAddMatchingNotification(firewire_notification_port, kIOMatchedNotification, IOServiceMatching("IOFireWireDevice"), firewire_devices_attached, NULL, &firewire_add_device_iterator);
-	if (kresult != kIOReturnSuccess) {
-		indigo_error("indigo_ccd_iidc: could not add hotplug event source: 0x%08x", kresult);
-		pthread_exit (NULL);
-	}
-	while ((device = IOIteratorNext (firewire_add_device_iterator)) != 0)
-		IOObjectRelease (device);
-
-	CFRunLoopRun();
-	
-	CFRunLoopRemoveSource(runloop, firewire_notification_cfsource, kCFRunLoopDefaultMode);
-	IONotificationPortDestroy (firewire_notification_port);
-	IOObjectRelease (firewire_remove_device_iterator);
-	IOObjectRelease (firewire_add_device_iterator);
-	CFRelease (runloop);
-	pthread_exit (NULL);
-}
-
-static void start_firewire_event_handler() {
-	static bool thread_started = false;
-	if (!thread_started) {
-		libusb_init(NULL);
-		pthread_t hotplug_thread_handle;
-		pthread_create(&hotplug_thread_handle, NULL, firewire_hotplug_thread, NULL);
-		thread_started = true;
-	}
-}
-
-#endif
-
+//#ifdef INDIGO_MACOS
+//
+//#include <IOKit/IOKitLib.h>
+//#include <IOKit/IOMessage.h>
+//#include <IOKit/IOCFPlugIn.h>
+//#include <IOKit/usb/IOUSBLib.h>
+//
+//static CFRunLoopRef runloop;
+//
+//static void firewire_devices_attached(void *ptr, io_iterator_t firewire_add_device_iterator) {
+//	io_service_t device;
+//	bool empty = true;
+//	while ((device = IOIteratorNext(firewire_add_device_iterator)) != 0) {
+//		IOObjectRelease(device);
+//		empty = false;
+//	}
+//	if (!empty) {
+//		INDIGO_LOG(indigo_log("indigo_ccd_iidc: FireWire device attached"));
+//		hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+//	}
+//}
+//
+//static void firewire_devices_detached(void *ptr, io_iterator_t firewire_remove_device_iterator) {
+//	io_service_t device;
+//	bool empty = true;
+//	while ((device = IOIteratorNext (firewire_remove_device_iterator)) != 0) {
+//		IOObjectRelease(device);
+//		empty = false;
+//	}
+//	if (!empty) {
+//		INDIGO_LOG(indigo_log("indigo_ccd_iidc: FireWire device detached"));
+//		hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+//	}
+//}
+//
+//static void *firewire_hotplug_thread(void *arg0) {
+//	IOReturn kresult;
+//	CFRunLoopSourceRef firewire_notification_cfsource;
+//	IONotificationPortRef firewire_notification_port;
+//	io_iterator_t firewire_remove_device_iterator;
+//	io_iterator_t firewire_add_device_iterator;
+//	
+//	pthread_setname_np("indigo.firewire-hotplug");
+//	
+//	CFRetain(runloop = CFRunLoopGetCurrent());
+//	CFRunLoopAddSource(runloop, firewire_notification_cfsource = IONotificationPortGetRunLoopSource (firewire_notification_port = IONotificationPortCreate(kIOMasterPortDefault)), kCFRunLoopDefaultMode);
+//	
+//	kresult = IOServiceAddMatchingNotification(firewire_notification_port, kIOTerminatedNotification, IOServiceMatching("IOFireWireDevice"), firewire_devices_detached, NULL, &firewire_remove_device_iterator);
+//	if (kresult != kIOReturnSuccess) {
+//		indigo_error("indigo_ccd_iidc: Could not add hot-unplug event source: 0x%08x", kresult);
+//		return NULL;
+//	}
+//	firewire_devices_detached(NULL, firewire_remove_device_iterator);
+//
+//	kresult = IOServiceAddMatchingNotification(firewire_notification_port, kIOMatchedNotification, IOServiceMatching("IOFireWireDevice"), firewire_devices_attached, NULL, &firewire_add_device_iterator);
+//	if (kresult != kIOReturnSuccess) {
+//		indigo_error("indigo_ccd_iidc: Could not add hot-plug event source: 0x%08x", kresult);
+//		return NULL;
+//	}
+//	firewire_devices_attached(NULL, firewire_add_device_iterator);
+//
+//	INDIGO_LOG(indigo_log("indigo_ccd_iidc: RunLoop for FireWire devices detection started"));
+//	CFRunLoopRun();
+//	INDIGO_LOG(indigo_log("indigo_ccd_iidc: RunLoop for FireWire devices detection finished"));
+//	
+//	CFRunLoopRemoveSource(runloop, firewire_notification_cfsource, kCFRunLoopDefaultMode);
+//	IONotificationPortDestroy(firewire_notification_port);
+//	IOObjectRelease(firewire_remove_device_iterator);
+//	IOObjectRelease(firewire_add_device_iterator);
+//	CFRelease(runloop);
+//	return NULL;
+//}
+//
+//#endif
 
 indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -663,11 +657,13 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = 0;
 			}
+//#ifdef INDIGO_MACOS
+//			pthread_t hotplug_thread_handle;
+//			pthread_create(&hotplug_thread_handle, NULL, firewire_hotplug_thread, NULL);
+//#endif
 			indigo_start_usb_event_handler();
-#ifdef INDIGO_MACOS
-			start_firewire_event_handler();
-#endif
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_NO_FLAGS, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
 			INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_iidc: libusb_hotplug_register_callback() [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 		}
@@ -678,6 +674,9 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_iidc: libusb_hotplug_deregister_callback [%d]", __LINE__));
+//#ifdef INDIGO_MACOS
+//			CFRunLoopStop(runloop);
+//#endif
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			indigo_device *device = devices[j];
 			if (device != NULL) {
