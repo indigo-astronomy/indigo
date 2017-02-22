@@ -971,13 +971,24 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
 	} else if (state == END_TAG) {
-		for (int i = 0; i < context->count; i++) {
-			indigo_property *tmp = context->properties[i];
-			if (tmp != NULL && !strncmp(tmp->device, property->device, INDIGO_NAME_SIZE) && !strncmp(tmp->name, property->name, INDIGO_NAME_SIZE)) {
-				indigo_delete_property(device, tmp, *message ? message : NULL);
-				indigo_release_property(tmp);
-				context->properties[i] = NULL;
-				break;
+		if (*property->name) {
+			for (int i = 0; i < context->count; i++) {
+				indigo_property *tmp = context->properties[i];
+				if (tmp != NULL && !strncmp(tmp->device, property->device, INDIGO_NAME_SIZE) && !strncmp(tmp->name, property->name, INDIGO_NAME_SIZE)) {
+					indigo_delete_property(device, tmp, *message ? message : NULL);
+					indigo_release_property(tmp);
+					context->properties[i] = NULL;
+					break;
+				}
+			}
+		} else {
+			for (int i = 0; i < context->count; i++) {
+				indigo_property *tmp = context->properties[i];
+				if (tmp != NULL && !strncmp(tmp->device, property->device, INDIGO_NAME_SIZE)) {
+					indigo_delete_property(device, tmp, *message ? message : NULL);
+					indigo_release_property(tmp);
+					context->properties[i] = NULL;
+				}
 			}
 		}
 		memset(property, 0, PROPERTY_SIZE);
