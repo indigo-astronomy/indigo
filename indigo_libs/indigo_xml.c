@@ -353,11 +353,12 @@ static void set_property(parser_context *context, indigo_property *other, char *
 								strncpy(property_item->text.value, other_item->text.value, INDIGO_VALUE_SIZE);
 								break;
 							case INDIGO_NUMBER_VECTOR:
-								property_item->number.target = property_item->number.value = other_item->number.value;
+								property_item->number.value = other_item->number.value;
 								if (property_item->number.value < property_item->number.min)
-									property_item->number.target = property_item->number.value = property_item->number.min;
+									property_item->number.value = property_item->number.min;
 								if (property_item->number.value > property_item->number.max)
-									property_item->number.target = property_item->number.value = property_item->number.max;
+									property_item->number.value = property_item->number.max;
+								property_item->number.target = other_item->number.target;
 								break;
 							case INDIGO_SWITCH_VECTOR:
 								property_item->sw.value = other_item->sw.value;
