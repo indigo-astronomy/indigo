@@ -64,7 +64,7 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 			if (driver != NULL)
 				*driver = &indigo_available_drivers[dc];
 			pthread_mutex_unlock(&mutex);
-			return INDIGO_OK;
+			return INDIGO_DUPLICATED;
 		} else if (indigo_available_drivers[dc].driver == NULL) {
 			empty_slot = dc; /* if there is a gap - fill it */
 		}
@@ -214,7 +214,7 @@ indigo_result indigo_connect_server(const char *host, int port, indigo_server_en
 			if (server != NULL)
 				*server = &indigo_available_servers[dc];
 			pthread_mutex_unlock(&mutex);
-			return INDIGO_OK;
+			return INDIGO_DUPLICATED;
 		} else if (!indigo_available_servers[dc].thread_started) {
 			empty_slot = dc;
 		}
@@ -296,7 +296,7 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 			if (subprocess != NULL)
 				*subprocess = &indigo_available_subprocesses[dc];
 			pthread_mutex_unlock(&mutex);
-			return INDIGO_OK;
+			return INDIGO_DUPLICATED;
 		} else if (!indigo_available_subprocesses[dc].thread_started) {
 			empty_slot = dc;
 		}
