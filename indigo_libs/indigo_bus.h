@@ -248,6 +248,10 @@ typedef struct {
  */
 extern char indigo_last_message[1024];
 
+/** If set, handler is used to print message instead of stderr/syslog output.
+ */
+extern void (*indigo_log_message_handler)(const char *message);
+
 /** Print diagnostic messages on trace level, wrap calls to INDIGO_TRACE() macro.
  */
 extern void indigo_trace(const char *format, ...);
