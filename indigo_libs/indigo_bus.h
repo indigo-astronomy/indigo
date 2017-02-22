@@ -65,7 +65,8 @@ typedef enum {
 	INDIGO_TOO_MANY_ELEMENTS,   ///< too many clients/devices/properties/items etc.
 	INDIGO_LOCK_ERROR,          ///< mutex lock error
 	INDIGO_NOT_FOUND,           ///< unknown client/device/property/item etc.
-	INDIGO_CANT_START_SERVER    ///< network server start failure
+	INDIGO_CANT_START_SERVER,   ///< network server start failure
+	INDIGO_DUPLICATED						///< duplicated items etc.
 } indigo_result;
 
 /** Property data type.
