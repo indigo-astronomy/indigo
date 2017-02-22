@@ -662,7 +662,7 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 //			pthread_create(&hotplug_thread_handle, NULL, firewire_hotplug_thread, NULL);
 //#endif
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_NO_FLAGS, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, /* LIBUSB_HOTPLUG_NO_FLAGS */ 0, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
 			INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_iidc: libusb_hotplug_register_callback() [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
