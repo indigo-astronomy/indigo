@@ -83,6 +83,8 @@ bool indigo_debug_level = false;
 bool indigo_trace_level = false;
 bool indigo_use_syslog = false;
 
+void (*indigo_log_message_handler)(const char *message) = NULL;
+
 bool indigo_use_host_suffix = true;
 
 const char **indigo_main_argv = NULL;
@@ -95,7 +97,9 @@ static void log_message(const char *format, va_list args) {
 	pthread_mutex_lock(&log_mutex);
 	vsnprintf(indigo_last_message, sizeof(indigo_last_message), format, args);
 	char *line = indigo_last_message;
-	if (indigo_use_syslog) {
+	if (indigo_log_message_handler != NULL) {
+		indigo_log_message_handler(indigo_last_message);
+	} else if (indigo_use_syslog) {
 		static bool initialize = true;
 		if (initialize)
 			openlog("INDIGO", LOG_NDELAY, LOG_USER | LOG_PERROR);
