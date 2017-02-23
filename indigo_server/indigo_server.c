@@ -97,6 +97,9 @@ static DNSServiceRef sd_indigo;
 static pid_t server_pid = 0;
 static bool keep_server_running = true;
 static bool use_sigkill = false;
+static bool server_startup = true;
+static bool use_bonjour = true;
+static bool use_control_panel = true;
 
 static indigo_result attach(indigo_device *device);
 static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -116,7 +119,20 @@ static unsigned char ctrl[] = {
 };
 
 static void server_callback(int count) {
-	INDIGO_LOG(indigo_log("%d clients", count));
+	if (server_startup) {
+		if (use_bonjour) {
+			/* UGLY but the only way to suppress compat mode warning messages on Linux */
+			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
+			char hostname[INDIGO_NAME_SIZE], servicename[INDIGO_NAME_SIZE];
+			gethostname(hostname, sizeof(hostname));
+			snprintf(servicename, INDIGO_NAME_SIZE, "%s (%d)", hostname, indigo_server_tcp_port);
+			DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+			DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+		}
+		server_startup = false;
+	} else {
+		INDIGO_LOG(indigo_log("%d clients", count));
+	}
 }
 
 static indigo_result attach(indigo_device *device) {
@@ -262,9 +278,6 @@ static void server_main(int argc, const char * argv[]) {
 	indigo_start_usb_event_handler();
 	
 	indigo_start();
-
-	bool use_bonjour = true;
-	bool use_control_panel = true;
 	
 	for (int i = 1; i < argc; i++) {
 		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
@@ -306,15 +319,6 @@ static void server_main(int argc, const char * argv[]) {
 	if (use_control_panel)
 		indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
 
-	if (use_bonjour) {
-		/* UGLY but the only way to suppress compat mode warning messages on Linux */
-		setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-		char hostname[INDIGO_NAME_SIZE], servicename[INDIGO_NAME_SIZE];
-		gethostname(hostname, sizeof(hostname));
-		snprintf(servicename, INDIGO_NAME_SIZE, "%s (%d)", hostname, indigo_server_tcp_port);
-		DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
-		DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
-	}
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i], false, NULL);
 	}
