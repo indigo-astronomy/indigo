@@ -338,8 +338,10 @@ static void wheel_timer_callback(indigo_device *device) {
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->target_slot;
 	} else {
 		indigo_set_timer(device, 0.5, wheel_timer_callback);
+		WHEEL_SLOT_ITEM->number.value = 0;
 	}
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
