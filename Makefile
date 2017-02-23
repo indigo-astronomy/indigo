@@ -641,6 +641,22 @@ $(BUILD_DRIVERS)/indigo_focuser_fli.$(SOEXT): indigo_drivers/focuser_fli/indigo_
 
 #---------------------------------------------------------------------
 #
+#       Build SBIG CCD driver
+#
+#---------------------------------------------------------------------
+# TOBE FIXED FOR SBIG !!!!
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------
