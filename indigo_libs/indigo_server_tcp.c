@@ -255,10 +255,17 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		indigo_error("Can't bind server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
-	if (listen(server_socket, 5) < 0) {
-		indigo_error("Can't listen on server socket (%s)", strerror(errno));
+	unsigned int length = sizeof(server_address);
+	if (getsockname(server_socket, (struct sockaddr *)&server_address, &length) == -1) {
+		close(server_socket);
 		return INDIGO_CANT_START_SERVER;
 	}
+	if (listen(server_socket, 5) < 0) {
+		indigo_error("Can't listen on server socket (%s)", strerror(errno));
+		close(server_socket);
+		return INDIGO_CANT_START_SERVER;
+	}
+	indigo_server_tcp_port = ntohs(server_address.sin_port);
 	INDIGO_LOG(indigo_log("Server started on %d", indigo_server_tcp_port));
 	server_callback(client_count);
 	signal(SIGPIPE, SIG_IGN);
