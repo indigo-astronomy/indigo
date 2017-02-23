@@ -347,7 +347,7 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 	libqhy_use_syslog = indigo_use_syslog;
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "QHY CCD", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "QHY Camera", __FUNCTION__, DRIVER_VERSION, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
