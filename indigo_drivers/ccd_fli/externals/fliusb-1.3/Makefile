@@ -29,5 +29,45 @@ install:
 uninstall:
 	rm /lib/modules/$(KVERSION)/misc/$(modname)/$(modname).ko
 	rmdir /lib/modules/$(KVERSION)/misc/$(modname)
-	rmdir /lib/modules/$(KVERSION)/misc
 	depmod -a
+
+INSTALL_PREFIX=/usr/local
+PACKAGE_NAME="indigo-fliusb"
+PACKAGE_VERSION="1.3"
+BUILD_NO="1"
+
+ARCH_DETECTED=$(shell uname -m)
+ifeq ($(ARCH_DETECTED),armv7l)
+	DEBIAN_ARCH=armhf
+endif
+ifeq ($(ARCH_DETECTED),i686)
+	DEBIAN_ARCH=i386
+endif
+ifeq ($(ARCH_DETECTED),x86_64)
+	DEBIAN_ARCH=amd64
+endif
+
+FULL_NAME=$(PACKAGE_NAME)-$(PACKAGE_VERSION)-$(BUILD_NO)-$(DEBIAN_ARCH)
+
+package: $(FULL_NAME).deb
+
+$(FULL_NAME).deb:
+	install -d /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin
+	install -d /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
+	install fliusb.c /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
+	install fliusb.h /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
+	install fliusb_ioctl.h /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
+	install Makefile /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
+	install README /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
+	install -d /tmp/$(FULL_NAME)/DEBIAN
+	printf "Package: $(PACKAGE_NAME)\nVersion: $(PACKAGE_VERSION)-$(BUILD_NO)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: INDIGO Community\nDepends: build-essential, linux-headers\nDescription: Kernel module for FLI USB devices\n" > /tmp/$(FULL_NAME)/DEBIAN/control
+	printf "#!/bin/bash\ncd $(INSTALL_PREFIX)/share/$(PACKAGE_NAME) && make clean && make && make install && modprobe fliusb\n" >/tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-install-fliusb
+	printf "#!/bin/bash\ncd $(INSTALL_PREFIX)/share/$(PACKAGE_NAME) && rmmod fliusb && make uninstall && make clean\n" >/tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-remove-fliusb
+	chmod +x /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-install-fliusb
+	chmod +x /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-remove-fliusb
+	cp /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-install-fliusb /tmp/$(FULL_NAME)/DEBIAN/postinst
+	cp /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-remove-fliusb /tmp/$(FULL_NAME)/DEBIAN/prerm
+	sudo chown root /tmp/$(FULL_NAME)
+	dpkg --build /tmp/$(FULL_NAME)
+	mv /tmp/$(FULL_NAME).deb .
+	sudo rm -rf /tmp/$(FULL_NAME)
