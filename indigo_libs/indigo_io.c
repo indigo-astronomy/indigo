@@ -39,6 +39,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "indigo_bus.h"
 #include "indigo_io.h"
 
 int indigo_open_serial(const char *dev_file) {
@@ -158,5 +159,6 @@ bool indigo_printf(int handle, const char *format, ...) {
 	va_start(args, format);
 	int length = vsnprintf(buffer, 1024, format, args);
 	va_end(args);
+	INDIGO_DEBUG_PROTOCOL(indigo_debug("sent: %s", buffer));
 	return indigo_write(handle, buffer, length);
 }

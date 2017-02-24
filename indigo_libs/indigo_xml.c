@@ -120,6 +120,8 @@ typedef struct {
 	indigo_property **properties;
 } parser_context;
 
+bool indigo_use_blob_urls = true;
+
 typedef void *(* parser_handler)(parser_state state, parser_context *context, char *name, char *value, char *message);
 
 static void *top_level_handler(parser_state state, parser_context *context, char *name, char *value, char *message);
@@ -150,7 +152,10 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 			client->enable_blob = INDIGO_ENABLE_BLOB_NEVER;
 		} else if (!strcmp(value, "Only")) {
 			client->enable_blob = INDIGO_ENABLE_BLOB_ONLY;
+		} else if (!strcmp(value, "URL")) {
+			client->enable_blob = INDIGO_ENABLE_BLOB_URL;
 		}
+		INDIGO_LOG(indigo_log("BLOB mode is '%s'", value));
 	}
 	return enable_blob_handler;
 }
@@ -368,6 +373,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 								break;
 							case INDIGO_BLOB_VECTOR:
 								strncpy(property_item->blob.format, other_item->blob.format, INDIGO_NAME_SIZE);
+								strncpy(property_item->blob.url, other_item->blob.url, INDIGO_VALUE_SIZE);
 								property_item->blob.size = other_item->blob.size;
 								if (property_item->blob.value != NULL)
 									property_item->blob.value = realloc(property_item->blob.value, property_item->blob.size);
@@ -581,9 +587,13 @@ static void *set_one_blob_vector_handler(parser_state state, parser_context *con
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
 		} else if (!strcmp(name, "format")) {
-			strncpy(property->items[property->count-1].blob.format, value,INDIGO_NAME_SIZE);
+			strncpy(property->items[property->count-1].blob.format, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "size")) {
 			property->items[property->count-1].blob.size = atol(value);
+		} else if (!strcmp(name, "path")) {
+			snprintf(property->items[property->count-1].blob.url, INDIGO_VALUE_SIZE, "%s%s", ((indigo_adapter_context *)context->device->device_context)->url_prefix, value);
+		} else if (!strcmp(name, "url")) {
+			strncpy(property->items[property->count-1].blob.url, value, INDIGO_VALUE_SIZE);
 		}
 	} else if (state == BLOB) {
 		property->items[property->count-1].blob.value = value;
@@ -670,7 +680,9 @@ static void def_property(parser_context *context, indigo_property *other, char *
 				}
 				if (context->device != NULL) {
 					int handle = ((indigo_adapter_context *)context->device->device_context)->output;
-					indigo_printf(handle, "<enableBLOB device='%s' name='%s'>Also</enableBLOB>\n", property->device, indigo_property_name(context->device->version, property));
+					int use_url = indigo_use_blob_urls && *((indigo_adapter_context *)context->device->device_context)->url_prefix != 0 && other->version != INDIGO_VERSION_LEGACY;
+					indigo_printf(handle, "<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", property->device, indigo_property_name(context->device->version, property), use_url ? "URL" : "Also");
+					indigo_log("<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", property->device, indigo_property_name(context->device->version, property), use_url ? "URL" : "Also");
 				}
 				break;
 		}
@@ -1279,7 +1291,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 				break;
 			case TEXT:
 				if (c == '<' && !is_escaped) {
-					if (depth == 2) {
+					if (depth == 2 || handler == enable_blob_handler) {
 						*value_pointer-- = 0;
 						while (value_pointer >= value_buffer && isspace(*value_pointer))
 							*value_pointer-- = 0;
@@ -1292,7 +1304,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' %d TEXT -> TEXT1", c, depth));
 					break;
 				} else {
-					if (depth == 2) {
+					if (depth == 2 || handler == enable_blob_handler) {
 						if (value_pointer - value_buffer < INDIGO_VALUE_SIZE) {
 							*value_pointer++ = c;
 						}
@@ -1397,7 +1409,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					state = END_TAG1;
 				} else if (c == '>') {
 					value_pointer = value_buffer;
-					if (property->type == INDIGO_BLOB_VECTOR) {
+					if (handler == def_blob_handler) {
 						blob_size = property->items[property->count-1].blob.size;
 						if (blob_size > 0) {
 							state = BLOB;

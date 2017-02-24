@@ -801,6 +801,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
 	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+		*CCD_IMAGE_ITEM->blob.url = 0;
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 			CCD_IMAGE_ITEM->blob.value = data;
 			CCD_IMAGE_ITEM->blob.size = FITS_HEADER_SIZE + blobsize;

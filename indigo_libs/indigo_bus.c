@@ -210,7 +210,7 @@ void indigo_debug_property(const char *message, indigo_property *property, bool 
 					if (defs)
 						indigo_debug("  '%s' // %s", item->name, item->label);
 					else
-						indigo_debug("  '%s' (%ld bytes, '%s')",item->name, item->blob.size, item->blob.format);
+						indigo_debug("  '%s' (%ld bytes, '%s', '%s')",item->name, item->blob.size, item->blob.format, item->blob.url);
 					break;
 				}
 			}
@@ -716,6 +716,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 							break;
 						case INDIGO_BLOB_VECTOR:
 							strncpy(property_item->blob.format, other_item->blob.format, INDIGO_NAME_SIZE);
+							strncpy(property_item->blob.url, other_item->blob.url, INDIGO_NAME_SIZE);
 							property_item->blob.size = other_item->blob.size;
 							property_item->blob.value = other_item->blob.value;
 							break;
