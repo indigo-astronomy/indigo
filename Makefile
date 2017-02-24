@@ -763,6 +763,13 @@ $(PACKAGE_NAME).deb: all
 	mv /tmp/$(PACKAGE_NAME).deb .
 	sudo rm -rf /tmp/$(PACKAGE_NAME)
 
+packages: package fliusb-package
+
+fliusb-package:
+	cd indigo_drivers/ccd_fli/externals/fliusb-1.3 && make package && cd ../../../..
+	cp indigo_drivers/ccd_fli/externals/fliusb-1.3/*.deb .
+	rm indigo_drivers/ccd_fli/externals/fliusb-1.3/*.deb
+
 #---------------------------------------------------------------------
 #
 #	Clean indigo build
