@@ -131,7 +131,7 @@ static indigo_result xml_client_parser_detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
-indigo_device *indigo_xml_client_adapter(char *name, int input, int ouput) {
+indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input, int ouput) {
 	static indigo_device device_template = {
 		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		NULL,
@@ -147,6 +147,7 @@ indigo_device *indigo_xml_client_adapter(char *name, int input, int ouput) {
 	assert(device_context != NULL);
 	device_context->input = input;
 	device_context->output = ouput;
+	strncpy(device_context->url_prefix, url_prefix, INDIGO_NAME_SIZE);
 	device->device_context = device_context;
 	return device;
 }

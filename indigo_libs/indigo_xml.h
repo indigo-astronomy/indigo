@@ -29,6 +29,11 @@
 #include <stdio.h>
 #include "indigo_bus.h"
 
+/** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
+ */
+
+extern bool indigo_use_blob_urls;
+
 /** XML wire protocol parser.
  */
 extern void indigo_xml_parse(indigo_device *device, indigo_client *client);

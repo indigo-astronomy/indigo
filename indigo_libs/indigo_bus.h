@@ -123,7 +123,8 @@ extern char *indigo_switch_rule_text[];
 typedef enum {
 	INDIGO_ENABLE_BLOB_ALSO,
 	INDIGO_ENABLE_BLOB_NEVER,
-	INDIGO_ENABLE_BLOB_ONLY
+	INDIGO_ENABLE_BLOB_ONLY,
+	INDIGO_ENABLE_BLOB_URL
 } indigo_enable_blob;
 
 /** Property item definition.
@@ -161,6 +162,7 @@ typedef struct {
 		 */
 		struct {
 			char format[INDIGO_NAME_SIZE];  ///< item format (for blob properties), known file type suffix like ".fits" or ".jpeg"
+			char url[INDIGO_VALUE_SIZE];		///< item URL on source server
 			long size;                      ///< item size (for blob properties) in bytes
 			void *value;                    ///< item value (for blob properties)
 		} blob;
@@ -239,9 +241,10 @@ typedef struct indigo_client {
 /** Wire protocol adapter private data structure.
  */
 typedef struct {
-	int input;						///< input handle
-	int output;						///< output handle
-	bool web_socket;			///< connection over WebSocket (RFC6455)
+	int input;													///< input handle
+	int output;													///< output handle
+	bool web_socket;										///< connection over WebSocket (RFC6455)
+	char url_prefix[INDIGO_NAME_SIZE];	///< server url prefix (for BLOB download)
 } indigo_adapter_context;
 
 

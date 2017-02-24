@@ -180,15 +180,19 @@ void *server_thread(indigo_server_entry *server) {
 		}
 		if (server->socket > 0) {
 			INDIGO_LOG(indigo_log("Server %s:%d connected", server->host, server->port));
-			char name[128];
+			char name[INDIGO_NAME_SIZE], url[INDIGO_NAME_SIZE];
 			strncpy(name, server->host, sizeof(name));
+			char *lastone = name + strlen(name) - 1;
+			if (*lastone == '.')
+				*lastone = 0;
+			snprintf(url, sizeof(url), "http://%s:%d", name, server->port);
 			char * local = strstr(name, ".local");
-			if (local != NULL && (!strcmp(local, ".local") || !strcmp(local, ".local.")))
+			if (local != NULL && (!strcmp(local, ".local")))
 				*local = 0;
 			if (server->port != 7624) {
 				sprintf(name + strlen(name), ":%d", server->port);
 			}
-			server->protocol_adapter = indigo_xml_client_adapter(name, server->socket, server->socket);
+			server->protocol_adapter = indigo_xml_client_adapter(name, url, server->socket, server->socket);
 			indigo_attach_device(server->protocol_adapter);
 			indigo_xml_parse(server->protocol_adapter, NULL);
 			indigo_detach_device(server->protocol_adapter);
@@ -272,7 +276,7 @@ void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 		} else {
 			close(input[1]);
 			close(output[0]);
-			subprocess->protocol_adapter = indigo_xml_client_adapter(subprocess->executable, input[0], output[1]);
+			subprocess->protocol_adapter = indigo_xml_client_adapter(subprocess->executable, "", input[0], output[1]);
 			indigo_attach_device(subprocess->protocol_adapter);
 			indigo_xml_parse(subprocess->protocol_adapter, NULL);
 			indigo_detach_device(subprocess->protocol_adapter);
