@@ -39,6 +39,7 @@
 #include "indigo_server_tcp.h"
 #include "indigo_driver.h"
 #include "indigo_client.h"
+#include "indigo_xml.h"
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
@@ -311,6 +312,8 @@ static void server_main(int argc, const char * argv[]) {
 			use_bonjour = false;
 		} else if (!strcmp(argv[i], "-c-") || !strcmp(argv[i], "--disable-control-panel")) {
 			use_control_panel = false;
+		} else if (!strcmp(argv[i], "-u-") || !strcmp(argv[i], "--disable-blob-urls")) {
+			indigo_use_blob_urls = false;
 		} else if(argv[i][0] != '-') {
 			indigo_load_driver(argv[i], false, NULL);
 		}
@@ -384,7 +387,7 @@ int main(int argc, const char * argv[]) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("%s [-h|--help]\n", argv[0]);
-			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-debug] [-vv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-u-|--disable-blob-urls] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-debug] [-vv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			return 0;
 		} else {
 			server_argv[server_argc++] = argv[i];
