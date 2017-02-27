@@ -65,6 +65,9 @@ static void exposure_timer_callback(indigo_device *device) {
 		int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
 		int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
 		int size = frame_width * frame_height;
+		int gain = (int)(CCD_GAIN_ITEM->number.value * CCD_EXPOSURE_ITEM->number.target / 100);
+		int offset = (int)CCD_OFFSET_ITEM->number.value;
+		double gamma = CCD_GAMMA_ITEM->number.value;
 		for (int i = 0; i < size; i++)
 			raw[i] = (rand() & 0xFF); // noise
 		for (int i = 0; i < STARS; i++) {
@@ -83,6 +86,15 @@ static void exposure_timer_callback(indigo_device *device) {
 				}
 			}
 		}
+		for (int i = 0; i < size; i++) {
+			double value = raw[i] - offset;
+			if (value < 0)
+				value = 0;
+			value = gain * pow(value, gamma);
+			if (value > 65535)
+				value = 65535;
+			raw[i] = (unsigned short)value;
+		}
 		indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
 	}
 }
@@ -90,12 +102,12 @@ static void exposure_timer_callback(indigo_device *device) {
 static void ccd_temperature_callback(indigo_device *device) {
 	double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
 	if (diff > 0) {
-		if (diff > 10) {
+		if (diff > 5) {
 			if (CCD_COOLER_ON_ITEM->sw.value && CCD_COOLER_POWER_ITEM->number.value != 100) {
 				CCD_COOLER_POWER_ITEM->number.value = 100;
 				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			}
-		} else if (diff > 5) {
+		} else {
 			if (CCD_COOLER_ON_ITEM->sw.value && CCD_COOLER_POWER_ITEM->number.value != 50) {
 				CCD_COOLER_POWER_ITEM->number.value = 50;
 				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
@@ -113,6 +125,17 @@ static void ccd_temperature_callback(indigo_device *device) {
 		CCD_TEMPERATURE_ITEM->number.value = ++(PRIVATE_DATA->current_temperature);
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	} else {
+		if (CCD_COOLER_ON_ITEM->sw.value) {
+			if (CCD_COOLER_POWER_ITEM->number.value != 20) {
+				CCD_COOLER_POWER_ITEM->number.value = 20;
+				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+			}
+		} else {
+			if (CCD_COOLER_POWER_ITEM->number.value != 0) {
+				CCD_COOLER_POWER_ITEM->number.value = 0;
+				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+			}
+		}
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
@@ -147,6 +170,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 5.2;
 		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 5.2;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+		// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
+		CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- CCD_IMAGE
 		for (int i = 0; i < STARS; i++) {
 			PRIVATE_DATA->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions

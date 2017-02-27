@@ -124,23 +124,23 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			indigo_init_number_item(CCD_BIN_HORIZONTAL_ITEM, CCD_BIN_HORIZONTAL_ITEM_NAME, "Horizontal binning", 0, 1, 1, 1);
 			indigo_init_number_item(CCD_BIN_VERTICAL_ITEM, CCD_BIN_VERTICAL_ITEM_NAME, "Vertical binning", 0, 1, 1, 1);
 			// -------------------------------------------------------------------------------- CCD_GAIN
-			CCD_GAIN_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_GAIN_PROPERTY_NAME, CCD_IMAGE_GROUP, "Gain", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			CCD_GAIN_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_GAIN_PROPERTY_NAME, CCD_MAIN_GROUP, "Gain", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_GAIN_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_GAIN_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_GAIN_ITEM, CCD_GAIN_ITEM_NAME, "Gain", 0, 1, 1, 1);
+			indigo_init_number_item(CCD_GAIN_ITEM, CCD_GAIN_ITEM_NAME, "Gain", 0, 500, 1, 100);
 			// -------------------------------------------------------------------------------- CCD_OFFSET
-			CCD_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_OFFSET_PROPERTY_NAME, CCD_IMAGE_GROUP, "Offset", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			CCD_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_OFFSET_PROPERTY_NAME, CCD_MAIN_GROUP, "Offset", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_OFFSET_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_OFFSET_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_OFFSET_ITEM, CCD_OFFSET_ITEM_NAME, "Offset", 0, 1, 1, 1);
+			indigo_init_number_item(CCD_OFFSET_ITEM, CCD_OFFSET_ITEM_NAME, "Offset", 0, 10000, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_GAMMA
-			CCD_GAMMA_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_GAMMA_PROPERTY_NAME, CCD_IMAGE_GROUP, "Gamma", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			CCD_GAMMA_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_GAMMA_PROPERTY_NAME, CCD_MAIN_GROUP, "Gamma", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_GAMMA_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_GAMMA_PROPERTY->hidden = true;
-			indigo_init_number_item(CCD_GAMMA_ITEM, CCD_GAMMA_ITEM_NAME, "Gamma", 0, 1, 1, 1);
+			indigo_init_number_item(CCD_GAMMA_ITEM, CCD_GAMMA_ITEM_NAME, "Gamma", 0.5, 2.0, 0.1, 1);
 			// -------------------------------------------------------------------------------- CCD_FRAME_TYPE
 			CCD_FRAME_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_FRAME_TYPE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Frame type", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 			if (CCD_FRAME_TYPE_PROPERTY == NULL)
