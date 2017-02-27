@@ -342,6 +342,18 @@ $(BUILD_LIB)/libfli.a: $(BUILD_INCLUDE)/libfli/libfli.h
 	install -d $(BUILD_LIB)
 	cp indigo_drivers/ccd_fli/externals/libfli-1.104/libfli.a $(BUILD_LIB)
 
+
+#---------------------------------------------------------------------
+#
+#	indtall sbigudrv
+#
+#---------------------------------------------------------------------
+
+ifeq ($(OS_DETECTED),Linux)
+$(BUILD_LIB)/libsbigudrv.a:
+	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=../build/ -DSKIP_FIRMWARE_INSTALL=True ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
+endif
+
 #---------------------------------------------------------------------
 #
 #	Initialize
@@ -644,7 +656,24 @@ $(BUILD_DRIVERS)/indigo_focuser_fli.$(SOEXT): indigo_drivers/focuser_fli/indigo_
 #       Build SBIG CCD driver
 #
 #---------------------------------------------------------------------
-# TOBE FIXED FOR SBIG !!!!
+
+
+ifeq ($(OS_DETECTED),Linux)
+$(BUILD_DRIVERS)/indigo_ccd_sbig.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig.a $(BUILD_LIB)/libsbigudrv.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o $(BUILD_LIB)/libsbigudrv.a
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+else ifeq ($(OS_DETECTED),Darwin)
+$(BUILD_INCLUDE)/libsbig/sbigudrv.h:
+	install -d $(BUILD_INCLUDE)/libsbig
+	cp indigo_drivers/ccd_sbig/bin_externals/sbigudrv/include/sbigudrv.h $(BUILD_INCLUDE)/libsbig/
+
+indigo_drivers/ccd_sbig/indigo_ccd_sbig.o: $(BUILD_INCLUDE)/libsbig/sbigudrv.h
 
 $(BUILD_DRIVERS)/indigo_ccd_sbig.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(AR) $(ARFLAGS) $@ $^
@@ -654,6 +683,7 @@ $(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o
 
 $(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+endif
 
 #---------------------------------------------------------------------
 #
