@@ -319,12 +319,12 @@ static bool sx_start_exposure(indigo_device *device, double exposure, bool dark,
 				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
 				INDIGO_DEBUG_DRIVER(indigo_debug("sx_start_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
 			} else {
+				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
 				setup_data[REQ_DATA + 2] = (frame_top/2) & 0xFF;
 				setup_data[REQ_DATA + 3] = (frame_top/2) >> 8;
 				setup_data[REQ_DATA + 6] = (frame_height/2) & 0xFF;
 				setup_data[REQ_DATA + 7] = (frame_height/2) >> 8;
 				setup_data[REQ_DATA + 9] = 1;
-				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
 				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
 				INDIGO_DEBUG_DRIVER(indigo_debug("sx_start_exposure: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
 			}
@@ -401,6 +401,8 @@ static bool sx_read_pixels(indigo_device *device) {
 	unsigned char *setup_data = PRIVATE_DATA->setup_data;
 	int rc = 0;
 	int transferred;
+	int frame_left = PRIVATE_DATA->frame_left;
+	int frame_top = PRIVATE_DATA->frame_top;
 	int frame_width = PRIVATE_DATA->frame_width;
 	int frame_height = PRIVATE_DATA->frame_height;
 	int horizontal_bin = PRIVATE_DATA->horizontal_bin;
@@ -408,20 +410,68 @@ static bool sx_read_pixels(indigo_device *device) {
 	int size = (frame_width/horizontal_bin)*(frame_height/vertical_bin);
 	if (PRIVATE_DATA->is_interlaced) {
 		if (vertical_bin>1) {
+			if (PRIVATE_DATA->exposure > 3) {
+				setup_data[REQ ] = CCD_READ_PIXELS;
+				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
+				setup_data[REQ_VALUE_H ] = 0;
+				setup_data[REQ_INDEX_L ] = 0;
+				setup_data[REQ_INDEX_H ] = 0;
+				setup_data[REQ_LENGTH_L] = 10;
+				setup_data[REQ_LENGTH_H] = 0;
+				setup_data[REQ_DATA + 0] = frame_left & 0xFF;
+				setup_data[REQ_DATA + 1] = frame_left >> 8;
+				setup_data[REQ_DATA + 2] = (frame_top / vertical_bin) & 0xFF;
+				setup_data[REQ_DATA + 3] = (frame_top / vertical_bin) >> 8;
+				setup_data[REQ_DATA + 4] = frame_width & 0xFF;
+				setup_data[REQ_DATA + 5] = frame_width >> 8;
+				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
+				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
+				setup_data[REQ_DATA + 8] = horizontal_bin;
+				setup_data[REQ_DATA + 9] = vertical_bin / 2;
+				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
+			}
 			rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
 		} else {
 			unsigned char *even = PRIVATE_DATA->even;
 			if (PRIVATE_DATA->exposure > 3) {
 				setup_data[REQ ] = CCD_READ_PIXELS;
 				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_EVEN | FLAGS_SPARE2;
+				setup_data[REQ_VALUE_H ] = 0;
+				setup_data[REQ_INDEX_L ] = 0;
+				setup_data[REQ_INDEX_H ] = 0;
 				setup_data[REQ_LENGTH_L] = 10;
+				setup_data[REQ_LENGTH_H] = 0;
+				setup_data[REQ_DATA + 0] = frame_left & 0xFF;
+				setup_data[REQ_DATA + 1] = frame_left >> 8;
+				setup_data[REQ_DATA + 2] = (frame_top / 2) & 0xFF;
+				setup_data[REQ_DATA + 3] = (frame_top / 2) >> 8;
+				setup_data[REQ_DATA + 4] = frame_width & 0xFF;
+				setup_data[REQ_DATA + 5] = frame_width >> 8;
+				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
+				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
+				setup_data[REQ_DATA + 8] = horizontal_bin;
+				setup_data[REQ_DATA + 9] = vertical_bin;
 				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
 			}
 			rc = sx_download_pixels(device, PRIVATE_DATA->even, size);
 			if (rc >= 0) {
 				setup_data[REQ ] = CCD_READ_PIXELS;
 				setup_data[REQ_VALUE_L ] = FLAGS_FIELD_ODD | FLAGS_SPARE2;
+				setup_data[REQ_VALUE_H ] = 0;
+				setup_data[REQ_INDEX_L ] = 0;
+				setup_data[REQ_INDEX_H ] = 0;
 				setup_data[REQ_LENGTH_L] = 10;
+				setup_data[REQ_LENGTH_H] = 0;
+				setup_data[REQ_DATA + 0] = frame_left & 0xFF;
+				setup_data[REQ_DATA + 1] = frame_left >> 8;
+				setup_data[REQ_DATA + 2] = (frame_top / 2) & 0xFF;
+				setup_data[REQ_DATA + 3] = (frame_top / 2) >> 8;
+				setup_data[REQ_DATA + 4] = frame_width & 0xFF;
+				setup_data[REQ_DATA + 5] = frame_width >> 8;
+				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
+				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
+				setup_data[REQ_DATA + 8] = horizontal_bin;
+				setup_data[REQ_DATA + 9] = vertical_bin;
 				rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
 				if (rc >= 0) {
 					INDIGO_DEBUG_DRIVER(indigo_debug("sx_read_pixels: libusb_bulk_transfer [%d] -> %lu bytes %s", __LINE__, transferred, rc < 0 ? libusb_error_name(rc) : "OK"));
@@ -442,7 +492,21 @@ static bool sx_read_pixels(indigo_device *device) {
 		if (PRIVATE_DATA->exposure > 3) {
 			setup_data[REQ ] = CCD_READ_PIXELS;
 			setup_data[REQ_VALUE_L ] = FLAGS_FIELD_BOTH;
+			setup_data[REQ_VALUE_H ] = 0;
+			setup_data[REQ_INDEX_L ] = 0;
+			setup_data[REQ_INDEX_H ] = 0;
 			setup_data[REQ_LENGTH_L] = 10;
+			setup_data[REQ_LENGTH_H] = 0;
+			setup_data[REQ_DATA + 0] = frame_left & 0xFF;
+			setup_data[REQ_DATA + 1] = frame_left >> 8;
+			setup_data[REQ_DATA + 2] = frame_top & 0xFF;
+			setup_data[REQ_DATA + 3] = frame_top >> 8;
+			setup_data[REQ_DATA + 4] = frame_width & 0xFF;
+			setup_data[REQ_DATA + 5] = frame_width >> 8;
+			setup_data[REQ_DATA + 6] = frame_height & 0xFF;
+			setup_data[REQ_DATA + 7] = frame_height >> 8;
+			setup_data[REQ_DATA + 8] = horizontal_bin;
+			setup_data[REQ_DATA + 9] = vertical_bin;
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
 		}
 		rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
