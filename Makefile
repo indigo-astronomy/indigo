@@ -657,25 +657,31 @@ $(BUILD_DRIVERS)/indigo_focuser_fli.$(SOEXT): indigo_drivers/focuser_fli/indigo_
 #
 #---------------------------------------------------------------------
 
+
+ifeq ($(OS_DETECTED),Linux)
 $(BUILD_DRIVERS)/indigo_ccd_sbig.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(AR) $(ARFLAGS) $@ $^
 
-ifeq ($(OS_DETECTED),Linux)
 $(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig.a $(BUILD_LIB)/libsbigudrv.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
 $(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o $(BUILD_LIB)/libsbigudrv.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
-endif
 
-ifeq ($(OS_DETECTED),Darwin)
-$(BUILD_INCLUDE)/sbigudrv/sbigudrv.h:
-	cp indigo_drivers/ccd_sbig/bin_externals/sbigudrv/include/sbigudrv.h $(BUILD_INCLUDE)/sbigudrv/sbigudrv.h
+else ifeq ($(OS_DETECTED),Darwin)
+$(BUILD_INCLUDE)/libsbig/sbigudrv.h:
+	install -d $(BUILD_INCLUDE)/libsbig
+	cp indigo_drivers/ccd_sbig/bin_externals/sbigudrv/include/sbigudrv.h $(BUILD_INCLUDE)/libsbig/
 
-$(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig.a $(BUILD_INCLUDE)/sbigudrv/sbigudrv.h:
+indigo_drivers/ccd_sbig/indigo_ccd_sbig.o: $(BUILD_INCLUDE)/libsbig/sbigudrv.h
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o $(BUILD_INCLUDE)/sbigudrv/sbigudrv.h:
+$(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 endif
 
