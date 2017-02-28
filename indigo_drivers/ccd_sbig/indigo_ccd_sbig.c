@@ -117,7 +117,8 @@ typedef struct {
 
 typedef struct {
 	int dev_id;
-	char dev_file_name[MAX_PATH];
+	bool is_usb;
+	SBIG_DEVICE_TYPE usb_index;
 	char dev_name[MAX_PATH];
 	//flidomain_t domain;
 	bool rbi_flood_supported;
@@ -907,6 +908,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#define MAX_USB_DEVICES                8
+
 #define MAX_DEVICES                   32
 
 //static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_CAMERA;
@@ -917,40 +920,40 @@ static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
+static QueryUSBResults2 usb_cams = {0};
+static QueryEthernetResults2 eth_cam_list;
+
+static inline int usb_to_index(SBIG_DEVICE_TYPE type) {
+	return DEV_USB1 - type;
+}
+
+static inline SBIG_DEVICE_TYPE index_to_usb(int index) {
+	return DEV_USB1 + index;
+}
 
 static void enumerate_devices() {
-	/* There is a mem leak heree!!! 8,192 constant + 20 bytes on every new connected device */
-	num_devices = 0;
-	//long res = FLICreateList(enum_domain);
-	//if (res) {
-	//	INDIGO_LOG(indigo_log("indigo_ccd_fli: FLICreateList(%d) = %d",enum_domain , res));
-	//}
-	//if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
-	//	do {
-	//		num_devices++;
-	//	} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
-	//}
-	//FLIDeleteList();
-	/* FOR DEBUG only!
-	FLICreateList(FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL);
-	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
-		do {
-			num_devices++;
-		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
+	sbig_command(CC_OPEN_DRIVER, NULL, NULL);
+	int res = sbig_command(CC_QUERY_USB2, NULL, &usb_cams);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: command CC_QUERY_USB2 error = %d", res));
 	}
-	FLIDeleteList();
-	*/
+	INDIGO_LOG(indigo_log("indigo_camera_sbig: usb_cams = %d", usb_cams.camerasFound));
+	INDIGO_LOG(indigo_log("indigo_camera_sbig: usb_type = %d", usb_cams.usbInfo[0].cameraType ));
+	INDIGO_LOG(indigo_log("indigo_camera_sbig: cam name = %s", usb_cams.usbInfo[0].name));
+	sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
+	num_devices = 0;
 }
 
 
-static int find_plugged_device(char *fname) {
+static int find_plugged_device(char *dev_name) {
 	enumerate_devices();
-	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
+	for (int dev_no = 0; dev_no < MAX_USB_DEVICES; dev_no++) {
 		bool found = false;
+		if (!usb_cams.usbInfo[dev_no].cameraFound) continue;
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
 			if (device == NULL) continue;
-			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+			if (PRIVATE_DATA->usb_index == index_to_usb(dev_no)) {
 				found = true;
 				break;
 			}
@@ -958,19 +961,9 @@ static int find_plugged_device(char *fname) {
 		if (found) {
 			continue;
 		} else {
-			assert(fname!=NULL);
-			strncpy(fname, fli_file_names[dev_no], MAX_PATH);
-			return dev_no;
-		}
-	}
-	return -1;
-}
-
-
-static int find_index_by_device_fname(char *fname) {
-	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-		if (!strncmp(fli_file_names[dev_no], fname, MAX_PATH)) {
-			return dev_no;
+			assert(dev_name!=NULL);
+			strncpy(dev_name, usb_cams.usbInfo[dev_no].name, MAX_PATH);
+			return index_to_usb(dev_no);
 		}
 	}
 	return -1;
@@ -985,24 +978,25 @@ static int find_available_device_slot() {
 }
 
 
-static int find_device_slot(char *fname) {
+static int find_device_slot(CAMERA_TYPE usb_index) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
 		if (device == NULL) continue;
-		if (!strncmp(PRIVATE_DATA->dev_file_name, fname, 255)) return slot;
+		if (PRIVATE_DATA->usb_index == usb_index) return slot;
 	}
 	return -1;
 }
 
 
-static int find_unplugged_device(char *fname) {
+static int find_unplugged_device(char *dev_name) {
 	enumerate_devices();
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		bool found = false;
 		indigo_device *device = devices[slot];
 		if (device == NULL) continue;
-		for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+		for (int dev_no = 0; dev_no < MAX_USB_DEVICES; dev_no++) {
+			if (!usb_cams.usbInfo[dev_no].cameraFound) continue;
+			if (PRIVATE_DATA->usb_index == index_to_usb(dev_no)) {
 				found = true;
 				break;
 			}
@@ -1010,8 +1004,8 @@ static int find_unplugged_device(char *fname) {
 		if (found) {
 			continue;
 		} else {
-			assert(fname!=NULL);
-			strncpy(fname, PRIVATE_DATA->dev_file_name, MAX_PATH);
+			assert(dev_name!=NULL);
+			strncpy(dev_name, PRIVATE_DATA->dev_name, MAX_PATH);
 			return slot;
 		}
 	}
@@ -1037,19 +1031,22 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
 			if (descriptor.idVendor != SBIG_VENDOR_ID) break;
 
+			INDIGO_LOG(indigo_log("IN"));
+
 			int slot = find_available_device_slot();
 			if (slot < 0) {
 				INDIGO_LOG(indigo_log("indigo_camera_sbig: No available device slots available."));
 				return 0;
 			}
 
-			char file_name[MAX_PATH];
-			int idx = find_plugged_device(file_name);
-			if (idx < 0) {
+			char cam_name[MAX_PATH];
+			int usb_index = find_plugged_device(cam_name);
+			if (usb_index < 0) {
 				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: No SBIG Camera plugged."));
 				return 0;
 			}
-
+			INDIGO_LOG(indigo_log("indigo_camera_sbig: NEW cam: slot = %d usb_index = 0x%x name ='%s'", slot, usb_index, cam_name));
+			/*
 			indigo_device *device = malloc(sizeof(indigo_device));
 			assert(device != NULL);
 			memcpy(device, &ccd_template, sizeof(indigo_device));
@@ -1065,9 +1062,13 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			device->private_data = private_data;
 			indigo_async((void *)(void *)indigo_attach_device, device);
 			devices[slot]=device;
+			*/
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+			INDIGO_LOG(indigo_log("LEFT"));
+			enumerate_devices();
+			/*
 			int slot, id;
 			char file_name[MAX_PATH];
 			bool removed = false;
@@ -1087,6 +1088,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			if (!removed) {
 				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: No SBIG Camera unplugged!"));
 			}
+			*/
 		}
 	}
 	pthread_mutex_unlock(&device_mutex);
@@ -1132,6 +1134,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		if (!dl_handle) {
 			const char* dlsym_error = dlerror();
 			INDIGO_LOG(indigo_log("indigo_ccd_sbig: SBIG SDK can't be loaded (%s)", dlsym_error));
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Please install SBIGUDrv framework from http://www.sbig.com"));
 			return INDIGO_FAILED;
 		}
 		sbig_command = dlsym(dl_handle, "SBIGUnivDrvCommand");
@@ -1148,10 +1151,18 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		};
 		GetDriverInfoResults0 di;
 
-		sbig_command(CC_OPEN_DRIVER, NULL, NULL);
-		sbig_command(CC_GET_DRIVER_INFO, &di_req, &di);
-		INDIGO_LOG(indigo_log("indigo_ccd_sbig: Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff));
+		int res = sbig_command(CC_OPEN_DRIVER, NULL, NULL);
+		if (res != CE_NO_ERROR) {
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: command CC_OPEN_DRIVER error = %d", res));
+			return INDIGO_FAILED;
+		}
+		res = sbig_command(CC_GET_DRIVER_INFO, &di_req, &di);
 		sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
+		if (res != CE_NO_ERROR) {
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: command CC_GET_DRIVER_INFO error = %d", res));
+		} else {
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff));
+		}
 
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
