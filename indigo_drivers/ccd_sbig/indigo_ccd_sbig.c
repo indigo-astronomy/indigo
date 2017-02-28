@@ -1128,7 +1128,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 #ifdef __linux__
 		sbig_command = SBIGUnivDrvCommand;
 #elif __APPLE__
-		dl_handle = dlopen("libsbigudrv.dylib", RTLD_LAZY);
+		dl_handle = dlopen("/Library/Frameworks/SBIGUDrv.framework/SBIGUDrv", RTLD_LAZY);
 		if (!dl_handle) {
 			const char* dlsym_error = dlerror();
 			INDIGO_LOG(indigo_log("indigo_ccd_sbig: SBIG SDK can't be loaded (%s)", dlsym_error));
