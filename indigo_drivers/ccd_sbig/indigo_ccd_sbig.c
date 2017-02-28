@@ -1143,6 +1143,16 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		}
 #endif
 
+		GetDriverInfoParams di_req = {
+			.request = DRIVER_STD
+		};
+		GetDriverInfoResults0 di;
+
+		sbig_command(CC_OPEN_DRIVER, NULL, NULL);
+		sbig_command(CC_GET_DRIVER_INFO, &di_req, &di);
+		INDIGO_LOG(indigo_log("indigo_ccd_sbig: Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff));
+		sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
+
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
