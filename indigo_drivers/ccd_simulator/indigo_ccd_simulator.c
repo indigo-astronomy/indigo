@@ -460,6 +460,10 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE / FOCUSER_COMPENSATION
+		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+		FOCUSER_TEMPERATURE_ITEM->number.value = 25;
+		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -489,6 +493,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0.5, focuser_timer_callback);
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
+		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION

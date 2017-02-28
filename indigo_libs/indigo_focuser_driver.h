@@ -81,16 +81,35 @@
  */
 #define FOCUSER_ABORT_MOTION_ITEM							(FOCUSER_ABORT_MOTION_PROPERTY->items+0)
 
+/** FOCUSER_TEMPERATURE property pointer, property is optional, property should be fully handled by focuser driver
+ */
+#define FOCUSER_TEMPERATURE_PROPERTY					(FOCUSER_CONTEXT->focuser_temperature_property)
+
+/** FOCUSER_TEMPERATURE.TEMPERATURE property item pointer.
+ */
+#define FOCUSER_TEMPERATURE_ITEM							(FOCUSER_TEMPERATURE_PROPERTY->items+0)
+
+/** FOCUSER_COMPENSATION property pointer, property is optional, property should be fully handled by focuser driver
+ */
+#define FOCUSER_COMPENSATION_PROPERTY					(FOCUSER_CONTEXT->focuser_compensation_property)
+
+/** FOCUSER_TEMPERATURE.TEMPERATURE property item pointer.
+ */
+#define FOCUSER_COMPENSATION_ITEM	(FOCUSER_COMPENSATION_PROPERTY->items+0)
+
+
 
 /** Focuser device context structure.
  */
 typedef struct {
-	indigo_device_context device_context;						///< device context base
-	indigo_property *focuser_speed_property;				///< FOCUSER_SPEED property pointer
-	indigo_property *focuser_direction_property;		///< FOCUSER_DIRECTION property pointer
-	indigo_property *focuser_steps_property;				///< FOCUSER_STEPS property pointer
-	indigo_property *focuser_position_property;			///< FOCUSER_POSITION property pointer
-	indigo_property *focuser_abort_motion_property;	///< FOCUSER_ABORT_MOTION property pointer
+	indigo_device_context device_context;							///< device context base
+	indigo_property *focuser_speed_property;					///< FOCUSER_SPEED property pointer
+	indigo_property *focuser_direction_property;			///< FOCUSER_DIRECTION property pointer
+	indigo_property *focuser_steps_property;					///< FOCUSER_STEPS property pointer
+	indigo_property *focuser_position_property;				///< FOCUSER_POSITION property pointer
+	indigo_property *focuser_abort_motion_property;		///< FOCUSER_ABORT_MOTION property pointer
+	indigo_property *focuser_temperature_property;		///< FOCUSER_TEMPERATURE property pointer
+	indigo_property *focuser_compensation_property;		///< FOCUSER_COMPENSATION property pointer
 } indigo_focuser_context;
 
 /** Attach callback function.

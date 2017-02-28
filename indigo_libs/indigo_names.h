@@ -551,6 +551,24 @@
 #define FOCUSER_ABORT_MOTION_ITEM_NAME				"ABORT_MOTION"
 
 //----------------------------------------------------------------------
+/** FOCUSER_TEMPERATURE property name.
+ */
+#define FOCUSER_TEMPERATURE_PROPERTY_NAME		"FOCUSER_TEMPERATURE"
+
+/** FOCUSER_TEMPERATURE.TEMPERATURE property item name.
+ */
+#define FOCUSER_TEMPERATURE_ITEM_NAME				"TEMPERATURE"
+
+//----------------------------------------------------------------------
+/** FOCUSER_COMPENSATION property name.
+ */
+#define FOCUSER_COMPENSATION_PROPERTY_NAME		"FOCUSER_COMPENSATION"
+
+/** FOCUSER_COMPENSATION.COMPENSATION property item name.
+ */
+#define FOCUSER_COMPENSATION_ITEM_NAME				"COMPENSATION"
+
+//----------------------------------------------------------------------
 
 /** MOUNT_INFO property name.
  */
