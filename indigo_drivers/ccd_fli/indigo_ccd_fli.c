@@ -1027,7 +1027,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			int slot = find_available_device_slot();
 			if (slot < 0) {
-				INDIGO_LOG(indigo_log("indigo_camera_fli: No available device slots available."));
+				INDIGO_LOG(indigo_log("indigo_ccd_fli: No available device slots available."));
 				return 0;
 			}
 

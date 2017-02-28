@@ -937,9 +937,9 @@ static void enumerate_devices() {
 	if (res != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: command CC_QUERY_USB2 error = %d", res));
 	}
-	INDIGO_LOG(indigo_log("indigo_camera_sbig: usb_cams = %d", usb_cams.camerasFound));
-	INDIGO_LOG(indigo_log("indigo_camera_sbig: usb_type = %d", usb_cams.usbInfo[0].cameraType ));
-	INDIGO_LOG(indigo_log("indigo_camera_sbig: cam name = %s", usb_cams.usbInfo[0].name));
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_cams = %d", usb_cams.camerasFound));
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_type = %d", usb_cams.usbInfo[0].cameraType ));
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: cam name = %s", usb_cams.usbInfo[0].name));
 	sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
 	num_devices = 0;
 }
@@ -1035,7 +1035,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			int slot = find_available_device_slot();
 			if (slot < 0) {
-				INDIGO_LOG(indigo_log("indigo_camera_sbig: No available device slots available."));
+				INDIGO_LOG(indigo_log("indigo_ccd_sbig: No available device slots available."));
 				return 0;
 			}
 
@@ -1045,7 +1045,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: No SBIG Camera plugged."));
 				return 0;
 			}
-			INDIGO_LOG(indigo_log("indigo_camera_sbig: NEW cam: slot = %d usb_index = 0x%x name ='%s'", slot, usb_index, cam_name));
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d usb_index = 0x%x name ='%s'", slot, usb_index, cam_name));
 			/*
 			indigo_device *device = malloc(sizeof(indigo_device));
 			assert(device != NULL);
