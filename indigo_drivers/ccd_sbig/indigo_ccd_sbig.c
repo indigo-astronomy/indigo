@@ -39,6 +39,7 @@
 
 #if defined(INDIGO_MACOS)
 #include <libusb-1.0/libusb.h>
+#include <dlfcn.h>
 #elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
@@ -74,7 +75,7 @@
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_sbig.h"
 
-#define SBIG_VENDOR_ID              0x0f18
+#define SBIG_VENDOR_ID             0x0d97
 
 #define MAX_MODES                  32
 
@@ -139,6 +140,7 @@ typedef struct {
 	indigo_property *fli_camera_mode_property;
 } fli_private_data;
 
+short (*sbig_command)(short, void*, void*);
 
 static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -1110,6 +1112,9 @@ static libusb_hotplug_callback_handle callback_handle;
 
 indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+#ifdef __APPLE__
+	static void *dl_handle = NULL;
+#endif
 
 	SET_DRIVER_INFO(info, "SBIG Camera", __FUNCTION__, DRIVER_VERSION, last_action);
 
@@ -1119,6 +1124,25 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
+
+#ifdef __linux__
+		sbig_command = SBIGUnivDrvCommand;
+#elif __APPLE__
+		dl_handle = dlopen("libsbigudrv.dylib", RTLD_LAZY);
+		if (!dl_handle) {
+			const char* dlsym_error = dlerror();
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: SBIG SDK can't be loaded (%s)" dlsym_error));
+			return INDIGO_FAILED;
+		}
+		sbig_command = dlsym(dl_handle, "SBIGUnivDrvCommand");
+		const char* dlsym_error = dlerror();
+		if (dlsym_error) {
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Can't load %s() (%s)", SBIGUnivDrvCommand, dlsym_error));
+			dlclose(dl_handle);
+			return INDIGO_NOT_FOUND;
+		}
+#endif
+
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
@@ -1129,6 +1153,12 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_deregister_callback [%d]", __LINE__));
 		remove_all_devices();
+
+#ifdef __APPLE__
+		if (dl_handle)
+			dlclose(dl_handle);
+#endif
+
 		break;
 
 	case INDIGO_DRIVER_INFO:
