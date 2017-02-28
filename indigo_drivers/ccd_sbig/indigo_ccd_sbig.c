@@ -1131,13 +1131,13 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		dl_handle = dlopen("libsbigudrv.dylib", RTLD_LAZY);
 		if (!dl_handle) {
 			const char* dlsym_error = dlerror();
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: SBIG SDK can't be loaded (%s)" dlsym_error));
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: SBIG SDK can't be loaded (%s)", dlsym_error));
 			return INDIGO_FAILED;
 		}
 		sbig_command = dlsym(dl_handle, "SBIGUnivDrvCommand");
 		const char* dlsym_error = dlerror();
 		if (dlsym_error) {
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Can't load %s() (%s)", SBIGUnivDrvCommand, dlsym_error));
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Can't load %s() (%s)", "SBIGUnivDrvCommand", dlsym_error));
 			dlclose(dl_handle);
 			return INDIGO_NOT_FOUND;
 		}
