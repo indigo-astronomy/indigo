@@ -1091,7 +1091,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				private_data->dev_id = id;
 				memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
 				device->private_data = private_data;
-				//indigo_attach_device(device);
 				indigo_async((void *)(void *)indigo_attach_device, device);
 				devices[slot]=device;
 
@@ -1108,7 +1107,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					sprintf(device->name, "%s Guider #%d", info.Name, id);
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: '%s' attached.", device->name));
 					device->private_data = private_data;
-					//indigo_attach_device(device);
 					indigo_async((void *)(void *)indigo_attach_device, device);
 					devices[slot]=device;
 				}
@@ -1123,10 +1121,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				slot = find_device_slot(id);
 				while (slot >= 0) {
 					indigo_device **device = &devices[slot];
-					if (*device == NULL)
+					if (*device == NULL) {
 						pthread_mutex_unlock(&device_mutex);
 						return 0;
-
+					}
 					indigo_detach_device(*device);
 					if ((*device)->private_data) {
 						private_data = (*device)->private_data;
