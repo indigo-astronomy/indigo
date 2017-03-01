@@ -650,7 +650,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				flidev_t id = PRIVATE_DATA->dev_id;
 				long res;
 
-				CCD_MODE_PROPERTY->hidden = true;
 				CCD_COOLER_PROPERTY->hidden = false;
 
 				if(PRIVATE_DATA->rbi_flood_supported) {

@@ -460,38 +460,36 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		int format_count = 0;
 		if (pixel_format_supported(device, ASI_IMG_RAW8)) {
-			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RAW8_NAME, RAW8_NAME, true);
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + format_count, RAW8_NAME, RAW8_NAME, true);
 			format_count++;
 		}
 		if (pixel_format_supported(device, ASI_IMG_RGB24)) {
-			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RGB24_NAME, RGB24_NAME, false);
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + format_count, RGB24_NAME, RGB24_NAME, false);
 			format_count++;
 		}
 		if (pixel_format_supported(device, ASI_IMG_RAW16)) {
-			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, RAW16_NAME, RAW16_NAME, false);
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + format_count, RAW16_NAME, RAW16_NAME, false);
 			format_count++;
 		}
 		if (pixel_format_supported(device, ASI_IMG_Y8)) {
-			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items+format_count, Y8_NAME, Y8_NAME, false);
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + format_count, Y8_NAME, Y8_NAME, false);
 			format_count++;
 		}
 		PIXEL_FORMAT_PROPERTY->count = format_count;
 
-		CCD_MODE_PROPERTY->hidden = true;
-
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
+		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+		
 		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
 		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
-		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
 
 		/* find max binning */
 		int max_bin = 1;
-		int num = 0;
-		while ((num < 16) && PRIVATE_DATA->info.SupportedBins[num]) {
+		for (int num = 0; (num < 16) && PRIVATE_DATA->info.SupportedBins[num]; num++) {
 			max_bin = PRIVATE_DATA->info.SupportedBins[num];
-			num++;
 		}
 
 		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
@@ -503,7 +501,36 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
 		CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
 
-		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
+		int mode_count = 0;
+		char name[32], label[64];
+		for (int num = 0; (num < 16) && PRIVATE_DATA->info.SupportedBins[num]; num++) {
+			int bin = PRIVATE_DATA->info.SupportedBins[num];
+			if (pixel_format_supported(device, ASI_IMG_RAW8)) {
+				snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
+				snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, bin == 1);
+				mode_count++;
+			}
+			if (pixel_format_supported(device, ASI_IMG_RGB24)) {
+				snprintf(name, 32, "%s %dx%d", RGB24_NAME, bin, bin);
+				snprintf(label, 64, "%s %dx%d", RGB24_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, false);
+				mode_count++;
+			}
+			if (pixel_format_supported(device, ASI_IMG_RAW16)) {
+				snprintf(name, 32, "%s %dx%d", RAW16_NAME, bin, bin);
+				snprintf(label, 64, "%s %dx%d", RAW16_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, false);
+				mode_count++;
+			}
+			if (pixel_format_supported(device, ASI_IMG_Y8)) {
+				snprintf(name, 32, "%s %dx%d", Y8_NAME, bin, bin);
+				snprintf(label, 64, "%s %dx%d", Y8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, false);
+				mode_count++;
+			}
+		}
+		CCD_MODE_PROPERTY->count = mode_count;
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
 		if (ASI_ADVANCED_PROPERTY == NULL)
@@ -542,7 +569,6 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return INDIGO_OK;
 }
-
 
 static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAPS ctrl_caps) {
 	int id = PRIVATE_DATA->dev_id;
@@ -775,7 +801,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res));
 
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		if (CONNECTION_CONNECTED_ITEM->sw.value)
+			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
@@ -787,29 +814,102 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
-		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
+		if (CONNECTION_CONNECTED_ITEM->sw.value)
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- PIXEL_FORMAT
 	} else if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property)) {
 		indigo_property_copy_values(PIXEL_FORMAT_PROPERTY, property, false);
 		PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
-		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
-		CCD_INFO_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_INFO_PROPERTY, NULL);
-
-		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = get_pixel_depth(device);
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+
+		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+		char name[32] = "";
+		for (int i = 0; i < PIXEL_FORMAT_PROPERTY->count; i++) {
+			if (PIXEL_FORMAT_PROPERTY->items[i].sw.value) {
+				snprintf(name, 32, "%s %dx%d", PIXEL_FORMAT_PROPERTY->items[i].name, horizontal_bin, vertical_bin);
+				break;
+			}
+		}
+		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
+			item->sw.value = !strcmp(item->name, name);
+		}
+		CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ADVANCED_FORMAT
 	} else if (indigo_property_match(ASI_ADVANCED_PROPERTY, property)) {
 		handle_advanced_property(device, property);
 		indigo_property_copy_values(ASI_ADVANCED_PROPERTY, property, false);
 		ASI_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, ASI_ADVANCED_PROPERTY, NULL);
+		if (CONNECTION_CONNECTED_ITEM->sw.value)
+			indigo_update_property(device, ASI_ADVANCED_PROPERTY, NULL);
+		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- CCD_MODE
+	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
+		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
+		char name[32] = "";
+		int h, v;
+		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
+			if (item->sw.value) {
+				for (int j = 0; j < PIXEL_FORMAT_PROPERTY->count; j++) {
+					snprintf(name, 32, "%s %%dx%%d", PIXEL_FORMAT_PROPERTY->items[j].name);
+					if (sscanf(item->name, name, &h, &v) == 2) {
+						CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = h;
+						CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = v;
+						PIXEL_FORMAT_PROPERTY->items[j].sw.value = true;
+					} else {
+						PIXEL_FORMAT_PROPERTY->items[j].sw.value = false;
+					}
+				}
+				break;
+			}
+		}
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+			CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+			CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_BIN
+		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
+		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
+		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+		char name[32] = "";
+		for (int i = 0; i < PIXEL_FORMAT_PROPERTY->count; i++) {
+			if (PIXEL_FORMAT_PROPERTY->items[i].sw.value) {
+				snprintf(name, 32, "%s %dx%d", PIXEL_FORMAT_PROPERTY->items[i].name, horizontal_bin, vertical_bin);
+				break;
+			}
+		}
+		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
+			item->sw.value = !strcmp(item->name, name);
+		}
+		CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
