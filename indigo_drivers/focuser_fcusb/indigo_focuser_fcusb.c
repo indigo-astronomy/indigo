@@ -187,6 +187,8 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #define MAX_DEVICES                   3
 
 static indigo_device *devices[MAX_DEVICES];
@@ -199,6 +201,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		focuser_change_property,
 		focuser_detach
 	};
+
+	pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			const char *name;
@@ -241,6 +245,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 	}
+	pthread_mutex_unlock(&device_mutex);
 	return 0;
 }
 

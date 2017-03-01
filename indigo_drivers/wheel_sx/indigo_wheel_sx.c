@@ -164,6 +164,8 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static indigo_device *device = NULL;
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
@@ -174,10 +176,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		wheel_change_property,
 		wheel_detach
 	};
+
+	pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			if (device != NULL)
+			if (device != NULL) {
+				pthread_mutex_unlock(&device_mutex);
 				return 0;
+			}
 			device = malloc(sizeof(indigo_device));
 			assert(device != NULL);
 			memcpy(device, &wheel_template, sizeof(indigo_device));
@@ -189,14 +195,17 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			if (device == NULL)
+			if (device == NULL) {
+				pthread_mutex_unlock(&device_mutex);
 				return 0;
+			}
 			indigo_detach_device(device);
 			free(device->private_data);
 			free(device);
 			device = NULL;
 		}
 	}
+	pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 
