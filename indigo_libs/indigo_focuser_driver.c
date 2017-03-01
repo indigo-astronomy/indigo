@@ -128,20 +128,16 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			if (!FOCUSER_TEMPERATURE_PROPERTY->hidden)
-				indigo_define_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-			if (!FOCUSER_COMPENSATION_PROPERTY->hidden)
-				indigo_define_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		} else {
 			indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			if (!FOCUSER_TEMPERATURE_PROPERTY->hidden)
-				indigo_delete_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-			if (!FOCUSER_COMPENSATION_PROPERTY->hidden)
-				indigo_delete_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		}
 	// -------------------------------------------------------------------------------- FOCUSER_SPEED
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
@@ -158,12 +154,9 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			if (FOCUSER_SPEED_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, NULL, FOCUSER_SPEED_PROPERTY);
-			if (FOCUSER_DIRECTION_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, NULL, FOCUSER_DIRECTION_PROPERTY);
-			if (!FOCUSER_COMPENSATION_PROPERTY->hidden && FOCUSER_COMPENSATION_PROPERTY->perm == INDIGO_RW_PERM)
-				indigo_save_property(device, NULL, FOCUSER_COMPENSATION_PROPERTY);
+			indigo_save_property(device, NULL, FOCUSER_SPEED_PROPERTY);
+			indigo_save_property(device, NULL, FOCUSER_DIRECTION_PROPERTY);
+			indigo_save_property(device, NULL, FOCUSER_COMPENSATION_PROPERTY);
 		}
 	}
 	return indigo_device_change_property(device, client, property);
