@@ -1019,7 +1019,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_detach
 	};
 
-	struct libusb_device_descriptor descriptor;
+	//struct libusb_device_descriptor descriptor;
 
 	pthread_mutex_lock(&device_mutex);
 	sbig_command(CC_OPEN_DRIVER, NULL, NULL);
@@ -1064,8 +1064,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				slot = find_device_slot(usb_index);
 				if (slot < 0) continue;
 				indigo_device **device = &devices[slot];
-				if (*device == NULL)
+				if (*device == NULL) {
+					pthread_mutex_unlock(&device_mutex);
 					return 0;
+				}
 				indigo_detach_device(*device);
 				free((*device)->private_data);
 				free(*device);

@@ -1053,7 +1053,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
 			strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
 			device->private_data = private_data;
-			//indigo_attach_device(device);
 			indigo_async((void *)(void *)indigo_attach_device, device);
 			devices[slot]=device;
 			break;
@@ -1066,9 +1065,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				slot = find_device_slot(file_name);
 				if (slot < 0) continue;
 				indigo_device **device = &devices[slot];
-				if (*device == NULL)
+				if (*device == NULL) {
 					pthread_mutex_unlock(&device_mutex);
 					return 0;
+				}
 				indigo_detach_device(*device);
 				free((*device)->private_data);
 				free(*device);
