@@ -478,6 +478,19 @@ static bool sx_read_pixels(indigo_device *device) {
 					unsigned char *odd = PRIVATE_DATA->odd;
 					rc = sx_download_pixels(device, PRIVATE_DATA->odd, size);
 					if (rc >= 0) {
+						unsigned long long odd_sum = 0, even_sum = 0;
+						unsigned short *pnt = (unsigned short *)odd;
+						for (int i = 0; i < size / 2; i += 32)
+							odd_sum += *pnt++;
+						pnt = (unsigned short *)even;
+						for (int i = 0; i < size / 2; i += 32)
+							even_sum += *pnt++;
+						double ratio = (double)odd_sum/(double)even_sum;
+						pnt = (unsigned short *)even;
+						for (int i = 0; i < size / 2; i ++) {
+							 unsigned short value = (unsigned short)(*pnt * ratio);
+							*pnt++ = value;
+						}
 						unsigned char *buffer = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
 						int ww = frame_width * 2;
 						for (int i = 0, j = 0; i < frame_height; i += 2, j++) {
