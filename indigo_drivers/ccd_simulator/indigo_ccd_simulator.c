@@ -39,8 +39,14 @@
 #define HEIGHT              1200
 #define TEMP_UPDATE         5.0
 #define STARS               100
+#define SIN									0.8414709848078965
+#define COS									0.5403023058681398
 
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
+
+static unsigned char background[] = {
+#include "indigo_ccd_simulator_m42.h"
+};
 
 typedef struct {
 	int star_x[STARS], star_y[STARS], star_a[STARS];
@@ -49,6 +55,7 @@ typedef struct {
 	int target_slot, current_slot;
 	int target_position, current_position;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
+	double ra_offset, dec_offset;
 } simulator_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -65,24 +72,38 @@ static void exposure_timer_callback(indigo_device *device) {
 		int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
 		int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
 		int size = frame_width * frame_height;
-		int gain = (int)(CCD_GAIN_ITEM->number.value * CCD_EXPOSURE_ITEM->number.target / 100);
+		int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
 		int offset = (int)CCD_OFFSET_ITEM->number.value;
 		double gamma = CCD_GAMMA_ITEM->number.value;
-		for (int i = 0; i < size; i++)
-			raw[i] = (rand() & 0xFF); // noise
+		for (int j = 0; j < frame_height; j++) {
+			int jj = j * vertical_bin;
+			for (int i = 0; i < frame_width; i++) {
+				raw[j * frame_width + i] = background[jj * WIDTH + i * horizontal_bin] + (rand() & 0x1F);
+			}
+		}
+		double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
+		double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
 		for (int i = 0; i < STARS; i++) {
-			double centerX = (private_data->star_x[i]+rand()/(double)RAND_MAX/5-0.5)/horizontal_bin;
-			double centerY = (private_data->star_y[i]+rand()/(double)RAND_MAX/5-0.5)/vertical_bin;
+			double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
+			if (center_x < 0)
+				center_x += frame_width;
+			if (center_x >= frame_width)
+				center_x -= frame_width;
+			double center_y = (private_data->star_y[i] + y_offset) / vertical_bin;
+			if (center_y < 0)
+				center_y += frame_height;
+			if (center_y >= frame_height)
+				center_y -= frame_height;
 			int a = private_data->star_a[i];
-			int xMax = (int)round(centerX)+4/horizontal_bin;
-			int yMax = (int)round(centerY)+4/vertical_bin;
-			for (int y = yMax-8/vertical_bin; y <= yMax; y++) {
-				int yw = y*frame_width;
-				for (int x = xMax-8/horizontal_bin; x <= xMax; x++) {
-					double xx = centerX-x;
-					double yy = centerY-y;
-					double v = a*exp(-(xx*xx/2.0+yy*yy/2.0));
-					raw[yw+x] += (unsigned short)v;
+			int xMax = (int)round(center_x) + 4 / horizontal_bin;
+			int yMax = (int)round(center_y) + 4 / vertical_bin;
+			for (int y = yMax - 8 / vertical_bin; y <= yMax; y++) {
+				int yw = ((y + frame_height) % frame_height) * frame_width;
+				for (int x = xMax-8 / horizontal_bin; x <= xMax; x++) {
+					double xx = center_x-x;
+					double yy = center_y-y;
+					double v = a*exp(-(xx * xx / 2.0 + yy * yy / 2.0));
+					raw[yw + ((x + frame_width) % frame_width)] += (unsigned short)v;
 				}
 			}
 		}
@@ -174,8 +195,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- CCD_IMAGE
 		for (int i = 0; i < STARS; i++) {
-			PRIVATE_DATA->star_x[i] = rand() % (WIDTH - 20) + 10; // generate some star positions
-			PRIVATE_DATA->star_y[i] = rand() % (HEIGHT - 20) + 10;
+			PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
+			PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
 			PRIVATE_DATA->star_a[i] = 1000 * (rand() % 60);       // and brightness
 		}
 		// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
@@ -274,12 +295,14 @@ static indigo_result ccd_detach(indigo_device *device) {
 static void guider_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->guider_timer = NULL;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
+		PRIVATE_DATA->dec_offset += (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 100;
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
+		PRIVATE_DATA->ra_offset += (GUIDER_GUIDE_EAST_ITEM->number.value - GUIDER_GUIDE_WEST_ITEM->number.value) / 100;
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -308,7 +331,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
-		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);		
+		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
@@ -572,81 +595,82 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		guider_change_property,
 		guider_detach
 	};
-
+	
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-
+	
 	SET_DRIVER_INFO(info, "Camera Simulator", __FUNCTION__, DRIVER_VERSION, last_action);
-
+	
 	if (action == last_action)
 		return INDIGO_OK;
-
+	
 	switch(action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-		private_data = malloc(sizeof(simulator_private_data));
-		assert(private_data != NULL);
-		imager_ccd = malloc(sizeof(indigo_device));
-		assert(imager_ccd != NULL);
-		memcpy(imager_ccd, &imager_camera_template, sizeof(indigo_device));
-		imager_ccd->private_data = private_data;
-		indigo_attach_device(imager_ccd);
-		imager_wheel = malloc(sizeof(indigo_device));
-		assert(imager_wheel != NULL);
-		memcpy(imager_wheel, &imager_wheel_template, sizeof(indigo_device));
-		imager_wheel->private_data = private_data;
-		indigo_attach_device(imager_wheel);
-		imager_focuser = malloc(sizeof(indigo_device));
-		assert(imager_focuser != NULL);
-		memcpy(imager_focuser, &imager_focuser_template, sizeof(indigo_device));
-		imager_focuser->private_data = private_data;
-		indigo_attach_device(imager_focuser);
-		guider_ccd = malloc(sizeof(indigo_device));
-		assert(guider_ccd != NULL);
-		memcpy(guider_ccd, &guider_camera_template, sizeof(indigo_device));
-		guider_ccd->private_data = private_data;
-		indigo_attach_device(guider_ccd);		
-		guider_guider = malloc(sizeof(indigo_device));
-		assert(guider_guider != NULL);
-		memcpy(guider_guider, &guider_template, sizeof(indigo_device));
-		guider_guider->private_data = private_data;
-		indigo_attach_device(guider_guider);
-		break;
-
-	case INDIGO_DRIVER_SHUTDOWN:
-		last_action = action;
-		if (imager_ccd != NULL) {
-			indigo_detach_device(imager_ccd);
-			free(imager_ccd);
-			imager_ccd = NULL;
-		}
-		if (imager_wheel != NULL) {
-			indigo_detach_device(imager_wheel);
-			free(imager_wheel);
-			imager_wheel = NULL;
-		}
-		if (imager_focuser != NULL) {
-			indigo_detach_device(imager_focuser);
-			free(imager_focuser);
-			imager_focuser = NULL;
-		}
-		if (guider_ccd != NULL) {
-			indigo_detach_device(guider_ccd);
-			free(guider_ccd);
-			guider_ccd = NULL;
-		}
-		if (guider_guider != NULL) {
-			indigo_detach_device(guider_guider);
-			free(guider_guider);
-			guider_guider = NULL;
-		}
-		if (private_data != NULL) {
-			free(private_data);
-			private_data = NULL;
-		}
-		break;
-
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
+			private_data = malloc(sizeof(simulator_private_data));
+			assert(private_data != NULL);
+			memset(private_data, 0, sizeof(simulator_private_data));
+			imager_ccd = malloc(sizeof(indigo_device));
+			assert(imager_ccd != NULL);
+			memcpy(imager_ccd, &imager_camera_template, sizeof(indigo_device));
+			imager_ccd->private_data = private_data;
+			indigo_attach_device(imager_ccd);
+			imager_wheel = malloc(sizeof(indigo_device));
+			assert(imager_wheel != NULL);
+			memcpy(imager_wheel, &imager_wheel_template, sizeof(indigo_device));
+			imager_wheel->private_data = private_data;
+			indigo_attach_device(imager_wheel);
+			imager_focuser = malloc(sizeof(indigo_device));
+			assert(imager_focuser != NULL);
+			memcpy(imager_focuser, &imager_focuser_template, sizeof(indigo_device));
+			imager_focuser->private_data = private_data;
+			indigo_attach_device(imager_focuser);
+			guider_ccd = malloc(sizeof(indigo_device));
+			assert(guider_ccd != NULL);
+			memcpy(guider_ccd, &guider_camera_template, sizeof(indigo_device));
+			guider_ccd->private_data = private_data;
+			indigo_attach_device(guider_ccd);
+			guider_guider = malloc(sizeof(indigo_device));
+			assert(guider_guider != NULL);
+			memcpy(guider_guider, &guider_template, sizeof(indigo_device));
+			guider_guider->private_data = private_data;
+			indigo_attach_device(guider_guider);
+			break;
+			
+		case INDIGO_DRIVER_SHUTDOWN:
+			last_action = action;
+			if (imager_ccd != NULL) {
+				indigo_detach_device(imager_ccd);
+				free(imager_ccd);
+				imager_ccd = NULL;
+			}
+			if (imager_wheel != NULL) {
+				indigo_detach_device(imager_wheel);
+				free(imager_wheel);
+				imager_wheel = NULL;
+			}
+			if (imager_focuser != NULL) {
+				indigo_detach_device(imager_focuser);
+				free(imager_focuser);
+				imager_focuser = NULL;
+			}
+			if (guider_ccd != NULL) {
+				indigo_detach_device(guider_ccd);
+				free(guider_ccd);
+				guider_ccd = NULL;
+			}
+			if (guider_guider != NULL) {
+				indigo_detach_device(guider_guider);
+				free(guider_guider);
+				guider_guider = NULL;
+			}
+			if (private_data != NULL) {
+				free(private_data);
+				private_data = NULL;
+			}
+			break;
+			
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 	return INDIGO_OK;
 }
