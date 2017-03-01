@@ -1062,12 +1062,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				int slot = find_available_device_slot();
 				if (slot < 0) {
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: No available device slots available."));
+					pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 
 				int id = find_plugged_device_id();
 				if (id == NO_DEVICE) {
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: No plugged device found."));
+					pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 
@@ -1075,6 +1077,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				int index = find_index_by_device_id(id);
 				if (index < 0) {
 					INDIGO_LOG(indigo_log("indigo_ccd_asi: No index of plugged device found."));
+					pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 				ASIGetCameraProperty(&info, index);
@@ -1096,6 +1099,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					slot = find_available_device_slot();
 					if (slot < 0) {
 						INDIGO_LOG(indigo_log("indigo_ccd_asi: No available device slots available."));
+						pthread_mutex_unlock(&device_mutex);
 						return 0;
 					}
 					device = malloc(sizeof(indigo_device));
@@ -1120,6 +1124,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				while (slot >= 0) {
 					indigo_device **device = &devices[slot];
 					if (*device == NULL)
+						pthread_mutex_unlock(&device_mutex);
 						return 0;
 
 					indigo_detach_device(*device);
