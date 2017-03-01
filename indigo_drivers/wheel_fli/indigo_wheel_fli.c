@@ -375,7 +375,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
 			strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
 			device->private_data = private_data;
-			//indigo_attach_device(device);
 			indigo_async((void *)(void *)indigo_attach_device, device);
 			devices[slot]=device;
 			break;
