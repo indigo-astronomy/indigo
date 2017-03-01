@@ -657,8 +657,10 @@ $(BUILD_DRIVERS)/indigo_focuser_fli.$(SOEXT): indigo_drivers/focuser_fli/indigo_
 #
 #---------------------------------------------------------------------
 
-
 ifeq ($(OS_DETECTED),Linux)
+
+indigo_drivers/ccd_sbig/indigo_ccd_sbig.o: $(BUILD_LIB)/libsbigudrv.a
+
 $(BUILD_DRIVERS)/indigo_ccd_sbig.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(AR) $(ARFLAGS) $@ $^
 
