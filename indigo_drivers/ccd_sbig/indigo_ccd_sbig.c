@@ -912,7 +912,6 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 
-static int num_devices = 0;
 static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
 static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
 
@@ -930,7 +929,7 @@ static inline SBIG_DEVICE_TYPE index_to_usb(int index) {
 }
 
 static void enumerate_devices() {
-	sbig_command(CC_OPEN_DRIVER, NULL, NULL);
+	//sbig_command(CC_OPEN_DRIVER, NULL, NULL);
 	int res = sbig_command(CC_QUERY_USB2, NULL, &usb_cams);
 	if (res != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: command CC_QUERY_USB2 error = %d", res));
@@ -938,8 +937,7 @@ static void enumerate_devices() {
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_cams = %d", usb_cams.camerasFound));
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_type = %d", usb_cams.usbInfo[0].cameraType ));
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: cam name = %s", usb_cams.usbInfo[0].name));
-	sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
-	num_devices = 0;
+	//sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
 }
 
 
@@ -1024,6 +1022,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	struct libusb_device_descriptor descriptor;
 
 	pthread_mutex_lock(&device_mutex);
+	sbig_command(CC_OPEN_DRIVER, NULL, NULL);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			int slot = find_available_device_slot();
@@ -1075,6 +1074,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 		}
 	}
+	sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
 	pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
