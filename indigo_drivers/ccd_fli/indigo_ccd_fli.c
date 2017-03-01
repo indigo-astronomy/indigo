@@ -1028,6 +1028,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			int slot = find_available_device_slot();
 			if (slot < 0) {
 				INDIGO_LOG(indigo_log("indigo_ccd_fli: No available device slots available."));
+				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
 
@@ -1035,6 +1036,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			int idx = find_plugged_device(file_name);
 			if (idx < 0) {
 				INDIGO_DEBUG(indigo_debug("indigo_ccd_fli: No FLI Camera plugged."));
+				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
 
@@ -1065,6 +1067,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				if (slot < 0) continue;
 				indigo_device **device = &devices[slot];
 				if (*device == NULL)
+					pthread_mutex_unlock(&device_mutex);
 					return 0;
 				indigo_detach_device(*device);
 				free((*device)->private_data);

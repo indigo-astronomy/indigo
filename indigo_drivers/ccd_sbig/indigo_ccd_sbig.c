@@ -1028,6 +1028,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			int slot = find_available_device_slot();
 			if (slot < 0) {
 				INDIGO_LOG(indigo_log("indigo_ccd_sbig: No available device slots available."));
+				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
 
@@ -1035,8 +1036,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			int usb_index = find_plugged_device(cam_name);
 			if (usb_index < 0) {
 				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: No SBIG Camera plugged."));
+				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
+
 			INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d usb_index = 0x%x name ='%s'", slot, usb_index, cam_name));
 			indigo_device *device = malloc(sizeof(indigo_device));
 			assert(device != NULL);
