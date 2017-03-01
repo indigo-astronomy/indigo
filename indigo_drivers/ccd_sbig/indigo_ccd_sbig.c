@@ -912,11 +912,9 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 
-//static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_CAMERA;
 static int num_devices = 0;
 static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
 static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
-//static flidomain_t fli_domains[MAX_DEVICES] = {0};
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
@@ -1028,11 +1026,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
-			if (descriptor.idVendor != SBIG_VENDOR_ID) break;
-
-			INDIGO_LOG(indigo_log("IN"));
-
 			int slot = find_available_device_slot();
 			if (slot < 0) {
 				INDIGO_LOG(indigo_log("indigo_ccd_sbig: No available device slots available."));
@@ -1046,34 +1039,27 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				return 0;
 			}
 			INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d usb_index = 0x%x name ='%s'", slot, usb_index, cam_name));
-			/*
 			indigo_device *device = malloc(sizeof(indigo_device));
 			assert(device != NULL);
 			memcpy(device, &ccd_template, sizeof(indigo_device));
-			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' @ %s attached.", device->name , fli_file_names[idx]));
+			sprintf(device->name, "%s #%d", cam_name, slot);
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
 			fli_private_data *private_data = malloc(sizeof(fli_private_data));
 			assert(private_data);
 			memset(private_data, 0, sizeof(fli_private_data));
 			private_data->dev_id = 0;
-			//private_data->domain = fli_domains[idx];
-			strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
-			strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
+			strncpy(private_data->dev_name, cam_name, MAX_PATH);
 			device->private_data = private_data;
 			indigo_async((void *)(void *)indigo_attach_device, device);
 			devices[slot]=device;
-			*/
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			INDIGO_LOG(indigo_log("LEFT"));
-			enumerate_devices();
-			/*
-			int slot, id;
-			char file_name[MAX_PATH];
+			int slot, usb_index;
+			char cam_name[MAX_PATH];
 			bool removed = false;
-			while ((id = find_unplugged_device(file_name)) != -1) {
-				slot = find_device_slot(file_name);
+			while ((usb_index = find_unplugged_device(cam_name)) != -1) {
+				slot = find_device_slot(usb_index);
 				if (slot < 0) continue;
 				indigo_device **device = &devices[slot];
 				if (*device == NULL)
@@ -1081,14 +1067,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				indigo_detach_device(*device);
 				free((*device)->private_data);
 				free(*device);
-				libusb_unref_device(dev);
 				*device = NULL;
 				removed = true;
 			}
 			if (!removed) {
 				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: No SBIG Camera unplugged!"));
 			}
-			*/
 		}
 	}
 	pthread_mutex_unlock(&device_mutex);
