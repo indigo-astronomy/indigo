@@ -46,6 +46,9 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
+#ifndef INVALID_HANDLE_VALUE
+#define INVALID_HANDLE_VALUE -1
+#endif
 
 #define MAX_CCD_TEMP         45     /* Max CCD temperature */
 #define MIN_CCD_TEMP        -55     /* Min CCD temperature */
@@ -99,6 +102,7 @@
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
 
+
 // -------------------------------------------------------------------------------- FLI USB interface implementation
 
 #define ms2s(s)      ((s) / 1000.0)
@@ -142,6 +146,28 @@ typedef struct {
 } fli_private_data;
 
 short (*sbig_command)(short, void*, void*);
+
+
+/* driver commands */
+
+short get_sbig_handle() {
+	GetDriverHandleResults gdhr;
+	int res = sbig_command(CC_GET_DRIVER_HANDLE, NULL, &gdhr);
+	if ( res == CE_NO_ERROR )
+		return gdhr.handle;
+	else
+		return INVALID_HANDLE_VALUE;
+}
+
+
+short set_sbig_handle(short handle) {
+	SetDriverHandleParams sdhp;
+	sdhp.handle = handle;
+	return sbig_command(CC_SET_DRIVER_HANDLE, &sdhp, NULL);
+}
+
+
+/* indigo functions */
 
 static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -907,6 +933,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- hot-plug support
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+short global_handle = INVALID_HANDLE_VALUE; /* This is global SBIG driver hangle used for attach and detatch cameras */
 
 #define MAX_USB_DEVICES                8
 
@@ -929,7 +956,6 @@ static inline SBIG_DEVICE_TYPE index_to_usb(int index) {
 }
 
 static void enumerate_devices() {
-	//sbig_command(CC_OPEN_DRIVER, NULL, NULL);
 	int res = sbig_command(CC_QUERY_USB2, NULL, &usb_cams);
 	if (res != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: command CC_QUERY_USB2 error = %d", res));
@@ -937,7 +963,6 @@ static void enumerate_devices() {
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_cams = %d", usb_cams.camerasFound));
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_type = %d", usb_cams.usbInfo[0].cameraType ));
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: cam name = %s", usb_cams.usbInfo[0].name));
-	//sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
 }
 
 
@@ -1019,10 +1044,13 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_detach
 	};
 
-	//struct libusb_device_descriptor descriptor;
-
 	pthread_mutex_lock(&device_mutex);
-	sbig_command(CC_OPEN_DRIVER, NULL, NULL);
+
+	short res = set_sbig_handle(global_handle);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error set_sbig_handle(global_handle) = %d", res));
+	}
+
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			int slot = find_available_device_slot();
@@ -1079,7 +1107,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 		}
 	}
-	sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
 	pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
@@ -1145,8 +1172,13 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: command CC_OPEN_DRIVER error = %d", res));
 			return INDIGO_FAILED;
 		}
+
+		global_handle = get_sbig_handle();
+		if (global_handle == INVALID_HANDLE_VALUE) {
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error get_sbig_handle() = %d", global_handle));
+		}
+
 		res = sbig_command(CC_GET_DRIVER_INFO, &di_req, &di);
-		sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
 		if (res != CE_NO_ERROR) {
 			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: command CC_GET_DRIVER_INFO error = %d", res));
 		} else {
@@ -1163,6 +1195,16 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_deregister_callback [%d]", __LINE__));
 		remove_all_devices();
+
+		res = set_sbig_handle(global_handle);
+		if (res != CE_NO_ERROR) {
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error set_sbig_handle() = %d", res));
+		}
+
+		res = sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
+		if (res != CE_NO_ERROR) {
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: final command CC_CLOSE_DRIVER error = %d", res));
+		}
 
 #ifdef __APPLE__
 		if (dl_handle)
