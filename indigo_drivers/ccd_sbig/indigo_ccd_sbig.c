@@ -82,7 +82,7 @@
 
 #define MAX_MODES                  32
 
-#define PRIVATE_DATA               ((fli_private_data *)device->private_data)
+#define PRIVATE_DATA               ((sbig_private_data *)device->private_data)
 
 #define FLI_ADVANCED_GROUP              "Advanced"
 
@@ -103,7 +103,7 @@
 #define INDIGO_DEBUG_DRIVER(c) c
 
 
-// -------------------------------------------------------------------------------- FLI USB interface implementation
+// -------------------------------------------------------------------------------- SBIG USB interface implementation
 
 #define ms2s(s)      ((s) / 1000.0)
 #define s2ms(ms)     ((ms) * 1000)
@@ -122,7 +122,7 @@ typedef struct {
 typedef struct {
 	int dev_id;
 	bool is_usb;
-	SBIG_DEVICE_TYPE usb_index;
+	SBIG_DEVICE_TYPE usb_id;
 	char dev_name[MAX_PATH];
 	//flidomain_t domain;
 	bool rbi_flood_supported;
@@ -143,7 +143,7 @@ typedef struct {
 	indigo_property *fli_rbi_flush_enable_property;
 	indigo_property *fli_rbi_flush_property;
 	indigo_property *fli_camera_mode_property;
-} fli_private_data;
+} sbig_private_data;
 
 short (*sbig_command)(short, void*, void*);
 
@@ -167,7 +167,7 @@ short set_sbig_handle(short handle) {
 }
 
 
-/* indigo functions */
+/* indigo CAMERA functions */
 
 static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -930,6 +930,136 @@ static indigo_result ccd_detach(indigo_device *device) {
 }
 
 
+/* indigo GUIDER functions */
+
+static indigo_result guider_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		//INDIGO_LOG(indigo_log("%s attached", device->name));
+		return indigo_guider_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	//ASI_ERROR_CODE res;
+	int id = PRIVATE_DATA->dev_id;
+
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			/*if (asi_open(device)) {
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}*/
+		} else {
+			//asi_close(device);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
+		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
+		//indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
+		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		if (duration > 0) {
+			/*
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			res = ASIPulseGuideOn(id, ASI_GUIDE_NORTH);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+			if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res));
+			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+			PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = true;
+			*/
+		} else {
+			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			if (duration > 0) {
+				/*
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				res = ASIPulseGuideOn(id, ASI_GUIDE_SOUTH);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+				if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res));
+				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
+				PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = true;
+				*/
+			}
+		}
+
+		//if (PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH])
+		//	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		//else
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
+		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
+		//indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
+		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		if (duration > 0) {
+			/*
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			res = ASIPulseGuideOn(id, ASI_GUIDE_EAST);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+			if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res));
+			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+			PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = true;
+			*/
+		} else {
+			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			if (duration > 0) {
+				/*
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				res = ASIPulseGuideOn(id, ASI_GUIDE_WEST);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+				if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res));
+				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
+				PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = true;
+				*/
+			}
+		}
+
+		//if (PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] || PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST])
+		//	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		//else
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_guider_change_property(device, client, property);
+}
+
+static indigo_result guider_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(NULL, device->name);
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' detached.", device->name));
+	return indigo_guider_detach(device);
+}
+
+
+static const char *CAM_NAMES[] = {
+	"Type 0", "Type 1", "Type 2", "Type 3",
+	"ST-7", "ST-8", "ST-5C", "TCE",
+	"ST-237", "ST-K", "ST-9", "STV", "ST-10",
+	"ST-1K", "ST-2K", "STL", "ST-402", "STX",
+	"ST-4K", "STT", "ST-i",	"STF-8300" };
+
 // -------------------------------------------------------------------------------- hot-plug support
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -974,7 +1104,7 @@ static int find_plugged_device(char *dev_name) {
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
 			if (device == NULL) continue;
-			if (PRIVATE_DATA->usb_index == index_to_usb(dev_no)) {
+			if (PRIVATE_DATA->usb_id == index_to_usb(dev_no)) {
 				found = true;
 				break;
 			}
@@ -999,11 +1129,11 @@ static int find_available_device_slot() {
 }
 
 
-static int find_device_slot(CAMERA_TYPE usb_index) {
+static int find_device_slot(CAMERA_TYPE usb_id) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
 		if (device == NULL) continue;
-		if (PRIVATE_DATA->usb_index == usb_index) return slot;
+		if (PRIVATE_DATA->usb_id == usb_id) return slot;
 	}
 	return -1;
 }
@@ -1017,7 +1147,7 @@ static int find_unplugged_device(char *dev_name) {
 		if (device == NULL) continue;
 		for (int dev_no = 0; dev_no < MAX_USB_DEVICES; dev_no++) {
 			if (!usb_cams.usbInfo[dev_no].cameraFound) continue;
-			if (PRIVATE_DATA->usb_index == index_to_usb(dev_no)) {
+			if (PRIVATE_DATA->usb_id == index_to_usb(dev_no)) {
 				found = true;
 				break;
 			}
@@ -1044,6 +1174,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_detach
 	};
 
+	static indigo_device guider_template = {
+		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		guider_attach,
+		indigo_guider_enumerate_properties,
+		guider_change_property,
+		guider_detach
+	};
+
 	pthread_mutex_lock(&device_mutex);
 
 	short res = set_sbig_handle(global_handle);
@@ -1061,47 +1199,76 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 
 			char cam_name[MAX_PATH];
-			int usb_index = find_plugged_device(cam_name);
-			if (usb_index < 0) {
+			int usb_id = find_plugged_device(cam_name);
+			if (usb_id < 0) {
 				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: No SBIG Camera plugged."));
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
 
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d usb_index = 0x%x name ='%s'", slot, usb_index, cam_name));
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d usb_id = 0x%x name ='%s'", slot, usb_id, cam_name));
 			indigo_device *device = malloc(sizeof(indigo_device));
 			assert(device != NULL);
 			memcpy(device, &ccd_template, sizeof(indigo_device));
-			sprintf(device->name, "%s #%d", cam_name, slot);
+			sprintf(device->name, "%s #%d", cam_name, usb_to_index(usb_id));
 			INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
-			fli_private_data *private_data = malloc(sizeof(fli_private_data));
+			sbig_private_data *private_data = malloc(sizeof(sbig_private_data));
 			assert(private_data);
-			memset(private_data, 0, sizeof(fli_private_data));
+			memset(private_data, 0, sizeof(sbig_private_data));
 			private_data->dev_id = 0;
+			private_data->usb_id = usb_id;
 			strncpy(private_data->dev_name, cam_name, MAX_PATH);
 			device->private_data = private_data;
 			indigo_async((void *)(void *)indigo_attach_device, device);
 			devices[slot]=device;
+			slot = find_available_device_slot();
+			if (slot < 0) {
+				INDIGO_LOG(indigo_log("indigo_ccd_asi: No available device slots available."));
+				pthread_mutex_unlock(&device_mutex);
+				return 0;
+			}
+			device = malloc(sizeof(indigo_device));
+			assert(device != NULL);
+			memcpy(device, &guider_template, sizeof(indigo_device));
+			sprintf(device->name, "%s Guider #%d", cam_name, usb_to_index(usb_id));
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
+			device->private_data = private_data;
+			indigo_async((void *)(void *)indigo_attach_device, device);
+			devices[slot]=device;
+
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			int slot, usb_index;
 			char cam_name[MAX_PATH];
 			bool removed = false;
+			sbig_private_data *private_data = NULL;
 			while ((usb_index = find_unplugged_device(cam_name)) != -1) {
-				slot = find_device_slot(usb_index);
-				if (slot < 0) continue;
-				indigo_device **device = &devices[slot];
-				if (*device == NULL) {
-					pthread_mutex_unlock(&device_mutex);
-					return 0;
+				slot = find_device_slot(index_to_usb(usb_index));
+				INDIGO_LOG(indigo_log("!!!! indigo_ccd_sbig: '%s' usb_id=0x%x, slot=%d", cam_name, usb_index, slot));
+				while (slot >= 0) {
+					indigo_device **device = &devices[slot];
+					if (*device == NULL) {
+						pthread_mutex_unlock(&device_mutex);
+						return 0;
+					}
+					indigo_detach_device(*device);
+					if ((*device)->private_data) {
+						private_data = (*device)->private_data;
+					}
+					free(*device);
+					*device = NULL;
+					removed = true;
+					slot = find_device_slot(index_to_usb(usb_index));
 				}
-				indigo_detach_device(*device);
-				free((*device)->private_data);
-				free(*device);
-				*device = NULL;
-				removed = true;
+
+				if (private_data) {
+					/* close driver and device here */
+					free(private_data);
+					private_data = NULL;
+				}
 			}
+
 			if (!removed) {
 				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: No SBIG Camera unplugged!"));
 			}
@@ -1114,14 +1281,20 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 static void remove_all_devices() {
 	int i;
+	sbig_private_data *pds[MAX_USB_DEVICES] = {NULL};
+
 	for(i = 0; i < MAX_DEVICES; i++) {
-		indigo_device **device = &devices[i];
-		if (*device == NULL)
-			continue;
-		indigo_detach_device(*device);
-		free((*device)->private_data);
-		free(*device);
-		*device = NULL;
+		indigo_device *device = devices[i];
+		if (device == NULL) continue;
+		if (PRIVATE_DATA) pds[usb_to_index(PRIVATE_DATA->usb_id)] = PRIVATE_DATA; /* preserve pointers to private data */
+		indigo_detach_device(device);
+		free(device);
+		device = NULL;
+	}
+
+	/* free private data */
+	for(i = 0; i < MAX_USB_DEVICES; i++) {
+		if (pds[i]) free(pds[i]);
 	}
 }
 
