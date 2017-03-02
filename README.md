@@ -38,6 +38,9 @@ This is the list of requirements taken into the consideration:
 15. FLI CCD driver
 16. FLI focuser driver (testers needed)
 
+17.	ASCOM driver for INDIGO Camera
+18.	ASCOM driver for INDIGO FilterWheel
+
 ## This is under development
 
 1. SBIG CCD driver
