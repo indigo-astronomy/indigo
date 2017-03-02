@@ -91,8 +91,8 @@ namespace ASCOM.INDIGO {
     private DateTime exposureStart = DateTime.MinValue;
     private double exposureDuration = 0.0;
     private bool cameraImageReady = false;
-    private int[,] cameraImageArray;
-    private object[,] cameraImageArrayVariant;
+    private int[,] monoImageArray;
+    private int[,,] rgbImageArray;
 
     override protected void propertyAdded(Property property) {
       if (property.DeviceName == deviceName) {
@@ -138,10 +138,31 @@ namespace ASCOM.INDIGO {
             WebResponse response = request.GetResponse();
             Log("Response ContentLength " + response.ContentLength);
             BinaryReader reader = new BinaryReader(response.GetResponseStream());
-            cameraImageArray = new int[frameWidth, frameHeight];
-            for (int y = 0; y < frameHeight; y++)
-              for (int x = 0; x < frameWidth; x++)
-                cameraImageArray[x, y] = reader.ReadUInt16();
+            int signature = reader.ReadInt32();
+            frameWidth = reader.ReadInt32();
+            frameHeight = reader.ReadInt32();
+            if (signature == 0x31574152) { // MONO8
+              bitsPerPixel = 8;
+              monoImageArray = new int[frameWidth, frameHeight];
+              for (int y = 0; y < frameHeight; y++)
+                for (int x = 0; x < frameWidth; x++)
+                  monoImageArray[x, y] = reader.ReadByte();
+            } else if (signature == 0x32574152) { // MONO16
+              bitsPerPixel = 16;
+              monoImageArray = new int[frameWidth, frameHeight];
+              for (int y = 0; y < frameHeight; y++)
+                for (int x = 0; x < frameWidth; x++)
+                  monoImageArray[x, y] = reader.ReadUInt16();
+            } else if (signature == 0x33574152) { // RGB24
+              bitsPerPixel = 24;
+              rgbImageArray = new int[frameWidth, frameHeight, 3];
+              for (int y = 0; y < frameHeight; y++)
+                for (int x = 0; x < frameWidth; x++) {
+                  rgbImageArray[x, y, 0] = reader.ReadByte();
+                  rgbImageArray[x, y, 1] = reader.ReadByte();
+                  rgbImageArray[x, y, 2] = reader.ReadByte();
+                }
+            }
             reader.Close();
             percentCompleted = 100;
             cameraImageReady = true;
@@ -229,7 +250,7 @@ namespace ASCOM.INDIGO {
 
     public short BayerOffsetY {
       get {
-        throw new ASCOM.PropertyNotImplementedException("BayerOffsetY", true);
+        throw new ASCOM.PropertyNotImplementedException("BayerOffsetY", false);
       }
     }
 
@@ -350,7 +371,7 @@ namespace ASCOM.INDIGO {
 
     public bool CanAsymmetricBin {
       get {
-        return true;
+        return false;
       }
     }
 
@@ -500,7 +521,11 @@ namespace ASCOM.INDIGO {
         if (!cameraImageReady) {
           throw new ASCOM.InvalidOperationException("Call to ImageArray before the first image has been taken!");
         }
-        return cameraImageArray;
+        if (bitsPerPixel == 8 || bitsPerPixel == 16)
+          return monoImageArray;
+        if (bitsPerPixel == 24)
+          return rgbImageArray;
+        throw new ASCOM.InvalidOperationException("Invalid bitsPerPixel value!");
       }
     }
 
@@ -509,14 +534,27 @@ namespace ASCOM.INDIGO {
         if (!cameraImageReady) {
           throw new ASCOM.InvalidOperationException("Call to ImageArrayVariant before the first image has been taken!");
         }
-        cameraImageArrayVariant = new object[frameWidth, frameHeight];
-        for (int j = 0; j < frameWidth; j++) {
-          for (int i = 0; i < frameHeight; i++) {
-            cameraImageArrayVariant[j, i] = cameraImageArray[j, i];
+        if (bitsPerPixel == 8 || bitsPerPixel == 16) {
+          object[,] cameraImageArrayVariant = new object[frameWidth, frameHeight];
+          for (int j = 0; j < frameWidth; j++) {
+            for (int i = 0; i < frameHeight; i++) {
+              cameraImageArrayVariant[j, i] = monoImageArray[j, i];
+            }
           }
-
+          return cameraImageArrayVariant;
         }
-        return cameraImageArrayVariant;
+        if (bitsPerPixel == 24) {
+          object[,,] cameraImageArrayVariant = new object[frameWidth, frameHeight, 3];
+          for (int j = 0; j < frameWidth; j++) {
+            for (int i = 0; i < frameHeight; i++) {
+              cameraImageArrayVariant[j, i, 0] = rgbImageArray[j, i, 0];
+              cameraImageArrayVariant[j, i, 1] = rgbImageArray[j, i, 1];
+              cameraImageArrayVariant[j, i, 2] = rgbImageArray[j, i, 2];
+            }
+          }
+          return cameraImageArrayVariant;
+        }
+        throw new ASCOM.InvalidOperationException("Invalid bitsPerPixel value!");
       }
     }
 
