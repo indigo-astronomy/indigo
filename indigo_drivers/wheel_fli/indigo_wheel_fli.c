@@ -184,7 +184,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->dev_id = -1;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		
+
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT

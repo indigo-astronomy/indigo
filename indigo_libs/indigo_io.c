@@ -68,7 +68,7 @@ int indigo_open_serial(const char *dev_file) {
 		close(dev_fd);
 		return -1;
 	}
-	
+
 	return dev_fd;
 }
 
