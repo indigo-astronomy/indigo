@@ -60,6 +60,83 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
+// gausian blur algorithm is based on the paper http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir
+
+static void box_blur_h(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+	double iarr = 1 / (r + r + 1);
+	for (int i = 0; i < h; i++) {
+		int ti = i * w, li = ti, ri = ti + r;
+		int fv = scl[ti], lv = scl[ti + w - 1], val = (r + 1) * fv;
+		for (int j = 0; j < r; j++)
+			val += scl[ti + j];
+		for (int j = 0  ; j <= r ; j++) {
+			val += scl[ri++] - fv;
+			tcl[ti++] = round(val * iarr);
+		}
+		for (int j = r + 1; j < w-r; j++) {
+			val += scl[ri++] - scl[li++];
+			tcl[ti++] = round(val * iarr);
+		}
+		for (int j = w - r; j < w  ; j++) {
+			val += lv - scl[li++];
+			tcl[ti++] = round(val * iarr);
+		}
+	}
+}
+
+static void box_blur_t(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+	double iarr = 1 / ( r + r + 1);
+	for (int i = 0; i < w; i++) {
+		int ti = i, li = ti, ri = ti + r * w;
+		int fv = scl[ti], lv = scl[ti + w * (h - 1)], val = (r + 1) * fv;
+		for (int j = 0; j < r; j++)
+			val += scl[ti + j * w];
+		for (int j = 0  ; j <= r ; j++) {
+			val += scl[ri] - fv;
+			tcl[ti] = round(val * iarr);
+			ri += w;
+			ti += w;
+		}
+		for (int j = r + 1; j<h-r; j++) {
+			val += scl[ri] - scl[li];
+			tcl[ti] = round(val*iarr);
+			li += w;
+			ri += w;
+			ti += w;
+		}
+		for (int j = h - r; j < h  ; j++) {
+			val += lv - scl[li];
+			tcl[ti] = round(val * iarr);
+			li += w;
+			ti += w;
+		}
+	}
+}
+
+static void box_blur(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+	int length = w * h;
+	for (int i = 0; i < length; i++)
+		tcl[i] = scl[i];
+	box_blur_h(tcl, scl, w, h, r);
+	box_blur_t(scl, tcl, w, h, r);
+}
+
+static void gauss_blur(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+	double ideal = sqrt((12 * r * r / 3) + 1);
+	int wl = floor(ideal);
+	if (wl % 2 == 0)
+		wl--;
+	int wu = wl + 2;
+	ideal = (12 * r * r - 3 * wl * wl - 12 * wl - 9)/(-4 * wl - 4);
+	int m = round(ideal);
+	int sizes[3];
+	for (int i = 0; i < 3; i++)
+		sizes[i] = i < m ? wl : wu;
+	box_blur(scl, tcl, w, h, (sizes[0] - 1) / 2);
+	box_blur(tcl, scl, w, h, (sizes[1] - 1) / 2);
+	box_blur(scl, tcl, w, h, (sizes[2] - 1) / 2);
+}
+
 static void exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -115,6 +192,12 @@ static void exposure_timer_callback(indigo_device *device) {
 			if (value > 65535)
 				value = 65535;
 			raw[i] = (unsigned short)value;
+		}
+		if (private_data->current_position != 0) {
+			unsigned short *tmp = malloc(2 * size);
+			gauss_blur(raw, tmp, frame_width, frame_height, private_data->current_position);
+			memcpy(raw, tmp, 2 * size);
+			free(tmp);
 		}
 		indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
 	}
@@ -194,10 +277,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
 		CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- CCD_IMAGE
-		for (int i = 0; i < STARS; i++) {
+		for (int i = 0; i < 10; i++) {
 			PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
 			PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-			PRIVATE_DATA->star_a[i] = 1000 * (rand() % 60);       // and brightness
+			PRIVATE_DATA->star_a[i] = 500 * (rand() % 100);       // and brightness
+		}
+		for (int i = 10; i < STARS; i++) {
+			PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
+			PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
+			PRIVATE_DATA->star_a[i] = 50 * (rand() % 30);       // and brightness
 		}
 		// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
 		CCD_COOLER_PROPERTY->hidden = false;

@@ -15,7 +15,7 @@
 
 1. Snooping support
 2. Client API for easier integration to client apps & GUI __DONE__
-3. ASCOM client adapter
+3. ASCOM client adapter __PARTIALLY_DONE__
 4. Multipoint alignment engine for mount drivers
 5. integrated http server for binary blob download __DONE__
 6. HTTP/JSON protocol adapters __DONE__
