@@ -1119,11 +1119,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	char *entity_pointer = NULL;
 	bool is_escaped = false;
 	/* (void)parser_state_name; */
-	
+
 	parser_handler handler = top_level_handler;
-	
+
 	parser_state state = IDLE;
-	
+
 	parser_context context;
 	context.client = client;
 	context.device = device;
@@ -1138,7 +1138,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 
 	indigo_property *property = (indigo_property *)&context.property_buffer;
 	memset(context.property_buffer, 0, PROPERTY_SIZE);
-	
+
 	int handle = 0;
 	if (device != NULL) {
 		handle = ((indigo_adapter_context *)device->device_context)->input;
@@ -1365,7 +1365,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)buffer, len);
 						blob_len -= len;
 					}
-					
+
 					handler = handler(BLOB, &context, NULL, (char *)blob_buffer, message);
 					pointer = buffer;
 					*pointer = 0;
@@ -1517,7 +1517,7 @@ char *indigo_xml_escape(char *string) {
 		char *in = string;
 		char *out = buffer;
 		char c;
-		
+
 		while ((c = *in++) && out - buffer < INDIGO_VALUE_SIZE) {
 			switch (c) {
 				case '&':

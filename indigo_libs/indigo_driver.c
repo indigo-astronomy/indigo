@@ -305,7 +305,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 }
 
 extern int indigo_server_tcp_port;
-	
+
 int indigo_open_config_file(char *device_name, int mode, const char *suffix) {
 	static char path[128];
 	int path_end = snprintf(path, sizeof(path), "%s/.indigo", getenv("HOME"));
