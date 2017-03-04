@@ -59,6 +59,7 @@ typedef struct {
 	char dev_file_name[MAX_PATH];
 	char dev_name[MAX_PATH];
 	flidomain_t domain;
+	long zero_position;
 	indigo_timer *focuser_timer;
 	pthread_mutex_t usb_mutex;
 } fli_private_data;
@@ -82,6 +83,7 @@ static void focuser_timer_callback(indigo_device *device) {
 
 	int res;
 	res = FLIGetStepperPosition(id, &value);
+	value -= PRIVATE_DATA->zero_position;
 	if (res) {
 		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
 		FOCUSER_POSITION_ITEM->number.value = 0;
@@ -155,18 +157,19 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 				long value;
 				do {
-					usleep(10000);
-					res = FLIGetDeviceStatus(id, &value);
+					usleep(100000);
+					res = FLIGetStepsRemaining(id, &value);
 					if (res) {
 						INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
 					}
-				} while (value != FLI_FOCUSER_STATUS_HOME);  /* wait while finding home position */
+					INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuser steps left %d", value));
+				} while (value != 0);  /* wait while finding home position */
 
 				res = FLIGetStepperPosition(id, &value);
 				if (res) {
 					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
 				}
-				FOCUSER_POSITION_ITEM->number.value = value;
+				PRIVATE_DATA->zero_position = value;
 
 				res = FLIGetFocuserExtent(id, &value);
 				if (res) {
@@ -176,6 +179,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuser Extent %d", value));
 				FOCUSER_POSITION_ITEM->number.max = value;
 				FOCUSER_POSITION_ITEM->number.min = 0;
+				FOCUSER_POSITION_ITEM->number.value = 0;
 				FOCUSER_POSITION_ITEM->number.step = 1;
 
 				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
@@ -224,6 +228,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (res) {
 				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
 			}
+			current_value -= PRIVATE_DATA->zero_position;
 
 			/* do not go over the max extent */
 			if (FOCUSER_POSITION_ITEM->number.max < (current_value + value)) {
@@ -256,11 +261,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		res = 0;
 		long value = 0;
-		if (FOCUSER_POSITION_ITEM->number.value >= 0) {
+		if ((FOCUSER_POSITION_ITEM->number.value >= 0) &&
+		    (FOCUSER_POSITION_ITEM->number.value <= FOCUSER_POSITION_ITEM->number.max)) {
 			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &value);
 			if (res) {
 				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
 			}
+			value -= PRIVATE_DATA->zero_position;
 
 			value = FOCUSER_POSITION_ITEM->number.value - value;
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
