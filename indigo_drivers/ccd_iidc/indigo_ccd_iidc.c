@@ -162,6 +162,8 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_EXPOSURE_ITEM->number.value = 0;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		dc1394video_frame_t *frame;
 		dc1394error_t err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
 		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_capture_dequeue() [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
@@ -172,14 +174,12 @@ static void exposure_timer_callback(indigo_device *device) {
 			int height = frame->size[1];
 			int size = frame->image_bytes;
 			memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
-			CCD_EXPOSURE_ITEM->number.value = 0;
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->little_endian, NULL);
 			err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
 			INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_capture_enqueue() [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
-			CCD_EXPOSURE_ITEM->number.value = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
