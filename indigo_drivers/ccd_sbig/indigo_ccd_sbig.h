@@ -28,6 +28,7 @@
 
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
+#include "indigo_guider_driver.h"
 
 extern indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *info);
 
