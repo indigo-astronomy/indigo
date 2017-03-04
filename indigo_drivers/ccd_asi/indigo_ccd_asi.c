@@ -790,16 +790,30 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
+	// ------------------------------------------------------------------------------- GAMMA
+	} else if (indigo_property_match(CCD_GAMMA_PROPERTY, property)) {
+		CCD_GAMMA_PROPERTY->state = INDIGO_IDLE_STATE;
+		indigo_property_copy_values(CCD_GAMMA_PROPERTY, property, false);
+
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAMMA, (long)(CCD_GAMMA_ITEM->number.value), ASI_FALSE);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAMMA) = %d", PRIVATE_DATA->dev_id, res));
+
+		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
+		if (CONNECTION_CONNECTED_ITEM->sw.value)
+			indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
+		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- GAIN
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
 		CCD_GAIN_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-
+		
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res));
-
+		
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		if (CONNECTION_CONNECTED_ITEM->sw.value)
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
