@@ -139,7 +139,6 @@ static void gauss_blur(unsigned short *scl, unsigned short *tcl, int w, int h, d
 
 static void exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		simulator_private_data *private_data = PRIVATE_DATA;
@@ -200,6 +199,8 @@ static void exposure_timer_callback(indigo_device *device) {
 			free(tmp);
 		}
 		indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
 }
 
