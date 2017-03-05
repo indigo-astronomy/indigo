@@ -145,6 +145,8 @@ static void exposure_timer_callback(indigo_device *device) {
 		unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+		int frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value / horizontal_bin;
+		int frame_top = (int)CCD_FRAME_TOP_ITEM->number.value / vertical_bin;
 		int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
 		int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
 		int size = frame_width * frame_height;
@@ -152,9 +154,9 @@ static void exposure_timer_callback(indigo_device *device) {
 		int offset = (int)CCD_OFFSET_ITEM->number.value;
 		double gamma = CCD_GAMMA_ITEM->number.value;
 		for (int j = 0; j < frame_height; j++) {
-			int jj = j * vertical_bin;
+			int jj = (frame_top + j) * vertical_bin;
 			for (int i = 0; i < frame_width; i++) {
-				raw[j * frame_width + i] = background[jj * WIDTH + i * horizontal_bin] + (rand() & 0x1F);
+				raw[j * frame_width + i] = background[jj * WIDTH + (frame_left + i) * horizontal_bin] + (rand() & 0x1F);
 			}
 		}
 		double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
@@ -162,24 +164,30 @@ static void exposure_timer_callback(indigo_device *device) {
 		for (int i = 0; i < STARS; i++) {
 			double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
 			if (center_x < 0)
-				center_x += frame_width;
-			if (center_x >= frame_width)
-				center_x -= frame_width;
+				center_x += WIDTH;
+			if (center_x >= WIDTH)
+				center_x -= WIDTH;
 			double center_y = (private_data->star_y[i] + y_offset) / vertical_bin;
 			if (center_y < 0)
-				center_y += frame_height;
-			if (center_y >= frame_height)
-				center_y -= frame_height;
+				center_y += HEIGHT;
+			if (center_y >= HEIGHT)
+				center_y -= HEIGHT;
+			center_x -= frame_left;
+			center_y -= frame_top;
 			int a = private_data->star_a[i];
 			int xMax = (int)round(center_x) + 4 / horizontal_bin;
 			int yMax = (int)round(center_y) + 4 / vertical_bin;
 			for (int y = yMax - 8 / vertical_bin; y <= yMax; y++) {
-				int yw = ((y + frame_height) % frame_height) * frame_width;
-				for (int x = xMax-8 / horizontal_bin; x <= xMax; x++) {
-					double xx = center_x-x;
-					double yy = center_y-y;
-					double v = a*exp(-(xx * xx / 2.0 + yy * yy / 2.0));
-					raw[yw + ((x + frame_width) % frame_width)] += (unsigned short)v;
+				if (y < 0 || y >= frame_height)
+					continue;
+				int yw = y * frame_width;
+				double yy = center_y - y;
+				for (int x = xMax - 8 / horizontal_bin; x <= xMax; x++) {
+					if (x < 0 || x >= frame_width)
+						continue;
+					double xx = center_x - x;
+					double v = a * exp(-(xx * xx / 2.0 + yy * yy / 2.0));
+					raw[yw + x] += (unsigned short)v;
 				}
 			}
 		}
