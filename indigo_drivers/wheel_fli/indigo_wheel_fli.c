@@ -117,6 +117,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -163,15 +166,20 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 				sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
 				sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
-
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 
+				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+				indigo_set_timer(device, 0, wheel_timer_callback);
+
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_set_timer(device, 0.5, wheel_timer_callback);
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			} else {
 				INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res));
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				return INDIGO_FAILED;
 			}
 		} else {
@@ -183,9 +191,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			}
 			PRIVATE_DATA->dev_id = -1;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		}
 
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
