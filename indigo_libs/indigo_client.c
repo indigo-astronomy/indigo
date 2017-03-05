@@ -132,17 +132,17 @@ indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entr
 	char *entry_point_name, *cp;
 	void *dl_handle;
 	driver_entry_point entry_point;
-	
+
 	strncpy(driver_name, name, sizeof(driver_name));
 	strncpy(so_name, name, sizeof(so_name));
-	
+
 	entry_point_name = basename(driver_name);
 	cp = strchr(entry_point_name, '.');
 	if (cp)
 		*cp = '\0';
 	else
 		strncat(so_name, SO_NAME, INDIGO_NAME_SIZE);
-	
+
 	dl_handle = dlopen(so_name, RTLD_LAZY);
 	if (!dl_handle) {
 		const char* dlsym_error = dlerror();
@@ -305,12 +305,12 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 			empty_slot = dc;
 		}
 	}
-	
+
 	if (empty_slot > INDIGO_MAX_SERVERS) {
 		pthread_mutex_unlock(&mutex);
 		return INDIGO_TOO_MANY_ELEMENTS;
 	}
-	
+
 	strncpy(indigo_available_subprocesses[empty_slot].executable, executable, INDIGO_NAME_SIZE);
 	indigo_available_subprocesses[empty_slot].pid = 0;
 	if (pthread_create(&indigo_available_subprocesses[empty_slot].thread, NULL, (void*)(void *)subprocess_thread, &indigo_available_subprocesses[empty_slot]) != 0) {
