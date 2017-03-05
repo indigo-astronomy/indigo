@@ -532,9 +532,9 @@ indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double 
 		*raw_dec = dec;
 		return INDIGO_OK;
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
-		
+
 		// TBD Rumen
-		
+
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
@@ -558,9 +558,9 @@ indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, dou
 		*dec = raw_dec;
 		return INDIGO_OK;
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
-		
+
 		// TBD Rumen
-		
+
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;

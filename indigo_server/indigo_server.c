@@ -277,9 +277,9 @@ static void server_main(int argc, const char * argv[]) {
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 
 	indigo_start_usb_event_handler();
-	
+
 	indigo_start();
-	
+
 	for (int i = 1; i < argc; i++) {
 		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
 			indigo_server_tcp_port = atoi(argv[i + 1]);
@@ -318,7 +318,7 @@ static void server_main(int argc, const char * argv[]) {
 			indigo_load_driver(argv[i], false, NULL);
 		}
 	}
-	
+
 	if (use_control_panel)
 		indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
 
@@ -333,7 +333,7 @@ static void server_main(int argc, const char * argv[]) {
 	DNSServiceRefDeallocate(sd_indigo);
 	DNSServiceRefDeallocate(sd_http);
 #endif
-	
+
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
 			indigo_remove_driver(&indigo_available_drivers[i]);
