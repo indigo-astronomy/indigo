@@ -339,6 +339,14 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_FRAME_HEIGHT_ITEM->number.value = ((int)CCD_FRAME_HEIGHT_ITEM->number.value / (int)CCD_BIN_VERTICAL_ITEM->number.value) * (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+			if (CCD_FRAME_LEFT_ITEM->number.value + CCD_FRAME_WIDTH_ITEM->number.value > CCD_INFO_WIDTH_ITEM->number.value) {
+				CCD_FRAME_WIDTH_ITEM->number.value = CCD_INFO_WIDTH_ITEM->number.value - CCD_FRAME_LEFT_ITEM->number.value;
+				CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (CCD_FRAME_TOP_ITEM->number.value + CCD_FRAME_HEIGHT_ITEM->number.value > CCD_INFO_HEIGHT_ITEM->number.value) {
+				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.value - CCD_FRAME_TOP_ITEM->number.value;
+				CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
