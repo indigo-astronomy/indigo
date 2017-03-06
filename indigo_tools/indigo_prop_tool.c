@@ -32,36 +32,87 @@
 #include "indigo_bus.h"
 #include "indigo_client.h"
 
+#define REMINDER_MAX_SIZE 2048
+
 static bool change_requested = false;
 
 typedef struct {
+	int item_count;
 	char device_name[INDIGO_NAME_SIZE];
 	char property_name[INDIGO_NAME_SIZE];
-	char item_name[INDIGO_NAME_SIZE];
-	char value_string[INDIGO_VALUE_SIZE];
+	char item_name[INDIGO_MAX_ITEMS][INDIGO_NAME_SIZE];
+	char value_string[INDIGO_MAX_ITEMS][INDIGO_VALUE_SIZE];
 } property_change_request;
 
 static property_change_request change_request;
 
-
 void trim_ending_spaces(char * str) {
-    int len = strlen(str);
-    while(isspace(str[len - 1])) str[--len] = 0;
+	int len = strlen(str);
+	while(isspace(str[len - 1])) str[--len] = '\0';
+}
+
+
+void trim_spaces(char * str) {
+	/* trim ending */
+	int len = strlen(str);
+	while(isspace(str[len - 1])) str[--len] = '\0';
+
+	/* trim begining */
+	int skip = 0;
+	while(isspace(str[skip])) skip++;
+	if (skip) {
+		len = 0;
+		while (str[len + skip] != '\0') {
+			str[len] = str[len + skip];
+			len++;
+		}
+		str[len] = '\0';
+	}
 }
 
 
 int parse_property_string(const char *prop_string, property_change_request *scr) {
 	int res;
 	char format[1024];
-	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_VALUE_SIZE);
-	//printf("%s\n", format);
-	res = sscanf(prop_string, format, scr->device_name, scr->property_name, scr->item_name, scr->value_string);
+	char remainder[REMINDER_MAX_SIZE];
+
+	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
+	res = sscanf(prop_string, format, scr->device_name, scr->property_name, scr->item_name[0], remainder);
 	if (res != 4) {
 		errno = EINVAL;
 		return -1;
 	}
-	trim_ending_spaces(scr->item_name);
-	return res;
+	trim_ending_spaces(scr->item_name[0]);
+	trim_spaces(remainder);
+
+	scr->item_count = 1;
+	bool finished = false;
+	while(!finished) {
+		sprintf(format, "%%%d[^;];%%%d[^\r]s", INDIGO_VALUE_SIZE, REMINDER_MAX_SIZE);
+		res = sscanf(remainder, format, scr->value_string[scr->item_count-1], remainder);
+		trim_spaces(scr->value_string[scr->item_count-1]);
+		if (res == 1) {
+			finished = true;
+			break;
+		} else if (res == 2) {
+			trim_spaces(remainder);
+			scr->item_count++;
+			sprintf(format, "%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
+			res = sscanf(remainder, format, scr->item_name[scr->item_count-1], remainder);
+			if (res != 2) {
+				errno = EINVAL;
+				return -1;
+			}
+			trim_spaces(scr->item_name[scr->item_count-1]);
+			trim_spaces(remainder);
+		} else {
+			errno = EINVAL;
+			return -1;
+		}
+	}
+	for(int i=0; i < scr->item_count; i++)
+		printf("%d -> %s.%s.%s = *%s*\n", i, scr->device_name, scr->property_name, scr->item_name[i], scr->value_string[i]);
+	return scr->item_count;
 }
 
 
@@ -118,42 +169,54 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 			static bool bool_values[INDIGO_MAX_ITEMS];
 			double dbl_values[INDIGO_MAX_ITEMS];
 
-			items[0] = (char *)malloc(INDIGO_NAME_SIZE);
-			strncpy(items[0], change_request.item_name, INDIGO_NAME_SIZE);
+			for (i = 0; i< change_request.item_count; i++) {
+				items[i] = (char *)malloc(INDIGO_NAME_SIZE);
+				strncpy(items[i], change_request.item_name[i], INDIGO_NAME_SIZE);
+			}
 
 			switch (property->type) {
 			case INDIGO_TEXT_VECTOR:
-				txt_values[0] = (char *)malloc(INDIGO_VALUE_SIZE);
-				strncpy(txt_values[0], change_request.value_string, INDIGO_VALUE_SIZE);
-				txt_values[0][INDIGO_VALUE_SIZE-1] = 0;
-				indigo_change_text_property(client, property->device, property->name, 1, (const char **)items, (const char **)txt_values);
-				free(txt_values[0]);
+				for (i = 0; i< change_request.item_count; i++) {
+					txt_values[i] = (char *)malloc(INDIGO_VALUE_SIZE);
+					strncpy(txt_values[i], change_request.value_string[i], INDIGO_VALUE_SIZE);
+					txt_values[i][INDIGO_VALUE_SIZE-1] = 0;
+				}
+
+				indigo_change_text_property(client, property->device, property->name, change_request.item_count, (const char **)items, (const char **)txt_values);
+
+				for (i = 0; i< change_request.item_count; i++) {
+					free(txt_values[i]);
+				}
 				break;
 			case INDIGO_NUMBER_VECTOR:
-				dbl_values[0] = strtod(change_request.value_string, NULL);
-				indigo_change_number_property(client, property->device, property->name, 1, (const char **)items, (const double *)dbl_values);
+				for (i = 0; i< change_request.item_count; i++) {
+					dbl_values[i] = strtod(change_request.value_string[i], NULL);
+				}
+				indigo_change_number_property(client, property->device, property->name, change_request.item_count, (const char **)items, (const double *)dbl_values);
 				break;
 			case INDIGO_SWITCH_VECTOR:
-				if (!strcmp("ON", change_request.value_string))
-					bool_values[0] = true;
-				else if (!strcmp("ON", change_request.value_string))
-					bool_values[0] = false;
-				else {
-					/* should indicate error */
+				for (i = 0; i< change_request.item_count; i++) {
+					if (!strcmp("ON", change_request.value_string[i]))
+						bool_values[i] = true;
+					else if (!strcmp("ON", change_request.value_string[i]))
+						bool_values[i] = false;
+					else {
+						/* should indicate error */
+					}
 				}
-				indigo_change_switch_property(client, property->device, property->name, 1, (const char **)items, (const bool *)bool_values);
+				indigo_change_switch_property(client, property->device, property->name, change_request.item_count, (const char **)items, (const bool *)bool_values);
 				break;
 			case INDIGO_LIGHT_VECTOR:
-				printf("6\n");
 				printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
 				break;
 			case INDIGO_BLOB_VECTOR:
-				printf("7\n");
 				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
 				break;
 			}
-			free(items[0]);
-			printf("MATCHED %s * %s * %s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name, change_request.value_string);
+			for (i = 0; i< change_request.item_count; i++) {
+				free(items[i]);
+				printf("MATCHED %d -> %s * %s * %s = %s\n", i, change_request.device_name, change_request.property_name, change_request.item_name[i], change_request.value_string[i]);
+			}
 		}
 		return INDIGO_OK;
 	} else {
@@ -164,13 +227,13 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 
 
 static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+	printf("UPDATED: ");
 	print_property_string(property, message);
 	return INDIGO_OK;
 }
 
 
 static indigo_result client_detach(indigo_client *client) {
-	//indigo_log("detached from INDI bus...");
 	exit(0);
 	return INDIGO_OK;
 }
@@ -198,7 +261,9 @@ int main(int argc, const char * argv[]) {
 			perror("parse_property_string()");
 			return 1;
 		}
-		printf("%s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name,  change_request.value_string);
+		for (int i = 0; i< change_request.item_count; i++) {
+			printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
+		}
 		change_requested = true;
 	}
 
