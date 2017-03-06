@@ -1,0 +1,89 @@
+*************************************************
+* INDI Developers Manual
+* Chapter 8: Tutorial
+**************************************************
+
+Introduction
+--------------
+
+The tutorials included in the INDI Library can be used with any INDI compatible client. The following instructions are provided to test the drivers with KStars. If you are running a different client, refer to your client documentation.
+
+Tutorials
+----------
+
+Four tutorials are presented to introduce developers to the INDI architecture. 
+
+tutorial_one: We construct the most basic device.
+tutorial_two:  We create a simple telescope simulator. 
+tutorial_three:  We create a simple CCD simulator, and establish a data channel with the client to transmit randomly generated FITS. 
+tutorial_four: We demonstrate use of skeleton files to define properties.
+tutorial_five: We create two devices (Rain Detector and Dome) to demonstrate inter-driver communication in INDI. 
+tutorial_six: We create a simple client to set the temperature of a CCD simulator (tutorial_three).
+tuturial_seven: Simple telescope simulator based on INDI Alignment Subsystem which is used to improve pointing performance of mounts.
+
+Usage
+--------
+
+1. Running cmake in the libindi directory should build the examples binary as well.
+ 
+------------------------------------------------------------------------------------------
+
+2. Run KStars (v1.1 or above is required)
+
+Under KStars, click on the "device" menu, then click on the "device manager". Click on the "client" tab and then click on the "add" button.
+
+A dialog box will be displayed with three fields: name, host, and port. 
+
+You can enter anything in the name field, for example "my device" or "tutorial". 
+
+Enter "127.0.0.1" in the host name and "8000" in the port entry (without the quotes). This device will be saved in your client menu. So you only to do #2 once.
+
+------------------------------------------------------------------------------------------
+
+3. In the libindi/examples/tutorial_xxx directory, run each tutorial 
+
+$ indiserver -v -p 8000 ./tutorial_NUM
+
+where num is the tutorial number (tutorial_one, tutorial_two...etc)
+
+------------------------------------------------------------------------------------------
+For tutorial four, a skeleton file needs to be specified first. The tutorial skeleton file is located under examples/tutorial_four/tutorial_four_sk.xml
+Let's assume for this example that the full path to libindi sources is this: /home/jasem/indi/libindi,
+and full path to libindi build directory is this: /home/jasem/build/libindi
+
+Open a console and go to the build directory then type:
+$ cd examples/tutorial_four
+$ export INDISKEL=/home/jasem/indi/libindi/examples/tutorial_four/tutorial_four_sk.xml
+$ indiserver -v -p 8000 ./tutorial_four
+
+Now Tutorial Four shall run and load the Skeleton file. Usually skeleton files for drivers are stored under /usr/share/indi/ and end with _sk.xml
+------------------------------------------------------------------------------------------
+For the inter-driver communications tutorial where it shows have a dome driver and a rain detector driver share information between each other, type the folliwng:
+
+$ indiserver -v -p 8000 ./tutorial_dome ./tutorial_rain
+
+------------------------------------------------------------------------------------------
+
+For tutorial_client. Run tutorial_three (Simple CCD) first:
+
+$ indiserver -v ./tutorial_three
+
+Then open another console tab, and run the client:
+
+$ ./tutorial_client
+
+You can connect to tutorial_three via a GUI client (e.g. KStars) before running tutorial_client. This will enable you to watch 
+changes in the driver as they occur from tutorial_client. Make sure to set the port to 7624 in KStars for this tutorial.
+
+------------------------------------------------------------------------------------------
+
+4. In KStars, go the device menu --> device manager --> client and select the host you added in step #2 and hit connect.
+
+------------------------------------------------------------------------------------------
+
+5. The connection icon should be changed to connected, otherwise, an error message will be displayed.
+
+------------------------------------------------------------------------------------------
+
+6. Close the device manager, and open the INDI Control Panel in the device menu. You can control your device from there.
+
