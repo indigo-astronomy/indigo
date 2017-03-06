@@ -46,9 +46,21 @@ typedef struct {
 
 static property_change_request change_request;
 
+
 void trim_ending_spaces(char * str) {
 	int len = strlen(str);
 	while(isspace(str[len - 1])) str[--len] = '\0';
+}
+
+
+char* str_upper_case(char *str) {
+	int i = 0;
+
+	while (str[i]) {
+		str[i] = toupper(str[i]);
+		i++;
+	}
+	return str;
 }
 
 
@@ -115,8 +127,8 @@ int parse_property_string(const char *prop_string, property_change_request *scr)
 			return -1;
 		}
 	}
-	for(int i=0; i < scr->item_count; i++)
-		printf("%d -> %s.%s.%s = %s\n", i, scr->device_name, scr->property_name, scr->item_name[i], scr->value_string[i]);
+	//for(int i=0; i < scr->item_count; i++)
+	//	printf("%d -> %s.%s.%s = %s\n", i, scr->device_name, scr->property_name, scr->item_name[i], scr->value_string[i]);
 	return scr->item_count;
 }
 
@@ -201,9 +213,9 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 				break;
 			case INDIGO_SWITCH_VECTOR:
 				for (i = 0; i< change_request.item_count; i++) {
-					if (!strcmp("ON", change_request.value_string[i]))
+					if (!strcmp("ON", str_upper_case(change_request.value_string[i])))
 						bool_values[i] = true;
-					else if (!strcmp("OFF", change_request.value_string[i]))
+					else if (!strcmp("OFF", str_upper_case(change_request.value_string[i])))
 						bool_values[i] = false;
 					else {
 						/* should indicate error */
@@ -218,9 +230,11 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
 				break;
 			}
+
+			printf("MATCHED:\n");
 			for (i = 0; i< change_request.item_count; i++) {
 				free(items[i]);
-				printf("MATCHED %d -> %s * %s * %s = %s\n", i, change_request.device_name, change_request.property_name, change_request.item_name[i], change_request.value_string[i]);
+				printf("%s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i], change_request.value_string[i]);
 			}
 		}
 		return INDIGO_OK;
@@ -305,9 +319,9 @@ int main(int argc, const char * argv[]) {
 			perror("parse_property_string()");
 			return 1;
 		}
-		for (int i = 0; i< change_request.item_count; i++) {
-			printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
-		}
+		//for (int i = 0; i< change_request.item_count; i++) {
+		//	printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
+		//}
 		change_requested = true;
 	}
 
