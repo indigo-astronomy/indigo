@@ -1541,7 +1541,9 @@ char *indigo_xml_escape(char *string) {
 					break;
 				case '"':
 					*out++ = '&';
-					*out++ = 'l';
+					*out++ = 'q';
+					*out++ = 'u';
+					*out++ = 'o';
 					*out++ = 't';
 					*out++ = ';';
 					break;
