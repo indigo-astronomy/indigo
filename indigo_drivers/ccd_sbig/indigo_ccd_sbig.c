@@ -123,6 +123,7 @@ typedef struct {
 	int dev_id;
 	bool is_usb;
 	SBIG_DEVICE_TYPE usb_id;
+	short driver_handle;
 	char dev_name[MAX_PATH];
 	//flidomain_t domain;
 	bool rbi_flood_supported;
@@ -150,7 +151,7 @@ short (*sbig_command)(short, void*, void*);
 
 /* driver commands */
 
-short get_sbig_handle() {
+static short get_sbig_handle() {
 	GetDriverHandleResults gdhr;
 	int res = sbig_command(CC_GET_DRIVER_HANDLE, NULL, &gdhr);
 	if ( res == CE_NO_ERROR )
@@ -160,10 +161,43 @@ short get_sbig_handle() {
 }
 
 
-short set_sbig_handle(short handle) {
+static short set_sbig_handle(short handle) {
 	SetDriverHandleParams sdhp;
 	sdhp.handle = handle;
 	return sbig_command(CC_SET_DRIVER_HANDLE, &sdhp, NULL);
+}
+
+
+static short open_driver(short *handle) {
+	short res;
+	SetDriverHandleParams sdhp;
+	GetDriverHandleResults gdhr;
+
+	sdhp.handle = INVALID_HANDLE_VALUE;
+	res = sbig_command(CC_OPEN_DRIVER, NULL, NULL);
+	if (res == CE_NO_ERROR) {
+		res = sbig_command(CC_GET_DRIVER_HANDLE, NULL, &gdhr);
+		if (res == CE_NO_ERROR) {
+			*handle = gdhr.handle;
+		}
+	}
+	return res;
+}
+
+
+static short close_driver(short *handle) {
+	short res;
+
+	res = set_sbig_handle(*handle);
+	if ( res != CE_NO_ERROR ) {
+		return res;
+	}
+
+	res = sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
+	if ( res == CE_NO_ERROR )
+		*handle = INVALID_HANDLE_VALUE;
+
+	return res;
 }
 
 
@@ -186,7 +220,44 @@ static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_cli
 
 static bool sbig_open(indigo_device *device) {
 	int id;
+	OpenDeviceParams odp;
+	short res;
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (PRIVATE_DATA->count_open++ == 0) {
+		odp.deviceType = PRIVATE_DATA->dev_id;
+		odp.ipAddress = 0x00;
+		odp.lptBaseAddress = 0x00;
+
+		if ((res = open_driver(&PRIVATE_DATA->driver_handle)) != CE_NO_ERROR) {
+			PRIVATE_DATA->driver_handle = INVALID_HANDLE_VALUE;
+			PRIVATE_DATA->count_open--;
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: CC_OPEN_DRIVER error = %d", res));
+			return false;
+		}
+
+		if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
+			close_driver(&PRIVATE_DATA->driver_handle);
+			PRIVATE_DATA->count_open--;
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
+			return false;
+		}
+
+		EstablishLinkParams elp = {
+			.sbigUseOnly = 0
+		};
+		EstablishLinkResults elr;
+
+		if ((res = sbig_command(CC_ESTABLISH_LINK, &elp, &elr)) != CE_NO_ERROR) {
+			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+			close_driver(&PRIVATE_DATA->driver_handle);
+			PRIVATE_DATA->count_open--;
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d", res));
+			return false;
+		}
 
 	/*
 	long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
@@ -230,6 +301,7 @@ static bool sbig_open(indigo_device *device) {
 		PRIVATE_DATA->buffer = (unsigned char*)malloc(PRIVATE_DATA->buffer_size);
 	}
 	*/
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -419,18 +491,39 @@ static bool sbig_set_cooler(indigo_device *device, double target, double *curren
 
 
 static void sbig_close(indigo_device *device) {
+	int res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	/*
-	long res = FLIClose(PRIVATE_DATA->dev_id);
+
+	if (--PRIVATE_DATA->count_open == 0) {
+		res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+		if (res) {
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: set_sbig_handle(%d) = %d", PRIVATE_DATA->driver_handle, res));
+		}
+
+		res = sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+		if (res) {
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: CC_CLOSE_DEVICE error = %d", res));
+		}
+
+		res = close_driver(&PRIVATE_DATA->driver_handle);
+		if (res) {
+			INDIGO_LOG(indigo_log("indigo_ccd_sbig: close_driver(%d) = %d", PRIVATE_DATA->driver_handle, res));
+		}
+
+		/*
+		long res = FLIClose(PRIVATE_DATA->dev_id);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) {
+			INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
+		}
+		if (PRIVATE_DATA->buffer != NULL) {
+			free(PRIVATE_DATA->buffer);
+			PRIVATE_DATA->buffer = NULL;
+		}
+		*/
+	}
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res) {
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
-	}
-	if (PRIVATE_DATA->buffer != NULL) {
-		free(PRIVATE_DATA->buffer);
-		PRIVATE_DATA->buffer = NULL;
-	}
-	*/
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
