@@ -767,6 +767,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				return INDIGO_FAILED;
 			}
 		} else {
 			PRIVATE_DATA->can_check_temperature = false;
