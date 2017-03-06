@@ -76,6 +76,11 @@ int parse_property_string(const char *prop_string, property_change_request *scr)
 	char format[1024];
 	char remainder[REMINDER_MAX_SIZE];
 
+	if ((prop_string == NULL) || ( *prop_string == '\0')) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
 	res = sscanf(prop_string, format, scr->device_name, scr->property_name, scr->item_name[0], remainder);
 	if (res != 4) {
@@ -111,7 +116,7 @@ int parse_property_string(const char *prop_string, property_change_request *scr)
 		}
 	}
 	for(int i=0; i < scr->item_count; i++)
-		printf("%d -> %s.%s.%s = *%s*\n", i, scr->device_name, scr->property_name, scr->item_name[i], scr->value_string[i]);
+		printf("%d -> %s.%s.%s = %s\n", i, scr->device_name, scr->property_name, scr->item_name[i], scr->value_string[i]);
 	return scr->item_count;
 }
 
@@ -198,7 +203,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 				for (i = 0; i< change_request.item_count; i++) {
 					if (!strcmp("ON", change_request.value_string[i]))
 						bool_values[i] = true;
-					else if (!strcmp("ON", change_request.value_string[i]))
+					else if (!strcmp("OFF", change_request.value_string[i]))
 						bool_values[i] = false;
 					else {
 						/* should indicate error */
@@ -227,7 +232,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 
 
 static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
-	printf("UPDATED: ");
+	printf("UPDATED:\n");
 	print_property_string(property, message);
 	return INDIGO_OK;
 }
@@ -250,14 +255,53 @@ static indigo_client client = {
 };
 
 
+static void print_help(const char *name) {
+	printf("usage: %s set|list [params]\n", name);
+}
+
+
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 
+	if (argc < 2) {
+		print_help(argv[0]);
+		return 0;
+	}
+
+	bool action_set = true;
+	char const *prop_string = NULL;
+	int arg_base = 1;
+
+	if(!strcmp(argv[1], "set")) {
+		action_set = true;
+		arg_base = 2;
+	} else if (!strcmp(argv[1], "list")) {
+		action_set = false;
+		arg_base = 2;
+	}
+
+	for (int i = arg_base; i < argc; i++) {
+		if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")) {
+			//verbose list
+			printf("1 %d %s\n",  i, argv[i]);
+		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
+			//handle remote server
+			printf("2 %d %s\n",  i, argv[i]);
+		} else if (!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) {
+			//handle port
+		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+			print_help(argv[0]);
+			return 0;
+		} else {
+			prop_string = argv[i];
+		}
+	}
+
 	indigo_use_host_suffix = false;
 
-	if (argc == 2) {
-		if (parse_property_string(argv[1], &change_request) < 0) {
+	if (action_set) {
+		if (parse_property_string(prop_string, &change_request) < 0) {
 			perror("parse_property_string()");
 			return 1;
 		}
