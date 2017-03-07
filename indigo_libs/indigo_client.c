@@ -146,13 +146,13 @@ indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entr
 	dl_handle = dlopen(so_name, RTLD_LAZY);
 	if (!dl_handle) {
 		const char* dlsym_error = dlerror();
-		INDIGO_LOG(indigo_log("Driver %s can't be loaded (%s)", entry_point_name, dlsym_error));
+		INDIGO_ERROR(indigo_error("Driver %s can't be loaded (%s)", entry_point_name, dlsym_error));
 		return INDIGO_FAILED;
 	}
 	entry_point = dlsym(dl_handle, entry_point_name);
 	const char* dlsym_error = dlerror();
 	if (dlsym_error) {
-		INDIGO_LOG(indigo_log("Can't load %s() (%s)", entry_point_name, dlsym_error));
+		INDIGO_ERROR(indigo_error("Can't load %s() (%s)", entry_point_name, dlsym_error));
 		dlclose(dl_handle);
 		return INDIGO_NOT_FOUND;
 	}
@@ -165,9 +165,9 @@ void *server_thread(indigo_server_entry *server) {
 		server->socket = 0;
 		struct hostent *host_entry = gethostbyname(server->host);
 		if (host_entry == NULL) {
-			INDIGO_LOG(indigo_log("Can't resolve host name %s (%s)", server->host, strerror(errno)));
+			INDIGO_ERROR(indigo_error("Can't resolve host name %s (%s)", server->host, strerror(errno)));
 		} else if ((server->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-			INDIGO_LOG(indigo_log("Can't create socket (%s)", strerror(errno)));
+			INDIGO_ERROR(indigo_error("Can't create socket (%s)", strerror(errno)));
 		} else {
 			struct sockaddr_in serv_addr;
 			memcpy(&serv_addr.sin_addr, host_entry->h_addr_list[0], host_entry->h_length);
@@ -260,12 +260,12 @@ void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 	while (subprocess->pid >= 0) {
 		int input[2], output[2];
 		if (pipe(input) < 0 || pipe(output) < 0) {
-			INDIGO_LOG(indigo_log("Can't create local pipe for subprocess %s (%s)", subprocess->executable, strerror(errno)));
+			INDIGO_ERROR(indigo_error("Can't create local pipe for subprocess %s (%s)", subprocess->executable, strerror(errno)));
 			return NULL;
 		}
 		subprocess->pid = fork();
 		if (subprocess->pid == -1) {
-			INDIGO_LOG(indigo_log("Can't create subprocess %s (%s)", subprocess->executable, strerror(errno)));
+			INDIGO_ERROR(indigo_error("Can't create subprocess %s (%s)", subprocess->executable, strerror(errno)));
 			return NULL;
 		} else if (subprocess->pid == 0) {
 			close(0);

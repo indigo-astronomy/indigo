@@ -394,7 +394,7 @@ int main(int argc, const char * argv[]) {
 		while(keep_server_running) {
 			server_pid = fork();
 			if (server_pid == -1) {
-				INDIGO_LOG(indigo_log("Server start failed!"));
+				INDIGO_ERROR(indigo_error("Server start failed!"));
 				return EXIT_FAILURE;
 			} else if (server_pid == 0) {
 #ifdef INDIGO_LINUX
@@ -404,7 +404,7 @@ int main(int argc, const char * argv[]) {
 				return EXIT_SUCCESS;
 			} else {
 				if (waitpid(server_pid, NULL, 0) == -1 ) {
-					INDIGO_LOG(indigo_log("waitpid() failed."));
+					INDIGO_ERROR(indigo_error("waitpid() failed."));
 					return EXIT_FAILURE;
 				}
 				use_sigkill = false;

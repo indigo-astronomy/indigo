@@ -68,12 +68,12 @@ static void wheel_timer_callback(indigo_device *device) {
 
 	long res = FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
 	if (res) {
-		INDIGO_LOG(indigo_log("indigo_wheel_fli: FLISetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLISetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
 	}
 
 	res = FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
 	if (res) {
-		INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIGetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLIGetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
 	}
 	PRIVATE_DATA->current_slot++;
 
@@ -144,23 +144,23 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				}
 				res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
 				}
 
 				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
 				}
 
 				long hw_rev, fw_rev;
 				res = FLIGetFWRevision(id, &fw_rev);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
 				}
 
 				res = FLIGetHWRevision(id, &hw_rev);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
@@ -175,7 +175,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			} else {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res));
+				INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res));
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
@@ -187,7 +187,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			long res = FLIClose(PRIVATE_DATA->dev_id);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (res) {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
+				INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
 			}
 			PRIVATE_DATA->dev_id = -1;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -242,7 +242,7 @@ static void enumerate_devices() {
 	num_devices = 0;
 	long res = FLICreateList(enum_domain);
 	if (res) {
-		INDIGO_LOG(indigo_log("indigo_wheel_fli: FLICreateList(%d) = %d",enum_domain , res));
+		INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLICreateList(%d) = %d",enum_domain , res));
 	}
 	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
 		do {
@@ -357,7 +357,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			int slot = find_available_device_slot();
 			if (slot < 0) {
-				INDIGO_LOG(indigo_log("indigo_wheel_fli: No available device slots available."));
+				INDIGO_ERROR(indigo_error("indigo_wheel_fli: No available device slots available."));
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
