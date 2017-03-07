@@ -146,27 +146,27 @@ static void fli_focuser_connect(indigo_device *device) {
 		}
 
 		long value;
-		do {
-			usleep(100000);
-			res = FLIGetStepsRemaining(id, &value);
-			if (res) {
-				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
-			}
-			//INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuser steps left %d", value));
-		} while (value != 0);  /* wait while finding home position */
-
 		//do {
 		//	usleep(100000);
-		//	res = FLIGetDeviceStatus(id, &value);
+		//	res = FLIGetStepsRemaining(id, &value);
 		//	if (res) {
 		//		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
 		//	}
-		//	INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
-		//} while (value == FLI_FOCUSER_STATUS_MOVING_MASK);  /* wait while moving */
+		//	//INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuser steps left %d", value));
+		//} while (value != 0);  /* wait while finding home position */
 
-		//if (value != FLI_FOCUSER_STATUS_HOME) {
-		//	INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuser home position not found (status = %d)", value));
-		//}
+		do {
+			usleep(100000);
+			res = FLIGetDeviceStatus(id, &value);
+			if (res) {
+				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
+			}
+			INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
+		} while (value == FLI_FOCUSER_STATUS_MOVING_MASK);  /* wait while moving */
+
+		if (value != FLI_FOCUSER_STATUS_HOME) {
+			INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuser home position not found (status = %d)", value));
+		}
 
 		res = FLIGetStepperPosition(id, &value);
 		if (res) {
@@ -184,6 +184,11 @@ static void fli_focuser_connect(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.value = 0;
 		FOCUSER_POSITION_ITEM->number.step = 1;
+
+		FOCUSER_STEPS_ITEM->number.max = value;
+		FOCUSER_STEPS_ITEM->number.min = 0;
+		FOCUSER_STEPS_ITEM->number.value = 0;
+		FOCUSER_STEPS_ITEM->number.step = 1;
 
 		res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
 		if (res) {

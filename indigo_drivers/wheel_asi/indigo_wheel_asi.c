@@ -115,7 +115,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: EFWOpen(%d) = %d", index, res));
+				INDIGO_ERROR(indigo_error("indigo_wheel_asi: EFWOpen(%d) = %d", index, res));
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				return INDIGO_FAILED;
