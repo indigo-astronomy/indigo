@@ -372,12 +372,14 @@ static void print_help(const char *name) {
 	printf("usage: %s set [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
 	printf("options:\n"
-	       "       -h | --help\n"
-	       "       -v | --verbose\n"
-	       "       -vv| --enable-log\n"
-	       "       -r | --remote-server host[:port]   (default: localhost)\n"
-	       "       -p | --port port                   (default: 7624)\n"
-	       "       -t | --time-to-wait seconds        (default: 2)\n"
+	       "       -h  | --help\n"
+	       "       -e  | --extended-info\n"
+	       "       -v  | --enable-log\n"
+	       "       -vv | --enable-devug\n"
+	       "       -vvv| --enable-trace\n"
+	       "       -r  | --remote-server host[:port]   (default: localhost)\n"
+	       "       -p  | --port port                   (default: 7624)\n"
+	       "       -t  | --time-to-wait seconds        (default: 2)\n"
 	);
 }
 
@@ -408,10 +410,8 @@ int main(int argc, const char * argv[]) {
 	}
 
 	for (int i = arg_base; i < argc; i++) {
-		if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")) {
+		if (!strcmp(argv[i], "-e") || !strcmp(argv[i], "--extended-info")) {
 			print_verbose = true;
-		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-log")) {
-			indigo_log_level = true;
 		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
 			if (argc > i+1) {
 				i++;
