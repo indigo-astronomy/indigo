@@ -233,7 +233,7 @@ static bool sbig_open(indigo_device *device) {
 			PRIVATE_DATA->driver_handle = INVALID_HANDLE_VALUE;
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: CC_OPEN_DRIVER error = %d", res));
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DRIVER error = %d", res));
 			return false;
 		}
 
@@ -241,7 +241,7 @@ static bool sbig_open(indigo_device *device) {
 			close_driver(&PRIVATE_DATA->driver_handle);
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
 			return false;
 		}
 
@@ -255,7 +255,7 @@ static bool sbig_open(indigo_device *device) {
 			close_driver(&PRIVATE_DATA->driver_handle);
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d", res));
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d", res));
 			return false;
 		}
 
@@ -264,7 +264,7 @@ static bool sbig_open(indigo_device *device) {
 	id = PRIVATE_DATA->dev_id;
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIOpen(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIOpen(%d) = %d", id, res));
 		return false;
 	}
 
@@ -272,7 +272,7 @@ static bool sbig_open(indigo_device *device) {
 	if (res) {
 		FLIClose(id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetArrayArea(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetArrayArea(%d) = %d", id, res));
 		return false;
 	}
 
@@ -280,7 +280,7 @@ static bool sbig_open(indigo_device *device) {
 	if (res) {
 		FLIClose(id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetVisibleArea(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetVisibleArea(%d) = %d", id, res));
 		return false;
 	}
 
@@ -294,7 +294,7 @@ static bool sbig_open(indigo_device *device) {
 	long height = PRIVATE_DATA->total_area.lr_y - PRIVATE_DATA->total_area.ul_y;
 	long width = PRIVATE_DATA->total_area.lr_x - PRIVATE_DATA->total_area.ul_x;
 
-	//INDIGO_LOG(indigo_log("indigo_ccd_fli: %ld %ld %ld %ld - %ld, %ld", PRIVATE_DATA->total_area.lr_x, PRIVATE_DATA->total_area.lr_y, PRIVATE_DATA->total_area.ul_x, PRIVATE_DATA->total_area.ul_y, height, width));
+	//INDIGO_ERROR(indigo_error("indigo_ccd_fli: %ld %ld %ld %ld - %ld, %ld", PRIVATE_DATA->total_area.lr_x, PRIVATE_DATA->total_area.lr_y, PRIVATE_DATA->total_area.ul_x, PRIVATE_DATA->total_area.ul_y, height, width));
 
 	if (PRIVATE_DATA->buffer == NULL) {
 		PRIVATE_DATA->buffer_size = width * height * 2 + FITS_HEADER_SIZE;
@@ -338,7 +338,7 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 	res = FLISetBitDepth(id, bit_depth);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetBitDepth(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetBitDepth(%d) = %d", id, res));
 		return false;
 	}
 	*/
@@ -346,28 +346,28 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 	res = FLISetHBin(id, bin_x);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetHBin(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetHBin(%d) = %d", id, res));
 		return false;
 	}
 
 	res = FLISetVBin(id, bin_y);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetVBin(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetVBin(%d) = %d", id, res));
 		return false;
 	}
 
 	res = FLISetImageArea(id, offset_x, offset_y, right_x, right_y);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetImageArea(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetImageArea(%d) = %d", id, res));
 		return false;
 	}
 
 	res = FLISetExposureTime(id, (long)s2ms(exposure));
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetExposureTime(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetExposureTime(%d) = %d", id, res));
 		return false;
 	}
 
@@ -377,14 +377,14 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 	res = FLISetFrameType(id, frame_type);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetFrameType(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetFrameType(%d) = %d", id, res));
 		return false;
 	}
 
 	res = FLIExposeFrame(id);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIExposeFrame(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIExposeFrame(%d) = %d", id, res));
 		return false;
 	}
 	*/
@@ -419,7 +419,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 	} while (wait_cicles);
 
 	if (wait_cicles == 0) {
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: Exposure Failed! id=%d", id));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: Exposure Failed! id=%d", id));
 		return false;
 	}
 
@@ -434,7 +434,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 		res = FLIGrabRow(id, image + (i * row_size), width);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			if (success) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGrabRow(%d) = %d at row %d.", id, res, i));
+			if (success) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGrabRow(%d) = %d at row %d.", id, res, i));
 			success = false;
 		}
 	}
@@ -470,19 +470,19 @@ static bool sbig_set_cooler(indigo_device *device, double target, double *curren
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	res = FLIGetTemperature(id, current);
-	if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
+	if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
 
 	if ((target != old_target) && CCD_COOLER_ON_ITEM->sw.value) {
 		res = FLISetTemperature(id, target);
-		if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
+		if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
 	} else if(CCD_COOLER_OFF_ITEM->sw.value) {
 	
 		res = FLISetTemperature(id, 45);
-		if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
+		if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
 	}
 
 	res = FLIGetCoolerPower(id, (double *)cooler_power);
-	if(res) INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetCoolerPower(%d) = %d", id, res));
+	if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetCoolerPower(%d) = %d", id, res));
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	*/
@@ -497,24 +497,24 @@ static void sbig_close(indigo_device *device) {
 	if (--PRIVATE_DATA->count_open == 0) {
 		res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 		if (res) {
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: set_sbig_handle(%d) = %d", PRIVATE_DATA->driver_handle, res));
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d", PRIVATE_DATA->driver_handle, res));
 		}
 
 		res = sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 		if (res) {
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: CC_CLOSE_DEVICE error = %d", res));
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_CLOSE_DEVICE error = %d", res));
 		}
 
 		res = close_driver(&PRIVATE_DATA->driver_handle);
 		if (res) {
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: close_driver(%d) = %d", PRIVATE_DATA->driver_handle, res));
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: close_driver(%d) = %d", PRIVATE_DATA->driver_handle, res));
 		}
 
 		/*
 		long res = FLIClose(PRIVATE_DATA->dev_id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
+			INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
 		}
 		if (PRIVATE_DATA->buffer != NULL) {
 			free(PRIVATE_DATA->buffer);
@@ -683,7 +683,7 @@ static bool handle_nflushes_property(indigo_device *device, indigo_property *pro
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 	if (res) {
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLISetNFlushes(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetNFlushes(%d) = %d", id, res));
 		FLI_NFLUSHES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FLI_NFLUSHES_PROPERTY, "Can not set number of flushes to %ld", nflushes);
 		return false;
@@ -710,7 +710,7 @@ static bool handle_camera_mode_property(indigo_device *device, indigo_property *
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 	if (res) {
-		INDIGO_LOG(indigo_log("indigo_ccd_fli:FLISetCameraMode(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_fli:FLISetCameraMode(%d) = %d", id, res));
 		FLI_CAMERA_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, "Can not set camera mode %d", mode);
 		return false;
@@ -804,7 +804,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				char mode_name[INDIGO_NAME_SIZE];
 				res = FLIGetCameraMode(id, &current_mode);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetCameraMode(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetCameraMode(%d) = %d", id, res));
 				}
 				res = FLIGetCameraModeString(id, 0, mode_name, INDIGO_NAME_SIZE); 
 				if (res == 0) {
@@ -827,28 +827,28 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = FLIGetPixelSize(id, &size_x, &size_y);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
 				}
 
 				res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
 				}
 
 				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
 				}
 
 				long hw_rev, fw_rev;
 				res = FLIGetFWRevision(id, &fw_rev);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
 				}
 
 				res = FLIGetHWRevision(id, &hw_rev);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
@@ -857,7 +857,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 
-				//INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
+				//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
 				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = m2um(size_x);
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = m2um(size_y);
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
@@ -885,7 +885,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				res = FLIGetTemperature(id,&(CCD_TEMPERATURE_ITEM->number.value));
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
 				}
 				PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
 				PRIVATE_DATA->can_check_temperature = true;
@@ -954,7 +954,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
-		//INDIGO_LOG(indigo_log("indigo_ccd_asi: COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
+		//INDIGO_ERROR(indigo_error("indigo_ccd_asi: COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1069,7 +1069,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			res = ASIPulseGuideOn(id, ASI_GUIDE_NORTH);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-			if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res));
+			if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res));
 			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 			PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = true;
 			*/
@@ -1081,7 +1081,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				res = ASIPulseGuideOn(id, ASI_GUIDE_SOUTH);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-				if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res));
+				if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res));
 				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 				PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = true;
 				*/
@@ -1106,7 +1106,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			res = ASIPulseGuideOn(id, ASI_GUIDE_EAST);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-			if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res));
+			if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res));
 			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 			PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = true;
 			*/
@@ -1118,7 +1118,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				res = ASIPulseGuideOn(id, ASI_GUIDE_WEST);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-				if (res) INDIGO_LOG(indigo_log("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res));
+				if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res));
 				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 				PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = true;
 				*/
@@ -1286,7 +1286,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			int slot = find_available_device_slot();
 			if (slot < 0) {
-				INDIGO_LOG(indigo_log("indigo_ccd_sbig: No available device slots available."));
+				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No available device slots available."));
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
@@ -1316,7 +1316,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			devices[slot]=device;
 			slot = find_available_device_slot();
 			if (slot < 0) {
-				INDIGO_LOG(indigo_log("indigo_ccd_asi: No available device slots available."));
+				INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
@@ -1415,14 +1415,14 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		dl_handle = dlopen("/Library/Frameworks/SBIGUDrv.framework/SBIGUDrv", RTLD_LAZY);
 		if (!dl_handle) {
 			const char* dlsym_error = dlerror();
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: SBIG SDK can't be loaded (%s)", dlsym_error));
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Please install SBIGUDrv framework from http://www.sbig.com"));
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: SBIG SDK can't be loaded (%s)", dlsym_error));
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: Please install SBIGUDrv framework from http://www.sbig.com"));
 			return INDIGO_FAILED;
 		}
 		sbig_command = dlsym(dl_handle, "SBIGUnivDrvCommand");
 		const char* dlsym_error = dlerror();
 		if (dlsym_error) {
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Can't load %s() (%s)", "SBIGUnivDrvCommand", dlsym_error));
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: Can't load %s() (%s)", "SBIGUnivDrvCommand", dlsym_error));
 			dlclose(dl_handle);
 			return INDIGO_NOT_FOUND;
 		}

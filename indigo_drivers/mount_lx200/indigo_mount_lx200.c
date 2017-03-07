@@ -100,7 +100,7 @@ bool meade_open(indigo_device *device) {
 		INDIGO_LOG(indigo_log("lx200: connected to %s", name));
 		return true;
 	} else {
-		INDIGO_LOG(indigo_log("lx200: failed to connect to %s", name));
+		INDIGO_ERROR(indigo_error("lx200: failed to connect to %s", name));
 		indigo_send_message(device, "lx200: failed to connect to %s", name);
 		return false;
 	}
@@ -137,7 +137,7 @@ bool meade_command(indigo_device *device, char *command, char *response, int max
 	while (remains > 0) {
 		written = write(PRIVATE_DATA->handle, data, remains);
 		if (written < 0) {
-			INDIGO_LOG(indigo_log("lx200: Failed to write to %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
+			INDIGO_ERROR(indigo_error("lx200: Failed to write to %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
 		}
@@ -163,7 +163,7 @@ bool meade_command(indigo_device *device, char *command, char *response, int max
 				break;
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
-				INDIGO_LOG(indigo_log("lx200: Failed to read from %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
+				INDIGO_ERROR(indigo_error("lx200: Failed to read from %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
@@ -183,7 +183,7 @@ bool meade_command(indigo_device *device, char *command, char *response, int max
 void meade_close(indigo_device *device) {
 	close(PRIVATE_DATA->handle);
 	PRIVATE_DATA->handle = 0;
-	INDIGO_LOG(indigo_log("lx200: disconnected from %s", PRIVATE_DATA->device_port->items->text.value));
+	INDIGO_ERROR(indigo_error("lx200: disconnected from %s", PRIVATE_DATA->device_port->items->text.value));
 }
 
 static void meade_get_coords(indigo_device *device) {
@@ -399,7 +399,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		char command[128], response[128];
 		sprintf(command, ":St%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d"));
 		if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-			INDIGO_LOG(indigo_log("lx200: %s failed", command));
+			INDIGO_ERROR(indigo_error("lx200: %s failed", command));
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			double longitude = 360-MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
@@ -407,7 +407,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				longitude -= 360;
 			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%0d*%02d"));
 			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-				INDIGO_LOG(indigo_log("lx200: %s failed", command));
+				INDIGO_ERROR(indigo_error("lx200: %s failed", command));
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
@@ -435,16 +435,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				char command[128], response[128];
 				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-					INDIGO_LOG(indigo_log("lx200: %s failed", command));
+					INDIGO_ERROR(indigo_error("lx200: %s failed", command));
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-						INDIGO_LOG(indigo_log("lx200: %s failed", command));
+						INDIGO_ERROR(indigo_error("lx200: %s failed", command));
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
 						if (!meade_command(device, ":MS#", response, 1, 100000) || *response != '0') {
-							INDIGO_LOG(indigo_log("lx200: :MS# failed"));
+							INDIGO_ERROR(indigo_error("lx200: :MS# failed"));
 							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 						}
 					}
@@ -453,16 +453,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				char command[128], response[128];
 				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-					INDIGO_LOG(indigo_log("lx200: %s failed", command));
+					INDIGO_ERROR(indigo_error("lx200: %s failed", command));
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-						INDIGO_LOG(indigo_log("lx200: %s failed", command));
+						INDIGO_ERROR(indigo_error("lx200: %s failed", command));
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
 						if (!meade_command(device, ":CM#", response, 127, 100000) || *response == 0) {
-							INDIGO_LOG(indigo_log("lx200: :CM# failed"));
+							INDIGO_ERROR(indigo_error("lx200: :CM# failed"));
 							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 						}
 					}
@@ -598,7 +598,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_UTC_TIME_PROPERTY, property, false);
 		time_t secs = indigo_isototime(MOUNT_UTC_ITEM->text.value);
 		if (secs == -1) {
-			INDIGO_LOG(indigo_log("indigo_mount_lx200: Wrong date/time format!"));
+			INDIGO_ERROR(indigo_error("indigo_mount_lx200: Wrong date/time format!"));
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
 		} else {
