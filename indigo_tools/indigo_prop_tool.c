@@ -32,6 +32,7 @@
 #include "indigo_bus.h"
 #include "indigo_client.h"
 
+#define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048
 
 static bool change_requested = false;
@@ -315,11 +316,11 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 				break;
 			}
 
-			printf("MATCHED:\n");
-			for (i = 0; i< change_request.item_count; i++) {
-				free(items[i]);
-				printf("%s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i], change_request.value_string[i]);
-			}
+			//printf("MATCHED:\n");
+			//for (i = 0; i< change_request.item_count; i++) {
+			//	free(items[i]);
+			//	printf("%s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i], change_request.value_string[i]);
+			//}
 		}
 		return INDIGO_OK;
 	} else {
@@ -344,7 +345,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 
 
 static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
-	printf("UPDATED:\n");
+	//printf("UPDATED:\n");
 	print_property_string(property, message);
 	return INDIGO_OK;
 }
@@ -368,19 +369,31 @@ static indigo_client client = {
 
 
 static void print_help(const char *name) {
-	printf("usage: %s set|list [params]\n", name);
+	printf("usage: %s set [options] device.property.item=value[;item=value;..]\n", name);
+	printf("       %s list [options] [device[.property]]\n", name);
+	printf("options:\n"
+	       "       -h | --help\n"
+	       "       -v | --verbose\n"
+	       "       -r | --remote-server host[:port]   (default: localhost)\n"
+	       "       -p | --port port                   (default: 7624)\n"
+	       "       -t | --time-to-wait seconds        (default: 2)\n"
+	);
 }
 
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
+	indigo_use_host_suffix = false;
 
 	if (argc < 2) {
 		print_help(argv[0]);
 		return 0;
 	}
 
+	int time_to_wait = 2;
+	int port = INDIGO_DEFAULT_PORT;
+	char hostname[255] = "localhost";
 	bool action_set = true;
 	char const *prop_string = NULL;
 	int arg_base = 1;
@@ -397,10 +410,32 @@ int main(int argc, const char * argv[]) {
 		if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")) {
 			print_verbose = true;
 		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
-			//handle remote server
-			printf("2 %d %s\n",  i, argv[i]);
+			if (argc > i+1) {
+				i++;
+				char port_str[100];
+				if (sscanf(argv[i], "%[^:]:%s", hostname, port_str) > 1) {
+					port = atoi(port_str);
+				}
+			} else {
+				fprintf(stderr, "No hostname specified\n");
+				return 1;
+			}
 		} else if (!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) {
-			//handle port
+			if (argc > i+1) {
+				i++;
+				port = atoi(argv[i]);
+			} else {
+				fprintf(stderr, "No port specified\n");
+				return 1;
+			}
+		} else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--time-to-wait")) {
+			if (argc > i+1) {
+				i++;
+				time_to_wait = atoi(argv[i]);
+			} else {
+				fprintf(stderr, "No time to wait specified\n");
+				return 1;
+			}
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			print_help(argv[0]);
 			return 0;
@@ -409,7 +444,15 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 
-	indigo_use_host_suffix = false;
+	if (port <= 0) {
+		fprintf(stderr, "Invalied port specified\n");
+		return 1;
+	}
+
+	if (time_to_wait <= 0) {
+		fprintf(stderr, "Invalied invalid time to wait specified\n");
+		return 1;
+	}
 
 	if (action_set) {
 		if (parse_set_property_string(prop_string, &change_request) < 0) {
@@ -432,8 +475,8 @@ int main(int argc, const char * argv[]) {
 	indigo_start();
 	indigo_attach_client(&client);
 	indigo_server_entry *server;
-	indigo_connect_server("localhost", 7624, &server);
-	sleep(2);
+	indigo_connect_server(hostname, port, &server);
+	sleep(time_to_wait);
 	indigo_stop();
 	indigo_disconnect_server(server);
 	return 0;
