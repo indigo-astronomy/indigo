@@ -54,7 +54,7 @@ typedef enum {
 	INDIGO_VERSION_NONE			= 0x0000, ///< undefined version
 	INDIGO_VERSION_LEGACY		= 0x0107, ///< INDI compatible version
 	INDIGO_VERSION_2_0			= 0x0200,  ///< INDIGO version
-	INDIGO_VERSION_CURRENT	= 0x0200  ///< INDIGO version
+	INDIGO_VERSION_CURRENT		= 0x0200  ///< INDIGO version
 } indigo_version;
 
 /** Bus operation return status.
