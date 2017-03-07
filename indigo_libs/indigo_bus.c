@@ -79,6 +79,7 @@ char *indigo_switch_rule_text[] = {
 
 indigo_property INDIGO_ALL_PROPERTIES;
 
+bool indigo_log_level = true;
 bool indigo_debug_level = false;
 bool indigo_trace_level = false;
 bool indigo_use_syslog = false;
@@ -152,6 +153,22 @@ static void log_message(const char *format, va_list args) {
 	pthread_mutex_unlock(&log_mutex);
 }
 
+void indigo_error(const char *format, ...) {
+	va_list argList;
+	va_start(argList, format);
+	log_message(format, argList);
+	va_end(argList);
+}
+
+void indigo_log(const char *format, ...) {
+	if (indigo_log_level) {
+		va_list argList;
+		va_start(argList, format);
+		log_message(format, argList);
+		va_end(argList);
+	}
+}
+
 void indigo_trace(const char *format, ...) {
 	if (indigo_trace_level) {
 		va_list argList;
@@ -217,20 +234,6 @@ void indigo_debug_property(const char *message, indigo_property *property, bool 
 		}
 		indigo_debug("}");
 	}
-}
-
-void indigo_error(const char *format, ...) {
-	va_list argList;
-	va_start(argList, format);
-	log_message(format, argList);
-	va_end(argList);
-}
-
-void indigo_log(const char *format, ...) {
-	va_list argList;
-	va_start(argList, format);
-	log_message(format, argList);
-	va_end(argList);
 }
 
 indigo_result indigo_start() {
