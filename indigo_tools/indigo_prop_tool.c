@@ -45,7 +45,14 @@ typedef struct {
 	char value_string[INDIGO_MAX_ITEMS][INDIGO_VALUE_SIZE];
 } property_change_request;
 
+typedef struct {
+	char device_name[INDIGO_NAME_SIZE];
+	char property_name[INDIGO_NAME_SIZE];
+} property_list_request;
+
+
 static property_change_request change_request;
+static property_list_request list_request;
 
 
 void trim_ending_spaces(char * str) {
@@ -84,7 +91,29 @@ void trim_spaces(char * str) {
 }
 
 
-int parse_property_string(const char *prop_string, property_change_request *scr) {
+int parse_list_property_string(const char *prop_string, property_list_request *plr) {
+	int res;
+	char format[1024];
+
+	plr->device_name[0] = '\0';
+	plr->property_name[0] = '\0';
+
+	if ((prop_string == NULL) || ( *prop_string == '\0')) {
+		return 0;
+	}
+
+	sprintf(format, "%%%d[^.].%%%ds", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE);
+	res = sscanf(prop_string, format, plr->device_name, plr->property_name);
+	if (res > 2) {
+		errno = EINVAL;
+		return -1;
+	}
+	trim_ending_spaces(plr->property_name);
+	return res;
+}
+
+
+int parse_set_property_string(const char *prop_string, property_change_request *scr) {
 	int res;
 	char format[1024];
 	char remainder[REMINDER_MAX_SIZE];
@@ -184,7 +213,11 @@ void print_property_string(indigo_property *property, const char *message) {
 			break;
 		}
 
-		printf("%s.%s (%s, %s) State:%s Group:\"%s\" Label:\"%s\"\n", property->device, property->name, perm_str, type_str, state_str, property->group, property->label);
+		printf("Name : %s.%s (%s, %s)\nState: %s\nGroup: %s\nLabel: %s\n", property->device, property->name, perm_str, type_str, state_str, property->group, property->label);
+		if (message) {
+			printf("Message:\"%s\"\n", message);
+		}
+		printf("Items:\n");
 	}
 
 	for (i = 0; i < property->count; i++) {
@@ -290,7 +323,21 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 		}
 		return INDIGO_OK;
 	} else {
-		print_property_string(property, message);
+		if ((list_request.device_name[0] == '\0') && (list_request.property_name[0] == '\0')) {
+			/* list all properties */
+			print_property_string(property, message);
+		} else if (list_request.property_name[0] == '\0') {
+			/* list all poperties of the device */
+			if (!strncmp(list_request.device_name, property->device, INDIGO_NAME_SIZE)) {
+				print_property_string(property, message);
+			}
+		} else {
+			/* list all poperties that match device and property name */
+			if ((!strncmp(list_request.device_name, property->device, INDIGO_NAME_SIZE)) &&
+			   (!strncmp(list_request.property_name, property->name, INDIGO_NAME_SIZE))) {
+				print_property_string(property, message);
+			}
+		}
 	}
 	return INDIGO_OK;
 }
@@ -365,7 +412,7 @@ int main(int argc, const char * argv[]) {
 	indigo_use_host_suffix = false;
 
 	if (action_set) {
-		if (parse_property_string(prop_string, &change_request) < 0) {
+		if (parse_set_property_string(prop_string, &change_request) < 0) {
 			perror("parse_property_string()");
 			return 1;
 		}
@@ -373,6 +420,13 @@ int main(int argc, const char * argv[]) {
 		//	printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
 		//}
 		change_requested = true;
+	} else {
+		if (parse_list_property_string(prop_string, &list_request) < 0) {
+			perror("parse_property_string()");
+			return 1;
+		}
+		//printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
+		change_requested = false;
 	}
 
 	indigo_start();
