@@ -32,9 +32,11 @@
 #include "indigo_bus.h"
 #include "indigo_client.h"
 
+#define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048
 
 static bool change_requested = false;
+static bool print_verbose = false;
 
 typedef struct {
 	int item_count;
@@ -44,7 +46,14 @@ typedef struct {
 	char value_string[INDIGO_MAX_ITEMS][INDIGO_VALUE_SIZE];
 } property_change_request;
 
+typedef struct {
+	char device_name[INDIGO_NAME_SIZE];
+	char property_name[INDIGO_NAME_SIZE];
+} property_list_request;
+
+
 static property_change_request change_request;
+static property_list_request list_request;
 
 
 void trim_ending_spaces(char * str) {
@@ -83,7 +92,29 @@ void trim_spaces(char * str) {
 }
 
 
-int parse_property_string(const char *prop_string, property_change_request *scr) {
+int parse_list_property_string(const char *prop_string, property_list_request *plr) {
+	int res;
+	char format[1024];
+
+	plr->device_name[0] = '\0';
+	plr->property_name[0] = '\0';
+
+	if ((prop_string == NULL) || ( *prop_string == '\0')) {
+		return 0;
+	}
+
+	sprintf(format, "%%%d[^.].%%%ds", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE);
+	res = sscanf(prop_string, format, plr->device_name, plr->property_name);
+	if (res > 2) {
+		errno = EINVAL;
+		return -1;
+	}
+	trim_ending_spaces(plr->property_name);
+	return res;
+}
+
+
+int parse_set_property_string(const char *prop_string, property_change_request *scr) {
 	int res;
 	char format[1024];
 	char remainder[REMINDER_MAX_SIZE];
@@ -127,8 +158,6 @@ int parse_property_string(const char *prop_string, property_change_request *scr)
 			return -1;
 		}
 	}
-	//for(int i=0; i < scr->item_count; i++)
-	//	printf("%d -> %s.%s.%s = %s\n", i, scr->device_name, scr->property_name, scr->item_name[i], scr->value_string[i]);
 	return scr->item_count;
 }
 
@@ -136,6 +165,62 @@ int parse_property_string(const char *prop_string, property_change_request *scr)
 void print_property_string(indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
+	if (print_verbose && !change_requested) {
+		char perm_str[3] = "";
+		switch(property->perm) {
+		case INDIGO_RW_PERM:
+			strcpy(perm_str, "RW");
+			break;
+		case INDIGO_RO_PERM:
+			strcpy(perm_str, "RO");
+			break;
+		case INDIGO_WO_PERM:
+			strcpy(perm_str, "WO");
+			break;
+		}
+
+		char type_str[20] = "";
+		switch(property->type) {
+		case INDIGO_TEXT_VECTOR:
+			strcpy(type_str, "TEXT_VECTOR");
+			break;
+		case INDIGO_NUMBER_VECTOR:
+			strcpy(type_str, "NUMBER_VECTOR");
+			break;
+		case INDIGO_SWITCH_VECTOR:
+			strcpy(type_str, "SWITCH_VECTOR");
+			break;
+		case INDIGO_LIGHT_VECTOR:
+			strcpy(type_str, "LIGHT_VECTOR");
+			break;
+		case INDIGO_BLOB_VECTOR:
+			strcpy(type_str, "BLOB_VECTOR");
+			break;
+		}
+
+		char state_str[20] = "";
+		switch(property->state) {
+		case INDIGO_IDLE_STATE:
+			strcpy(state_str, "IDLE");
+			break;
+		case INDIGO_ALERT_STATE:
+			strcpy(state_str, "ALERT");
+			break;
+		case INDIGO_OK_STATE:
+			strcpy(state_str, "OK");
+			break;
+		case INDIGO_BUSY_STATE:
+			strcpy(state_str, "BUSY");
+			break;
+		}
+
+		printf("Name : %s.%s (%s, %s)\nState: %s\nGroup: %s\nLabel: %s\n", property->device, property->name, perm_str, type_str, state_str, property->group, property->label);
+		if (message) {
+			printf("Message:\"%s\"\n", message);
+		}
+		printf("Items:\n");
+	}
+
 	for (i = 0; i < property->count; i++) {
 		item = &(property->items[i]);
 		switch (property->type) {
@@ -159,11 +244,11 @@ void print_property_string(indigo_property *property, const char *message) {
 			break;
 		}
 	}
+	if (print_verbose) printf("\n");
 }
 
 
 static indigo_result client_attach(indigo_client *client) {
-	//indigo_log("attached to INDI bus...");
 	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 	return INDIGO_OK;
 }
@@ -174,7 +259,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 	int i;
 	static bool called = false;
 
-	if (!called) {
+	if (!called && print_verbose) {
 		printf("Protocol version = %x.%x\n", property->version >> 8, property->version & 0xff);
 		called = true;
 	}
@@ -231,22 +316,36 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 				break;
 			}
 
-			printf("MATCHED:\n");
-			for (i = 0; i< change_request.item_count; i++) {
-				free(items[i]);
-				printf("%s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i], change_request.value_string[i]);
-			}
+			//printf("MATCHED:\n");
+			//for (i = 0; i< change_request.item_count; i++) {
+			//	free(items[i]);
+			//	printf("%s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i], change_request.value_string[i]);
+			//}
 		}
 		return INDIGO_OK;
 	} else {
-		print_property_string(property, message);
+		if ((list_request.device_name[0] == '\0') && (list_request.property_name[0] == '\0')) {
+			/* list all properties */
+			print_property_string(property, message);
+		} else if (list_request.property_name[0] == '\0') {
+			/* list all poperties of the device */
+			if (!strncmp(list_request.device_name, property->device, INDIGO_NAME_SIZE)) {
+				print_property_string(property, message);
+			}
+		} else {
+			/* list all poperties that match device and property name */
+			if ((!strncmp(list_request.device_name, property->device, INDIGO_NAME_SIZE)) &&
+			   (!strncmp(list_request.property_name, property->name, INDIGO_NAME_SIZE))) {
+				print_property_string(property, message);
+			}
+		}
 	}
 	return INDIGO_OK;
 }
 
 
 static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
-	printf("UPDATED:\n");
+	//printf("UPDATED:\n");
 	print_property_string(property, message);
 	return INDIGO_OK;
 }
@@ -270,19 +369,31 @@ static indigo_client client = {
 
 
 static void print_help(const char *name) {
-	printf("usage: %s set|list [params]\n", name);
+	printf("usage: %s set [options] device.property.item=value[;item=value;..]\n", name);
+	printf("       %s list [options] [device[.property]]\n", name);
+	printf("options:\n"
+	       "       -h | --help\n"
+	       "       -v | --verbose\n"
+	       "       -r | --remote-server host[:port]   (default: localhost)\n"
+	       "       -p | --port port                   (default: 7624)\n"
+	       "       -t | --time-to-wait seconds        (default: 2)\n"
+	);
 }
 
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
+	indigo_use_host_suffix = false;
 
 	if (argc < 2) {
 		print_help(argv[0]);
 		return 0;
 	}
 
+	int time_to_wait = 2;
+	int port = INDIGO_DEFAULT_PORT;
+	char hostname[255] = "localhost";
 	bool action_set = true;
 	char const *prop_string = NULL;
 	int arg_base = 1;
@@ -297,13 +408,34 @@ int main(int argc, const char * argv[]) {
 
 	for (int i = arg_base; i < argc; i++) {
 		if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")) {
-			//verbose list
-			printf("1 %d %s\n",  i, argv[i]);
+			print_verbose = true;
 		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
-			//handle remote server
-			printf("2 %d %s\n",  i, argv[i]);
+			if (argc > i+1) {
+				i++;
+				char port_str[100];
+				if (sscanf(argv[i], "%[^:]:%s", hostname, port_str) > 1) {
+					port = atoi(port_str);
+				}
+			} else {
+				fprintf(stderr, "No hostname specified\n");
+				return 1;
+			}
 		} else if (!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) {
-			//handle port
+			if (argc > i+1) {
+				i++;
+				port = atoi(argv[i]);
+			} else {
+				fprintf(stderr, "No port specified\n");
+				return 1;
+			}
+		} else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--time-to-wait")) {
+			if (argc > i+1) {
+				i++;
+				time_to_wait = atoi(argv[i]);
+			} else {
+				fprintf(stderr, "No time to wait specified\n");
+				return 1;
+			}
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			print_help(argv[0]);
 			return 0;
@@ -312,10 +444,18 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 
-	indigo_use_host_suffix = false;
+	if (port <= 0) {
+		fprintf(stderr, "Invalied port specified\n");
+		return 1;
+	}
+
+	if (time_to_wait <= 0) {
+		fprintf(stderr, "Invalied invalid time to wait specified\n");
+		return 1;
+	}
 
 	if (action_set) {
-		if (parse_property_string(prop_string, &change_request) < 0) {
+		if (parse_set_property_string(prop_string, &change_request) < 0) {
 			perror("parse_property_string()");
 			return 1;
 		}
@@ -323,13 +463,20 @@ int main(int argc, const char * argv[]) {
 		//	printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
 		//}
 		change_requested = true;
+	} else {
+		if (parse_list_property_string(prop_string, &list_request) < 0) {
+			perror("parse_property_string()");
+			return 1;
+		}
+		//printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
+		change_requested = false;
 	}
 
 	indigo_start();
 	indigo_attach_client(&client);
 	indigo_server_entry *server;
-	indigo_connect_server("localhost", 7624, &server);
-	sleep(2);
+	indigo_connect_server(hostname, port, &server);
+	sleep(time_to_wait);
 	indigo_stop();
 	indigo_disconnect_server(server);
 	return 0;
