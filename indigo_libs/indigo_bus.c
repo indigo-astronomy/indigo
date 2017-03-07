@@ -237,6 +237,15 @@ void indigo_debug_property(const char *message, indigo_property *property, bool 
 }
 
 indigo_result indigo_start() {
+	for (int i = 1; i < indigo_main_argc; i++) {
+		if (!strcmp(indigo_main_argv[i], "-v") || !strcmp(indigo_main_argv[i], "--enable-log")) {
+			indigo_log_level = true;
+		} else if (!strcmp(indigo_main_argv[i], "-vv") || !strcmp(indigo_main_argv[i], "--enable-debug")) {
+			indigo_log_level = indigo_debug_level = true;
+		} else if (!strcmp(indigo_main_argv[i], "-vvv") || !strcmp(indigo_main_argv[i], "--enable-trace")) {
+			indigo_log_level = indigo_debug_level = indigo_trace_level = true;
+		}
+	}
 	pthread_mutex_lock(&client_mutex);
 	if (!is_started) {
 		memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));

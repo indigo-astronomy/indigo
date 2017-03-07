@@ -302,12 +302,6 @@ static void server_main(int argc, const char * argv[]) {
 			strncpy(executable, argv[i + 1], INDIGO_NAME_SIZE);
 			indigo_start_subprocess(executable, NULL);
 			i++;
-		} else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--enable-log")) {
-			indigo_log_level = true;
-		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-debug")) {
-			indigo_debug_level = true;
-		} else if (!strcmp(argv[i], "-vvv") || !strcmp(argv[i], "--enable-trace")) {
-			indigo_trace_level = true;
 		} else if (!strcmp(argv[i], "-b-") || !strcmp(argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
 		} else if (!strcmp(argv[i], "-c-") || !strcmp(argv[i], "--disable-control-panel")) {
