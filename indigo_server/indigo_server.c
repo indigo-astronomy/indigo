@@ -302,11 +302,11 @@ static void server_main(int argc, const char * argv[]) {
 			strncpy(executable, argv[i + 1], INDIGO_NAME_SIZE);
 			indigo_start_subprocess(executable, NULL);
 			i++;
-		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-trace")) {
-			indigo_trace_level = true;
-		} else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--enable-debug")) {
+		} else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--enable-log")) {
+			indigo_log_level = true;
+		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-debug")) {
 			indigo_debug_level = true;
-		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-trace")) {
+		} else if (!strcmp(argv[i], "-vvv") || !strcmp(argv[i], "--enable-trace")) {
 			indigo_trace_level = true;
 		} else if (!strcmp(argv[i], "-b-") || !strcmp(argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
@@ -387,7 +387,7 @@ int main(int argc, const char * argv[]) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("%s [-h|--help]\n", argv[0]);
-			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-u-|--disable-blob-urls] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-debug] [-vv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-u-|--disable-blob-urls] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-log] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			return 0;
 		} else {
 			server_argv[server_argc++] = argv[i];
