@@ -420,6 +420,10 @@ extern int indigo_main_argc;
  */
 extern const char **indigo_main_argv;
 
+/** Show log messages.
+ */
+extern bool indigo_log_level;
+
 /** Show debug messages.
  */
 extern bool indigo_debug_level;
