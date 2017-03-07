@@ -79,7 +79,7 @@ char *indigo_switch_rule_text[] = {
 
 indigo_property INDIGO_ALL_PROPERTIES;
 
-bool indigo_log_level = true;
+bool indigo_log_level = false;
 bool indigo_debug_level = false;
 bool indigo_trace_level = false;
 bool indigo_use_syslog = false;
