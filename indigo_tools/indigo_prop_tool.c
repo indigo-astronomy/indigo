@@ -374,6 +374,7 @@ static void print_help(const char *name) {
 	printf("options:\n"
 	       "       -h | --help\n"
 	       "       -v | --verbose\n"
+	       "       -vv| --enable-log\n"
 	       "       -r | --remote-server host[:port]   (default: localhost)\n"
 	       "       -p | --port port                   (default: 7624)\n"
 	       "       -t | --time-to-wait seconds        (default: 2)\n"
@@ -409,6 +410,7 @@ int main(int argc, const char * argv[]) {
 	for (int i = arg_base; i < argc; i++) {
 		if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")) {
 			print_verbose = true;
+		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-log")) {
 			indigo_log_level = true;
 		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
 			if (argc > i+1) {
