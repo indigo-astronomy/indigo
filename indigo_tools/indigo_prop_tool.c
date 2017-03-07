@@ -260,7 +260,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 	static bool called = false;
 
 	if (!called && print_verbose) {
-		printf("Protocol version = %x.%x\n", property->version >> 8, property->version & 0xff);
+		printf("Protocol version = %x.%x\n\n", property->version >> 8, property->version & 0xff);
 		called = true;
 	}
 
@@ -409,6 +409,7 @@ int main(int argc, const char * argv[]) {
 	for (int i = arg_base; i < argc; i++) {
 		if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")) {
 			print_verbose = true;
+			indigo_log_level = true;
 		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
 			if (argc > i+1) {
 				i++;
