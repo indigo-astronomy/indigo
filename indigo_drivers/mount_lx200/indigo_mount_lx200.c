@@ -484,12 +484,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					meade_command(device, ":Q#", NULL, 0, 0);
 					MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 					MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
-					MOUNT_MOTION_NS_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, NULL);
+					MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 					MOUNT_MOTION_WEST_ITEM->sw.value = false;
 					MOUNT_MOTION_EAST_ITEM->sw.value = false;
-					MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
+					MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -501,13 +501,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_NS_PROPERTY, property)) {
+	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
 		if (PRIVATE_DATA->parked) {
-			MOUNT_MOTION_NS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, "Mout is parked!");
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mout is parked!");
 		} else {
-			indigo_property_copy_values(MOUNT_MOTION_NS_PROPERTY, property, false);
+			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
 				meade_command(device, ":RG#", NULL, 0, 0);
 				PRIVATE_DATA->lastSlewRate = 'g';
@@ -533,17 +533,17 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				PRIVATE_DATA->lastMotionNS = 's';
 				meade_command(device, ":Ms#", NULL, 0, 0);
 			}
-			MOUNT_MOTION_NS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, NULL);
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_WE_PROPERTY, property)) {
+	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
 		if (PRIVATE_DATA->parked) {
-			MOUNT_MOTION_WE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, "Mout is parked!");
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mout is parked!");
 		} else {
-			indigo_property_copy_values(MOUNT_MOTION_WE_PROPERTY, property, false);
+			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
 				meade_command(device, ":RG#", NULL, 0, 0);
 				PRIVATE_DATA->lastSlewRate = 'g';
@@ -569,8 +569,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				PRIVATE_DATA->lastMotionWE = 'e';
 				meade_command(device, ":Me#", NULL, 0, 0);
 			}
-			MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
