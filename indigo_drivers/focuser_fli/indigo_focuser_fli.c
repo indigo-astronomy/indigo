@@ -324,6 +324,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIStepMotorAsync(%d) = %d", id, res));
 			}
 		}
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, "Focuser stopped");
 
 		return INDIGO_OK;
 	// ---------------------------------------------------------------------------
