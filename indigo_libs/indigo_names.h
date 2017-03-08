@@ -113,7 +113,7 @@
 
 /** DEVICE_PORT.DEVICE_PORT property name.
  */
-#define DEVICE_PORT_ITEM_NAME									"DEVICE_PORT"
+#define DEVICE_PORT_ITEM_NAME									"PORT"
 
 //----------------------------------------------------------------------
 /** DEVICE_PORTS property name.
@@ -686,30 +686,30 @@
 #define MOUNT_SLEW_RATE_MAX_ITEM_NAME						"MAX"
 
 //----------------------------------------------------------------------
-/** MOUNT_MOTION_NS_PROPERTY_NAME property name.
+/** MOUNT_MOTION_DEC_PROPERTY_NAME property name.
  */
-#define MOUNT_MOTION_NS_PROPERTY_NAME                "MOUNT_MOTION_NS"
+#define MOUNT_MOTION_DEC_PROPERTY_NAME                "MOUNT_MOTION_DEC"
 
-/** MOUNT_MOTION_NS.NORTH property item name.
+/** MOUNT_MOTION_DEC.NORTH property item name.
  */
-#define MOUNT_MOTION_NORTH_ITEM_NAME                 "MOTION_NORTH"
+#define MOUNT_MOTION_NORTH_ITEM_NAME                 "NORTH"
 
-/** MOUNT_MOTION_NS.SOUTH property item name.
+/** MOUNT_MOTION_DEC.SOUTH property item name.
  */
-#define MOUNT_MOTION_SOUTH_ITEM_NAME                 "MOTION_SOUTH"
+#define MOUNT_MOTION_SOUTH_ITEM_NAME                 "SOUTH"
 
 //----------------------------------------------------------------------
-/** MOUNT_MOTION_WE_PROPERTY_NAME property name.
+/** MOUNT_MOTION_RA_PROPERTY_NAME property name.
  */
-#define MOUNT_MOTION_WE_PROPERTY_NAME                "MOUNT_MOTION_WE"
+#define MOUNT_MOTION_RA_PROPERTY_NAME                "MOUNT_MOTION_RA"
 
-/** MOUNT_MOTION_NS.WEST property item name.
+/** MOUNT_MOTION_RA.WEST property item name.
  */
-#define MOUNT_MOTION_WEST_ITEM_NAME                 "MOTION_WEST"
+#define MOUNT_MOTION_WEST_ITEM_NAME                 "WEST"
 
-/** MOUNT_MOTION_NS.EAST property item name.
+/** MOUNT_MOTION_RA.EAST property item name.
  */
-#define MOUNT_MOTION_EAST_ITEM_NAME                 "MOTION_EAST"
+#define MOUNT_MOTION_EAST_ITEM_NAME                 "EAST"
 
 //----------------------------------------------------------------------
 /** MOUNT_TRACK_RATE property name.
