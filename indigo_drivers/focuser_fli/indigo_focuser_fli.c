@@ -162,8 +162,8 @@ static void fli_focuser_connect(indigo_device *device) {
 			if (res) {
 				INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
 			}
-			INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
-		} while (value == FLI_FOCUSER_STATUS_MOVING_MASK);  /* wait while moving */
+			//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
+		} while (value & FLI_FOCUSER_STATUS_MOVING_MASK);  /* wait while moving */
 
 		if (value != FLI_FOCUSER_STATUS_HOME) {
 			INDIGO_ERROR(indigo_error("indigo_ccd_fli: Focuser home position not found (status = %d)", value));
