@@ -31,6 +31,8 @@
 
 #define POLL_TIME                       1     /* Seconds */
 
+#define MAX_STEPS_AT_ONCE            4000
+
 
 #include <stdlib.h>
 #include <string.h>
@@ -102,13 +104,21 @@ static void focuser_timer_callback(indigo_device *device) {
 		if (steps_remaining) {
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
 		} else if (PRIVATE_DATA->steps_to_go) {
-			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, PRIVATE_DATA->steps_to_go);
+			int steps = PRIVATE_DATA->steps_to_go;
+			if (abs(steps) > MAX_STEPS_AT_ONCE) {
+				int sign = (steps >= 0) ? 1 : -1;
+				PRIVATE_DATA->steps_to_go = steps;
+				steps = sign * MAX_STEPS_AT_ONCE;
+				PRIVATE_DATA->steps_to_go -= steps;
+			} else {
+				PRIVATE_DATA->steps_to_go = 0;
+			}
+			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, steps);
 			if (res) {
 				INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIStepMotorAsync(%d) = %d", id, res));
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			PRIVATE_DATA->steps_to_go = 0;
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -222,6 +232,11 @@ static void fli_focuser_connect(indigo_device *device) {
 
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_IDLE_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_IDLE_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, "Connected");
 	} else {
@@ -282,11 +297,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 
 			PRIVATE_DATA->steps_to_go = 0;
-			/* focusers with max < 8000 can only go 4095 steps at once */
-			if ((FOCUSER_POSITION_ITEM->number.max < 8000) && (abs(value) > 4000)) {
+			/* focusers with max < 10000 can only go 4095 steps at once */
+			if ((FOCUSER_POSITION_ITEM->number.max < 10000) && (abs(value) > MAX_STEPS_AT_ONCE)) {
 				int sign = (value >= 0) ? 1 : -1;
 				PRIVATE_DATA->steps_to_go = value;
-				value = sign * 4000;
+				value = sign * MAX_STEPS_AT_ONCE;
 				PRIVATE_DATA->steps_to_go -= value;
 			}
 
@@ -321,11 +336,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			value = FOCUSER_POSITION_ITEM->number.value - value;
 
 			PRIVATE_DATA->steps_to_go = 0;
-			/* focusers with max < 8000 can only go 4095 steps at once */
-			if ((FOCUSER_POSITION_ITEM->number.max < 8000) && (abs(value) > 4000)) {
+			/* focusers with max < 10000 can only go 4095 steps at once */
+			if ((FOCUSER_POSITION_ITEM->number.max < 10000) && (abs(value) > MAX_STEPS_AT_ONCE)) {
 				int sign = (value >= 0) ? 1 : -1;
 				PRIVATE_DATA->steps_to_go = value;
-				value = sign * 4000;
+				value = sign * MAX_STEPS_AT_ONCE;
 				PRIVATE_DATA->steps_to_go -= value;
 			}
 
