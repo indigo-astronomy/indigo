@@ -182,24 +182,24 @@ static void mount_handle_motion_ns(indigo_device *device) {
 	if(MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving North...",sizeof(message));
-		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_BUSY_STATE;
+		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving South...",sizeof(message));
-		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_BUSY_STATE;
+		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
 		strncpy(message,"Stopped moving.",sizeof(message));
-		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
 		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
-		MOUNT_MOTION_NS_PROPERTY->state = INDIGO_ALERT_STATE;
+		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
-	indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, message);
+	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, message);
 }
 
 
@@ -212,24 +212,24 @@ static void mount_handle_motion_ne(indigo_device *device) {
 	if(MOUNT_MOTION_EAST_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving East...",sizeof(message));
-		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_BUSY_STATE;
+		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (MOUNT_MOTION_WEST_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->slew_rate);
 		strncpy(message,"Moving West...",sizeof(message));
-		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_BUSY_STATE;
+		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
 		strncpy(message,"Stopped moving.",sizeof(message));
-		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
 		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
-		MOUNT_MOTION_WE_PROPERTY->state = INDIGO_ALERT_STATE;
+		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
-	indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, message);
+	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, message);
 }
 
 
@@ -357,12 +357,12 @@ static bool mount_cancel_slew(indigo_device *device) {
 
 	MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 	MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
-	MOUNT_MOTION_NS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, NULL);
+	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 	MOUNT_MOTION_WEST_ITEM->sw.value = false;
 	MOUNT_MOTION_EAST_ITEM->sw.value = false;
-	MOUNT_MOTION_WE_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, NULL);
+	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -699,22 +699,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
 		mount_handle_slew_rate(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_NS_PROPERTY, property)) {
+	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
 		if(PRIVATE_DATA->parked) {
-			indigo_update_property(device, MOUNT_MOTION_NS_PROPERTY, WARN_PARKED_MSG);
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
-		indigo_property_copy_values(MOUNT_MOTION_NS_PROPERTY, property, false);
+		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 		mount_handle_motion_ns(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_WE_PROPERTY, property)) {
+	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
 		if(PRIVATE_DATA->parked) {
-			indigo_update_property(device, MOUNT_MOTION_WE_PROPERTY, WARN_PARKED_MSG);
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
-		indigo_property_copy_values(MOUNT_MOTION_WE_PROPERTY, property, false);
+		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 		mount_handle_motion_ne(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
