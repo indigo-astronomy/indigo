@@ -211,6 +211,13 @@ static void fli_focuser_connect(indigo_device *device) {
 		sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
 
 		indigo_update_property(device, INFO_PROPERTY, NULL);
+
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_IDLE_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_IDLE_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, "Connected");
 	} else {
