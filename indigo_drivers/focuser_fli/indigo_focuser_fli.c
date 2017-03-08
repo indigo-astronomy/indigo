@@ -60,6 +60,7 @@ typedef struct {
 	char dev_name[MAX_PATH];
 	flidomain_t domain;
 	long zero_position;
+	long steps_to_go;     /* some focusers can not do full extent stpes in one go use this for the second move call */
 	indigo_timer *focuser_timer;
 	pthread_mutex_t usb_mutex;
 } fli_private_data;
@@ -97,8 +98,17 @@ static void focuser_timer_callback(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		FOCUSER_STEPS_ITEM->number.value = steps_remaining;
+		FOCUSER_STEPS_ITEM->number.value = steps_remaining + fabs(PRIVATE_DATA->steps_to_go);
 		if (steps_remaining) {
+			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
+		} else if (PRIVATE_DATA->steps_to_go) {
+			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, PRIVATE_DATA->steps_to_go);
+			if (res) {
+				INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIStepMotorAsync(%d) = %d", id, res));
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			PRIVATE_DATA->steps_to_go = 0;
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -271,6 +281,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				FOCUSER_STEPS_ITEM->number.value = (double)labs(value);
 			}
 
+			PRIVATE_DATA->steps_to_go = 0;
+			/* focusers with max < 8000 can only go 4095 steps at once */
+			if ((FOCUSER_POSITION_ITEM->number.max < 8000) && (abs(value) > 4000)) {
+				int sign = (value >= 0) ? 1 : -1;
+				PRIVATE_DATA->steps_to_go = value;
+				value = sign * 4000;
+				PRIVATE_DATA->steps_to_go -= value;
+			}
+
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
 			if (res) {
 				INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIStepMotorAsync(%d) = %d", id, res));
@@ -301,6 +320,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			value -= PRIVATE_DATA->zero_position;
 			value = FOCUSER_POSITION_ITEM->number.value - value;
 
+			PRIVATE_DATA->steps_to_go = 0;
+			/* focusers with max < 8000 can only go 4095 steps at once */
+			if ((FOCUSER_POSITION_ITEM->number.max < 8000) && (abs(value) > 4000)) {
+				int sign = (value >= 0) ? 1 : -1;
+				PRIVATE_DATA->steps_to_go = value;
+				value = sign * 4000;
+				PRIVATE_DATA->steps_to_go -= value;
+			}
+
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
 			if (res) {
@@ -318,6 +346,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			PRIVATE_DATA->steps_to_go = 0;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, 0);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
