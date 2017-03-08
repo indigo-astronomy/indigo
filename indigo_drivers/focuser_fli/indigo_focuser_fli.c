@@ -82,6 +82,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	flidev_t id = PRIVATE_DATA->dev_id;
 
 	int res;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = FLIGetStepperPosition(id, &value);
 	value -= PRIVATE_DATA->zero_position;
 	if (res) {
@@ -90,7 +91,6 @@ static void focuser_timer_callback(indigo_device *device) {
 	} else {
 		FOCUSER_POSITION_ITEM->number.value = value;
 	}
-
 	res = FLIGetStepsRemaining(id, &steps_remaining);
 	if (res) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
@@ -107,6 +107,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
 
@@ -250,6 +251,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				value = (long)(FOCUSER_STEPS_ITEM->number.value);
 			}
 
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &current_value);
 			if (res) {
 				INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
@@ -277,6 +279,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
@@ -294,8 +298,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
 			}
 			value -= PRIVATE_DATA->zero_position;
-
 			value = FOCUSER_POSITION_ITEM->number.value - value;
+
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
 			if (res) {
 				INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIStepMotorAsync(%d) = %d", id, res));
@@ -303,6 +308,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			} else {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
 		}
@@ -311,14 +317,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-			/* HOW TO STOP FLI ? */
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, 0);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			if (res) {
+				INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIStepMotorAsync(%d) = %d", id, res));
+			}
 		}
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, "FLI does not support ABORT_MORION");
+
 		return INDIGO_OK;
 	// ---------------------------------------------------------------------------
 	}
@@ -340,7 +346,7 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 
-static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FOCUSER;
+static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
 static int num_devices = 0;
 static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
 static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
