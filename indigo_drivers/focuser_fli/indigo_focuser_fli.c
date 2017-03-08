@@ -189,7 +189,6 @@ static void fli_focuser_connect(indigo_device *device) {
 			INDIGO_ERROR(indigo_error("indigo_focuser_fli: Focuser home position not found (status = %d)", value));
 		}
 
-		usleep(1000000);
 		res = FLIGetStepperPosition(id, &value);
 		if (res) {
 			INDIGO_ERROR(indigo_error("indigo_focuser_fli (%d): FLIGetStepperPosition(%d) = %d", __LINE__, id, res));
