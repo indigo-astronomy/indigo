@@ -356,7 +356,7 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 
-static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
+static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FOCUSER;
 static int num_devices = 0;
 static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
 static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
