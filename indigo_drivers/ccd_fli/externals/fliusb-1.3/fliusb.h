@@ -70,7 +70,7 @@ enum {
 };
 
 /* Default values (module parameters override these) */
-#define FLIUSB_TIMEOUT (3*HZ)  /* in seconds */
+#define FLIUSB_TIMEOUT (HZ)  /* in seconds */
 #ifndef SGREAD
   #define FLIUSB_BUFFERSIZE 65536
 #else
