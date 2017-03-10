@@ -155,7 +155,7 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 		} else if (!strcmp(value, "URL")) {
 			client->enable_blob = INDIGO_ENABLE_BLOB_URL;
 		}
-		INDIGO_LOG(indigo_log("BLOB mode is '%s'", value));
+		INDIGO_DEBUG(indigo_debug("BLOB mode is '%s'", value));
 	}
 	return enable_blob_handler;
 }

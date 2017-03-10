@@ -584,6 +584,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_ITEM->number.value = 25;
 		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		FOCUSER_MODE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);

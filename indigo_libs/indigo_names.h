@@ -569,6 +569,19 @@
 #define FOCUSER_COMPENSATION_ITEM_NAME				"COMPENSATION"
 
 //----------------------------------------------------------------------
+/** FOCUSER_MODE property name.
+ */
+#define FOCUSER_MODE_PROPERTY_NAME						"FOCUSER_MODE"
+
+/** FOCUSER_MODE.MANUAL property item name.
+ */
+#define FOCUSER_MODE_MANUAL_ITEM_NAME					"MANUAL"
+
+/** FOCUSER_MODE.AUTOMATIC property item name.
+ */
+#define FOCUSER_MODE_AUTOMATIC_ITEM_NAME			"AUTOMATIC"
+
+//----------------------------------------------------------------------
 
 /** MOUNT_INFO property name.
  */
