@@ -58,6 +58,7 @@
 		59C8E7F31DBBD98900AA3F0A /* indigo_ccd_asi.rules in Resources */ = {isa = PBXBuildFile; fileRef = 59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */; };
 		59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */; };
 		59D382171D97348500E87393 /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382161D97348500E87393 /* client.c */; };
+		59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */; };
 		59D707661DC5268B00DEF566 /* AUTHORS.md in Sources */ = {isa = PBXBuildFile; fileRef = 59D707651DC5268B00DEF566 /* AUTHORS.md */; };
 		59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D707671DC527B800DEF566 /* indigo_mount_driver.c */; };
 		59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D707681DC527B800DEF566 /* indigo_mount_driver.h */; };
@@ -347,6 +348,9 @@
 		59D382071D97314C00E87393 /* indigo_client_xml.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_client_xml.h; sourceTree = "<group>"; };
 		59D3820C1D97343000E87393 /* client */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = client; sourceTree = BUILT_PRODUCTS_DIR; };
 		59D382161D97348500E87393 /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
+		59D62CD71E731490004DDD9C /* indigo_focuser_usbv3_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3_main.c; sourceTree = "<group>"; };
+		59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3.c; sourceTree = "<group>"; };
+		59D62CD91E731490004DDD9C /* indigo_focuser_usbv3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_usbv3.h; sourceTree = "<group>"; };
 		59D707651DC5268B00DEF566 /* AUTHORS.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = AUTHORS.md; sourceTree = "<group>"; };
 		59D707671DC527B800DEF566 /* indigo_mount_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_driver.c; sourceTree = "<group>"; };
 		59D707681DC527B800DEF566 /* indigo_mount_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_driver.h; sourceTree = "<group>"; };
@@ -833,6 +837,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				59D62CD61E731479004DDD9C /* focuser_usbv3 */,
 				591FAB761E391AFA0076BD6E /* focuse_fli */,
 				5992F7B91E1EC9270035242E /* wheel_fli */,
 				5992F7B01E1EC84B0035242E /* ccd_fli */,
@@ -852,6 +857,16 @@
 				9D976FD21DD0C46E00782B32 /* ccd_iidc */,
 			);
 			path = indigo_drivers;
+			sourceTree = "<group>";
+		};
+		59D62CD61E731479004DDD9C /* focuser_usbv3 */ = {
+			isa = PBXGroup;
+			children = (
+				59D62CD91E731490004DDD9C /* indigo_focuser_usbv3.h */,
+				59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */,
+				59D62CD71E731490004DDD9C /* indigo_focuser_usbv3_main.c */,
+			);
+			path = focuser_usbv3;
 			sourceTree = "<group>";
 		};
 		59D7076B1DC52BED00DEF566 /* mount_simulator */ = {
@@ -1325,6 +1340,7 @@
 				599C9A501DA022E3008BBCC1 /* indigo_xml.c in Sources */,
 				9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */,
 				59D707661DC5268B00DEF566 /* AUTHORS.md in Sources */,
+				59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */,
 				590112C31DC94D3C00B5CD8E /* libqhy_5ii.c in Sources */,
 				9D9EA6A41DBE1F7300E11841 /* indigo_ccd_atik_main.c in Sources */,
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,

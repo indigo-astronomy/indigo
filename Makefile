@@ -638,7 +638,7 @@ $(BUILD_DRIVERS)/indigo_wheel_fli.$(SOEXT): indigo_drivers/wheel_fli/indigo_whee
 
 #---------------------------------------------------------------------
 #
-#	Build Shoestring FLI focuser driver
+#	Build FLI focuser driver
 #
 #---------------------------------------------------------------------
 
@@ -686,6 +686,21 @@ $(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o
 $(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 endif
+
+#---------------------------------------------------------------------
+#
+#	Build USB_Focus v3 focuser driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_usbv3.a: indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_usbv3: indigo_drivers/focuser_usbv3/indigo_focuser_usbv3_main.o $(BUILD_DRIVERS)/indigo_focuser_usbv3.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_usbv3.$(SOEXT): indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
 #

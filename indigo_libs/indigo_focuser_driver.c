@@ -50,7 +50,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 			FOCUSER_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Focuser speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_SPEED_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(FOCUSER_SPEED_ITEM, FOCUSER_SPEED_ITEM_NAME, "Speed", 0, 100, 0, 0);
+			indigo_init_number_item(FOCUSER_SPEED_ITEM, FOCUSER_SPEED_ITEM_NAME, "Speed", 1, 100, 1, 1);
 			// -------------------------------------------------------------------------------- FOCUSER_DIRECTION
 			FOCUSER_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Movement direction", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_DIRECTION_PROPERTY == NULL)
