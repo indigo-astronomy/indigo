@@ -58,6 +58,7 @@
 #include "mount_nexstar/indigo_mount_nexstar.h"
 #include "wheel_fli/indigo_wheel_fli.h"
 #include "focuser_fli/indigo_focuser_fli.h"
+#include "focuser_usbv3/indigo_focuser_usbv3.h"
 #endif
 
 #define MDNS_INDIGO_TYPE    "_indigo._tcp"
@@ -82,6 +83,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_nexstar,
 	indigo_wheel_fli,
 	indigo_focuser_fli,
+	indigo_focuser_usbv3,
 #endif
 	NULL
 };

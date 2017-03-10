@@ -155,7 +155,7 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 				CFTypeRef cfs = IORegistryEntryCreateCFProperty (serial_device, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault,0);
 				if (cfs) {
 					CFStringGetCString(cfs, name, INDIGO_VALUE_SIZE, kCFStringEncodingASCII);
-					if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port") && strcmp(name, "/dev/cu.iPhone-WirelessiAP")) {
+					if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port")) {
 						int i = DEVICE_PORTS_PROPERTY->count++;
 						indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
 						if (i == 0)

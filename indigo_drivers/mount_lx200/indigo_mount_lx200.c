@@ -39,8 +39,8 @@
 #include <sys/ioctl.h>
 
 #include "indigo_driver_xml.h"
-#include "indigo_mount_lx200.h"
 #include "indigo_io.h"
+#include "indigo_mount_lx200.h"
 
 #define PRIVATE_DATA        ((lx200_private_data *)device->private_data)
 
@@ -65,7 +65,6 @@ typedef struct {
 	bool parked;
 	int handle;
 	int device_count;
-	indigo_property *device_port;
 	double currentRA;
 	double currentDec;
 	indigo_timer *position_timer;
@@ -77,10 +76,10 @@ typedef struct {
 	indigo_property *alignment_mode_property;
 } lx200_private_data;
 
-bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep);
+static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep);
 
-bool meade_open(indigo_device *device) {
-	char *name = PRIVATE_DATA->device_port->items->text.value;
+static bool meade_open(indigo_device *device) {
+	char *name = DEVICE_PORT_ITEM->text.value;
 	if (strncmp(name, "lx200://", 8)) {
 		PRIVATE_DATA->handle = indigo_open_serial(name);
 	} else {
@@ -106,7 +105,7 @@ bool meade_open(indigo_device *device) {
 	}
 }
 
-bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep) {
+static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
@@ -131,25 +130,13 @@ bool meade_command(indigo_device *device, char *command, char *response, int max
 		}
 	}
 	// write command
-	unsigned long remains = strlen(command);
-	char *data = command;
-	long written = 0;
-	while (remains > 0) {
-		written = write(PRIVATE_DATA->handle, data, remains);
-		if (written < 0) {
-			INDIGO_ERROR(indigo_error("lx200: Failed to write to %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		data += written;
-		remains -= written;
-	}
+	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	if (sleep > 0)
 		usleep(sleep);
 	// read response
 	if (response != NULL) {
 		int index = 0;
-		remains = max;
+		int remains = max;
 		int timeout = 3;
 		while (remains > 0) {
 			fd_set readout;
@@ -163,7 +150,7 @@ bool meade_command(indigo_device *device, char *command, char *response, int max
 				break;
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
-				INDIGO_ERROR(indigo_error("lx200: Failed to read from %s -> %s (%d)", PRIVATE_DATA->device_port->items->text.value, strerror(errno), errno));
+				INDIGO_ERROR(indigo_error("lx200: Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno));
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
@@ -180,10 +167,10 @@ bool meade_command(indigo_device *device, char *command, char *response, int max
 	return true;
 }
 
-void meade_close(indigo_device *device) {
+static void meade_close(indigo_device *device) {
 	close(PRIVATE_DATA->handle);
 	PRIVATE_DATA->handle = 0;
-	INDIGO_ERROR(indigo_error("lx200: disconnected from %s", PRIVATE_DATA->device_port->items->text.value));
+	INDIGO_ERROR(indigo_error("lx200: disconnected from %s", DEVICE_PORT_ITEM->text.value));
 }
 
 static void meade_get_coords(indigo_device *device) {
@@ -247,7 +234,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		PRIVATE_DATA->device_port = DEVICE_PORT_PROPERTY;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
@@ -771,8 +757,8 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = malloc(sizeof(lx200_private_data));
-			memset(private_data, 0, sizeof(lx200_private_data));
 			assert(private_data != NULL);
+			memset(private_data, 0, sizeof(lx200_private_data));
 			mount = malloc(sizeof(indigo_device));
 			assert(mount != NULL);
 			memcpy(mount, &mount_template, sizeof(indigo_device));
