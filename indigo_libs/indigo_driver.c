@@ -221,6 +221,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- DEBUG
 		indigo_property_copy_values(DEBUG_PROPERTY, property, false);
 		DEBUG_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_log_level = indigo_debug_level = DEBUG_ENABLED_ITEM->sw.value;
 		indigo_update_property(device, DEBUG_PROPERTY, NULL);
 	} else if (indigo_property_match(SIMULATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SIMULATION

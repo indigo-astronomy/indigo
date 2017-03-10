@@ -116,7 +116,7 @@ static void *new_number_vector_handler(parser_state state, char *name, char *val
 static void *new_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
 
 static void *get_properties_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == NUMBER_VALUE && !strcmp(name, "version")) {
 		client->version = (int)atol(value);
 	} else if (state == END_STRUCT) {
@@ -127,7 +127,7 @@ static void *get_properties_handler(parser_state state, char *name, char *value,
 }
 
 static void *one_text_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_text_vector_handler;
 	if (state == END_STRUCT) {
@@ -141,7 +141,7 @@ static void *one_text_handler(parser_state state, char *name, char *value, indig
 }
 
 static void *new_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_text_handler;
@@ -160,7 +160,7 @@ static void *new_text_vector_handler(parser_state state, char *name, char *value
 }
 
 static void *one_number_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_number_vector_handler;
 	if (state == END_STRUCT) {
@@ -174,7 +174,7 @@ static void *one_number_handler(parser_state state, char *name, char *value, ind
 }
 
 static void *new_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_number_handler;
@@ -193,7 +193,7 @@ static void *new_number_vector_handler(parser_state state, char *name, char *val
 }
 
 static void *one_switch_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_switch_vector_handler;
 	if (state == END_STRUCT) {
@@ -207,7 +207,7 @@ static void *one_switch_handler(parser_state state, char *name, char *value, ind
 }
 
 static void *new_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_switch_handler;
@@ -226,7 +226,7 @@ static void *new_switch_vector_handler(parser_state state, char *name, char *val
 }
 
 static void *top_level_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_STRUCT) {
 		memset(property, 0, PROPERTY_SIZE);
 		if (name != NULL) {
@@ -288,7 +288,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 			pointer = buffer;
 			buffer_end = buffer + count;
 			buffer[count] = 0;
-			INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("received: %s", buffer));
 		}
 		switch (state) {
 			case ERROR:

@@ -95,8 +95,19 @@
 
 /** FOCUSER_TEMPERATURE.TEMPERATURE property item pointer.
  */
-#define FOCUSER_COMPENSATION_ITEM	(FOCUSER_COMPENSATION_PROPERTY->items+0)
+#define FOCUSER_COMPENSATION_ITEM							(FOCUSER_COMPENSATION_PROPERTY->items+0)
 
+/** FOCUSER_MODE property pointer, property is optional, property change request should be fully handled by indigo_focuser_change_property.
+ */
+#define FOCUSER_MODE_PROPERTY									(FOCUSER_CONTEXT->focuser_mode_property)
+
+/** FOCUSER_MODE.MANUAL property item pointer.
+ */
+#define FOCUSER_MODE_MANUAL_ITEM							(FOCUSER_MODE_PROPERTY->items+0)
+
+/** FOCUSER_MODE.AUTOMATIC property item pointer.
+ */
+#define FOCUSER_MODE_AUTOMATIC_ITEM						(FOCUSER_MODE_PROPERTY->items+1)
 
 
 /** Focuser device context structure.
@@ -110,6 +121,7 @@ typedef struct {
 	indigo_property *focuser_abort_motion_property;		///< FOCUSER_ABORT_MOTION property pointer
 	indigo_property *focuser_temperature_property;		///< FOCUSER_TEMPERATURE property pointer
 	indigo_property *focuser_compensation_property;		///< FOCUSER_COMPENSATION property pointer
+	indigo_property *focuser_mode_property;						///< FOCUSER_MODE property pointer
 } indigo_focuser_context;
 
 /** Attach callback function.
