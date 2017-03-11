@@ -64,7 +64,7 @@ static void usbv3_command(indigo_device *device, char *format, ...) {
 	vsnprintf(command, sizeof(command), format, args);
 	va_end(args);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	INDIGO_DEBUG_DRIVER(indigo_log("usbv3: Command %s", command));
+	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: Command %s", command));
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 }
 
@@ -87,12 +87,12 @@ static char *usbv3_response(indigo_device *device) {
 		response[index++] = c;
 	}
 	response[index] = 0;
-	INDIGO_DEBUG_DRIVER(indigo_log("usbv3: Response %s", response != NULL ? response : "NULL"));
+	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: Response %s", response != NULL ? response : "NULL"));
 	return response;
 }
 
 static void *usbv3_reader(indigo_device *device) {
-	INDIGO_DEBUG_DRIVER(indigo_log("usbv3: usbv3_reader started"));
+	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: usbv3_reader started"));
 	while (PRIVATE_DATA->handle > 0) {
 		char *response = usbv3_response(device);
 		if (*response == '*') {
@@ -115,7 +115,7 @@ static void *usbv3_reader(indigo_device *device) {
 		} else if (*response == 'A') {
 		}
 	}
-	INDIGO_DEBUG_DRIVER(indigo_log("usbv3: usbv3_reader finished"));
+	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: usbv3_reader finished"));
 	return NULL;
 }
 
