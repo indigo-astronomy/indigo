@@ -228,6 +228,7 @@ static ushort sbig_get_relaymap(short handle, ushort *relay_map) {
 	}
 
 	*relay_map = csr.status;
+	INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: *relay_map = Ox%x", *relay_map));
 
 	return CE_NO_ERROR;
 }
@@ -255,7 +256,7 @@ static ushort sbig_set_relaymap(short handle, ushort relay_map) {
 	}
 
 	if(relay_map & RELAY_SOUTH) {
-		arp.tXPlus = RELAY_MAX_PULSE;
+		arp.tYPlus = RELAY_MAX_PULSE;
 	}
 
 	res = sbig_command(CC_ACTIVATE_RELAY, &arp, NULL);
