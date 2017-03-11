@@ -199,31 +199,33 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_EXPOSURE_ITEM->number.target < PRIVATE_DATA->device_context->min_exposure)
-			CCD_EXPOSURE_ITEM->number.target = PRIVATE_DATA->device_context->min_exposure;
-		if (CCD_EXPOSURE_ITEM->number.target <= 1) {
-			PRIVATE_DATA->can_check_temperature = false;
-			CCD_EXPOSURE_ITEM->number.value = 0;
+		if (CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			if (libatik_read_pixels(PRIVATE_DATA->device_context, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value, (unsigned short *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), &PRIVATE_DATA->image_width, &PRIVATE_DATA->image_height)) {
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-				indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->image_width, PRIVATE_DATA->image_height, true, NULL);
-			} else {
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			}
-			PRIVATE_DATA->can_check_temperature = true;
-		} else {
-			libatik_start_exposure(PRIVATE_DATA->device_context, CCD_FRAME_TYPE_DARK_ITEM->sw.value);
-			if (CCD_EXPOSURE_ITEM->number.target > 2)
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 2, pre_exposure_timer_callback);
-			else {
+			if (CCD_EXPOSURE_ITEM->number.target < PRIVATE_DATA->device_context->min_exposure)
+				CCD_EXPOSURE_ITEM->number.target = PRIVATE_DATA->device_context->min_exposure;
+			if (CCD_EXPOSURE_ITEM->number.target <= 1) {
 				PRIVATE_DATA->can_check_temperature = false;
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+				CCD_EXPOSURE_ITEM->number.value = 0;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				if (libatik_read_pixels(PRIVATE_DATA->device_context, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value, (unsigned short *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), &PRIVATE_DATA->image_width, &PRIVATE_DATA->image_height)) {
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+					indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->image_width, PRIVATE_DATA->image_height, true, NULL);
+				} else {
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				}
+				PRIVATE_DATA->can_check_temperature = true;
+			} else {
+				libatik_start_exposure(PRIVATE_DATA->device_context, CCD_FRAME_TYPE_DARK_ITEM->sw.value);
+				if (CCD_EXPOSURE_ITEM->number.target > 2)
+					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 2, pre_exposure_timer_callback);
+				else {
+					PRIVATE_DATA->can_check_temperature = false;
+					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+				}
 			}
 		}
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -235,7 +237,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- CCD_BIN
+		// -------------------------------------------------------------------------------- CCD_BIN
 		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int v = CCD_BIN_VERTICAL_ITEM->number.value;
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
