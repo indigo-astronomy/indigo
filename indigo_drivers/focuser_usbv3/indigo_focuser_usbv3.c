@@ -42,12 +42,18 @@
 
 #define PRIVATE_DATA													((usbv3_private_data *)device->private_data)
 
+#define X_FOCUSER_STEP_SIZE_PROPERTY					(PRIVATE_DATA->step_size_property)
+#define X_FOCUSER_FULL_STEP_ITEM							(X_FOCUSER_STEP_SIZE_PROPERTY->items+0)
+#define X_FOCUSER_HALF_STEP_ITEM							(X_FOCUSER_STEP_SIZE_PROPERTY->items+1)
+
+
 typedef struct {
 	int handle;
 	pthread_mutex_t port_mutex;
 	indigo_timer *position_timer;
 	indigo_timer *temperature_timer;
 	pthread_t thread;
+	indigo_property *step_size_property;
 } usbv3_private_data;
 
 static void usbv3_command(indigo_device *device, char *format, ...) {
@@ -64,7 +70,6 @@ static void usbv3_command(indigo_device *device, char *format, ...) {
 
 static char *usbv3_response(indigo_device *device) {
 	static char response[128];
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	int index = 0;
 	int remains = sizeof(response);
@@ -82,7 +87,6 @@ static char *usbv3_response(indigo_device *device) {
 		response[index++] = c;
 	}
 	response[index] = 0;
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	INDIGO_DEBUG_DRIVER(indigo_log("usbv3: Response %s", response != NULL ? response : "NULL"));
 	return response;
 }
@@ -127,6 +131,8 @@ static bool usbv3_open(indigo_device *device) {
 	usbv3_response(device);
 	usbv3_command(device, "FMANUA");
 	usbv3_response(device);
+	usbv3_command(device, "SMROTH");
+	usbv3_command(device, "SMSTPF");
 	usbv3_command(device, "FTMPRO");
 	sscanf(usbv3_response(device), "T=%lf", &FOCUSER_TEMPERATURE_ITEM->number.value);
 	usbv3_command(device, "FPOSRO");
@@ -160,7 +166,7 @@ static void usbv3_close(indigo_device *device) {
 static void focuser_position_callback(indigo_device *device) {
 	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		usbv3_command(device, "FPOSRO");
-		indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->position_timer);
+		indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
 	}
 }
 
@@ -173,6 +179,12 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		// -------------------------------------------------------------------------------- X_FOCUSER_STEP_SIZE
+		X_FOCUSER_STEP_SIZE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_STEP_SIZE", FOCUSER_MAIN_GROUP, "Step size", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_FOCUSER_STEP_SIZE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_FOCUSER_FULL_STEP_ITEM, "FULL_STEP", "Full step", true);
+		indigo_init_switch_item(X_FOCUSER_HALF_STEP_ITEM, "HALF_STEP", "Half step", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -185,6 +197,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 			}
 		}
 #endif
+		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
+		FOCUSER_ROTATION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
@@ -210,6 +224,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (indigo_property_match(X_FOCUSER_STEP_SIZE_PROPERTY, property))
+			indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
+	}
+	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+}
+
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -219,6 +241,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (usbv3_open(device)) {
+				indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, focuser_temperature_callback);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -226,6 +249,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+			indigo_delete_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 			usbv3_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -245,9 +269,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
+				if (FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value)
+					usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
+				else
+					usbv3_command(device, "O%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
 			} else {
-				usbv3_command(device, "O%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
+				if (FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value)
+					usbv3_command(device, "O%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
+				else
+					usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
 			}
 			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0.2, focuser_position_callback);
 		}
@@ -288,6 +318,16 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			usbv3_command(device, "FMANUA");
 			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, focuser_temperature_callback);
 		}
+	// -------------------------------------------------------------------------------- X_FOCUSER_STEP_SIZE
+	} else if (indigo_property_match(X_FOCUSER_STEP_SIZE_PROPERTY, property)) {
+		indigo_property_copy_values(X_FOCUSER_STEP_SIZE_PROPERTY, property, false);
+		if (X_FOCUSER_FULL_STEP_ITEM->sw.value) {
+			usbv3_command(device, "SMSTPF");
+		} else {
+			usbv3_command(device, "SMSTPD");
+		}
+		X_FOCUSER_STEP_SIZE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
@@ -296,6 +336,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+	indigo_release_property(X_FOCUSER_STEP_SIZE_PROPERTY);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_focuser_detach(device);
 }
@@ -308,7 +349,7 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 	static indigo_device focuser_template = {
 		"USB_Focus v3", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
-		indigo_focuser_enumerate_properties,
+		focuser_enumerate_properties,
 		focuser_change_property,
 		focuser_detach
 	};

@@ -511,6 +511,20 @@
 #define FOCUSER_SPEED_ITEM_NAME								"SPEED"
 
 //----------------------------------------------------------------------
+
+/** FOCUSER_ROTATION property name.
+ */
+#define FOCUSER_ROTATION_PROPERTY_NAME							"FOCUSER_ROTATION"
+
+/** FOCUSER_ROTATION.CLOCKWISE property item name.
+ */
+#define FOCUSER_ROTATION_CLOCKWISE_ITEM_NAME				"CLOCKWISE"
+
+/** FOCUSER_ROTATION.COUNTERCLOCKWISE property item name.
+ */
+#define FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM_NAME	"COUNTERCLOCKWISE"
+
+//----------------------------------------------------------------------
 /** FOCUSER_DIRECTION property name.
  */
 #define FOCUSER_DIRECTION_PROPERTY_NAME				"FOCUSER_DIRECTION"
@@ -585,7 +599,7 @@
 
 /** MOUNT_INFO property name.
  */
-#define MOUNT_INFO_PROPERTY_NAME										"MOUNT_INFO"
+#define MOUNT_INFO_PROPERTY_NAME							"MOUNT_INFO"
 
 /** MOUNT_INFO.MODEL property item name.
  */
