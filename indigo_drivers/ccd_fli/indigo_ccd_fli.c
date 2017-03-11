@@ -139,7 +139,7 @@ typedef struct {
 
 
 static indigo_result fli_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	if (IS_CONNECTED) {
 		if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property))
 			indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 		if (indigo_property_match(FLI_RBI_FLUSH_ENABLE_PROPERTY, property))
@@ -784,7 +784,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			handle_exposure_property(device, property);
 		}
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
@@ -797,13 +797,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- FLI_NFLUSHES
 	} else if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property)) {
 		indigo_property_copy_values(FLI_NFLUSHES_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			handle_nflushes_property(device, property);
 		}
 	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH_ENABLE
 	} else if (indigo_property_match(FLI_RBI_FLUSH_ENABLE_PROPERTY, property)) {
 		indigo_property_copy_values(FLI_RBI_FLUSH_ENABLE_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			FLI_RBI_FLUSH_ENABLE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 		}
@@ -811,7 +811,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
 	} else if (indigo_property_match(FLI_RBI_FLUSH_PROPERTY, property)) {
 		indigo_property_copy_values(FLI_RBI_FLUSH_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			FLI_RBI_FLUSH_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
 		}
@@ -819,7 +819,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
 	} else if (indigo_property_match(FLI_CAMERA_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FLI_CAMERA_MODE_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			handle_camera_mode_property(device, property);
 		}
 	// -------------------------------------------------------------------------------- CCD_COOLER
@@ -834,7 +834,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;

@@ -743,7 +743,7 @@ static indigo_result mount_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static indigo_result nexstar_guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	if (IS_CONNECTED) {
 		if (indigo_property_match(COMMAND_GUIDE_RATE_PROPERTY, property))
 			indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
 	}

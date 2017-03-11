@@ -561,14 +561,14 @@
 			path = ccd_asi;
 			sourceTree = "<group>";
 		};
-		591FAB761E391AFA0076BD6E /* focuse_fli */ = {
+		591FAB761E391AFA0076BD6E /* focuser_fli */ = {
 			isa = PBXGroup;
 			children = (
 				591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */,
 				591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */,
 				591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */,
 			);
-			name = focuse_fli;
+			name = focuser_fli;
 			sourceTree = "<group>";
 		};
 		592662A41D9590630021746A = {
@@ -838,7 +838,7 @@
 			isa = PBXGroup;
 			children = (
 				59D62CD61E731479004DDD9C /* focuser_usbv3 */,
-				591FAB761E391AFA0076BD6E /* focuse_fli */,
+				591FAB761E391AFA0076BD6E /* focuser_fli */,
 				5992F7B91E1EC9270035242E /* wheel_fli */,
 				5992F7B01E1EC84B0035242E /* ccd_fli */,
 				9DB917FE1DF8543800678721 /* mount_lx200 */,
