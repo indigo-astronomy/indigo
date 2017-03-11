@@ -50,8 +50,16 @@
 #define INVALID_HANDLE_VALUE -1
 #endif
 
+#define RELAY_NORTH        0x01     /* Guide relay bits */
+#define RELAY_SOUTH        0x02
+#define RELAY_WEST         0x04
+#define RELAY_EAST         0x08
+
+#define RELAY_MAX_PULSE    5000     /* 50s max pulse */
+
+
 #define MAX_CCD_TEMP         45     /* Max CCD temperature */
-#define MIN_CCD_TEMP        -55     /* Min CCD temperature */
+#define MIN_CCD_TEMP       (-55)    /* Min CCD temperature */
 #define MAX_X_BIN            16     /* Max Horizontal binning */
 #define MAX_Y_BIN            16     /* Max Vertical binning */
 
@@ -74,7 +82,6 @@
 #define TEMP_THRESHOLD     0.15
 #define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
 
-//#include <libfli/libfli.h>
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_sbig.h"
 
@@ -120,17 +127,16 @@ typedef struct {
 } cframe_params;
 
 typedef struct {
-	int dev_id;
 	bool is_usb;
 	SBIG_DEVICE_TYPE usb_id;
 	short driver_handle;
 	char dev_name[MAX_PATH];
-	//flidomain_t domain;
 	bool rbi_flood_supported;
-
+	ushort relay_map;
 	bool abort_flag;
 	int count_open;
 	indigo_timer *exposure_timer, *temperature_timer;
+	indigo_timer *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	double cooler_power;
 	unsigned char *buffer;
@@ -201,6 +207,61 @@ static short close_driver(short *handle) {
 }
 
 
+static ushort sbig_get_relaymap(short handle, ushort *relay_map) {
+	short res;
+	QueryCommandStatusParams csq = { .command = CC_ACTIVATE_RELAY };
+	QueryCommandStatusResults csr;
+
+	res = set_sbig_handle(handle);
+	if ( res != CE_NO_ERROR ) {
+		return res;
+	}
+
+	res = sbig_command(CC_QUERY_COMMAND_STATUS, &csq, &csr);
+	if (res != CE_NO_ERROR) {
+		return res;
+	}
+
+	*relay_map = csr.status;
+
+	return CE_NO_ERROR;
+}
+
+
+static ushort sbig_set_relaymap(short handle, ushort relay_map) {
+	short res;
+	ActivateRelayParams arp = {0};
+
+	res = set_sbig_handle(handle);
+	if ( res != CE_NO_ERROR ) {
+		return res;
+	}
+
+	if(relay_map & RELAY_EAST) {
+		arp.tXPlus = RELAY_MAX_PULSE;
+	}
+
+	if(relay_map & RELAY_WEST) {
+		arp.tXMinus = RELAY_MAX_PULSE;
+	}
+
+	if(relay_map & RELAY_NORTH) {
+		arp.tYMinus = RELAY_MAX_PULSE;
+	}
+
+	if(relay_map & RELAY_SOUTH) {
+		arp.tXPlus = RELAY_MAX_PULSE;
+	}
+
+	res = sbig_command(CC_ACTIVATE_RELAY, &arp, NULL);
+	if (res != CE_NO_ERROR) {
+		return res;
+	}
+
+	return CE_NO_ERROR;
+}
+
+
 /* indigo CAMERA functions */
 
 static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -225,7 +286,7 @@ static bool sbig_open(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
-		odp.deviceType = PRIVATE_DATA->dev_id;
+		odp.deviceType = PRIVATE_DATA->usb_id;
 		odp.ipAddress = 0x00;
 		odp.lptBaseAddress = 0x00;
 
@@ -308,7 +369,6 @@ static bool sbig_open(indigo_device *device) {
 
 
 static bool sbig_start_exposure(indigo_device *device, double exposure, bool dark, bool rbi_flood, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
-	int id = PRIVATE_DATA->dev_id;
 	long res;
 
 	/* Skip the optical black area */
@@ -397,7 +457,6 @@ static bool sbig_read_pixels(indigo_device *device) {
 	long timeleft = 0;
 	long res, dev_status;
 	long wait_cicles = 4000;
-	int id = PRIVATE_DATA->dev_id;
 
 	/*
 	do {
@@ -674,7 +733,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 
 static bool handle_nflushes_property(indigo_device *device, indigo_property *property) {
-	int id = PRIVATE_DATA->dev_id;
 	long nflushes = (long)(FLI_NFLUSHES_PROPERTY_ITEM->number.value);
 
 	/*
@@ -697,7 +755,6 @@ static bool handle_nflushes_property(indigo_device *device, indigo_property *pro
 
 
 static bool handle_camera_mode_property(indigo_device *device, indigo_property *property) {
-	int id = PRIVATE_DATA->dev_id;
 	int mode;
 
 	/*
@@ -779,7 +836,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (sbig_open(device)) {
-				int id = PRIVATE_DATA->dev_id;
 				long res;
 
 				CCD_MODE_PROPERTY->hidden = true;
@@ -1022,7 +1078,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 	return indigo_ccd_detach(device);
 }
 
-
 /* indigo GUIDER functions */
 
 static indigo_result guider_attach(indigo_device *device) {
@@ -1035,62 +1090,123 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+
+static void guider_timer_callback_ra(indigo_device *device) {
+	int res;
+	ushort relay_map = 0;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	PRIVATE_DATA->guider_timer_ra = NULL;
+	int driver_handle = PRIVATE_DATA->driver_handle;
+
+	res = sbig_get_relaymap(driver_handle, &relay_map);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_relaymap(%d) = %d", driver_handle, res));
+	}
+
+	relay_map &= ~(RELAY_EAST | RELAY_WEST);
+
+	res = sbig_set_relaymap(driver_handle, relay_map);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relaymap(%d) = %d", driver_handle, res));
+	}
+
+	if (PRIVATE_DATA->relay_map & (RELAY_EAST | RELAY_WEST)) {
+		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	}
+	PRIVATE_DATA->relay_map = relay_map;
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+}
+
+
+static void guider_timer_callback_dec(indigo_device *device) {
+	int res;
+	ushort relay_map = 0;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	PRIVATE_DATA->guider_timer_ra = NULL;
+	int driver_handle = PRIVATE_DATA->driver_handle;
+
+	res = sbig_get_relaymap(driver_handle, &relay_map);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_relaymap(%d) = %d", driver_handle, res));
+	}
+
+	relay_map &= ~(RELAY_NORTH | RELAY_SOUTH);
+
+	res = sbig_set_relaymap(driver_handle, relay_map);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relaymap(%d) = %d", driver_handle, res));
+	}
+
+	if (PRIVATE_DATA->relay_map & (RELAY_NORTH | RELAY_SOUTH)) {
+		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+	}
+	PRIVATE_DATA->relay_map = relay_map;
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+}
+
+
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	//ASI_ERROR_CODE res;
-	int id = PRIVATE_DATA->dev_id;
+	int driver_handle = PRIVATE_DATA->driver_handle;
 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			/*if (asi_open(device)) {
+			if (sbig_open(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-			}*/
+			}
 		} else {
-			//asi_close(device);
+			sbig_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-		//indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
-			/*
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			res = ASIPulseGuideOn(id, ASI_GUIDE_NORTH);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-			if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res));
+		//	res = ASIPulseGuideOn(id, ASI_GUIDE_NORTH);
+		//	if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res));
 			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
-			PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = true;
-			*/
+			PRIVATE_DATA->relay_map |= RELAY_NORTH;
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		} else {
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
-				/*
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				res = ASIPulseGuideOn(id, ASI_GUIDE_SOUTH);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-				if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res));
+		//		res = ASIPulseGuideOn(id, ASI_GUIDE_SOUTH);
+		//		if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res));
 				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
-				PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = true;
-				*/
+				PRIVATE_DATA->relay_map |= RELAY_SOUTH;
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			}
 		}
 
-		//if (PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH])
-		//	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		//else
+		if (PRIVATE_DATA->relay_map & (RELAY_NORTH | RELAY_SOUTH))
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		else
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
@@ -1098,36 +1214,30 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-		//indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
-			/*
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			res = ASIPulseGuideOn(id, ASI_GUIDE_EAST);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-			if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res));
+		//	res = ASIPulseGuideOn(id, ASI_GUIDE_EAST);
+		//	if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res));
 			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
-			PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = true;
-			*/
+			PRIVATE_DATA->relay_map |= RELAY_EAST;
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		} else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
-				/*
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				res = ASIPulseGuideOn(id, ASI_GUIDE_WEST);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-				if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res));
+		//		res = ASIPulseGuideOn(id, ASI_GUIDE_WEST);
+		//		if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res));
 				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
-				PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = true;
-				*/
+				PRIVATE_DATA->relay_map |= RELAY_WEST;
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			}
 		}
 
-		//if (PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] || PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST])
-		//	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-		//else
+		if (PRIVATE_DATA->relay_map & (RELAY_EAST | RELAY_WEST))
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		else
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
@@ -1308,7 +1418,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			sbig_private_data *private_data = malloc(sizeof(sbig_private_data));
 			assert(private_data);
 			memset(private_data, 0, sizeof(sbig_private_data));
-			private_data->dev_id = 0;
 			private_data->usb_id = usb_id;
 			strncpy(private_data->dev_name, cam_name, MAX_PATH);
 			device->private_data = private_data;
