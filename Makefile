@@ -771,7 +771,8 @@ install:
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server_standalone $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0644 $(DRIVERS) $(INSTALL_PREFIX)/bin
-	sudo install -D -m 0644 $(DRIVER_LIBS) $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.so $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0644 $(DRIVER_SOLIBS) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
