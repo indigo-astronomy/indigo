@@ -262,6 +262,20 @@ static ushort sbig_set_relaymap(short handle, ushort relay_map) {
 }
 
 
+static ushort sbig_set_relays(short handle, ushort relays) {
+	int res;
+	ushort relay_map = 0;
+
+	res = sbig_get_relaymap(handle, &relay_map);
+	if (res != CE_NO_ERROR) {
+		return res;
+	}
+
+	relay_map |= relays;
+	return sbig_set_relaymap(handle, relay_map);
+}
+
+
 /* indigo CAMERA functions */
 
 static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1161,7 +1175,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	//ASI_ERROR_CODE res;
+	ushort res;
 	int driver_handle = PRIVATE_DATA->driver_handle;
 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
@@ -1187,8 +1201,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		//	res = ASIPulseGuideOn(id, ASI_GUIDE_NORTH);
-		//	if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res));
+			res = sbig_set_relays(driver_handle, RELAY_NORTH);
+			if (res != CE_NO_ERROR) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relays(%d, RELAY_NORTH) = %d", driver_handle, res));
 			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 			PRIVATE_DATA->relay_map |= RELAY_NORTH;
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1196,8 +1210,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		//		res = ASIPulseGuideOn(id, ASI_GUIDE_SOUTH);
-		//		if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res));
+				res = sbig_set_relays(driver_handle, RELAY_SOUTH);
+				if (res != CE_NO_ERROR) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relays(%d, RELAY_SOUTH) = %d", driver_handle, res));
 				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 				PRIVATE_DATA->relay_map |= RELAY_SOUTH;
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1218,8 +1232,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		//	res = ASIPulseGuideOn(id, ASI_GUIDE_EAST);
-		//	if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res));
+			res = sbig_set_relays(driver_handle, RELAY_EAST);
+			if (res != CE_NO_ERROR) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relays(%d, RELAY_EAST) = %d", driver_handle, res));
 			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 			PRIVATE_DATA->relay_map |= RELAY_EAST;
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1227,8 +1241,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		//		res = ASIPulseGuideOn(id, ASI_GUIDE_WEST);
-		//		if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res));
+				res = sbig_set_relays(driver_handle, RELAY_WEST);
+				if (res != CE_NO_ERROR) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relays(%d, RELAY_WEST) = %d", driver_handle, res));
 				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 				PRIVATE_DATA->relay_map |= RELAY_WEST;
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
