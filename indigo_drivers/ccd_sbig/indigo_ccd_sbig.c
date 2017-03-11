@@ -176,16 +176,21 @@ static short set_sbig_handle(short handle) {
 
 static short open_driver(short *handle) {
 	short res;
-	SetDriverHandleParams sdhp;
 	GetDriverHandleResults gdhr;
 
-	sdhp.handle = INVALID_HANDLE_VALUE;
+	res = set_sbig_handle(INVALID_HANDLE_VALUE);
+	if (res != CE_NO_ERROR) {
+		return res;
+	}
+
 	res = sbig_command(CC_OPEN_DRIVER, NULL, NULL);
+	if (res != CE_NO_ERROR) {
+		return res;
+	}
+
+	res = sbig_command(CC_GET_DRIVER_HANDLE, NULL, &gdhr);
 	if (res == CE_NO_ERROR) {
-		res = sbig_command(CC_GET_DRIVER_HANDLE, NULL, &gdhr);
-		if (res == CE_NO_ERROR) {
-			*handle = gdhr.handle;
-		}
+		*handle = gdhr.handle;
 	}
 	return res;
 }
