@@ -188,7 +188,7 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 	assert(DEVICE_CONTEXT != NULL);
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			if (indigo_property_match(MOUNT_INFO_PROPERTY, property))
 				indigo_define_property(device, MOUNT_INFO_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property))
@@ -240,7 +240,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			indigo_define_property(device, MOUNT_INFO_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_LST_TIME_PROPERTY, NULL);

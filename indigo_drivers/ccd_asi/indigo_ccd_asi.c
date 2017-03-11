@@ -164,7 +164,7 @@ static bool pixel_format_supported(indigo_device *device, ASI_IMG_TYPE type) {
 
 
 static indigo_result asi_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	if (IS_CONNECTED) {
 		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
 			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 		if (indigo_property_match(ASI_ADVANCED_PROPERTY, property))
@@ -801,7 +801,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAMMA) = %d", PRIVATE_DATA->dev_id, res));
 
 		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
+		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- GAIN
@@ -815,7 +815,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (res) INDIGO_ERROR(indigo_error("indigo_ccd_asi: ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res));
 
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
+		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_FRAME
@@ -829,7 +829,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
+		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT
@@ -854,7 +854,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			item->sw.value = !strcmp(item->name, name);
 		}
 		CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
@@ -865,7 +865,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		handle_advanced_property(device, property);
 		indigo_property_copy_values(ASI_ADVANCED_PROPERTY, property, false);
 		ASI_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
+		if (IS_CONNECTED)
 			indigo_update_property(device, ASI_ADVANCED_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_MODE
@@ -890,7 +890,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		}
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
@@ -919,7 +919,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			item->sw.value = !strcmp(item->name, name);
 		}
 		CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 		}

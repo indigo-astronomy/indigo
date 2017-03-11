@@ -223,6 +223,11 @@ typedef struct {
 	}\
 }
 
+/** Device is connected.
+ */
+
+#define IS_CONNECTED	(CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE)
+
 /** Attach callback function.
  */
 extern indigo_result indigo_device_attach(indigo_device *device, indigo_version version, int interface);

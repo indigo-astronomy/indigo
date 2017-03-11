@@ -197,7 +197,7 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(DEVICE_CONTEXT != NULL);
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			if (indigo_property_match(CCD_INFO_PROPERTY, property))
 				indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
 			if (indigo_property_match(CCD_LOCAL_MODE_PROPERTY, property))
@@ -245,7 +245,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
 			indigo_define_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
@@ -337,7 +337,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		CCD_FRAME_WIDTH_ITEM->number.value = ((int)CCD_FRAME_WIDTH_ITEM->number.value / (int)CCD_BIN_HORIZONTAL_ITEM->number.value) * (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		CCD_FRAME_HEIGHT_ITEM->number.value = ((int)CCD_FRAME_HEIGHT_ITEM->number.value / (int)CCD_BIN_VERTICAL_ITEM->number.value) * (int)CCD_BIN_VERTICAL_ITEM->number.value;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			if (CCD_FRAME_LEFT_ITEM->number.value + CCD_FRAME_WIDTH_ITEM->number.value > CCD_INFO_WIDTH_ITEM->number.value) {
 				CCD_FRAME_WIDTH_ITEM->number.value = CCD_INFO_WIDTH_ITEM->number.value - CCD_FRAME_LEFT_ITEM->number.value;
@@ -361,7 +361,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
 			item->sw.value = !strcmp(item->name, name);
 		}
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 			CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
@@ -384,7 +384,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				break;
 			}
 		}
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 			CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
@@ -394,7 +394,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_OFFSET
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		}
@@ -402,7 +402,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		}
@@ -410,7 +410,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_GAMMA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAMMA
 		indigo_property_copy_values(CCD_GAMMA_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
 		}
@@ -419,28 +419,28 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_FRAME_TYPE
 		indigo_property_copy_values(CCD_FRAME_TYPE_PROPERTY, property, false);
 		CCD_FRAME_TYPE_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
+		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_IMAGE_FORMAT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
 		indigo_property_copy_values(CCD_IMAGE_FORMAT_PROPERTY, property, false);
 		CCD_IMAGE_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
+		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_UPLOAD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_IMAGE_UPLOAD_MODE
 		indigo_property_copy_values(CCD_UPLOAD_MODE_PROPERTY, property, false);
 		CCD_UPLOAD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
+		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_LOCAL_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_IMAGE_LOCAL_MODE
 		indigo_property_copy_values(CCD_LOCAL_MODE_PROPERTY, property, false);
 		CCD_LOCAL_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
+		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------

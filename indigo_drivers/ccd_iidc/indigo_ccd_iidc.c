@@ -334,7 +334,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					break;
 				}
 			}
-			if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (IS_CONNECTED) {
 				if (update_frame) {
 					CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
@@ -359,7 +359,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_FRAME_HEIGHT_ITEM->number.value == 0)
 			CCD_FRAME_HEIGHT_ITEM->number.value = mode_data->height_unit;
 		PRIVATE_DATA->force_setup = true;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		}

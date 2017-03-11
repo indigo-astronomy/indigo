@@ -91,7 +91,7 @@ static char *usbv3_response(indigo_device *device) {
 	return response;
 }
 
-static void *usbv3_reader(indigo_device *device) {
+static char *usbv3_reader(indigo_device *device) {
 	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: usbv3_reader started"));
 	while (PRIVATE_DATA->handle > 0) {
 		char *response = usbv3_response(device);
@@ -119,6 +119,12 @@ static void *usbv3_reader(indigo_device *device) {
 	return NULL;
 }
 
+static void usbv3_close(indigo_device *device) {
+	close(PRIVATE_DATA->handle);
+	PRIVATE_DATA->handle = 0;
+	INDIGO_LOG(indigo_log("usbv3: disconnected from %s", DEVICE_PORT_ITEM->text.value));
+}
+
 static bool usbv3_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_open_serial(name);
@@ -128,7 +134,11 @@ static bool usbv3_open(indigo_device *device) {
 	}
 	INDIGO_LOG(indigo_log("usbv3: connected to %s", name));
 	usbv3_command(device, "FQUITx");
-	usbv3_response(device);
+	if (*usbv3_response(device) != '*') {
+		INDIGO_ERROR(indigo_error("usbv3: invalid response"));
+		usbv3_close(device);
+		return false;
+	}
 	usbv3_command(device, "FMANUA");
 	usbv3_response(device);
 	usbv3_command(device, "SMROTH");
@@ -152,12 +162,6 @@ static bool usbv3_open(indigo_device *device) {
 //	}
 	pthread_create(&PRIVATE_DATA->thread, NULL, (void * (*)(void*))usbv3_reader, device);
 	return true;
-}
-
-static void usbv3_close(indigo_device *device) {
-	close(PRIVATE_DATA->handle);
-	PRIVATE_DATA->handle = 0;
-	INDIGO_LOG(indigo_log("usbv3: disconnected from %s", DEVICE_PORT_ITEM->text.value));
 }
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
@@ -225,7 +229,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	if (IS_CONNECTED) {
 		if (indigo_property_match(X_FOCUSER_STEP_SIZE_PROPERTY, property))
 			indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 	}
