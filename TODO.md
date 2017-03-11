@@ -35,8 +35,8 @@
 
 #### command line client
 
-1. set_property
-2. get_property (including BLOBs)
+1. set_property __DONE__
+2. get_property (including BLOBs) __DONE__
 
 ### Drivers
 
@@ -76,8 +76,8 @@
 
 #### Focusers
 
-1. USB Focus v3
-2. FLI focuser driver (based on FLI SDK)
+1. USB Focus v3 __DONE__
+2. FLI focuser driver (based on FLI SDK) __DONE__
 
 #### Mounts
 

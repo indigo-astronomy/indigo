@@ -51,6 +51,13 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 			if (FOCUSER_SPEED_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(FOCUSER_SPEED_ITEM, FOCUSER_SPEED_ITEM_NAME, "Speed", 1, 100, 1, 1);
+			// -------------------------------------------------------------------------------- FOCUSER_ROTATION
+			FOCUSER_ROTATION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_ROTATION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Rotation direction", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			if (FOCUSER_ROTATION_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			FOCUSER_ROTATION_PROPERTY->hidden = true;
+			indigo_init_switch_item(FOCUSER_ROTATION_CLOCKWISE_ITEM, FOCUSER_ROTATION_CLOCKWISE_ITEM_NAME, "Clockwise rotation for inward move", true);
+			indigo_init_switch_item(FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM, FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM_NAME, "Couter-clockwise rotation for inward move", false);
 			// -------------------------------------------------------------------------------- FOCUSER_DIRECTION
 			FOCUSER_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Movement direction", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_DIRECTION_PROPERTY == NULL)
@@ -114,6 +121,8 @@ indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_
 				if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property))
 					indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 			}
+			if (indigo_property_match(FOCUSER_ROTATION_PROPERTY, property))
+				indigo_define_property(device, FOCUSER_ROTATION_PROPERTY, NULL);
 			if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property))
 				indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			if (indigo_property_match(FOCUSER_TEMPERATURE_PROPERTY, property))
@@ -140,6 +149,7 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 				indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 			}
+			indigo_define_property(device, FOCUSER_ROTATION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
@@ -151,6 +161,7 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 				indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 			}
+			indigo_delete_property(device, FOCUSER_ROTATION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
@@ -161,6 +172,12 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- FOCUSER_ROTATION
+	} else if (indigo_property_match(FOCUSER_ROTATION_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_ROTATION_PROPERTY, property, false);
+		FOCUSER_ROTATION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_ROTATION_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FOCUSER_DIRECTION
 	} else if (indigo_property_match(FOCUSER_DIRECTION_PROPERTY, property)) {
@@ -189,6 +206,7 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, FOCUSER_SPEED_PROPERTY);
+			indigo_save_property(device, NULL, FOCUSER_ROTATION_PROPERTY);
 			indigo_save_property(device, NULL, FOCUSER_DIRECTION_PROPERTY);
 			indigo_save_property(device, NULL, FOCUSER_COMPENSATION_PROPERTY);
 		}
@@ -204,6 +222,7 @@ indigo_result indigo_focuser_detach(indigo_device *device) {
 		indigo_release_property(FOCUSER_STEPS_PROPERTY);
 		indigo_release_property(FOCUSER_ABORT_MOTION_PROPERTY);
 	}
+	indigo_release_property(FOCUSER_ROTATION_PROPERTY);
 	indigo_release_property(FOCUSER_POSITION_PROPERTY);
 	indigo_release_property(FOCUSER_TEMPERATURE_PROPERTY);
 	indigo_release_property(FOCUSER_COMPENSATION_PROPERTY);
