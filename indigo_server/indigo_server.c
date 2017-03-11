@@ -96,6 +96,8 @@ static indigo_property *unload_property;
 static indigo_property *restart_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
+static char servicename[INDIGO_NAME_SIZE] = "";
+
 
 static pid_t server_pid = 0;
 static bool keep_server_running = true;
@@ -126,9 +128,11 @@ static void server_callback(int count) {
 		if (use_bonjour) {
 			/* UGLY but the only way to suppress compat mode warning messages on Linux */
 			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-			char hostname[INDIGO_NAME_SIZE], servicename[INDIGO_NAME_SIZE];
-			gethostname(hostname, sizeof(hostname));
-			snprintf(servicename, INDIGO_NAME_SIZE, "%s (%d)", hostname, indigo_server_tcp_port);
+			if (*servicename == 0) {
+				char hostname[INDIGO_NAME_SIZE];
+				gethostname(hostname, sizeof(hostname));
+				indigo_service_name(hostname, indigo_server_tcp_port, servicename);
+			}
 			DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 			DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 		}
@@ -297,7 +301,7 @@ static void server_main(int argc, const char * argv[]) {
 				*colon++ = 0;
 				port = atoi(colon);
 			}
-			indigo_connect_server(host, port, NULL);
+			indigo_connect_server(NULL, host, port, NULL);
 			i++;
 		} else if ((!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indi-driver")) && i < argc - 1) {
 			char executable[INDIGO_NAME_SIZE];
@@ -306,6 +310,9 @@ static void server_main(int argc, const char * argv[]) {
 			i++;
 		} else if (!strcmp(argv[i], "-b-") || !strcmp(argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
+		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--bonjour")) {
+			strncpy(servicename, argv[i + 1], INDIGO_NAME_SIZE);
+			i++;
 		} else if (!strcmp(argv[i], "-c-") || !strcmp(argv[i], "--disable-control-panel")) {
 			use_control_panel = false;
 		} else if (!strcmp(argv[i], "-u-") || !strcmp(argv[i], "--disable-blob-urls")) {
@@ -383,7 +390,7 @@ int main(int argc, const char * argv[]) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("%s [-h|--help]\n", argv[0]);
-			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-u-|--disable-blob-urls] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-log] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-u-|--disable-blob-urls] [-b|--bonjour name] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-log] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			return 0;
 		} else {
 			server_argv[server_argc++] = argv[i];

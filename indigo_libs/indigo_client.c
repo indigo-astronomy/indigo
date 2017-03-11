@@ -159,7 +159,20 @@ indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entr
 	return add_driver(entry_point, dl_handle, init, driver);
 }
 
-void *server_thread(indigo_server_entry *server) {
+void indigo_service_name(const char *host, int port, char *name) {
+	strncpy(name, host, INDIGO_NAME_SIZE);
+	char *lastone = name + strlen(name) - 1;
+	if (*lastone == '.')
+		*lastone = 0;
+	char * local = strstr(name, ".local");
+	if (local != NULL && (!strcmp(local, ".local")))
+		*local = 0;
+	if (port != 7624) {
+		sprintf(name + strlen(name), ":%d", port);
+	}
+}
+
+static void *server_thread(indigo_server_entry *server) {
 	INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
 	while (server->socket >= 0) {
 		server->socket = 0;
@@ -179,20 +192,13 @@ void *server_thread(indigo_server_entry *server) {
 			}
 		}
 		if (server->socket > 0) {
-			INDIGO_LOG(indigo_log("Server %s:%d connected", server->host, server->port));
-			char name[INDIGO_NAME_SIZE], url[INDIGO_NAME_SIZE];
-			strncpy(name, server->host, sizeof(name));
-			char *lastone = name + strlen(name) - 1;
-			if (*lastone == '.')
-				*lastone = 0;
-			snprintf(url, sizeof(url), "http://%s:%d", name, server->port);
-			char * local = strstr(name, ".local");
-			if (local != NULL && (!strcmp(local, ".local")))
-				*local = 0;
-			if (server->port != 7624) {
-				sprintf(name + strlen(name), ":%d", server->port);
+			if (*server->name == 0) {
+				indigo_service_name(server->host, server->port, server->name);
 			}
-			server->protocol_adapter = indigo_xml_client_adapter(name, url, server->socket, server->socket);
+			char  url[INDIGO_NAME_SIZE];
+			snprintf(url, sizeof(url), "http://%s:%d", server->host, server->port);
+			INDIGO_LOG(indigo_log("Server %s:%d (%s, %s) connected", server->host, server->port, server->name, url));
+			server->protocol_adapter = indigo_xml_client_adapter(server->name, url, server->socket, server->socket);
 			indigo_attach_device(server->protocol_adapter);
 			indigo_xml_parse(server->protocol_adapter, NULL);
 			indigo_detach_device(server->protocol_adapter);
@@ -209,7 +215,7 @@ void *server_thread(indigo_server_entry *server) {
 	return NULL;
 }
 
-indigo_result indigo_connect_server(const char *host, int port, indigo_server_entry **server) {
+indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server) {
 	int empty_slot = used_server_slots;
 	pthread_mutex_lock(&mutex);
 	for (int dc = 0; dc < used_server_slots;  dc++) {
@@ -226,6 +232,11 @@ indigo_result indigo_connect_server(const char *host, int port, indigo_server_en
 	if (empty_slot > INDIGO_MAX_SERVERS) {
 		pthread_mutex_unlock(&mutex);
 		return INDIGO_TOO_MANY_ELEMENTS;
+	}
+	if (name != NULL) {
+		strncpy(indigo_available_servers[empty_slot].name, name, INDIGO_NAME_SIZE);
+	} else {
+		*indigo_available_servers[empty_slot].name = 0;
 	}
 	strncpy(indigo_available_servers[empty_slot].host, host, INDIGO_NAME_SIZE);
 	indigo_available_servers[empty_slot].port = port;
@@ -255,7 +266,7 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 	return INDIGO_OK;
 }
 
-void *subprocess_thread(indigo_subprocess_entry *subprocess) {
+static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 	INDIGO_LOG(indigo_log("Subprocess %s thread started", subprocess->executable));
 	while (subprocess->pid >= 0) {
 		int input[2], output[2];
