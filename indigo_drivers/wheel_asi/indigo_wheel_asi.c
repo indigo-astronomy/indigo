@@ -306,9 +306,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					return 0;
 				}
 				indigo_detach_device(*device);
+				libusb_unref_device(dev);
+				EFWClose(((asi_private_data *)((*device)->private_data))->dev_id);
 				free((*device)->private_data);
 				free(*device);
-				libusb_unref_device(dev);
 				*device = NULL;
 				removed = true;
 			}
@@ -328,6 +329,7 @@ static void remove_all_devices() {
 		indigo_device **device = &devices[i];
 		if (*device == NULL)
 			continue;
+		EFWClose(((asi_private_data *)((*device)->private_data))->dev_id);
 		indigo_detach_device(*device);
 		free((*device)->private_data);
 		free(*device);
