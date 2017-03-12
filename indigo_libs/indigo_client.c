@@ -206,9 +206,8 @@ static void *server_thread(indigo_server_entry *server) {
 			free(server->protocol_adapter);
 			close(server->socket);
 			INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
-		} else {
-			sleep(5);
 		}
+		sleep(5);
 	}
 	server->thread_started = false;
 	INDIGO_LOG(indigo_log("Server %s:%d thread stopped", server->host, server->port));
@@ -219,7 +218,7 @@ indigo_result indigo_connect_server(const char *name, const char *host, int port
 	int empty_slot = used_server_slots;
 	pthread_mutex_lock(&mutex);
 	for (int dc = 0; dc < used_server_slots;  dc++) {
-		if (indigo_available_servers[dc].thread_started && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port) {
+		if (indigo_available_servers[dc].socket > 0 && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port) {
 			INDIGO_LOG(indigo_log("Server %s:%d already connected", indigo_available_servers[dc].host, indigo_available_servers[dc].port));
 			if (server != NULL)
 				*server = &indigo_available_servers[dc];
@@ -242,7 +241,6 @@ indigo_result indigo_connect_server(const char *name, const char *host, int port
 	indigo_available_servers[empty_slot].port = port;
 	indigo_available_servers[empty_slot].socket = 0;
 	if (pthread_create(&indigo_available_servers[empty_slot].thread, NULL, (void*)(void *)server_thread, &indigo_available_servers[empty_slot]) != 0) {
-		indigo_available_servers[empty_slot].thread_started = false;
 		pthread_mutex_unlock(&mutex);
 		return INDIGO_FAILED;
 	}
@@ -261,7 +259,6 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 	if (server->socket > 0)
 		close(server->socket);
 	server->socket = -1;
-	server->thread_started = false;
 	pthread_mutex_unlock(&mutex);
 	return INDIGO_OK;
 }
