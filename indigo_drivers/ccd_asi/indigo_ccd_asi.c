@@ -1239,7 +1239,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						pthread_mutex_unlock(&device_mutex);
 						return 0;
 					}
-					asi_close(*device);
 					indigo_detach_device(*device);
 					if ((*device)->private_data) {
 						private_data = (*device)->private_data;
@@ -1273,10 +1272,7 @@ static void remove_all_devices() {
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device == NULL) continue;
-		if (PRIVATE_DATA) {
-			pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
-			asi_close(device);
-		}
+		if (PRIVATE_DATA) pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
 		indigo_detach_device(device);
 		free(device);
 		device = NULL;
