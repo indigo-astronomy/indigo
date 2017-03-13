@@ -168,9 +168,11 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 }
 
 static void meade_close(indigo_device *device) {
-	close(PRIVATE_DATA->handle);
-	PRIVATE_DATA->handle = 0;
-	INDIGO_ERROR(indigo_error("lx200: disconnected from %s", DEVICE_PORT_ITEM->text.value));
+	if (PRIVATE_DATA->handle > 0) {
+		close(PRIVATE_DATA->handle);
+		PRIVATE_DATA->handle = 0;
+		INDIGO_ERROR(indigo_error("lx200: disconnected from %s", DEVICE_PORT_ITEM->text.value));
+	}
 }
 
 static void meade_get_coords(indigo_device *device) {
