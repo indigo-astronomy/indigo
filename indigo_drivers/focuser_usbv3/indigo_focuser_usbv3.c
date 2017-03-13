@@ -252,6 +252,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (usbv3_open(device)) {
 				indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, focuser_temperature_callback);
+				usbv3_command(device, "SMO00%d", (int)(FOCUSER_SPEED_ITEM->number.value));
+				usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
+				usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -264,10 +267,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-		usbv3_command(device, "SMO00%d", (int)(FOCUSER_SPEED_ITEM->number.value));
-		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+			indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
+			if (IS_CONNECTED) {
+				usbv3_command(device, "SMO00%d", (int)(FOCUSER_SPEED_ITEM->number.value));
+			}
+			FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
@@ -310,8 +315,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-		usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
-		usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
+		if (IS_CONNECTED) {
+			usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
+			usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
+		}
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		return INDIGO_OK;
