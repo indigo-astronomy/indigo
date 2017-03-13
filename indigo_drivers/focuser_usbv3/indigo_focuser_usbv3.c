@@ -112,7 +112,8 @@ static char *usbv3_reader(indigo_device *device) {
 				FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
 				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			}
-		} else if (*response == 'A') {
+		} else {
+			INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: ignored response: %s", response));
 		}
 	}
 	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: usbv3_reader finished"));
@@ -170,8 +171,8 @@ static bool usbv3_open(indigo_device *device) {
 
 
 static void focuser_position_callback(indigo_device *device) {
+	usbv3_command(device, "FPOSRO");
 	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-		usbv3_command(device, "FPOSRO");
 		indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
 	}
 }
