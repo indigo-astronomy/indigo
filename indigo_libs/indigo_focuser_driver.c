@@ -142,7 +142,7 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 	assert(property != NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
 				indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);

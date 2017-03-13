@@ -77,7 +77,7 @@ static char *usbv3_response(indigo_device *device) {
 		long result = read(PRIVATE_DATA->handle, &c, 1);
 		if (result < 1) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return "NULL";
+			return "";
 		}
 		if (c == '\n')
 			continue;
@@ -87,7 +87,7 @@ static char *usbv3_response(indigo_device *device) {
 		response[index++] = c;
 	}
 	response[index] = 0;
-	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: Response %s", response != NULL ? response : "NULL"));
+	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: Response %s", response != NULL ? response : ""));
 	return response;
 }
 
@@ -120,16 +120,18 @@ static char *usbv3_reader(indigo_device *device) {
 }
 
 static void usbv3_close(indigo_device *device) {
-	close(PRIVATE_DATA->handle);
-	PRIVATE_DATA->handle = 0;
-	INDIGO_LOG(indigo_log("usbv3: disconnected from %s", DEVICE_PORT_ITEM->text.value));
+	if (PRIVATE_DATA->handle > 0) {
+		close(PRIVATE_DATA->handle);
+		PRIVATE_DATA->handle = 0;
+		INDIGO_LOG(indigo_log("usbv3: disconnected from %s", DEVICE_PORT_ITEM->text.value));
+	}
 }
 
 static bool usbv3_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_open_serial(name);
-	if (PRIVATE_DATA->handle == 0) {
-		INDIGO_ERROR(indigo_error("usbv3: failed to connect to %s", name));
+	if (PRIVATE_DATA->handle <= 0) {
+		INDIGO_ERROR(indigo_error("usbv3: failed to connect to %s (%s)", name, strerror(errno)));
 		return false;
 	}
 	INDIGO_LOG(indigo_log("usbv3: connected to %s", name));
