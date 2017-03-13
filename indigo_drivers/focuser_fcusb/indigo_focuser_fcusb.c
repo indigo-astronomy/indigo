@@ -128,6 +128,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			libfcusb_close(PRIVATE_DATA->device_context);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+	// -------------------------------------------------------------------------------- CONFIG
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, X_FOCUSER_FREQUENCY_PROPERTY);
+		}
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
