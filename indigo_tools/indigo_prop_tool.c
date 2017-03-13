@@ -442,6 +442,8 @@ int main(int argc, const char * argv[]) {
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			print_help(argv[0]);
 			return 0;
+		} else if (argv[i][0] == '-') {
+			i++; /* skip unknown options */
 		} else {
 			prop_string = argv[i];
 		}
@@ -478,7 +480,7 @@ int main(int argc, const char * argv[]) {
 	indigo_start();
 	indigo_attach_client(&client);
 	indigo_server_entry *server;
-	indigo_connect_server(hostname, port, &server);
+	indigo_connect_server(hostname, hostname, port, &server);
 	sleep(time_to_wait);
 	indigo_stop();
 	indigo_disconnect_server(server);
