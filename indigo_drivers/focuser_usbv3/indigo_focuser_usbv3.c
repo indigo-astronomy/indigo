@@ -192,9 +192,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_FOCUSER_FULL_STEP_ITEM, "FULL_STEP", "Full step", true);
 		indigo_init_switch_item(X_FOCUSER_HALF_STEP_ITEM, "HALF_STEP", "Half step", false);
-		// -------------------------------------------------------------------------------- DEVICE_PORT
+		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
@@ -203,6 +202,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 				break;
 			}
 		}
+#endif
+#ifdef INDIGO_LINUX
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/usb_focuser");
 #endif
 		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
 		FOCUSER_ROTATION_PROPERTY->hidden = false;
