@@ -44,11 +44,12 @@
 
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
-static unsigned char background[] = {
-#include "indigo_ccd_simulator_m42.h"
+static unsigned short background[] = {
+#include "indigo_ccd_simulator_image.h"
 };
 
 typedef struct {
+	indigo_device *imager, *guider;
 	int star_x[STARS], star_y[STARS], star_a[STARS];
 	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
 	double target_temperature, current_temperature;
@@ -153,41 +154,50 @@ static void exposure_timer_callback(indigo_device *device) {
 		int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
 		int offset = (int)CCD_OFFSET_ITEM->number.value;
 		double gamma = CCD_GAMMA_ITEM->number.value;
-		for (int j = 0; j < frame_height; j++) {
-			int jj = (frame_top + j) * vertical_bin;
-			for (int i = 0; i < frame_width; i++) {
-				raw[j * frame_width + i] = background[jj * WIDTH + (frame_left + i) * horizontal_bin] + (rand() & 0x1F);
+		
+		if (device == PRIVATE_DATA->imager) {
+			for (int j = 0; j < frame_height; j++) {
+				int jj = (frame_top + j) * vertical_bin;
+				for (int i = 0; i < frame_width; i++) {
+					raw[j * frame_width + i] = background[jj * WIDTH + (frame_left + i) * horizontal_bin] + (rand() & 0x7F);
+				}
 			}
+		} else {
+			for (int i = 0; i < size; i++)
+				raw[i] = (rand() & 0x7F);
 		}
-		double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
-		double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
-		for (int i = 0; i < STARS; i++) {
-			double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
-			if (center_x < 0)
-				center_x += WIDTH;
-			if (center_x >= WIDTH)
-				center_x -= WIDTH;
-			double center_y = (private_data->star_y[i] + y_offset) / vertical_bin;
-			if (center_y < 0)
-				center_y += HEIGHT;
-			if (center_y >= HEIGHT)
-				center_y -= HEIGHT;
-			center_x -= frame_left;
-			center_y -= frame_top;
-			int a = private_data->star_a[i];
-			int xMax = (int)round(center_x) + 4 / horizontal_bin;
-			int yMax = (int)round(center_y) + 4 / vertical_bin;
-			for (int y = yMax - 8 / vertical_bin; y <= yMax; y++) {
-				if (y < 0 || y >= frame_height)
-					continue;
-				int yw = y * frame_width;
-				double yy = center_y - y;
-				for (int x = xMax - 8 / horizontal_bin; x <= xMax; x++) {
-					if (x < 0 || x >= frame_width)
+		
+		if (device == PRIVATE_DATA->guider) {
+			double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
+			double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
+			for (int i = 0; i < STARS; i++) {
+				double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
+				if (center_x < 0)
+					center_x += WIDTH;
+				if (center_x >= WIDTH)
+					center_x -= WIDTH;
+				double center_y = (private_data->star_y[i] + y_offset) / vertical_bin;
+				if (center_y < 0)
+					center_y += HEIGHT;
+				if (center_y >= HEIGHT)
+					center_y -= HEIGHT;
+				center_x -= frame_left;
+				center_y -= frame_top;
+				int a = private_data->star_a[i];
+				int xMax = (int)round(center_x) + 4 / horizontal_bin;
+				int yMax = (int)round(center_y) + 4 / vertical_bin;
+				for (int y = yMax - 8 / vertical_bin; y <= yMax; y++) {
+					if (y < 0 || y >= frame_height)
 						continue;
-					double xx = center_x - x;
-					double v = a * exp(-(xx * xx / 2.0 + yy * yy / 2.0));
-					raw[yw + x] += (unsigned short)v;
+					int yw = y * frame_width;
+					double yy = center_y - y;
+					for (int x = xMax - 8 / horizontal_bin; x <= xMax; x++) {
+						if (x < 0 || x >= frame_width)
+							continue;
+						double xx = center_x - x;
+						double v = a * exp(-(xx * xx / 2.0 + yy * yy / 2.0));
+						raw[yw + x] += (unsigned short)v;
+					}
 				}
 			}
 		}
@@ -711,6 +721,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			assert(imager_ccd != NULL);
 			memcpy(imager_ccd, &imager_camera_template, sizeof(indigo_device));
 			imager_ccd->private_data = private_data;
+			private_data->imager = imager_ccd;
 			indigo_attach_device(imager_ccd);
 			imager_wheel = malloc(sizeof(indigo_device));
 			assert(imager_wheel != NULL);
@@ -726,6 +737,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			assert(guider_ccd != NULL);
 			memcpy(guider_ccd, &guider_camera_template, sizeof(indigo_device));
 			guider_ccd->private_data = private_data;
+			private_data->guider = guider_ccd;
 			indigo_attach_device(guider_ccd);
 			guider_guider = malloc(sizeof(indigo_device));
 			assert(guider_guider != NULL);
