@@ -248,7 +248,7 @@ void print_property_string(indigo_property *property, const char *message) {
 			printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
 			if ((save_blobs) && (item->blob.size > 0)) {
 				char filename[256];
-				snprintf(filename, 256, "%s.%s.%s.%s", property->device, property->name, item->name, item->blob.format);
+				snprintf(filename, 256, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
 				int fd = open(filename, O_WRONLY | O_CREAT,  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
 				if (fd == -1) {
 					INDIGO_ERROR(indigo_error("Open file %s failed: %s", filename, strerror(errno)));
@@ -264,6 +264,25 @@ void print_property_string(indigo_property *property, const char *message) {
 		}
 	}
 	if (print_verbose) printf("\n");
+}
+
+
+static void print_property_string_filtered(indigo_property *property, const char *message, const property_list_request *filter) {
+	if ((filter == NULL) || ((filter->device_name[0] == '\0') && (filter->property_name[0] == '\0'))) {
+		/* list all properties */
+		print_property_string(property, message);
+	} else if (filter->property_name[0] == '\0') {
+		/* list all poperties of the device */
+		if (!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) {
+			print_property_string(property, message);
+		}
+	} else {
+		/* list all poperties that match device and property name */
+		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
+		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
+			print_property_string(property, message);
+		}
+	}
 }
 
 
@@ -343,21 +362,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 		}
 		return INDIGO_OK;
 	} else {
-		if ((list_request.device_name[0] == '\0') && (list_request.property_name[0] == '\0')) {
-			/* list all properties */
-			print_property_string(property, message);
-		} else if (list_request.property_name[0] == '\0') {
-			/* list all poperties of the device */
-			if (!strncmp(list_request.device_name, property->device, INDIGO_NAME_SIZE)) {
-				print_property_string(property, message);
-			}
-		} else {
-			/* list all poperties that match device and property name */
-			if ((!strncmp(list_request.device_name, property->device, INDIGO_NAME_SIZE)) &&
-			   (!strncmp(list_request.property_name, property->name, INDIGO_NAME_SIZE))) {
-				print_property_string(property, message);
-			}
-		}
+		print_property_string_filtered(property, message, &list_request);
 	}
 	return INDIGO_OK;
 }
@@ -365,7 +370,11 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 
 static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
 	//printf("UPDATED:\n");
-	print_property_string(property, message);
+	if (change_requested) {
+		print_property_string(property, message);
+	} else {
+		print_property_string_filtered(property, message, &list_request);
+	}
 	return INDIGO_OK;
 }
 
