@@ -682,7 +682,6 @@ static void def_property(parser_context *context, indigo_property *other, char *
 					int handle = ((indigo_adapter_context *)context->device->device_context)->output;
 					int use_url = indigo_use_blob_urls && *((indigo_adapter_context *)context->device->device_context)->url_prefix != 0 && other->version != INDIGO_VERSION_LEGACY;
 					indigo_printf(handle, "<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", property->device, indigo_property_name(context->device->version, property), use_url ? "URL" : "Also");
-					indigo_log("<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", property->device, indigo_property_name(context->device->version, property), use_url ? "URL" : "Also");
 				}
 				break;
 		}
