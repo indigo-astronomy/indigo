@@ -582,6 +582,9 @@ static void *set_light_vector_handler(parser_state state, parser_context *contex
 static void *set_one_blob_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
+	INDIGO_DEBUG_PROTOCOL(if (state == BLOB))
+	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_one_blob_vector_handler %s '%s' DATA", parser_state_name[state], name != NULL ? name : ""));
+	INDIGO_DEBUG_PROTOCOL(else)
 	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_one_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
@@ -1408,7 +1411,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					state = END_TAG1;
 				} else if (c == '>') {
 					value_pointer = value_buffer;
-					if (handler == def_blob_handler) {
+					if (handler == set_one_blob_vector_handler) {
 						blob_size = property->items[property->count-1].blob.size;
 						if (blob_size > 0) {
 							state = BLOB;
