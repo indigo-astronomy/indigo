@@ -41,6 +41,7 @@
 
 static bool change_requested = false;
 static bool print_verbose = false;
+static bool save_blobs = false;
 
 typedef struct {
 	int item_count;
@@ -245,7 +246,7 @@ void print_property_string(indigo_property *property, const char *message) {
 			break;
 		case INDIGO_BLOB_VECTOR:
 			printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
-			if (item->blob.size > 0) {
+			if ((save_blobs) && (item->blob.size > 0)) {
 				char filename[256];
 				snprintf(filename, 256, "%s.%s.%s.%s", property->device, property->name, item->name, item->blob.format);
 				int fd = open(filename, O_WRONLY | O_CREAT,  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
@@ -391,6 +392,7 @@ static void print_help(const char *name) {
 	printf("       %s list [options] [device[.property]]\n", name);
 	printf("options:\n"
 	       "       -h  | --help\n"
+	       "       -b  | --save-blobs\n"
 	       "       -e  | --extended-info\n"
 	       "       -v  | --enable-log\n"
 	       "       -vv | --enable-devug\n"
@@ -430,6 +432,8 @@ int main(int argc, const char * argv[]) {
 	for (int i = arg_base; i < argc; i++) {
 		if (!strcmp(argv[i], "-e") || !strcmp(argv[i], "--extended-info")) {
 			print_verbose = true;
+		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--save-blobs")) {
+			save_blobs = true;
 		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
 			if (argc > i+1) {
 				i++;
