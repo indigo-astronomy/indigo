@@ -245,10 +245,10 @@ void print_property_string(indigo_property *property, const char *message) {
 			printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
 			break;
 		case INDIGO_BLOB_VECTOR:
-			printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
 			if ((save_blobs) && (item->blob.size > 0)) {
 				char filename[256];
 				snprintf(filename, 256, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
+				printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, filename);
 				int fd = open(filename, O_WRONLY | O_CREAT,  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
 				if (fd == -1) {
 					INDIGO_ERROR(indigo_error("Open file %s failed: %s", filename, strerror(errno)));
@@ -259,6 +259,8 @@ void print_property_string(indigo_property *property, const char *message) {
 					INDIGO_ERROR(indigo_error("Wtite blob to file %s failed: %s", filename, strerror(errno)));
 				}
 				close(fd);
+			} else {
+				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
 			}
 			break;
 		}
@@ -369,7 +371,6 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 
 
 static indigo_result client_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
-	//printf("UPDATED:\n");
 	if (change_requested) {
 		print_property_string(property, message);
 	} else {
