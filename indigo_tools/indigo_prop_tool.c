@@ -28,9 +28,13 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 
 #include "indigo_bus.h"
 #include "indigo_client.h"
+#include "indigo_xml.h"
 
 #define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048
@@ -241,6 +245,20 @@ void print_property_string(indigo_property *property, const char *message) {
 			break;
 		case INDIGO_BLOB_VECTOR:
 			printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
+			if (item->blob.size > 0) {
+				char filename[256];
+				snprintf(filename, 256, "%s.%s.%s.%s", property->device, property->name, item->name, item->blob.format);
+				int fd = open(filename, O_WRONLY | O_CREAT,  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
+				if (fd == -1) {
+					INDIGO_ERROR(indigo_error("Open file %s failed: %s", filename, strerror(errno)));
+					break;
+				}
+				int len = write(fd, item->blob.value, item->blob.size);
+				if (len <= 0) {
+					INDIGO_ERROR(indigo_error("Wtite blob to file %s failed: %s", filename, strerror(errno)));
+				}
+				close(fd);
+			}
 			break;
 		}
 	}
@@ -477,6 +495,7 @@ int main(int argc, const char * argv[]) {
 		change_requested = false;
 	}
 
+	indigo_use_blob_urls = false;
 	indigo_start();
 	indigo_attach_client(&client);
 	indigo_server_entry *server;
