@@ -931,6 +931,10 @@ static void *def_blob_handler(parser_state state, parser_context *context, char 
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
 		} else if (!strcmp(name, "label")) {
 			strncpy(property->items[property->count-1].label, value, INDIGO_VALUE_SIZE);
+		} else if (!strcmp(name, "path")) {
+			snprintf(property->items[property->count-1].blob.url, INDIGO_VALUE_SIZE, "%s%s", ((indigo_adapter_context *)context->device->device_context)->url_prefix, value);
+		} else if (!strcmp(name, "url")) {
+			strncpy(property->items[property->count-1].blob.url, value, INDIGO_VALUE_SIZE);
 		}
 	} else if (state == END_TAG) {
 		return def_blob_vector_handler;
