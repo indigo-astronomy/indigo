@@ -260,7 +260,7 @@ void print_property_string(indigo_property *property, const char *message) {
 				}
 				close(fd);
 			} else {
-				if ((item->blob.url) && (item->blob.url[0] != '\0')) {
+				if ((item->blob.url[0] != '\0')) {
 					printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, item->blob.url);
 				} else {
 					printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);

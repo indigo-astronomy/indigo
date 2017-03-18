@@ -191,6 +191,10 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 			indigo_copy_property_name(client->version, property, value);;
 		}
 	} else if (state == END_TAG) {
+		if (client->version == INDIGO_VERSION_LEGACY)
+			client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
+		else
+			client->enable_blob = INDIGO_ENABLE_BLOB_URL;
 		indigo_enumerate_properties(client, property);
 		memset(property, 0, PROPERTY_SIZE);
 		return top_level_handler;
