@@ -247,7 +247,7 @@ void print_property_string(indigo_property *property, const char *message) {
 		case INDIGO_BLOB_VECTOR:
 			if ((save_blobs) && (item->blob.size > 0)) {
 				char filename[256];
-				snprintf(filename, 256, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
+				snprintf(filename, 256, "%s.%s%s", property->device, property->name, item->blob.format);
 				printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, filename);
 				int fd = open(filename, O_WRONLY | O_CREAT,  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
 				if (fd == -1) {
@@ -260,7 +260,11 @@ void print_property_string(indigo_property *property, const char *message) {
 				}
 				close(fd);
 			} else {
-				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
+				if ((item->blob.url) && (item->blob.url[0] != '\0')) {
+					printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, item->blob.url);
+				} else {
+					printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
+				}
 			}
 			break;
 		}
@@ -352,7 +356,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 				printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
 				break;
 			case INDIGO_BLOB_VECTOR:
-				printf("%s.%s.%s = <BLOBS NOT SHOWN>\n", property->device, property->name, item->name);
+				printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
 				break;
 			}
 
@@ -444,6 +448,7 @@ int main(int argc, const char * argv[]) {
 			print_verbose = true;
 		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--save-blobs")) {
 			save_blobs = true;
+			indigo_use_blob_urls = false;
 		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
 			if (argc > i+1) {
 				i++;
@@ -509,7 +514,6 @@ int main(int argc, const char * argv[]) {
 		change_requested = false;
 	}
 
-	indigo_use_blob_urls = false;
 	indigo_start();
 	indigo_attach_client(&client);
 	indigo_server_entry *server;
