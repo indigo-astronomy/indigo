@@ -245,7 +245,7 @@ void print_property_string(indigo_property *property, const char *message) {
 			printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
 			break;
 		case INDIGO_BLOB_VECTOR:
-			if ((save_blobs) && (item->blob.size > 0)) {
+			if ((save_blobs) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
 				char filename[256];
 				snprintf(filename, 256, "%s.%s%s", property->device, property->name, item->blob.format);
 				printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, filename);
@@ -260,10 +260,14 @@ void print_property_string(indigo_property *property, const char *message) {
 				}
 				close(fd);
 			} else {
-				if ((item->blob.url[0] != '\0')) {
-					printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, item->blob.url);
+				if ((item->blob.url[0] != '\0') && (indigo_use_blob_urls)) {
+					if (property->state == INDIGO_OK_STATE) {
+						printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, item->blob.url);
+					} else {
+						printf("%s.%s.%s = <NO BLOB DATA>\n", property->device, property->name, item->name);
+					}
 				} else {
-					printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
+					printf("%s.%s.%s = <NO BLOB DATA>\n", property->device, property->name, item->name);
 				}
 			}
 			break;
