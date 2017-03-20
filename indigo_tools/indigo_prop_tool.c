@@ -263,6 +263,7 @@ void print_property_string(indigo_property *property, const char *message) {
 				if ((item->blob.url[0] != '\0') && (indigo_use_blob_urls)) {
 					if (property->state == INDIGO_OK_STATE) {
 						printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, item->blob.url);
+						indigo_populate_http_blob_item(item);
 					} else {
 						printf("%s.%s.%s = <NO BLOB DATA>\n", property->device, property->name, item->name);
 					}
