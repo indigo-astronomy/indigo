@@ -107,7 +107,8 @@ bool indigo_read(int handle, char *buffer, long length) {
 	long remains = length;
 	while (true) {
 		long bytes_read = read(handle, buffer, remains);
-		if (bytes_read <= 0) {
+		printf("bytes_read = %d errno = %d\n", bytes_read, errno);
+		if ((bytes_read <= 0) && (errno != EAGAIN)) {
 			return false;
 		}
 		if (bytes_read == remains) {
@@ -144,6 +145,7 @@ bool indigo_write(int handle, const char *buffer, long length) {
 	long remains = length;
 	while (true) {
 		long bytes_written = write(handle, buffer, remains);
+		printf("bytes_written = %d errno = %d\n", bytes_written, errno);
 		if (bytes_written < 0)
 			return false;
 		if (bytes_written == remains)

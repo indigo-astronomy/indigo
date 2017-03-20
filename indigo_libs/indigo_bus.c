@@ -41,7 +41,9 @@
 
 #define MAX_DEVICES 32
 #define MAX_CLIENTS 8
-#define MAX_BLOBS		32
+#define MAX_BLOBS	32
+
+#define BUFFER_SIZE	1024
 
 static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
@@ -656,55 +658,72 @@ void indigo_init_blob_item(indigo_item *item, const char *name, const char *labe
 	strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
 }
 
+
 bool indigo_populate_http_blob_item(indigo_item *blob_item) {
-	char host[255] = {0};
-    int port = 80;
-    char file[255] = {0};
-    int socket;
-    bool res;
-    int count;
-    long content_len;
+	char host[BUFFER_SIZE] = {0};
+	int port = 80;
+	char file[BUFFER_SIZE] = {0};
+	char request[BUFFER_SIZE];
+	char http_line[BUFFER_SIZE];
+	char http_response[BUFFER_SIZE];
+	long content_len = 0;;
+	int http_result = 0;
+	int socket;
+	bool res;
+	int count;
 
 	if (blob_item->blob.url[0] == '\0') {
 		return false;
 	}
-    sscanf(blob_item->blob.url, "http://%99[^:]:%99d/%99[^\n]", host, &port, file);
-    printf("host = %s\nport = %d\npage = %s\n\nsize = %ld\n", host, port, file, blob_item->blob.size);
-    socket = indigo_open_tcp(host, port);
-    if (socket < 0) {
+	sscanf(blob_item->blob.url, "http://%99[^:]:%99d/%99[^\n]", host, &port, file);
+	printf("host = %s\nport = %d\npage = %s\n\nsize = %ld\n", host, port, file, blob_item->blob.size);
+	socket = indigo_open_tcp(host, port);
+	if (socket < 0) {
 		return false;
 	}
 
-	char request[1024];
-	char resp_line[1024];
-	char resp[99];
-	int http_res;
-	snprintf(request, 1024, "GET /%s HTTP/1.1\n\r\n\r", file);
+	snprintf(request, BUFFER_SIZE, "GET /%s HTTP/1.1\n\r\n\r", file);
 	res = indigo_write(socket, request, strlen(request));
-	res = indigo_read_line(socket, resp_line, 1024);
-	count = sscanf(resp_line, "HTTP/1.1 %99d %99[^\n]", &http_res, resp);
-	printf("%d http_res = %d\nresp = %s\n", count, http_res, resp);
+	if(res == false) goto clean_return;
+
+	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
+	if(res == false) goto clean_return;
+
+	count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
 	if (count != 2) {
+		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 		shutdown(socket, SHUT_RDWR);
 		close(socket);
 		return false;
 	}
-
-	printf("%d http_res = %d\nresp = %s\n", count, http_res, resp);
+	INDIGO_DEBUG(indigo_debug("%s(): http_result = %d, response = \"%s\"", __FUNCTION__, http_result, http_response));
 
 	do{
-		res = indigo_read_line(socket, resp_line, 1024);
-		count = sscanf(resp_line, "Content-Length: %99ld[^\n]", &content_len);
-		printf("%d content_len = %ld\n", count, content_len);
-	} while ((resp_line[0] != '\0') && res);
+		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
+		if(res == false) goto clean_return;
 
-	blob_item->blob.size = content_len;
-	blob_item->blob.value = realloc(blob_item->blob.value, blob_item->blob.size);
-	res = indigo_read(socket, blob_item->blob.value, blob_item->blob.size);
+		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
+		count = sscanf(http_line, "Content-Length: %20ld[^\n]", &content_len);
+	} while (http_line[0] != '\0');
+
+	INDIGO_DEBUG(indigo_debug("%s(): content_len = %ld", __FUNCTION__, content_len));
+
+	if (content_len) {
+		blob_item->blob.size = content_len;
+		blob_item->blob.value = realloc(blob_item->blob.value, blob_item->blob.size);
+		res = indigo_read(socket, blob_item->blob.value, blob_item->blob.size);
+		INDIGO_DEBUG(indigo_debug("%s()edwedwe = %d", __FUNCTION__, res));
+	} else {
+		res = false;
+	}
+
+	clean_return:
+	INDIGO_DEBUG(indigo_debug("%s() = %d", __FUNCTION__, res));
 	shutdown(socket, SHUT_RDWR);
 	close(socket);
-    return true;
+	return res;
 }
+
 
 bool indigo_property_match(indigo_property *property, indigo_property *other) {
 	assert(property != NULL);
