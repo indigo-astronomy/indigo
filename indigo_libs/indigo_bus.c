@@ -682,7 +682,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 		return false;
 	}
 
-	snprintf(request, BUFFER_SIZE, "GET /%s HTTP/1.1\n\r\n\r", file);
+	snprintf(request, BUFFER_SIZE, "GET /%s HTTP/1.1\r\n\r\n", file);
 	res = indigo_write(socket, request, strlen(request));
 	if(res == false) goto clean_return;
 
