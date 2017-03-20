@@ -76,7 +76,7 @@ static struct resource {
 
 static void start_worker_thread(int *client_socket) {
 	int socket = *client_socket;
-	INDIGO_LOG(indigo_log("Worker thread started"));
+	INDIGO_LOG(indigo_log("Worker thread started socket = %d", socket));
 	server_callback(++client_count);
 	char c;
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
@@ -167,6 +167,8 @@ static void start_worker_thread(int *client_socket) {
 								indigo_printf(socket, "Content-Type: text/plain\r\n");
 								indigo_printf(socket, "\r\n");
 								indigo_printf(socket, "BLOB not found!\r\n");
+								shutdown(socket,SHUT_RDWR);
+								sleep(1);
 								close(socket);
 								INDIGO_LOG(indigo_log("%s -> Failed", request));
 								break;
@@ -183,6 +185,8 @@ static void start_worker_thread(int *client_socket) {
 								indigo_printf(socket, "Content-Type: text/plain\r\n");
 								indigo_printf(socket, "\r\n");
 								indigo_printf(socket, "%s not found!\r\n", path);
+								shutdown(socket,SHUT_RDWR);
+								sleep(1);
 								close(socket);
 								INDIGO_LOG(indigo_log("%s -> Failed", request));
 								break;
@@ -201,6 +205,8 @@ static void start_worker_thread(int *client_socket) {
 							}
 						}
 						if (!keep_alive) {
+							shutdown(socket,SHUT_RDWR);
+							sleep(1);
 							close(socket);
 							break;
 						}
