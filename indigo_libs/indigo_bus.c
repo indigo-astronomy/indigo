@@ -672,7 +672,8 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	bool res;
 	int count;
 
-	if (blob_item->blob.url[0] == '\0') {
+	if ((blob_item->blob.url[0] == '\0') || strcmp(blob_item->name, CCD_IMAGE_ITEM_NAME)) {
+		INDIGO_DEBUG(indigo_debug("%s(): url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME));
 		return false;
 	}
 	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%1024[^\n]", host, &port, file);
