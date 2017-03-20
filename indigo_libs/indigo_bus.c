@@ -653,6 +653,19 @@ void indigo_init_blob_item(indigo_item *item, const char *name, const char *labe
 	strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
 }
 
+bool indigo_populate_http_blob_item(indigo_item *blob_item) {
+	char addr[255] = {0};
+    int port = 80;
+    char page[255] = {0};
+    
+	if (blob_item->blob.url[0] == '\0') {
+		return false;
+	}
+    sscanf(blob_item->blob.url, "http://%99[^:]:%99d/%99[^\n]", addr, &port, page);
+    printf("addr = %s\nport = %d\npage = %s\n",addr, port, page);
+    return true;
+}
+
 bool indigo_property_match(indigo_property *property, indigo_property *other) {
 	assert(property != NULL);
 	return other == NULL || ((other->type == 0 || property->type == other->type) && (*other->device == 0 || !strcmp(property->device, other->device)) && (*other->name == 0 || !strcmp(property->name, other->name)));

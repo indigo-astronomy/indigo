@@ -368,6 +368,10 @@ extern void indigo_init_light_item(indigo_item *item, const char *name, const ch
  */
 extern void indigo_init_blob_item(indigo_item *item, const char *name, const char *label);
 
+/** populate BLOB item if url is given. 
+ */ 
+extern bool indigo_populate_http_blob_item(indigo_item *blob_item);
+
 /** Test, if property matches other property.
  */
 extern bool indigo_property_match(indigo_property *property, indigo_property *other);
