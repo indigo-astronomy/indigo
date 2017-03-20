@@ -675,8 +675,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	if (blob_item->blob.url[0] == '\0') {
 		return false;
 	}
-	sscanf(blob_item->blob.url, "http://%99[^:]:%99d/%99[^\n]", host, &port, file);
-	printf("host = %s\nport = %d\npage = %s\n\nsize = %ld\n", host, port, file, blob_item->blob.size);
+	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%1024[^\n]", host, &port, file);
 	socket = indigo_open_tcp(host, port);
 	if (socket < 0) {
 		return false;
@@ -690,7 +689,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	if(res == false) goto clean_return;
 
 	count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
-	if (count != 2) {
+	if ((count != 2) || (http_result != 200)){
 		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 		shutdown(socket, SHUT_RDWR);
 		close(socket);
