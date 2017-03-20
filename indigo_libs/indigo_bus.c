@@ -712,7 +712,6 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 		blob_item->blob.size = content_len;
 		blob_item->blob.value = realloc(blob_item->blob.value, blob_item->blob.size);
 		res = indigo_read(socket, blob_item->blob.value, blob_item->blob.size);
-		INDIGO_DEBUG(indigo_debug("%s()edwedwe = %d", __FUNCTION__, res));
 	} else {
 		res = false;
 	}
