@@ -32,9 +32,12 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <syslog.h>
+#include <unistd.h>
+#include <sys/socket.h>
 
 #include "indigo_bus.h"
 #include "indigo_names.h"
+#include "indigo_io.h"
 
 #define MAX_DEVICES 32
 #define MAX_CLIENTS 8
@@ -654,15 +657,52 @@ void indigo_init_blob_item(indigo_item *item, const char *name, const char *labe
 }
 
 bool indigo_populate_http_blob_item(indigo_item *blob_item) {
-	char addr[255] = {0};
+	char host[255] = {0};
     int port = 80;
-    char page[255] = {0};
-    
+    char file[255] = {0};
+    int socket;
+    bool res;
+    int count;
+    long content_len;
+
 	if (blob_item->blob.url[0] == '\0') {
 		return false;
 	}
-    sscanf(blob_item->blob.url, "http://%99[^:]:%99d/%99[^\n]", addr, &port, page);
-    printf("addr = %s\nport = %d\npage = %s\n",addr, port, page);
+    sscanf(blob_item->blob.url, "http://%99[^:]:%99d/%99[^\n]", host, &port, file);
+    printf("host = %s\nport = %d\npage = %s\n\nsize = %ld\n", host, port, file, blob_item->blob.size);
+    socket = indigo_open_tcp(host, port);
+    if (socket < 0) {
+		return false;
+	}
+
+	char request[1024];
+	char resp_line[1024];
+	char resp[99];
+	int http_res;
+	snprintf(request, 1024, "GET /%s HTTP/1.1\n\r\n\r", file);
+	res = indigo_write(socket, request, strlen(request));
+	res = indigo_read_line(socket, resp_line, 1024);
+	count = sscanf(resp_line, "HTTP/1.1 %99d %99[^\n]", &http_res, resp);
+	printf("%d http_res = %d\nresp = %s\n", count, http_res, resp);
+	if (count != 2) {
+		shutdown(socket, SHUT_RDWR);
+		close(socket);
+		return false;
+	}
+
+	printf("%d http_res = %d\nresp = %s\n", count, http_res, resp);
+
+	do{
+		res = indigo_read_line(socket, resp_line, 1024);
+		count = sscanf(resp_line, "Content-Length: %99ld[^\n]", &content_len);
+		printf("%d content_len = %ld\n", count, content_len);
+	} while ((resp_line[0] != '\0') && res);
+
+	blob_item->blob.size = content_len;
+	blob_item->blob.value = realloc(blob_item->blob.value, blob_item->blob.size);
+	res = indigo_read(socket, blob_item->blob.value, blob_item->blob.size);
+	shutdown(socket, SHUT_RDWR);
+	close(socket);
     return true;
 }
 
