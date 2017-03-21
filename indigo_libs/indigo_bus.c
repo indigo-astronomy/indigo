@@ -668,6 +668,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	char http_response[BUFFER_SIZE];
 	long content_len = 0;;
 	int http_result = 0;
+	char *image_type;
 	int socket;
 	bool res;
 	int count;
@@ -709,6 +710,8 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	INDIGO_DEBUG(indigo_debug("%s(): content_len = %ld", __FUNCTION__, content_len));
 
 	if (content_len) {
+		image_type = strrchr(file, '.');
+		if (image_type) strncpy(blob_item->blob.format, image_type, INDIGO_NAME_SIZE);
 		blob_item->blob.size = content_len;
 		blob_item->blob.value = realloc(blob_item->blob.value, blob_item->blob.size);
 		res = indigo_read(socket, blob_item->blob.value, blob_item->blob.size);
