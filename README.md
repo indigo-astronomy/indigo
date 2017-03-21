@@ -18,6 +18,7 @@ This is the list of requirements taken into the consideration:
 4. indigo_server - server with loadable (indigo .so/.dylib and indi executables) drivers
 5. INDIGO Server for macOS wrapper
 6. Integrated HTTP server for BLOB download & server control (= web based INDI control panel)
+7. indigo_prop_tool - command line tool to list and set properties
 
 #### Drivers
 
