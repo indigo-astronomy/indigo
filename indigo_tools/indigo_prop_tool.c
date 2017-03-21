@@ -167,6 +167,20 @@ int parse_set_property_string(const char *prop_string, property_change_request *
 }
 
 
+static void save_blob(char *filename, char *data, size_t length) {
+	int fd = open(filename, O_WRONLY | O_CREAT,  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
+	if (fd == -1) {
+		INDIGO_ERROR(indigo_error("Open file %s failed: %s", filename, strerror(errno)));
+		return;
+	}
+	int len = write(fd, data, length);
+	if (len <= 0) {
+		INDIGO_ERROR(indigo_error("Wtite blob to file %s failed: %s", filename, strerror(errno)));
+	}
+	close(fd);
+}
+
+
 void print_property_string(indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
@@ -245,31 +259,26 @@ void print_property_string(indigo_property *property, const char *message) {
 			printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
 			break;
 		case INDIGO_BLOB_VECTOR:
-			if ((save_blobs) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
+			if ((save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
 				char filename[256];
 				snprintf(filename, 256, "%s.%s%s", property->device, property->name, item->blob.format);
-				printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, filename);
-				int fd = open(filename, O_WRONLY | O_CREAT,  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
-				if (fd == -1) {
-					INDIGO_ERROR(indigo_error("Open file %s failed: %s", filename, strerror(errno)));
-					break;
-				}
-				int len = write(fd, item->blob.value, item->blob.size);
-				if (len <= 0) {
-					INDIGO_ERROR(indigo_error("Wtite blob to file %s failed: %s", filename, strerror(errno)));
-				}
-				close(fd);
-			} else {
-				if ((item->blob.url[0] != '\0') && (indigo_use_blob_urls)) {
-					if (property->state == INDIGO_OK_STATE) {
-						printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, item->blob.url);
-						indigo_populate_http_blob_item(item);
-					} else {
-						printf("%s.%s.%s = <NO BLOB DATA>\n", property->device, property->name, item->name);
-					}
+				printf("%s.%s.%s = <BLOB => %s>\n", property->device, property->name, item->name, filename);
+				save_blob(filename, item->blob.value, item->blob.size);
+			} else if ((save_blobs) && (indigo_use_blob_urls) && (item->blob.url[0] != '\0') && (property->state == INDIGO_OK_STATE)) {
+				if (indigo_populate_http_blob_item(item)) {
+					char filename[256];
+					snprintf(filename, 256, "%s.%s%s", property->device, property->name, item->blob.format);
+					printf("%s.%s.%s = <%s => %s>\n", property->device, property->name, item->name, item->blob.url, filename);
+					save_blob(filename, item->blob.value, item->blob.size);
 				} else {
-					printf("%s.%s.%s = <NO BLOB DATA>\n", property->device, property->name, item->name);
+					INDIGO_ERROR(indigo_error("Can not retrieve data from %s", item->blob.url));
 				}
+			} else if ((!save_blobs) && (indigo_use_blob_urls) && (item->blob.url[0] != '\0') && (property->state == INDIGO_OK_STATE)) {
+				printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, item->blob.url);
+			} else if ((!save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
+				printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
+			} else {
+				printf("%s.%s.%s = <NO BLOB DATA>\n", property->device, property->name, item->name);
 			}
 			break;
 		}
@@ -412,6 +421,7 @@ static void print_help(const char *name) {
 	printf("options:\n"
 	       "       -h  | --help\n"
 	       "       -b  | --save-blobs\n"
+	       "       -l  | --use_legacy_blobs\n"
 	       "       -e  | --extended-info\n"
 	       "       -v  | --enable-log\n"
 	       "       -vv | --enable-devug\n"
@@ -453,6 +463,7 @@ int main(int argc, const char * argv[]) {
 			print_verbose = true;
 		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--save-blobs")) {
 			save_blobs = true;
+		} else if (!strcmp(argv[i], "-l") || !strcmp(argv[i], "--use_legacy-blobs")) {
 			indigo_use_blob_urls = false;
 		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
 			if (argc > i+1) {
