@@ -1463,21 +1463,51 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			indigo_async((void *)(void *)indigo_attach_device, device);
 			devices[slot]=device;
 
-			/* TODO: Check if has secondary CCD */
-			slot = find_available_device_slot();
-			if (slot < 0) {
-				INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
-				pthread_mutex_unlock(&device_mutex);
+			/* Check if there is secondary CCD */
+			short res;
+			OpenDeviceParams odp = {
+				.deviceType = usb_id,
+				.ipAddress = 0x00,
+				.lptBaseAddress = 0x00
+			};
+
+			if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
+				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
 				return 0;
 			}
-			device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &ccd_template, sizeof(indigo_device));
-			sprintf(device->name, "%s Guider CCD #%d", cam_name, usb_to_index(usb_id));
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
-			device->private_data = private_data;
-			indigo_async((void *)(void *)indigo_attach_device, device);
-			devices[slot]=device;
+
+			EstablishLinkParams elp = { .sbigUseOnly = 0 };
+			EstablishLinkResults elr;
+
+			if ((res = sbig_command(CC_ESTABLISH_LINK, &elp, &elr)) != CE_NO_ERROR) {
+				sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d", res));
+				return 0;
+			}
+
+			GetCCDInfoParams gcp = { .request = CCD_INFO_TRACKING };
+			GetCCDInfoResults0 gcir0;
+
+			if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
+				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: CC_GET_CCD_INFO error = %d, asuming no Secondary CCD", res));
+				return 0;
+			} else {
+				slot = find_available_device_slot();
+				if (slot < 0) {
+					INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
+					sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+					return 0;
+				}
+				device = malloc(sizeof(indigo_device));
+				assert(device != NULL);
+				memcpy(device, &ccd_template, sizeof(indigo_device));
+				sprintf(device->name, "%s Guider CCD #%d", cam_name, usb_to_index(usb_id));
+				INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
+				device->private_data = private_data;
+				indigo_async((void *)(void *)indigo_attach_device, device);
+				devices[slot]=device;
+			}
+			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 
 			break;
 		}
