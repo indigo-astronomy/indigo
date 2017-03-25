@@ -670,7 +670,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	int http_result = 0;
 	char *image_type;
 	int socket;
-	bool res;
+	int res;
 	int count;
 
 	if ((blob_item->blob.url[0] == '\0') || strcmp(blob_item->name, CCD_IMAGE_ITEM_NAME)) {
@@ -688,7 +688,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	if(res == false) goto clean_return;
 
 	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-	if(res == false) goto clean_return;
+	if(res <= 0) goto clean_return;
 
 	count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
 	if ((count != 2) || (http_result != 200)){
@@ -701,7 +701,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 
 	do{
 		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-		if(res == false) goto clean_return;
+		if(res <= 0) goto clean_return;
 
 		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 		count = sscanf(http_line, "Content-Length: %20ld[^\n]", &content_len);

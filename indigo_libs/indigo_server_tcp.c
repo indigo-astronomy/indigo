@@ -78,6 +78,7 @@ static void start_worker_thread(int *client_socket) {
 	int socket = *client_socket;
 	INDIGO_LOG(indigo_log("Worker thread started socket = %d", socket));
 	server_callback(++client_count);
+	int res = 0;
 	char c;
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
@@ -99,7 +100,7 @@ static void start_worker_thread(int *client_socket) {
 		} else if (c == 'G') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
-			while (indigo_read_line(socket, request, BUFFER_SIZE)) {
+			while ((res = indigo_read_line(socket, request, BUFFER_SIZE)) >= 0) {
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;
 					char *space = strchr(path, ' ');
@@ -107,7 +108,7 @@ static void start_worker_thread(int *client_socket) {
 						*space = 0;
 					char websocket_key[256] = "";
 					bool keep_alive = false;
-					while (indigo_read_line(socket, header, BUFFER_SIZE)) {
+					while (indigo_read_line(socket, header, BUFFER_SIZE) >= 0) {
 						if (*header == 0)
 							break;
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
@@ -212,8 +213,8 @@ static void start_worker_thread(int *client_socket) {
 						}
 					}
 				}
-				else if (*request == 0) {
-					shutdown(socket,SHUT_RDWR);
+				else if (res == 0) { /* Client cosed the commection */
+					shutdown(socket, SHUT_RDWR);
 					sleep(1);
 					close(socket);
 					break;
