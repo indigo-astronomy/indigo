@@ -154,7 +154,7 @@ static void start_worker_thread(int *client_socket) {
 									indigo_printf(socket, "Content-Type: image/jpeg\r\n");
 								} else {
 									indigo_printf(socket, "Content-Type: application/octet-stream\r\n");
-									indigo_printf(socket, "Content-Disposition: attachment; filename=\"%p.%s\"\r\n", item, item->blob.format);
+									indigo_printf(socket, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, item->blob.format);
 								}
 								if (keep_alive)
 									indigo_printf(socket, "Connection: keep-alive\r\n");
@@ -211,6 +211,12 @@ static void start_worker_thread(int *client_socket) {
 							break;
 						}
 					}
+				}
+				else if (*request == 0) {
+					shutdown(socket,SHUT_RDWR);
+					sleep(1);
+					close(socket);
+					break;
 				}
 			}
 		} else {
