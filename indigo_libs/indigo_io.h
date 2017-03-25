@@ -44,7 +44,7 @@ extern bool indigo_read(int handle, char *buffer, long length);
 
 /** Read line.
  */
-extern bool indigo_read_line(int handle, char *buffer, int length);
+extern int indigo_read_line(int handle, char *buffer, int length);
 
 /** Write buffer.
  */
