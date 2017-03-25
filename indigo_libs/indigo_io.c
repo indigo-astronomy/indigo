@@ -103,15 +103,17 @@ int indigo_open_tcp(const char *host, int port) {
 	return sock;
 }
 
-bool indigo_read(int handle, char *buffer, long length) {
+int indigo_read(int handle, char *buffer, long length) {
 	long remains = length;
+	long total_bytes = 0;
 	while (true) {
 		long bytes_read = read(handle, buffer, remains);
+		total_bytes += bytes_read;
 		if (bytes_read <= 0) {
-			return false;
+			return bytes_read;
 		}
 		if (bytes_read == remains) {
-			return true;
+			return total_bytes;
 		}
 		buffer += bytes_read;
 		remains -= bytes_read;

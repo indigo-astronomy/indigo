@@ -40,7 +40,7 @@ extern int indigo_open_tcp(const char *host, int port);
 
 /** Read buffer.
  */
-extern bool indigo_read(int handle, char *buffer, long length);
+extern int indigo_read(int handle, char *buffer, long length);
 
 /** Read line.
  */

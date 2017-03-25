@@ -714,7 +714,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 		if (image_type) strncpy(blob_item->blob.format, image_type, INDIGO_NAME_SIZE);
 		blob_item->blob.size = content_len;
 		blob_item->blob.value = realloc(blob_item->blob.value, blob_item->blob.size);
-		res = indigo_read(socket, blob_item->blob.value, blob_item->blob.size);
+		res = (indigo_read(socket, blob_item->blob.value, blob_item->blob.size) >= 0) ? true : false;
 	} else {
 		res = false;
 	}
