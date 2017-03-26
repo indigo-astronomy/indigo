@@ -108,9 +108,7 @@ static void start_worker_thread(int *client_socket) {
 						*space = 0;
 					char websocket_key[256] = "";
 					bool keep_alive = false;
-					while (indigo_read_line(socket, header, BUFFER_SIZE) >= 0) {
-						if (*header == 0)
-							break;
+					while (indigo_read_line(socket, header, BUFFER_SIZE) > 0) {
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
 							strcpy(websocket_key, header + 19);
 						if (!strcasecmp(header, "Connection: keep-alive"))
