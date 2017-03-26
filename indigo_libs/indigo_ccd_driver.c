@@ -510,7 +510,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		char now[20];
 		time(&timer);
 		tm_info = gmtime(&timer);
-		strftime(now, 20, "%Y:%m:%dT%H:%M:%S", tm_info);
+		strftime(now, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
 		char *header = data;
 		memset(header, ' ', FITS_HEADER_SIZE);
 		int t = sprintf(header, "SIMPLE  =                    T / file conforms to FITS standard");
