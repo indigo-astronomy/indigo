@@ -162,7 +162,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
 				sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->device_context->width/4, PRIVATE_DATA->device_context->height/4);
 				indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
-				PRIVATE_DATA->buffer = malloc(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
+				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 				assert(PRIVATE_DATA->buffer != NULL);
 				if (PRIVATE_DATA->device_context->has_cooler) {
 					CCD_COOLER_PROPERTY->hidden = false;

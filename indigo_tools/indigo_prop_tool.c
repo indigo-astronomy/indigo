@@ -177,13 +177,6 @@ static void save_blob(char *filename, char *data, size_t length) {
 	if (len <= 0) {
 		INDIGO_ERROR(indigo_error("Write blob to file %s failed: %s", filename, strerror(errno)));
 	}
-	if (length % 2880) {
-		static char padding[2880];
-		len = write(fd, padding, 2880 - length % 2880);
-		if (len <= 0) {
-			INDIGO_ERROR(indigo_error("Write blob padding to file %s failed: %s", filename, strerror(errno)));
-		}
-	}
 	close(fd);
 }
 

@@ -345,7 +345,10 @@ extern indigo_property *indigo_init_blob_property(indigo_property *property, con
 /** Resize property.
  */
 extern indigo_property *indigo_resize_property(indigo_property *property, int count);
-/** Release property.
+/** Allocate blob buffer (rounded up to 2880 bytes).
+ */
+extern void *indigo_alloc_blob_buffer(long size);
+/** Resize property.
  */
 extern void indigo_release_property(indigo_property *property);
 /** Validate address of item of registered BLOB property.

@@ -313,7 +313,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				result = ssag_open(device);
 			}
 			if (result) {
-				PRIVATE_DATA->buffer = (unsigned char *)malloc(FITS_HEADER_SIZE + BUFFER_SIZE);
+				PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(FITS_HEADER_SIZE + BUFFER_SIZE);
 				assert(PRIVATE_DATA->buffer != NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
