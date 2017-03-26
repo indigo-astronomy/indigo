@@ -204,19 +204,18 @@ static void start_worker_thread(int *client_socket) {
 							}
 						}
 						if (!keep_alive) {
-							shutdown(socket,SHUT_RDWR);
+							shutdown(socket, SHUT_RDWR);
 							sleep(1);
 							close(socket);
 							break;
 						}
 					}
 				}
-				else if (res == 0) { /* Client cosed the commection */
-					shutdown(socket, SHUT_RDWR);
-					sleep(1);
-					close(socket);
-					break;
-				}
+			}
+			if (res < 0) { /* Client cosed the connection */
+				shutdown(socket, SHUT_RDWR);
+				sleep(1);
+				close(socket);
 			}
 		} else {
 			INDIGO_LOG(indigo_log("Unrecognised protocol"));
