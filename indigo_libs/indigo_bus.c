@@ -658,6 +658,13 @@ void indigo_init_blob_item(indigo_item *item, const char *name, const char *labe
 	strncpy(item->label, label ? label : "", INDIGO_VALUE_SIZE);
 }
 
+void *indigo_alloc_blob_buffer(long size) {
+	int mod2880 = size % 2880;
+	if (mod2880) {
+		return malloc(size + 2880 - mod2880);
+	}
+	return malloc(size);
+}
 
 bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	char host[BUFFER_SIZE] = {0};

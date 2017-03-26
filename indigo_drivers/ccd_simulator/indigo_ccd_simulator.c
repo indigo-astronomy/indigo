@@ -51,7 +51,7 @@ static unsigned short background[] = {
 typedef struct {
 	indigo_device *imager, *guider;
 	int star_x[STARS], star_y[STARS], star_a[STARS];
-	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
+	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT + 2880];
 	double target_temperature, current_temperature;
 	int target_slot, current_slot;
 	int target_position, current_position;

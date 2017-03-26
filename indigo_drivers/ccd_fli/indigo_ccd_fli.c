@@ -195,7 +195,7 @@ static bool fli_open(indigo_device *device) {
 
 	if (PRIVATE_DATA->buffer == NULL) {
 		PRIVATE_DATA->buffer_size = width * height * 2 + FITS_HEADER_SIZE;
-		PRIVATE_DATA->buffer = (unsigned char*)malloc(PRIVATE_DATA->buffer_size);
+		PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
