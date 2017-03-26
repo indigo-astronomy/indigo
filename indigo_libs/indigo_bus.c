@@ -685,10 +685,12 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 
 	snprintf(request, BUFFER_SIZE, "GET /%s HTTP/1.1\r\n\r\n", file);
 	res = indigo_write(socket, request, strlen(request));
-	if(res == false) goto clean_return;
+	if (res == false)
+		goto clean_return;
 
 	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-	if(res <= 0) goto clean_return;
+	if (res < 0)
+		goto clean_return;
 
 	count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
 	if ((count != 2) || (http_result != 200)){
@@ -699,10 +701,10 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	}
 	INDIGO_DEBUG(indigo_debug("%s(): http_result = %d, response = \"%s\"", __FUNCTION__, http_result, http_response));
 
-	do{
+	do {
 		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-		if(res <= 0) goto clean_return;
-
+		if (res < 0)
+			goto clean_return;
 		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 		count = sscanf(http_line, "Content-Length: %20ld[^\n]", &content_len);
 	} while (http_line[0] != '\0');
