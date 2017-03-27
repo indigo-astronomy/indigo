@@ -49,7 +49,7 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	if (property != NULL && *property->device) {
 		strcpy(device_name, property->device);
 		if (indigo_use_host_suffix) {
-			char *at = strchr(device_name, '@');
+			char *at = strrchr(device_name, '@');
 			if (at != NULL) {
 				while (at > device_name && at[-1] == ' ')
 					at--;
@@ -59,16 +59,16 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	}
 	if (property != NULL) {
 		if (*property->device && *indigo_property_name(device->version, property)) {
-			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF, indigo_xml_escape(device_name), indigo_property_name(device->version, property));
+			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_xml_escape(device_name), indigo_property_name(device->version, property));
 		} else if (*property->device) {
-			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF, indigo_xml_escape(device_name));
+			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d' device='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_xml_escape(device_name));
 		} else if (*indigo_property_name(device->version, property)) {
-			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF, indigo_property_name(device->version, property));
+			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_property_name(device->version, property));
 		} else {
-			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF);
+			indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 		}
 	} else {
-		indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (device->version >> 8) & 0xFF, device->version & 0xFF);
+		indigo_printf(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 	}
 	pthread_mutex_unlock(&xml_mutex);
 	return INDIGO_OK;
@@ -84,7 +84,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 	char device_name[INDIGO_NAME_SIZE];
 	strcpy(device_name, property->device);
 	if (indigo_use_host_suffix) {
-		char *at = strchr(device_name, '@');
+		char *at = strrchr(device_name, '@');
 		if (at != NULL) {
 			while (at > device_name && at[-1] == ' ')
 				at--;
@@ -133,7 +133,7 @@ static indigo_result xml_client_parser_detach(indigo_device *device) {
 
 indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input, int ouput) {
 	static indigo_device device_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_LEGACY,
 		NULL,
 		xml_client_parser_enumerate_properties,
 		xml_client_parser_change_property,

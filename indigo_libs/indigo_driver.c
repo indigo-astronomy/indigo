@@ -340,6 +340,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 		indigo_adapter_context *context = malloc(sizeof(indigo_adapter_context));
 		context->input = handle;
 		client->client_context = context;
+		client->version = INDIGO_VERSION_CURRENT;
 		indigo_xml_parse(NULL, client);
 		close(handle);
 		free(context);
