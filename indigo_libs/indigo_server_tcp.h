@@ -36,6 +36,10 @@ typedef void (*indigo_server_tcp_callback)(int);
  */
 extern int indigo_server_tcp_port;
 
+/** TCP port is ephemeral.
+ */
+extern bool indigo_is_ephemeral_port;
+
 /** Add static document.
  */
 extern void indigo_server_add_resource(char *path, unsigned char *data, unsigned length, char *content_type);

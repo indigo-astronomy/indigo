@@ -306,13 +306,14 @@ indigo_result indigo_device_detach(indigo_device *device) {
 }
 
 extern int indigo_server_tcp_port;
+extern bool indigo_is_ephemeral_port;
 
 int indigo_open_config_file(char *device_name, int mode, const char *suffix) {
 	static char path[128];
 	int path_end = snprintf(path, sizeof(path), "%s/.indigo", getenv("HOME"));
 	int handle = mkdir(path, 0777);
 	if (handle == 0 || errno == EEXIST) {
-		if (indigo_server_tcp_port == 7624)
+		if (indigo_server_tcp_port == 7624 || indigo_is_ephemeral_port)
 			snprintf(path + path_end, sizeof(path) - path_end, "/%s%s", device_name, suffix);
 		else
 			snprintf(path + path_end, sizeof(path) - path_end, "/%s_%d%s", device_name, indigo_server_tcp_port, suffix);

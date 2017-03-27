@@ -63,6 +63,7 @@ static int client_count = 0;
 static indigo_server_tcp_callback server_callback;
 
 int indigo_server_tcp_port = 7624;
+bool indigo_is_ephemeral_port = false;
 
 static struct resource {
 	char *path;
@@ -275,6 +276,7 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		close(server_socket);
 		return INDIGO_CANT_START_SERVER;
 	}
+	indigo_is_ephemeral_port = indigo_server_tcp_port == 0;
 	indigo_server_tcp_port = ntohs(server_address.sin_port);
 	INDIGO_LOG(indigo_log("Server started on %d", indigo_server_tcp_port));
 	server_callback(client_count);
