@@ -29,6 +29,10 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Main mount group name string.
  */
 #define MOUNT_MAIN_GROUP															"Mount"
@@ -372,6 +376,10 @@ extern indigo_result indigo_translated_to_raw(indigo_device *device, double ra, 
  */
 
 extern indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_mount_h */
 

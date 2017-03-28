@@ -29,6 +29,10 @@
 #include <stdio.h>
 #include "indigo_bus.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define JSON_BUFFER_SIZE	(64 * 1024)
 
 #ifndef htonll
@@ -42,5 +46,9 @@
 /** JSON wire protocol parser.
  */
 extern void indigo_json_parse(indigo_device *device, indigo_client *client);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_json_h */

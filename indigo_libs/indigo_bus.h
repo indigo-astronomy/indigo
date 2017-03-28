@@ -30,6 +30,10 @@
 
 #include "indigo_config.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Device, property or item name size.
  */
 #define INDIGO_NAME_SIZE      128
@@ -446,6 +450,10 @@ extern bool indigo_use_syslog;
 /** Do not add @ host:port suffix to remote devices - for case with single remote server and no local devices only.
  */
 extern bool indigo_use_host_suffix;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_bus_h */
 
