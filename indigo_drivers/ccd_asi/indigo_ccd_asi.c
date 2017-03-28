@@ -266,7 +266,7 @@ static bool asi_read_pixels(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return true;
 	} else {
-		INDIGO_ERROR(indigo_error("indigo_ccd_asi: Exposure failed: dev_id = %d EC = %d", PRIVATE_DATA->dev_id, status));
+		INDIGO_ERROR(indigo_error("indigo_ccd_asi: Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status));
 		return false;
 	}
 }
