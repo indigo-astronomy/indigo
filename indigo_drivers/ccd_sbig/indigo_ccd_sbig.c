@@ -90,21 +90,14 @@
 #define MAX_MODES                  32
 
 #define PRIVATE_DATA               ((sbig_private_data *)device->private_data)
+#define PRIMARY_CCD                (device == PRIVATE_DATA->primary_ccd)
 
-#define FLI_ADVANCED_GROUP              "Advanced"
+#define SBIG_ADVANCED_GROUP              "Advanced"
 
+/*
 #define FLI_NFLUSHES_PROPERTY           (PRIVATE_DATA->fli_nflushes_property)
 #define FLI_NFLUSHES_PROPERTY_ITEM      (FLI_NFLUSHES_PROPERTY->items + 0)
-
-#define FLI_RBI_FLUSH_PROPERTY          (PRIVATE_DATA->fli_rbi_flush_property)
-#define FLI_RBI_FLUSH_EXPOSURE_ITEM     (FLI_RBI_FLUSH_PROPERTY->items + 0)
-#define FLI_RBI_FLUSH_COUNT_ITEM        (FLI_RBI_FLUSH_PROPERTY->items + 1)
-
-#define FLI_RBI_FLUSH_ENABLE_PROPERTY   (PRIVATE_DATA->fli_rbi_flush_enable_property)
-#define FLI_RBI_FLUSH_ENABLED_ITEM      (FLI_RBI_FLUSH_ENABLE_PROPERTY->items + 0)
-#define FLI_RBI_FLUSH_DISABLED_ITEM     (FLI_RBI_FLUSH_ENABLE_PROPERTY->items + 1)
-
-#define FLI_CAMERA_MODE_PROPERTY        (PRIVATE_DATA->fli_camera_mode_property)
+*/
 
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
@@ -142,18 +135,38 @@ typedef struct {
 	double cooler_power;
 	unsigned char *buffer;
 	long int buffer_size;
-	image_area total_area;
-	image_area visible_area;
-	cframe_params frame_params;
+
+	image_area imager_ccd_area;
+	image_area guider_ccd_area;
+
+	GetCCDInfoResults0 imager_basic_info;
+	GetCCDInfoResults0 guider_basic_info;
+
+	GetCCDInfoResults2 imager_extended_info1;
+
+	GetCCDInfoResults4 imager_extended_info2;
+	GetCCDInfoResults4 guider_extended_info2;
+
+	cframe_params imager_frame_params;
+	cframe_params guider_frame_params;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature;
-	indigo_property *fli_nflushes_property;
-	indigo_property *fli_rbi_flush_enable_property;
-	indigo_property *fli_rbi_flush_property;
-	indigo_property *fli_camera_mode_property;
+	/* indigo_property *fli_nflushes_property; */
 } sbig_private_data;
 
 short (*sbig_command)(short, void*, void*);
+
+
+double bcd2double(ulong bcd) {
+	double value = 0.0;
+	double digit = 0.01;
+	for(int i = 0; i < 8; i++) {
+		value += (bcd & 0x0F) * digit;
+		digit *= 10.0;
+		bcd >>= 4;
+	}
+	return value;
+}
 
 
 /* driver commands */
@@ -287,14 +300,8 @@ static ushort sbig_set_relays(short handle, ushort relays) {
 
 static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if ((CONNECTION_CONNECTED_ITEM->sw.value) && (device == PRIVATE_DATA->primary_ccd)) {
-		if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property))
-			indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL);
-		if (indigo_property_match(FLI_RBI_FLUSH_ENABLE_PROPERTY, property))
-			indigo_define_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
-		if (indigo_property_match(FLI_RBI_FLUSH_PROPERTY, property))
-			indigo_define_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
-		if (indigo_property_match(FLI_CAMERA_MODE_PROPERTY, property))
-			indigo_define_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
+		/* if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property))
+			indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL); */
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -389,28 +396,23 @@ static bool sbig_open(indigo_device *device) {
 }
 
 
-static bool sbig_start_exposure(indigo_device *device, double exposure, bool dark, bool rbi_flood, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
+static bool sbig_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
 	long res;
 
-	/* Skip the optical black area */
-	offset_x += PRIVATE_DATA->visible_area.ul_x;
-	offset_y += PRIVATE_DATA->visible_area.ul_y;
-
-	long right_x  = offset_x + (frame_width / bin_x);
-	long right_y = offset_y + (frame_height / bin_y);
-
-	/* FLISetBitDepth() does not seem to work! */
-	/*
-	flibitdepth_t bit_depth = FLI_MODE_16BIT;
-	if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12) bit_depth = FLI_MODE_8BIT;
-	*/
-
 	/* needed to read frame data */
-	PRIVATE_DATA->frame_params.width = frame_width;
-	PRIVATE_DATA->frame_params.height = frame_height;
-	PRIVATE_DATA->frame_params.bin_x = bin_x;
-	PRIVATE_DATA->frame_params.bin_y = bin_y;
-	PRIVATE_DATA->frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
+	if (PRIMARY_CCD) {
+		PRIVATE_DATA->imager_frame_params.width = frame_width;
+		PRIVATE_DATA->imager_frame_params.height = frame_height;
+		PRIVATE_DATA->imager_frame_params.bin_x = bin_x;
+		PRIVATE_DATA->imager_frame_params.bin_y = bin_y;
+		PRIVATE_DATA->imager_frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
+	} else {
+		PRIVATE_DATA->guider_frame_params.width = frame_width;
+		PRIVATE_DATA->guider_frame_params.height = frame_height;
+		PRIVATE_DATA->guider_frame_params.bin_x = bin_x;
+		PRIVATE_DATA->guider_frame_params.bin_y = bin_y;
+		PRIVATE_DATA->guider_frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
@@ -638,48 +640,6 @@ static void clear_reg_timer_callback(indigo_device *device) {
 }
 
 
-static void rbi_exposure_timer_callback(indigo_device *device) {
-	bool ok;
-	PRIVATE_DATA->exposure_timer = NULL;
-	if(PRIVATE_DATA->abort_flag) return;
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (sbig_read_pixels(device)) { /* read the NIR flooded frame and discard it */
-			for( int i = 0; i < (int)(FLI_RBI_FLUSH_COUNT_ITEM->number.value); i++) { /* Take bias exposures to flush the RBI and discard them */
-				if (sbig_start_exposure(device, 0, true, false, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
-				                       CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-				                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
-				{
-					if(PRIVATE_DATA->abort_flag) return;
-					sbig_read_pixels(device);
-				}
-			}
-
-			if(PRIVATE_DATA->abort_flag) return;
-			PRIVATE_DATA->can_check_temperature = true;
-			indigo_ccd_resume_countdown(device);
-			/* The sensor is flushed -> start real exposure */
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Taking exposure...");
-			if (sbig_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, false,
-			                       CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-			                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
-			{
-				if(PRIVATE_DATA->abort_flag) return;
-				if (CCD_EXPOSURE_ITEM->number.target > 4) {
-					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
-				} else {
-					PRIVATE_DATA->can_check_temperature = false;
-					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
-				}
-			} else {
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
-				PRIVATE_DATA->can_check_temperature = true;
-			}
-		}
-	}
-}
-
-
 static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (sbig_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
@@ -718,34 +678,14 @@ static indigo_result ccd_attach(indigo_device *device) {
 		/* Use all info property fields */
 		INFO_PROPERTY->count = 7;
 
+		/*
 		// -------------------------------------------------------------------------------- FLI_NFLUSHES
 		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", FLI_ADVANCED_GROUP, "Flush CCD", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 		if (FLI_NFLUSHES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "FLI_NFLUSHES", "Times (before exposure)", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
-
-		// -------------------------------------------------------------------------------- FLI_RBI_FLUSH_ENABLE
-		FLI_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_RBI_FLUSH_ENABLE", FLI_ADVANCED_GROUP, "RBI flush", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (FLI_RBI_FLUSH_ENABLE_PROPERTY == NULL)
-			return INDIGO_FAILED;
-
-		indigo_init_switch_item(FLI_RBI_FLUSH_ENABLED_ITEM, "ENABLED", "Enabled", false);
-		indigo_init_switch_item(FLI_RBI_FLUSH_DISABLED_ITEM, "DISABLED", "Disabled", true);
-
-		// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
-		FLI_RBI_FLUSH_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_RBI_FLUSH", FLI_ADVANCED_GROUP, "RBI flush params", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
-		if (FLI_RBI_FLUSH_PROPERTY == NULL)
-			return INDIGO_FAILED;
-
-		indigo_init_number_item(FLI_RBI_FLUSH_EXPOSURE_ITEM, "EXOSURE", "NIR flood time (s)", MIN_NIR_FLOOD, MAX_NIR_FLOOD, 0, DEFAULT_NIR_FLOOD);
-		indigo_init_number_item(FLI_RBI_FLUSH_COUNT_ITEM, "COUNT", "Number of flushes", MIN_FLUSH_COUNT, MAX_FLUSH_COUNT, 1, DEFAULT_FLUSH_COUNT);
-		// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
-		FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", FLI_ADVANCED_GROUP, "Camera mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
-				if (FLI_CAMERA_MODE_PROPERTY == NULL)
-				return INDIGO_FAILED;
-				/* will be populated on connect */
-		//---------------------------------------------------------------------------------
+		*/
 
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -753,68 +693,13 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 
-static bool handle_nflushes_property(indigo_device *device, indigo_property *property) {
-	long nflushes = (long)(FLI_NFLUSHES_PROPERTY_ITEM->number.value);
-
-	/*
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	long res = FLISetNFlushes(id, nflushes);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetNFlushes(%d) = %d", id, res));
-		FLI_NFLUSHES_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FLI_NFLUSHES_PROPERTY, "Can not set number of flushes to %ld", nflushes);
-		return false;
-	}
-
-	FLI_NFLUSHES_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FLI_NFLUSHES_PROPERTY, "Number of flushes set to %ld", nflushes);
-	*/
-	return true;
-}
-
-
-static bool handle_camera_mode_property(indigo_device *device, indigo_property *property) {
-	int mode;
-
-	/*
-	for (mode = 0; mode < FLI_CAMERA_MODE_PROPERTY->count; mode++) {
-		if ((FLI_CAMERA_MODE_PROPERTY->items + mode)->sw.value) break;
-	}
-
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	long res = FLISetCameraMode(id, mode);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli:FLISetCameraMode(%d) = %d", id, res));
-		FLI_CAMERA_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, "Can not set camera mode %d", mode);
-		return false;
-	}
-
-	*/
-	FLI_CAMERA_MODE_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, "Camera mode set to %d", mode);
-
-	return true;
-}
-
 static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
 	long ok;
-	bool rbi_flush = FLI_RBI_FLUSH_ENABLED_ITEM->sw.value;
 	PRIVATE_DATA->abort_flag = false;
 
-	if (rbi_flush) {
-		ok = sbig_start_exposure(device, FLI_RBI_FLUSH_EXPOSURE_ITEM->number.value, true, rbi_flush, CCD_FRAME_LEFT_ITEM->number.value,
-		                                CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-	                                    CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
-	} else {
-		ok = sbig_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, rbi_flush,
+	ok = sbig_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
 	                                    CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
 	                                    CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
-	}
 
 	if (ok) {
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
@@ -826,19 +711,13 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 		}
 
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		if (rbi_flush) {
-			indigo_ccd_suspend_countdown(device);
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Flushing CCD to remove RBI, this takes some time...");
-			PRIVATE_DATA->can_check_temperature = false;
-			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, FLI_RBI_FLUSH_EXPOSURE_ITEM->number.value, rbi_exposure_timer_callback);
+
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		if (CCD_EXPOSURE_ITEM->number.target > 4) {
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
 		} else {
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			if (CCD_EXPOSURE_ITEM->number.target > 4) {
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
-			} else {
-				PRIVATE_DATA->can_check_temperature = false;
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
-			}
+			PRIVATE_DATA->can_check_temperature = false;
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
 		}
 	} else {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -857,71 +736,79 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (sbig_open(device)) {
-				long res;
+				GetCCDInfoParams cip;
+				short res;
+				if (PRIMARY_CCD) {
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					CCD_MODE_PROPERTY->hidden = false;
+					CCD_COOLER_PROPERTY->hidden = false;
+					CCD_INFO_PROPERTY->hidden = false;
 
-				CCD_MODE_PROPERTY->hidden = true;
-				CCD_COOLER_PROPERTY->hidden = false;
+					cip.request = 0; /* imaging CCD */
+					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_basic_info));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
 
-				if(PRIVATE_DATA->rbi_flood_supported) {
-					FLI_RBI_FLUSH_PROPERTY->hidden = false;
-					FLI_RBI_FLUSH_ENABLE_PROPERTY->hidden = false;
-				} else {
-					FLI_RBI_FLUSH_PROPERTY->hidden = true;
-					FLI_RBI_FLUSH_ENABLE_PROPERTY->hidden = true;
-				}
+					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_basic_info.readoutInfo[0].width;
+					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_basic_info.readoutInfo[0].height;
+					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
+					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
 
-				indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL);
-				indigo_define_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
-				indigo_define_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
+					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = bcd2double(PRIVATE_DATA->imager_basic_info.readoutInfo[0].pixelWidth);
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = bcd2double(PRIVATE_DATA->imager_basic_info.readoutInfo[0].pixelHeight);
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
 
-				// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
-				/*
-				flimode_t current_mode;
-				int i;
-				char mode_name[INDIGO_NAME_SIZE];
-				res = FLIGetCameraMode(id, &current_mode);
-				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetCameraMode(%d) = %d", id, res));
-				}
-				res = FLIGetCameraModeString(id, 0, mode_name, INDIGO_NAME_SIZE); 
-				if (res == 0) {
-					for (i = 0; i < MAX_MODES; i++) { 
-						res = FLIGetCameraModeString(id, i, mode_name, INDIGO_NAME_SIZE);
-						if (res) break;
-						indigo_init_switch_item(FLI_CAMERA_MODE_PROPERTY->items + i, mode_name, mode_name, (i == current_mode));
+					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->imager_basic_info.firmwareVersion));
+					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->imager_basic_info.name);
+
+					cip.request = 2; /* imaging CCD */
+					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_extended_info1));
+					INDIGO_ERROR(indigo_error("indigo_ccd_fli: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
+
+					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_extended_info1.serialNumber, INDIGO_VALUE_SIZE);
+
+					// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
+					/*
+					flimode_t current_mode;
+					int i;
+					char mode_name[INDIGO_NAME_SIZE];
+					res = FLIGetCameraMode(id, &current_mode);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetCameraMode(%d) = %d", id, res));
 					}
-					FLI_CAMERA_MODE_PROPERTY = indigo_resize_property(FLI_CAMERA_MODE_PROPERTY, i);
-				}
+					res = FLIGetCameraModeString(id, 0, mode_name, INDIGO_NAME_SIZE); 
+					if (res == 0) {
+						for (i = 0; i < MAX_MODES; i++) { 
+							res = FLIGetCameraModeString(id, i, mode_name, INDIGO_NAME_SIZE);
+							if (res) break;
+							indigo_init_switch_item(FLI_CAMERA_MODE_PROPERTY->items + i, mode_name, mode_name, (i == current_mode));
+						}
+						FLI_CAMERA_MODE_PROPERTY = indigo_resize_property(FLI_CAMERA_MODE_PROPERTY, i);
+					}
 
-				indigo_define_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
+					indigo_define_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
 
-				CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->visible_area.lr_x - PRIVATE_DATA->visible_area.ul_x;
-				CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->visible_area.lr_y - PRIVATE_DATA->visible_area.ul_y;
-				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
-				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
+					double size_x, size_y;
 
-				double size_x, size_y;
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				res = FLIGetPixelSize(id, &size_x, &size_y);
-				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
-				}
+					res = FLIGetPixelSize(id, &size_x, &size_y);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
+					}
 
-				res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
-				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
-				}
+					res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
+					}
 
-				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
-				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
-				}
+					res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
+					}
 
-				long hw_rev, fw_rev;
-				res = FLIGetFWRevision(id, &fw_rev);
-				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
-				}
+					long hw_rev, fw_rev;
+					res = FLIGetFWRevision(id, &fw_rev);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
+					}
 
 				res = FLIGetHWRevision(id, &hw_rev);
 				if (res) {
@@ -931,13 +818,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
 				sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
-
+*/
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 
 				//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
-				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = m2um(size_x);
-				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = m2um(size_y);
-				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
+
 				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
 				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
 
@@ -952,15 +837,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_BIN_VERTICAL_ITEM->number.max = MAX_Y_BIN;
 
 				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
-
+/*
 				CCD_TEMPERATURE_PROPERTY->hidden = false;
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
 				CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
 				CCD_TEMPERATURE_ITEM->number.step = 0;
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				/*
 				res = FLIGetTemperature(id,&(CCD_TEMPERATURE_ITEM->number.value));
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
 				}
@@ -971,9 +855,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
 
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				*/
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				} else {
+				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -981,10 +867,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-			indigo_delete_property(device, FLI_NFLUSHES_PROPERTY, NULL);
-			indigo_delete_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
-			indigo_delete_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
-			indigo_delete_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
 			sbig_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -1001,34 +883,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-	// -------------------------------------------------------------------------------- FLI_NFLUSHES
-	} else if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property)) {
-		indigo_property_copy_values(FLI_NFLUSHES_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			handle_nflushes_property(device, property);
-		}
-	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH_ENABLE
-	} else if (indigo_property_match(FLI_RBI_FLUSH_ENABLE_PROPERTY, property)) {
-		indigo_property_copy_values(FLI_RBI_FLUSH_ENABLE_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			FLI_RBI_FLUSH_ENABLE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
-		}
-		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
-	} else if (indigo_property_match(FLI_RBI_FLUSH_PROPERTY, property)) {
-		indigo_property_copy_values(FLI_RBI_FLUSH_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			FLI_RBI_FLUSH_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
-		}
-		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
-	} else if (indigo_property_match(FLI_CAMERA_MODE_PROPERTY, property)) {
-		indigo_property_copy_values(FLI_CAMERA_MODE_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			handle_camera_mode_property(device, property);
-		}
 	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		//INDIGO_ERROR(indigo_error("indigo_ccd_asi: COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
@@ -1073,10 +927,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, FLI_NFLUSHES_PROPERTY);
-			indigo_save_property(device, NULL, FLI_RBI_FLUSH_ENABLE_PROPERTY);
-			indigo_save_property(device, NULL, FLI_RBI_FLUSH_PROPERTY);
-			indigo_save_property(device, NULL, FLI_CAMERA_MODE_PROPERTY);
+			/* indigo_save_property(device, NULL, FLI_NFLUSHES_PROPERTY); */
 		}
 	}
 	// -----------------------------------------------------------------------------
@@ -1092,10 +943,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' detached.", device->name));
 
 	if (device == PRIVATE_DATA->primary_ccd) {
-		indigo_release_property(FLI_NFLUSHES_PROPERTY);
-		indigo_release_property(FLI_RBI_FLUSH_ENABLE_PROPERTY);
-		indigo_release_property(FLI_RBI_FLUSH_PROPERTY);
-		indigo_release_property(FLI_CAMERA_MODE_PROPERTY);
+		/* indigo_release_property(FLI_NFLUSHES_PROPERTY); */
 	}
 
 	return indigo_ccd_detach(device);
