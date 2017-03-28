@@ -32,6 +32,10 @@
 #include "indigo_wheel_driver.h"
 #include "indigo_focuser_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define CCD_SIMULATOR_IMAGER_CAMERA_NAME		"CCD Imager Simulator"
 #define CCD_SIMULATOR_WHEEL_NAME				"CCD Imager Simulator (wheel)"
 #define CCD_SIMULATOR_FOCUSER_NAME				"CCD Imager Simulator (focuser)"
@@ -44,6 +48,10 @@
  */
 
 extern indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ccd_simulator_h */
 

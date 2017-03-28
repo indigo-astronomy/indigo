@@ -29,10 +29,18 @@
 #include "indigo_driver.h"
 #include "indigo_focuser_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Register USBV3 focuser hot-plug callback
  */
 
 extern indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* focuser_usbv3_h */
 

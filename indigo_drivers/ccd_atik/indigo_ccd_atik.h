@@ -31,10 +31,18 @@
 #include "indigo_guider_driver.h"
 #include "indigo_wheel_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Register Atik CCD hot-plug callback
  */
 
 extern indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ccd_atik_h */
 
