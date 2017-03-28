@@ -33,10 +33,18 @@
 #include "indigo_ccd_driver.h"
 #include "indigo_guider_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Register ZWO ASI CCD hot-plug callback
  */
 
 extern indigo_result indigo_ccd_asi(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ccd_asi_h */
 

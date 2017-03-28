@@ -29,10 +29,18 @@
 #include "indigo_driver.h"
 #include "indigo_focuser_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Register FCUSB focuser hot-plug callback
  */
 
 extern indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* focuser_fcusb_h */
 
