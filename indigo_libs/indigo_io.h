@@ -30,6 +30,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Open serial connection.
  */
 extern int indigo_open_serial(const char *dev_file);
@@ -53,5 +57,9 @@ extern bool indigo_write(int handle, const char *buffer, long length);
 /** Write formatted.
  */
 extern bool indigo_printf(int handle, const char *format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_io_h */

@@ -41,6 +41,10 @@
 #include "indigo_names.h"
 #include "indigo_timer.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Main group name string.
  */
 #define MAIN_GROUP                    "Main"
@@ -284,6 +288,10 @@ void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len);
 /** Convert ISO 8601 string to time_t.
  */
 time_t indigo_isototime(char *isotime);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_device_h */
 

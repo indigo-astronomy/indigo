@@ -29,6 +29,10 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Main focuser group name string.
  */
 #define FOCUSER_MAIN_GROUP                "Focuser"
@@ -149,6 +153,10 @@ extern indigo_result indigo_focuser_change_property(indigo_device *device, indig
 /** Detach callback function.
  */
 extern indigo_result indigo_focuser_detach(indigo_device *device);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_focuser_h */
 

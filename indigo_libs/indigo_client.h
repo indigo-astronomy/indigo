@@ -32,6 +32,10 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define INDIGO_MAX_DRIVERS    100
 #define INDIGO_MAX_SERVERS    10
 
@@ -110,5 +114,9 @@ extern indigo_result indigo_start_subprocess(const char *executable, indigo_subp
 /** Stop thread for subprocess.
  */
 extern indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_client_h */

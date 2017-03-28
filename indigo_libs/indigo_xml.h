@@ -29,6 +29,10 @@
 #include <stdio.h>
 #include "indigo_bus.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
  */
 
@@ -41,6 +45,10 @@ extern void indigo_xml_parse(indigo_device *device, indigo_client *client);
 /** Escape XML string.
  */
 extern char *indigo_xml_escape(char *string);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_xml_h */
 
