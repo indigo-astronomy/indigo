@@ -1140,16 +1140,13 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 short global_handle = INVALID_HANDLE_VALUE; /* This is global SBIG driver hangle used for attach and detatch cameras */
 
 #define MAX_USB_DEVICES                8
-
+#define MAX_ETH_DEVICES                8
 #define MAX_DEVICES                   32
-
-static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
-static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 static QueryUSBResults2 usb_cams = {0};
-static QueryEthernetResults2 eth_cam_list;
+static QueryEthernetResults2 eth_cams = {0};
 
 static inline int usb_to_index(SBIG_DEVICE_TYPE type) {
 	return DEV_USB1 - type;
@@ -1164,6 +1161,7 @@ static void enumerate_devices() {
 	if (res != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: command CC_QUERY_USB2 error = %d", res));
 	}
+
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_cams = %d", usb_cams.camerasFound));
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_type = %d", usb_cams.usbInfo[0].cameraType ));
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: cam name = %s", usb_cams.usbInfo[0].name));
