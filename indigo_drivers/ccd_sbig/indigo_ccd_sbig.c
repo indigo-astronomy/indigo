@@ -157,7 +157,7 @@ typedef struct {
 short (*sbig_command)(short, void*, void*);
 
 
-double bcd2double(ulong bcd) {
+double bcd2double(unsigned long bcd) {
 	double value = 0.0;
 	double digit = 0.01;
 	for(int i = 0; i < 8; i++) {
