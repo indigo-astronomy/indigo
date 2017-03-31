@@ -558,7 +558,7 @@ static bool sbig_set_cooler(indigo_device *device, double target, double *curren
 		res = FLISetTemperature(id, target);
 		if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
 	} else if(CCD_COOLER_OFF_ITEM->sw.value) {
-	
+
 		res = FLISetTemperature(id, 45);
 		if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
 	}
@@ -775,9 +775,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					if (res) {
 						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetCameraMode(%d) = %d", id, res));
 					}
-					res = FLIGetCameraModeString(id, 0, mode_name, INDIGO_NAME_SIZE); 
+					res = FLIGetCameraModeString(id, 0, mode_name, INDIGO_NAME_SIZE);
 					if (res == 0) {
-						for (i = 0; i < MAX_MODES; i++) { 
+						for (i = 0; i < MAX_MODES; i++) {
 							res = FLIGetCameraModeString(id, i, mode_name, INDIGO_NAME_SIZE);
 							if (res) break;
 							indigo_init_switch_item(FLI_CAMERA_MODE_PROPERTY->items + i, mode_name, mode_name, (i == current_mode));
@@ -1236,8 +1236,7 @@ static int find_unplugged_device(char *dev_name) {
 }
 
 
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-
+static int plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address) {
 	static indigo_device ccd_template = {
 		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -1254,6 +1253,95 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		guider_detach
 	};
 
+	if (cam_name == NULL) {
+		return 0;
+	}
+
+	int slot = find_available_device_slot();
+	if (slot < 0) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No available device slots available."));
+		return 0;
+	}
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d device_type = 0x%x name ='%s'", slot, device_type, cam_name));
+	indigo_device *device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
+	memcpy(device, &ccd_template, sizeof(indigo_device));
+	sprintf(device->name, "%s #%d", cam_name, usb_to_index(device_type));
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
+	sbig_private_data *private_data = malloc(sizeof(sbig_private_data));
+	assert(private_data);
+	memset(private_data, 0, sizeof(sbig_private_data));
+	private_data->usb_id = device_type;
+	private_data->primary_ccd = device;
+	strncpy(private_data->dev_name, cam_name, MAX_PATH);
+	device->private_data = private_data;
+	indigo_async((void *)(void *)indigo_attach_device, device);
+	devices[slot]=device;
+
+	slot = find_available_device_slot();
+	if (slot < 0) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
+		return 0;
+	}
+	device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
+	memcpy(device, &guider_template, sizeof(indigo_device));
+	sprintf(device->name, "%s Guider #%d", cam_name, usb_to_index(device_type));
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
+	device->private_data = private_data;
+	indigo_async((void *)(void *)indigo_attach_device, device);
+	devices[slot]=device;
+
+	/* Check if there is secondary CCD */
+	short res;
+	OpenDeviceParams odp = {
+		.deviceType = device_type,
+		.ipAddress = ip_address,
+		.lptBaseAddress = 0x00
+	};
+
+	if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
+		return 0;
+	}
+
+	EstablishLinkParams elp = { .sbigUseOnly = 0 };
+	EstablishLinkResults elr;
+
+	if ((res = sbig_command(CC_ESTABLISH_LINK, &elp, &elr)) != CE_NO_ERROR) {
+		sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d", res));
+		return 0;
+	}
+
+	GetCCDInfoParams gcp = { .request = CCD_INFO_TRACKING };
+	GetCCDInfoResults0 gcir0;
+
+	if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
+		INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: CC_GET_CCD_INFO error = %d, asuming no Secondary CCD", res));
+		return 0;
+	} else {
+		slot = find_available_device_slot();
+		if (slot < 0) {
+			INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
+			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+			return 0;
+		}
+		device = malloc(sizeof(indigo_device));
+		assert(device != NULL);
+		memcpy(device, &ccd_template, sizeof(indigo_device));
+		sprintf(device->name, "%s Guider CCD #%d", cam_name, usb_to_index(device_type));
+		INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
+		device->private_data = private_data;
+		indigo_async((void *)(void *)indigo_attach_device, device);
+		devices[slot]=device;
+	}
+	sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+	return 0;
+}
+
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	pthread_mutex_lock(&device_mutex);
 
 	short res = set_sbig_handle(global_handle);
@@ -1263,13 +1351,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			int slot = find_available_device_slot();
-			if (slot < 0) {
-				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No available device slots available."));
-				pthread_mutex_unlock(&device_mutex);
-				return 0;
-			}
-
 			char cam_name[MAX_PATH];
 			int usb_id = find_plugged_device(cam_name);
 			if (usb_id < 0) {
@@ -1278,83 +1359,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				return 0;
 			}
 
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d usb_id = 0x%x name ='%s'", slot, usb_id, cam_name));
-			indigo_device *device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &ccd_template, sizeof(indigo_device));
-			sprintf(device->name, "%s #%d", cam_name, usb_to_index(usb_id));
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
-			sbig_private_data *private_data = malloc(sizeof(sbig_private_data));
-			assert(private_data);
-			memset(private_data, 0, sizeof(sbig_private_data));
-			private_data->usb_id = usb_id;
-			private_data->primary_ccd = device;
-			strncpy(private_data->dev_name, cam_name, MAX_PATH);
-			device->private_data = private_data;
-			indigo_async((void *)(void *)indigo_attach_device, device);
-			devices[slot]=device;
-
-			slot = find_available_device_slot();
-			if (slot < 0) {
-				INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
-				pthread_mutex_unlock(&device_mutex);
-				return 0;
-			}
-			device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &guider_template, sizeof(indigo_device));
-			sprintf(device->name, "%s Guider #%d", cam_name, usb_to_index(usb_id));
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
-			device->private_data = private_data;
-			indigo_async((void *)(void *)indigo_attach_device, device);
-			devices[slot]=device;
-
-			/* Check if there is secondary CCD */
-			short res;
-			OpenDeviceParams odp = {
-				.deviceType = usb_id,
-				.ipAddress = 0x00,
-				.lptBaseAddress = 0x00
-			};
-
-			if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
-				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
-				return 0;
-			}
-
-			EstablishLinkParams elp = { .sbigUseOnly = 0 };
-			EstablishLinkResults elr;
-
-			if ((res = sbig_command(CC_ESTABLISH_LINK, &elp, &elr)) != CE_NO_ERROR) {
-				sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d", res));
-				return 0;
-			}
-
-			GetCCDInfoParams gcp = { .request = CCD_INFO_TRACKING };
-			GetCCDInfoResults0 gcir0;
-
-			if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
-				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: CC_GET_CCD_INFO error = %d, asuming no Secondary CCD", res));
-				return 0;
-			} else {
-				slot = find_available_device_slot();
-				if (slot < 0) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
-					sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-					return 0;
-				}
-				device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &ccd_template, sizeof(indigo_device));
-				sprintf(device->name, "%s Guider CCD #%d", cam_name, usb_to_index(usb_id));
-				INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
-				device->private_data = private_data;
-				indigo_async((void *)(void *)indigo_attach_device, device);
-				devices[slot]=device;
-			}
-			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-
+			plug_device(cam_name, usb_id, 0);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
@@ -1476,6 +1481,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		} else {
 			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff));
 		}
+
 
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
