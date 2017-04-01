@@ -685,6 +685,19 @@ $(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o
 
 $(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o
+	$(AR) $(ARFLAGS) $@ $^
+
+indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o: indigo_drivers/ccd_sbig/indigo_ccd_sbig.c
+	$(CC) -c -DETHERNET_DRIVER $(CFLAGS) -o $@ indigo_drivers/ccd_sbig/indigo_ccd_sbig.c $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig_eth: indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a
+	$(CC) -DETHERNET_DRIVER $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o
+	$(CC) -DETHERNET_DRIVER -shared -o $@ $^ $(LDFLAGS) -lindigo
 endif
 
 #---------------------------------------------------------------------
@@ -850,5 +863,3 @@ clean-all: clean
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; cd ../../../..
-
-
