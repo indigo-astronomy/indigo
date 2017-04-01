@@ -670,20 +670,6 @@ $(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o
 $(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o $(BUILD_LIB)/libsbigudrv.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
-
-$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o $(BUILD_LIB)/libsbigudrv.a
-	$(AR) $(ARFLAGS) $@ $^
-
-indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o: indigo_drivers/ccd_sbig/indigo_ccd_sbig.c
-	$(CC) -c -DETHERNET_DRIVER $(CFLAGS) -o $@ indigo_drivers/ccd_sbig/indigo_ccd_sbig.c $(LDFLAGS) -lindigo
-
-$(BUILD_DRIVERS)/indigo_ccd_sbig_eth: indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a $(BUILD_LIB)/libsbigudrv.a
-	$(CC) -DETHERNET_DRIVER $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
-
-$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o $(BUILD_LIB)/libsbigudrv.a
-	$(CC) -DETHERNET_DRIVER -shared -o $@ $^ $(LDFLAGS) -lindigo
-
-
 else ifeq ($(OS_DETECTED),Darwin)
 $(BUILD_INCLUDE)/libsbig/sbigudrv.h:
 	install -d $(BUILD_INCLUDE)/libsbig
@@ -699,19 +685,40 @@ $(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o
 
 $(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+endif
 
+#---------------------------------------------------------------------
+#
+#       Build SBIG CCD Ethernrt driver
+#
+#---------------------------------------------------------------------
 
-$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o
+ifeq ($(OS_DETECTED),Linux)
+
+indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o: $(BUILD_LIB)/libsbigudrv.a
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a: indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth.o
 	$(AR) $(ARFLAGS) $@ $^
 
-indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o: indigo_drivers/ccd_sbig/indigo_ccd_sbig.c
-	$(CC) -c -DETHERNET_DRIVER $(CFLAGS) -o $@ indigo_drivers/ccd_sbig/indigo_ccd_sbig.c $(LDFLAGS) -lindigo
+$(BUILD_DRIVERS)/indigo_ccd_sbig_eth: indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a $(BUILD_LIB)/libsbigudrv.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_ccd_sbig_eth: indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a
-	$(CC) -DETHERNET_DRIVER $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.$(SOEXT): indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth.o $(BUILD_LIB)/libsbigudrv.a
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o
-	$(CC) -DETHERNET_DRIVER -shared -o $@ $^ $(LDFLAGS) -lindigo
+else ifeq ($(OS_DETECTED),Darwin)
+
+indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth.o: $(BUILD_INCLUDE)/libsbig/sbigudrv.h
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a: indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig_eth: indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth_main.o $(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_ccd_sbig_eth.$(SOEXT): indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
 endif
 
 #---------------------------------------------------------------------
