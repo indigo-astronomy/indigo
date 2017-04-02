@@ -120,6 +120,10 @@
  */
 #define DEVICE_PORTS_PROPERTY_NAME						"DEVICE_PORTS"
 
+/** DEVICE_PORTS.REFRESH item name.
+ */
+#define DEVICE_PORTS_REFRESH_ITEM_NAME				"REFRESH"
+
 //----------------------------------------------------------------------
 /** CCD_INFO property name.
  */
