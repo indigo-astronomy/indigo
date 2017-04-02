@@ -48,6 +48,13 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
+#ifdef ETHERNET_DRIVER
+#include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#endif /* ETHERNET_DRIVER */
+
 #ifndef INVALID_HANDLE_VALUE
 #define INVALID_HANDLE_VALUE -1
 #endif
@@ -159,7 +166,7 @@ typedef struct {
 
 short (*sbig_command)(short, void*, void*);
 static void remove_all_devices();
-static int plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address);
+static bool plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address);
 
 
 double bcd2double(unsigned long bcd) {
@@ -1144,15 +1151,49 @@ static const char *CAM_NAMES[] = {
 // -------------------------------------------------------------------------------- Ethernet support
 #ifdef ETHERNET_DRIVER
 
+bool get_host_ip(char *hostname , unsigned long *ip) {
+	struct addrinfo hints, *servinfo, *p;
+	struct sockaddr_in *h;
+	int rv;
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_INET; // use AF_INET6 to force IPv6
+	hints.ai_socktype = SOCK_STREAM;
+
+	if ((rv = getaddrinfo(hostname, NULL, &hints, &servinfo)) != 0) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: getaddrinfo(): %s\n", gai_strerror(rv)));
+		return false;
+	}
+
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+		if(p->ai_family == AF_INET) {
+			*ip = ((struct sockaddr_in *)(p->ai_addr))->sin_addr.s_addr;
+			/* ip should be litle endian */
+			*ip = (*ip >> 24) | ((*ip << 8) & 0x00ff0000) | ((*ip >> 8) & 0x0000ff00) | (*ip << 24);
+			INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: IP: 0x%X\n", *ip));
+			freeaddrinfo(servinfo);
+			return true;
+		}
+	}
+	freeaddrinfo(servinfo);
+	return false;
+}
+
+
 static indigo_result eth_attach(indigo_device *device) {
 	assert(device != NULL);
+	unsigned long ip;
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
+		get_host_ip("localhost", &ip);
+		strncpy(DEVICE_PORT_ITEM->text.value, "192.168.0.100", INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_PORT_PROPERTY->label, "Camera address", INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_PORT_ITEM->label, "Camera IP/URL", INDIGO_VALUE_SIZE);
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
-		DEVICE_PORTS_PROPERTY->hidden = false;
+		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 
 		INDIGO_LOG(indigo_log("%s attached", device->name));
@@ -1168,10 +1209,22 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		char message[1024] = {0};
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (plug_device(device->name, DEV_ETH, 0)) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			snprintf(message, 1024, "Conneting to %s. This may take several minutes.", DEVICE_PORT_ITEM->text.value);
+			indigo_update_property(device, CONNECTION_PROPERTY, message);
+			unsigned long ip_address;
+			bool ok;
+			ok = get_host_ip(DEVICE_PORT_ITEM->text.value, &ip_address);
+			if (ok) {
+				ok = plug_device(device->name, DEV_ETH, ip_address);
+			}
+			if (ok) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, true);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1180,6 +1233,7 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 			remove_all_devices();
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	}
 	return indigo_ccd_change_property(device, client, property);
 }
@@ -1240,7 +1294,7 @@ static int find_device_slot(CAMERA_TYPE usb_id) {
 }
 
 
-static int plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address) {
+static bool plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address) {
 	static indigo_device ccd_template = {
 		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -1258,13 +1312,34 @@ static int plug_device(char *cam_name, unsigned short device_type, unsigned long
 	};
 
 	if (cam_name == NULL) {
-		return 0;
+		return false;
+	}
+
+	short res;
+	OpenDeviceParams odp = {
+		.deviceType = device_type,
+		.ipAddress = ip_address,
+		.lptBaseAddress = 0x00
+	};
+
+	if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
+		return false;
+	}
+
+	EstablishLinkParams elp = { .sbigUseOnly = 0 };
+	EstablishLinkResults elr;
+
+	if ((res = sbig_command(CC_ESTABLISH_LINK, &elp, &elr)) != CE_NO_ERROR) {
+		sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d", res));
+		return false;
 	}
 
 	int slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No available device slots available."));
-		return 0;
+		return false;
 	}
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d device_type = 0x%x name ='%s'", slot, device_type, cam_name));
 	indigo_device *device = malloc(sizeof(indigo_device));
@@ -1285,7 +1360,7 @@ static int plug_device(char *cam_name, unsigned short device_type, unsigned long
 	slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
-		return 0;
+		return false;
 	}
 	device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
@@ -1297,39 +1372,19 @@ static int plug_device(char *cam_name, unsigned short device_type, unsigned long
 	devices[slot]=device;
 
 	/* Check if there is secondary CCD */
-	short res;
-	OpenDeviceParams odp = {
-		.deviceType = device_type,
-		.ipAddress = ip_address,
-		.lptBaseAddress = 0x00
-	};
-
-	if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
-		return 0;
-	}
-
-	EstablishLinkParams elp = { .sbigUseOnly = 0 };
-	EstablishLinkResults elr;
-
-	if ((res = sbig_command(CC_ESTABLISH_LINK, &elp, &elr)) != CE_NO_ERROR) {
-		sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d", res));
-		return 0;
-	}
-
 	GetCCDInfoParams gcp = { .request = CCD_INFO_TRACKING };
 	GetCCDInfoResults0 gcir0;
 
 	if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
 		INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: CC_GET_CCD_INFO error = %d, asuming no Secondary CCD", res));
-		return 0;
+		sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+		return true;
 	} else {
 		slot = find_available_device_slot();
 		if (slot < 0) {
 			INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
 			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-			return 0;
+			return false;
 		}
 		device = malloc(sizeof(indigo_device));
 		assert(device != NULL);
@@ -1341,7 +1396,7 @@ static int plug_device(char *cam_name, unsigned short device_type, unsigned long
 		devices[slot]=device;
 	}
 	sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-	return 0;
+	return true;
 }
 
 

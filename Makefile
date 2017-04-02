@@ -695,7 +695,7 @@ endif
 
 ifeq ($(OS_DETECTED),Linux)
 
-indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o: $(BUILD_LIB)/libsbigudrv.a
+indigo_drivers/ccd_sbig/indigo_ccd_sbig_eth.o: $(BUILD_LIB)/libsbigudrv.a indigo_drivers/ccd_sbig/indigo_ccd_sbig.c
 
 $(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a: indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth.o
 	$(AR) $(ARFLAGS) $@ $^
@@ -708,7 +708,7 @@ $(BUILD_DRIVERS)/indigo_ccd_sbig_eth.$(SOEXT): indigo_drivers/ccd_sbig_eth/indig
 
 else ifeq ($(OS_DETECTED),Darwin)
 
-indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth.o: $(BUILD_INCLUDE)/libsbig/sbigudrv.h
+indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth.o: $(BUILD_INCLUDE)/libsbig/sbigudrv.h indigo_drivers/ccd_sbig/indigo_ccd_sbig.c
 
 $(BUILD_DRIVERS)/indigo_ccd_sbig_eth.a: indigo_drivers/ccd_sbig_eth/indigo_ccd_sbig_eth.o
 	$(AR) $(ARFLAGS) $@ $^
