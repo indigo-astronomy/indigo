@@ -131,6 +131,7 @@ typedef struct {
 typedef struct {
 	bool is_usb;
 	SBIG_DEVICE_TYPE usb_id;
+	unsigned long ip_address;
 	void *primary_ccd;
 	short driver_handle;
 	char dev_name[MAX_PATH];
@@ -327,7 +328,7 @@ static bool sbig_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		odp.deviceType = PRIVATE_DATA->usb_id;
-		odp.ipAddress = 0x00;
+		odp.ipAddress = PRIVATE_DATA->ip_address;
 		odp.lptBaseAddress = 0x00;
 
 		if ((res = open_driver(&PRIVATE_DATA->driver_handle)) != CE_NO_ERROR) {
@@ -1351,6 +1352,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	assert(private_data);
 	memset(private_data, 0, sizeof(sbig_private_data));
 	private_data->usb_id = device_type;
+	private_data->ip_address = ip_address;
 	private_data->primary_ccd = device;
 	strncpy(private_data->dev_name, cam_name, MAX_PATH);
 	device->private_data = private_data;
