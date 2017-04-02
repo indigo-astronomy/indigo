@@ -258,7 +258,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(DEVICE_PORT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		indigo_property_copy_values(DEVICE_PORT_PROPERTY, property, false);
-		if (strstr(DEVICE_PORT_ITEM->text.value, "://") == NULL) {
+		if (*DEVICE_PORT_ITEM->text.value == '/') {
 			if (!access(DEVICE_PORT_ITEM->text.value, R_OK)) {
 				DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
