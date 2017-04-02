@@ -68,7 +68,7 @@
 #include "indigo_io.h"
 
 #if defined(INDIGO_LINUX)
-bool is_serial(char *path) {
+static bool is_serial(char *path) {
 	int fd;
 	struct serial_struct serinfo;
 
@@ -81,6 +81,54 @@ bool is_serial(char *path) {
 	return is_sp;
 }
 #endif
+
+#define MAX_DEVICE_PORTS	20
+
+static void refresh_ports(indigo_device *device) {
+	DEVICE_PORTS_PROPERTY->items->sw.value = false;
+	DEVICE_PORTS_PROPERTY->count = 1;
+	char name[INDIGO_VALUE_SIZE];
+#if defined(INDIGO_MACOS)
+	io_iterator_t iterator;
+	io_object_t serial_device;
+	CFMutableDictionaryRef matching_dict = IOServiceMatching(kIOSerialBSDServiceValue);
+	CFDictionarySetValue(matching_dict, CFSTR(kIOSerialBSDTypeKey), CFSTR(kIOSerialBSDAllTypes));
+	kern_return_t kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matching_dict, &iterator);
+	if (kr == 0) {
+		while ((serial_device = IOIteratorNext(iterator)) && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
+			CFTypeRef cfs = IORegistryEntryCreateCFProperty (serial_device, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault,0);
+			if (cfs) {
+				CFStringGetCString(cfs, name, INDIGO_VALUE_SIZE, kCFStringEncodingASCII);
+				if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port")) {
+					int i = DEVICE_PORTS_PROPERTY->count++;
+					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
+					if (i == 0)
+						strcpy(DEVICE_PORT_ITEM->text.value, name);
+				}
+				CFRelease(cfs);
+			}
+			IOObjectRelease(serial_device);
+		}
+		IOObjectRelease(iterator);
+	}
+#elif defined(INDIGO_LINUX)
+	DIR *dir = opendir ("/dev");
+	struct dirent *entry;
+	while ((entry = readdir (dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
+		if (strncmp(entry->d_name, "tty", 3)) continue;
+		snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
+		if (is_serial(name)) {
+			int i = DEVICE_PORTS_PROPERTY->count++;
+			indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
+			if (i == 0)
+				strcpy(DEVICE_PORT_ITEM->text.value, name);
+		}
+	}
+	closedir(dir);
+#else
+	/* freebsd */
+#endif
+}
 
 indigo_result indigo_device_attach(indigo_device *device, indigo_version version, int interface) {
 	assert(device != NULL);
@@ -137,54 +185,12 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		DEVICE_PORT_PROPERTY->hidden = true;
 		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Device name or URL", DEFAULT_TTY);
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
-#define MAX_DEVICE_PORTS	20
 		DEVICE_PORTS_PROPERTY = indigo_init_switch_property(NULL, device->name, DEVICE_PORTS_PROPERTY_NAME, MAIN_GROUP, "Serial ports", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_DEVICE_PORTS);
 		if (DEVICE_PORTS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DEVICE_PORTS_PROPERTY->hidden = true;
-		DEVICE_PORTS_PROPERTY->count = 0;
-		char name[INDIGO_VALUE_SIZE];
-#if defined(INDIGO_MACOS)
-		io_iterator_t iterator;
-		io_object_t serial_device;
-		CFMutableDictionaryRef matching_dict = IOServiceMatching(kIOSerialBSDServiceValue);
-		CFDictionarySetValue(matching_dict, CFSTR(kIOSerialBSDTypeKey), CFSTR(kIOSerialBSDAllTypes));
-		kern_return_t kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matching_dict, &iterator);
-		if (kr == 0) {
-			while ((serial_device = IOIteratorNext(iterator)) && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
-				CFTypeRef cfs = IORegistryEntryCreateCFProperty (serial_device, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault,0);
-				if (cfs) {
-					CFStringGetCString(cfs, name, INDIGO_VALUE_SIZE, kCFStringEncodingASCII);
-					if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port")) {
-						int i = DEVICE_PORTS_PROPERTY->count++;
-						indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
-						if (i == 0)
-							strcpy(DEVICE_PORT_ITEM->text.value, name);
-					}
-					CFRelease(cfs);
-				}
-				IOObjectRelease(serial_device);
-			}
-			IOObjectRelease(iterator);
-		}
-#elif defined(INDIGO_LINUX)
-		DIR *dir = opendir ("/dev");
-		struct dirent *entry;
-		while ((entry = readdir (dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
-			if (strncmp(entry->d_name, "tty", 3)) continue;
-			snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
-			if (is_serial(name)) {
-				int i = DEVICE_PORTS_PROPERTY->count++;
-				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
-				if (i == 0)
-					strcpy(DEVICE_PORT_ITEM->text.value, name);
-			}
-		}
-		closedir(dir);
-#else
-    /* freebsd */
-#endif
-
+		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items, DEVICE_PORTS_REFRESH_ITEM_NAME, "Refresh", false);
+		refresh_ports(device);
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
@@ -273,12 +279,18 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(DEVICE_PORTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		indigo_property_copy_values(DEVICE_PORTS_PROPERTY, property, false);
-		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (DEVICE_PORTS_PROPERTY->items[i].sw.value) {
-				strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name, INDIGO_VALUE_SIZE);
-				DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
-				DEVICE_PORTS_PROPERTY->items[i].sw.value = false;
+		if (DEVICE_PORTS_PROPERTY->items->sw.value) {
+			indigo_delete_property(device, DEVICE_PORTS_PROPERTY, NULL);
+			refresh_ports(device);
+			indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
+		} else {
+			for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
+				if (DEVICE_PORTS_PROPERTY->items[i].sw.value) {
+					strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name, INDIGO_VALUE_SIZE);
+					DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+					DEVICE_PORTS_PROPERTY->items[i].sw.value = false;
+				}
 			}
 		}
 		DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
