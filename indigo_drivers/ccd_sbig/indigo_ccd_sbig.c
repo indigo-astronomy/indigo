@@ -1225,16 +1225,24 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 			}
 			if (ok) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				message[0] = '\0';
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, true);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				snprintf(message, 1024, "Conneting to %s failed.", DEVICE_PORT_ITEM->text.value);
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
 			remove_all_devices();
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+
+		if (message[0] == '\0')
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		else
+			indigo_update_property(device, CONNECTION_PROPERTY, message);
+
+		return INDIGO_OK;
 	}
 	return indigo_ccd_change_property(device, client, property);
 }
