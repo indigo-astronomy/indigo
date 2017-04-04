@@ -167,6 +167,7 @@ typedef struct {
 
 short (*sbig_command)(short, void*, void*);
 static void remove_all_devices();
+static void remove_eth_devices();
 static bool plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address);
 
 
@@ -1233,7 +1234,7 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			remove_all_devices();
+			remove_eth_devices();
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 
@@ -1276,12 +1277,12 @@ static QueryEthernetResults2 eth_cams = {0};
 
 
 static inline int usb_to_index(SBIG_DEVICE_TYPE type) {
-	return DEV_USB1 - type;
+	return DEV_ETH - type;
 }
 
 
 static inline SBIG_DEVICE_TYPE index_to_usb(int index) {
-	return DEV_USB1 + index;
+	return DEV_ETH + index;
 }
 
 
@@ -1347,7 +1348,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 
 	int slot = find_available_device_slot();
 	if (slot < 0) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No available device slots available."));
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No device slots available."));
 		return false;
 	}
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d device_type = 0x%x name ='%s'", slot, device_type, cam_name));
@@ -1361,6 +1362,11 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	memset(private_data, 0, sizeof(sbig_private_data));
 	private_data->usb_id = device_type;
 	private_data->ip_address = ip_address;
+	if (ip_address) {
+		private_data->is_usb = false;
+	} else {
+		private_data->is_usb = true;
+	}
 	private_data->primary_ccd = device;
 	strncpy(private_data->dev_name, cam_name, MAX_PATH);
 	device->private_data = private_data;
@@ -1369,7 +1375,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 
 	slot = find_available_device_slot();
 	if (slot < 0) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
+		INDIGO_ERROR(indigo_error("indigo_ccd_asi: No device slots available."));
 		return false;
 	}
 	device = malloc(sizeof(indigo_device));
@@ -1392,7 +1398,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	} else {
 		slot = find_available_device_slot();
 		if (slot < 0) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_asi: No available device slots available."));
+			INDIGO_ERROR(indigo_error("indigo_ccd_asi: No device slots available."));
 			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 			return false;
 		}
@@ -1456,7 +1462,7 @@ static int find_unplugged_device(char *dev_name) {
 		indigo_device *device = devices[slot];
 		if (device == NULL) continue;
 		for (int dev_no = 0; dev_no < MAX_USB_DEVICES; dev_no++) {
-			if (!usb_cams.usbInfo[dev_no].cameraFound) continue;
+			if ((!usb_cams.usbInfo[dev_no].cameraFound) || (!PRIVATE_DATA->is_usb)) continue;
 			if (PRIVATE_DATA->usb_id == index_to_usb(dev_no)) {
 				found = true;
 				break;
@@ -1553,6 +1559,25 @@ static void remove_all_devices() {
 
 	/* free private data */
 	for(i = 0; i < MAX_USB_DEVICES; i++) {
+		if (pds[i]) free(pds[i]);
+	}
+}
+
+static void remove_eth_devices() {
+	int i;
+	sbig_private_data *pds[MAX_ETH_DEVICES] = {NULL};
+
+	for(i = 0; i < MAX_DEVICES; i++) {
+		indigo_device *device = devices[i];
+		if ((device == NULL) || ((PRIVATE_DATA) && (PRIVATE_DATA->is_usb))) continue;
+		if (PRIVATE_DATA) pds[usb_to_index(PRIVATE_DATA->usb_id)] = PRIVATE_DATA; /* preserve pointers to private data */
+		indigo_detach_device(device);
+		free(device);
+		device = NULL;
+	}
+
+	/* free private data */
+	for(i = 0; i < MAX_ETH_DEVICES; i++) {
 		if (pds[i]) free(pds[i]);
 	}
 }
