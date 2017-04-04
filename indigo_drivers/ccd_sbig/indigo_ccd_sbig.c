@@ -48,12 +48,10 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#ifdef ETHERNET_DRIVER
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#endif /* ETHERNET_DRIVER */
 
 #ifndef INVALID_HANDLE_VALUE
 #define INVALID_HANDLE_VALUE -1
@@ -1151,7 +1149,6 @@ static const char *CAM_NAMES[] = {
 
 
 // -------------------------------------------------------------------------------- Ethernet support
-#ifdef ETHERNET_DRIVER
 
 bool get_host_ip(char *hostname , unsigned long *ip) {
 	struct addrinfo hints, *servinfo, *p;
@@ -1258,8 +1255,6 @@ static indigo_result eth_detach(indigo_device *device) {
 	return indigo_ccd_detach(device);
 }
 
-#endif /* ETHERNET_DRIVER */
-
 // -------------------------------------------------------------------------------- hot-plug support
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -1331,7 +1326,6 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		.ipAddress = ip_address,
 		.lptBaseAddress = 0x00
 	};
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: device_type = 0x%x name ='%s' ip = 0x%x", device_type, cam_name, ip_address));
 
 	if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
@@ -1352,7 +1346,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No device slots available."));
 		return false;
 	}
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d device_type = 0x%x name ='%s' ip = ", slot, device_type, cam_name, ip_address));
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d device_type = 0x%x name ='%s' ip = %d", slot, device_type, cam_name, ip_address));
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
@@ -1418,8 +1412,6 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	return true;
 }
 
-
-#ifndef ETHERNET_DRIVER
 
 static void enumerate_devices() {
 	int res = sbig_command(CC_QUERY_USB2, NULL, &usb_cams);
@@ -1544,8 +1536,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	return 0;
 };
 
-#endif /* NOT ETHERNET_DRIVER */
-
 
 static void remove_usb_devices() {
 	int i;
@@ -1591,17 +1581,11 @@ static void remove_eth_devices() {
 
 static libusb_hotplug_callback_handle callback_handle;
 
-#ifdef ETHERNET_DRIVER
-#define ENTRY_POINT indigo_ccd_sbig_eth
-#else
-#define ENTRY_POINT indigo_ccd_sbig
-#endif
 
-indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *info) {
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-#ifdef ETHERNET_DRIVER
 	static indigo_device sbig_eth_template = {
 		"SBIG Ethernet", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		eth_attach,
@@ -1609,10 +1593,8 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 		eth_change_property,
 		eth_detach
 	};
-	SET_DRIVER_INFO(info, "SBIG Ethernet Camera", __FUNCTION__, DRIVER_VERSION, last_action);
-#else
+
 	SET_DRIVER_INFO(info, "SBIG Camera", __FUNCTION__, DRIVER_VERSION, last_action);
-#endif /* ETHERNET_DRIVER */
 
 #ifdef __APPLE__
 	static void *dl_handle = NULL;
@@ -1667,20 +1649,16 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff));
 		}
 
-		// conditional compile here
-#ifndef ETHERNET_DRIVER
-		indigo_start_usb_event_handler();
-		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
-		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
-#else
 		sbig_eth = malloc(sizeof(indigo_device));
 		assert(sbig_eth != NULL);
 		memcpy(sbig_eth, &sbig_eth_template, sizeof(indigo_device));
 		sbig_eth->private_data = NULL;
 		indigo_attach_device(sbig_eth);
-		return INDIGO_OK;
-#endif /* NOT ETHERNET_DRIVER */
+
+		indigo_start_usb_event_handler();
+		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
