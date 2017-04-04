@@ -534,6 +534,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 	}
 	return success;
 	*/
+	return 0;
 }
 
 
@@ -550,6 +551,7 @@ static bool sbig_abort_exposure(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	//if(err) return false;
 	//else return true;
+	return 0;
 }
 
 
@@ -1182,7 +1184,7 @@ bool get_host_ip(char *hostname , unsigned long *ip) {
 static indigo_result eth_attach(indigo_device *device) {
 	assert(device != NULL);
 	unsigned long ip;
-	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_device_attach(device, DRIVER_VERSION, 0) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
@@ -1196,7 +1198,7 @@ static indigo_result eth_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 
 		INDIGO_LOG(indigo_log("%s attached", device->name));
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return indigo_device_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -1242,7 +1244,7 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 
 		return INDIGO_OK;
 	}
-	return indigo_ccd_change_property(device, client, property);
+	return indigo_device_change_property(device, client, property);
 }
 
 
@@ -1589,7 +1591,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 	static indigo_device sbig_eth_template = {
 		"SBIG Ethernet", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		eth_attach,
-		indigo_ccd_enumerate_properties,
+		indigo_device_enumerate_properties,
 		eth_change_property,
 		eth_detach
 	};
