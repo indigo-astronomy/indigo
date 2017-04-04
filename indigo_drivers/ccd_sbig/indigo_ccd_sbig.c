@@ -762,7 +762,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					cip.request = 0; /* imaging CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_basic_info));
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
 
 					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_basic_info.readoutInfo[0].width;
 					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_basic_info.readoutInfo[0].height;
@@ -778,7 +778,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					cip.request = 2; /* imaging CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_extended_info1));
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
+					INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
 
 					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_extended_info1.serialNumber, INDIGO_VALUE_SIZE);
 
