@@ -166,7 +166,7 @@ typedef struct {
 
 
 short (*sbig_command)(short, void*, void*);
-static void remove_all_devices();
+static void remove_usb_devices();
 static void remove_eth_devices();
 static bool plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address);
 
@@ -1277,12 +1277,12 @@ static QueryEthernetResults2 eth_cams = {0};
 
 
 static inline int usb_to_index(SBIG_DEVICE_TYPE type) {
-	return DEV_ETH - type;
+	return DEV_USB1 - type;
 }
 
 
 static inline SBIG_DEVICE_TYPE index_to_usb(int index) {
-	return DEV_ETH + index;
+	return DEV_USB1 + index;
 }
 
 
@@ -1331,6 +1331,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		.ipAddress = ip_address,
 		.lptBaseAddress = 0x00
 	};
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: device_type = 0x%x name ='%s' ip = 0x%x", device_type, cam_name, ip_address));
 
 	if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d", res));
@@ -1351,22 +1352,24 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No device slots available."));
 		return false;
 	}
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d device_type = 0x%x name ='%s'", slot, device_type, cam_name));
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d device_type = 0x%x name ='%s' ip = ", slot, device_type, cam_name, ip_address));
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
-	sprintf(device->name, "%s #%d", cam_name, usb_to_index(device_type));
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
 	sbig_private_data *private_data = malloc(sizeof(sbig_private_data));
 	assert(private_data);
 	memset(private_data, 0, sizeof(sbig_private_data));
 	private_data->usb_id = device_type;
 	private_data->ip_address = ip_address;
+	int device_index = 0;
 	if (ip_address) {
 		private_data->is_usb = false;
 	} else {
 		private_data->is_usb = true;
+		device_index = usb_to_index(device_type);
 	}
+	sprintf(device->name, "%s #%d", cam_name, device_index);
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
 	private_data->primary_ccd = device;
 	strncpy(private_data->dev_name, cam_name, MAX_PATH);
 	device->private_data = private_data;
@@ -1381,7 +1384,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &guider_template, sizeof(indigo_device));
-	sprintf(device->name, "%s Guider #%d", cam_name, usb_to_index(device_type));
+	sprintf(device->name, "%s Guider #%d", cam_name, device_index);
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
 	device->private_data = private_data;
 	indigo_async((void *)(void *)indigo_attach_device, device);
@@ -1405,7 +1408,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		device = malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &ccd_template, sizeof(indigo_device));
-		sprintf(device->name, "%s Guider CCD #%d", cam_name, usb_to_index(device_type));
+		sprintf(device->name, "%s Guider CCD #%d", cam_name, device_index);
 		INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
 		device->private_data = private_data;
 		indigo_async((void *)(void *)indigo_attach_device, device);
@@ -1544,17 +1547,20 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 #endif /* NOT ETHERNET_DRIVER */
 
 
-static void remove_all_devices() {
+static void remove_usb_devices() {
 	int i;
 	sbig_private_data *pds[MAX_USB_DEVICES] = {NULL};
 
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device == NULL) continue;
-		if (PRIVATE_DATA) pds[usb_to_index(PRIVATE_DATA->usb_id)] = PRIVATE_DATA; /* preserve pointers to private data */
+		if (PRIVATE_DATA) {
+			if (!PRIVATE_DATA->is_usb) continue;
+			pds[usb_to_index(PRIVATE_DATA->usb_id)] = PRIVATE_DATA; /* preserve pointers to private data */
+		}
 		indigo_detach_device(device);
 		free(device);
-		device = NULL;
+		devices[i] = NULL;
 	}
 
 	/* free private data */
@@ -1563,23 +1569,23 @@ static void remove_all_devices() {
 	}
 }
 
+
 static void remove_eth_devices() {
 	int i;
-	sbig_private_data *pds[MAX_ETH_DEVICES] = {NULL};
+	sbig_private_data *private_data = NULL;
 
-	for(i = 0; i < MAX_DEVICES; i++) {
+	for(i = 0; i < MAX_DEVICES -1; i++) {
 		indigo_device *device = devices[i];
-		if ((device == NULL) || ((PRIVATE_DATA) && (PRIVATE_DATA->is_usb))) continue;
-		if (PRIVATE_DATA) pds[usb_to_index(PRIVATE_DATA->usb_id)] = PRIVATE_DATA; /* preserve pointers to private data */
+		if (device == NULL) continue;
+		if (PRIVATE_DATA) {
+			if (PRIVATE_DATA->is_usb) continue;
+			private_data = PRIVATE_DATA; /* preserve pointer to private data */
+		}
 		indigo_detach_device(device);
 		free(device);
-		device = NULL;
+		devices[i] = NULL;
 	}
-
-	/* free private data */
-	for(i = 0; i < MAX_ETH_DEVICES; i++) {
-		if (pds[i]) free(pds[i]);
-	}
+	free(private_data);
 }
 
 
@@ -1680,7 +1686,8 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_deregister_callback [%d]", __LINE__));
-		remove_all_devices();
+		remove_usb_devices();
+		remove_eth_devices();
 
 		res = set_sbig_handle(global_handle);
 		if (res != CE_NO_ERROR) {
