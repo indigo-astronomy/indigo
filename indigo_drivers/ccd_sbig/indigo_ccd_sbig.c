@@ -1224,7 +1224,7 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 			bool ok;
 			ok = get_host_ip(DEVICE_PORT_ITEM->text.value, &ip_address);
 			if (ok) {
-				ok = plug_device(device->name, DEV_ETH, ip_address);
+				ok = plug_device(NULL, DEV_ETH, ip_address);
 			}
 			if (ok) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1305,6 +1305,9 @@ static int find_device_slot(CAMERA_TYPE usb_id) {
 
 
 static bool plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address) {
+	GetCCDInfoParams gcp;
+	GetCCDInfoResults0 gcir0;
+
 	static indigo_device ccd_template = {
 		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -1320,10 +1323,6 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		guider_change_property,
 		guider_detach
 	};
-
-	if (cam_name == NULL) {
-		return false;
-	}
 
 	short res = set_sbig_handle(global_handle);
 	if (res != CE_NO_ERROR) {
@@ -1348,6 +1347,17 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d", res));
 		return false;
+	}
+
+	/* Find camera name */
+	if (cam_name == NULL) {
+		gcp.request = CCD_INFO_IMAGING;
+		if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
+			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO error = %d", res));
+			return false;
+		}
+		cam_name = gcir0.name;
 	}
 
 	int slot = find_available_device_slot();
@@ -1379,6 +1389,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	indigo_async((void *)(void *)indigo_attach_device, device);
 	devices[slot]=device;
 
+	/* Creating guider device */
 	slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_asi: No device slots available."));
@@ -1393,14 +1404,11 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	indigo_async((void *)(void *)indigo_attach_device, device);
 	devices[slot]=device;
 
-	/* Check if there is secondary CCD */
-	GetCCDInfoParams gcp = { .request = CCD_INFO_TRACKING };
-	GetCCDInfoResults0 gcir0;
+	/* Check if there is secondary CCD and create device */
+	gcp.request = CCD_INFO_TRACKING;
 
 	if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
 		INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: CC_GET_CCD_INFO error = %d, asuming no Secondary CCD", res));
-		sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-		return true;
 	} else {
 		slot = find_available_device_slot();
 		if (slot < 0) {
