@@ -686,7 +686,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if ((indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) && (device == PRIVATE_DATA->primary_ccd)) {
+	if ((device == PRIVATE_DATA->primary_ccd) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 
 		/* Use all info property fields */
@@ -701,6 +701,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "FLI_NFLUSHES", "Times (before exposure)", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
 		*/
 
+		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	} else if ((device != PRIVATE_DATA->primary_ccd) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
