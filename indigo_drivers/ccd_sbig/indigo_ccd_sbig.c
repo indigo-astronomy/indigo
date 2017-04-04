@@ -1187,14 +1187,15 @@ static indigo_result eth_attach(indigo_device *device) {
 	assert(device != NULL);
 	unsigned long ip;
 	if (indigo_device_attach(device, DRIVER_VERSION, 0) == INDIGO_OK) {
+		INFO_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		get_host_ip("localhost", &ip);
 		strncpy(DEVICE_PORT_ITEM->text.value, "192.168.0.100", INDIGO_VALUE_SIZE);
-		strncpy(DEVICE_PORT_PROPERTY->label, "Camera address", INDIGO_VALUE_SIZE);
-		strncpy(DEVICE_PORT_ITEM->label, "Camera IP/URL", INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_PORT_PROPERTY->label, "Remote camera", INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_PORT_ITEM->label, "IP address / hostname", INDIGO_VALUE_SIZE);
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
@@ -1324,7 +1325,11 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		return false;
 	}
 
-	short res;
+	short res = set_sbig_handle(global_handle);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error set_sbig_handle(global_handle) = %d", res));
+	}
+
 	OpenDeviceParams odp = {
 		.deviceType = device_type,
 		.ipAddress = ip_address,
@@ -1350,7 +1355,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No device slots available."));
 		return false;
 	}
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot = %d device_type = 0x%x name ='%s' ip = %d", slot, device_type, cam_name, ip_address));
+	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot=%d device_type=0x%x name='%s' ip=0x%x", slot, device_type, cam_name, ip_address));
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
@@ -1460,8 +1465,9 @@ static int find_unplugged_device(char *dev_name) {
 		bool found = false;
 		indigo_device *device = devices[slot];
 		if (device == NULL) continue;
+		if ((PRIVATE_DATA) && (!PRIVATE_DATA->is_usb)) continue;
 		for (int dev_no = 0; dev_no < MAX_USB_DEVICES; dev_no++) {
-			if ((!usb_cams.usbInfo[dev_no].cameraFound) || (!PRIVATE_DATA->is_usb)) continue;
+			if (!usb_cams.usbInfo[dev_no].cameraFound) continue;
 			if (PRIVATE_DATA->usb_id == index_to_usb(dev_no)) {
 				found = true;
 				break;
@@ -1591,7 +1597,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	static indigo_device sbig_eth_template = {
-		"SBIG Ethernet", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"SBIG Ethernet Device", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		eth_attach,
 		indigo_device_enumerate_properties,
 		eth_change_property,
