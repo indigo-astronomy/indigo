@@ -1256,7 +1256,7 @@ static indigo_result eth_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 
 	INDIGO_LOG(indigo_log("%s detached", device->name));
-	return indigo_ccd_detach(device);
+	return indigo_device_detach(device);
 }
 
 // -------------------------------------------------------------------------------- hot-plug support
