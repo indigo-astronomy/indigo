@@ -123,6 +123,22 @@ static unsigned char ctrl[] = {
 #include "ctrl.data"
 };
 
+static unsigned char angular_js[] = {
+#include "resource/angular.min.js.data"
+};
+
+static unsigned char bootstrap_js[] = {
+#include"resource/bootstrap.min.js.data"
+};
+
+static unsigned char bootstrap_css[] = {
+#include "resource/bootstrap.min.css.data"
+};
+
+static unsigned char jquery_js[] = {
+#include "resource/jquery.min.js.data"
+};
+
 static void server_callback(int count) {
 	if (server_startup) {
 		if (use_bonjour) {
@@ -199,7 +215,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		indigo_property_copy_values(drivers_property, property, false);
 		for (int i = 0; i < drivers_property->count; i++)
 			if (drivers_property->items[i].sw.value) {
-				indigo_available_drivers[i].initialized = indigo_available_drivers[i].driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;				
+				indigo_available_drivers[i].initialized = indigo_available_drivers[i].driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
 			} else {
 				indigo_available_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
 				indigo_available_drivers[i].initialized = false;
@@ -322,14 +338,19 @@ static void server_main(int argc, const char * argv[]) {
 		}
 	}
 
-	if (use_control_panel)
+	if (use_control_panel) {
 		indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
+		indigo_server_add_resource("/resource/angular.min.js", angular_js, sizeof(angular_js), "text/javascript");
+		indigo_server_add_resource("/resource/bootstrap.min.js", bootstrap_js, sizeof(bootstrap_js), "text/javascript");
+		indigo_server_add_resource("/resource/bootstrap.min.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
+		indigo_server_add_resource("/resource/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
+	}
 
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i], false, NULL);
 	}
 
-	indigo_attach_device(&server_device);	
+	indigo_attach_device(&server_device);
 	indigo_server_start(server_callback);
 
 #ifdef INDIGO_MACOS
