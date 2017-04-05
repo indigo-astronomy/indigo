@@ -756,24 +756,28 @@ endif
 #	Control panel
 #
 #---------------------------------------------------------------------
-ctrlpanel: indigo_server/ctrl.data indigo_server/resource/angular.min.js.data indigo_server/resource/bootstrap.min.js.data indigo_server/resource/bootstrap.min.css.data indigo_server/resource/jquery.min.js.data
+ctrlpanel: indigo_server/ctrl.data indigo_server/resource/angular.min.js.data indigo_server/resource/bootstrap.min.js.data indigo_server/resource/bootstrap.css.data indigo_server/resource/jquery.min.js.data indigo_server/resource/glyphicons-halflings-regular.ttf.data
 
 
 indigo_server/ctrl.data:	indigo_server/ctrl.html
 #	python tools/rjsmin.py <indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
 	cat indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
 
-indigo_server/resource/angular.min.js.data:	indigo_server/resource/angular.min.js.data
+indigo_server/resource/angular.min.js.data:	indigo_server/resource/angular.min.js
 	cat indigo_server/resource/angular.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/angular.min.js.data
 
-indigo_server/resource/bootstrap.min.js.data:	indigo_server/resource/bootstrap.min.js.data
+indigo_server/resource/bootstrap.min.js.data:	indigo_server/resource/bootstrap.min.js
 	cat indigo_server/resource/bootstrap.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/bootstrap.min.js.data
 
-indigo_server/resource/bootstrap.min.css.data:	indigo_server/resource/bootstrap.min.css.data
-	cat indigo_server/resource/bootstrap.min.css | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/bootstrap.min.css.data
+indigo_server/resource/bootstrap.css.data:	indigo_server/resource/bootstrap.css
+	cat indigo_server/resource/bootstrap.css | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/bootstrap.css.data
 
-indigo_server/resource/jquery.min.js.data:	indigo_server/resource/jquery.min.js.data
+indigo_server/resource/jquery.min.js.data:	indigo_server/resource/jquery.min.js
 	cat indigo_server/resource/jquery.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/jquery.min.js.data
+
+indigo_server/resource/glyphicons-halflings-regular.ttf.data:	indigo_server/resource/glyphicons-halflings-regular.ttf
+	cat indigo_server/resource/glyphicons-halflings-regular.ttf | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/glyphicons-halflings-regular.ttf.data
+
 
 #---------------------------------------------------------------------
 #
