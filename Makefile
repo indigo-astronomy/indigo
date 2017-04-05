@@ -756,7 +756,7 @@ endif
 #	Control panel
 #
 #---------------------------------------------------------------------
-ctrlpanel: indigo_server/ctrl.data indigo_server/resource/angular.min.js.data indigo_server/resource/bootstrap.min.js.data indigo_server/resource/bootstrap.css.data indigo_server/resource/jquery.min.js.data indigo_server/resource/glyphicons-halflings-regular.ttf.data
+ctrlpanel: indigo_server/ctrl.data indigo_server/resource/angular.min.js.data indigo_server/resource/bootstrap.min.js.data indigo_server/resource/bootstrap.css.data indigo_server/resource/jquery.min.js.data indigo_server/resource/glyphicons-halflings-regular.ttf.data indigo_server/resource/logo.png.data
 
 
 indigo_server/ctrl.data:	indigo_server/ctrl.html
@@ -777,6 +777,9 @@ indigo_server/resource/jquery.min.js.data:	indigo_server/resource/jquery.min.js
 
 indigo_server/resource/glyphicons-halflings-regular.ttf.data:	indigo_server/resource/glyphicons-halflings-regular.ttf
 	cat indigo_server/resource/glyphicons-halflings-regular.ttf | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/glyphicons-halflings-regular.ttf.data
+
+indigo_server/resource/logo.png.data:	indigo_server/resource/logo.png
+	cat indigo_server/resource/logo.png | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/logo.png.data
 
 
 #---------------------------------------------------------------------

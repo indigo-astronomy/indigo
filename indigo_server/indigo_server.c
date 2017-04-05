@@ -143,6 +143,10 @@ static unsigned char font_ttf[] = {
 #include "resource/glyphicons-halflings-regular.ttf.data"
 };
 
+static unsigned char logo_png[] = {
+#include "resource/logo.png.data"
+};
+
 static void server_callback(int count) {
 	if (server_startup) {
 		if (use_bonjour) {
@@ -349,6 +353,7 @@ static void server_main(int argc, const char * argv[]) {
 		indigo_server_add_resource("/resource/bootstrap.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
 		indigo_server_add_resource("/resource/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
 		indigo_server_add_resource("/fonts/glyphicons-halflings-regular.ttf", font_ttf, sizeof(font_ttf), "application/x-font-ttf");
+		indigo_server_add_resource("/resource/logo.png", logo_png, sizeof(logo_png), "image/png");
 	}
 
 	for (int i = first_driver; static_drivers[i]; i++) {
