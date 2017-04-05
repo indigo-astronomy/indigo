@@ -132,11 +132,15 @@ static unsigned char bootstrap_js[] = {
 };
 
 static unsigned char bootstrap_css[] = {
-#include "resource/bootstrap.min.css.data"
+#include "resource/bootstrap.css.data"
 };
 
 static unsigned char jquery_js[] = {
 #include "resource/jquery.min.js.data"
+};
+
+static unsigned char font_ttf[] = {
+#include "resource/glyphicons-halflings-regular.ttf.data"
 };
 
 static void server_callback(int count) {
@@ -342,8 +346,9 @@ static void server_main(int argc, const char * argv[]) {
 		indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
 		indigo_server_add_resource("/resource/angular.min.js", angular_js, sizeof(angular_js), "text/javascript");
 		indigo_server_add_resource("/resource/bootstrap.min.js", bootstrap_js, sizeof(bootstrap_js), "text/javascript");
-		indigo_server_add_resource("/resource/bootstrap.min.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
+		indigo_server_add_resource("/resource/bootstrap.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
 		indigo_server_add_resource("/resource/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
+		indigo_server_add_resource("/fonts/glyphicons-halflings-regular.ttf", font_ttf, sizeof(font_ttf), "application/x-font-ttf");
 	}
 
 	for (int i = first_driver; static_drivers[i]; i++) {
