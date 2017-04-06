@@ -1684,6 +1684,8 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_deregister_callback [%d]", __LINE__));
 		remove_usb_devices();
 		remove_eth_devices();
+		indigo_detach_device(sbig_eth);
+		free(sbig_eth);
 
 		res = set_sbig_handle(global_handle);
 		if (res != CE_NO_ERROR) {
