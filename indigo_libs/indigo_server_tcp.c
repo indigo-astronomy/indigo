@@ -107,6 +107,9 @@ static void start_worker_thread(int *client_socket) {
 					char *space = strchr(path, ' ');
 					if (space)
 						*space = 0;
+					char *param = strchr(path, '?');
+					if (param)
+						*param = 0;
 					char websocket_key[256] = "";
 					bool keep_alive = false;
 					while (indigo_read_line(socket, header, BUFFER_SIZE) > 0) {
