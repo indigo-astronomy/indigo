@@ -63,7 +63,6 @@
 				display:inline-block;
 				padding:6px 8px 6px;
 				text-decoration:none;
-				background-color: #fafafc;
 				cursor:pointer
 			}
 
@@ -99,11 +98,12 @@
 
 			.panel {
 				margin-bottom: 0px;
-				background-color: #fafafc;
+				border-color: #808080;
 			}
 
 			.panel > .panel-heading {
-				background-color: #f0f0f4;
+				background-color: #808080;
+				color:  white;
 			}
 
 			.panel-body {
@@ -116,7 +116,6 @@
 
 			.panel-success {
 				border-color:  #5cb85c;
-				background-color: #fafafc;
 			}
 
 			.panel-success > .panel-heading {
@@ -125,7 +124,6 @@
 			}
 
 			.panel-warning {
-				background-color: #fafafc;
 				border-color: #f0ad4e;
 			}
 
@@ -136,7 +134,6 @@
 
 			.panel-danger {
 				border-color: #c9302c;
-				background-color: #fafafc;
 			}
 
 			.panel-danger > .panel-heading {
@@ -179,30 +176,42 @@
 			.logo {
 				padding-right: 15px;
 			}
+			body.theme-dark {
+				background-color: black;
+			}
+			body.theme-light {
+				background-color: white;
+			}
+			.theme-dark {
+				background-color: #808080;
+			}
+			.theme-light {
+				background-color: #fafafc;
+			}
 		}
 		</style>
 		<title>INDIGO Control Panel</title>
 		<script language="javascript" type="text/javascript">
 		</script>
 	</head>
-	<body ng-app="INDIGO" ng-controller="INDIGOController">
+	<body ng-app="INDIGO" class="{{theme}}" ng-controller="INDIGOController">
 		<div class="container-fluid">
 			<div class="row">
 				<div class="col-sm-12">
-					<a href="http://www.indigo-astronomy.org/"><img class="pull-right logo" height="120" alt="INDIGO" src="/resource/logo.png"></a>
+					<a class="pull-right" href="http://www.indigo-astronomy.org/"><img class="logo" height="120" alt="INDIGO" src="/resource/logo.png"></a>
 					<div class="tree">
 						<ul>
 							<li initially-expanded>
-								<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{indigoServer}}</span>
+								<span class="btn btn-default btn-lg {{theme}}" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{indigoServer}}</span>
 								<ul>
 									<li ng-repeat="device in model" initially-collapsed>
-										<span class="btn btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{device.device}}</span>
+										<span class="btn btn-default btn-lg {{theme}}" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{device.device}}</span>
 										<ul>
 											<li ng-repeat="group in device.groups" initially-collapsed>
-												<span class="btn btn-default btn-lg" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{group.group}}</span>
+												<span class="btn btn-default btn-lg {{theme}}" ng-click="expand($event)"><i class="glyphicon glyphicon-plus"></i>{{group.group}}</span>
 												<ul>
 													<li ng-repeat="property in group.properties">
-														<div class="panel panel-{{property.state | status}}">
+														<div class="panel panel-{{property.state | status}} {{theme}}">
 															<div class="panel-heading"><i class="glyphicon glyphicon-th-list"></i>{{property.label}}</div>
 															<div class="panel-body" ng-switch="property.type">
 
@@ -686,9 +695,11 @@
 			}
 
 			$scope.indigoServer = window.location.hostname+":"+window.location.port;
+								
+			$scope.theme = window.location.href.indexOf("dark")>0?"theme-dark":"theme-light";
 
 			$scope.init = function() {
-				console.log("INIT "+$scope.indigoServer);
+				console.log("INIT "+$scope.indigoServer+" "+$scope.theme);
 				$scope.model = [];
 				websocket = new WebSocket("ws://" + $scope.indigoServer);
 				websocket.onopen = $scope.onOpen;

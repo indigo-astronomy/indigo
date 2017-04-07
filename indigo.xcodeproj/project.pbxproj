@@ -277,6 +277,10 @@
 		591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = indigo_focuser_fli_main.c; path = focuser_fli/indigo_focuser_fli_main.c; sourceTree = "<group>"; };
 		591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = indigo_focuser_fli.c; path = focuser_fli/indigo_focuser_fli.c; sourceTree = "<group>"; };
 		591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = indigo_focuser_fli.h; path = focuser_fli/indigo_focuser_fli.h; sourceTree = "<group>"; };
+		5925E3461E982BE800FF373F /* angular.min.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = angular.min.js; sourceTree = "<group>"; };
+		5925E3471E982BE800FF373F /* bootstrap.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = bootstrap.css; sourceTree = "<group>"; };
+		5925E3481E982BE800FF373F /* bootstrap.min.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = bootstrap.min.js; sourceTree = "<group>"; };
+		5925E3491E982BE800FF373F /* jquery.min.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = jquery.min.js; sourceTree = "<group>"; };
 		592662AD1D9590630021746A /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
 		592662B01D9590630021746A /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		593CFE401DFC8A12003B63D4 /* indigo_wheel_atik_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_atik_main.c; sourceTree = "<group>"; };
@@ -576,6 +580,17 @@
 			name = focuser_fli;
 			sourceTree = "<group>";
 		};
+		5925E3451E982BBC00FF373F /* resource */ = {
+			isa = PBXGroup;
+			children = (
+				5925E3461E982BE800FF373F /* angular.min.js */,
+				5925E3471E982BE800FF373F /* bootstrap.css */,
+				5925E3481E982BE800FF373F /* bootstrap.min.js */,
+				5925E3491E982BE800FF373F /* jquery.min.js */,
+			);
+			path = resource;
+			sourceTree = "<group>";
+		};
 		592662A41D9590630021746A = {
 			isa = PBXGroup;
 			children = (
@@ -746,6 +761,7 @@
 		599A63D61DF5D93500ABC827 /* indigo_server */ = {
 			isa = PBXGroup;
 			children = (
+				5925E3451E982BBC00FF373F /* resource */,
 				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
 				599A63B21DEB7BF500ABC827 /* ctrl.html */,
 			);
