@@ -31,6 +31,8 @@
 
 #define POLL_TIME                       1     /* Seconds */
 
+#define MAX_STEPS_AT_ONCE            4000
+
 
 #include <stdlib.h>
 #include <string.h>
@@ -59,6 +61,8 @@ typedef struct {
 	char dev_file_name[MAX_PATH];
 	char dev_name[MAX_PATH];
 	flidomain_t domain;
+	long zero_position;
+	long steps_to_go;     /* some focusers can not do full extent stpes in one go use this for the second move call */
 	indigo_timer *focuser_timer;
 	pthread_mutex_t usb_mutex;
 } fli_private_data;
@@ -70,7 +74,7 @@ static void fli_close(indigo_device *device) {
 	long res = FLIClose(PRIVATE_DATA->dev_id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) {
-		INDIGO_LOG(indigo_log("indigo_focuser_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
 	}
 }
 
@@ -81,22 +85,40 @@ static void focuser_timer_callback(indigo_device *device) {
 	flidev_t id = PRIVATE_DATA->dev_id;
 
 	int res;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = FLIGetStepperPosition(id, &value);
+	value -= PRIVATE_DATA->zero_position;
 	if (res) {
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_focuser_fli (%d): FLIGetStepperPosition(%d) = %d", __LINE__, id, res));
 		FOCUSER_POSITION_ITEM->number.value = 0;
 	} else {
 		FOCUSER_POSITION_ITEM->number.value = value;
 	}
-
 	res = FLIGetStepsRemaining(id, &steps_remaining);
 	if (res) {
-		INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
+		INDIGO_ERROR(indigo_error("indigo_focuser_fli (%d): FLIGetStepsRemaining(%d) = %d", __LINE__, id, res));
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		FOCUSER_STEPS_ITEM->number.value = steps_remaining;
+		FOCUSER_STEPS_ITEM->number.value = steps_remaining + labs(PRIVATE_DATA->steps_to_go);
 		if (steps_remaining) {
+			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
+		} else if (PRIVATE_DATA->steps_to_go) {
+			int steps = PRIVATE_DATA->steps_to_go;
+			if (labs(steps) > MAX_STEPS_AT_ONCE) {
+				int sign = (steps >= 0) ? 1 : -1;
+				PRIVATE_DATA->steps_to_go = steps;
+				steps = sign * MAX_STEPS_AT_ONCE;
+				PRIVATE_DATA->steps_to_go -= steps;
+			} else {
+				PRIVATE_DATA->steps_to_go = 0;
+			}
+			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, steps);
+			if (res) {
+				INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIStepMotorAsync(%d) = %d", id, res));
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -105,6 +127,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
 
@@ -126,6 +149,105 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 
+static void fli_focuser_connect(indigo_device *device) {
+	flidev_t id;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	long res = FLIOpen(&id, PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
+	if (!res) {
+		PRIVATE_DATA->dev_id = id;
+		res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
+		if (res) {
+			INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetModel(%d) = %d", id, res));
+		}
+
+		/* TODO: Do not home if Atlas Focuser */
+		res = FLIHomeDevice(id);
+		if (res) {
+			INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIHomeDevice(%d) = %d", id, res));
+		}
+
+		long value;
+		//do {
+		//	usleep(100000);
+		//	res = FLIGetStepsRemaining(id, &value);
+		//	if (res) {
+		//		INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetDeviceStatus(%d) = %d", id, res));
+		//	}
+		//	//INDIGO_ERROR(indigo_error("indigo_focuser_fli: Focuser steps left %d", value));
+		//} while (value != 0);  /* wait while finding home position */
+
+		do {
+			usleep(100000);
+			res = FLIGetDeviceStatus(id, &value);
+			if (res) {
+				INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetDeviceStatus(%d) = %d", id, res));
+			}
+			//INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetDeviceStatus(%d) = %d", id, res));
+		} while (value & FLI_FOCUSER_STATUS_MOVING_MASK);  /* wait while moving */
+
+		if (!(value & FLI_FOCUSER_STATUS_HOME)) {
+			INDIGO_ERROR(indigo_error("indigo_focuser_fli: Focuser home position not found (status = %d)", value));
+		}
+
+		res = FLIGetStepperPosition(id, &value);
+		if (res) {
+			INDIGO_ERROR(indigo_error("indigo_focuser_fli (%d): FLIGetStepperPosition(%d) = %d", __LINE__, id, res));
+			value = 0;
+		}
+		PRIVATE_DATA->zero_position = value;
+
+		res = FLIGetFocuserExtent(id, &value);
+		if (res) {
+			INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetFocuserExtent(%d) = %d", id, res));
+			value = 1000;
+		}
+		INDIGO_LOG(indigo_log("indigo_focuser_fli: Focuser Extent %d", value));
+		FOCUSER_POSITION_ITEM->number.max = value;
+		FOCUSER_POSITION_ITEM->number.min = 0;
+		FOCUSER_POSITION_ITEM->number.value = 0;
+		FOCUSER_POSITION_ITEM->number.step = 1;
+
+		FOCUSER_STEPS_ITEM->number.max = value;
+		FOCUSER_STEPS_ITEM->number.min = 0;
+		FOCUSER_STEPS_ITEM->number.value = 0;
+		FOCUSER_STEPS_ITEM->number.step = 1;
+
+		res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
+		if (res) {
+			INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetSerialString(%d) = %d", id, res));
+		}
+
+		long hw_rev, fw_rev;
+		res = FLIGetFWRevision(id, &fw_rev);
+		if (res) {
+			INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetFWRevision(%d) = %d", id, res));
+		}
+
+		res = FLIGetHWRevision(id, &hw_rev);
+		if (res) {
+			INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetHWRevision(%d) = %d", id, res));
+		}
+
+		sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
+		sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
+
+		indigo_update_property(device, INFO_PROPERTY, NULL);
+
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_IDLE_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_IDLE_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, "Connected");
+	} else {
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, "Connect failed!");
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+}
+
+
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -136,73 +258,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			res = FLIOpen(&id, PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
-			if (!res) {
-				PRIVATE_DATA->dev_id = id;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
-				res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
-				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
-				}
-
-				/* TODO: Do not home if Atlas Focuser */
-				res = FLIHomeDevice(id);
-				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIHomeDevice(%d) = %d", id, res));
-				}
-
-				long value;
-				do {
-					usleep(10000);
-					res = FLIGetDeviceStatus(id, &value);
-					if (res) {
-						INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetDeviceStatus(%d) = %d", id, res));
-					}
-				} while (value != FLI_FOCUSER_STATUS_HOME);  /* wait while finding home position */
-
-				res = FLIGetStepperPosition(id, &value);
-				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
-				}
-				FOCUSER_POSITION_ITEM->number.value = value;
-
-				res = FLIGetFocuserExtent(id, &value);
-				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetFocuserExtent(%d) = %d", id, res));
-					value = 1000;
-				}
-				INDIGO_LOG(indigo_log("indigo_ccd_fli: Focuser Extent %d", value));
-				FOCUSER_POSITION_ITEM->number.max = value;
-				FOCUSER_POSITION_ITEM->number.min = 0;
-				FOCUSER_POSITION_ITEM->number.step = 1;
-
-				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
-				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
-				}
-
-				long hw_rev, fw_rev;
-				res = FLIGetFWRevision(id, &fw_rev);
-				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
-				}
-
-				res = FLIGetHWRevision(id, &hw_rev);
-				if (res) {
-					INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
-				}
-
-				sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
-				sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
-
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, "Connecting to focuser, this may take time!");
+			indigo_set_timer(device, 0, fli_focuser_connect);
 		} else {
 			fli_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -220,10 +278,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				value = (long)(FOCUSER_STEPS_ITEM->number.value);
 			}
 
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &current_value);
 			if (res) {
-				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
+				INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetStepperPosition(%d) = %d", id, res));
 			}
+			current_value -= PRIVATE_DATA->zero_position;
 
 			/* do not go over the max extent */
 			if (FOCUSER_POSITION_ITEM->number.max < (current_value + value)) {
@@ -237,15 +297,26 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				FOCUSER_STEPS_ITEM->number.value = (double)labs(value);
 			}
 
+			PRIVATE_DATA->steps_to_go = 0;
+			/* focusers with max < 10000 can only go 4095 steps at once */
+			if ((FOCUSER_POSITION_ITEM->number.max < 10000) && (labs(value) > MAX_STEPS_AT_ONCE)) {
+				int sign = (value >= 0) ? 1 : -1;
+				PRIVATE_DATA->steps_to_go = value;
+				value = sign * MAX_STEPS_AT_ONCE;
+				PRIVATE_DATA->steps_to_go -= value;
+			}
+
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
 			if (res) {
-				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIStepMotorAsync(%d) = %d", id, res));
+				INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIStepMotorAsync(%d) = %d", id, res));
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
@@ -256,20 +327,33 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		res = 0;
 		long value = 0;
-		if (FOCUSER_POSITION_ITEM->number.value >= 0) {
+		if ((FOCUSER_POSITION_ITEM->number.value >= 0) &&
+		    (FOCUSER_POSITION_ITEM->number.value <= FOCUSER_POSITION_ITEM->number.max)) {
 			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &value);
 			if (res) {
-				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIGetStepperPosition(%d) = %d", id, res));
+				INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIGetStepperPosition(%d) = %d", id, res));
+			}
+			value -= PRIVATE_DATA->zero_position;
+			value = FOCUSER_POSITION_ITEM->number.value - value;
+
+			PRIVATE_DATA->steps_to_go = 0;
+			/* focusers with max < 10000 can only go 4095 steps at once */
+			if ((FOCUSER_POSITION_ITEM->number.max < 10000) && (labs(value) > MAX_STEPS_AT_ONCE)) {
+				int sign = (value >= 0) ? 1 : -1;
+				PRIVATE_DATA->steps_to_go = value;
+				value = sign * MAX_STEPS_AT_ONCE;
+				PRIVATE_DATA->steps_to_go -= value;
 			}
 
-			value = FOCUSER_POSITION_ITEM->number.value - value;
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
 			if (res) {
-				INDIGO_LOG(indigo_log("indigo_ccd_fli: FLIStepMotorAsync(%d) = %d", id, res));
+				INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIStepMotorAsync(%d) = %d", id, res));
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
 		}
@@ -278,14 +362,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-			/* HOW TO STOP FLI ? */
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			PRIVATE_DATA->steps_to_go = 0;
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, 0);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			if (res) {
+				INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLIStepMotorAsync(%d) = %d", id, res));
+			}
 		}
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, "FLI does not support ABORT_MORION");
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, "Focuser stopped");
+
 		return INDIGO_OK;
 	// ---------------------------------------------------------------------------
 	}
@@ -321,7 +409,7 @@ static void enumerate_devices() {
 	num_devices = 0;
 	long res = FLICreateList(enum_domain);
 	if (res) {
-		INDIGO_LOG(indigo_log("indigo_focuser_fli: FLICreateList(%d) = %d",enum_domain , res));
+		INDIGO_ERROR(indigo_error("indigo_focuser_fli: FLICreateList(%d) = %d",enum_domain , res));
 	}
 	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
 		do {
@@ -436,7 +524,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			int slot = find_available_device_slot();
 			if (slot < 0) {
-				INDIGO_LOG(indigo_log("indigo_focuser_fli: No available device slots available."));
+				INDIGO_ERROR(indigo_error("indigo_focuser_fli: No available device slots available."));
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
@@ -444,7 +532,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			char file_name[MAX_PATH];
 			int idx = find_plugged_device(file_name);
 			if (idx < 0) {
-				INDIGO_DEBUG(indigo_debug("indigo_focuser_fli: No FLI Camera plugged."));
+				INDIGO_DEBUG(indigo_debug("indigo_focuser_fli: No FLI focuser plugged."));
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
@@ -462,7 +550,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
 			strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
 			device->private_data = private_data;
-			//indigo_attach_device(device);
 			indigo_async((void *)(void *)indigo_attach_device, device);
 			devices[slot]=device;
 			break;

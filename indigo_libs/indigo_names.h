@@ -113,12 +113,16 @@
 
 /** DEVICE_PORT.DEVICE_PORT property name.
  */
-#define DEVICE_PORT_ITEM_NAME									"DEVICE_PORT"
+#define DEVICE_PORT_ITEM_NAME									"PORT"
 
 //----------------------------------------------------------------------
 /** DEVICE_PORTS property name.
  */
 #define DEVICE_PORTS_PROPERTY_NAME						"DEVICE_PORTS"
+
+/** DEVICE_PORTS.REFRESH item name.
+ */
+#define DEVICE_PORTS_REFRESH_ITEM_NAME				"REFRESH"
 
 //----------------------------------------------------------------------
 /** CCD_INFO property name.
@@ -511,6 +515,20 @@
 #define FOCUSER_SPEED_ITEM_NAME								"SPEED"
 
 //----------------------------------------------------------------------
+
+/** FOCUSER_ROTATION property name.
+ */
+#define FOCUSER_ROTATION_PROPERTY_NAME							"FOCUSER_ROTATION"
+
+/** FOCUSER_ROTATION.CLOCKWISE property item name.
+ */
+#define FOCUSER_ROTATION_CLOCKWISE_ITEM_NAME				"CLOCKWISE"
+
+/** FOCUSER_ROTATION.COUNTERCLOCKWISE property item name.
+ */
+#define FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM_NAME	"COUNTERCLOCKWISE"
+
+//----------------------------------------------------------------------
 /** FOCUSER_DIRECTION property name.
  */
 #define FOCUSER_DIRECTION_PROPERTY_NAME				"FOCUSER_DIRECTION"
@@ -569,10 +587,23 @@
 #define FOCUSER_COMPENSATION_ITEM_NAME				"COMPENSATION"
 
 //----------------------------------------------------------------------
+/** FOCUSER_MODE property name.
+ */
+#define FOCUSER_MODE_PROPERTY_NAME						"FOCUSER_MODE"
+
+/** FOCUSER_MODE.MANUAL property item name.
+ */
+#define FOCUSER_MODE_MANUAL_ITEM_NAME					"MANUAL"
+
+/** FOCUSER_MODE.AUTOMATIC property item name.
+ */
+#define FOCUSER_MODE_AUTOMATIC_ITEM_NAME			"AUTOMATIC"
+
+//----------------------------------------------------------------------
 
 /** MOUNT_INFO property name.
  */
-#define MOUNT_INFO_PROPERTY_NAME										"MOUNT_INFO"
+#define MOUNT_INFO_PROPERTY_NAME							"MOUNT_INFO"
 
 /** MOUNT_INFO.MODEL property item name.
  */
@@ -686,30 +717,30 @@
 #define MOUNT_SLEW_RATE_MAX_ITEM_NAME						"MAX"
 
 //----------------------------------------------------------------------
-/** MOUNT_MOTION_NS_PROPERTY_NAME property name.
+/** MOUNT_MOTION_DEC_PROPERTY_NAME property name.
  */
-#define MOUNT_MOTION_NS_PROPERTY_NAME                "MOUNT_MOTION_NS"
+#define MOUNT_MOTION_DEC_PROPERTY_NAME                "MOUNT_MOTION_DEC"
 
-/** MOUNT_MOTION_NS.NORTH property item name.
+/** MOUNT_MOTION_DEC.NORTH property item name.
  */
-#define MOUNT_MOTION_NORTH_ITEM_NAME                 "MOTION_NORTH"
+#define MOUNT_MOTION_NORTH_ITEM_NAME                 "NORTH"
 
-/** MOUNT_MOTION_NS.SOUTH property item name.
+/** MOUNT_MOTION_DEC.SOUTH property item name.
  */
-#define MOUNT_MOTION_SOUTH_ITEM_NAME                 "MOTION_SOUTH"
+#define MOUNT_MOTION_SOUTH_ITEM_NAME                 "SOUTH"
 
 //----------------------------------------------------------------------
-/** MOUNT_MOTION_WE_PROPERTY_NAME property name.
+/** MOUNT_MOTION_RA_PROPERTY_NAME property name.
  */
-#define MOUNT_MOTION_WE_PROPERTY_NAME                "MOUNT_MOTION_WE"
+#define MOUNT_MOTION_RA_PROPERTY_NAME                "MOUNT_MOTION_RA"
 
-/** MOUNT_MOTION_NS.WEST property item name.
+/** MOUNT_MOTION_RA.WEST property item name.
  */
-#define MOUNT_MOTION_WEST_ITEM_NAME                 "MOTION_WEST"
+#define MOUNT_MOTION_WEST_ITEM_NAME                 "WEST"
 
-/** MOUNT_MOTION_NS.EAST property item name.
+/** MOUNT_MOTION_RA.EAST property item name.
  */
-#define MOUNT_MOTION_EAST_ITEM_NAME                 "MOTION_EAST"
+#define MOUNT_MOTION_EAST_ITEM_NAME                 "EAST"
 
 //----------------------------------------------------------------------
 /** MOUNT_TRACK_RATE property name.

@@ -94,7 +94,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	if (IS_CONNECTED) {
 		if (indigo_property_match(X_FOCUSER_FREQUENCY_PROPERTY, property))
 			indigo_define_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
 	}
@@ -127,6 +127,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
 			libfcusb_close(PRIVATE_DATA->device_context);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	// -------------------------------------------------------------------------------- CONFIG
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, X_FOCUSER_FREQUENCY_PROPERTY);
 		}
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_STEPS
@@ -178,10 +183,8 @@ static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
-		indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
 	indigo_release_property(X_FOCUSER_FREQUENCY_PROPERTY);
+	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return indigo_focuser_detach(device);
 }
 

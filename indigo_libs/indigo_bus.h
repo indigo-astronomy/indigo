@@ -30,6 +30,10 @@
 
 #include "indigo_config.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Device, property or item name size.
  */
 #define INDIGO_NAME_SIZE      128
@@ -54,7 +58,7 @@ typedef enum {
 	INDIGO_VERSION_NONE			= 0x0000, ///< undefined version
 	INDIGO_VERSION_LEGACY		= 0x0107, ///< INDI compatible version
 	INDIGO_VERSION_2_0			= 0x0200,  ///< INDIGO version
-	INDIGO_VERSION_CURRENT	= 0x0200  ///< INDIGO version
+	INDIGO_VERSION_CURRENT		= 0x0200  ///< INDIGO version
 } indigo_version;
 
 /** Bus operation return status.
@@ -345,7 +349,10 @@ extern indigo_property *indigo_init_blob_property(indigo_property *property, con
 /** Resize property.
  */
 extern indigo_property *indigo_resize_property(indigo_property *property, int count);
-/** Release property.
+/** Allocate blob buffer (rounded up to 2880 bytes).
+ */
+extern void *indigo_alloc_blob_buffer(long size);
+/** Resize property.
  */
 extern void indigo_release_property(indigo_property *property);
 /** Validate address of item of registered BLOB property.
@@ -367,6 +374,10 @@ extern void indigo_init_light_item(indigo_item *item, const char *name, const ch
 /** Initialize BLOB item.
  */
 extern void indigo_init_blob_item(indigo_item *item, const char *name, const char *label);
+
+/** populate BLOB item if url is given. 
+ */ 
+extern bool indigo_populate_http_blob_item(indigo_item *blob_item);
 
 /** Test, if property matches other property.
  */
@@ -420,6 +431,10 @@ extern int indigo_main_argc;
  */
 extern const char **indigo_main_argv;
 
+/** Show log messages.
+ */
+extern bool indigo_log_level;
+
 /** Show debug messages.
  */
 extern bool indigo_debug_level;
@@ -435,6 +450,10 @@ extern bool indigo_use_syslog;
 /** Do not add @ host:port suffix to remote devices - for case with single remote server and no local devices only.
  */
 extern bool indigo_use_host_suffix;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_bus_h */
 

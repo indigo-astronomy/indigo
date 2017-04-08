@@ -18,6 +18,7 @@ This is the list of requirements taken into the consideration:
 4. indigo_server - server with loadable (indigo .so/.dylib and indi executables) drivers
 5. INDIGO Server for macOS wrapper
 6. Integrated HTTP server for BLOB download & server control (= web based INDI control panel)
+7. indigo_prop_tool - command line tool to list and set properties
 
 #### Drivers
 
@@ -37,6 +38,10 @@ This is the list of requirements taken into the consideration:
 14. FLI filter wheel driver
 15. FLI CCD driver
 16. FLI focuser driver (testers needed)
+17. USB_Focus v3 driver
+
+18.	ASCOM driver for INDIGO Camera
+19.	ASCOM driver for INDIGO FilterWheel
 
 ## This is under development
 

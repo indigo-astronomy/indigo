@@ -115,7 +115,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
-				INDIGO_LOG(indigo_log("indigo_wheel_asi: EFWOpen(%d) = %d", index, res));
+				INDIGO_ERROR(indigo_error("indigo_wheel_asi: EFWOpen(%d) = %d", index, res));
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				return INDIGO_FAILED;
@@ -266,14 +266,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 				int slot = find_available_device_slot();
 				if (slot < 0) {
-					INDIGO_LOG(indigo_log("indigo_wheel_asi: No available device slots available."));
+					INDIGO_ERROR(indigo_error("indigo_wheel_asi: No available device slots available."));
 					pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 
 				int id = find_plugged_device_id();
 				if (id == NO_DEVICE) {
-					INDIGO_LOG(indigo_log("indigo_wheel_asi: No plugged device found."));
+					INDIGO_ERROR(indigo_error("indigo_wheel_asi: No plugged device found."));
 					pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
@@ -353,7 +353,7 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 		last_action = action;
 		efw_id_count = EFWGetProductIDs(efw_products);
 		if (efw_id_count <= 0) {
-			INDIGO_LOG(indigo_log("indigo_wheel_asi: Can not get the list of supported IDs."));
+			INDIGO_ERROR(indigo_error("indigo_wheel_asi: Can not get the list of supported IDs."));
 			return INDIGO_FAILED;
 		}
 		indigo_start_usb_event_handler();

@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 34
+INDIGO_BUILD := 44
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -157,7 +157,7 @@ SO_LIBS= $(wildcard $(BUILD_LIB)/*.$(SOEXT))
 #
 #---------------------------------------------------------------------
 
-all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) indigo_server/ctrl.data drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath
+all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) ctrlpanel drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath
 
 #---------------------------------------------------------------------
 #
@@ -638,7 +638,7 @@ $(BUILD_DRIVERS)/indigo_wheel_fli.$(SOEXT): indigo_drivers/wheel_fli/indigo_whee
 
 #---------------------------------------------------------------------
 #
-#	Build Shoestring FLI focuser driver
+#	Build FLI focuser driver
 #
 #---------------------------------------------------------------------
 
@@ -689,6 +689,21 @@ endif
 
 #---------------------------------------------------------------------
 #
+#	Build USB_Focus v3 focuser driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_usbv3.a: indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_usbv3: indigo_drivers/focuser_usbv3/indigo_focuser_usbv3_main.o $(BUILD_DRIVERS)/indigo_focuser_usbv3.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_usbv3.$(SOEXT): indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------
@@ -705,7 +720,7 @@ $(BUILD_BIN)/client: indigo_test/client.o
 #
 #---------------------------------------------------------------------
 
-$(BUILD_BIN)/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS) indigo_server/ctrl.data
+$(BUILD_BIN)/indigo_server: indigo_server/indigo_server.o $(SIMULATOR_LIBS) ctrlpanel
 	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.o $(SIMULATOR_LIBS) $(LDFLAGS) -lstdc++ -lindigo
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
@@ -713,7 +728,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
 endif
 
-$(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS) indigo_server/ctrl.data
+$(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS) ctrlpanel
 	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) -lstdc++
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
@@ -741,10 +756,31 @@ endif
 #	Control panel
 #
 #---------------------------------------------------------------------
+ctrlpanel: indigo_server/ctrl.data indigo_server/resource/angular.min.js.data indigo_server/resource/bootstrap.min.js.data indigo_server/resource/bootstrap.css.data indigo_server/resource/jquery.min.js.data indigo_server/resource/glyphicons-halflings-regular.ttf.data indigo_server/resource/logo.png.data
+
 
 indigo_server/ctrl.data:	indigo_server/ctrl.html
 #	python tools/rjsmin.py <indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
 	cat indigo_server/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >indigo_server/ctrl.data
+
+indigo_server/resource/angular.min.js.data:	indigo_server/resource/angular.min.js
+	cat indigo_server/resource/angular.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/angular.min.js.data
+
+indigo_server/resource/bootstrap.min.js.data:	indigo_server/resource/bootstrap.min.js
+	cat indigo_server/resource/bootstrap.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/bootstrap.min.js.data
+
+indigo_server/resource/bootstrap.css.data:	indigo_server/resource/bootstrap.css
+	cat indigo_server/resource/bootstrap.css | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/bootstrap.css.data
+
+indigo_server/resource/jquery.min.js.data:	indigo_server/resource/jquery.min.js
+	cat indigo_server/resource/jquery.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/jquery.min.js.data
+
+indigo_server/resource/glyphicons-halflings-regular.ttf.data:	indigo_server/resource/glyphicons-halflings-regular.ttf
+	cat indigo_server/resource/glyphicons-halflings-regular.ttf | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/glyphicons-halflings-regular.ttf.data
+
+indigo_server/resource/logo.png.data:	indigo_server/resource/logo.png
+	cat indigo_server/resource/logo.png | gzip | hexdump -v -e '1/1 "0x%02x, "' > indigo_server/resource/logo.png.data
+
 
 #---------------------------------------------------------------------
 #
@@ -755,13 +791,16 @@ indigo_server/ctrl.data:	indigo_server/ctrl.html
 install:
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server_standalone $(INSTALL_PREFIX)/bin
+	sudo install -D -m 0755 $(BUILD_BIN)/indigo_prop_tool $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0644 $(DRIVERS) $(INSTALL_PREFIX)/bin
-	sudo install -D -m 0644 $(DRIVER_LIBS) $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.so $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0644 $(DRIVER_SOLIBS) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-indigo_ccd_asi.rules
 	sudo install -D -m 0644 indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/99-efw.rules /lib/udev/rules.d/99-indigo_wheel_asi.rules
+	sudo install -D -m 0644 indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.rules /lib/udev/rules.d/99-indigo_focuser_usbv3.rules
 	sudo udevadm control --reload-rules
 
 #---------------------------------------------------------------------
@@ -776,6 +815,7 @@ $(PACKAGE_NAME).deb: all
 	install -d /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
 	install $(BUILD_BIN)/indigo_server /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
 	install $(BUILD_BIN)/indigo_server_standalone /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
+	install $(BUILD_BIN)/indigo_prop_tool /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
 	install $(DRIVERS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
 	install -d /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(BUILD_LIB)/libindigo.so /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
@@ -831,5 +871,3 @@ clean-all: clean
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; cd ../../../..
-
-

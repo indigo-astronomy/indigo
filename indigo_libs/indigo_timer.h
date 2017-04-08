@@ -31,6 +31,10 @@
 
 #include "indigo_bus.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Timer callback function prototype.
  */
 typedef void (*indigo_timer_callback)(indigo_device *device);
@@ -90,5 +94,9 @@ extern bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer);
 /** Cancel all timers for given device.
  */
 extern void indigo_cancel_all_timers(indigo_device *device);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_timer_h */

@@ -28,6 +28,10 @@
 
 #include "indigo_bus.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Copy name into property definition, translate if version doesn't match.
  */
 extern void indigo_copy_property_name(indigo_version version, indigo_property *property, const char *name);
@@ -43,6 +47,10 @@ extern const char *indigo_property_name(indigo_version version, indigo_property 
 /** Get item name, translate if version doesn't match.
  */
 extern const char *indigo_item_name(indigo_version version, indigo_property *property, indigo_item *item);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_version_h */
 

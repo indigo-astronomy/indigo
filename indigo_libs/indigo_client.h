@@ -32,6 +32,10 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define INDIGO_MAX_DRIVERS    100
 #define INDIGO_MAX_SERVERS    10
 
@@ -48,6 +52,7 @@ typedef struct {
 /** Remote server entry type.
  */
 typedef struct {
+	char name[INDIGO_NAME_SIZE];            ///< service name
 	char host[INDIGO_NAME_SIZE];            ///< server host name
 	int port;                               ///< server port
 	pthread_t thread;                       ///< client thread ID
@@ -90,9 +95,13 @@ extern indigo_result indigo_remove_driver(indigo_driver_entry *driver);
  */
 extern indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entry **driver);
 
+/** Create bonjour service name.
+ */
+void indigo_service_name(const char *host, int port, char *name);
+
 /** Connect and start thread for remote server.
  */
-extern indigo_result indigo_connect_server(const char *host, int port, indigo_server_entry **server);
+extern indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server);
 
 /** Disconnect and stop thread for remote server.
  */
@@ -105,5 +114,9 @@ extern indigo_result indigo_start_subprocess(const char *executable, indigo_subp
 /** Stop thread for subprocess.
  */
 extern indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_client_h */

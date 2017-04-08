@@ -58,6 +58,7 @@
 #include "mount_nexstar/indigo_mount_nexstar.h"
 #include "wheel_fli/indigo_wheel_fli.h"
 #include "focuser_fli/indigo_focuser_fli.h"
+#include "focuser_usbv3/indigo_focuser_usbv3.h"
 #endif
 
 #define MDNS_INDIGO_TYPE    "_indigo._tcp"
@@ -82,6 +83,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_nexstar,
 	indigo_wheel_fli,
 	indigo_focuser_fli,
+	indigo_focuser_usbv3,
 #endif
 	NULL
 };
@@ -94,6 +96,8 @@ static indigo_property *unload_property;
 static indigo_property *restart_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
+static char servicename[INDIGO_NAME_SIZE] = "";
+
 
 static pid_t server_pid = 0;
 static bool keep_server_running = true;
@@ -119,14 +123,40 @@ static unsigned char ctrl[] = {
 #include "ctrl.data"
 };
 
+static unsigned char angular_js[] = {
+#include "resource/angular.min.js.data"
+};
+
+static unsigned char bootstrap_js[] = {
+#include"resource/bootstrap.min.js.data"
+};
+
+static unsigned char bootstrap_css[] = {
+#include "resource/bootstrap.css.data"
+};
+
+static unsigned char jquery_js[] = {
+#include "resource/jquery.min.js.data"
+};
+
+static unsigned char font_ttf[] = {
+#include "resource/glyphicons-halflings-regular.ttf.data"
+};
+
+static unsigned char logo_png[] = {
+#include "resource/logo.png.data"
+};
+
 static void server_callback(int count) {
 	if (server_startup) {
 		if (use_bonjour) {
 			/* UGLY but the only way to suppress compat mode warning messages on Linux */
 			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-			char hostname[INDIGO_NAME_SIZE], servicename[INDIGO_NAME_SIZE];
-			gethostname(hostname, sizeof(hostname));
-			snprintf(servicename, INDIGO_NAME_SIZE, "%s (%d)", hostname, indigo_server_tcp_port);
+			if (*servicename == 0) {
+				char hostname[INDIGO_NAME_SIZE];
+				gethostname(hostname, sizeof(hostname));
+				indigo_service_name(hostname, indigo_server_tcp_port, servicename);
+			}
 			DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 			DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 		}
@@ -193,7 +223,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		indigo_property_copy_values(drivers_property, property, false);
 		for (int i = 0; i < drivers_property->count; i++)
 			if (drivers_property->items[i].sw.value) {
-				indigo_available_drivers[i].initialized = indigo_available_drivers[i].driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;				
+				indigo_available_drivers[i].initialized = indigo_available_drivers[i].driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
 			} else {
 				indigo_available_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
 				indigo_available_drivers[i].initialized = false;
@@ -277,9 +307,9 @@ static void server_main(int argc, const char * argv[]) {
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 
 	indigo_start_usb_event_handler();
-	
+
 	indigo_start();
-	
+
 	for (int i = 1; i < argc; i++) {
 		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
 			indigo_server_tcp_port = atoi(argv[i + 1]);
@@ -295,21 +325,18 @@ static void server_main(int argc, const char * argv[]) {
 				*colon++ = 0;
 				port = atoi(colon);
 			}
-			indigo_connect_server(host, port, NULL);
+			indigo_connect_server(NULL, host, port, NULL);
 			i++;
 		} else if ((!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indi-driver")) && i < argc - 1) {
 			char executable[INDIGO_NAME_SIZE];
 			strncpy(executable, argv[i + 1], INDIGO_NAME_SIZE);
 			indigo_start_subprocess(executable, NULL);
 			i++;
-		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-trace")) {
-			indigo_trace_level = true;
-		} else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--enable-debug")) {
-			indigo_debug_level = true;
-		} else if (!strcmp(argv[i], "-vv") || !strcmp(argv[i], "--enable-trace")) {
-			indigo_trace_level = true;
 		} else if (!strcmp(argv[i], "-b-") || !strcmp(argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
+		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--bonjour")) {
+			strncpy(servicename, argv[i + 1], INDIGO_NAME_SIZE);
+			i++;
 		} else if (!strcmp(argv[i], "-c-") || !strcmp(argv[i], "--disable-control-panel")) {
 			use_control_panel = false;
 		} else if (!strcmp(argv[i], "-u-") || !strcmp(argv[i], "--disable-blob-urls")) {
@@ -318,22 +345,29 @@ static void server_main(int argc, const char * argv[]) {
 			indigo_load_driver(argv[i], false, NULL);
 		}
 	}
-	
-	if (use_control_panel)
+
+	if (use_control_panel) {
 		indigo_server_add_resource("/ctrl", ctrl, sizeof(ctrl), "text/html");
+		indigo_server_add_resource("/resource/angular.min.js", angular_js, sizeof(angular_js), "text/javascript");
+		indigo_server_add_resource("/resource/bootstrap.min.js", bootstrap_js, sizeof(bootstrap_js), "text/javascript");
+		indigo_server_add_resource("/resource/bootstrap.css", bootstrap_css, sizeof(bootstrap_css), "text/css");
+		indigo_server_add_resource("/resource/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
+		indigo_server_add_resource("/fonts/glyphicons-halflings-regular.ttf", font_ttf, sizeof(font_ttf), "application/x-font-ttf");
+		indigo_server_add_resource("/resource/logo.png", logo_png, sizeof(logo_png), "image/png");
+	}
 
 	for (int i = first_driver; static_drivers[i]; i++) {
 		indigo_add_driver(static_drivers[i], false, NULL);
 	}
 
-	indigo_attach_device(&server_device);	
+	indigo_attach_device(&server_device);
 	indigo_server_start(server_callback);
 
 #ifdef INDIGO_MACOS
 	DNSServiceRefDeallocate(sd_indigo);
 	DNSServiceRefDeallocate(sd_http);
 #endif
-	
+
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
 			indigo_remove_driver(&indigo_available_drivers[i]);
@@ -387,7 +421,7 @@ int main(int argc, const char * argv[]) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("%s [-h|--help]\n", argv[0]);
-			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-u-|--disable-blob-urls] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-debug] [-vv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
+			printf("%s [--|--do-not-fork] [-l|--use-syslog] [-s|--enable-simulators] [-p|--port port] [-u-|--disable-blob-urls] [-b|--bonjour name] [-b-|--disable-bonjour] [-c-|--disable-control-panel] [-v|--enable-log] [-vv|--enable-debug] [-vvv|--enable-trace] [-r|--remote-server host:port] [-i|--indi-driver driver_executable] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			return 0;
 		} else {
 			server_argv[server_argc++] = argv[i];
@@ -400,7 +434,7 @@ int main(int argc, const char * argv[]) {
 		while(keep_server_running) {
 			server_pid = fork();
 			if (server_pid == -1) {
-				INDIGO_LOG(indigo_log("Server start failed!"));
+				INDIGO_ERROR(indigo_error("Server start failed!"));
 				return EXIT_FAILURE;
 			} else if (server_pid == 0) {
 #ifdef INDIGO_LINUX
@@ -410,7 +444,7 @@ int main(int argc, const char * argv[]) {
 				return EXIT_SUCCESS;
 			} else {
 				if (waitpid(server_pid, NULL, 0) == -1 ) {
-					INDIGO_LOG(indigo_log("waitpid() failed."));
+					INDIGO_ERROR(indigo_error("waitpid() failed."));
 					return EXIT_FAILURE;
 				}
 				use_sigkill = false;

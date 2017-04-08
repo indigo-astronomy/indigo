@@ -29,7 +29,15 @@
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern indigo_result indigo_ccd_fli(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ccd_fli_h */
 

@@ -44,13 +44,14 @@
 
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
-static unsigned char background[] = {
-#include "indigo_ccd_simulator_m42.h"
+static unsigned short background[] = {
+#include "indigo_ccd_simulator_image.h"
 };
 
 typedef struct {
+	indigo_device *imager, *guider;
 	int star_x[STARS], star_y[STARS], star_a[STARS];
-	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT];
+	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT + 2880];
 	double target_temperature, current_temperature;
 	int target_slot, current_slot;
 	int target_position, current_position;
@@ -60,50 +61,143 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
+// gausian blur algorithm is based on the paper http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir
+
+static void box_blur_h(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+	double iarr = 1 / (r + r + 1);
+	for (int i = 0; i < h; i++) {
+		int ti = i * w, li = ti, ri = ti + r;
+		int fv = scl[ti], lv = scl[ti + w - 1], val = (r + 1) * fv;
+		for (int j = 0; j < r; j++)
+			val += scl[ti + j];
+		for (int j = 0  ; j <= r ; j++) {
+			val += scl[ri++] - fv;
+			tcl[ti++] = round(val * iarr);
+		}
+		for (int j = r + 1; j < w-r; j++) {
+			val += scl[ri++] - scl[li++];
+			tcl[ti++] = round(val * iarr);
+		}
+		for (int j = w - r; j < w  ; j++) {
+			val += lv - scl[li++];
+			tcl[ti++] = round(val * iarr);
+		}
+	}
+}
+
+static void box_blur_t(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+	double iarr = 1 / ( r + r + 1);
+	for (int i = 0; i < w; i++) {
+		int ti = i, li = ti, ri = ti + r * w;
+		int fv = scl[ti], lv = scl[ti + w * (h - 1)], val = (r + 1) * fv;
+		for (int j = 0; j < r; j++)
+			val += scl[ti + j * w];
+		for (int j = 0  ; j <= r ; j++) {
+			val += scl[ri] - fv;
+			tcl[ti] = round(val * iarr);
+			ri += w;
+			ti += w;
+		}
+		for (int j = r + 1; j<h-r; j++) {
+			val += scl[ri] - scl[li];
+			tcl[ti] = round(val*iarr);
+			li += w;
+			ri += w;
+			ti += w;
+		}
+		for (int j = h - r; j < h  ; j++) {
+			val += lv - scl[li];
+			tcl[ti] = round(val * iarr);
+			li += w;
+			ti += w;
+		}
+	}
+}
+
+static void box_blur(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+	int length = w * h;
+	for (int i = 0; i < length; i++)
+		tcl[i] = scl[i];
+	box_blur_h(tcl, scl, w, h, r);
+	box_blur_t(scl, tcl, w, h, r);
+}
+
+static void gauss_blur(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+	double ideal = sqrt((12 * r * r / 3) + 1);
+	int wl = floor(ideal);
+	if (wl % 2 == 0)
+		wl--;
+	int wu = wl + 2;
+	ideal = (12 * r * r - 3 * wl * wl - 12 * wl - 9)/(-4 * wl - 4);
+	int m = round(ideal);
+	int sizes[3];
+	for (int i = 0; i < 3; i++)
+		sizes[i] = i < m ? wl : wu;
+	box_blur(scl, tcl, w, h, (sizes[0] - 1) / 2);
+	box_blur(tcl, scl, w, h, (sizes[1] - 1) / 2);
+	box_blur(scl, tcl, w, h, (sizes[2] - 1) / 2);
+}
+
 static void exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		simulator_private_data *private_data = PRIVATE_DATA;
 		unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+		int frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value / horizontal_bin;
+		int frame_top = (int)CCD_FRAME_TOP_ITEM->number.value / vertical_bin;
 		int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
 		int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
 		int size = frame_width * frame_height;
 		int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
 		int offset = (int)CCD_OFFSET_ITEM->number.value;
 		double gamma = CCD_GAMMA_ITEM->number.value;
-		for (int j = 0; j < frame_height; j++) {
-			int jj = j * vertical_bin;
-			for (int i = 0; i < frame_width; i++) {
-				raw[j * frame_width + i] = background[jj * WIDTH + i * horizontal_bin] + (rand() & 0x1F);
+		
+		if (device == PRIVATE_DATA->imager) {
+			for (int j = 0; j < frame_height; j++) {
+				int jj = (frame_top + j) * vertical_bin;
+				for (int i = 0; i < frame_width; i++) {
+					raw[j * frame_width + i] = background[jj * WIDTH + (frame_left + i) * horizontal_bin] + (rand() & 0x7F);
+				}
 			}
+		} else {
+			for (int i = 0; i < size; i++)
+				raw[i] = (rand() & 0x7F);
 		}
-		double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
-		double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
-		for (int i = 0; i < STARS; i++) {
-			double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
-			if (center_x < 0)
-				center_x += frame_width;
-			if (center_x >= frame_width)
-				center_x -= frame_width;
-			double center_y = (private_data->star_y[i] + y_offset) / vertical_bin;
-			if (center_y < 0)
-				center_y += frame_height;
-			if (center_y >= frame_height)
-				center_y -= frame_height;
-			int a = private_data->star_a[i];
-			int xMax = (int)round(center_x) + 4 / horizontal_bin;
-			int yMax = (int)round(center_y) + 4 / vertical_bin;
-			for (int y = yMax - 8 / vertical_bin; y <= yMax; y++) {
-				int yw = ((y + frame_height) % frame_height) * frame_width;
-				for (int x = xMax-8 / horizontal_bin; x <= xMax; x++) {
-					double xx = center_x-x;
-					double yy = center_y-y;
-					double v = a*exp(-(xx * xx / 2.0 + yy * yy / 2.0));
-					raw[yw + ((x + frame_width) % frame_width)] += (unsigned short)v;
+		
+		if (device == PRIVATE_DATA->guider) {
+			double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
+			double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
+			for (int i = 0; i < STARS; i++) {
+				double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
+				if (center_x < 0)
+					center_x += WIDTH;
+				if (center_x >= WIDTH)
+					center_x -= WIDTH;
+				double center_y = (private_data->star_y[i] + y_offset) / vertical_bin;
+				if (center_y < 0)
+					center_y += HEIGHT;
+				if (center_y >= HEIGHT)
+					center_y -= HEIGHT;
+				center_x -= frame_left;
+				center_y -= frame_top;
+				int a = private_data->star_a[i];
+				int xMax = (int)round(center_x) + 4 / horizontal_bin;
+				int yMax = (int)round(center_y) + 4 / vertical_bin;
+				for (int y = yMax - 8 / vertical_bin; y <= yMax; y++) {
+					if (y < 0 || y >= frame_height)
+						continue;
+					int yw = y * frame_width;
+					double yy = center_y - y;
+					for (int x = xMax - 8 / horizontal_bin; x <= xMax; x++) {
+						if (x < 0 || x >= frame_width)
+							continue;
+						double xx = center_x - x;
+						double v = a * exp(-(xx * xx / 2.0 + yy * yy / 2.0));
+						raw[yw + x] += (unsigned short)v;
+					}
 				}
 			}
 		}
@@ -116,7 +210,15 @@ static void exposure_timer_callback(indigo_device *device) {
 				value = 65535;
 			raw[i] = (unsigned short)value;
 		}
+		if (private_data->current_position != 0) {
+			unsigned short *tmp = malloc(2 * size);
+			gauss_blur(raw, tmp, frame_width, frame_height, private_data->current_position);
+			memcpy(raw, tmp, 2 * size);
+			free(tmp);
+		}
 		indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
 }
 
@@ -194,10 +296,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
 		CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- CCD_IMAGE
-		for (int i = 0; i < STARS; i++) {
+		for (int i = 0; i < 10; i++) {
 			PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
 			PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-			PRIVATE_DATA->star_a[i] = 1000 * (rand() % 60);       // and brightness
+			PRIVATE_DATA->star_a[i] = 500 * (rand() % 100);       // and brightness
+		}
+		for (int i = 10; i < STARS; i++) {
+			PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
+			PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
+			PRIVATE_DATA->star_a[i] = 50 * (rand() % 30);       // and brightness
 		}
 		// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
 		CCD_COOLER_PROPERTY->hidden = false;
@@ -487,6 +594,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_ITEM->number.value = 25;
 		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		FOCUSER_MODE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		INDIGO_LOG(indigo_log("%s attached", device->name));
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -613,6 +721,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			assert(imager_ccd != NULL);
 			memcpy(imager_ccd, &imager_camera_template, sizeof(indigo_device));
 			imager_ccd->private_data = private_data;
+			private_data->imager = imager_ccd;
 			indigo_attach_device(imager_ccd);
 			imager_wheel = malloc(sizeof(indigo_device));
 			assert(imager_wheel != NULL);
@@ -628,6 +737,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			assert(guider_ccd != NULL);
 			memcpy(guider_ccd, &guider_camera_template, sizeof(indigo_device));
 			guider_ccd->private_data = private_data;
+			private_data->guider = guider_ccd;
 			indigo_attach_device(guider_ccd);
 			guider_guider = malloc(sizeof(indigo_device));
 			assert(guider_guider != NULL);

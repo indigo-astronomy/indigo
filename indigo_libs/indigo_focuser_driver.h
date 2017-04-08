@@ -29,6 +29,10 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Main focuser group name string.
  */
 #define FOCUSER_MAIN_GROUP                "Focuser"
@@ -44,6 +48,18 @@
 /** FOCUSER_SPEED.SPEED property item pointer.
  */
 #define FOCUSER_SPEED_ITEM										(FOCUSER_SPEED_PROPERTY->items+0)
+
+/** FOCUSER_ROTATION property pointer, property is optional, property change request should be fully handled by indigo_focuser_change_property.
+ */
+#define FOCUSER_ROTATION_PROPERTY							(FOCUSER_CONTEXT->focuser_rotation_property)
+
+/** FOCUSER_ROTATION.CLOCKWISE property item pointer.
+ */
+#define FOCUSER_ROTATION_CLOCKWISE_ITEM				(FOCUSER_ROTATION_PROPERTY->items+0)
+
+/** FOCUSER_ROTATION.COUNTERCLOCKWISE property item pointer.
+ */
+#define FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM	(FOCUSER_ROTATION_PROPERTY->items+1)
 
 /** FOCUSER_DIRECTION property pointer, property is mandatory, property change request should be fully handled by indigo_focuser_change_property.
  */
@@ -95,8 +111,19 @@
 
 /** FOCUSER_TEMPERATURE.TEMPERATURE property item pointer.
  */
-#define FOCUSER_COMPENSATION_ITEM	(FOCUSER_COMPENSATION_PROPERTY->items+0)
+#define FOCUSER_COMPENSATION_ITEM							(FOCUSER_COMPENSATION_PROPERTY->items+0)
 
+/** FOCUSER_MODE property pointer, property is optional, property change request should be fully handled by indigo_focuser_change_property.
+ */
+#define FOCUSER_MODE_PROPERTY									(FOCUSER_CONTEXT->focuser_mode_property)
+
+/** FOCUSER_MODE.MANUAL property item pointer.
+ */
+#define FOCUSER_MODE_MANUAL_ITEM							(FOCUSER_MODE_PROPERTY->items+0)
+
+/** FOCUSER_MODE.AUTOMATIC property item pointer.
+ */
+#define FOCUSER_MODE_AUTOMATIC_ITEM						(FOCUSER_MODE_PROPERTY->items+1)
 
 
 /** Focuser device context structure.
@@ -104,12 +131,14 @@
 typedef struct {
 	indigo_device_context device_context;							///< device context base
 	indigo_property *focuser_speed_property;					///< FOCUSER_SPEED property pointer
+	indigo_property *focuser_rotation_property;				///< FOCUSER_ROTATION property pointer
 	indigo_property *focuser_direction_property;			///< FOCUSER_DIRECTION property pointer
 	indigo_property *focuser_steps_property;					///< FOCUSER_STEPS property pointer
 	indigo_property *focuser_position_property;				///< FOCUSER_POSITION property pointer
 	indigo_property *focuser_abort_motion_property;		///< FOCUSER_ABORT_MOTION property pointer
 	indigo_property *focuser_temperature_property;		///< FOCUSER_TEMPERATURE property pointer
 	indigo_property *focuser_compensation_property;		///< FOCUSER_COMPENSATION property pointer
+	indigo_property *focuser_mode_property;						///< FOCUSER_MODE property pointer
 } indigo_focuser_context;
 
 /** Attach callback function.
@@ -124,6 +153,10 @@ extern indigo_result indigo_focuser_change_property(indigo_device *device, indig
 /** Detach callback function.
  */
 extern indigo_result indigo_focuser_detach(indigo_device *device);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_focuser_h */
 

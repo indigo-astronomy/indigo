@@ -68,7 +68,7 @@ int indigo_open_serial(const char *dev_file) {
 		close(dev_fd);
 		return -1;
 	}
-	
+
 	return dev_fd;
 }
 
@@ -103,15 +103,17 @@ int indigo_open_tcp(const char *host, int port) {
 	return sock;
 }
 
-bool indigo_read(int handle, char *buffer, long length) {
+int indigo_read(int handle, char *buffer, long length) {
 	long remains = length;
+	long total_bytes = 0;
 	while (true) {
 		long bytes_read = read(handle, buffer, remains);
 		if (bytes_read <= 0) {
-			return false;
+			return (int)bytes_read;
 		}
+		total_bytes += bytes_read;
 		if (bytes_read == remains) {
-			return true;
+			return (int)total_bytes;
 		}
 		buffer += bytes_read;
 		remains -= bytes_read;
@@ -119,25 +121,25 @@ bool indigo_read(int handle, char *buffer, long length) {
 }
 
 
-bool indigo_read_line(int handle, char *buffer, int length) {
-	int i = 0;
+int indigo_read_line(int handle, char *buffer, int length) {
 	char c = '\0';
-	long n = 0;
-	while (i < length) {
-		n = read(handle, &c, 1);
-		if (n > 0) {
+	long total_bytes = 0;
+	while (total_bytes < length) {
+		long bytes_read = read(handle, &c, 1);
+		if (bytes_read > 0) {
 			if (c == '\r')
 				;
 			else if (c != '\n')
-				buffer[i++] = c;
+				buffer[total_bytes++] = c;
 			else
 				break;
 		} else {
-			break;
+			errno = ECONNRESET;
+			return -1;
 		}
 	}
-	buffer[i] = '\0';
-	return n != -1;
+	buffer[total_bytes] = '\0';
+	return (int)total_bytes;
 }
 
 bool indigo_write(int handle, const char *buffer, long length) {

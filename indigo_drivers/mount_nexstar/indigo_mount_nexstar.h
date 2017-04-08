@@ -30,6 +30,10 @@
 #include "indigo_mount_driver.h"
 #include "indigo_guider_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MOUNT_NEXSTAR_NAME              "Mount Nexstar"
 #define MOUNT_NEXSTAR_GUIDER_NAME       "Mount Nexstar (guider)"
 
@@ -38,6 +42,10 @@
  */
 
 extern indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* mount_nexstar_h */
 
