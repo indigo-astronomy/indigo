@@ -116,7 +116,6 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (sx_open(device)) {
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count;

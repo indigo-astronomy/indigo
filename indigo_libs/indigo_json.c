@@ -47,25 +47,25 @@
 
 static long ws_read(int handle, char *buffer, long length) {
 	uint8_t header[14];
-	if (!indigo_read(handle, (char *)header, 6))
+	if (indigo_read(handle, (char *)header, 6) <= 0)
 		return -1;
 	INDIGO_TRACE_PROTOCOL(indigo_trace("ws_read -> %2x", header[0]));
 	uint8_t *masking_key = header+2;
 	uint64_t payload_length = header[1] & 0x7F;
 	if (payload_length == 0x7E) {
-		if (!indigo_read(handle, (char *)header + 6, 2))
+		if (indigo_read(handle, (char *)header + 6, 2) <= 0)
 			return -1;
 		masking_key = header + 4;
 		payload_length = ntohs(*((uint16_t *)(header+2)));
 	} else if (payload_length == 0x7F) {
-		if (!indigo_read(handle, (char *)header + 6, 8))
+		if (indigo_read(handle, (char *)header + 6, 8) <= 0)
 			return -1;
 		masking_key = header+10;
 		payload_length = ntohll(*((uint64_t *)(header+2)));
 	}
 	if (length < payload_length)
 		return -1;
-	if (!indigo_read(handle, buffer, payload_length))
+	if (indigo_read(handle, buffer, payload_length) <= 0)
 		return -1;
 	for (uint64_t i = 0; i < payload_length; i++) {
 		buffer[i] ^= masking_key[i%4];
@@ -116,7 +116,7 @@ static void *new_number_vector_handler(parser_state state, char *name, char *val
 static void *new_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
 
 static void *get_properties_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == NUMBER_VALUE && !strcmp(name, "version")) {
 		client->version = (int)atol(value);
 	} else if (state == END_STRUCT) {
@@ -127,7 +127,7 @@ static void *get_properties_handler(parser_state state, char *name, char *value,
 }
 
 static void *one_text_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_text_vector_handler;
 	if (state == END_STRUCT) {
@@ -141,7 +141,7 @@ static void *one_text_handler(parser_state state, char *name, char *value, indig
 }
 
 static void *new_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_text_handler;
@@ -160,7 +160,7 @@ static void *new_text_vector_handler(parser_state state, char *name, char *value
 }
 
 static void *one_number_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_number_vector_handler;
 	if (state == END_STRUCT) {
@@ -174,7 +174,7 @@ static void *one_number_handler(parser_state state, char *name, char *value, ind
 }
 
 static void *new_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_number_handler;
@@ -193,7 +193,7 @@ static void *new_number_vector_handler(parser_state state, char *name, char *val
 }
 
 static void *one_switch_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_switch_vector_handler;
 	if (state == END_STRUCT) {
@@ -207,7 +207,7 @@ static void *one_switch_handler(parser_state state, char *name, char *value, ind
 }
 
 static void *new_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_switch_handler;
@@ -226,7 +226,7 @@ static void *new_switch_vector_handler(parser_state state, char *name, char *val
 }
 
 static void *top_level_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_STRUCT) {
 		memset(property, 0, PROPERTY_SIZE);
 		if (name != NULL) {
@@ -288,7 +288,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 			pointer = buffer;
 			buffer_end = buffer + count;
 			buffer[count] = 0;
-			INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("received: %s", buffer));
 		}
 		switch (state) {
 			case ERROR:

@@ -68,9 +68,9 @@ static void exposure_timer_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (libqhy_read_pixels(PRIVATE_DATA->device_context, (unsigned short *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE))) {
 			libqhy_stop(PRIVATE_DATA->device_context);
+			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->width, PRIVATE_DATA->height, true, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->width, PRIVATE_DATA->height, true, NULL);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
@@ -128,7 +128,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max  = PRIVATE_DATA->height;
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->pixel_width * 100)/100;
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(PRIVATE_DATA->pixel_height * 100) / 100;
-				PRIVATE_DATA->buffer = malloc(FITS_HEADER_SIZE + 2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + 5);
+				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(FITS_HEADER_SIZE + 2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + 5);
 				assert(PRIVATE_DATA->buffer != NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				ccd_temperature_callback(device);

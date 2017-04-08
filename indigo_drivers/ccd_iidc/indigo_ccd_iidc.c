@@ -162,6 +162,8 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_EXPOSURE_ITEM->number.value = 0;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		dc1394video_frame_t *frame;
 		dc1394error_t err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
 		INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_capture_dequeue() [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
@@ -172,14 +174,12 @@ static void exposure_timer_callback(indigo_device *device) {
 			int height = frame->size[1];
 			int size = frame->image_bytes;
 			memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
-			CCD_EXPOSURE_ITEM->number.value = 0;
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->little_endian, NULL);
 			err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
 			INDIGO_DEBUG_DRIVER(indigo_debug("dc1394_capture_enqueue() [%d] -> %s", __LINE__, dc1394_error_get_string(err)));
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
-			CCD_EXPOSURE_ITEM->number.value = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
@@ -290,7 +290,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			PRIVATE_DATA->buffer = malloc(FITS_HEADER_SIZE + 2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value);
+			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(FITS_HEADER_SIZE + 2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value);
 			assert(PRIVATE_DATA->buffer != NULL);
 			if (PRIVATE_DATA->temperature_is_present) {
 				PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
@@ -334,7 +334,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					break;
 				}
 			}
-			if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (IS_CONNECTED) {
 				if (update_frame) {
 					CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
@@ -359,7 +359,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_FRAME_HEIGHT_ITEM->number.value == 0)
 			CCD_FRAME_HEIGHT_ITEM->number.value = mode_data->height_unit;
 		PRIVATE_DATA->force_setup = true;
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (IS_CONNECTED) {
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		}

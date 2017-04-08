@@ -29,6 +29,10 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Main wheel group name string.
  */
 #define WHEEL_MAIN_GROUP                "Filter Wheel"
@@ -73,6 +77,10 @@ extern indigo_result indigo_wheel_change_property(indigo_device *device, indigo_
 /** Detach callback function.
  */
 extern indigo_result indigo_wheel_detach(indigo_device *device);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_wheel_h */
 

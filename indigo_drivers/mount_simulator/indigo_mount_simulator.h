@@ -30,6 +30,10 @@
 #include "indigo_mount_driver.h"
 #include "indigo_guider_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MOUNT_SIMULATOR_NAME						"Mount Simulator"
 #define MOUNT_SIMULATOR_GUIDER_NAME			"Mount Simulator (guider)"
 
@@ -38,6 +42,10 @@
  */
 
 extern indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* mount_simulator_h */
 

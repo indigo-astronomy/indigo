@@ -29,9 +29,17 @@
 #include "indigo_bus.h"
 #include "indigo_xml.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Create initialized instance of XML wire protocol client side adapter.
  */
 extern indigo_client *indigo_xml_device_adapter(int input, int ouput);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_device_xml_h */
 

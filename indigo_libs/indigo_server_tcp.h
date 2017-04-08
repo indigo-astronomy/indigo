@@ -28,6 +28,10 @@
 
 #include "indigo_bus.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Prototype of callback function for network server (providing number of active clients).
  */
 typedef void (*indigo_server_tcp_callback)(int);
@@ -35,6 +39,10 @@ typedef void (*indigo_server_tcp_callback)(int);
 /** TCP port to run on.
  */
 extern int indigo_server_tcp_port;
+
+/** TCP port is ephemeral.
+ */
+extern bool indigo_is_ephemeral_port;
 
 /** Add static document.
  */
@@ -47,6 +55,10 @@ extern indigo_result indigo_server_start(indigo_server_tcp_callback callback);
 /** Shutdown network server (function will block until server is active).
  */
 extern void indigo_server_shutdown();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_server_tcp_h */
 

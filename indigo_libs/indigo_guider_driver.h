@@ -29,6 +29,10 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Main guider group name string.
  */
 #define GUIDER_MAIN_GROUP                "Guider"
@@ -81,6 +85,10 @@ extern indigo_result indigo_guider_change_property(indigo_device *device, indigo
 /** Detach callback function.
  */
 extern indigo_result indigo_guider_detach(indigo_device *device);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_guider_h */
 

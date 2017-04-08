@@ -142,7 +142,7 @@ static void *set_blob_vector_handler(parser_state state, parser_context *context
 static void *enable_blob_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_client *client = context->client;
 	assert(client != NULL);
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: enable_blob_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: enable_blob_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_TAG) {
 		return top_level_handler;
 	} else if (state == TEXT) {
@@ -155,7 +155,7 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 		} else if (!strcmp(value, "URL")) {
 			client->enable_blob = INDIGO_ENABLE_BLOB_URL;
 		}
-		INDIGO_LOG(indigo_log("BLOB mode is '%s'", value));
+		INDIGO_DEBUG(indigo_debug("BLOB mode is '%s'", value));
 	}
 	return enable_blob_handler;
 }
@@ -164,7 +164,7 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
 	assert(client != NULL);
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: get_properties_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: get_properties_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "version")) {
 			indigo_version version = INDIGO_VERSION_LEGACY;
@@ -191,6 +191,10 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 			indigo_copy_property_name(client->version, property, value);;
 		}
 	} else if (state == END_TAG) {
+		if (client->version == INDIGO_VERSION_LEGACY)
+			client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
+		else
+			client->enable_blob = INDIGO_ENABLE_BLOB_URL;
 		indigo_enumerate_properties(client, property);
 		memset(property, 0, PROPERTY_SIZE);
 		return top_level_handler;
@@ -201,7 +205,7 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 static void *new_one_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: new_one_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: new_one_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(client ? client->version : INDIGO_VERSION_CURRENT, property, property->items+property->count-1, value);
@@ -217,7 +221,7 @@ static void *new_one_text_vector_handler(parser_state state, parser_context *con
 static void *new_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: new_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: new_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "oneText")) {
 			property->count++;
@@ -242,7 +246,7 @@ static void *new_text_vector_handler(parser_state state, parser_context *context
 static void *new_one_number_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: new_one_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: new_one_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(client ? client->version : INDIGO_VERSION_CURRENT, property, property->items+property->count-1, value);
@@ -258,7 +262,7 @@ static void *new_one_number_vector_handler(parser_state state, parser_context *c
 static void *new_number_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: new_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: new_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "oneNumber")) {
 			property->count++;
@@ -283,7 +287,7 @@ static void *new_number_vector_handler(parser_state state, parser_context *conte
 static void *new_one_switch_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: new_one_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: new_one_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(client ? client->version : INDIGO_VERSION_CURRENT, property, property->items+property->count-1, value);
@@ -299,7 +303,7 @@ static void *new_one_switch_vector_handler(parser_state state, parser_context *c
 static void *new_switch_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: new_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: new_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "oneSwitch")) {
 			property->count++;
@@ -325,7 +329,7 @@ static void *new_switch_vector_handler(parser_state state, parser_context *conte
 static void *switch_protocol_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_device *device = context->device;
 	assert(device != NULL);
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: switch_protocol_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: switch_protocol_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "version")) {
 			int major, minor;
@@ -386,7 +390,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 					}
 				}
 			}
-			INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_property '%s' '%s' %d", property->device, property->name, index));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_property '%s' '%s' %d", property->device, property->name, index));
 			indigo_update_property(context->device, property, *message ? message : NULL);
 			break;
 		}
@@ -396,7 +400,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 static void *set_one_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_one_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_one_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
@@ -412,7 +416,7 @@ static void *set_one_text_vector_handler(parser_state state, parser_context *con
 static void *set_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "oneText")) {
 			property->count++;
@@ -442,7 +446,7 @@ static void *set_text_vector_handler(parser_state state, parser_context *context
 static void *set_one_number_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_one_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_one_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
@@ -460,7 +464,7 @@ static void *set_one_number_vector_handler(parser_state state, parser_context *c
 static void *set_number_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "oneNumber")) {
 			property->count++;
@@ -490,7 +494,7 @@ static void *set_number_vector_handler(parser_state state, parser_context *conte
 static void *set_one_switch_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_one_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_one_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
@@ -506,7 +510,7 @@ static void *set_one_switch_vector_handler(parser_state state, parser_context *c
 static void *set_switch_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "oneSwitch")) {
 			property->count++;
@@ -536,7 +540,7 @@ static void *set_switch_vector_handler(parser_state state, parser_context *conte
 static void *set_one_light_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_one_light_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_one_light_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
@@ -552,7 +556,7 @@ static void *set_one_light_vector_handler(parser_state state, parser_context *co
 static void *set_light_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_light_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_light_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "oneLight")) {
 			property->count++;
@@ -582,7 +586,10 @@ static void *set_light_vector_handler(parser_state state, parser_context *contex
 static void *set_one_blob_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_one_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_DEBUG_PROTOCOL(if (state == BLOB))
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_one_blob_vector_handler %s '%s' DATA", parser_state_name[state], name != NULL ? name : ""));
+	INDIGO_DEBUG_PROTOCOL(else)
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_one_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
@@ -606,7 +613,7 @@ static void *set_one_blob_vector_handler(parser_state state, parser_context *con
 static void *set_blob_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: set_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: set_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "oneBLOB")) {
 			property->count++;
@@ -681,21 +688,30 @@ static void def_property(parser_context *context, indigo_property *other, char *
 				if (context->device != NULL) {
 					int handle = ((indigo_adapter_context *)context->device->device_context)->output;
 					int use_url = indigo_use_blob_urls && *((indigo_adapter_context *)context->device->device_context)->url_prefix != 0 && other->version != INDIGO_VERSION_LEGACY;
-					indigo_printf(handle, "<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", property->device, indigo_property_name(context->device->version, property), use_url ? "URL" : "Also");
-					indigo_log("<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", property->device, indigo_property_name(context->device->version, property), use_url ? "URL" : "Also");
+					char device_name[INDIGO_NAME_SIZE];
+					strcpy(device_name, property->device);
+					if (indigo_use_host_suffix) {
+						char *at = strrchr(device_name, '@');
+						if (at != NULL) {
+							while (at > device_name && at[-1] == ' ')
+								at--;
+							*at = 0;
+						}
+					}
+					indigo_printf(handle, "<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", device_name, indigo_property_name(context->device->version, property), use_url ? "URL" : "Also");
 				}
 				break;
 		}
 		context->properties[index] = property;
 	}
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_property '%s' '%s' %d", property->device, property->name, index));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_property '%s' '%s' %d", property->device, property->name, index));
 	indigo_define_property(context->device, property, *message ? message : NULL);
 }
 
 static void *def_text_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_text_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_text_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
@@ -713,7 +729,7 @@ static void *def_text_handler(parser_state state, parser_context *context, char 
 static void *def_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_text_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "defText")) {
 			property->count++;
@@ -749,7 +765,7 @@ static void *def_text_vector_handler(parser_state state, parser_context *context
 static void *def_number_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_number_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_number_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
@@ -775,7 +791,7 @@ static void *def_number_handler(parser_state state, parser_context *context, cha
 static void *def_number_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "defNumber")) {
 			property->count++;
@@ -811,7 +827,7 @@ static void *def_number_vector_handler(parser_state state, parser_context *conte
 static void *def_switch_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_switch_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_switch_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
@@ -829,7 +845,7 @@ static void *def_switch_handler(parser_state state, parser_context *context, cha
 static void *def_switch_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_switch_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "defSwitch")) {
 			property->count++;
@@ -867,7 +883,7 @@ static void *def_switch_vector_handler(parser_state state, parser_context *conte
 static void *def_light_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_light_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_light_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
@@ -885,7 +901,7 @@ static void *def_light_handler(parser_state state, parser_context *context, char
 static void *def_light_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_light_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_light_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "defLight")) {
 			property->count++;
@@ -919,12 +935,16 @@ static void *def_light_vector_handler(parser_state state, parser_context *contex
 static void *def_blob_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_blob_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_blob_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "name")) {
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
 		} else if (!strcmp(name, "label")) {
 			strncpy(property->items[property->count-1].label, value, INDIGO_VALUE_SIZE);
+		} else if (!strcmp(name, "path")) {
+			snprintf(property->items[property->count-1].blob.url, INDIGO_VALUE_SIZE, "%s%s", ((indigo_adapter_context *)context->device->device_context)->url_prefix, value);
+		} else if (!strcmp(name, "url")) {
+			strncpy(property->items[property->count-1].blob.url, value, INDIGO_VALUE_SIZE);
 		}
 	} else if (state == END_TAG) {
 		return def_blob_vector_handler;
@@ -935,7 +955,7 @@ static void *def_blob_handler(parser_state state, parser_context *context, char 
 static void *def_blob_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: def_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: def_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "defBLOB")) {
 			property->count++;
@@ -971,7 +991,7 @@ static void *def_blob_vector_handler(parser_state state, parser_context *context
 static void *del_property_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: del_property_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: del_property_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strncmp(name, "device",INDIGO_NAME_SIZE)) {
 			if (indigo_use_host_suffix)
@@ -1013,7 +1033,7 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 static void *message_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_device *device = context->device;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: message_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: message_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "message")) {
 			strncpy(message, value, INDIGO_VALUE_SIZE);
@@ -1029,7 +1049,7 @@ static void *message_handler(parser_state state, parser_context *context, char *
 static void *top_level_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
-	INDIGO_DEBUG_PROTOCOL(indigo_debug("XML Parser: top_level_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: top_level_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		*message = 0;
 		if (!strcmp(name, "enableBLOB"))
@@ -1119,11 +1139,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	char *entity_pointer = NULL;
 	bool is_escaped = false;
 	/* (void)parser_state_name; */
-	
+
 	parser_handler handler = top_level_handler;
-	
+
 	parser_state state = IDLE;
-	
+
 	parser_context context;
 	context.client = client;
 	context.device = device;
@@ -1138,7 +1158,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 
 	indigo_property *property = (indigo_property *)&context.property_buffer;
 	memset(context.property_buffer, 0, PROPERTY_SIZE);
-	
+
 	int handle = 0;
 	if (device != NULL) {
 		handle = ((indigo_adapter_context *)device->device_context)->input;
@@ -1365,7 +1385,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)buffer, len);
 						blob_len -= len;
 					}
-					
+
 					handler = handler(BLOB, &context, NULL, (char *)blob_buffer, message);
 					pointer = buffer;
 					*pointer = 0;
@@ -1409,7 +1429,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					state = END_TAG1;
 				} else if (c == '>') {
 					value_pointer = value_buffer;
-					if (handler == def_blob_handler) {
+					if (handler == set_one_blob_vector_handler) {
 						blob_size = property->items[property->count-1].blob.size;
 						if (blob_size > 0) {
 							state = BLOB;
@@ -1517,7 +1537,7 @@ char *indigo_xml_escape(char *string) {
 		char *in = string;
 		char *out = buffer;
 		char c;
-		
+
 		while ((c = *in++) && out - buffer < INDIGO_VALUE_SIZE) {
 			switch (c) {
 				case '&':
@@ -1541,7 +1561,9 @@ char *indigo_xml_escape(char *string) {
 					break;
 				case '"':
 					*out++ = '&';
-					*out++ = 'l';
+					*out++ = 'q';
+					*out++ = 'u';
+					*out++ = 'o';
 					*out++ = 't';
 					*out++ = ';';
 					break;

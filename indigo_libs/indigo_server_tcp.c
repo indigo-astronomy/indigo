@@ -63,6 +63,7 @@ static int client_count = 0;
 static indigo_server_tcp_callback server_callback;
 
 int indigo_server_tcp_port = 7624;
+bool indigo_is_ephemeral_port = false;
 
 static struct resource {
 	char *path;
@@ -76,8 +77,9 @@ static struct resource {
 
 static void start_worker_thread(int *client_socket) {
 	int socket = *client_socket;
-	INDIGO_LOG(indigo_log("Worker thread started"));
+	INDIGO_LOG(indigo_log("Worker thread started socket = %d", socket));
 	server_callback(++client_count);
+	int res = 0;
 	char c;
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
@@ -99,17 +101,18 @@ static void start_worker_thread(int *client_socket) {
 		} else if (c == 'G') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
-			while (indigo_read_line(socket, request, BUFFER_SIZE)) {
+			while ((res = indigo_read_line(socket, request, BUFFER_SIZE)) >= 0) {
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;
 					char *space = strchr(path, ' ');
 					if (space)
 						*space = 0;
+					char *param = strchr(path, '?');
+					if (param)
+						*param = 0;
 					char websocket_key[256] = "";
 					bool keep_alive = false;
-					while (indigo_read_line(socket, header, BUFFER_SIZE)) {
-						if (*header == 0)
-							break;
+					while (indigo_read_line(socket, header, BUFFER_SIZE) > 0) {
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
 							strcpy(websocket_key, header + 19);
 						if (!strcasecmp(header, "Connection: keep-alive"))
@@ -154,7 +157,7 @@ static void start_worker_thread(int *client_socket) {
 									indigo_printf(socket, "Content-Type: image/jpeg\r\n");
 								} else {
 									indigo_printf(socket, "Content-Type: application/octet-stream\r\n");
-									indigo_printf(socket, "Content-Disposition: attachment; filename=\"%p.%s\"\r\n", item, item->blob.format);
+									indigo_printf(socket, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, item->blob.format);
 								}
 								if (keep_alive)
 									indigo_printf(socket, "Connection: keep-alive\r\n");
@@ -167,6 +170,8 @@ static void start_worker_thread(int *client_socket) {
 								indigo_printf(socket, "Content-Type: text/plain\r\n");
 								indigo_printf(socket, "\r\n");
 								indigo_printf(socket, "BLOB not found!\r\n");
+								shutdown(socket,SHUT_RDWR);
+								sleep(1);
 								close(socket);
 								INDIGO_LOG(indigo_log("%s -> Failed", request));
 								break;
@@ -183,6 +188,8 @@ static void start_worker_thread(int *client_socket) {
 								indigo_printf(socket, "Content-Type: text/plain\r\n");
 								indigo_printf(socket, "\r\n");
 								indigo_printf(socket, "%s not found!\r\n", path);
+								shutdown(socket,SHUT_RDWR);
+								sleep(1);
 								close(socket);
 								INDIGO_LOG(indigo_log("%s -> Failed", request));
 								break;
@@ -201,11 +208,18 @@ static void start_worker_thread(int *client_socket) {
 							}
 						}
 						if (!keep_alive) {
+							shutdown(socket, SHUT_RDWR);
+							sleep(1);
 							close(socket);
 							break;
 						}
 					}
 				}
+			}
+			if (res < 0) { /* Client cosed the connection */
+				shutdown(socket, SHUT_RDWR);
+				sleep(1);
+				close(socket);
 			}
 		} else {
 			INDIGO_LOG(indigo_log("Unrecognised protocol"));
@@ -265,6 +279,7 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		close(server_socket);
 		return INDIGO_CANT_START_SERVER;
 	}
+	indigo_is_ephemeral_port = indigo_server_tcp_port == 0;
 	indigo_server_tcp_port = ntohs(server_address.sin_port);
 	INDIGO_LOG(indigo_log("Server started on %d", indigo_server_tcp_port));
 	server_callback(client_count);
@@ -316,7 +331,7 @@ static inline void sha1mix(unsigned *_sha1_restrict r, unsigned *_sha1_restrict 
 	unsigned d = r[3];
 	unsigned e = r[4];
 	unsigned t, i = 0;
-	
+
 #define rol(x,s) ((x) << (s) | (unsigned) (x) >> (32 - (s)))
 #define mix(f,v) do { \
 t = (f) + (v) + rol(a, 5) + e + w[i & 0xf]; \
@@ -326,33 +341,33 @@ c = rol(b, 30); \
 b = a; \
 a = t; \
 } while (0)
-	
+
 	for (; i < 16; ++i)
   mix(d ^ (b & (c ^ d)), 0x5a827999);
-	
+
 	for (; i < 20; ++i) {
 		w[i & 0xf] = rol(w[i + 13 & 0xf] ^ w[i + 8 & 0xf] ^ w[i + 2 & 0xf] ^ w[i & 0xf], 1);
 		mix(d ^ (b & (c ^ d)), 0x5a827999);
 	}
-	
+
 	for (; i < 40; ++i) {
 		w[i & 0xf] = rol(w[i + 13 & 0xf] ^ w[i + 8 & 0xf] ^ w[i + 2 & 0xf] ^ w[i & 0xf], 1);
 		mix(b ^ c ^ d, 0x6ed9eba1);
 	}
-	
+
 	for (; i < 60; ++i) {
 		w[i & 0xf] = rol(w[i + 13 & 0xf] ^ w[i + 8 & 0xf] ^ w[i + 2 & 0xf] ^ w[i & 0xf], 1);
 		mix((b & c) | (d & (b | c)), 0x8f1bbcdc);
 	}
-	
+
 	for (; i < 80; ++i) {
 		w[i & 0xf] = rol(w[i + 13 & 0xf] ^ w[i + 8 & 0xf] ^ w[i + 2 & 0xf] ^ w[i & 0xf], 1);
 		mix(b ^ c ^ d, 0xca62c1d6);
 	}
-	
+
 #undef mix
 #undef rol
-	
+
 	r[0] += a;
 	r[1] += b;
 	r[2] += c;
@@ -363,7 +378,7 @@ a = t; \
 void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_t n) {
 	size_t i = 0;
 	unsigned w[16], r[5] = {0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0};
-	
+
 	for (; i < (n & ~0x3f);) {
 		do w[i >> 2 & 0xf] =
 			((const unsigned char *) p)[i + 3] << 0x00 |
@@ -373,22 +388,22 @@ void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_
 		while ((i += 4) & 0x3f);
 		sha1mix(r, w);
 	}
-	
+
 	memset(w, 0, sizeof w);
-	
+
 	for (; i < n; ++i)
   w[i >> 2 & 0xf] |= ((const unsigned char *) p)[i] << ((3 ^ (i & 3)) << 3);
-	
+
 	w[i >> 2 & 0xf] |= 0x80 << ((3 ^ (i & 3)) << 3);
-	
+
 	if ((n & 0x3f) > 56) {
 		sha1mix(r, w);
 		memset(w, 0, sizeof w);
 	}
-	
+
 	w[15] = (unsigned) n << 3;
 	sha1mix(r, w);
-	
+
 	for (i = 0; i < 5; ++i)
   h[(i << 2) + 0] = (unsigned char) (r[i] >> 0x18),
   h[(i << 2) + 1] = (unsigned char) (r[i] >> 0x10),

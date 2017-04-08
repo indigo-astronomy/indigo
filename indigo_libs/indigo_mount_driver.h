@@ -29,6 +29,10 @@
 #include "indigo_bus.h"
 #include "indigo_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Main mount group name string.
  */
 #define MOUNT_MAIN_GROUP															"Mount"
@@ -165,28 +169,28 @@
 //----------------------------------------------
 /** MOUNT_MOTION_NS property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
-#define MOUNT_MOTION_NS_PROPERTY											(MOUNT_CONTEXT->mount_motion_ns_property)
+#define MOUNT_MOTION_DEC_PROPERTY											(MOUNT_CONTEXT->MOUNT_MOTION_DEC_property)
 
 /** MOUNT_MOTION_NS.NORTH property item pointer.
  */
-#define  MOUNT_MOTION_NORTH_ITEM											(MOUNT_MOTION_NS_PROPERTY->items+0)
+#define  MOUNT_MOTION_NORTH_ITEM											(MOUNT_MOTION_DEC_PROPERTY->items+0)
 
 /** MOUNT_MOTION_NS.SOUTH property item pointer.
  */
-#define  MOUNT_MOTION_SOUTH_ITEM						          (MOUNT_MOTION_NS_PROPERTY->items+1)
+#define  MOUNT_MOTION_SOUTH_ITEM						          (MOUNT_MOTION_DEC_PROPERTY->items+1)
 
 //----------------------------------------------
 /** MOUNT_MOTION_WE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
-#define MOUNT_MOTION_WE_PROPERTY											(MOUNT_CONTEXT->mount_motion_we_property)
+#define MOUNT_MOTION_RA_PROPERTY											(MOUNT_CONTEXT->MOUNT_MOTION_RA_property)
 
 /** MOUNT_MOTION_WE.WEST property item pointer.
  */
-#define  MOUNT_MOTION_WEST_ITEM												(MOUNT_MOTION_WE_PROPERTY->items+0)
+#define  MOUNT_MOTION_WEST_ITEM												(MOUNT_MOTION_RA_PROPERTY->items+0)
 
 /** MOUNT_MOTION_WE.EAST property item pointer.
  */
-#define  MOUNT_MOTION_EAST_ITEM						            (MOUNT_MOTION_WE_PROPERTY->items+1)
+#define  MOUNT_MOTION_EAST_ITEM						            (MOUNT_MOTION_RA_PROPERTY->items+1)
 
 //-----------------------------------------------
 /** MOUNT_TRACK_RATE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
@@ -342,8 +346,8 @@ typedef struct {
 	indigo_property *mount_equatorial_coordinates_property;	///< MOUNT_EQUATORIAL_COORDINATES property pointer
 	indigo_property *mount_horizontal_coordinates_property;	///< MOUNT_HORIZONTAL_COORDINATES property pointer
 	indigo_property *mount_abort_motion_property;						///< MOUNT_ABORT_MOTION property pointer
-	indigo_property *mount_motion_ns_property;							///< MOUNT_MOTION_NS property pointer
-	indigo_property *mount_motion_we_property;							///< MOUNT_MOTION_WE property pointer
+	indigo_property *MOUNT_MOTION_DEC_property;							///< MOUNT_MOTION_NS property pointer
+	indigo_property *MOUNT_MOTION_RA_property;							///< MOUNT_MOTION_WE property pointer
 	indigo_property *mount_alignment_mode_property;					///< MOUNT_ALIGNMENT_MODE property pointer
 	indigo_property *mount_raw_coordinates_property;				///< MOUNT_RAW_COORDINATES property pointer
 	indigo_property *mount_alignment_select_points_property;///< MOUNT_ALIGNMENT_SELECT_POINTS property pointer
@@ -372,6 +376,10 @@ extern indigo_result indigo_translated_to_raw(indigo_device *device, double ra, 
  */
 
 extern indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_mount_h */
 

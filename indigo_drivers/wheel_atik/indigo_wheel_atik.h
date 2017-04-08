@@ -29,10 +29,18 @@
 #include "indigo_driver.h"
 #include "indigo_wheel_driver.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Register Atik filter wheel hot-plug callback
  */
 
 extern indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* wheel_atik_h */
 
