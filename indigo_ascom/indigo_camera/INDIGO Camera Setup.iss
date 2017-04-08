@@ -5,8 +5,8 @@
 [Setup]
 AppID={{6a724ed0-c274-4761-b39f-a7ddf264843b}
 AppName=ASCOM INDIGO Camera Driver
-AppVerName=ASCOM INDIGO Camera Driver 6.2.0.2
-AppVersion=6.2.0.2
+AppVerName=ASCOM INDIGO Camera Driver 6.3.0.3
+AppVersion=6.3.0.3
 AppPublisher=CloudMakers, s. r. o. <info@cloudmakers.eu>
 AppPublisherURL=mailto:info@cloudmakers.eu
 AppSupportURL=http://www.indigo-astronomy.org/
