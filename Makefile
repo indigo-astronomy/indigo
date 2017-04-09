@@ -79,7 +79,7 @@ endif
 
 ifeq ($(OS_DETECTED),Darwin)
 	CC=gcc
-	CFLAGS=-fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS
+	CFLAGS=-g -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS
 	LDFLAGS=-framework Cocoa -framework CoreFoundation -framework IOKit -lobjc  -L$(BUILD_LIB) -lusb-1.0
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi.a
 	SOEXT=dylib
