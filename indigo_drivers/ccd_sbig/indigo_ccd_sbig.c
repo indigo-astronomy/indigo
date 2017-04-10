@@ -644,7 +644,7 @@ static bool sbig_set_cooler(indigo_device *device, double target, double *curren
 
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d", PRIVATE_DATA->driver_handle, res));
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
