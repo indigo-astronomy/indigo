@@ -159,7 +159,8 @@ typedef struct {
 	cframe_params imager_frame_params;
 	cframe_params guider_frame_params;
 	pthread_mutex_t usb_mutex;
-	bool can_check_temperature;
+	bool imager_no_check_temperature;
+	bool guider_no_check_temperature;
 	/* indigo_property *fli_nflushes_property; */
 } sbig_private_data;
 
@@ -718,14 +719,14 @@ static void imager_exposure_timer_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
 	}
-	PRIVATE_DATA->can_check_temperature = true;
+	PRIVATE_DATA->imager_no_check_temperature = false;
 }
 
 
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
 static void clear_reg_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		PRIVATE_DATA->can_check_temperature = false;
+		PRIVATE_DATA->imager_no_check_temperature = false;
 		PRIVATE_DATA->imager_exposure_timer = indigo_set_timer(device, 4, imager_exposure_timer_callback);
 	} else {
 		PRIVATE_DATA->imager_exposure_timer = NULL;
@@ -734,7 +735,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 
 
 static void imager_temperature_callback(indigo_device *device) {
-	if (PRIVATE_DATA->can_check_temperature) {
+	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
 		if (sbig_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
 			if(CCD_COOLER_ON_ITEM->sw.value) {
@@ -763,7 +764,7 @@ static void imager_temperature_callback(indigo_device *device) {
 
 
 static void guider_temperature_callback(indigo_device *device) {
-	if (PRIVATE_DATA->can_check_temperature) {
+	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
 		if (sbig_get_temperature(NULL, &(CCD_TEMPERATURE_ITEM->number.value), NULL, NULL) == CE_NO_ERROR) {
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -824,7 +825,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 		if (CCD_EXPOSURE_ITEM->number.target > 4) {
 			PRIVATE_DATA->imager_exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
 		} else {
-			PRIVATE_DATA->can_check_temperature = false;
+			PRIVATE_DATA->imager_no_check_temperature = true;
 			PRIVATE_DATA->imager_exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_exposure_timer_callback);
 		}
 	} else {
@@ -843,6 +844,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
 				GetCCDInfoParams cip;
 				short res;
@@ -959,7 +962,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					}
 
 					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
-					PRIVATE_DATA->can_check_temperature = true;
+					PRIVATE_DATA->imager_no_check_temperature = false;
 
 					CCD_COOLER_POWER_PROPERTY->hidden = false;
 					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
@@ -1073,7 +1076,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					}
 
 					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
-					PRIVATE_DATA->can_check_temperature = true;
+					PRIVATE_DATA->guider_no_check_temperature = false;
 
 					CCD_COOLER_POWER_PROPERTY->hidden = true;
 
@@ -1086,8 +1089,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			PRIVATE_DATA->can_check_temperature = false;
-			indigo_cancel_timer(device, &PRIVATE_DATA->imager_temperature_timer);
+			if (PRIMARY_CCD) {
+				PRIVATE_DATA->imager_no_check_temperature = false;
+				indigo_cancel_timer(device, &PRIVATE_DATA->imager_temperature_timer);
+			} else {
+				PRIVATE_DATA->guider_no_check_temperature = false;
+				indigo_cancel_timer(device, &PRIVATE_DATA->guider_temperature_timer);
+			}
 			sbig_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -1102,7 +1110,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			sbig_abort_exposure(device);
 		}
-		PRIVATE_DATA->can_check_temperature = true;
+		if (PRIMARY_CCD) {
+			PRIVATE_DATA->imager_no_check_temperature = false;
+		} else {
+			PRIVATE_DATA->guider_no_check_temperature = false;
+		}
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
