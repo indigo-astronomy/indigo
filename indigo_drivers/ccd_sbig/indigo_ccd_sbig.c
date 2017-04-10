@@ -183,6 +183,20 @@ double bcd2double(unsigned long bcd) {
 
 /* driver commands */
 
+char *sbig_error_string(int err) {
+	GetErrorStringParams gesp;
+	gesp.errorNo = err;
+	static GetErrorStringResults gesr;
+	int res = sbig_command(CC_GET_ERROR_STRING, &gesp, &gesr);
+	if (res == CE_NO_ERROR) {
+		return gesr.errorString;
+	}
+	static char str[128];
+	sprintf(str, "Error string not found! Error code: %d", err);
+	return str;
+}
+
+
 static short get_sbig_handle() {
 	GetDriverHandleResults gdhr;
 	int res = sbig_command(CC_GET_DRIVER_HANDLE, NULL, &gdhr);
@@ -234,6 +248,70 @@ static short close_driver(short *handle) {
 	if ( res == CE_NO_ERROR )
 		*handle = INVALID_HANDLE_VALUE;
 
+	return res;
+}
+
+
+int sbig_link_status(GetLinkStatusResults *glsr) {
+	int res = sbig_command(CC_GET_LINK_STATUS, NULL, glsr);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_LINK_STATUS error = %d", res));
+	}
+	return res;
+}
+
+
+bool sbig_check_link() {
+	GetLinkStatusResults glsr;
+	if (sbig_link_status(&glsr) != CE_NO_ERROR) {
+		return false;
+	}
+
+	if(glsr.linkEstablished) {
+		return true;
+	}
+
+	return false;
+}
+
+
+int sbig_set_temperature(double t, bool enable) {
+	int res;
+	SetTemperatureRegulationParams2 strp2;
+	strp2.regulation = enable ? REGULATION_ON : REGULATION_OFF;
+	strp2.ccdSetpoint = t;
+	res = sbig_command(CC_SET_TEMPERATURE_REGULATION2, &strp2, 0);
+
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_SET_TEMPERATURE_REGULATION error = %d (%s)", res, sbig_error_string(res)));
+	}
+	return res ;
+}
+
+
+int sbig_get_temperature(bool *enabled, double *t, double *setpoint, double *power) {
+	int res;
+	QueryTemperatureStatusResults2 qtsr2;
+	QueryTemperatureStatusParams qtsp = {
+		.request = TEMP_STATUS_ADVANCED2
+	};
+	res = sbig_command(CC_QUERY_TEMPERATURE_STATUS, &qtsp, &qtsr2);
+	if (res == CE_NO_ERROR) {
+		if (enabled) *enabled = (qtsr2.coolingEnabled != 0);
+		if (t) *t = qtsr2.imagingCCDTemperature;
+		if (setpoint) *setpoint = qtsr2.ccdSetpoint;
+		if (power) *power = qtsr2.imagingCCDPower;
+		INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: regulation = %s, t = %.2g, setpoint = %.2g, power = %.2g",
+			(qtsr2.coolingEnabled != 0) ? "True": "False",
+			qtsr2.imagingCCDTemperature,
+			qtsr2.ccdSetpoint,
+			qtsr2.imagingCCDPower
+		));
+	}
+
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_TEMPERATURE_STATUS error = %d (%s)", res, sbig_error_string(res)));
+	}
 	return res;
 }
 
