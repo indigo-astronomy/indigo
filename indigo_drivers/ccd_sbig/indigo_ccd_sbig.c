@@ -86,7 +86,7 @@
 
 #define MAX_PATH            255     /* Maximal Path Length */
 
-#define TEMP_THRESHOLD     0.15
+#define TEMP_THRESHOLD      0.5
 #define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
 
 #include "indigo_driver_xml.h"
@@ -635,31 +635,31 @@ static bool sbig_abort_exposure(indigo_device *device) {
 
 static bool sbig_set_cooler(indigo_device *device, double target, double *current, double *cooler_power) {
 	long res;
-
-	/*
-	flidev_t id = PRIVATE_DATA->dev_id;
-	long current_status;
-	static double old_target = 100.0;
+	bool cooler_on;
+	double csetpoint;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	res = FLIGetTemperature(id, current);
-	if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
-
-	if ((target != old_target) && CCD_COOLER_ON_ITEM->sw.value) {
-		res = FLISetTemperature(id, target);
-		if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
-	} else if(CCD_COOLER_OFF_ITEM->sw.value) {
-
-		res = FLISetTemperature(id, 45);
-		if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetTemperature(%d) = %d", id, res));
+	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+	if (res) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d", PRIVATE_DATA->driver_handle, res));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
 	}
 
-	res = FLIGetCoolerPower(id, (double *)cooler_power);
-	if(res) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetCoolerPower(%d) = %d", id, res));
+	res = sbig_get_temperature(&cooler_on, current, &csetpoint, cooler_power);
+	if (res) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d", res));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
+
+	if ((cooler_on != CCD_COOLER_ON_ITEM->sw.value) || (csetpoint != target)) {
+		res = sbig_set_temperature(target, CCD_COOLER_ON_ITEM->sw.value);
+		if(res) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_temperature() = %d", res));
+	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	*/
 	return true;
 }
 
@@ -838,7 +838,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_COOLER_PROPERTY->hidden = false;
 					CCD_INFO_PROPERTY->hidden = false;
 
-					cip.request = 0; /* imaging CCD */
+					cip.request = CCD_INFO_IMAGING; /* imaging CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_basic_info));
 					INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
 
@@ -854,7 +854,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->imager_basic_info.firmwareVersion));
 					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->imager_basic_info.name);
 
-					cip.request = 2; /* imaging CCD */
+					cip.request = CCD_INFO_EXTENDED; /* imaging CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_extended_info1));
 					INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
 
@@ -904,55 +904,168 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
 					}
 
-				res = FLIGetHWRevision(id, &hw_rev);
-				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
-				}
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					res = FLIGetHWRevision(id, &hw_rev);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
+					}
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-				sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
-				sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
-*/
-				indigo_update_property(device, INFO_PROPERTY, NULL);
+					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
+					sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
+					*/
+					indigo_update_property(device, INFO_PROPERTY, NULL);
 
-				//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
+					//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
 
-				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
-				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
+					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
+					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
 
-				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
-				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
-				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
 
-				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-				CCD_BIN_HORIZONTAL_ITEM->number.max = MAX_X_BIN;
-				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-				CCD_BIN_VERTICAL_ITEM->number.max = MAX_Y_BIN;
+					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+					CCD_BIN_HORIZONTAL_ITEM->number.max = MAX_X_BIN;
+					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+					CCD_BIN_VERTICAL_ITEM->number.max = MAX_Y_BIN;
 
-				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
-/*
-				CCD_TEMPERATURE_PROPERTY->hidden = false;
-				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-				CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
-				CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
-				CCD_TEMPERATURE_ITEM->number.step = 0;
-				/*
-				res = FLIGetTemperature(id,&(CCD_TEMPERATURE_ITEM->number.value));
-				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetTemperature(%d) = %d", id, res));
-				}
-				PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
-				PRIVATE_DATA->can_check_temperature = true;
+					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 
-				CCD_COOLER_POWER_PROPERTY->hidden = false;
-				CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
+					CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
+					CCD_TEMPERATURE_ITEM->number.step = 0;
 
-				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-				*/
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				} else {
+					res = sbig_get_temperature(&(CCD_COOLER_ON_ITEM->sw.value), &(CCD_TEMPERATURE_ITEM->number.value), NULL, &(CCD_COOLER_POWER_ITEM->number.value));
+					CCD_COOLER_OFF_ITEM->sw.value = !CCD_COOLER_ON_ITEM->sw.value;
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d", res));
+					}
+
+					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+					PRIVATE_DATA->can_check_temperature = true;
+
+					CCD_COOLER_POWER_PROPERTY->hidden = false;
+					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				} else { /* Secondary CCD */
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					CCD_MODE_PROPERTY->hidden = false;
+					CCD_COOLER_PROPERTY->hidden = true;
+					CCD_INFO_PROPERTY->hidden = false;
+
+					cip.request = CCD_INFO_TRACKING; /* guiding CCD */
+					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->guider_basic_info));
+					INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
+
+					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->guider_basic_info.readoutInfo[0].width;
+					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->guider_basic_info.readoutInfo[0].height;
+					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
+					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
+
+					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = bcd2double(PRIVATE_DATA->guider_basic_info.readoutInfo[0].pixelWidth);
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = bcd2double(PRIVATE_DATA->guider_basic_info.readoutInfo[0].pixelHeight);
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
+
+					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->guider_basic_info.firmwareVersion));
+					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->guider_basic_info.name);
+
+					// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
+					/*
+					flimode_t current_mode;
+					int i;
+					char mode_name[INDIGO_NAME_SIZE];
+					res = FLIGetCameraMode(id, &current_mode);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetCameraMode(%d) = %d", id, res));
+					}
+					res = FLIGetCameraModeString(id, 0, mode_name, INDIGO_NAME_SIZE);
+					if (res == 0) {
+						for (i = 0; i < MAX_MODES; i++) {
+							res = FLIGetCameraModeString(id, i, mode_name, INDIGO_NAME_SIZE);
+							if (res) break;
+							indigo_init_switch_item(FLI_CAMERA_MODE_PROPERTY->items + i, mode_name, mode_name, (i == current_mode));
+						}
+						FLI_CAMERA_MODE_PROPERTY = indigo_resize_property(FLI_CAMERA_MODE_PROPERTY, i);
+					}
+
+					indigo_define_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
+
+					double size_x, size_y;
+
+					res = FLIGetPixelSize(id, &size_x, &size_y);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
+					}
+
+					res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
+					}
+
+					res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
+					}
+
+					long hw_rev, fw_rev;
+					res = FLIGetFWRevision(id, &fw_rev);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
+					}
+
+					res = FLIGetHWRevision(id, &hw_rev);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
+					}
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
+					sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
+					*/
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+
+					//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
+
+					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
+					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
+
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
+
+					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+					CCD_BIN_HORIZONTAL_ITEM->number.max = MAX_X_BIN;
+					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+					CCD_BIN_VERTICAL_ITEM->number.max = MAX_Y_BIN;
+
+					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+
+					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
+					CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
+					CCD_TEMPERATURE_ITEM->number.step = 0;
+
+					res = sbig_get_temperature(NULL, &(CCD_TEMPERATURE_ITEM->number.value), NULL, NULL);
+					if (res) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d", res));
+					}
+
+					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+					PRIVATE_DATA->can_check_temperature = true;
+
+					CCD_COOLER_POWER_PROPERTY->hidden = true;
+
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -979,7 +1092,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
-		//INDIGO_ERROR(indigo_error("indigo_ccd_asi: COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
