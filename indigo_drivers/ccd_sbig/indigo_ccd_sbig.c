@@ -137,8 +137,8 @@ typedef struct {
 	ushort relay_map;
 	bool abort_flag;
 	int count_open;
-	indigo_timer *imager_exposure_timer, *imager_temperature_timer;
-	indigo_timer *guider_exposure_timer, *guider_temperature_timer;
+	indigo_timer *imager_ccd_exposure_timer, *imager_ccd_temperature_timer;
+	indigo_timer *guider_ccd_exposure_timer, *guider_ccd_temperature_timer;
 	indigo_timer *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	double cooler_power;
@@ -148,16 +148,16 @@ typedef struct {
 	image_area imager_ccd_area;
 	image_area guider_ccd_area;
 
-	GetCCDInfoResults0 imager_basic_info;
-	GetCCDInfoResults0 guider_basic_info;
+	GetCCDInfoResults0 imager_ccd_basic_info;
+	GetCCDInfoResults0 guider_ccd_basic_info;
 
-	GetCCDInfoResults2 imager_extended_info1;
+	GetCCDInfoResults2 imager_ccd_extended_info1;
 
-	GetCCDInfoResults4 imager_extended_info2;
-	GetCCDInfoResults4 guider_extended_info2;
+	GetCCDInfoResults4 imager_ccd_extended_info2;
+	GetCCDInfoResults4 guider_ccd_extended_info2;
 
-	cframe_params imager_frame_params;
-	cframe_params guider_frame_params;
+	cframe_params imager_ccd_frame_params;
+	cframe_params guider_ccd_frame_params;
 	pthread_mutex_t usb_mutex;
 	bool imager_no_check_temperature;
 	bool guider_no_check_temperature;
@@ -493,17 +493,17 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 
 	/* needed to read frame data */
 	if (PRIMARY_CCD) {
-		PRIVATE_DATA->imager_frame_params.width = frame_width;
-		PRIVATE_DATA->imager_frame_params.height = frame_height;
-		PRIVATE_DATA->imager_frame_params.bin_x = bin_x;
-		PRIVATE_DATA->imager_frame_params.bin_y = bin_y;
-		PRIVATE_DATA->imager_frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
+		PRIVATE_DATA->imager_ccd_frame_params.width = frame_width;
+		PRIVATE_DATA->imager_ccd_frame_params.height = frame_height;
+		PRIVATE_DATA->imager_ccd_frame_params.bin_x = bin_x;
+		PRIVATE_DATA->imager_ccd_frame_params.bin_y = bin_y;
+		PRIVATE_DATA->imager_ccd_frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
 	} else {
-		PRIVATE_DATA->guider_frame_params.width = frame_width;
-		PRIVATE_DATA->guider_frame_params.height = frame_height;
-		PRIVATE_DATA->guider_frame_params.bin_x = bin_x;
-		PRIVATE_DATA->guider_frame_params.bin_y = bin_y;
-		PRIVATE_DATA->guider_frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
+		PRIVATE_DATA->guider_ccd_frame_params.width = frame_width;
+		PRIVATE_DATA->guider_ccd_frame_params.height = frame_height;
+		PRIVATE_DATA->guider_ccd_frame_params.bin_x = bin_x;
+		PRIVATE_DATA->guider_ccd_frame_params.bin_y = bin_y;
+		PRIVATE_DATA->guider_ccd_frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
 	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -705,8 +705,8 @@ static void sbig_close(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 // callback for image download
-static void imager_exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->imager_exposure_timer = NULL;
+static void imager_ccd_exposure_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -727,14 +727,14 @@ static void imager_exposure_timer_callback(indigo_device *device) {
 static void clear_reg_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->imager_no_check_temperature = false;
-		PRIVATE_DATA->imager_exposure_timer = indigo_set_timer(device, 4, imager_exposure_timer_callback);
+		PRIVATE_DATA->imager_ccd_exposure_timer = indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback);
 	} else {
-		PRIVATE_DATA->imager_exposure_timer = NULL;
+		PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
 	}
 }
 
 
-static void imager_temperature_callback(indigo_device *device) {
+static void imager_ccd_temperature_callback(indigo_device *device) {
 	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
 		if (sbig_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -759,11 +759,11 @@ static void imager_temperature_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, TEMP_CHECK_TIME, &PRIVATE_DATA->imager_temperature_timer);
+	indigo_reschedule_timer(device, TEMP_CHECK_TIME, &PRIVATE_DATA->imager_ccd_temperature_timer);
 }
 
 
-static void guider_temperature_callback(indigo_device *device) {
+static void guider_ccd_temperature_callback(indigo_device *device) {
 	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
 		if (sbig_get_temperature(NULL, &(CCD_TEMPERATURE_ITEM->number.value), NULL, NULL) == CE_NO_ERROR) {
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -772,7 +772,7 @@ static void guider_temperature_callback(indigo_device *device) {
 		}
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, TEMP_CHECK_TIME, &PRIVATE_DATA->guider_temperature_timer);
+	indigo_reschedule_timer(device, TEMP_CHECK_TIME, &PRIVATE_DATA->guider_ccd_temperature_timer);
 }
 
 
@@ -823,10 +823,10 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_ITEM->number.target > 4) {
-			PRIVATE_DATA->imager_exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+			PRIVATE_DATA->imager_ccd_exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
 		} else {
 			PRIVATE_DATA->imager_no_check_temperature = true;
-			PRIVATE_DATA->imager_exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_exposure_timer_callback);
+			PRIVATE_DATA->imager_ccd_exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback);
 		}
 	} else {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -856,26 +856,26 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_INFO_PROPERTY->hidden = false;
 
 					cip.request = CCD_INFO_IMAGING; /* imaging CCD */
-					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_basic_info));
+					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_basic_info));
 					INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
 
-					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_basic_info.readoutInfo[0].width;
-					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_basic_info.readoutInfo[0].height;
+					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].width;
+					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].height;
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
 					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
 
-					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = bcd2double(PRIVATE_DATA->imager_basic_info.readoutInfo[0].pixelWidth);
-					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = bcd2double(PRIVATE_DATA->imager_basic_info.readoutInfo[0].pixelHeight);
+					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = bcd2double(PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].pixelWidth);
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = bcd2double(PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].pixelHeight);
 					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
 
-					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->imager_basic_info.firmwareVersion));
-					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->imager_basic_info.name);
+					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->imager_ccd_basic_info.firmwareVersion));
+					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->imager_ccd_basic_info.name);
 
 					cip.request = CCD_INFO_EXTENDED; /* imaging CCD */
-					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_extended_info1));
+					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_extended_info1));
 					INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
 
-					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_extended_info1.serialNumber, INDIGO_VALUE_SIZE);
+					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_ccd_extended_info1.serialNumber, INDIGO_VALUE_SIZE);
 
 					// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
 					/*
@@ -967,7 +967,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_COOLER_POWER_PROPERTY->hidden = false;
 					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
 
-					PRIVATE_DATA->imager_temperature_timer = indigo_set_timer(device, 0, imager_temperature_callback);
+					PRIVATE_DATA->imager_ccd_temperature_timer = indigo_set_timer(device, 0, imager_ccd_temperature_callback);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				} else { /* Secondary CCD */
@@ -977,20 +977,20 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_INFO_PROPERTY->hidden = false;
 
 					cip.request = CCD_INFO_TRACKING; /* guiding CCD */
-					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->guider_basic_info));
+					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->guider_ccd_basic_info));
 					INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d)  = %d", cip.request, res));
 
-					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->guider_basic_info.readoutInfo[0].width;
-					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->guider_basic_info.readoutInfo[0].height;
+					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->guider_ccd_basic_info.readoutInfo[0].width;
+					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->guider_ccd_basic_info.readoutInfo[0].height;
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
 					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
 
-					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = bcd2double(PRIVATE_DATA->guider_basic_info.readoutInfo[0].pixelWidth);
-					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = bcd2double(PRIVATE_DATA->guider_basic_info.readoutInfo[0].pixelHeight);
+					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = bcd2double(PRIVATE_DATA->guider_ccd_basic_info.readoutInfo[0].pixelWidth);
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = bcd2double(PRIVATE_DATA->guider_ccd_basic_info.readoutInfo[0].pixelHeight);
 					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
 
-					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->guider_basic_info.firmwareVersion));
-					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->guider_basic_info.name);
+					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->guider_ccd_basic_info.firmwareVersion));
+					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->guider_ccd_basic_info.name);
 
 					// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
 					/*
@@ -1080,7 +1080,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					CCD_COOLER_POWER_PROPERTY->hidden = true;
 
-					PRIVATE_DATA->guider_temperature_timer = indigo_set_timer(device, 0, guider_temperature_callback);
+					PRIVATE_DATA->guider_ccd_temperature_timer = indigo_set_timer(device, 0, guider_ccd_temperature_callback);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				}
@@ -1091,10 +1091,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			if (PRIMARY_CCD) {
 				PRIVATE_DATA->imager_no_check_temperature = false;
-				indigo_cancel_timer(device, &PRIVATE_DATA->imager_temperature_timer);
+				indigo_cancel_timer(device, &PRIVATE_DATA->imager_ccd_temperature_timer);
 			} else {
 				PRIVATE_DATA->guider_no_check_temperature = false;
-				indigo_cancel_timer(device, &PRIVATE_DATA->guider_temperature_timer);
+				indigo_cancel_timer(device, &PRIVATE_DATA->guider_ccd_temperature_timer);
 			}
 			sbig_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1614,7 +1614,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &guider_template, sizeof(indigo_device));
-	sprintf(device->name, "%s Guider #%d", cam_name, device_index);
+	sprintf(device->name, "%s Guider Port #%d", cam_name, device_index);
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
 	device->private_data = private_data;
 	indigo_async((void *)(void *)indigo_attach_device, device);
