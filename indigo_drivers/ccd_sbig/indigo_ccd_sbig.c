@@ -67,8 +67,8 @@
 
 #define MAX_CCD_TEMP         45     /* Max CCD temperature */
 #define MIN_CCD_TEMP       (-55)    /* Min CCD temperature */
-#define MAX_X_BIN            16     /* Max Horizontal binning */
-#define MAX_Y_BIN            16     /* Max Vertical binning */
+#define MAX_X_BIN             3     /* Max Horizontal binning */
+#define MAX_Y_BIN             3     /* Max Vertical binning */
 
 #define DEFAULT_BPP          16     /* Default bits per pixel */
 
@@ -681,19 +681,24 @@ static bool sbig_read_pixels(indigo_device *device) {
 
 
 static bool sbig_abort_exposure(indigo_device *device) {
+	EndExposureParams eep;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	/*
-	long err = FLICancelExposure(PRIVATE_DATA->dev_id);
-	FLICancelExposure(PRIVATE_DATA->dev_id);
-	FLICancelExposure(PRIVATE_DATA->dev_id);
-	PRIVATE_DATA->can_check_temperature = true;
+	if (PRIMARY_CCD) {
+		eep.ccd = CCD_IMAGING;
+		PRIVATE_DATA->imager_no_check_temperature = false;
+	} else {
+		eep.ccd = CCD_TRACKING;
+		PRIVATE_DATA->guider_no_check_temperature = false;
+	}
+
+	int res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
 	PRIVATE_DATA->abort_flag = true;
-	*/
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	//if(err) return false;
-	//else return true;
-	return 0;
+
+	if (res == CE_NO_ERROR) return true;
+	else return false;
 }
 
 
@@ -1430,12 +1435,13 @@ static indigo_result guider_detach(indigo_device *device) {
 }
 
 
-static const char *CAM_NAMES[] = {
+static const char *camera_types[] = {
 	"Type 0", "Type 1", "Type 2", "Type 3",
 	"ST-7", "ST-8", "ST-5C", "TCE",
 	"ST-237", "ST-K", "ST-9", "STV", "ST-10",
 	"ST-1K", "ST-2K", "STL", "ST-402", "STX",
-	"ST-4K", "STT", "ST-i",	"STF-8300"
+	"ST-4K", "STT", "ST-i",	"STF-8300",
+	"Next Camera", "No Camera"
 };
 
 
@@ -1644,7 +1650,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO error = %d (%s)", res, sbig_error_string(res)));
 			return false;
 		}
-		cam_name = gcir0.name;
+		cam_name = (char *)camera_types[gcir0.cameraType];
 	}
 
 	int slot = find_available_device_slot();
@@ -1661,14 +1667,15 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	memset(private_data, 0, sizeof(sbig_private_data));
 	private_data->usb_id = device_type;
 	private_data->ip_address = ip_address;
-	int device_index = 0;
+	//int device_index = 0;
+	char device_index_str[20] = "NET";
 	if (ip_address) {
 		private_data->is_usb = false;
 	} else {
 		private_data->is_usb = true;
-		device_index = usb_to_index(device_type);
+		sprintf(device_index_str, "%d", usb_to_index(device_type));
 	}
-	sprintf(device->name, "%s #%d", cam_name, device_index);
+	sprintf(device->name, "SBIG %s CCD #%s", cam_name, device_index_str);
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
 	private_data->primary_ccd = device;
 	strncpy(private_data->dev_name, cam_name, MAX_PATH);
@@ -1685,7 +1692,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &guider_template, sizeof(indigo_device));
-	sprintf(device->name, "%s Guider Port #%d", cam_name, device_index);
+	sprintf(device->name, "SBIG %s Guider Port #%s", cam_name, device_index_str);
 	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
 	device->private_data = private_data;
 	indigo_async((void *)(void *)indigo_attach_device, device);
@@ -1706,7 +1713,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		device = malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &ccd_template, sizeof(indigo_device));
-		sprintf(device->name, "%s Guider CCD #%d", cam_name, device_index);
+		sprintf(device->name, "SBIG %s Guider CCD #%s", cam_name, device_index_str);
 		INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
 		device->private_data = private_data;
 		indigo_async((void *)(void *)indigo_attach_device, device);
@@ -1798,7 +1805,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				return 0;
 			}
 
-			plug_device(cam_name, usb_id, 0);
+			plug_device(NULL, usb_id, 0);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
