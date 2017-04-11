@@ -639,5 +639,3 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 
 	return INDIGO_OK;
 }
-
-

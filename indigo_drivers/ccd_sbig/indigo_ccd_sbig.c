@@ -399,6 +399,48 @@ static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_cli
 }
 
 
+int sbig_get_bin_mode(indigo_device *device, int *binning) {
+	if (binning == NULL) return CE_BAD_PARAMETER;
+	if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 1) && (CCD_BIN_VERTICAL_ITEM->number.value == 1)) {
+		*binning = RM_1X1;
+	} else if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 2) && (CCD_BIN_VERTICAL_ITEM->number.value == 2)) {
+		*binning = RM_2X2;
+	} else if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 3) && (CCD_BIN_VERTICAL_ITEM->number.value == 3)) {
+		*binning = RM_3X3;
+	} else if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 9) && (CCD_BIN_VERTICAL_ITEM->number.value == 9)) {
+		*binning = RM_9X9;
+	} else {
+		INDIGO_ERROR(indigo_error("Bad CCD binning mode, use 1x1, 2x2, 3x3 or 9x9"));
+		return CE_BAD_PARAMETER;
+	}
+	return CE_NO_ERROR;
+}
+
+
+int sbig_get_resolution(indigo_device *device, int bin_mode, int *width, int *height, double *pixel_width, double *pixel_height) {
+	if ((width == NULL) || (height == NULL)) return CE_BAD_PARAMETER;
+
+	GetCCDInfoResults0 *ccd_info;
+
+	if (PRIMARY_CCD) {
+		ccd_info = &(PRIVATE_DATA->imager_ccd_basic_info);
+	} else {
+		ccd_info = &(PRIVATE_DATA->guider_ccd_basic_info);
+	}
+
+	for (int i = 0; i < ccd_info->readoutModes; i++) {
+		if (ccd_info->readoutInfo[i].mode == bin_mode) {
+			if (width) *width = ccd_info->readoutInfo[i].width;
+			if (height) *height = ccd_info->readoutInfo[i].width;
+			if (pixel_width) *pixel_width = ccd_info->readoutInfo[i].pixelWidth;
+			if (pixel_height) *pixel_height = ccd_info->readoutInfo[i].pixelHeight;
+			return CE_NO_ERROR;
+		}
+	}
+	return CE_BAD_PARAMETER;
+}
+
+
 static bool sbig_open(indigo_device *device) {
 	int id;
 	OpenDeviceParams odp;
@@ -572,6 +614,26 @@ static bool sbig_read_pixels(indigo_device *device) {
 	long timeleft = 0;
 	long res, dev_status;
 	long wait_cicles = 4000;
+
+/* Pretty sure this code will be needed somewhere
+	int mode;
+	int res = sbig_get_bin_mode(device, &mode);
+	if (res) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d (%s)", res, sbig_error_string(res)));
+		CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_FRAME_PROPERTY, "Bad binning mode");
+		return INDIGO_OK;
+	}
+
+	int width, height;
+	res = sbig_get_resolution(device, mode, &width, &height, NULL, NULL);
+	if (res) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d (%s)", res, sbig_error_string(res)));
+		CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_FRAME_PROPERTY, "Bad binning mode");
+		return INDIGO_OK;
+	}
+*/
 
 	/*
 	do {
@@ -861,6 +923,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res)));
 					}
 
+					for (int mode = 0; mode < PRIVATE_DATA->imager_ccd_basic_info.readoutModes; mode++) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: %d. Mode = 0x%x %dx%d", mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].width, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].height));
+					}
 					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].width;
 					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].height;
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
