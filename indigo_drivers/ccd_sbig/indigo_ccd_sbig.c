@@ -158,6 +158,9 @@ typedef struct {
 
 	cframe_params imager_ccd_frame_params;
 	cframe_params guider_ccd_frame_params;
+
+	StartExposureParams2 imager_ccd_exp_params;
+	StartExposureParams2 guider_ccd_exp_params;
 	pthread_mutex_t usb_mutex;
 	bool imager_no_check_temperature;
 	bool guider_no_check_temperature;
@@ -399,7 +402,7 @@ static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_cli
 }
 
 
-int sbig_get_bin_mode(indigo_device *device, int *binning) {
+int sbig_get_bin_mode(indigo_device *device, unsigned short *binning) {
 	if (binning == NULL) return CE_BAD_PARAMETER;
 	if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 1) && (CCD_BIN_VERTICAL_ITEM->number.value == 1)) {
 		*binning = RM_1X1;
@@ -532,83 +535,50 @@ static bool sbig_open(indigo_device *device) {
 
 static bool sbig_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
 	long res;
-
-	/* needed to read frame data */
-	if (PRIMARY_CCD) {
-		PRIVATE_DATA->imager_ccd_frame_params.width = frame_width;
-		PRIVATE_DATA->imager_ccd_frame_params.height = frame_height;
-		PRIVATE_DATA->imager_ccd_frame_params.bin_x = bin_x;
-		PRIVATE_DATA->imager_ccd_frame_params.bin_y = bin_y;
-		PRIVATE_DATA->imager_ccd_frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
-	} else {
-		PRIVATE_DATA->guider_ccd_frame_params.width = frame_width;
-		PRIVATE_DATA->guider_ccd_frame_params.height = frame_height;
-		PRIVATE_DATA->guider_ccd_frame_params.bin_x = bin_x;
-		PRIVATE_DATA->guider_ccd_frame_params.bin_y = bin_y;
-		PRIVATE_DATA->guider_ccd_frame_params.bpp = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
-	}
+	StartExposureParams2 *sep;
+	unsigned short binning_mode;
+	unsigned short shutter_mode;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-	/* FLISetBitDepth() does not seem to work! */
-	/*
-	res = FLISetBitDepth(id, bit_depth);
-	if (res) {
+	res = sbig_get_bin_mode(device, &binning_mode);
+	if (res != CE_NO_ERROR) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetBitDepth(%d) = %d", id, res));
-		return false;
-	}
-	*/
-	/*
-	res = FLISetHBin(id, bin_x);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetHBin(%d) = %d", id, res));
 		return false;
 	}
 
-	res = FLISetVBin(id, bin_y);
-	if (res) {
+	if(PRIMARY_CCD) {
+		sep = &(PRIVATE_DATA->imager_ccd_exp_params);
+		sep->ccd = CCD_IMAGING;
+	} else {
+		sep = &(PRIVATE_DATA->guider_ccd_exp_params);
+		sep->ccd = CCD_TRACKING;
+	}
+
+	if (dark) {
+		shutter_mode = SC_CLOSE_SHUTTER;
+	} else {
+		shutter_mode = SC_OPEN_SHUTTER;
+	}
+
+	sep->abgState = (unsigned short)ABG_LOW7;
+	sep->openShutter = (unsigned short)shutter_mode;
+	sep->exposureTime = (unsigned long)floor(exposure * 100.0 + 0.5);;
+	sep->readoutMode = binning_mode;
+	sep->left = offset_x;
+	sep->top = offset_y;
+	sep->width = (unsigned short)(frame_width / bin_x);
+	sep->height = (unsigned short)(frame_height / bin_y);
+
+	res = sbig_command(CC_START_EXPOSURE2, sep, NULL);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_START_EXPOSURE2 = %d (%s)", res, sbig_error_string(res)));
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetVBin(%d) = %d", id, res));
 		return false;
 	}
 
-	res = FLISetImageArea(id, offset_x, offset_y, right_x, right_y);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetImageArea(%d) = %d", id, res));
-		return false;
-	}
-
-	res = FLISetExposureTime(id, (long)s2ms(exposure));
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetExposureTime(%d) = %d", id, res));
-		return false;
-	}
-
-	fliframe_t frame_type = FLI_FRAME_TYPE_NORMAL;
-	if (dark) frame_type = FLI_FRAME_TYPE_DARK;
-	if (rbi_flood) frame_type = FLI_FRAME_TYPE_DARK | FLI_FRAME_TYPE_FLOOD;
-	res = FLISetFrameType(id, frame_type);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLISetFrameType(%d) = %d", id, res));
-		return false;
-	}
-
-	res = FLIExposeFrame(id);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIExposeFrame(%d) = %d", id, res));
-		return false;
-	}
-	*/
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
-
 
 static bool sbig_read_pixels(indigo_device *device) {
 	long timeleft = 0;
@@ -874,8 +844,10 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	PRIVATE_DATA->abort_flag = false;
 
 	ok = sbig_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
-	                                    CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-	                                    CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
+	                                    CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
+										CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
+										CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value
+	                        );
 
 	if (ok) {
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
