@@ -96,7 +96,6 @@
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
 
-
 // -------------------------------------------------------------------------------- SBIG USB interface implementation
 
 #define ms2s(s)      ((s) / 1000.0)
@@ -145,7 +144,7 @@ static void remove_eth_devices();
 static bool plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address);
 
 
-double bcd2double(unsigned long bcd) {
+static double bcd2double(unsigned long bcd) {
 	double value = 0.0;
 	double digit = 0.01;
 	for(int i = 0; i < 8; i++) {
@@ -156,10 +155,9 @@ double bcd2double(unsigned long bcd) {
 	return value;
 }
 
-
 /* driver commands */
 
-char *sbig_error_string(int err) {
+static char *sbig_error_string(int err) {
 	GetErrorStringParams gesp;
 	gesp.errorNo = err;
 	static GetErrorStringResults gesr;
@@ -228,7 +226,7 @@ static short close_driver(short *handle) {
 }
 
 
-int sbig_link_status(GetLinkStatusResults *glsr) {
+static int sbig_link_status(GetLinkStatusResults *glsr) {
 	int res = sbig_command(CC_GET_LINK_STATUS, NULL, glsr);
 	if (res != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_LINK_STATUS error = %d (%s)", res, sbig_error_string(res)));
@@ -237,7 +235,7 @@ int sbig_link_status(GetLinkStatusResults *glsr) {
 }
 
 
-bool sbig_check_link() {
+static bool sbig_check_link() {
 	GetLinkStatusResults glsr;
 	if (sbig_link_status(&glsr) != CE_NO_ERROR) {
 		return false;
@@ -246,12 +244,11 @@ bool sbig_check_link() {
 	if(glsr.linkEstablished) {
 		return true;
 	}
-
 	return false;
 }
 
 
-int sbig_set_temperature(double t, bool enable) {
+static int sbig_set_temperature(double t, bool enable) {
 	int res;
 	SetTemperatureRegulationParams2 strp2;
 	strp2.regulation = enable ? REGULATION_ON : REGULATION_OFF;
@@ -265,7 +262,7 @@ int sbig_set_temperature(double t, bool enable) {
 }
 
 
-int sbig_get_temperature(bool *enabled, double *t, double *setpoint, double *power) {
+static int sbig_get_temperature(bool *enabled, double *t, double *setpoint, double *power) {
 	int res;
 	QueryTemperatureStatusResults2 qtsr2;
 	QueryTemperatureStatusParams qtsp = {
@@ -373,7 +370,7 @@ static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_cli
 }
 
 
-int sbig_get_bin_mode(indigo_device *device, unsigned short *binning) {
+static int sbig_get_bin_mode(indigo_device *device, unsigned short *binning) {
 	if (binning == NULL) return CE_BAD_PARAMETER;
 	if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 1) && (CCD_BIN_VERTICAL_ITEM->number.value == 1)) {
 		*binning = RM_1X1;
@@ -391,7 +388,7 @@ int sbig_get_bin_mode(indigo_device *device, unsigned short *binning) {
 }
 
 
-int sbig_get_resolution(indigo_device *device, int bin_mode, int *width, int *height, double *pixel_width, double *pixel_height) {
+static int sbig_get_resolution(indigo_device *device, int bin_mode, int *width, int *height, double *pixel_width, double *pixel_height) {
 	if ((width == NULL) || (height == NULL)) return CE_BAD_PARAMETER;
 
 	GetCCDInfoResults0 *ccd_info;
@@ -515,15 +512,66 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 	return true;
 }
 
-static bool sbig_read_pixels(indigo_device *device) {
-	long timeleft = 0;
-	int res;
-	long wait_cicles = 4000;
-	unsigned char *frame_buffer;
+
+static bool sbig_exposure_complete(indigo_device *device) {
+	int ccd;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	/* TODO: MAKE SURE EXPOSURE IS FINISHED */
+	int res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+	if ( res != CE_NO_ERROR ) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
+
+	if (PRIMARY_CCD) {
+		ccd = CCD_IMAGING;
+	} else {
+		ccd = CCD_TRACKING;
+	}
+
+	QueryCommandStatusParams qcsp = {
+		.command = CC_START_EXPOSURE2
+	};
+	QueryCommandStatusResults qcsr;
+
+	res = sbig_command(CC_QUERY_COMMAND_STATUS, &qcsp, &qcsr);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_START_EXPOSURE2 error = %d (%s)", res, sbig_error_string(res)));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
+
+	int mask = 12; // Tracking & external tracking CCD chip mask.
+	if (ccd == CCD_IMAGING) {
+		mask = 3; // Imaging chip mask.
+	}
+
+	if ((qcsr.status & mask) != mask) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
+}
+
+
+static bool sbig_read_pixels(indigo_device *device) {
+	int res;
+	long wait_cycles = 4000;
+	unsigned char *frame_buffer;
+
+	/* for the exposyre to complete and end it */
+	while(!sbig_exposure_complete(device) && wait_cycles--) {
+		usleep(1000);
+	}
+	if (wait_cycles == 0) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: Exposure error: did not complete in time."));
+	}
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 	if ( res != CE_NO_ERROR ) {
@@ -551,6 +599,15 @@ static bool sbig_read_pixels(indigo_device *device) {
 		srp.height = PRIVATE_DATA->guider_ccd_exp_params.height;
 	}
 
+	/* SBIG REQUIRES explicit end exposure */
+	EndExposureParams eep = {
+		.ccd = srp.ccd
+	};
+	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_END_EXPOSURE error = %d (%s)", res, sbig_error_string(res)));
+	}
+
 	res = sbig_command(CC_START_READOUT, &srp, NULL);
 	if (res != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_START_READOUT error = %d (%s)", res, sbig_error_string(res)));
@@ -558,11 +615,12 @@ static bool sbig_read_pixels(indigo_device *device) {
 		return false;
 	}
 
-	ReadoutLineParams rlp;
-	rlp.ccd = srp.ccd;
-	rlp.readoutMode	= srp.readoutMode;
-	rlp.pixelStart = srp.left;
-	rlp.pixelLength	= srp.width;
+	ReadoutLineParams rlp = {
+		.ccd = srp.ccd,
+		.readoutMode	= srp.readoutMode,
+		.pixelStart = srp.left,
+		.pixelLength	= srp.width
+	};
 	for(int line = 0; line < srp.height; line++) {
 		res = sbig_command(CC_READOUT_LINE, &rlp, frame_buffer + (line * srp.width));
 		if (res != CE_NO_ERROR) {
@@ -570,8 +628,9 @@ static bool sbig_read_pixels(indigo_device *device) {
 		}
 	}
 
-	EndReadoutParams erp;
-	erp.ccd = srp.ccd;
+	EndReadoutParams erp = {
+		.ccd = srp.ccd
+	};
 	res = sbig_command(CC_END_READOUT, &erp, NULL);
 	if (res != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_END_READOUT error = %d (%s)", res, sbig_error_string(res)));
@@ -582,68 +641,6 @@ static bool sbig_read_pixels(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
-
-/* Pretty sure this code will be needed somewhere
-	int mode;
-	int res = sbig_get_bin_mode(device, &mode);
-	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d (%s)", res, sbig_error_string(res)));
-		CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_FRAME_PROPERTY, "Bad binning mode");
-		return INDIGO_OK;
-	}
-
-	int width, height;
-	res = sbig_get_resolution(device, mode, &width, &height, NULL, NULL);
-	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d (%s)", res, sbig_error_string(res)));
-		CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_FRAME_PROPERTY, "Bad binning mode");
-		return INDIGO_OK;
-	}
-*/
-
-	/*
-	do {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = FLIGetExposureStatus(id, &timeleft);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (timeleft) usleep(timeleft);
-	} while (timeleft*1000);
-
-	do {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		FLIGetDeviceStatus(id, &dev_status);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if((dev_status != FLI_CAMERA_STATUS_UNKNOWN) && ((dev_status & FLI_CAMERA_DATA_READY) != 0)) {
-			break;
-		}
-		usleep(10000);
-		wait_cicles--;
-	} while (wait_cicles);
-
-	if (wait_cicles == 0) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: Exposure Failed! id=%d", id));
-		return false;
-	}
-
-	long row_size = PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x * PRIVATE_DATA->frame_params.bpp / 8;
-	long width = PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x;
-	long height = PRIVATE_DATA->frame_params.height / PRIVATE_DATA->frame_params.bin_y ;
-	unsigned char *image = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
-
-	bool success = true;
-	for (int i = 0; i < height; i++) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = FLIGrabRow(id, image + (i * row_size), width);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) {
-			if (success) INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGrabRow(%d) = %d at row %d.", id, res, i));
-			success = false;
-		}
-	}
-	return success;
-	*/
 
 
 static bool sbig_abort_exposure(indigo_device *device) {
@@ -666,7 +663,9 @@ static bool sbig_abort_exposure(indigo_device *device) {
 	}
 
 	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
-	/* TODO: Error checking */
+	if ( res != CE_NO_ERROR ) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_END_EXPOSURE error = %d (%s)", res, sbig_error_string(res)));
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 	if (res == CE_NO_ERROR) return true;
