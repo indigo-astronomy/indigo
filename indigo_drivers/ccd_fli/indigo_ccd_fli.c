@@ -292,7 +292,7 @@ static bool fli_start_exposure(indigo_device *device, double exposure, bool dark
 static bool fli_read_pixels(indigo_device *device) {
 	long timeleft = 0;
 	long res, dev_status;
-	long wait_cicles = 4000;
+	long wait_cycles = 4000;
 	flidev_t id = PRIVATE_DATA->dev_id;
 
 	do {
@@ -310,10 +310,10 @@ static bool fli_read_pixels(indigo_device *device) {
 			break;
 		}
 		usleep(10000);
-		wait_cicles--;
-	} while (wait_cicles);
+		wait_cycles--;
+	} while (wait_cycles);
 
-	if (wait_cicles == 0) {
+	if (wait_cycles == 0) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_fli: Exposure Failed! id=%d", id));
 		return false;
 	}
