@@ -128,6 +128,8 @@ typedef struct {
 	GetCCDInfoResults4 imager_ccd_extended_info2;
 	GetCCDInfoResults4 guider_ccd_extended_info2;
 
+	GetCCDInfoResults6 imager_ccd_extended_info6;
+
 	StartExposureParams2 imager_ccd_exp_params;
 	StartExposureParams2 guider_ccd_exp_params;
 
@@ -733,6 +735,14 @@ static void sbig_close(indigo_device *device) {
 // callback for image download
 static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 	unsigned char *frame_buffer;
+	indigo_fits_keyword *bayer_keys = NULL;
+	const static indigo_fits_keyword keywords[] = {
+		{ INDIGO_FITS_STRING, "BAYERPAT", .string = "BGGR", "Bayer color pattern" },
+		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
+		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
+		{ 0 }
+	};
+
 	PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
@@ -740,12 +750,19 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 		if (sbig_read_pixels(device)) {
 			if(PRIMARY_CCD) {
 				frame_buffer = PRIVATE_DATA->imager_buffer;
+				/* check if colour and no binning => use BGGR patern */
+				if (((PRIVATE_DATA->imager_ccd_extended_info6.ccdBits & 0x03) == 0x01) &&
+				   (CCD_BIN_HORIZONTAL_ITEM->number.value == 1) &&
+				   (CCD_BIN_VERTICAL_ITEM->number.value == 1)) {
+					bayer_keys = (indigo_fits_keyword*)keywords;
+				}
 			} else {
 				frame_buffer = PRIVATE_DATA->guider_buffer;
 			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_process_image(device, frame_buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+			indigo_process_image(device, frame_buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value),
+			                    (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, bayer_keys);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
@@ -919,6 +936,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
 					//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
+
+					cip.request = CCD_INFO_EXTENDED3; /* imaging CCD */
+					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_extended_info6));
+					if (res != CE_NO_ERROR) {
+						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res)));
+					}
 
 					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
 					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
