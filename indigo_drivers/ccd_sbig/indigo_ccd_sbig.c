@@ -117,16 +117,6 @@
 #define m2um(m)      ((m) * 1e6)  /* meters to umeters */
 
 typedef struct {
-	long ul_x, ul_y, lr_x, lr_y;
-} image_area;
-
-typedef struct {
-	long bin_x, bin_y;
-	long width, height;
-	int bpp;
-} cframe_params;
-
-typedef struct {
 	bool is_usb;
 	SBIG_DEVICE_TYPE usb_id;
 	unsigned long ip_address;
@@ -142,11 +132,12 @@ typedef struct {
 	indigo_timer *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	double cooler_power;
-	unsigned char *buffer;
-	long int buffer_size;
 
-	image_area imager_ccd_area;
-	image_area guider_ccd_area;
+	unsigned char *imager_buffer;
+	long int imager_buffer_size;
+
+	unsigned char *guider_buffer;
+	long int guider_buffer_size;
 
 	GetCCDInfoResults0 imager_ccd_basic_info;
 	GetCCDInfoResults0 guider_ccd_basic_info;
@@ -155,9 +146,6 @@ typedef struct {
 
 	GetCCDInfoResults4 imager_ccd_extended_info2;
 	GetCCDInfoResults4 guider_ccd_extended_info2;
-
-	cframe_params imager_ccd_frame_params;
-	cframe_params guider_ccd_frame_params;
 
 	StartExposureParams2 imager_ccd_exp_params;
 	StartExposureParams2 guider_ccd_exp_params;
@@ -590,8 +578,71 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 
 static bool sbig_read_pixels(indigo_device *device) {
 	long timeleft = 0;
-	long res, dev_status;
+	int res;
 	long wait_cicles = 4000;
+	unsigned char *frame_buffer;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	/* TODO: MAKE SURE EXPOSURE IS FINISHED */
+
+	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+	if ( res != CE_NO_ERROR ) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
+
+	StartReadoutParams srp;
+	if (PRIMARY_CCD) {
+		frame_buffer = PRIVATE_DATA->imager_buffer;
+		srp.ccd = CCD_IMAGING;
+		srp.readoutMode	= PRIVATE_DATA->imager_ccd_exp_params.readoutMode;
+		srp.left = PRIVATE_DATA->imager_ccd_exp_params.left;
+		srp.top = PRIVATE_DATA->imager_ccd_exp_params.top;
+		srp.width = PRIVATE_DATA->imager_ccd_exp_params.width;
+		srp.height = PRIVATE_DATA->imager_ccd_exp_params.height;
+	} else {
+		frame_buffer = PRIVATE_DATA->guider_buffer;
+		srp.ccd = CCD_TRACKING;
+		srp.readoutMode	= PRIVATE_DATA->guider_ccd_exp_params.readoutMode;
+		srp.left = PRIVATE_DATA->guider_ccd_exp_params.left;
+		srp.top = PRIVATE_DATA->guider_ccd_exp_params.top;
+		srp.width = PRIVATE_DATA->guider_ccd_exp_params.width;
+		srp.height = PRIVATE_DATA->guider_ccd_exp_params.height;
+	}
+
+	res = sbig_command(CC_START_READOUT, &srp, NULL);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_START_READOUT error = %d (%s)", res, sbig_error_string(res)));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
+
+	ReadoutLineParams rlp;
+	rlp.ccd = srp.ccd;
+	rlp.readoutMode	= srp.readoutMode;
+	rlp.pixelStart = srp.left;
+	rlp.pixelLength	= srp.width;
+	for(int line = 0; line < srp.height; line++) {
+		res = sbig_command(CC_READOUT_LINE, &rlp, frame_buffer + (line * srp.width));
+		if (res != CE_NO_ERROR) {
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_READOUT_LINE error = %d (%s)", res, sbig_error_string(res)));
+		}
+	}
+
+	EndReadoutParams erp;
+	erp.ccd = srp.ccd;
+	res = sbig_command(CC_END_READOUT, &erp, NULL);
+	if (res != CE_NO_ERROR) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_END_READOUT error = %d (%s)", res, sbig_error_string(res)));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return true;
+}
 
 /* Pretty sure this code will be needed somewhere
 	int mode;
@@ -654,8 +705,6 @@ static bool sbig_read_pixels(indigo_device *device) {
 	}
 	return success;
 	*/
-	return 0;
-}
 
 
 static bool sbig_abort_exposure(indigo_device *device) {
@@ -758,14 +807,20 @@ static void sbig_close(indigo_device *device) {
 
 // callback for image download
 static void imager_ccd_exposure_timer_callback(indigo_device *device) {
+	unsigned char *frame_buffer;
 	PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (sbig_read_pixels(device)) {
+			if(PRIMARY_CCD) {
+				frame_buffer = PRIVATE_DATA->imager_buffer;
+			} else {
+				frame_buffer = PRIVATE_DATA->guider_buffer;
+			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+			indigo_process_image(device, frame_buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
@@ -948,59 +1003,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_ccd_extended_info1.serialNumber, INDIGO_VALUE_SIZE);
 
-					// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
-					/*
-					flimode_t current_mode;
-					int i;
-					char mode_name[INDIGO_NAME_SIZE];
-					res = FLIGetCameraMode(id, &current_mode);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetCameraMode(%d) = %d", id, res));
-					}
-					res = FLIGetCameraModeString(id, 0, mode_name, INDIGO_NAME_SIZE);
-					if (res == 0) {
-						for (i = 0; i < MAX_MODES; i++) {
-							res = FLIGetCameraModeString(id, i, mode_name, INDIGO_NAME_SIZE);
-							if (res) break;
-							indigo_init_switch_item(FLI_CAMERA_MODE_PROPERTY->items + i, mode_name, mode_name, (i == current_mode));
-						}
-						FLI_CAMERA_MODE_PROPERTY = indigo_resize_property(FLI_CAMERA_MODE_PROPERTY, i);
-					}
-
-					indigo_define_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
-
-					double size_x, size_y;
-
-					res = FLIGetPixelSize(id, &size_x, &size_y);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
-					}
-
-					res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
-					}
-
-					res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
-					}
-
-					long hw_rev, fw_rev;
-					res = FLIGetFWRevision(id, &fw_rev);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
-					}
-
-					res = FLIGetHWRevision(id, &hw_rev);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
-					}
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
-					sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
-					*/
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
 					//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
@@ -1038,6 +1040,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_COOLER_POWER_PROPERTY->hidden = false;
 					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
 
+					PRIVATE_DATA->imager_buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
+					assert(PRIVATE_DATA->imager_buffer != NULL);
+
 					PRIVATE_DATA->imager_ccd_temperature_timer = indigo_set_timer(device, 0, imager_ccd_temperature_callback);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1065,59 +1070,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%.2f", bcd2double(PRIVATE_DATA->guider_ccd_basic_info.firmwareVersion));
 					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->guider_ccd_basic_info.name);
 
-					// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
-					/*
-					flimode_t current_mode;
-					int i;
-					char mode_name[INDIGO_NAME_SIZE];
-					res = FLIGetCameraMode(id, &current_mode);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetCameraMode(%d) = %d", id, res));
-					}
-					res = FLIGetCameraModeString(id, 0, mode_name, INDIGO_NAME_SIZE);
-					if (res == 0) {
-						for (i = 0; i < MAX_MODES; i++) {
-							res = FLIGetCameraModeString(id, i, mode_name, INDIGO_NAME_SIZE);
-							if (res) break;
-							indigo_init_switch_item(FLI_CAMERA_MODE_PROPERTY->items + i, mode_name, mode_name, (i == current_mode));
-						}
-						FLI_CAMERA_MODE_PROPERTY = indigo_resize_property(FLI_CAMERA_MODE_PROPERTY, i);
-					}
-
-					indigo_define_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
-
-					double size_x, size_y;
-
-					res = FLIGetPixelSize(id, &size_x, &size_y);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %d", id, res));
-					}
-
-					res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
-					}
-
-					res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
-					}
-
-					long hw_rev, fw_rev;
-					res = FLIGetFWRevision(id, &fw_rev);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
-					}
-
-					res = FLIGetHWRevision(id, &hw_rev);
-					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
-					}
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
-					sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
-					*/
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
 					//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
@@ -1153,6 +1105,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					CCD_COOLER_POWER_PROPERTY->hidden = true;
 
+					PRIVATE_DATA->guider_buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
+					assert(PRIVATE_DATA->guider_buffer != NULL);
+
 					PRIVATE_DATA->guider_ccd_temperature_timer = indigo_set_timer(device, 0, guider_ccd_temperature_callback);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1165,9 +1120,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (PRIMARY_CCD) {
 				PRIVATE_DATA->imager_no_check_temperature = false;
 				indigo_cancel_timer(device, &PRIVATE_DATA->imager_ccd_temperature_timer);
+				if (PRIVATE_DATA->imager_buffer != NULL) {
+					free(PRIVATE_DATA->imager_buffer);
+					PRIVATE_DATA->imager_buffer = NULL;
+				}
 			} else {
 				PRIVATE_DATA->guider_no_check_temperature = false;
 				indigo_cancel_timer(device, &PRIVATE_DATA->guider_ccd_temperature_timer);
+				if (PRIVATE_DATA->guider_buffer != NULL) {
+					free(PRIVATE_DATA->guider_buffer);
+					PRIVATE_DATA->guider_buffer = NULL;
+				}
 			}
 			sbig_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
