@@ -64,25 +64,12 @@
 
 #define RELAY_MAX_PULSE    5000     /* 50s max pulse */
 
-
 #define MAX_CCD_TEMP         45     /* Max CCD temperature */
 #define MIN_CCD_TEMP       (-55)    /* Min CCD temperature */
 #define MAX_X_BIN             3     /* Max Horizontal binning */
 #define MAX_Y_BIN             3     /* Max Vertical binning */
 
 #define DEFAULT_BPP          16     /* Default bits per pixel */
-
-#define MIN_N_FLUSHES         0     /* Min number of array flushes before exposure */
-#define MAX_N_FLUSHES        16     /* Max number of array flushes before exposure */
-#define DEFAULT_N_FLUSHES     1     /* Default number of array flushes before exposure */
-
-#define MIN_NIR_FLOOD         0     /* Min seconds to flood the frame with NIR light */
-#define MAX_NIR_FLOOD        16     /* Max seconds to flood the frame with NIR light */
-#define DEFAULT_NIR_FLOOD     3     /* Default seconds to flood the frame with NIR light */
-
-#define MIN_FLUSH_COUNT       1     /* Min flushes after flood */
-#define MAX_FLUSH_COUNT      10     /* Max flushes after flood */
-#define DEFAULT_FLUSH_COUNT   2     /* Default flushes after flood */
 
 #define MAX_PATH            255     /* Maximal Path Length */
 
@@ -123,9 +110,7 @@ typedef struct {
 	void *primary_ccd;
 	short driver_handle;
 	char dev_name[MAX_PATH];
-	bool rbi_flood_supported;
 	ushort relay_map;
-	bool abort_flag;
 	int count_open;
 	indigo_timer *imager_ccd_exposure_timer, *imager_ccd_temperature_timer;
 	indigo_timer *guider_ccd_exposure_timer, *guider_ccd_temperature_timer;
@@ -134,10 +119,7 @@ typedef struct {
 	double cooler_power;
 
 	unsigned char *imager_buffer;
-	long int imager_buffer_size;
-
 	unsigned char *guider_buffer;
-	long int guider_buffer_size;
 
 	GetCCDInfoResults0 imager_ccd_basic_info;
 	GetCCDInfoResults0 guider_ccd_basic_info;
@@ -149,10 +131,11 @@ typedef struct {
 
 	StartExposureParams2 imager_ccd_exp_params;
 	StartExposureParams2 guider_ccd_exp_params;
+
 	pthread_mutex_t usb_mutex;
 	bool imager_no_check_temperature;
 	bool guider_no_check_temperature;
-	/* indigo_property *fli_nflushes_property; */
+	/* indigo_property *some_sbig_property; */
 } sbig_private_data;
 
 
@@ -433,7 +416,6 @@ int sbig_get_resolution(indigo_device *device, int bin_mode, int *width, int *he
 
 
 static bool sbig_open(indigo_device *device) {
-	int id;
 	OpenDeviceParams odp;
 	short res;
 
@@ -472,49 +454,6 @@ static bool sbig_open(indigo_device *device) {
 			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d (%s)", res, sbig_error_string(res)));
 			return false;
 		}
-
-	/*
-	long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
-	id = PRIVATE_DATA->dev_id;
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIOpen(%d) = %d", id, res));
-		return false;
-	}
-
-	res = FLIGetArrayArea(id, &(PRIVATE_DATA->total_area.ul_x), &(PRIVATE_DATA->total_area.ul_y), &(PRIVATE_DATA->total_area.lr_x), &(PRIVATE_DATA->total_area.lr_y));
-	if (res) {
-		FLIClose(id);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetArrayArea(%d) = %d", id, res));
-		return false;
-	}
-
-	res = FLIGetVisibleArea(id, &(PRIVATE_DATA->visible_area.ul_x), &(PRIVATE_DATA->visible_area.ul_y), &(PRIVATE_DATA->visible_area.lr_x), &(PRIVATE_DATA->visible_area.lr_y));
-	if (res) {
-		FLIClose(id);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetVisibleArea(%d) = %d", id, res));
-		return false;
-	}
-
-	res = FLISetFrameType(id, FLI_FRAME_TYPE_RBI_FLUSH);
-	if (res) {
-		PRIVATE_DATA->rbi_flood_supported = false;
-	} else {
-		PRIVATE_DATA->rbi_flood_supported = true;
-	}
-
-	long height = PRIVATE_DATA->total_area.lr_y - PRIVATE_DATA->total_area.ul_y;
-	long width = PRIVATE_DATA->total_area.lr_x - PRIVATE_DATA->total_area.ul_x;
-
-	//INDIGO_ERROR(indigo_error("indigo_ccd_fli: %ld %ld %ld %ld - %ld, %ld", PRIVATE_DATA->total_area.lr_x, PRIVATE_DATA->total_area.lr_y, PRIVATE_DATA->total_area.ul_x, PRIVATE_DATA->total_area.ul_y, height, width));
-
-	if (PRIVATE_DATA->buffer == NULL) {
-		PRIVATE_DATA->buffer_size = width * height * 2 + FITS_HEADER_SIZE;
-		PRIVATE_DATA->buffer = (unsigned char*)malloc(PRIVATE_DATA->buffer_size);
-	}
-	*/
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -727,8 +666,7 @@ static bool sbig_abort_exposure(indigo_device *device) {
 	}
 
 	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
-	PRIVATE_DATA->abort_flag = true;
-
+	/* TODO: Error checking */
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 	if (res == CE_NO_ERROR) return true;
@@ -786,18 +724,6 @@ static void sbig_close(indigo_device *device) {
 		if (res) {
 			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: close_driver(%d) = %d", PRIVATE_DATA->driver_handle, res));
 		}
-
-		/*
-		long res = FLIClose(PRIVATE_DATA->dev_id);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
-		}
-		if (PRIVATE_DATA->buffer != NULL) {
-			free(PRIVATE_DATA->buffer);
-			PRIVATE_DATA->buffer = NULL;
-		}
-		*/
 	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -898,19 +824,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if ((device == PRIVATE_DATA->primary_ccd) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
-
-		/* Use all info property fields */
-		INFO_PROPERTY->count = 7;
-
-		/*
-		// -------------------------------------------------------------------------------- FLI_NFLUSHES
-		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", FLI_ADVANCED_GROUP, "Flush CCD", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
-		if (FLI_NFLUSHES_PROPERTY == NULL)
-			return INDIGO_FAILED;
-
-		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "FLI_NFLUSHES", "Times (before exposure)", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
-		*/
-
+		INFO_PROPERTY->count = 7; 	/* Use all info property fields */
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	} else if ((device != PRIVATE_DATA->primary_ccd) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -921,13 +835,13 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
 	long ok;
-	PRIVATE_DATA->abort_flag = false;
 
-	ok = sbig_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
-	                                    CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
-										CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-										CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value
-	                        );
+	ok = sbig_start_exposure(device, CCD_EXPOSURE_ITEM->number.target,
+	                                 CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
+	                                 CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
+	                                 CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
+	                                 CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value
+	);
 
 	if (ok) {
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
