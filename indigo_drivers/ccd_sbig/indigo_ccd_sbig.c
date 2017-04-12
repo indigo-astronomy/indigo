@@ -534,12 +534,20 @@ static bool sbig_open(indigo_device *device) {
 
 
 static bool sbig_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
-	long res;
+	int res;
 	StartExposureParams2 *sep;
 	unsigned short binning_mode;
 	unsigned short shutter_mode;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+	if ( res != CE_NO_ERROR ) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
+
 	res = sbig_get_bin_mode(device, &binning_mode);
 	if (res != CE_NO_ERROR) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -654,6 +662,13 @@ static bool sbig_abort_exposure(indigo_device *device) {
 	EndExposureParams eep;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
+	int res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+	if ( res != CE_NO_ERROR ) {
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
+
 	if (PRIMARY_CCD) {
 		eep.ccd = CCD_IMAGING;
 		PRIVATE_DATA->imager_no_check_temperature = false;
@@ -662,7 +677,7 @@ static bool sbig_abort_exposure(indigo_device *device) {
 		PRIVATE_DATA->guider_no_check_temperature = false;
 	}
 
-	int res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
+	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
 	PRIVATE_DATA->abort_flag = true;
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -802,11 +817,21 @@ static void imager_ccd_temperature_callback(indigo_device *device) {
 
 static void guider_ccd_temperature_callback(indigo_device *device) {
 	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+		int res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+		if (res) {
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			return;
+		}
+
 		if (sbig_get_temperature(NULL, &(CCD_TEMPERATURE_ITEM->number.value), NULL, NULL) == CE_NO_ERROR) {
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
 	indigo_reschedule_timer(device, TEMP_CHECK_TIME, &PRIVATE_DATA->guider_ccd_temperature_timer);
