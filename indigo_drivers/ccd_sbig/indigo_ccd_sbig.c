@@ -582,7 +582,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 
 	StartReadoutParams srp;
 	if (PRIMARY_CCD) {
-		frame_buffer = PRIVATE_DATA->imager_buffer;
+		frame_buffer = PRIVATE_DATA->imager_buffer + FITS_HEADER_SIZE;
 		srp.ccd = CCD_IMAGING;
 		srp.readoutMode	= PRIVATE_DATA->imager_ccd_exp_params.readoutMode;
 		srp.left = PRIVATE_DATA->imager_ccd_exp_params.left;
@@ -590,7 +590,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 		srp.width = PRIVATE_DATA->imager_ccd_exp_params.width;
 		srp.height = PRIVATE_DATA->imager_ccd_exp_params.height;
 	} else {
-		frame_buffer = PRIVATE_DATA->guider_buffer;
+		frame_buffer = PRIVATE_DATA->guider_buffer + FITS_HEADER_SIZE;
 		srp.ccd = CCD_TRACKING;
 		srp.readoutMode	= PRIVATE_DATA->guider_ccd_exp_params.readoutMode;
 		srp.left = PRIVATE_DATA->guider_ccd_exp_params.left;
@@ -617,12 +617,12 @@ static bool sbig_read_pixels(indigo_device *device) {
 
 	ReadoutLineParams rlp = {
 		.ccd = srp.ccd,
-		.readoutMode	= srp.readoutMode,
+		.readoutMode = srp.readoutMode,
 		.pixelStart = srp.left,
-		.pixelLength	= srp.width
+		.pixelLength = srp.width
 	};
 	for(int line = 0; line < srp.height; line++) {
-		res = sbig_command(CC_READOUT_LINE, &rlp, frame_buffer + (line * srp.width));
+		res = sbig_command(CC_READOUT_LINE, &rlp, frame_buffer + 2*(line * srp.width));
 		if (res != CE_NO_ERROR) {
 			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_READOUT_LINE error = %d (%s)", res, sbig_error_string(res)));
 		}
