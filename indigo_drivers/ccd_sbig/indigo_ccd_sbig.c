@@ -496,8 +496,8 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 	sep->openShutter = (unsigned short)shutter_mode;
 	sep->exposureTime = (unsigned long)floor(exposure * 100.0 + 0.5);;
 	sep->readoutMode = binning_mode;
-	sep->left = offset_x;
-	sep->top = offset_y;
+	sep->left = (unsigned short)(offset_x / bin_x);
+	sep->top = (unsigned short)(offset_y / bin_y);
 	sep->width = (unsigned short)(frame_width / bin_x);
 	sep->height = (unsigned short)(frame_height / bin_y);
 
