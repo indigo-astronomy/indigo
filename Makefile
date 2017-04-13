@@ -729,7 +729,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 
 $(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS) ctrlpanel
-	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) -lstdc++
+	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS)  $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) $(BUILD_LIB)/libsbigudrv.a -lstdc++
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
@@ -795,6 +795,7 @@ install:
 	sudo install -D -m 0644 $(DRIVERS) $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.so $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 $(DRIVER_SOLIBS) $(INSTALL_PREFIX)/lib
+	mkdir sbig_scratch; cd sbig_scratch; cmake ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
@@ -822,6 +823,7 @@ $(PACKAGE_NAME).deb: all
 	install $(BUILD_LIB)/libindigo.a /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
 	install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
 	install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_ssag.rules
