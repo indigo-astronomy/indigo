@@ -861,11 +861,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
 	long ok;
 
-	ok = sbig_start_exposure(device, CCD_EXPOSURE_ITEM->number.target,
-	                                 CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
-	                                 CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
-	                                 CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-	                                 CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value
+	ok = sbig_start_exposure(device,
+	                         CCD_EXPOSURE_ITEM->number.target,
+	                         CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
+	                         CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
+	                         CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
+	                         CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value
 	);
 
 	if (ok) {
@@ -919,9 +920,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res)));
 					}
 
-					for (int mode = 0; mode < PRIVATE_DATA->imager_ccd_basic_info.readoutModes; mode++) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: %d. Mode = 0x%x %dx%d", mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].width, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].height));
-					}
+					//for (int mode = 0; mode < PRIVATE_DATA->imager_ccd_basic_info.readoutModes; mode++) {
+					//	INDIGO_ERROR(indigo_error("indigo_ccd_sbig: %d. Mode = 0x%x %dx%d", mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].width, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].height));
+					//}
 					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].width;
 					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].height;
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
@@ -1648,10 +1649,9 @@ static void enumerate_devices() {
 	if (res != CE_NO_ERROR) {
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_QUERY_USB2 error = %d (%s)", res, sbig_error_string(res)));
 	}
-
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_cams = %d", usb_cams.camerasFound));
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_type = %d", usb_cams.usbInfo[0].cameraType ));
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: cam name = %s", usb_cams.usbInfo[0].name));
+	//INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_cams = %d", usb_cams.camerasFound));
+	//INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_type = %d", usb_cams.usbInfo[0].cameraType ));
+	//INDIGO_LOG(indigo_log("indigo_ccd_sbig: cam name = %s", usb_cams.usbInfo[0].name));
 }
 
 

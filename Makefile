@@ -823,7 +823,7 @@ $(PACKAGE_NAME).deb: all
 	install $(BUILD_LIB)/libindigo.a /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
-	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
+	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
 	install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
 	install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_ssag.rules
