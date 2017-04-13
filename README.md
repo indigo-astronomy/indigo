@@ -29,7 +29,7 @@ This is the list of requirements taken into the consideration:
 5. SX CCD driver
 6. SX wheel driver
 7. Shoestring FCUSB focuser driver
-8. SSAG/QHY5 CCD driver 
+8. SSAG/QHY5 CCD driver
 9. ASI wheel driver
 10. IIDC CCD driver
 11. ASI CCD driver
@@ -39,13 +39,13 @@ This is the list of requirements taken into the consideration:
 15. FLI CCD driver
 16. FLI focuser driver (testers needed)
 17. USB_Focus v3 driver
-
-18.	ASCOM driver for INDIGO Camera
-19.	ASCOM driver for INDIGO FilterWheel
+18. SBIG CCD driver (with guider and guider CCD)
+19.	ASCOM driver for INDIGO Camera
+20.	ASCOM driver for INDIGO Filter Wheel
 
 ## This is under development
 
-1. SBIG CCD driver
+1. SBIG filter wheel and focuser driver (part of the CCD driver)
 2. QHY (5II-L) CCD driver
 
 
@@ -68,7 +68,7 @@ TBD - see ubuntu and install the corresponding packages.
 
 #### macOS
 
-Install XCode and download and build autoconf, automake and libtool (use tools/cltools.sh script). 
+Install XCode and download and build autoconf, automake and libtool (use tools/cltools.sh script).
 
 ### Get code and build it
 
