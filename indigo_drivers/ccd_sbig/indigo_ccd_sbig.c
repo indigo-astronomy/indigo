@@ -33,6 +33,7 @@
 // 6. Add external guider CCD support
 // 7. Add Focuser support
 // 8. Add AO support
+// 9. Add property to freeze TEC for readout
 
 #define DRIVER_VERSION 0x0001
 
@@ -441,6 +442,7 @@ static bool sbig_open(indigo_device *device) {
 		}
 
 		if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
+			sbig_command(CC_CLOSE_DEVICE, NULL, NULL); /* Cludge: sometimes it fails with CE_DEVICE_NOT_CLOSED later */
 			close_driver(&PRIVATE_DATA->driver_handle);
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&driver_mutex);
@@ -1420,7 +1422,9 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 			bool ok;
 			ok = get_host_ip(DEVICE_PORT_ITEM->text.value, &ip_address);
 			if (ok) {
+				pthread_mutex_lock(&driver_mutex);
 				ok = plug_device(NULL, DEV_ETH, ip_address);
+				pthread_mutex_unlock(&driver_mutex);
 			}
 			if (ok) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1520,7 +1524,20 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 
 	short res = set_sbig_handle(global_handle);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error set_sbig_handle(global_handle) = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error set_sbig_handle(global_handle %d) = %d (%s)", global_handle, res, sbig_error_string(res)));
+		/* Something wrong happened need to reopen the global handle */
+		if ((res == CE_DRIVER_NOT_OPEN) || (res == CE_BAD_PARAMETER)) {
+			res = sbig_command(CC_OPEN_DRIVER, NULL, NULL);
+			if (res != CE_NO_ERROR) {
+				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DRIVER reopen error = %d (%s)", res, sbig_error_string(res)));
+				return false;
+			}
+			global_handle = get_sbig_handle();
+			if (global_handle == INVALID_HANDLE_VALUE) {
+				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error get_sbig_handle() = %d", global_handle));
+				return false;
+			}
+		}
 	}
 
 	OpenDeviceParams odp = {
@@ -1530,6 +1547,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	};
 
 	if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
+		sbig_command(CC_CLOSE_DEVICE, NULL, NULL); /* Cludge: sometimes it fails with CE_DEVICE_NOT_CLOSED later */
 		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d (%s)", res, sbig_error_string(res)));
 		return false;
 	}
