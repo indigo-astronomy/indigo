@@ -48,7 +48,7 @@
 4. MI CCD driver (based on MI SDK)
 5. QSI CCD driver (based on QSI SDK)
 6. FLI CCD driver (based on FLI SDK) __DONE__
-7. SBig CCD driver (based on SBIG SDK)
+7. SBIG CCD driver (based on SBIG SDK) __DONE__
 8. Apogee CCD driver (based on Apogee SDK)
 9. Fishcamp CCD driver (based on Fishcamp SDK)
 10. Andor CCD driver (based on Andor SDK - payed :( we will require but not provide it)
@@ -78,6 +78,7 @@
 
 1. USB Focus v3 __DONE__
 2. FLI focuser driver (based on FLI SDK) __DONE__
+3. SBIG focuser driver (based on SBIG SDK)
 
 #### Mounts
 
@@ -87,7 +88,7 @@
 4. EQMod mount driver
 5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft)
 
-#### ASCOM
+#### AO
 
 1. SX AO driver
-2. SBIG AO driver
+2. SBIG AO driver (based on SBIG SDK)
