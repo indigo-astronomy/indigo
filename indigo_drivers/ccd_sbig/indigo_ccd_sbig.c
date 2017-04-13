@@ -24,7 +24,15 @@
  \file indigo_ccd_sbig.c
  */
 
-//#define ETHERNET_DRIVER
+// TODO:
+// 1. Handle ethernet disconnects.
+// 2. Handle shutter race for dual ccd camseras.
+// 3. Binning and readout modes.
+// 4. Better error handling.
+// 5. Add filter wheel support.
+// 6. Add external guider CCD support
+// 7. Add Focuser support
+// 8. Add AO support
 
 #define DRIVER_VERSION 0x0001
 
