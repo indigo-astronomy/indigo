@@ -26,7 +26,6 @@
 
 // TODO:
 // 1. Handle ethernet disconnects.
-// 2. Handle shutter race for dual ccd camseras.
 // 3. Binning and readout modes.
 // 4. Better error handling.
 // 5. Add filter wheel support.
@@ -233,6 +232,20 @@ static short close_driver(short *handle) {
 	if ( res == CE_NO_ERROR )
 		*handle = INVALID_HANDLE_VALUE;
 
+	return res;
+}
+
+
+static int get_command_status(unsigned short command, unsigned short *status) {
+	QueryCommandStatusParams qcsp = {
+		.command = command
+	};
+	QueryCommandStatusResults qcsr;
+
+	int res = sbig_command(CC_QUERY_COMMAND_STATUS, &qcsp, &qcsr);
+	if (res == CE_NO_ERROR) {
+		if (status) *status = qcsr.status;
+	}
 	return res;
 }
 
@@ -490,18 +503,29 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 		return false;
 	}
 
+	if (dark) {
+		shutter_mode = SC_CLOSE_SHUTTER;
+	} else {
+		shutter_mode = SC_OPEN_SHUTTER;
+	}
+
 	if(PRIMARY_CCD) {
 		sep = &(PRIVATE_DATA->imager_ccd_exp_params);
 		sep->ccd = CCD_IMAGING;
 	} else {
 		sep = &(PRIVATE_DATA->guider_ccd_exp_params);
 		sep->ccd = CCD_TRACKING;
-	}
 
-	if (dark) {
-		shutter_mode = SC_CLOSE_SHUTTER;
-	} else {
-		shutter_mode = SC_OPEN_SHUTTER;
+		unsigned short status;
+		res = get_command_status(CC_START_EXPOSURE2, &status);
+		if (res != CE_NO_ERROR) {
+			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_QUERY_COMMAND_STATUS error = %d (%s)", res, sbig_error_string(res)));
+			pthread_mutex_unlock(&driver_mutex);
+			return false;
+		}
+		if ((status & 2) == 2) { /* Primary CCD exposure is in progress do not touch the shutter */
+			shutter_mode = SC_LEAVE_SHUTTER;
+		}
 	}
 
 	sep->abgState = (unsigned short)ABG_LOW7;
@@ -543,14 +567,10 @@ static bool sbig_exposure_complete(indigo_device *device) {
 		ccd = CCD_TRACKING;
 	}
 
-	QueryCommandStatusParams qcsp = {
-		.command = CC_START_EXPOSURE2
-	};
-	QueryCommandStatusResults qcsr;
-
-	res = sbig_command(CC_QUERY_COMMAND_STATUS, &qcsp, &qcsr);
+	unsigned short status;
+	res = get_command_status(CC_START_EXPOSURE2, &status);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_START_EXPOSURE2 error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_QUERY_COMMAND_STATUS error = %d (%s)", res, sbig_error_string(res)));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -560,7 +580,7 @@ static bool sbig_exposure_complete(indigo_device *device) {
 		mask = 3; // Imaging chip mask.
 	}
 
-	if ((qcsr.status & mask) != mask) {
+	if ((status & mask) != mask) {
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -785,7 +805,7 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
 static void clear_reg_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		PRIVATE_DATA->imager_no_check_temperature = false;
+		PRIVATE_DATA->imager_no_check_temperature = true;
 		PRIVATE_DATA->imager_ccd_exposure_timer = indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback);
 	} else {
 		PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
