@@ -739,8 +739,8 @@ static bool sbig_set_cooler(indigo_device *device, double target, double *curren
 
 static void sbig_close(indigo_device *device) {
 	int res;
-	pthread_mutex_lock(&driver_mutex);
 
+	//pthread_mutex_lock(&driver_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 		if (res) {
@@ -757,8 +757,7 @@ static void sbig_close(indigo_device *device) {
 			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: close_driver(%d) = %d", PRIVATE_DATA->driver_handle, res));
 		}
 	}
-
-	pthread_mutex_unlock(&driver_mutex);
+	//pthread_mutex_unlock(&driver_mutex);
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
