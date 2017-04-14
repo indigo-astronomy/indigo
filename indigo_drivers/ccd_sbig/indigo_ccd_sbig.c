@@ -26,6 +26,7 @@
 
 // TODO:
 // 1. Handle ethernet disconnects.
+// 2. Removing open device is broken!!!
 // 3. Binning and readout modes.
 // 4. Better error handling.
 // 5. Add filter wheel support.
