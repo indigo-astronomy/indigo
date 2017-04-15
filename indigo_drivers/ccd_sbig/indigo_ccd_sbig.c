@@ -1441,9 +1441,7 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 			bool ok;
 			ok = get_host_ip(DEVICE_PORT_ITEM->text.value, &ip_address);
 			if (ok) {
-				pthread_mutex_lock(&driver_mutex);
 				ok = plug_device(NULL, DEV_ETH, ip_address);
-				pthread_mutex_unlock(&driver_mutex);
 			}
 			if (ok) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1481,6 +1479,7 @@ static indigo_result eth_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 short global_handle = INVALID_HANDLE_VALUE; /* This is global SBIG driver hangle used for attach and detatch cameras */
+pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_USB_DEVICES                8
 #define MAX_ETH_DEVICES                8
@@ -1511,7 +1510,7 @@ static int find_available_device_slot() {
 }
 
 
-static int find_device_slot(CAMERA_TYPE usb_id) {
+static int find_device_slot(SBIG_DEVICE_TYPE usb_id) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
 		if (device == NULL) continue;
@@ -1541,6 +1540,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		guider_detach
 	};
 
+	pthread_mutex_lock(&driver_mutex);
 	short res = set_sbig_handle(global_handle);
 	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error set_sbig_handle(global_handle %d) = %d (%s)", global_handle, res, sbig_error_string(res));
@@ -1549,11 +1549,13 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 			res = sbig_command(CC_OPEN_DRIVER, NULL, NULL);
 			if (res != CE_NO_ERROR) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_OPEN_DRIVER reopen error = %d (%s)", res, sbig_error_string(res));
+				pthread_mutex_unlock(&driver_mutex);
 				return false;
 			}
 			global_handle = get_sbig_handle();
 			if (global_handle == INVALID_HANDLE_VALUE) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "error get_sbig_handle() = %d", global_handle);
+				pthread_mutex_unlock(&driver_mutex);
 				return false;
 			}
 		}
@@ -1568,6 +1570,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
 		sbig_command(CC_CLOSE_DEVICE, NULL, NULL); /* Cludge: sometimes it fails with CE_DEVICE_NOT_CLOSED later */
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_OPEN_DEVICE error = %d (%s)", res, sbig_error_string(res));
+		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 
@@ -1577,6 +1580,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	if ((res = sbig_command(CC_ESTABLISH_LINK, &elp, &elr)) != CE_NO_ERROR) {
 		sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_ESTABLISH_LINK error = %d (%s)", res, sbig_error_string(res));
+		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 
@@ -1586,6 +1590,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
 			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO error = %d (%s)", res, sbig_error_string(res));
+			pthread_mutex_unlock(&driver_mutex);
 			return false;
 		}
 		cam_name = (char *)camera_types[gcir0.cameraType];
@@ -1594,6 +1599,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	int slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NEW cam: slot=%d device_type=0x%x name='%s' ip=0x%x", slot, device_type, cam_name, ip_address);
@@ -1625,6 +1631,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 	device = malloc(sizeof(indigo_device));
@@ -1646,6 +1653,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		if (slot < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
 			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+			pthread_mutex_unlock(&driver_mutex);
 			return false;
 		}
 		device = malloc(sizeof(indigo_device));
@@ -1658,15 +1666,23 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		devices[slot]=device;
 	}
 	sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+	pthread_mutex_unlock(&driver_mutex);
 	return true;
 }
 
 
 static void enumerate_devices() {
-	int res = sbig_command(CC_QUERY_USB2, NULL, &usb_cams);
+	pthread_mutex_lock(&driver_mutex);
+	int res = set_sbig_handle(global_handle);
+	if (res != CE_NO_ERROR) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error set_sbig_handle(global_handle) = %d (%s)", res, sbig_error_string(res));
+	}
+
+	res = sbig_command(CC_QUERY_USB2, NULL, &usb_cams);
 	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_QUERY_USB2 error = %d (%s)", res, sbig_error_string(res));
 	}
+	pthread_mutex_lock(&driver_mutex);
 	//INDIGO_DRIVER_LOG(DRIVER_NAME, "usb_cams = %d", usb_cams.camerasFound);
 	//INDIGO_DRIVER_LOG(DRIVER_NAME, "usb_type = %d", usb_cams.usbInfo[0].cameraType);
 	//INDIGO_DRIVER_LOG(DRIVER_NAME, "cam name = %s", usb_cams.usbInfo[0].name);
@@ -1725,20 +1741,17 @@ static int find_unplugged_device(char *dev_name) {
 
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	pthread_mutex_lock(&driver_mutex);
-
-	short res = set_sbig_handle(global_handle);
-	if (res != CE_NO_ERROR) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error set_sbig_handle(global_handle) = %d (%s)", res, sbig_error_string(res));
-	}
+	short res;
+	pthread_mutex_lock(&hotplug_mutex);
 
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			char cam_name[MAX_PATH];
+
 			int usb_id = find_plugged_device(cam_name);
 			if (usb_id < 0) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, " No SBIG Camera plugged.");
-				pthread_mutex_unlock(&driver_mutex);
+				pthread_mutex_unlock(&hotplug_mutex);
 				return 0;
 			}
 
@@ -1756,7 +1769,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				while (slot >= 0) {
 					indigo_device **device = &devices[slot];
 					if (*device == NULL) {
-						pthread_mutex_unlock(&driver_mutex);
+						pthread_mutex_unlock(&hotplug_mutex);
 						return 0;
 					}
 					indigo_detach_device(*device);
@@ -1781,7 +1794,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 		}
 	}
-	pthread_mutex_unlock(&driver_mutex);
+	pthread_mutex_unlock(&hotplug_mutex);
 	return 0;
 };
 
