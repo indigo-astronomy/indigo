@@ -24,6 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x0001
+#define DRIVER_NAME		"indigo_wheel_fli"
 
 #include <stdlib.h>
 #include <string.h>
@@ -68,12 +69,12 @@ static void wheel_timer_callback(indigo_device *device) {
 
 	long res = FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
 	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLISetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 
 	res = FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
 	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLIGetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetFilterPos(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	PRIVATE_DATA->current_slot++;
 
@@ -144,23 +145,23 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				}
 				res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
 				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetModel(%d) = %d", id, res));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetModel(%d) = %d", id, res);
 				}
 
 				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
 				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetSerialString(%d) = %d", id, res));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetSerialString(%d) = %d", id, res);
 				}
 
 				long hw_rev, fw_rev;
 				res = FLIGetFWRevision(id, &fw_rev);
 				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetFWRevision(%d) = %d", id, res));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetFWRevision(%d) = %d", id, res);
 				}
 
 				res = FLIGetHWRevision(id, &hw_rev);
 				if (res) {
-					INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetHWRevision(%d) = %d", id, res));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetHWRevision(%d) = %d", id, res);
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
@@ -175,7 +176,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			} else {
-				INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
@@ -187,7 +188,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			long res = FLIClose(PRIVATE_DATA->dev_id);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (res) {
-				INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 			PRIVATE_DATA->dev_id = -1;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -218,7 +219,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(NULL, device->name);
-	INDIGO_LOG(indigo_log("indigo_wheel_fli: '%s' detached.", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
 	return indigo_wheel_detach(device);
 }
 
@@ -242,7 +243,7 @@ static void enumerate_devices() {
 	num_devices = 0;
 	long res = FLICreateList(enum_domain);
 	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_wheel_fli: FLICreateList(%d) = %d",enum_domain , res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d",enum_domain , res);
 	}
 	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
 		do {
@@ -357,7 +358,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			int slot = find_available_device_slot();
 			if (slot < 0) {
-				INDIGO_ERROR(indigo_error("indigo_wheel_fli: No available device slots available."));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
@@ -365,7 +366,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			char file_name[MAX_PATH];
 			int idx = find_plugged_device(file_name);
 			if (idx < 0) {
-				INDIGO_DEBUG(indigo_debug("indigo_wheel_fli: No FLI FW plugged."));
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI FW plugged.");
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
@@ -374,7 +375,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			assert(device != NULL);
 			memcpy(device, &wheel_template, sizeof(indigo_device));
 			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
-			INDIGO_LOG(indigo_log("indigo_wheel_fli: '%s' @ %s attached.", device->name , fli_file_names[idx]));
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached.", device->name , fli_file_names[idx]);
 			fli_private_data *private_data = malloc(sizeof(fli_private_data));
 			assert(private_data != NULL);
 			memset(private_data, 0, sizeof(fli_private_data));
@@ -407,7 +408,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				removed = true;
 			}
 			if (!removed) {
-				INDIGO_DEBUG(indigo_debug("indigo_wheel_fli: No FLI FW unplugged!"));
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI FW unplugged!");
 			}
 		}
 	}
@@ -445,13 +446,13 @@ indigo_result indigo_wheel_fli(indigo_driver_action action, indigo_driver_info *
 		last_action = action;
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FLI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_fli: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_fli: libusb_hotplug_deregister_callback [%d]", __LINE__));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 		remove_all_devices();
 		break;
 

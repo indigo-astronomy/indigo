@@ -363,7 +363,7 @@
 		59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator_main.c; sourceTree = "<group>"; };
 		59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator.c; sourceTree = "<group>"; };
 		59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_simulator.h; sourceTree = "<group>"; };
-		59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sbig.c; sourceTree = "<group>"; };
+		59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_sbig.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59F4EC711E941D1700CC7772 /* indigo_ccd_sbig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sbig.h; sourceTree = "<group>"; };
 		59F4EC721E941D1700CC7772 /* indigo_ccd_sbig_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_sbig_main.c; sourceTree = "<group>"; };
 		59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libhidapi.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
