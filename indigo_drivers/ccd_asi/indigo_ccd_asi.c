@@ -952,7 +952,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		//INDIGO_LOG(indigo_log("%s attached", device->name));
+		//INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;

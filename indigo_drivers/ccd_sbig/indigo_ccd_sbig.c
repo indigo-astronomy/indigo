@@ -1187,7 +1187,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		//INDIGO_LOG(indigo_log("%s attached", device->name));
+		//INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1417,7 +1417,7 @@ static indigo_result eth_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_device_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1475,7 +1475,7 @@ static indigo_result eth_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_device_detach(device);
 }
 
@@ -1752,7 +1752,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			sbig_private_data *private_data = NULL;
 			while ((usb_index = find_unplugged_device(cam_name)) != -1) {
 				slot = find_device_slot(index_to_usb(usb_index));
-				INDIGO_LOG(indigo_log("!!!! indigo_ccd_sbig: '%s' usb_id=0x%x, slot=%d", cam_name, usb_index, slot));
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "!!!! indigo_ccd_sbig: '%s' usb_id=0x%x, slot=%d", cam_name, usb_index, slot);
 				while (slot >= 0) {
 					indigo_device **device = &devices[slot];
 					if (*device == NULL) {
