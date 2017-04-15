@@ -102,8 +102,6 @@
 #define FLI_NFLUSHES_PROPERTY_ITEM      (FLI_NFLUSHES_PROPERTY->items + 0)
 */
 
-#undef INDIGO_DEBUG_DRIVER
-#define INDIGO_DEBUG_DRIVER(c) c
 
 // -------------------------------------------------------------------------------- SBIG USB interface implementation
 
@@ -1908,13 +1906,13 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_sbig: libusb_hotplug_deregister_callback [%d]", __LINE__));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 		remove_usb_devices();
 		remove_eth_devices();
 		indigo_detach_device(sbig_eth);
