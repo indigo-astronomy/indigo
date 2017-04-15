@@ -24,6 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x0001
+#define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
 #include <string.h>
@@ -43,12 +44,6 @@
 #include "indigo_mount_lx200.h"
 
 #define PRIVATE_DATA        ((lx200_private_data *)device->private_data)
-
-//#undef INDIGO_DEBUG_DRIVER
-//#define INDIGO_DEBUG_DRIVER(c) c
-
-#undef INDIGO_LOG
-#define INDIGO_LOG(c) c
 
 #define RA_MIN_DIF					0.1
 #define DEC_MIN_DIF					0.1
@@ -95,12 +90,10 @@ static bool meade_open(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->handle >= 0) {
-		indigo_send_message(device, "lx200: connected to %s", name);
-		INDIGO_LOG(indigo_log("lx200: connected to %s", name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
 		return true;
 	} else {
-		INDIGO_ERROR(indigo_error("lx200: failed to connect to %s", name));
-		indigo_send_message(device, "lx200: failed to connect to %s", name);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
 		return false;
 	}
 }
@@ -150,7 +143,7 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 				break;
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
-				INDIGO_ERROR(indigo_error("lx200: Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
@@ -163,7 +156,7 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 		response[index] = 0;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DEBUG_DRIVER(indigo_debug("lx200: Command %s -> %s", command, response != NULL ? response : "NULL"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
 }
 
@@ -171,7 +164,7 @@ static void meade_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_ERROR(indigo_error("lx200: disconnected from %s", DEVICE_PORT_ITEM->text.value));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 
@@ -247,7 +240,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		ALIGNMENT_MODE_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -278,7 +271,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (result) {
 				char response[128];
 				if (meade_command(device, ":GVP#", response, 127, 0)) {
-					INDIGO_LOG(indigo_log("lx200: product:  %s", response));
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "product:  %s", response);
 					strncpy(PRIVATE_DATA->product, response, 64);
 				}
 				ALIGNMENT_MODE_PROPERTY->hidden = true;
@@ -308,7 +301,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					PRIVATE_DATA->parked = false;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Meade");
 					if (meade_command(device, ":GVF#", response, 127, 0)) {
-						INDIGO_LOG(indigo_log("lx200: version:  %s", response));
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", response);
 						char *sep = strchr(response, '|');
 						if (sep != NULL)
 							*sep = 0;
@@ -317,11 +310,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 					}
 					if (meade_command(device, ":GVN#", response, 127, 0)) {
-						INDIGO_LOG(indigo_log("lx200: firmware: %s", response));
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware: %s", response);
 						strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 					}
 					if (meade_command(device, ":GW#", response, 127, 0)) {
-						INDIGO_LOG(indigo_log("lx200: status:   %s", response));
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "status:   %s", response);
 						ALIGNMENT_MODE_PROPERTY->hidden = false;
 						if (*response == 'P') {
 							POLAR_MODE_ITEM->sw.value = true;
@@ -387,7 +380,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		char command[128], response[128];
 		sprintf(command, ":St%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d"));
 		if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-			INDIGO_ERROR(indigo_error("lx200: %s failed", command));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			double longitude = 360-MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
@@ -395,7 +388,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				longitude -= 360;
 			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%0d*%02d"));
 			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-				INDIGO_ERROR(indigo_error("lx200: %s failed", command));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
@@ -423,16 +416,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				char command[128], response[128];
 				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-					INDIGO_ERROR(indigo_error("lx200: %s failed", command));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-						INDIGO_ERROR(indigo_error("lx200: %s failed", command));
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
 						if (!meade_command(device, ":MS#", response, 1, 100000) || *response != '0') {
-							INDIGO_ERROR(indigo_error("lx200: :MS# failed"));
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed");
 							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 						}
 					}
@@ -441,16 +434,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				char command[128], response[128];
 				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-					INDIGO_ERROR(indigo_error("lx200: %s failed", command));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-						INDIGO_ERROR(indigo_error("lx200: %s failed", command));
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
 						if (!meade_command(device, ":CM#", response, 127, 100000) || *response == 0) {
-							INDIGO_ERROR(indigo_error("lx200: :CM# failed"));
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed");
 							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 						}
 					}
@@ -586,7 +579,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_UTC_TIME_PROPERTY, property, false);
 		time_t secs = indigo_isototime(MOUNT_UTC_ITEM->text.value);
 		if (secs == -1) {
-			INDIGO_ERROR(indigo_error("indigo_mount_lx200: Wrong date/time format!"));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_mount_lx200: Wrong date/time format!");
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
 		} else {
@@ -639,7 +632,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(ALIGNMENT_MODE_PROPERTY);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_mount_detach(device);
 }
 
@@ -649,7 +642,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -721,7 +714,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_guider_detach(device);
 }
 

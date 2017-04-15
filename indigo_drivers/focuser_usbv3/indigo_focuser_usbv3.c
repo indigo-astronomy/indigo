@@ -24,6 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x0001
+#define DRIVER_NAME "indigo_focuser_usbv3"
 
 #include <stdlib.h>
 #include <string.h>
@@ -64,7 +65,7 @@ static void usbv3_command(indigo_device *device, char *format, ...) {
 	vsnprintf(command, sizeof(command), format, args);
 	va_end(args);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: Command %s", command));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s", command);
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 }
 
@@ -87,12 +88,12 @@ static char *usbv3_response(indigo_device *device) {
 		response[index++] = c;
 	}
 	response[index] = 0;
-	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: Response %s", response != NULL ? response : ""));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Response %s", response != NULL ? response : "");
 	return response;
 }
 
 static char *usbv3_reader(indigo_device *device) {
-	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: usbv3_reader started"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "usbv3_reader started");
 	while (PRIVATE_DATA->handle > 0) {
 		char *response = usbv3_response(device);
 		if (*response == '*') {
@@ -113,10 +114,10 @@ static char *usbv3_reader(indigo_device *device) {
 				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			}
 		} else {
-			INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: ignored response: %s", response));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ignored response: %s", response);
 		}
 	}
-	INDIGO_DEBUG_DRIVER(indigo_debug("usbv3: usbv3_reader finished"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "usbv3_reader finished");
 	return NULL;
 }
 
@@ -124,7 +125,7 @@ static void usbv3_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_LOG(indigo_log("usbv3: disconnected from %s", DEVICE_PORT_ITEM->text.value));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 
@@ -132,13 +133,13 @@ static bool usbv3_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_open_serial(name);
 	if (PRIVATE_DATA->handle <= 0) {
-		INDIGO_ERROR(indigo_error("usbv3: failed to connect to %s (%s)", name, strerror(errno)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s (%s)", name, strerror(errno));
 		return false;
 	}
-	INDIGO_LOG(indigo_log("usbv3: connected to %s", name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
 	usbv3_command(device, "SGETAL");
 	if (*usbv3_response(device) != 'C') {
-		INDIGO_ERROR(indigo_error("usbv3: invalid response"));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "invalid response");
 		usbv3_close(device);
 		return false;
 	}
@@ -229,7 +230,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_MODE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -367,7 +368,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_FOCUSER_STEP_SIZE_PROPERTY);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_focuser_detach(device);
 }
 
