@@ -974,7 +974,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 		INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_hotplug_callback: libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		for (int i = 0; SX_PRODUCTS[i].name; i++) {
 			if (descriptor.idVendor == SX_VENDOR_ID && SX_PRODUCTS[i].product == descriptor.idProduct) {
 				sx_private_data *private_data = malloc(sizeof(sx_private_data));
