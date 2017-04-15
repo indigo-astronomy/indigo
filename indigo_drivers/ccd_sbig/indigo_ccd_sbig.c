@@ -19,7 +19,6 @@
 // version history
 // 2.0 Build 0 - PoC by Rumen Bogdanovski <rumen@skyarchive.org>
 
-
 /** INDIGO CCD SBIG driver
  \file indigo_ccd_sbig.c
  */
@@ -36,6 +35,7 @@
 // 9. Add property to freeze TEC for readout
 
 #define DRIVER_VERSION 0x0001
+#define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
 #include <string.h>
@@ -254,7 +254,7 @@ static int get_command_status(unsigned short command, unsigned short *status) {
 static int sbig_link_status(GetLinkStatusResults *glsr) {
 	int res = sbig_command(CC_GET_LINK_STATUS, NULL, glsr);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_LINK_STATUS error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_LINK_STATUS error = %d (%s)", res, sbig_error_string(res));
 	}
 	return res;
 }
@@ -281,7 +281,7 @@ static int sbig_set_temperature(double t, bool enable) {
 	res = sbig_command(CC_SET_TEMPERATURE_REGULATION2, &strp2, 0);
 
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_SET_TEMPERATURE_REGULATION error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_SET_TEMPERATURE_REGULATION error = %d (%s)", res, sbig_error_string(res));
 	}
 	return res ;
 }
@@ -299,16 +299,16 @@ static int sbig_get_temperature(bool *enabled, double *t, double *setpoint, doub
 		if (t) *t = qtsr2.imagingCCDTemperature;
 		if (setpoint) *setpoint = qtsr2.ccdSetpoint;
 		if (power) *power = qtsr2.imagingCCDPower;
-		INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: regulation = %s, t = %.2g, setpoint = %.2g, power = %.2g",
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " regulation = %s, t = %.2g, setpoint = %.2g, power = %.2g",
 			(qtsr2.coolingEnabled != 0) ? "True": "False",
 			qtsr2.imagingCCDTemperature,
 			qtsr2.ccdSetpoint,
 			qtsr2.imagingCCDPower
-		));
+		);
 	}
 
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_TEMPERATURE_STATUS error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_TEMPERATURE_STATUS error = %d (%s)", res, sbig_error_string(res));
 	}
 	return res;
 }
@@ -330,7 +330,7 @@ static ushort sbig_get_relaymap(short handle, ushort *relay_map) {
 	}
 
 	*relay_map = csr.status;
-	INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: *relay_map = Ox%x", *relay_map));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, " *relay_map = Ox%x", *relay_map);
 
 	return CE_NO_ERROR;
 }
@@ -406,7 +406,7 @@ static int sbig_get_bin_mode(indigo_device *device, unsigned short *binning) {
 	} else if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 9) && (CCD_BIN_VERTICAL_ITEM->number.value == 9)) {
 		*binning = RM_9X9;
 	} else {
-		INDIGO_ERROR(indigo_error("Bad CCD binning mode, use 1x1, 2x2, 3x3 or 9x9"));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Bad CCD binning mode, use 1x1, 2x2, 3x3 or 9x9");
 		return CE_BAD_PARAMETER;
 	}
 	return CE_NO_ERROR;
@@ -451,7 +451,7 @@ static bool sbig_open(indigo_device *device) {
 			PRIVATE_DATA->driver_handle = INVALID_HANDLE_VALUE;
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&driver_mutex);
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DRIVER error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_OPEN_DRIVER error = %d (%s)", res, sbig_error_string(res));
 			return false;
 		}
 
@@ -460,7 +460,7 @@ static bool sbig_open(indigo_device *device) {
 			close_driver(&PRIVATE_DATA->driver_handle);
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&driver_mutex);
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_OPEN_DEVICE error = %d (%s)", res, sbig_error_string(res));
 			return false;
 		}
 
@@ -474,7 +474,7 @@ static bool sbig_open(indigo_device *device) {
 			close_driver(&PRIVATE_DATA->driver_handle);
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&driver_mutex);
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_ESTABLISH_LINK error = %d (%s)", res, sbig_error_string(res));
 			return false;
 		}
 	}
@@ -493,7 +493,7 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 	if ( res != CE_NO_ERROR ) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -520,7 +520,7 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 		unsigned short status;
 		res = get_command_status(CC_START_EXPOSURE2, &status);
 		if (res != CE_NO_ERROR) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_QUERY_COMMAND_STATUS error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_QUERY_COMMAND_STATUS error = %d (%s)", res, sbig_error_string(res));
 			pthread_mutex_unlock(&driver_mutex);
 			return false;
 		}
@@ -540,7 +540,7 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 
 	res = sbig_command(CC_START_EXPOSURE2, sep, NULL);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_START_EXPOSURE2 = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_START_EXPOSURE2 = %d (%s)", res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -557,7 +557,7 @@ static bool sbig_exposure_complete(indigo_device *device) {
 
 	int res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 	if ( res != CE_NO_ERROR ) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -571,7 +571,7 @@ static bool sbig_exposure_complete(indigo_device *device) {
 	unsigned short status;
 	res = get_command_status(CC_START_EXPOSURE2, &status);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_QUERY_COMMAND_STATUS error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_QUERY_COMMAND_STATUS error = %d (%s)", res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -601,14 +601,14 @@ static bool sbig_read_pixels(indigo_device *device) {
 		usleep(1000);
 	}
 	if (wait_cycles == 0) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: Exposure error: did not complete in time."));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure error: did not complete in time.");
 	}
 
 	pthread_mutex_lock(&driver_mutex);
 
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 	if ( res != CE_NO_ERROR ) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -638,12 +638,12 @@ static bool sbig_read_pixels(indigo_device *device) {
 	};
 	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_END_EXPOSURE error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_END_EXPOSURE error = %d (%s)", res, sbig_error_string(res));
 	}
 
 	res = sbig_command(CC_START_READOUT, &srp, NULL);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_START_READOUT error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_START_READOUT error = %d (%s)", res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -657,7 +657,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 	for(int line = 0; line < srp.height; line++) {
 		res = sbig_command(CC_READOUT_LINE, &rlp, frame_buffer + 2*(line * srp.width));
 		if (res != CE_NO_ERROR) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_READOUT_LINE error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_READOUT_LINE error = %d (%s)", res, sbig_error_string(res));
 		}
 	}
 
@@ -666,7 +666,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 	};
 	res = sbig_command(CC_END_READOUT, &erp, NULL);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_END_READOUT error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_END_READOUT error = %d (%s)", res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -682,7 +682,7 @@ static bool sbig_abort_exposure(indigo_device *device) {
 
 	int res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 	if ( res != CE_NO_ERROR ) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -697,7 +697,7 @@ static bool sbig_abort_exposure(indigo_device *device) {
 
 	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
 	if ( res != CE_NO_ERROR ) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_END_EXPOSURE error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_END_EXPOSURE error = %d (%s)", res, sbig_error_string(res));
 	}
 	pthread_mutex_unlock(&driver_mutex);
 
@@ -715,21 +715,21 @@ static bool sbig_set_cooler(indigo_device *device, double target, double *curren
 
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 
 	res = sbig_get_temperature(&cooler_on, current, &csetpoint, cooler_power);
 	if (res) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_get_temperature() = %d (%s)", res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 
 	if ((cooler_on != CCD_COOLER_ON_ITEM->sw.value) || (csetpoint != target)) {
 		res = sbig_set_temperature(target, CCD_COOLER_ON_ITEM->sw.value);
-		if(res) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_temperature() = %d (%s)", res, sbig_error_string(res)));
+		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_temperature() = %d (%s)", res, sbig_error_string(res));
 	}
 
 	pthread_mutex_unlock(&driver_mutex);
@@ -744,17 +744,17 @@ static void sbig_close(indigo_device *device) {
 	if (--PRIVATE_DATA->count_open == 0) {
 		res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 		if (res) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d", PRIVATE_DATA->driver_handle, res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d", PRIVATE_DATA->driver_handle, res);
 		}
 
 		res = sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 		if (res) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_CLOSE_DEVICE error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_CLOSE_DEVICE error = %d (%s)", res, sbig_error_string(res));
 		}
 
 		res = close_driver(&PRIVATE_DATA->driver_handle);
 		if (res) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: close_driver(%d) = %d", PRIVATE_DATA->driver_handle, res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "close_driver(%d) = %d", PRIVATE_DATA->driver_handle, res);
 		}
 	}
 	//pthread_mutex_unlock(&driver_mutex);
@@ -848,7 +848,7 @@ static void guider_ccd_temperature_callback(indigo_device *device) {
 
 		int res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 		if (res) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 			pthread_mutex_unlock(&driver_mutex);
 			return;
 		}
@@ -937,11 +937,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					cip.request = CCD_INFO_IMAGING; /* imaging CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_basic_info));
 					if (res != CE_NO_ERROR) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res)));
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
 					}
 
 					//for (int mode = 0; mode < PRIVATE_DATA->imager_ccd_basic_info.readoutModes; mode++) {
-					//	INDIGO_ERROR(indigo_error("indigo_ccd_sbig: %d. Mode = 0x%x %dx%d", mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].width, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].height));
+					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d. Mode = 0x%x %dx%d", mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].width, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].height));
 					//}
 					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].width;
 					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].height;
@@ -958,19 +958,19 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					cip.request = CCD_INFO_EXTENDED; /* imaging CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_extended_info1));
 					if (res != CE_NO_ERROR) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res)));
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
 					}
 
 					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_ccd_extended_info1.serialNumber, INDIGO_VALUE_SIZE);
 
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
-					//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
+					//INDIGO_DRIVER_ERROR("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
 
 					cip.request = CCD_INFO_EXTENDED3; /* imaging CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_extended_info6));
 					if (res != CE_NO_ERROR) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res)));
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
 					}
 
 					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
@@ -997,7 +997,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					res = sbig_get_temperature(&(CCD_COOLER_ON_ITEM->sw.value), &(CCD_TEMPERATURE_ITEM->number.value), NULL, &(CCD_COOLER_POWER_ITEM->number.value));
 					CCD_COOLER_OFF_ITEM->sw.value = !CCD_COOLER_ON_ITEM->sw.value;
 					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d (%s)", res, sbig_error_string(res)));
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_get_temperature() = %d (%s)", res, sbig_error_string(res));
 					}
 
 					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
@@ -1021,7 +1021,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					cip.request = CCD_INFO_TRACKING; /* guiding CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->guider_ccd_basic_info));
 					if (res != CE_NO_ERROR) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res)));
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
 					}
 
 					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->guider_ccd_basic_info.readoutInfo[0].width;
@@ -1038,7 +1038,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
-					//INDIGO_ERROR(indigo_error("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
+					//INDIGO_DRIVER_ERROR("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
 
 					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
 					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
@@ -1063,7 +1063,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					res = sbig_get_temperature(NULL, &(CCD_TEMPERATURE_ITEM->number.value), NULL, NULL);
 					if (res) {
-						INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_temperature() = %d (%s)", res, sbig_error_string(res)));
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_get_temperature() = %d (%s)", res, sbig_error_string(res));
 					}
 
 					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
@@ -1174,7 +1174,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' detached.", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
 
 	if (device == PRIVATE_DATA->primary_ccd) {
 		/* indigo_release_property(FLI_NFLUSHES_PROPERTY); */
@@ -1207,14 +1207,14 @@ static void guider_timer_callback_ra(indigo_device *device) {
 
 	res = sbig_get_relaymap(driver_handle, &relay_map);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_relaymap(%d) = %d", driver_handle, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_get_relaymap(%d) = %d", driver_handle, res);
 	}
 
 	relay_map &= ~(RELAY_EAST | RELAY_WEST);
 
 	res = sbig_set_relaymap(driver_handle, relay_map);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relaymap(%d) = %d", driver_handle, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relaymap(%d) = %d", driver_handle, res);
 	}
 
 	if (PRIVATE_DATA->relay_map & (RELAY_EAST | RELAY_WEST)) {
@@ -1240,14 +1240,14 @@ static void guider_timer_callback_dec(indigo_device *device) {
 
 	res = sbig_get_relaymap(driver_handle, &relay_map);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_get_relaymap(%d) = %d", driver_handle, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_get_relaymap(%d) = %d", driver_handle, res);
 	}
 
 	relay_map &= ~(RELAY_NORTH | RELAY_SOUTH);
 
 	res = sbig_set_relaymap(driver_handle, relay_map);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relaymap(%d) = %d", driver_handle, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relaymap(%d) = %d", driver_handle, res);
 	}
 
 	if (PRIVATE_DATA->relay_map & (RELAY_NORTH | RELAY_SOUTH)) {
@@ -1293,7 +1293,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		if (duration > 0) {
 			pthread_mutex_lock(&driver_mutex);
 			res = sbig_set_relays(driver_handle, RELAY_NORTH);
-			if (res != CE_NO_ERROR) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relays(%d, RELAY_NORTH) = %d", driver_handle, res));
+			if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_NORTH) = %d", driver_handle, res);
 			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 			PRIVATE_DATA->relay_map |= RELAY_NORTH;
 			pthread_mutex_unlock(&driver_mutex);
@@ -1302,7 +1302,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			if (duration > 0) {
 				pthread_mutex_lock(&driver_mutex);
 				res = sbig_set_relays(driver_handle, RELAY_SOUTH);
-				if (res != CE_NO_ERROR) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relays(%d, RELAY_SOUTH) = %d", driver_handle, res));
+				if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_SOUTH) = %d", driver_handle, res);
 				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 				PRIVATE_DATA->relay_map |= RELAY_SOUTH;
 				pthread_mutex_unlock(&driver_mutex);
@@ -1324,7 +1324,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		if (duration > 0) {
 			pthread_mutex_lock(&driver_mutex);
 			res = sbig_set_relays(driver_handle, RELAY_EAST);
-			if (res != CE_NO_ERROR) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relays(%d, RELAY_EAST) = %d", driver_handle, res));
+			if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_EAST) = %d", driver_handle, res);
 			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 			PRIVATE_DATA->relay_map |= RELAY_EAST;
 			pthread_mutex_unlock(&driver_mutex);
@@ -1333,7 +1333,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			if (duration > 0) {
 				pthread_mutex_lock(&driver_mutex);
 				res = sbig_set_relays(driver_handle, RELAY_WEST);
-				if (res != CE_NO_ERROR) INDIGO_ERROR(indigo_error("indigo_ccd_sbig: sbig_set_relays(%d, RELAY_WEST) = %d", driver_handle, res));
+				if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_WEST) = %d", driver_handle, res);
 				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 				PRIVATE_DATA->relay_map |= RELAY_WEST;
 				pthread_mutex_unlock(&driver_mutex);
@@ -1356,7 +1356,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' detached.", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
 	return indigo_guider_detach(device);
 }
 
@@ -1383,7 +1383,7 @@ bool get_host_ip(char *hostname , unsigned long *ip) {
 	hints.ai_socktype = SOCK_STREAM;
 
 	if ((rv = getaddrinfo(hostname, NULL, &hints, &servinfo)) != 0) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: getaddrinfo(): %s\n", gai_strerror(rv)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "getaddrinfo(): %s\n", gai_strerror(rv));
 		return false;
 	}
 
@@ -1392,7 +1392,7 @@ bool get_host_ip(char *hostname , unsigned long *ip) {
 			*ip = ((struct sockaddr_in *)(p->ai_addr))->sin_addr.s_addr;
 			/* ip should be litle endian */
 			*ip = (*ip >> 24) | ((*ip << 8) & 0x00ff0000) | ((*ip >> 8) & 0x0000ff00) | (*ip << 24);
-			INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: IP: 0x%X\n", *ip));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, " IP: 0x%X\n", *ip);
 			freeaddrinfo(servinfo);
 			return true;
 		}
@@ -1545,17 +1545,17 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 
 	short res = set_sbig_handle(global_handle);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error set_sbig_handle(global_handle %d) = %d (%s)", global_handle, res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error set_sbig_handle(global_handle %d) = %d (%s)", global_handle, res, sbig_error_string(res));
 		/* Something wrong happened need to reopen the global handle */
 		if ((res == CE_DRIVER_NOT_OPEN) || (res == CE_BAD_PARAMETER)) {
 			res = sbig_command(CC_OPEN_DRIVER, NULL, NULL);
 			if (res != CE_NO_ERROR) {
-				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DRIVER reopen error = %d (%s)", res, sbig_error_string(res)));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_OPEN_DRIVER reopen error = %d (%s)", res, sbig_error_string(res));
 				return false;
 			}
 			global_handle = get_sbig_handle();
 			if (global_handle == INVALID_HANDLE_VALUE) {
-				INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error get_sbig_handle() = %d", global_handle));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "error get_sbig_handle() = %d", global_handle);
 				return false;
 			}
 		}
@@ -1569,7 +1569,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 
 	if ((res = sbig_command(CC_OPEN_DEVICE, &odp, NULL)) != CE_NO_ERROR) {
 		sbig_command(CC_CLOSE_DEVICE, NULL, NULL); /* Cludge: sometimes it fails with CE_DEVICE_NOT_CLOSED later */
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DEVICE error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_OPEN_DEVICE error = %d (%s)", res, sbig_error_string(res));
 		return false;
 	}
 
@@ -1578,7 +1578,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 
 	if ((res = sbig_command(CC_ESTABLISH_LINK, &elp, &elr)) != CE_NO_ERROR) {
 		sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_ESTABLISH_LINK error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_ESTABLISH_LINK error = %d (%s)", res, sbig_error_string(res));
 		return false;
 	}
 
@@ -1587,7 +1587,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		gcp.request = CCD_INFO_IMAGING;
 		if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
 			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_CCD_INFO error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO error = %d (%s)", res, sbig_error_string(res));
 			return false;
 		}
 		cam_name = (char *)camera_types[gcir0.cameraType];
@@ -1595,10 +1595,10 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 
 	int slot = find_available_device_slot();
 	if (slot < 0) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: No device slots available."));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
 		return false;
 	}
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: NEW cam: slot=%d device_type=0x%x name='%s' ip=0x%x", slot, device_type, cam_name, ip_address));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "NEW cam: slot=%d device_type=0x%x name='%s' ip=0x%x", slot, device_type, cam_name, ip_address);
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
@@ -1616,7 +1616,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		sprintf(device_index_str, "%d", usb_to_index(device_type));
 	}
 	sprintf(device->name, "SBIG %s CCD #%s", cam_name, device_index_str);
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 	private_data->primary_ccd = device;
 	strncpy(private_data->dev_name, cam_name, MAX_PATH);
 	device->private_data = private_data;
@@ -1626,14 +1626,14 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	/* Creating guider device */
 	slot = find_available_device_slot();
 	if (slot < 0) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_asi: No device slots available."));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
 		return false;
 	}
 	device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &guider_template, sizeof(indigo_device));
 	sprintf(device->name, "SBIG %s Guider Port #%s", cam_name, device_index_str);
-	INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 	device->private_data = private_data;
 	indigo_async((void *)(void *)indigo_attach_device, device);
 	devices[slot]=device;
@@ -1642,11 +1642,11 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	gcp.request = CCD_INFO_TRACKING;
 
 	if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
-		INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: CC_GET_CCD_INFO error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res)));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " CC_GET_CCD_INFO error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res));
 	} else {
 		slot = find_available_device_slot();
 		if (slot < 0) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_asi: No device slots available."));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
 			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 			return false;
 		}
@@ -1654,7 +1654,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		assert(device != NULL);
 		memcpy(device, &ccd_template, sizeof(indigo_device));
 		sprintf(device->name, "SBIG %s Guider CCD #%s", cam_name, device_index_str);
-		INDIGO_LOG(indigo_log("indigo_ccd_sbig: '%s' attached.", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 		device->private_data = private_data;
 		indigo_async((void *)(void *)indigo_attach_device, device);
 		devices[slot]=device;
@@ -1667,11 +1667,11 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 static void enumerate_devices() {
 	int res = sbig_command(CC_QUERY_USB2, NULL, &usb_cams);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_QUERY_USB2 error = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_QUERY_USB2 error = %d (%s)", res, sbig_error_string(res));
 	}
-	//INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_cams = %d", usb_cams.camerasFound));
-	//INDIGO_LOG(indigo_log("indigo_ccd_sbig: usb_type = %d", usb_cams.usbInfo[0].cameraType ));
-	//INDIGO_LOG(indigo_log("indigo_ccd_sbig: cam name = %s", usb_cams.usbInfo[0].name));
+	//INDIGO_DRIVER_LOG(DRIVER_NAME, "usb_cams = %d", usb_cams.camerasFound);
+	//INDIGO_DRIVER_LOG(DRIVER_NAME, "usb_type = %d", usb_cams.usbInfo[0].cameraType);
+	//INDIGO_DRIVER_LOG(DRIVER_NAME, "cam name = %s", usb_cams.usbInfo[0].name);
 }
 
 
@@ -1731,7 +1731,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	short res = set_sbig_handle(global_handle);
 	if (res != CE_NO_ERROR) {
-		INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error set_sbig_handle(global_handle) = %d (%s)", res, sbig_error_string(res)));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error set_sbig_handle(global_handle) = %d (%s)", res, sbig_error_string(res));
 	}
 
 	switch (event) {
@@ -1739,7 +1739,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			char cam_name[MAX_PATH];
 			int usb_id = find_plugged_device(cam_name);
 			if (usb_id < 0) {
-				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: No SBIG Camera plugged."));
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, " No SBIG Camera plugged.");
 				pthread_mutex_unlock(&driver_mutex);
 				return 0;
 			}
@@ -1779,7 +1779,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 
 			if (!removed) {
-				INDIGO_DEBUG(indigo_debug("indigo_ccd_sbig: No SBIG Camera unplugged!"));
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, " No SBIG Camera unplugged!");
 			}
 		}
 	}
@@ -1864,14 +1864,14 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		dl_handle = dlopen("/Library/Frameworks/SBIGUDrv.framework/SBIGUDrv", RTLD_LAZY);
 		if (!dl_handle) {
 			const char* dlsym_error = dlerror();
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: SBIG SDK can't be loaded (%s)", dlsym_error));
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: Please install SBIGUDrv framework from http://www.sbig.com"));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SBIG SDK can't be loaded (%s)", dlsym_error);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Please install SBIGUDrv framework from http://www.sbig.com");
 			return INDIGO_FAILED;
 		}
 		sbig_command = dlsym(dl_handle, "SBIGUnivDrvCommand");
 		const char* dlsym_error = dlerror();
 		if (dlsym_error) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: Can't load %s() (%s)", "SBIGUnivDrvCommand", dlsym_error));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't load %s() (%s)", "SBIGUnivDrvCommand", dlsym_error);
 			dlclose(dl_handle);
 			return INDIGO_NOT_FOUND;
 		}
@@ -1884,20 +1884,20 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 
 		int res = sbig_command(CC_OPEN_DRIVER, NULL, NULL);
 		if (res != CE_NO_ERROR) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_OPEN_DRIVER error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_OPEN_DRIVER error = %d (%s)", res, sbig_error_string(res));
 			return INDIGO_FAILED;
 		}
 
 		global_handle = get_sbig_handle();
 		if (global_handle == INVALID_HANDLE_VALUE) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error get_sbig_handle() = %d", global_handle));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "error get_sbig_handle() = %d", global_handle);
 		}
 
 		res = sbig_command(CC_GET_DRIVER_INFO, &di_req, &di);
 		if (res != CE_NO_ERROR) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_GET_DRIVER_INFO error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_DRIVER_INFO error = %d (%s)", res, sbig_error_string(res));
 		} else {
-			INDIGO_LOG(indigo_log("indigo_ccd_sbig: Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff));
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff);
 		}
 
 		sbig_eth = malloc(sizeof(indigo_device));
@@ -1922,12 +1922,12 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 
 		res = set_sbig_handle(global_handle);
 		if (res != CE_NO_ERROR) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: error set_sbig_handle() = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "error set_sbig_handle() = %d (%s)", res, sbig_error_string(res));
 		}
 
 		res = sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
 		if (res != CE_NO_ERROR) {
-			INDIGO_ERROR(indigo_error("indigo_ccd_sbig: CC_CLOSE_DRIVER error = %d (%s)", res, sbig_error_string(res)));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_CLOSE_DRIVER error = %d (%s)", res, sbig_error_string(res));
 		}
 
 #ifdef __APPLE__
