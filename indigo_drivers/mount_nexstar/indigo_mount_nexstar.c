@@ -25,6 +25,7 @@
  */
 
 #define DRIVER_VERSION 0x0001
+#define DRIVER_NAME	"idnigo_mount_nexstar"
 
 #include <stdlib.h>
 #include <string.h>
@@ -80,7 +81,7 @@ static bool mount_open(indigo_device *device) {
 		int dev_id = open_telescope(DEVICE_PORT_ITEM->text.value);
 		if (dev_id == -1) {
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			INDIGO_ERROR(indigo_error("indigo_mount_nexstar: open_telescope(%s) = %d", DEVICE_PORT_ITEM->text.value, dev_id));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "open_telescope(%s) = %d", DEVICE_PORT_ITEM->text.value, dev_id);
 			PRIVATE_DATA->count_open--;
 			return false;
 		} else {
@@ -99,12 +100,12 @@ static void mount_handle_coordinates(indigo_device *device) {
 	/* return if mount not aligned */
 	int aligned = tc_check_align(PRIVATE_DATA->dev_id);
 	if (aligned < 0) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_check_align(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_check_align(%d) = %d", PRIVATE_DATA->dev_id, res);
 	} else if (aligned == 0) {
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is not aligned, please align it first.");
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: Mount is not aligned, please align it first."));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Mount is not aligned, please align it first.");
 		return;
 	}
 
@@ -114,7 +115,7 @@ static void mount_handle_coordinates(indigo_device *device) {
 		res = tc_goto_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		if (res != RC_OK) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_goto_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	}
 	/* SYNC requested */
@@ -122,7 +123,7 @@ static void mount_handle_coordinates(indigo_device *device) {
 		res = tc_sync_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		if (res != RC_OK) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_sync_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_sync_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
@@ -139,13 +140,13 @@ static void mount_handle_tracking(indigo_device *device) {
 		res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
 		if (res != RC_OK) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	} else if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 		res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_OFF);
 		if (res != RC_OK) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
@@ -195,7 +196,7 @@ static void mount_handle_motion_ns(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -225,7 +226,7 @@ static void mount_handle_motion_ne(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -241,7 +242,7 @@ static bool mount_set_location(indigo_device *device) {
 	res = tc_set_location(PRIVATE_DATA->dev_id, lon, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_set_location(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = %d", PRIVATE_DATA->dev_id, res);
 		return false;
 	}
 	return true;
@@ -262,7 +263,7 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 	if ((int)(MOUNT_GUIDE_RATE_RA_ITEM->number.value) != PRIVATE_DATA->st4_ra_rate) {
 		res = tc_set_autoguide_rate(dev_id, TC_AXIS_RA, (int)(MOUNT_GUIDE_RATE_RA_ITEM->number.value)-1);
 		if (res != RC_OK) {
-			INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_set_autoguide_rate(%d) = %d", dev_id, res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_autoguide_rate(%d) = %d", dev_id, res);
 			MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			PRIVATE_DATA->st4_ra_rate = (int)(MOUNT_GUIDE_RATE_RA_ITEM->number.value);
@@ -273,7 +274,7 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 	if ((int)(MOUNT_GUIDE_RATE_DEC_ITEM->number.value) != PRIVATE_DATA->st4_dec_rate) {
 		res = tc_set_autoguide_rate(dev_id, TC_AXIS_DE, (int)(MOUNT_GUIDE_RATE_DEC_ITEM->number.value)-1);
 		if (res != RC_OK) {
-			INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_set_autoguide_rate(%d) = %d", dev_id, res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_autoguide_rate(%d) = %d", dev_id, res);
 			MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			PRIVATE_DATA->st4_dec_rate = (int)(MOUNT_GUIDE_RATE_DEC_ITEM->number.value);
@@ -283,14 +284,14 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 	/* read set values as Sky-Watcher rounds to 12, 25 ,50, 75 and 100 % */
 	int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
 	if (st4_ra_rate < 0) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_autoguide_rate(%d) = %d", dev_id, st4_ra_rate));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d", dev_id, st4_ra_rate);
 	} else {
 		MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
 	}
 
 	int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
 	if (st4_dec_rate < 0) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_autoguide_rate(%d) = %d", dev_id, st4_dec_rate));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d", dev_id, st4_dec_rate);
 	} else {
 		MOUNT_GUIDE_RATE_DEC_ITEM->number.value = st4_dec_rate + offset;
 	}
@@ -304,7 +305,7 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 static void mount_handle_utc(indigo_device *device) {
 	time_t utc_time = indigo_isototime(MOUNT_UTC_ITEM->text.value);
 	if (utc_time == -1) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: Wrong date/time format!"));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
 		return;
@@ -316,7 +317,7 @@ static void mount_handle_utc(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res);
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Can not set mount date/time.");
 		return;
@@ -330,7 +331,7 @@ static void mount_handle_utc(indigo_device *device) {
 static bool mount_set_utc_from_host(indigo_device *device) {
 	time_t utc_time = indigo_utc(NULL);
 	if (utc_time == -1) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: can not get host UT"));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "can not get host UT");
 		return false;
 	}
 
@@ -340,7 +341,7 @@ static bool mount_set_utc_from_host(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res);
 		return false;
 	}
 	return true;
@@ -352,7 +353,7 @@ static bool mount_cancel_slew(indigo_device *device) {
 
 	int res = tc_goto_cancel(PRIVATE_DATA->dev_id);
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_goto_cancel(%d) = %d", PRIVATE_DATA->dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_cancel(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 
 	MOUNT_MOTION_NORTH_ITEM->sw.value = false;
@@ -402,7 +403,7 @@ static void park_timer_callback(indigo_device *device) {
 	} else {
 		res = tc_set_tracking_mode(dev_id, TC_TRACK_OFF);
 		if (res != RC_OK) {
-			INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_set_tracking_mode(%d) = %d", dev_id, res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", dev_id, res);
 		} else {
 			MOUNT_TRACKING_OFF_ITEM->sw.value = true;
 			MOUNT_TRACKING_ON_ITEM->sw.value = false;
@@ -438,12 +439,12 @@ static void position_timer_callback(indigo_device *device) {
 
 	res = tc_get_rade_p(dev_id, &ra, &dec);
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_rade_p(%d) = %d", dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_rade_p(%d) = %d", dev_id, res);
 	}
 
 	res = tc_get_location(dev_id, &lon, &lat);
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_location(%d) = %d", dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_location(%d) = %d", dev_id, res);
 	}
 	if (lon < 0) lon += 360;
 
@@ -451,7 +452,7 @@ static void position_timer_callback(indigo_device *device) {
 	int tz, dst;
 	res = (int)tc_get_time(dev_id, &ttime, &tz, &dst);
 	if (res == -1) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_time(%d) = %d", dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_time(%d) = %d", dev_id, res);
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
@@ -506,7 +507,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -528,7 +529,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				/* initialize info prop */
 				int vendor_id = guess_mount_vendor(dev_id);
 				if (vendor_id < 0) {
-					INDIGO_ERROR(indigo_error("indigo_mount_nexstar: guess_mount_vendor(%d) = %d", dev_id, vendor_id));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "guess_mount_vendor(%d) = %d", dev_id, vendor_id);
 				} else if (vendor_id == VNDR_SKYWATCHER) {
 					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher", INDIGO_VALUE_SIZE);
 				} else if (vendor_id == VNDR_CELESTRON) {
@@ -538,14 +539,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 
 				int model_id = tc_get_model(dev_id);
 				if (model_id < 0) {
-					INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_model(%d) = %d", dev_id, model_id));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_model(%d) = %d", dev_id, model_id);
 				} else {
 					get_model_name(model_id,MOUNT_INFO_MODEL_ITEM->text.value,  INDIGO_VALUE_SIZE);
 				}
 
 				int firmware = tc_get_version(dev_id, NULL, NULL);
 				if (firmware < 0) {
-					INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_version(%d) = %d", dev_id, firmware));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_version(%d) = %d", dev_id, firmware);
 				} else {
 					if (vendor_id == VNDR_SKYWATCHER) {
 						snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware), GET_PATCH(firmware));
@@ -560,7 +561,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 
 				int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
 				if (st4_ra_rate < 0) {
-					INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_autoguide_rate(%d) = %d", dev_id, st4_ra_rate));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d", dev_id, st4_ra_rate);
 				} else {
 					MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
 					PRIVATE_DATA->st4_ra_rate = st4_ra_rate + offset;
@@ -568,7 +569,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 
 				int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
 				if (st4_dec_rate < 0) {
-					INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_autoguide_rate(%d) = %d", dev_id, st4_dec_rate));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d", dev_id, st4_dec_rate);
 				} else {
 					MOUNT_GUIDE_RATE_DEC_ITEM->number.value = st4_dec_rate + offset;
 					PRIVATE_DATA->st4_dec_rate = st4_dec_rate + offset;
@@ -577,7 +578,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				/* initialize tracking prop */
 				int mode = tc_get_tracking_mode(PRIVATE_DATA->dev_id);
 				if (mode < 0) {
-					INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_get_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, mode));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, mode);
 				} else if (mode == TC_TRACK_OFF) {
 					MOUNT_TRACKING_OFF_ITEM->sw.value = true;
 					MOUNT_TRACKING_ON_ITEM->sw.value = false;
@@ -616,7 +617,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			int res = tc_goto_azalt_p(PRIVATE_DATA->dev_id, 0, 90);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			if (res != RC_OK) {
-				INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_goto_azalt_p(%d) = %d", PRIVATE_DATA->dev_id, res));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_azalt_p(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -630,7 +631,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			int res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			if (res != RC_OK) {
-				INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res);
 			} else {
 				MOUNT_TRACKING_OFF_ITEM->sw.value = false;
 				MOUNT_TRACKING_ON_ITEM->sw.value = true;
@@ -735,7 +736,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_mount_detach(device);
 }
 
@@ -760,7 +761,7 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
 	}
 
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
@@ -779,7 +780,7 @@ static void guider_timer_callback_dec(indigo_device *device) {
 	res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res != RC_OK) {
-		INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", dev_id, res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
 	}
 
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
@@ -816,7 +817,7 @@ static indigo_result guider_attach(indigo_device *device) {
 		indigo_init_switch_item(GUIDE_50_ITEM, GUIDE_50_ITEM_NAME, "50% sidereal", true);
 		indigo_init_switch_item(GUIDE_100_ITEM, GUIDE_100_ITEM_NAME, "100% sidereal", false);
 
-		INDIGO_LOG(indigo_log("%s attached.", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached.", device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -857,7 +858,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			if (res != RC_OK) {
-				INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
@@ -868,7 +869,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
 				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 				if (res != RC_OK) {
-					INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
 				}
 				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
@@ -887,7 +888,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			if (res != RC_OK) {
-				INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
@@ -898,7 +899,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				int res = tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
 				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 				if (res != RC_OK) {
-					INDIGO_ERROR(indigo_error("indigo_mount_nexstar: tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res));
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
 				}
 				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
@@ -922,7 +923,7 @@ static indigo_result guider_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 
 	indigo_release_property(COMMAND_GUIDE_RATE_PROPERTY);
-	INDIGO_LOG(indigo_log("%s detached.", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached.", device->name);
 	return indigo_guider_detach(device);
 }
 
