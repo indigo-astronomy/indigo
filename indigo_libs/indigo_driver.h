@@ -217,9 +217,10 @@ typedef struct {
 /** log macros
 */
 
- #define INDIGO_DRIVER_LOG(driver_name, fmt, ...) INDIGO_LOG(indigo_log("%s: " fmt, driver_name, ##__VA_ARGS__))
- #define INDIGO_DRIVER_ERROR(driver_name, fmt, ...) INDIGO_ERROR(indigo_error("%s: %d: " fmt, driver_name, __LINE__, ##__VA_ARGS__))
- #define INDIGO_DRIVER_DEBUG(driver_name, fmt, ...) INDIGO_DEBUG(indigo_debug("%s: %d: %s(): " fmt, driver_name, __LINE__, __FUNCTION__, ##__VA_ARGS__))
+#define INDIGO_DRIVER_LOG(driver_name, fmt, ...) INDIGO_LOG(indigo_log("%s: " fmt, driver_name, ##__VA_ARGS__))
+#define INDIGO_DRIVER_ERROR(driver_name, fmt, ...) INDIGO_ERROR(indigo_error("%s[%d]: " fmt, driver_name, __LINE__, ##__VA_ARGS__))
+#define INDIGO_DRIVER_DEBUG(driver_name, fmt, ...) INDIGO_DEBUG_DRIVER(indigo_debug("%s[%d, %s]: " fmt, driver_name, __LINE__, __FUNCTION__, ##__VA_ARGS__))
+#define INDIGO_DRIVER_TRACE(driver_name, fmt, ...) INDIGO_TRACE_DRIVER(indigo_trace("%s[%d, %s]: " fmt, driver_name, __LINE__, __FUNCTION__, ##__VA_ARGS__))
 
  /** set driver info.
   */

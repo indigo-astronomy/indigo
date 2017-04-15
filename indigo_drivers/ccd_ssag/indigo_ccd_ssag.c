@@ -24,6 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x0001
+#define DRIVER_NAME "indigo_ccd_ssag"
 
 #include <stdlib.h>
 #include <string.h>
@@ -102,10 +103,10 @@ static unsigned char firmware[] = { SSAG_FIRMWARE };
 static int ssag_reset_mode(libusb_device_handle *handle, unsigned char data) {
 	int rc;
 	rc = libusb_control_transfer(handle, 0x40, USB_RQ_LOAD_FIRMWARE, 0x7f92, 0, &data, 1, USB_TIMEOUT);
-	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_reset_mode: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	if (rc >= 0) {
 		rc = libusb_control_transfer(handle, 0x40, USB_RQ_LOAD_FIRMWARE, CPUCS_ADDRESS, 0, &data, 1, USB_TIMEOUT);
-		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_reset_mode: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	}
 	return rc;
 }
@@ -119,7 +120,7 @@ static int ssag_upload(libusb_device_handle *handle, unsigned char *data) {
 		unsigned short address = *(unsigned int *)(data+1);
 		rc = libusb_control_transfer(handle, 0x40, USB_RQ_LOAD_FIRMWARE, address, 0, (unsigned char *)(data+3), byte_count, USB_TIMEOUT);
 		if (rc != byte_count) {
-			INDIGO_DEBUG_DRIVER(indigo_debug("ssag_upload: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc;
 		}
 		data += byte_count + 3;
@@ -130,7 +131,7 @@ static int ssag_upload(libusb_device_handle *handle, unsigned char *data) {
 static void ssag_firmware(libusb_device *dev) {
 	libusb_device_handle *handle;
 	int rc = libusb_open(dev, &handle);
-	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_firmware: libusb_open [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_open -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	if (rc >= 0) {
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
@@ -144,7 +145,7 @@ static void ssag_firmware(libusb_device *dev) {
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x00);
 		libusb_close(handle);
 		libusb_unref_device(dev);
-		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_firmware: libusb_close [%d]", __LINE__));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close");
 	}
 }
 
@@ -161,10 +162,10 @@ static int ssag_init_sequence(indigo_device *device) {
 		SHUTTER_WIDTH >> 8, SHUTTER_WIDTH & 0xff
 	};
 	int rc = libusb_control_transfer(PRIVATE_DATA->handle, 0x40, USB_RQ_SET_INIT_PACKET, BUFFER_SIZE & 0xffff, BUFFER_SIZE >> 16, init_packet, sizeof(init_packet), USB_TIMEOUT);
-	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	if (rc >= 0) {
 		rc = libusb_control_transfer(PRIVATE_DATA->handle, 0x40, USB_RQ_PRE_EXPOSE, PIXEL_OFFSET, 0, NULL, 0, USB_TIMEOUT);
-		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	}
 	return rc;
 }
@@ -188,27 +189,27 @@ static bool ssag_open(indigo_device *device) {
 	libusb_device *dev = PRIVATE_DATA->dev;
 	rc = libusb_open(dev, &PRIVATE_DATA->handle);
 	libusb_device_handle *handle = PRIVATE_DATA->handle;
-	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_open [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_open -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 #ifdef LIBUSB_H // not implemented in fake libusb
 	if (rc >= 0) {
 		if (libusb_kernel_driver_active(handle, 0) == 1) {
 			rc = libusb_detach_kernel_driver(handle, 0);
-			INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_detach_kernel_driver [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_detach_kernel_driver -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		}
 	}
 	if (rc >= 0) {
 		rc = libusb_set_configuration(handle, 1);
-		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_set_configuration [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_set_configuration -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	}
 	if (rc >= 0) {
 		rc = libusb_claim_interface(handle, 0);
-		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_claim_interface(%d) [%d] -> %s", __LINE__, handle, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_claim_interface(%d) -> %s", handle, rc < 0 ? libusb_error_name(rc) : "OK");
 	}
 #endif
 	if (rc >= 0) {
 		unsigned char data[4];
 		rc = libusb_control_transfer(handle, 0xc0, USB_RQ_SET_BUFFER_MODE, 0x00, 0x63, data, sizeof(data), USB_TIMEOUT);
-		INDIGO_DEBUG_DRIVER(indigo_debug("ssag_open: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	}
 	ssag_set_gain(device, 1);
 	rc = rc < 0 ? rc : ssag_init_sequence(device);
@@ -219,7 +220,7 @@ static bool ssag_start_exposure(indigo_device *device, double exposure) {
 	unsigned char data[16];
 	unsigned duration = 1000 * exposure;
 	int rc = libusb_control_transfer(PRIVATE_DATA->handle, 0xc0, USB_RQ_EXPOSE, duration & 0xFFFF, duration >> 16, data, 2, USB_TIMEOUT);
-	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_start_exposure: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	return rc >= 0;
 }
 
@@ -227,14 +228,14 @@ static bool ssag_abort_exposure(indigo_device *device) {
 	unsigned char data = 0;
 	int transferred;
 	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, LIBUSB_ENDPOINT_IN, &data, 1, &transferred, USB_TIMEOUT);
-	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_abort_exposure: libusb_control_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	return rc >= 0;
 }
 
 static bool ssag_read_pixels(indigo_device *device) {
 	int transferred;
 	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, BUFFER_ENDPOINT, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, BUFFER_SIZE, &transferred, USB_TIMEOUT);
-	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_read_pixels: libusb_bulk_transfer [%d] -> %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	if (rc >= 0 && transferred == BUFFER_SIZE) {
 		unsigned char *in = PRIVATE_DATA->buffer + BUFFER_WIDTH + FITS_HEADER_SIZE;
 		unsigned char *out = PRIVATE_DATA->buffer + IMAGE_WIDTH + FITS_HEADER_SIZE;
@@ -252,14 +253,14 @@ static bool ssag_guide(indigo_device *device, guide_direction direction, int dur
 	memcpy(data + 0, &duration, 4);
 	memcpy(data + 4, &duration, 4);
 	int rc = libusb_control_transfer(PRIVATE_DATA->handle, 0x40, USB_RQ_GUIDE, 0, (int)direction, data, sizeof(data), USB_TIMEOUT);
-	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_guide: libusb_control_transfer(%d, %d) [%d] -> %s", direction, duration, __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer(%d, %d) -> %s", direction, duration, rc < 0 ? libusb_error_name(rc) : "OK");
 	return rc >= 0;
 	return false;
 }
 
 static void ssag_close(indigo_device *device) {
 	libusb_close(PRIVATE_DATA->handle);
-	INDIGO_DEBUG_DRIVER(indigo_debug("ssag_close: libusb_close [%d]", __LINE__));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close");
 	free(PRIVATE_DATA->buffer);
 }
 
@@ -292,7 +293,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 5.2;
 		CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
 		// --------------------------------------------------------------------------------
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -364,7 +365,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_ccd_detach(device);
 }
 
@@ -374,7 +375,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -446,7 +447,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_guider_detach(device);
 }
 
@@ -492,11 +493,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 		INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
 		if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID)) {
-			INDIGO_DEBUG_DRIVER(indigo_debug("ssag_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s (0x%04x, 0x%04x)", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
 			libusb_ref_device(dev);
 			indigo_async((void *)(void *)ssag_firmware, dev);
 		} else if (descriptor.idVendor == SSAG_VENDOR_ID && descriptor.idProduct == SSAG_PRODUCT_ID) {
-			INDIGO_DEBUG_DRIVER(indigo_debug("ssag_hotplug_callback: libusb_get_device_descriptor [%d] ->  %s (0x%04x, 0x%04x)", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
 			ssag_private_data *private_data = malloc(sizeof(ssag_private_data));
 			assert(private_data != NULL);
 			memset(private_data, 0, sizeof(ssag_private_data));
@@ -569,13 +570,13 @@ indigo_result indigo_ccd_ssag(indigo_driver_action action, indigo_driver_info *i
 		}
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_ssag: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_ccd_ssag: libusb_hotplug_deregister_callback [%d]", __LINE__));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] != NULL) {
 				indigo_device *device = devices[j];

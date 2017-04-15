@@ -24,6 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x0001
+#define DRIVER_NAME "indigo_wheel_sx"
 
 #include <stdlib.h>
 #include <string.h>
@@ -61,12 +62,12 @@ typedef struct {
 static bool sx_message(indigo_device *device, int a, int b) {
 	unsigned char buf[2] = { a, b };
 	int rc = hid_write(PRIVATE_DATA->handle, buf, 2);
-	INDIGO_DEBUG_DRIVER(indigo_debug("sx_message: hid_write( { %02x, %02x }) [%d] ->  %d", buf[0], buf[1], __LINE__, rc));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_write( { %02x, %02x }) ->  %d", buf[0], buf[1], rc);
 	if (rc != 2)
 		return false;
 	usleep(100);
 	rc = hid_read(PRIVATE_DATA->handle, buf, 2);
-	INDIGO_DEBUG_DRIVER(indigo_debug("sx_message: hid_read() [%d] ->  %d, { %02x, %02x }", __LINE__, rc, buf[0], buf[1]));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_read() ->  %d, { %02x, %02x }", rc, buf[0], buf[1]);
 	PRIVATE_DATA->current_slot = buf[0];
 	PRIVATE_DATA->count = buf[1];
 	return rc == 2;
@@ -74,11 +75,11 @@ static bool sx_message(indigo_device *device, int a, int b) {
 
 static bool sx_open(indigo_device *device) {
 	if ((PRIVATE_DATA->handle = hid_open(SX_VENDOR_ID, SX_PRODUC_ID, NULL)) != NULL) {
-		INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: hid_open [%d] ->  ok", __LINE__));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  ok");
 		sx_message(device, 0x81, 0);
 		return true;
 	}
-	INDIGO_DEBUG_DRIVER(indigo_debug("sx_open: hid_open [%d] ->  failed", __LINE__));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  failed");
 	return false;
 }
 
@@ -103,7 +104,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INDIGO_LOG(indigo_log("%s attached", device->name));
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -157,7 +158,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_LOG(indigo_log("%s detached", device->name));
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_wheel_detach(device);
 }
 
@@ -225,13 +226,13 @@ indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *i
 		hid_init();
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, SX_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_sx: libusb_hotplug_register_callback [%d] ->  %s", __LINE__, rc < 0 ? libusb_error_name(rc) : "OK"));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DEBUG_DRIVER(indigo_debug("indigo_wheel_sx: libusb_hotplug_deregister_callback [%d]", __LINE__));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 		if (device)
 			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 		hid_exit();
