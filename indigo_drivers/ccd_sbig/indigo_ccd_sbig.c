@@ -27,12 +27,11 @@
 // 1. Handle ethernet disconnects.
 // 2. Removing open device is broken!!!
 // 3. Binning and readout modes.
-// 4. Better error handling.
-// 5. Add filter wheel support.
-// 6. Add external guider CCD support
-// 7. Add Focuser support
-// 8. Add AO support
-// 9. Add property to freeze TEC for readout
+// 4. Add filter wheel support.
+// 5. Add external guider CCD support
+// 6. Add Focuser support
+// 7. Add AO support
+// 8. Add property to freeze TEC for readout
 
 #define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_ccd_sbig"
@@ -297,7 +296,7 @@ static int sbig_get_temperature(bool *enabled, double *t, double *setpoint, doub
 		if (t) *t = qtsr2.imagingCCDTemperature;
 		if (setpoint) *setpoint = qtsr2.ccdSetpoint;
 		if (power) *power = qtsr2.imagingCCDPower;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " regulation = %s, t = %.2g, setpoint = %.2g, power = %.2g",
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "regulation = %s, t = %.2g, setpoint = %.2g, power = %.2g",
 			(qtsr2.coolingEnabled != 0) ? "True": "False",
 			qtsr2.imagingCCDTemperature,
 			qtsr2.ccdSetpoint,
@@ -328,7 +327,7 @@ static ushort sbig_get_relaymap(short handle, ushort *relay_map) {
 	}
 
 	*relay_map = csr.status;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, " *relay_map = Ox%x", *relay_map);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "*relay_map = Ox%x", *relay_map);
 
 	return CE_NO_ERROR;
 }
@@ -742,7 +741,7 @@ static void sbig_close(indigo_device *device) {
 	if (--PRIVATE_DATA->count_open == 0) {
 		res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d", PRIVATE_DATA->driver_handle, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		}
 
 		res = sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
@@ -752,7 +751,7 @@ static void sbig_close(indigo_device *device) {
 
 		res = close_driver(&PRIVATE_DATA->driver_handle);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "close_driver(%d) = %d", PRIVATE_DATA->driver_handle, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "close_driver(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		}
 	}
 	//pthread_mutex_unlock(&driver_mutex);
@@ -1205,14 +1204,14 @@ static void guider_timer_callback_ra(indigo_device *device) {
 
 	res = sbig_get_relaymap(driver_handle, &relay_map);
 	if (res != CE_NO_ERROR) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_get_relaymap(%d) = %d", driver_handle, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_get_relaymap(%d) = %d (%s)", driver_handle, res, sbig_error_string(res));
 	}
 
 	relay_map &= ~(RELAY_EAST | RELAY_WEST);
 
 	res = sbig_set_relaymap(driver_handle, relay_map);
 	if (res != CE_NO_ERROR) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relaymap(%d) = %d", driver_handle, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relaymap(%d) = %d (%s)", driver_handle, res, sbig_error_string(res));
 	}
 
 	if (PRIVATE_DATA->relay_map & (RELAY_EAST | RELAY_WEST)) {
@@ -1238,14 +1237,14 @@ static void guider_timer_callback_dec(indigo_device *device) {
 
 	res = sbig_get_relaymap(driver_handle, &relay_map);
 	if (res != CE_NO_ERROR) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_get_relaymap(%d) = %d", driver_handle, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_get_relaymap(%d) = %d (%s)", driver_handle, res, sbig_error_string(res));
 	}
 
 	relay_map &= ~(RELAY_NORTH | RELAY_SOUTH);
 
 	res = sbig_set_relaymap(driver_handle, relay_map);
 	if (res != CE_NO_ERROR) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relaymap(%d) = %d", driver_handle, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relaymap(%d) = %d (%s)", driver_handle, res, sbig_error_string(res));
 	}
 
 	if (PRIVATE_DATA->relay_map & (RELAY_NORTH | RELAY_SOUTH)) {
@@ -1291,7 +1290,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		if (duration > 0) {
 			pthread_mutex_lock(&driver_mutex);
 			res = sbig_set_relays(driver_handle, RELAY_NORTH);
-			if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_NORTH) = %d", driver_handle, res);
+			if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_NORTH) = %d (%s)", driver_handle, res, sbig_error_string(res));
 			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 			PRIVATE_DATA->relay_map |= RELAY_NORTH;
 			pthread_mutex_unlock(&driver_mutex);
@@ -1300,7 +1299,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			if (duration > 0) {
 				pthread_mutex_lock(&driver_mutex);
 				res = sbig_set_relays(driver_handle, RELAY_SOUTH);
-				if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_SOUTH) = %d", driver_handle, res);
+				if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_SOUTH) = %d (%s)", driver_handle, res, sbig_error_string(res));
 				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 				PRIVATE_DATA->relay_map |= RELAY_SOUTH;
 				pthread_mutex_unlock(&driver_mutex);
@@ -1322,7 +1321,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		if (duration > 0) {
 			pthread_mutex_lock(&driver_mutex);
 			res = sbig_set_relays(driver_handle, RELAY_EAST);
-			if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_EAST) = %d", driver_handle, res);
+			if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_EAST) = %d (%s)", driver_handle, res, sbig_error_string(res));
 			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 			PRIVATE_DATA->relay_map |= RELAY_EAST;
 			pthread_mutex_unlock(&driver_mutex);
@@ -1331,7 +1330,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			if (duration > 0) {
 				pthread_mutex_lock(&driver_mutex);
 				res = sbig_set_relays(driver_handle, RELAY_WEST);
-				if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_WEST) = %d", driver_handle, res);
+				if (res != CE_NO_ERROR) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relays(%d, RELAY_WEST) = %d (%s)", driver_handle, res, sbig_error_string(res));
 				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 				PRIVATE_DATA->relay_map |= RELAY_WEST;
 				pthread_mutex_unlock(&driver_mutex);
@@ -1390,7 +1389,7 @@ bool get_host_ip(char *hostname , unsigned long *ip) {
 			*ip = ((struct sockaddr_in *)(p->ai_addr))->sin_addr.s_addr;
 			/* ip should be litle endian */
 			*ip = (*ip >> 24) | ((*ip << 8) & 0x00ff0000) | ((*ip >> 8) & 0x0000ff00) | (*ip << 24);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, " IP: 0x%X\n", *ip);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "IP: 0x%X\n", *ip);
 			freeaddrinfo(servinfo);
 			return true;
 		}
@@ -1647,7 +1646,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	gcp.request = CCD_INFO_TRACKING;
 
 	if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &gcir0)) != CE_NO_ERROR) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " CC_GET_CCD_INFO error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CC_GET_CCD_INFO error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res));
 	} else {
 		slot = find_available_device_slot();
 		if (slot < 0) {
@@ -1750,7 +1749,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			int usb_id = find_plugged_device(cam_name);
 			if (usb_id < 0) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, " No SBIG Camera plugged.");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SBIG Camera plugged.");
 				pthread_mutex_unlock(&hotplug_mutex);
 				return 0;
 			}
@@ -1790,7 +1789,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 
 			if (!removed) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, " No SBIG Camera unplugged!");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SBIG Camera unplugged!");
 			}
 		}
 	}
