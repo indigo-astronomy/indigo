@@ -746,7 +746,7 @@ static void sbig_close(indigo_device *device) {
 
 		res = sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_CLOSE_DEVICE error = %d (%s)", res, sbig_error_string(res));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_CLOSE_DEVICE error = %d (%s) - Ignore if device has been unplugged!", res, sbig_error_string(res));
 		}
 
 		res = close_driver(&PRIVATE_DATA->driver_handle);
