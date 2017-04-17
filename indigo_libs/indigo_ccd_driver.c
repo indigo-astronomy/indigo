@@ -103,6 +103,14 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 10000, 1, 0);
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
 			CCD_CONTEXT->countdown_enabled = true;
+			// -------------------------------------------------------------------------------- CCD_STREAMING
+			CCD_STREAMING_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_STREAMING_PROPERTY_NAME, CCD_MAIN_GROUP, "Start streaming", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+			if (CCD_STREAMING_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(CCD_STREAMING_EXPOSURE_ITEM, CCD_STREAMING_EXPOSURE_ITEM_NAME, "Shutter time", 0, 10000, 1, 0);
+			indigo_init_number_item(CCD_STREAMING_COUNT_ITEM, CCD_STREAMING_COUNT_ITEM_NAME, "Frame count", -1, 100000, 1, 0);
+			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
+			CCD_STREAMING_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			if (CCD_ABORT_EXPOSURE_PROPERTY == NULL)
@@ -208,6 +216,8 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 				indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
 			if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property))
 				indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			if (!CCD_STREAMING_PROPERTY->hidden && indigo_property_match(CCD_STREAMING_PROPERTY, property))
+				indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
 			if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property))
 				indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			if (indigo_property_match(CCD_FRAME_PROPERTY, property))
@@ -251,6 +261,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			if (!CCD_STREAMING_PROPERTY->hidden)
+				indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
 			indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
@@ -270,6 +282,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			if (!CCD_STREAMING_PROPERTY->hidden)
+				indigo_delete_property(device, CCD_STREAMING_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_BIN_PROPERTY, NULL);
@@ -323,8 +337,11 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+			CCD_STREAMING_COUNT_ITEM->number.value = 0;
+			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -455,6 +472,8 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	indigo_release_property(CCD_LOCAL_MODE_PROPERTY);
 	indigo_release_property(CCD_MODE_PROPERTY);
 	indigo_release_property(CCD_EXPOSURE_PROPERTY);
+	if (!CCD_STREAMING_PROPERTY->hidden)
+		indigo_release_property(CCD_STREAMING_PROPERTY);
 	indigo_release_property(CCD_ABORT_EXPOSURE_PROPERTY);
 	indigo_release_property(CCD_FRAME_PROPERTY);
 	indigo_release_property(CCD_BIN_PROPERTY);
