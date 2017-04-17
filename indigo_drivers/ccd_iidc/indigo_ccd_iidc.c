@@ -291,6 +291,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		PRIVATE_DATA->mode_data_ix = 0;
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
     setup_feature(device, CCD_EXPOSURE_ITEM, DC1394_FEATURE_SHUTTER);
+		CCD_STREAMING_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.min;
+		CCD_STREAMING_EXPOSURE_ITEM->number.max = CCD_EXPOSURE_ITEM->number.max;
+		CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.value;
 		err = dc1394_feature_set_power(PRIVATE_DATA->camera, DC1394_FEATURE_FRAME_RATE, DC1394_OFF);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_power(DC1394_FEATURE_FRAME_RATE, DC1394_OFF) -> %s", dc1394_error_get_string(err));
 		// -------------------------------------------------------------------------------- CCD_STREAMING
@@ -367,16 +370,22 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = mode_data->height;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = mode_data->bits_per_pixel;
 					setup_feature(device, CCD_EXPOSURE_ITEM, DC1394_FEATURE_SHUTTER);
-					update_frame = true;
+					CCD_STREAMING_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.min;
+					CCD_STREAMING_EXPOSURE_ITEM->number.max = CCD_EXPOSURE_ITEM->number.max;
+					CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.value;
+					CCD_FRAME_PROPERTY->state = INDIGO_IDLE_STATE;
+					indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
+					indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_IDLE_STATE;
+					indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+					indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+					CCD_STREAMING_PROPERTY->state = INDIGO_IDLE_STATE;
+					indigo_delete_property(device, CCD_STREAMING_PROPERTY, NULL);
+					indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
 					break;
 				}
 			}
 			if (IS_CONNECTED) {
-				if (update_frame) {
-					CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
-					indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
-				}
 				CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 			}
