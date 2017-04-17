@@ -590,12 +590,12 @@ static bool sbig_exposure_complete(indigo_device *device) {
 
 static bool sbig_read_pixels(indigo_device *device) {
 	int res;
-	long wait_cycles = 4000;
+	long wait_cycles = 6000;  /* 6000*2000us = 12s */
 	unsigned char *frame_buffer;
 
 	/* for the exposyre to complete and end it */
 	while(!sbig_exposure_complete(device) && wait_cycles--) {
-		usleep(1000);
+		usleep(2000);
 	}
 	if (wait_cycles == 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure error: did not complete in time.");
