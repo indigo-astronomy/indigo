@@ -244,7 +244,7 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 static bool asi_read_pixels(indigo_device *device) {
 	ASI_ERROR_CODE res;
 	ASI_EXPOSURE_STATUS status;
-	int wait_cycles = 4000;    /* 4000*1000us = 4s */
+	int wait_cycles = 6000;    /* 6000*2000us = 12s */
 	status = ASI_EXP_WORKING;
 
 	/* wait for the exposure to complete */
@@ -252,7 +252,7 @@ static bool asi_read_pixels(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		usleep(1000);
+		usleep(2000);
 	}
 	if(status == ASI_EXP_SUCCESS) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
