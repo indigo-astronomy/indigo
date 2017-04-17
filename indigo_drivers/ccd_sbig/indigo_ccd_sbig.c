@@ -1681,7 +1681,7 @@ static void enumerate_devices() {
 	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_QUERY_USB2 error = %d (%s)", res, sbig_error_string(res));
 	}
-	pthread_mutex_lock(&driver_mutex);
+	pthread_mutex_unlock(&driver_mutex);
 	//INDIGO_DRIVER_LOG(DRIVER_NAME, "usb_cams = %d", usb_cams.camerasFound);
 	//INDIGO_DRIVER_LOG(DRIVER_NAME, "usb_type = %d", usb_cams.usbInfo[0].cameraType);
 	//INDIGO_DRIVER_LOG(DRIVER_NAME, "cam name = %s", usb_cams.usbInfo[0].name);
