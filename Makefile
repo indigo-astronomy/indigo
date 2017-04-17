@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 45
+INDIGO_BUILD := 46
 INDIGO_ROOT := $(shell pwd)
 
 ENABLE_STATIC=yes
@@ -851,8 +851,8 @@ fliusb-package:
 #---------------------------------------------------------------------
 
 clean: init
-	rm -f $(BUILD_ROOT)/bin/indigo_server*
-	rm -f $(BUILD_ROOT)/lib/libindigo*
+	rm -rf $(BUILD_ROOT)/bin/indigo_server*
+	rm -rf $(BUILD_ROOT)/lib/libindigo*
 	rm -rf $(BUILD_ROOT)/drivers
 	rm -f indigo_libs/*.o
 	rm -f indigo_server/*.o
