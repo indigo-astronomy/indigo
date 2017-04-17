@@ -199,6 +199,20 @@
  */
 #define CCD_EXPOSURE_ITEM_NAME                "EXPOSURE"
 
+
+//----------------------------------------------------------------------
+/** CCD_STREAMING property name.
+ */
+#define CCD_STREAMING_PROPERTY_NAME            "CCD_STREAMING"
+
+/** CCD_STREAMING.COUNT property item name.
+ */
+#define CCD_STREAMING_EXPOSURE_ITEM_NAME			"EXPOSURE"
+
+/** CCD_STREAMING.COUNT property item name.
+ */
+#define CCD_STREAMING_COUNT_ITEM_NAME         "COUNT"
+
 //----------------------------------------------------------------------
 /** CCD_ABORT_EXPOSURE property name.
  */
