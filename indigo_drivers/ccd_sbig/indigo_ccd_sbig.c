@@ -1357,8 +1357,16 @@ static indigo_result guider_detach(indigo_device *device) {
 	return indigo_guider_detach(device);
 }
 
+static const char *cfw_type[] = {
+	"CFW-Unknown", "CFW-2", "CFW-5",
+	"CFW-8", "CFW-L", "CFW-402", "CFW-Auto",
+	"CFW-6A", "CFW-10", "CFW-10 Serial",
+	"CFW-9", "CFW-L8", "CFW-L8G", "CFW-1603",
+	"FW5-STX", "FW5-8300", "FW8-8300",
+	"FW7-STX", "FW8-STT", "FW5-STF"
+};
 
-static const char *camera_types[] = {
+static const char *camera_type[] = {
 	"Type 0", "Type 1", "Type 2", "Type 3",
 	"ST-7", "ST-8", "ST-5C", "TCE",
 	"ST-237", "ST-K", "ST-9", "STV", "ST-10",
@@ -1592,7 +1600,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 			pthread_mutex_unlock(&driver_mutex);
 			return false;
 		}
-		cam_name = (char *)camera_types[gcir0.cameraType];
+		cam_name = (char *)camera_type[gcir0.cameraType];
 	}
 
 	int slot = find_available_device_slot();
@@ -1664,6 +1672,22 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		indigo_async((void *)(void *)indigo_attach_device, device);
 		devices[slot]=device;
 	}
+
+	/* Filter wheel detect */
+	CFWParams cfwp;
+	CFWResults cfwr;
+	cfwp.cfwModel = CFWSEL_AUTO;
+	cfwp.cfwCommand = CFWC_GET_INFO;
+	cfwp.cfwParam1 = CFWG_FIRMWARE_VERSION;
+
+	if ((res = sbig_command(CC_CFW, &cfwp, &cfwr)) != CE_NO_ERROR) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CC_GET_CCD_INFO error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res));
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d", cfwr.cfwModel, cfw_type[cfwr.cfwModel], cfwr.cfwPosition, cfwr.cfwResult2);
+		/* TODO: Add FW here */
+	}
+
+
 	sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 	pthread_mutex_unlock(&driver_mutex);
 	return true;
