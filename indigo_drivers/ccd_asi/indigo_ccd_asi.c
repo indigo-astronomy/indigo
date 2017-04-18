@@ -205,12 +205,9 @@ static bool asi_open(indigo_device *device) {
 	return true;
 }
 
-
-static bool asi_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
+static bool asi_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
 	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/vertical_bin,  horizontal_bin, get_pixel_format(device));
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -223,11 +220,21 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetStartPos(%d) = %d", id, res);
 		return false;
 	}
-
 	res = ASISetControlValue(id, ASI_EXPOSURE, (long)s2us(exposure), ASI_FALSE);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
+		return false;
+	}
+	return true;
+}
+
+static bool asi_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
+	int id = PRIVATE_DATA->dev_id;
+	ASI_ERROR_CODE res;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (!asi_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 	res = ASIStartExposure(id, dark);
@@ -369,6 +376,54 @@ static void exposure_timer_callback(indigo_device *device) {
 		}
 	}
 	PRIVATE_DATA->can_check_temperature = true;
+}
+
+static void streaming_timer_callback(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	char *color_string = get_bayer_string(device);
+	indigo_fits_keyword keywords[] = {
+		{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
+		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
+		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
+		{ 0 }
+	};
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	int id = PRIVATE_DATA->dev_id;
+	int timeout = CCD_STREAMING_EXPOSURE_ITEM->number.value * 2 + 500;
+	ASI_ERROR_CODE res;
+	PRIVATE_DATA->can_check_temperature = true;
+	if (asi_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value)) {
+		res = ASIStartVideoCapture(id);
+		if (res)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStartVideoCapture(%d) = %d", id, res);
+		else {
+			while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
+				res = ASIGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, timeout);
+				if (res) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetVideoData((%d) = %d", id, res);
+					break;
+				}
+				if(color_string) {
+					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, keywords);
+				} else {
+					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+				}
+				if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+					CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+			}
+			res = ASIStopVideoCapture(id);
+			if (res)
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStopVideoCapture(%d) = %d", id, res);
+		}
+	} else {
+		res = ASI_ERROR_GENERAL_ERROR;
+	}
+	PRIVATE_DATA->can_check_temperature = false;
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res)
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
 
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
@@ -530,6 +585,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 			}
 		}
 		CCD_MODE_PROPERTY->count = mode_count;
+		// -------------------------------------------------------------------------------- CCD_STREAMING
+		CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
 		if (ASI_ADVANCED_PROPERTY == NULL)
@@ -757,11 +815,27 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			PRIVATE_DATA->can_check_temperature = false;
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
 		}
+	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_STREAMING
+		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
+		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		} else {
+			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		}
+		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, streaming_timer_callback);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			asi_abort_exposure(device);
+		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
+			CCD_STREAMING_COUNT_ITEM->number.value = 0;
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
