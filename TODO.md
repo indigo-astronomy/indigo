@@ -66,7 +66,7 @@
 
 1. Atik EFW wheel driver __DONE__
 2. FLI wheel driver (based on FLI SDK) __DONE__
-3. SBIG wheel driver
+3. SBIG wheel driver __DONE__
 4. ASI EFW Driver __DONE__
 
 #### Guiders
