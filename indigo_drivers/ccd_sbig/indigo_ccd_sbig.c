@@ -27,11 +27,10 @@
 // 1. Handle ethernet disconnects.
 // 2. Removing open device is broken!!!
 // 3. Binning and readout modes.
-// 4. Add filter wheel support.
-// 5. Add external guider CCD support
-// 6. Add Focuser support
-// 7. Add AO support
-// 8. Add property to freeze TEC for readout
+// 4. Add external guider CCD support
+// 5. Add Focuser support
+// 6. Add AO support
+// 7. Add property to freeze TEC for readout
 
 #define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_ccd_sbig"
@@ -1520,8 +1519,12 @@ static void wheel_timer_callback(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_QUERY cfwr.cfwPosition = %d", cfwr.cfwPosition);
 
 	PRIVATE_DATA->fw_current_slot = cfwr.cfwPosition;
+	if ((cfwr.cfwStatus == CFWS_IDLE) && (cfwr.cfwPosition == 0)) {
+		/* Some FWs do not report their position */
+		PRIVATE_DATA->fw_current_slot = PRIVATE_DATA->fw_target_slot;
+	}
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
-	if (PRIVATE_DATA->fw_current_slot == PRIVATE_DATA->fw_target_slot) {
+	if (cfwr.cfwStatus == CFWS_IDLE) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->wheel_timer));
@@ -1584,6 +1587,26 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 					pthread_mutex_unlock(&driver_mutex);
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 					return INDIGO_FAILED;
+				}
+
+				if (cfwr.cfwPosition == 0) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "The attached filter wheel does not report current filter.");
+					/* Attached filter wheel does not report current poition => set it to 1 */
+					cfwr.cfwPosition = 1;
+
+					/* And GOTO filter 1 */
+					cfwp.cfwCommand = CFWC_GOTO;
+					cfwp.cfwParam1 = cfwr.cfwPosition = 1;
+					res = sbig_command(CC_CFW, &cfwp, &cfwr);
+					if (res != CE_NO_ERROR) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_GOTO error = %d (%s).", res, sbig_error_string(res));
+						cfwp.cfwCommand = CFWC_CLOSE_DEVICE;
+						sbig_command(CC_CFW, &cfwp, &cfwr);
+						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						pthread_mutex_unlock(&driver_mutex);
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+						return INDIGO_FAILED;
+					}
 				}
 
 				PRIVATE_DATA->fw_target_slot = cfwr.cfwPosition;
