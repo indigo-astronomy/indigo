@@ -141,6 +141,13 @@ typedef struct {
 
 	bool imager_no_check_temperature;
 	bool guider_no_check_temperature;
+
+	/* CFW Specific */
+	indigo_timer *wheel_timer;
+	CFWResults cfw_info;
+	int count;
+	int current_slot;
+	int target_slot;
 	/* indigo_property *some_sbig_property; */
 } sbig_private_data;
 
@@ -1484,6 +1491,103 @@ static indigo_result eth_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
+// -------------------------------------------------------------------------------- FILTER WHEEL
+
+static void wheel_timer_callback(indigo_device *device) {
+	//pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	//EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
+	//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	PRIVATE_DATA->current_slot++;
+	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->wheel_timer));
+	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
+
+
+static indigo_result wheel_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		//pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
+		return indigo_wheel_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+
+static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	int res;
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			//pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			//EFWGetID(index, &(PRIVATE_DATA->dev_id));
+			//int res = EFWOpen(PRIVATE_DATA->dev_id);
+			//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			if (!res) {
+				//pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				//EFWGetProperty(PRIVATE_DATA->dev_id, &info);
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = PRIVATE_DATA->cfw_info.cfwResult2;
+				//EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+				//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				PRIVATE_DATA->target_slot++;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWOpen(%d) = %d", index, res);
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				return INDIGO_FAILED;
+			}
+		} else {
+			//pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			//EFWClose(PRIVATE_DATA->dev_id);
+			//EFWGetID(index, &(PRIVATE_DATA->dev_id));
+			//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- WHEEL_SLOT
+		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
+		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+			//pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			//EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
+			//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+		}
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_wheel_change_property(device, client, property);
+}
+
+
+static indigo_result wheel_detach(indigo_device *device) {
+	assert(device != NULL);
+	indigo_device_disconnect(NULL, device->name);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	return indigo_wheel_detach(device);
+}
+
 // -------------------------------------------------------------------------------- hot-plug support
 short global_handle = INVALID_HANDLE_VALUE; /* This is global SBIG driver hangle used for attach and detatch cameras */
 pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -1545,6 +1649,14 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		indigo_guider_enumerate_properties,
 		guider_change_property,
 		guider_detach
+	};
+
+	static indigo_device wheel_template = {
+		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		wheel_attach,
+		indigo_wheel_enumerate_properties,
+		wheel_change_property,
+		wheel_detach
 	};
 
 	pthread_mutex_lock(&driver_mutex);
@@ -1675,16 +1787,31 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 
 	/* Filter wheel detect */
 	CFWParams cfwp;
-	CFWResults cfwr;
+	CFWResults *cfwr = &(private_data->cfw_info);
 	cfwp.cfwModel = CFWSEL_AUTO;
 	cfwp.cfwCommand = CFWC_GET_INFO;
 	cfwp.cfwParam1 = CFWG_FIRMWARE_VERSION;
 
-	if ((res = sbig_command(CC_CFW, &cfwp, &cfwr)) != CE_NO_ERROR) {
+	if ((res = sbig_command(CC_CFW, &cfwp, cfwr)) != CE_NO_ERROR) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CC_GET_CCD_INFO error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res));
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d", cfwr.cfwModel, cfw_type[cfwr.cfwModel], cfwr.cfwPosition, cfwr.cfwResult2);
-		/* TODO: Add FW here */
+	} else if (cfwr->cfwModel != 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d", cfwr->cfwModel, cfw_type[cfwr->cfwModel], cfwr->cfwPosition, cfwr->cfwResult2);
+		int slot = find_available_device_slot();
+		if (slot < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
+			sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+			pthread_mutex_unlock(&driver_mutex);
+			return false;
+		}
+
+		device = malloc(sizeof(indigo_device));
+		assert(device != NULL);
+		memcpy(device, &wheel_template, sizeof(indigo_device));
+		sprintf(device->name, "SBIG %s #%s", cfw_type[cfwr->cfwModel], device_index_str);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+		device->private_data = private_data;
+		indigo_async((void *)(void *)indigo_attach_device, device);
+		devices[slot]=device;
 	}
 
 

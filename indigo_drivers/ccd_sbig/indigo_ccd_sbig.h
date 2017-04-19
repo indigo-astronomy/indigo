@@ -29,6 +29,7 @@
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
 #include "indigo_guider_driver.h"
+#include "indigo_wheel_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,4 +42,3 @@ extern indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_
 #endif
 
 #endif /* ccd_sbig_h */
-
