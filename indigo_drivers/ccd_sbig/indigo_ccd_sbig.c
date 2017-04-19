@@ -25,12 +25,11 @@
 
 // TODO:
 // 1. Handle ethernet disconnects.
-// 2. Removing open device is broken!!!
-// 3. Binning and readout modes.
-// 4. Add external guider CCD support
-// 5. Add Focuser support
-// 6. Add AO support
-// 7. Add property to freeze TEC for readout
+// 2. Binning and readout modes.
+// 3. Add external guider CCD support
+// 4. Add Focuser support
+// 5. Add AO support
+// 6. Add property to freeze TEC for readout
 
 #define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_ccd_sbig"
@@ -1826,7 +1825,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "NEW cam: slot=%d device_type=0x%x name='%s' ip=0x%x", slot, device_type, cam_name, ip_address);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "NEW camera: slot=%d device_type=0x%x name='%s' ip=0x%x", slot, device_type, cam_name, ip_address);
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
@@ -1911,15 +1910,16 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 				if (getenv("SBIG_LEGACY_CFW") != NULL) {
 					if (!strcmp(getenv("SBIG_LEGACY_CFW"),"CFW8")) {
 						cfwr.cfwModel = CFWSEL_CFW8;
+						cfwr.cfwResult2 = 5;
 					} else if(!strcmp(getenv("SBIG_LEGACY_CFW"),"CFW6A")) {
 						cfwr.cfwModel = CFWSEL_CFW6A;
+						cfwr.cfwResult2 = 6;
 					}
-					INDIGO_DRIVER_ERROR(DRIVER_NAME,"%s %d", getenv("SBIG_LEGACY_CFW"), cfwr.cfwModel);
 				}
 			}
 
 			if (cfwr.cfwModel != 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d cfwStatus = %d", cfwr.cfwModel, cfw_type[cfwr.cfwModel], cfwr.cfwPosition, cfwr.cfwResult2, cfwr.cfwStatus);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d cfwStatus = %d", cfwr.cfwModel, cfw_type[cfwr.cfwModel], cfwr.cfwPosition, cfwr.cfwResult2, cfwr.cfwStatus);
 				int slot = find_available_device_slot();
 				if (slot < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
@@ -1968,9 +1968,6 @@ static void enumerate_devices() {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_QUERY_USB2 error = %d (%s)", res, sbig_error_string(res));
 	}
 	pthread_mutex_unlock(&driver_mutex);
-	//INDIGO_DRIVER_LOG(DRIVER_NAME, "usb_cams = %d", usb_cams.camerasFound);
-	//INDIGO_DRIVER_LOG(DRIVER_NAME, "usb_type = %d", usb_cams.usbInfo[0].cameraType);
-	//INDIGO_DRIVER_LOG(DRIVER_NAME, "cam name = %s", usb_cams.usbInfo[0].name);
 }
 
 
@@ -2050,7 +2047,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			sbig_private_data *private_data = NULL;
 			while ((usb_index = find_unplugged_device(cam_name)) != -1) {
 				slot = find_device_slot(index_to_usb(usb_index));
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "!!!! indigo_ccd_sbig: '%s' usb_id=0x%x, slot=%d", cam_name, usb_index, slot);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LEFT '%s' usb_id=0x%x, slot=%d", cam_name, usb_index, slot);
 				while (slot >= 0) {
 					indigo_device **device = &devices[slot];
 					if (*device == NULL) {
