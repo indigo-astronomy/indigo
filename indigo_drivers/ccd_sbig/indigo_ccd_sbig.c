@@ -144,10 +144,9 @@ typedef struct {
 
 	/* CFW Specific */
 	indigo_timer *wheel_timer;
-	CFWResults cfw_info;
-	int count;
-	int current_slot;
-	int target_slot;
+	int fw_count;
+	int fw_current_slot;
+	int fw_target_slot;
 	/* indigo_property *some_sbig_property; */
 } sbig_private_data;
 
@@ -766,6 +765,16 @@ static void sbig_close(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
+static const char *camera_type[] = {
+	"Type 0", "Type 1", "Type 2", "Type 3",
+	"ST-7", "ST-8", "ST-5C", "TCE",
+	"ST-237", "ST-K", "ST-9", "STV", "ST-10",
+	"ST-1K", "ST-2K", "STL", "ST-402", "STX",
+	"ST-4K", "STT", "ST-i",	"STF-8300",
+	"Next Camera", "No Camera"
+};
+
+
 // callback for image download
 static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 	unsigned char *frame_buffer;
@@ -1364,25 +1373,6 @@ static indigo_result guider_detach(indigo_device *device) {
 	return indigo_guider_detach(device);
 }
 
-static const char *cfw_type[] = {
-	"CFW-Unknown", "CFW-2", "CFW-5",
-	"CFW-8", "CFW-L", "CFW-402", "CFW-Auto",
-	"CFW-6A", "CFW-10", "CFW-10 Serial",
-	"CFW-9", "CFW-L8", "CFW-L8G", "CFW-1603",
-	"FW5-STX", "FW5-8300", "FW8-8300",
-	"FW7-STX", "FW8-STT", "FW5-STF"
-};
-
-static const char *camera_type[] = {
-	"Type 0", "Type 1", "Type 2", "Type 3",
-	"ST-7", "ST-8", "ST-5C", "TCE",
-	"ST-237", "ST-K", "ST-9", "STV", "ST-10",
-	"ST-1K", "ST-2K", "STL", "ST-402", "STX",
-	"ST-4K", "STT", "ST-i",	"STF-8300",
-	"Next Camera", "No Camera"
-};
-
-
 // -------------------------------------------------------------------------------- Ethernet support
 
 bool get_host_ip(char *hostname , unsigned long *ip) {
@@ -1493,13 +1483,23 @@ static indigo_result eth_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- FILTER WHEEL
 
+static const char *cfw_type[] = {
+	"CFW-Unknown", "CFW-2", "CFW-5",
+	"CFW-8", "CFW-L", "CFW-402", "CFW-Auto",
+	"CFW-6A", "CFW-10", "CFW-10 Serial",
+	"CFW-9", "CFW-L8", "CFW-L8G", "CFW-1603",
+	"FW5-STX", "FW5-8300", "FW8-8300",
+	"FW7-STX", "FW8-STT", "FW5-STF"
+};
+
+
 static void wheel_timer_callback(indigo_device *device) {
 	//pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	//EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
 	//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	PRIVATE_DATA->current_slot++;
-	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+	PRIVATE_DATA->fw_current_slot++;
+	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
+	if (PRIVATE_DATA->fw_current_slot == PRIVATE_DATA->fw_target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->wheel_timer));
@@ -1536,10 +1536,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			if (!res) {
 				//pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				//EFWGetProperty(PRIVATE_DATA->dev_id, &info);
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = PRIVATE_DATA->cfw_info.cfwResult2;
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->fw_count;
 				//EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
 				//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				PRIVATE_DATA->target_slot++;
+				PRIVATE_DATA->fw_target_slot++;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
 			} else {
@@ -1562,12 +1562,12 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
+		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->fw_current_slot) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+			PRIVATE_DATA->fw_target_slot = WHEEL_SLOT_ITEM->number.value;
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
 			//pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			//EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
 			//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1786,16 +1786,17 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	}
 
 	/* Filter wheel detect */
-	CFWParams cfwp;
-	CFWResults *cfwr = &(private_data->cfw_info);
-	cfwp.cfwModel = CFWSEL_AUTO;
-	cfwp.cfwCommand = CFWC_GET_INFO;
-	cfwp.cfwParam1 = CFWG_FIRMWARE_VERSION;
+	CFWParams cfwp = {
+		.cfwModel = CFWSEL_AUTO,
+		.cfwCommand = CFWC_GET_INFO,
+		.cfwParam1 = CFWG_FIRMWARE_VERSION
+	};
+	CFWResults cfwr;
 
-	if ((res = sbig_command(CC_CFW, &cfwp, cfwr)) != CE_NO_ERROR) {
+	if ((res = sbig_command(CC_CFW, &cfwp, &cfwr)) != CE_NO_ERROR) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CC_GET_CCD_INFO error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res));
-	} else if (cfwr->cfwModel != 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d", cfwr->cfwModel, cfw_type[cfwr->cfwModel], cfwr->cfwPosition, cfwr->cfwResult2);
+	} else if (cfwr.cfwModel != 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d", cfwr.cfwModel, cfw_type[cfwr.cfwModel], cfwr.cfwPosition, cfwr.cfwResult2);
 		int slot = find_available_device_slot();
 		if (slot < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
@@ -1807,8 +1808,9 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		device = malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &wheel_template, sizeof(indigo_device));
-		sprintf(device->name, "SBIG %s #%s", cfw_type[cfwr->cfwModel], device_index_str);
+		sprintf(device->name, "SBIG %s #%s", cfw_type[cfwr.cfwModel], device_index_str);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+		private_data->fw_count = cfwr.cfwResult2;
 		device->private_data = private_data;
 		indigo_async((void *)(void *)indigo_attach_device, device);
 		devices[slot]=device;
