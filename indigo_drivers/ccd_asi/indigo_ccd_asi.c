@@ -83,6 +83,7 @@ typedef struct {
 	unsigned char *buffer;
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
+	long is_asi120;
 	bool can_check_temperature, has_temperature_sensor;
 	ASI_CAMERA_INFO info;
 	indigo_property *pixel_format_property;
@@ -201,6 +202,7 @@ static bool asi_open(indigo_device *device) {
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
 	}
+	PRIVATE_DATA->is_asi120 = strstr(PRIVATE_DATA->info.Name, "ASI120M") != NULL;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -270,6 +272,8 @@ static bool asi_read_pixels(indigo_device *device) {
 			return false;
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (PRIVATE_DATA->is_asi120)
+			usleep(150000);
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status);
