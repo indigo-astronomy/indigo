@@ -251,7 +251,7 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 static bool asi_read_pixels(indigo_device *device) {
 	ASI_ERROR_CODE res;
 	ASI_EXPOSURE_STATUS status;
-	int wait_cycles = 6000;    /* 6000*2000us = 12s */
+	int wait_cycles = 9000;    /* 9000*2000us = 18s */
 	status = ASI_EXP_WORKING;
 
 	/* wait for the exposure to complete */
