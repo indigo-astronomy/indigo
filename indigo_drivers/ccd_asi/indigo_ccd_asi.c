@@ -263,6 +263,7 @@ static bool asi_read_pixels(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		usleep(2000);
 	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME,"wait_cycles = %d", wait_cycles);
 	if(status == ASI_EXP_SUCCESS) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
