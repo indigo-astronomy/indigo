@@ -430,8 +430,6 @@ static int sbig_get_bin_mode(indigo_device *device, unsigned short *binning) {
 
 
 static int sbig_get_resolution(indigo_device *device, int bin_mode, int *width, int *height, double *pixel_width, double *pixel_height) {
-	if ((width == NULL) || (height == NULL)) return CE_BAD_PARAMETER;
-
 	GetCCDInfoResults0 *ccd_info;
 
 	if (PRIMARY_CCD) {
@@ -443,9 +441,10 @@ static int sbig_get_resolution(indigo_device *device, int bin_mode, int *width, 
 	for (int i = 0; i < ccd_info->readoutModes; i++) {
 		if (ccd_info->readoutInfo[i].mode == bin_mode) {
 			if (width) *width = ccd_info->readoutInfo[i].width;
-			if (height) *height = ccd_info->readoutInfo[i].width;
+			if (height) *height = ccd_info->readoutInfo[i].height;
 			if (pixel_width) *pixel_width = ccd_info->readoutInfo[i].pixelWidth;
 			if (pixel_height) *pixel_height = ccd_info->readoutInfo[i].pixelHeight;
+			if ((*width == 0) || (*height == 0)) return CE_BAD_PARAMETER;
 			return CE_NO_ERROR;
 		}
 	}
@@ -988,7 +987,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					}
 
 					//for (int mode = 0; mode < PRIVATE_DATA->imager_ccd_basic_info.readoutModes; mode++) {
-					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d. Mode = 0x%x %dx%d", mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].width, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].height));
+					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d. Mode = 0x%x %dx%d", mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].width, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].height);
 					//}
 
 					indigo_define_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
