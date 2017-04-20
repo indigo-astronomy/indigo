@@ -263,7 +263,6 @@ static bool asi_read_pixels(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		usleep(2000);
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME,"wait_cycles = %d", wait_cycles);
 	if(status == ASI_EXP_SUCCESS) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
@@ -392,7 +391,6 @@ static void streaming_timer_callback(indigo_device *device) {
 		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 		{ 0 }
 	};
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	int id = PRIVATE_DATA->dev_id;
 	int timeout = 1000 * (CCD_STREAMING_EXPOSURE_ITEM->number.value * 2 + 500);
 	ASI_ERROR_CODE res;
@@ -415,6 +413,7 @@ static void streaming_timer_callback(indigo_device *device) {
 				}
 				if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
 					CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+				CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			}
 			res = ASIStopVideoCapture(id);
@@ -428,6 +427,8 @@ static void streaming_timer_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res)
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	else
+		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
 

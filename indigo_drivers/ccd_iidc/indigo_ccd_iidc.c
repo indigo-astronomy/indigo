@@ -214,9 +214,12 @@ static void streaming_timer_callback(indigo_device *device) {
 		}
 		if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
 			CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	}
 	CCD_STREAMING_COUNT_ITEM->number.value = 0;
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
   stop_camera(device);
 }
