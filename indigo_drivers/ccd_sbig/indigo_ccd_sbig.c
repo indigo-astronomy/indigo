@@ -25,10 +25,7 @@
 
 // TODO:
 // 1. Handle ethernet disconnects.
-// 2. Binning and readout modes.
 // 3. Add external guider CCD support
-// 4. Add Focuser support
-// 5. Add AO support
 // 6. Add property to freeze TEC for readout
 
 #define DRIVER_VERSION 0x0001
@@ -129,8 +126,8 @@ typedef struct {
 
 	GetCCDInfoResults2 imager_ccd_extended_info1;
 
-	GetCCDInfoResults4 imager_ccd_extended_info2;
-	GetCCDInfoResults4 guider_ccd_extended_info2;
+	//GetCCDInfoResults4 imager_ccd_extended_info2;
+	//GetCCDInfoResults4 guider_ccd_extended_info2;
 
 	GetCCDInfoResults6 imager_ccd_extended_info6;
 
@@ -985,18 +982,42 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
 					}
 
-					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
-					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
-
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
 
 					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-					CCD_BIN_HORIZONTAL_ITEM->number.max = MAX_X_BIN;
 					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-					CCD_BIN_VERTICAL_ITEM->number.max = MAX_Y_BIN;
+
+					CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+					char name[32];
+					int count = 0;
+					int width, height, max_bin = 1;
+
+					if (sbig_get_resolution(device, RM_1X1, &width, &height, NULL, NULL) == CE_NO_ERROR) {
+						sprintf(name, "RAW 16 %dx%d", width, height);
+						indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+						count++;
+						max_bin = 1;
+					}
+					if (sbig_get_resolution(device, RM_2X2, &width, &height, NULL, NULL) == CE_NO_ERROR) {
+						sprintf(name, "RAW 16 %dx%d", width, height);
+						indigo_init_switch_item(CCD_MODE_ITEM+count, "BIN_2x2", name, false);
+						count++;
+						max_bin = 2;
+					}
+					if (sbig_get_resolution(device, RM_3X3, &width, &height, NULL, NULL) == CE_NO_ERROR) {
+						sprintf(name, "RAW 16 %dx%d", width, height);
+						indigo_init_switch_item(CCD_MODE_ITEM+count, "BIN_3x3", name, false);
+						count++;
+						max_bin = 3;
+					}
+					CCD_MODE_PROPERTY->count = count;
+					CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
+					CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
+					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
 
 					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 
@@ -1052,18 +1073,42 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					//INDIGO_DRIVER_ERROR("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
 
-					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
-					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
-
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
 
 					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-					CCD_BIN_HORIZONTAL_ITEM->number.max = MAX_X_BIN;
 					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-					CCD_BIN_VERTICAL_ITEM->number.max = MAX_Y_BIN;
+
+					CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+					char name[32];
+					int count = 0;
+					int width, height, max_bin = 1;
+
+					if (sbig_get_resolution(device, RM_1X1, &width, &height, NULL, NULL) == CE_NO_ERROR) {
+						sprintf(name, "RAW 16 %dx%d", width, height);
+						indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+						count++;
+						max_bin = 1;
+					}
+					if (sbig_get_resolution(device, RM_2X2, &width, &height, NULL, NULL) == CE_NO_ERROR) {
+						sprintf(name, "RAW 16 %dx%d", width, height);
+						indigo_init_switch_item(CCD_MODE_ITEM+count, "BIN_2x2", name, false);
+						count++;
+						max_bin = 2;
+					}
+					if (sbig_get_resolution(device, RM_3X3, &width, &height, NULL, NULL) == CE_NO_ERROR) {
+						sprintf(name, "RAW 16 %dx%d", width, height);
+						indigo_init_switch_item(CCD_MODE_ITEM+count, "BIN_3x3", name, false);
+						count++;
+						max_bin = 3;
+					}
+					CCD_MODE_PROPERTY->count = count;
+					CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
+					CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
+					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
 
 					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 
