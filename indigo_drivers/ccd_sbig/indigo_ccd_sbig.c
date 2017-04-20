@@ -24,9 +24,8 @@
  */
 
 // TODO:
-// 1. Handle ethernet disconnects.
-// 3. Add external guider CCD support
-// 6. Add property to freeze TEC for readout
+// 1. Add external guider CCD support
+
 
 #define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_ccd_sbig"
@@ -115,6 +114,7 @@ typedef struct {
 	indigo_timer *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	double cooler_power;
+	bool freeze_tec;
 
 	unsigned char *imager_buffer;
 	unsigned char *guider_buffer;
@@ -275,10 +275,10 @@ static int sbig_set_temperature(double t, bool enable) {
 	SetTemperatureRegulationParams2 strp2;
 	strp2.regulation = enable ? REGULATION_ON : REGULATION_OFF;
 	strp2.ccdSetpoint = t;
-	res = sbig_command(CC_SET_TEMPERATURE_REGULATION2, &strp2, 0);
+	res = sbig_command(CC_SET_TEMPERATURE_REGULATION2, &strp2, NULL);
 
 	if (res != CE_NO_ERROR) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_SET_TEMPERATURE_REGULATION error = %d (%s)", res, sbig_error_string(res));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_SET_TEMPERATURE_REGULATION2 error = %d (%s)", res, sbig_error_string(res));
 	}
 	return res ;
 }
@@ -308,6 +308,25 @@ static int sbig_get_temperature(bool *enabled, double *t, double *setpoint, doub
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_TEMPERATURE_STATUS error = %d (%s)", res, sbig_error_string(res));
 	}
 	return res;
+}
+
+
+static int sbig_freeze_tec(bool enable) {
+	int res;
+
+	bool cooler_on = false;
+	sbig_get_temperature(&cooler_on, NULL, NULL, NULL);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Freeze TEC: cooler_on = %d, enable = %d", cooler_on, enable);
+	if (!cooler_on) return CE_NO_ERROR;
+
+	SetTemperatureRegulationParams2 strp2;
+	strp2.regulation = enable ? REGULATION_FREEZE : REGULATION_UNFREEZE;
+	strp2.ccdSetpoint = 0;
+	res = sbig_command(CC_SET_TEMPERATURE_REGULATION2, &strp2, NULL);
+	if (res != CE_NO_ERROR) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_SET_TEMPERATURE_REGULATION2 freeze error = %d (%s)", res, sbig_error_string(res));
+	}
+	return res ;
 }
 
 
@@ -610,6 +629,11 @@ static bool sbig_read_pixels(indigo_device *device) {
 		return false;
 	}
 
+	/* freeze TEC if necessary */
+	if ((PRIMARY_CCD) && (PRIVATE_DATA->freeze_tec)) {
+		sbig_freeze_tec(true);
+	}
+
 	StartReadoutParams srp;
 	if (PRIMARY_CCD) {
 		frame_buffer = PRIVATE_DATA->imager_buffer + FITS_HEADER_SIZE;
@@ -633,6 +657,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 	EndExposureParams eep = {
 		.ccd = srp.ccd
 	};
+
 	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
 	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_END_EXPOSURE error = %d (%s)", res, sbig_error_string(res));
@@ -666,6 +691,11 @@ static bool sbig_read_pixels(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_END_READOUT error = %d (%s)", res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
+	}
+
+	/* Unfreeze tec */
+	if (PRIMARY_CCD) {
+		sbig_freeze_tec(false);
 	}
 
 	pthread_mutex_unlock(&driver_mutex);
@@ -878,7 +908,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if ((device == PRIVATE_DATA->primary_ccd) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
 		INFO_PROPERTY->count = 7; 	/* Use all info property fields */
 
-		SBIG_FREEZE_TEC_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_FREEZE_TEC", SBIG_ADVANCED_GROUP,"Freeze TEC during readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		SBIG_FREEZE_TEC_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_FREEZE_TEC", SBIG_ADVANCED_GROUP,"Freeze TEC during readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SBIG_FREEZE_TEC_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -886,7 +916,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		indigo_init_switch_item(SBIG_FREEZE_TEC_OFF_ITEM, "SBIG_FREEZE_TEC_OFF", "Off", true);
 		indigo_init_switch_item(SBIG_FREEZE_TEC_ON_ITEM, "SBIG_FREEZE_TEC_ON", "On", false);
-		indigo_init_switch_item(SBIG_FREEZE_TEC_AUTO_ITEM, "SBIG_FREEZE_TEC_AUTO", "Auto", false);
 
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	} else if ((device != PRIVATE_DATA->primary_ccd) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
@@ -1227,7 +1256,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if ((PRIMARY_CCD) && (indigo_property_match(SBIG_FREEZE_TEC_PROPERTY, property))) {
 		indigo_property_copy_values(SBIG_FREEZE_TEC_PROPERTY, property, false);
 		SBIG_FREEZE_TEC_PROPERTY->state = INDIGO_OK_STATE;
-		/* TODO */
+		if (SBIG_FREEZE_TEC_ON_ITEM->sw.value) {
+			PRIVATE_DATA->freeze_tec = true;
+		} else {
+			PRIVATE_DATA->freeze_tec = false;
+		}
 		indigo_update_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CONFIG
