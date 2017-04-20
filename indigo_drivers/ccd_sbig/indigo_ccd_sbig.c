@@ -69,8 +69,6 @@
 
 #define MAX_CCD_TEMP         45     /* Max CCD temperature */
 #define MIN_CCD_TEMP       (-55)    /* Min CCD temperature */
-#define MAX_X_BIN             3     /* Max Horizontal binning */
-#define MAX_Y_BIN             3     /* Max Vertical binning */
 
 #define DEFAULT_BPP          16     /* Default bits per pixel */
 
@@ -91,10 +89,10 @@
 
 #define SBIG_ADVANCED_GROUP              "Advanced"
 
-/*
-#define FLI_NFLUSHES_PROPERTY           (PRIVATE_DATA->fli_nflushes_property)
-#define FLI_NFLUSHES_PROPERTY_ITEM      (FLI_NFLUSHES_PROPERTY->items + 0)
-*/
+#define SBIG_FREEZE_TEC_PROPERTY           (PRIVATE_DATA->sbig_freeze_tec_property)
+#define SBIG_FREEZE_TEC_OFF_ITEM           (SBIG_FREEZE_TEC_PROPERTY->items + 0)
+#define SBIG_FREEZE_TEC_ON_ITEM            (SBIG_FREEZE_TEC_PROPERTY->items + 1)
+#define SBIG_FREEZE_TEC_AUTO_ITEM          (SBIG_FREEZE_TEC_PROPERTY->items + 2)
 
 
 // -------------------------------------------------------------------------------- SBIG USB interface implementation
@@ -143,7 +141,7 @@ typedef struct {
 	int fw_count;
 	int fw_current_slot;
 	int fw_target_slot;
-	/* indigo_property *some_sbig_property; */
+	indigo_property *sbig_freeze_tec_property;
 } sbig_private_data;
 
 static pthread_mutex_t driver_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -386,9 +384,9 @@ static ushort sbig_set_relays(short handle, ushort relays) {
 /* indigo CAMERA functions */
 
 static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if ((CONNECTION_CONNECTED_ITEM->sw.value) && (device == PRIVATE_DATA->primary_ccd)) {
-		/* if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property))
-			indigo_define_property(device, FLI_NFLUSHES_PROPERTY, NULL); */
+	if ((CONNECTION_CONNECTED_ITEM->sw.value) && (PRIMARY_CCD)) {
+		if (indigo_property_match(SBIG_FREEZE_TEC_PROPERTY, property))
+			indigo_define_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -879,6 +877,17 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if ((device == PRIVATE_DATA->primary_ccd) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
 		INFO_PROPERTY->count = 7; 	/* Use all info property fields */
+
+		SBIG_FREEZE_TEC_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_FREEZE_TEC", SBIG_ADVANCED_GROUP,"Freeze TEC during readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (SBIG_FREEZE_TEC_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		SBIG_FREEZE_TEC_PROPERTY->hidden = false;
+
+		indigo_init_switch_item(SBIG_FREEZE_TEC_OFF_ITEM, "SBIG_FREEZE_TEC_OFF", "Off", true);
+		indigo_init_switch_item(SBIG_FREEZE_TEC_ON_ITEM, "SBIG_FREEZE_TEC_ON", "On", false);
+		indigo_init_switch_item(SBIG_FREEZE_TEC_AUTO_ITEM, "SBIG_FREEZE_TEC_AUTO", "Auto", false);
+
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	} else if ((device != PRIVATE_DATA->primary_ccd) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -952,6 +961,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					//for (int mode = 0; mode < PRIVATE_DATA->imager_ccd_basic_info.readoutModes; mode++) {
 					//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d. Mode = 0x%x %dx%d", mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].mode, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].width, PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[mode].height));
 					//}
+
+					indigo_define_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
+
 					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].width;
 					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].height;
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
@@ -973,8 +985,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_ccd_extended_info1.serialNumber, INDIGO_VALUE_SIZE);
 
 					indigo_update_property(device, INFO_PROPERTY, NULL);
-
-					//INDIGO_DRIVER_ERROR("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
 
 					cip.request = CCD_INFO_EXTENDED3; /* imaging CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_extended_info6));
@@ -1071,8 +1081,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
-					//INDIGO_DRIVER_ERROR("indigo_ccd_fli: FLIGetPixelSize(%d) = %f %f", id, size_x, size_y));
-
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
@@ -1142,6 +1150,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			if (PRIMARY_CCD) {
 				PRIVATE_DATA->imager_no_check_temperature = false;
+				indigo_delete_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
 				indigo_cancel_timer(device, &PRIVATE_DATA->imager_ccd_temperature_timer);
 				if (PRIVATE_DATA->imager_buffer != NULL) {
 					free(PRIVATE_DATA->imager_buffer);
@@ -1205,7 +1214,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
 		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
-		/* FLISetBitDepth() does not seem to work so this should be always 16 bits */
 		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12.0) {
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8.0;
 		} else {
@@ -1215,10 +1223,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- FREEZE TEC
+	} else if ((PRIMARY_CCD) && (indigo_property_match(SBIG_FREEZE_TEC_PROPERTY, property))) {
+		indigo_property_copy_values(SBIG_FREEZE_TEC_PROPERTY, property, false);
+		SBIG_FREEZE_TEC_PROPERTY->state = INDIGO_OK_STATE;
+		/* TODO */
+		indigo_update_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			/* indigo_save_property(device, NULL, FLI_NFLUSHES_PROPERTY); */
+			indigo_save_property(device, NULL, SBIG_FREEZE_TEC_PROPERTY);
 		}
 	}
 	// -----------------------------------------------------------------------------
@@ -1233,8 +1248,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
 
-	if (device == PRIVATE_DATA->primary_ccd) {
-		/* indigo_release_property(FLI_NFLUSHES_PROPERTY); */
+	if (PRIMARY_CCD) {
+		indigo_release_property(SBIG_FREEZE_TEC_PROPERTY);
 	}
 
 	return indigo_ccd_detach(device);
