@@ -523,12 +523,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 							err = dc1394_video_set_iso_speed(camera, DC1394_ISO_SPEED_400);
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_iso_speed(DC1394_ISO_SPEED_400) -> %s", dc1394_error_get_string(err));
 						}
-						if (indigo_debug_level) {
-							INDIGO_DEBUG_DRIVER(dc1394_camera_print_info(camera, stderr));
-							INDIGO_DEBUG_DRIVER(dc1394featureset_t features);
-							INDIGO_DEBUG_DRIVER(dc1394_feature_get_all(camera, &features));
-							INDIGO_DEBUG_DRIVER(dc1394_feature_print_all(&features, stderr));
-						}
+						INDIGO_DEBUG_DRIVER(dc1394_camera_print_info(camera, stderr));
+						INDIGO_DEBUG_DRIVER(dc1394featureset_t features);
+						INDIGO_DEBUG_DRIVER(dc1394_feature_get_all(camera, &features));
+						INDIGO_DEBUG_DRIVER(dc1394_feature_print_all(&features, stderr));
+
 						iidc_private_data *private_data = malloc(sizeof(iidc_private_data));
 						assert(private_data != NULL);
 						memset(private_data, 0, sizeof(iidc_private_data));

@@ -84,13 +84,7 @@ char *indigo_switch_rule_text[] = {
 
 indigo_property INDIGO_ALL_PROPERTIES;
 
-/* LOG level is initially set.
-   This is to restore the proper state of LOG level when disabling DEBUG level. */
-static bool indigo_log_level_set = false;
-
-bool indigo_log_level = false;
-bool indigo_debug_level = false;
-bool indigo_trace_level = false;
+static indigo_log_levels indigo_log_level = INDIGO_LOG_ERROR;
 bool indigo_use_syslog = false;
 
 void (*indigo_log_message_handler)(const char *message) = NULL;
@@ -170,7 +164,7 @@ void indigo_error(const char *format, ...) {
 }
 
 void indigo_log(const char *format, ...) {
-	if (indigo_log_level) {
+	if (indigo_log_level >= INDIGO_LOG_INFO) {
 		va_list argList;
 		va_start(argList, format);
 		log_message(format, argList);
@@ -179,7 +173,7 @@ void indigo_log(const char *format, ...) {
 }
 
 void indigo_trace(const char *format, ...) {
-	if (indigo_trace_level) {
+	if (indigo_log_level >= INDIGO_LOG_TRACE) {
 		va_list argList;
 		va_start(argList, format);
 		log_message(format, argList);
@@ -188,7 +182,7 @@ void indigo_trace(const char *format, ...) {
 }
 
 void indigo_debug(const char *format, ...) {
-	if (indigo_debug_level) {
+	if (indigo_log_level >= INDIGO_LOG_DEBUG) {
 		va_list argList;
 		va_start(argList, format);
 		log_message(format, argList);
@@ -196,13 +190,12 @@ void indigo_debug(const char *format, ...) {
 	}
 }
 
-void indigo_enable_debug_level(bool enable) {
-	indigo_log_level = indigo_debug_level = enable;
-	if (!enable) indigo_log_level = indigo_log_level_set;
+void indigo_set_log_level(indigo_log_levels level) {
+	indigo_log_level = level;
 }
 
 void indigo_trace_property(const char *message, indigo_property *property, bool defs, bool items) {
-	if (indigo_trace_level) {
+	if (indigo_log_level >= INDIGO_LOG_TRACE) {
 		if (message != NULL)
 			indigo_trace(message);
 		if (defs)
@@ -253,11 +246,11 @@ void indigo_trace_property(const char *message, indigo_property *property, bool 
 indigo_result indigo_start() {
 	for (int i = 1; i < indigo_main_argc; i++) {
 		if (!strcmp(indigo_main_argv[i], "-v") || !strcmp(indigo_main_argv[i], "--enable-log")) {
-			indigo_log_level_set = indigo_log_level = true;
+			indigo_log_level = INDIGO_LOG_INFO;
 		} else if (!strcmp(indigo_main_argv[i], "-vv") || !strcmp(indigo_main_argv[i], "--enable-debug")) {
-			indigo_log_level_set = indigo_log_level = indigo_debug_level = true;
+			indigo_log_level = INDIGO_LOG_DEBUG;
 		} else if (!strcmp(indigo_main_argv[i], "-vvv") || !strcmp(indigo_main_argv[i], "--enable-trace")) {
-			indigo_log_level_set = indigo_log_level = indigo_debug_level = indigo_trace_level = true;
+			indigo_log_level = INDIGO_LOG_TRACE;
 		}
 	}
 	pthread_mutex_lock(&client_mutex);
