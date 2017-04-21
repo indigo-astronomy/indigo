@@ -1697,7 +1697,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 					cfwr.cfwPosition = 1;
 				}
 
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_QUERY at connect cfwr.cfwPosition = %d", cfwr.cfwPosition);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_QUERY at connect cfwr.cfwPosition = %d", cfwr.cfwPosition);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				pthread_mutex_unlock(&driver_mutex);
 				PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
