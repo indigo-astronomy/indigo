@@ -64,19 +64,6 @@
 #define INFO_DEVICE_SERIAL_NUM_ITEM_NAME			"DEVICE_SERIAL_NUMBER"
 
 //----------------------------------------------------------------------
-/** DEBUG property name.
- */
-#define DEBUG_PROPERTY_NAME										"DEBUG"
-
-/** DEBUG.ENABLED property item name.
- */
-#define DEBUG_ENABLED_ITEM_NAME								"ENABLED"
-
-/** DEBUG.DISABLED property item name.
- */
-#define DEBUG_DISABLED_ITEM_NAME							"DISABLED"
-
-//----------------------------------------------------------------------
 /** SIMULATION property name.
  */
 #define SIMULATION_PROPERTY_NAME							"SIMULATION"

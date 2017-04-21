@@ -105,18 +105,6 @@ extern "C" {
  */
 #define INFO_FRAMEWORK_VERSION_ITEM   (INFO_PROPERTY->items+4)
 
-/** DEBUG property pointer.
- */
-#define DEBUG_PROPERTY                (DEVICE_CONTEXT->debug_property)
-
-/** DEBUG.ENABLED property item pointer, property is optional.
- */
-#define DEBUG_ENABLED_ITEM            (DEBUG_PROPERTY->items+0)
-
-/** DEBUG.DISABLED property item pointer.
- */
-#define DEBUG_DISABLED_ITEM           (DEBUG_PROPERTY->items+1)
-
 /** SIMULATION property pointer, property is optional.
  */
 #define SIMULATION_PROPERTY           (DEVICE_CONTEXT->simulation_property)
@@ -207,7 +195,6 @@ typedef struct {
 	indigo_timer *timers;											///< active timer list
 	indigo_property *connection_property;     ///< CONNECTION property pointer
 	indigo_property *info_property;           ///< INFO property pointer
-	indigo_property *debug_property;          ///< DEBUG property pointer
 	indigo_property *simulation_property;     ///< SIMULATION property pointer
 	indigo_property *congfiguration_property; ///< CONFIGURATION property pointer
 	indigo_property *device_port_property;		///< DEVICE_PORT property pointer
