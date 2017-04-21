@@ -101,6 +101,10 @@ static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 static char servicename[INDIGO_NAME_SIZE] = "";
 
+#define LOG_LEVEL_ERROR_ITEM        (log_level_property->items + 0)
+#define LOG_LEVEL_INFO_ITEM         (log_level_property->items + 1)
+#define LOG_LEVEL_DEBUG_ITEM        (log_level_property->items + 2)
+#define LOG_LEVEL_TRACE_ITEM        (log_level_property->items + 3)
 
 static pid_t server_pid = 0;
 static bool keep_server_running = true;
@@ -202,31 +206,24 @@ static indigo_result attach(indigo_device *device) {
 	restart_property = indigo_init_switch_property(NULL, server_device.name, "RESTART", "Main", "Restart", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	indigo_init_switch_item(restart_property->items, "RESTART", "Restart server", false);
 	log_level_property = indigo_init_switch_property(NULL, device->name, "LOG_LEVEL", MAIN_GROUP, "Log level", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+	indigo_init_switch_item(&log_level_property->items[0], "ERROR", "Error", false);
+	indigo_init_switch_item(&log_level_property->items[1], "INFO", "Info", false);
+	indigo_init_switch_item(&log_level_property->items[2], "DEBUG", "Debug", false);
+	indigo_init_switch_item(&log_level_property->items[3], "TRACE", "Trace", false);
+
 	indigo_log_levels log_level = indigo_get_log_level();
 	switch (log_level) {
 		case INDIGO_LOG_ERROR:
-			indigo_init_switch_item(&log_level_property->items[0], "ERROR", "Error", true);
-			indigo_init_switch_item(&log_level_property->items[1], "INFO", "Info", false);
-			indigo_init_switch_item(&log_level_property->items[2], "DEBUG", "Debug", false);
-			indigo_init_switch_item(&log_level_property->items[3], "TRACE", "Trace", false);
+			LOG_LEVEL_ERROR_ITEM->sw.value = true;
 			break;
 		case INDIGO_LOG_INFO:
-			indigo_init_switch_item(&log_level_property->items[0], "ERROR", "Error", false);
-			indigo_init_switch_item(&log_level_property->items[1], "INFO", "Info", true);
-			indigo_init_switch_item(&log_level_property->items[2], "DEBUG", "Debug", false);
-			indigo_init_switch_item(&log_level_property->items[3], "TRACE", "Trace", false);
+			LOG_LEVEL_INFO_ITEM->sw.value = true;
 			break;
 		case INDIGO_LOG_DEBUG:
-			indigo_init_switch_item(&log_level_property->items[0], "ERROR", "Error", false);
-			indigo_init_switch_item(&log_level_property->items[1], "INFO", "Info", false);
-			indigo_init_switch_item(&log_level_property->items[2], "DEBUG", "Debug", true);
-			indigo_init_switch_item(&log_level_property->items[3], "TRACE", "Trace", false);
+			LOG_LEVEL_DEBUG_ITEM->sw.value = true;
 			break;
 		case INDIGO_LOG_TRACE:
-			indigo_init_switch_item(&log_level_property->items[0], "ERROR", "Error", false);
-			indigo_init_switch_item(&log_level_property->items[1], "INFO", "Info", false);
-			indigo_init_switch_item(&log_level_property->items[2], "DEBUG", "Debug", false);
-			indigo_init_switch_item(&log_level_property->items[3], "TRACE", "Trace", true);
+			LOG_LEVEL_TRACE_ITEM->sw.value = true;
 			break;
 	}
 	if (indigo_load_properties(device, false) == INDIGO_FAILED)
