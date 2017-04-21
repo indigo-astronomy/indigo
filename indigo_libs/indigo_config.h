@@ -32,7 +32,7 @@
 
 /** Conditional compilation wrapper for TRACE log level
  */
-#define INDIGO_TRACE(c)
+#define INDIGO_TRACE(c) c
 
 /** Conditional compilation wrapper for DEBUG log level
  */
@@ -63,4 +63,3 @@
 #define INDIGO_DEBUG_DRIVER(c) c
 
 #endif /* indigo_config_h */
-
