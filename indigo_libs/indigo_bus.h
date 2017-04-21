@@ -131,6 +131,13 @@ typedef enum {
 	INDIGO_ENABLE_BLOB_URL
 } indigo_enable_blob;
 
+typedef enum {
+	INDIGO_LOG_ERROR,
+	INDIGO_LOG_INFO,
+	INDIGO_LOG_DEBUG,
+	INDIGO_LOG_TRACE
+} indigo_log_levels;
+
 /** Property item definition.
  */
 typedef struct {
@@ -282,10 +289,9 @@ extern void indigo_trace_property(const char *message, indigo_property *property
  */
 extern indigo_result indigo_start();
 
-/** Enable or disable debug level
- Taking in to account the initial LOG level.
+/** Set log level; see enum indigo_log_levels
 */
-extern void indigo_enable_debug_level(bool enable);
+extern void indigo_set_log_level(indigo_log_levels level);
 
 /** Attach device to bus.
  Return value of attach() callback function is assigned to last_result in device structure.
@@ -435,18 +441,6 @@ extern int indigo_main_argc;
 /** Variable used to store main() argv argument for loging purposes.
  */
 extern const char **indigo_main_argv;
-
-/** Show log messages.
- */
-extern bool indigo_log_level;
-
-/** Show debug messages.
- */
-extern bool indigo_debug_level;
-
-/** Show trace messages.
- */
-extern bool indigo_trace_level;
 
 /** Send logging messages to syslog instead of stderr.
  */
