@@ -158,12 +158,6 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		indigo_init_text_item(INFO_DEVICE_SERIAL_NUM_ITEM, INFO_DEVICE_SERIAL_NUM_ITEM_NAME, "Serial No.", "N/A");
 		/* Decrease count as other items are rare if you need them just set count to 7 in the dirver */
 		INFO_PROPERTY->count = 3;
-		// -------------------------------------------------------------------------------- DEBUG
-		DEBUG_PROPERTY = indigo_init_switch_property(NULL, device->name, DEBUG_PROPERTY_NAME, MAIN_GROUP, "Debug status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (DEBUG_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_switch_item(DEBUG_ENABLED_ITEM, DEBUG_ENABLED_ITEM_NAME, "Enabled", false);
-		indigo_init_switch_item(DEBUG_DISABLED_ITEM, DEBUG_DISABLED_ITEM_NAME, "Disabled", true);
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SIMULATION_PROPERTY_NAME, MAIN_GROUP, "Simulation status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SIMULATION_PROPERTY == NULL)
@@ -202,8 +196,6 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
 		indigo_define_property(device, CONNECTION_PROPERTY, NULL);
 	if (indigo_property_match(INFO_PROPERTY, property) && !INFO_PROPERTY->hidden)
 		indigo_define_property(device, INFO_PROPERTY, NULL);
-	if (indigo_property_match(DEBUG_PROPERTY, property) && !DEBUG_PROPERTY->hidden)
-		indigo_define_property(device, DEBUG_PROPERTY, NULL);
 	if (indigo_property_match(SIMULATION_PROPERTY, property) && !SIMULATION_PROPERTY->hidden)
 		indigo_define_property(device, SIMULATION_PROPERTY, NULL);
 	if (indigo_property_match(CONFIG_PROPERTY, property) && !CONFIG_PROPERTY->hidden)
@@ -222,12 +214,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-	} else if (indigo_property_match(DEBUG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DEBUG
-		indigo_property_copy_values(DEBUG_PROPERTY, property, false);
-		DEBUG_PROPERTY->state = INDIGO_OK_STATE;
-		//indigo_enable_debug_level(DEBUG_ENABLED_ITEM->sw.value);
-		indigo_update_property(device, DEBUG_PROPERTY, NULL);
 	} else if (indigo_property_match(SIMULATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		indigo_property_copy_values(SIMULATION_PROPERTY, property, false);
@@ -242,7 +228,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 				CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 			CONFIG_LOAD_ITEM->sw.value = false;
 		} else if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, DEBUG_PROPERTY);
 			indigo_save_property(device, NULL, SIMULATION_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			if (DEVICE_CONTEXT->property_save_file_handle) {
@@ -306,7 +291,6 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(INFO_PROPERTY);
 	indigo_release_property(DEVICE_PORT_PROPERTY);
 	indigo_release_property(DEVICE_PORTS_PROPERTY);
-	indigo_release_property(DEBUG_PROPERTY);
 	indigo_release_property(SIMULATION_PROPERTY);
 	indigo_release_property(CONFIG_PROPERTY);
 	indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
