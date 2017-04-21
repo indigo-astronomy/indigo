@@ -293,6 +293,10 @@ extern indigo_result indigo_start();
 */
 extern void indigo_set_log_level(indigo_log_levels level);
 
+/** Get log level; see enum indigo_log_levels
+ */
+extern indigo_log_levels indigo_get_log_level();
+	
 /** Attach device to bus.
  Return value of attach() callback function is assigned to last_result in device structure.
  */
