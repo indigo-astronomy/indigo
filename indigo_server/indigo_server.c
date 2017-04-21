@@ -96,6 +96,7 @@ static indigo_property *servers_property;
 static indigo_property *load_property;
 static indigo_property *unload_property;
 static indigo_property *restart_property;
+static indigo_property *log_level_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 static char servicename[INDIGO_NAME_SIZE] = "";
@@ -200,6 +201,11 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_text_item(&unload_property->items[0], "DRIVER", "Unload driver", "");
 	restart_property = indigo_init_switch_property(NULL, server_device.name, "RESTART", "Main", "Restart", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	indigo_init_switch_item(restart_property->items, "RESTART", "Restart server", false);
+	log_level_property = indigo_init_switch_property(NULL, device->name, "LOG_LEVEL", MAIN_GROUP, "Log level", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+	indigo_init_switch_item(&log_level_property->items[0], "ERROR", "Error", true);
+	indigo_init_switch_item(&log_level_property->items[1], "INFO", "Info", false);
+	indigo_init_switch_item(&log_level_property->items[2], "DEBUG", "Debug", false);
+	indigo_init_switch_item(&log_level_property->items[3], "TRACE", "Trace", false);
 	if (indigo_load_properties(device, false) == INDIGO_FAILED)
 		change_property(device, NULL, drivers_property);
 	INDIGO_LOG(indigo_log("%s attached", device->name));
@@ -214,6 +220,7 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	indigo_define_property(device, load_property, NULL);
 	indigo_define_property(device, unload_property, NULL);
 	indigo_define_property(device, restart_property, NULL);
+	indigo_define_property(device, log_level_property, NULL);
 	return INDIGO_OK;
 }
 
@@ -289,6 +296,20 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 			INDIGO_LOG(indigo_log("Restarting..."));
 			indigo_server_shutdown();
 		}
+	} else if (indigo_property_match(log_level_property, property)) {
+		// -------------------------------------------------------------------------------- LOG_LEVEL
+		indigo_property_copy_values(log_level_property, property, false);
+		if (log_level_property->items[0].sw.value) {
+			indigo_set_log_level(INDIGO_LOG_ERROR);
+		} else if (log_level_property->items[1].sw.value) {
+			indigo_set_log_level(INDIGO_LOG_INFO);
+		} else if (log_level_property->items[2].sw.value) {
+			indigo_set_log_level(INDIGO_LOG_DEBUG);
+		} else if (log_level_property->items[3].sw.value) {
+			indigo_set_log_level(INDIGO_LOG_TRACE);
+		}
+		log_level_property->state = INDIGO_OK_STATE;
+		indigo_update_property(device, log_level_property, NULL);
 	// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -301,6 +322,7 @@ static indigo_result detach(indigo_device *device) {
 		indigo_delete_property(device, servers_property, NULL);
 	indigo_delete_property(device, load_property, NULL);
 	indigo_delete_property(device, unload_property, NULL);
+	indigo_delete_property(device, log_level_property, NULL);
 	INDIGO_LOG(indigo_log("%s detached", device->name));
 	return INDIGO_OK;
 }

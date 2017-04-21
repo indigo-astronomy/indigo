@@ -194,6 +194,10 @@ void indigo_set_log_level(indigo_log_levels level) {
 	indigo_log_level = level;
 }
 
+indigo_log_levels indigo_get_log_level() {
+	return indigo_log_level;
+}
+
 void indigo_trace_property(const char *message, indigo_property *property, bool defs, bool items) {
 	if (indigo_log_level >= INDIGO_LOG_TRACE) {
 		if (message != NULL)
