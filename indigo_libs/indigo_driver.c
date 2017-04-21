@@ -162,8 +162,8 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		DEBUG_PROPERTY = indigo_init_switch_property(NULL, device->name, DEBUG_PROPERTY_NAME, MAIN_GROUP, "Debug status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (DEBUG_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(DEBUG_ENABLED_ITEM, DEBUG_ENABLED_ITEM_NAME, "Enabled", false);
-		indigo_init_switch_item(DEBUG_DISABLED_ITEM, DEBUG_DISABLED_ITEM_NAME, "Disabled", true);
+		indigo_init_switch_item(DEBUG_ENABLED_ITEM, DEBUG_ENABLED_ITEM_NAME, "Enabled", indigo_debug_level);
+		indigo_init_switch_item(DEBUG_DISABLED_ITEM, DEBUG_DISABLED_ITEM_NAME, "Disabled", !indigo_debug_level);
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SIMULATION_PROPERTY_NAME, MAIN_GROUP, "Simulation status", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SIMULATION_PROPERTY == NULL)
@@ -227,7 +227,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- DEBUG
 		indigo_property_copy_values(DEBUG_PROPERTY, property, false);
 		DEBUG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_log_level = indigo_debug_level = DEBUG_ENABLED_ITEM->sw.value;
+		indigo_enable_debug_level(DEBUG_ENABLED_ITEM->sw.value);
 		indigo_update_property(device, DEBUG_PROPERTY, NULL);
 	} else if (indigo_property_match(SIMULATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SIMULATION
