@@ -282,6 +282,11 @@ extern void indigo_trace_property(const char *message, indigo_property *property
  */
 extern indigo_result indigo_start();
 
+/** Enable or disable debug level
+ Taking in to account the initial LOG level.
+*/
+extern void indigo_enable_debug_level(bool enable);
+
 /** Attach device to bus.
  Return value of attach() callback function is assigned to last_result in device structure.
  */
