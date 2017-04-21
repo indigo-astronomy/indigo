@@ -46,12 +46,6 @@ static struct property_mapping legacy[] = {
 			NULL
 		}
 	},
-	{	"DEBUG", DEBUG_PROPERTY_NAME, {
-			{ "ENABLE", DEBUG_ENABLED_ITEM_NAME },
-			{ "DISABLE", DEBUG_DISABLED_ITEM_NAME },
-			NULL
-		}
-	},
 	{	"SIMULATION", SIMULATION_PROPERTY_NAME, {
 			{ "ENABLE", SIMULATION_ENABLED_ITEM_NAME },
 			{ "DISABLE", SIMULATION_DISABLED_ITEM_NAME },
@@ -374,5 +368,3 @@ const char *indigo_item_name(indigo_version version, indigo_property *property, 
 	}
 	return item->name;
 }
-
-
