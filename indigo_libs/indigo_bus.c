@@ -249,7 +249,7 @@ void indigo_trace_property(const char *message, indigo_property *property, bool 
 
 indigo_result indigo_start() {
 	for (int i = 1; i < indigo_main_argc; i++) {
-		if (!strcmp(indigo_main_argv[i], "-v") || !strcmp(indigo_main_argv[i], "--enable-log")) {
+		if (!strcmp(indigo_main_argv[i], "-v") || !strcmp(indigo_main_argv[i], "--enable-info")) {
 			indigo_log_level = INDIGO_LOG_INFO;
 		} else if (!strcmp(indigo_main_argv[i], "-vv") || !strcmp(indigo_main_argv[i], "--enable-debug")) {
 			indigo_log_level = INDIGO_LOG_DEBUG;
