@@ -110,7 +110,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	libqhy_debug_level = DEBUG_ENABLED_ITEM->sw.value;
+	libqhy_debug_level = (indigo_get_log_level() >= INDIGO_LOG_DEBUG);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -210,7 +210,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	libqhy_debug_level = DEBUG_ENABLED_ITEM->sw.value;
+	libqhy_debug_level = (indigo_get_log_level() >= INDIGO_LOG_DEBUG);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -390,5 +390,3 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 
 	return INDIGO_OK;
 }
-
-

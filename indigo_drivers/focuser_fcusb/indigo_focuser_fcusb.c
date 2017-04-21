@@ -106,7 +106,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	libfcusb_debug_level = DEBUG_ENABLED_ITEM->sw.value;
+	libfcusb_debug_level = (indigo_get_log_level() >= INDIGO_LOG_DEBUG);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
