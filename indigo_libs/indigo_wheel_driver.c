@@ -38,7 +38,6 @@
 
 indigo_result indigo_wheel_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);
-	assert(device != NULL);
 	if (WHEEL_CONTEXT == NULL) {
 		device->device_context = malloc(sizeof(indigo_wheel_context));
 		assert(device->device_context);
@@ -119,4 +118,3 @@ indigo_result indigo_wheel_detach(indigo_device *device) {
 	indigo_release_property(WHEEL_SLOT_NAME_PROPERTY);
 	return indigo_device_detach(device);
 }
-
