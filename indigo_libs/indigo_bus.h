@@ -273,9 +273,9 @@ extern void indigo_error(const char *format, ...);
  */
 extern void indigo_log(const char *format, ...);
 
-/** Print diagnostic message on debug level with property value, full property definition and items dump can be requested.
+/** Print diagnostic message on trace level with property value, full property definition and items dump can be requested.
  */
-extern void indigo_debug_property(const char *message, indigo_property *property, bool defs, bool items);
+extern void indigo_trace_property(const char *message, indigo_property *property, bool defs, bool items);
 
 /** Start bus operation.
  Call has no effect, if bus is already started.
@@ -375,8 +375,8 @@ extern void indigo_init_light_item(indigo_item *item, const char *name, const ch
  */
 extern void indigo_init_blob_item(indigo_item *item, const char *name, const char *label);
 
-/** populate BLOB item if url is given. 
- */ 
+/** populate BLOB item if url is given.
+ */
 extern bool indigo_populate_http_blob_item(indigo_item *blob_item);
 
 /** Test, if property matches other property.
@@ -456,4 +456,3 @@ extern bool indigo_use_host_suffix;
 #endif
 
 #endif /* indigo_bus_h */
-

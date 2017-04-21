@@ -192,52 +192,52 @@ void indigo_debug(const char *format, ...) {
 	}
 }
 
-void indigo_debug_property(const char *message, indigo_property *property, bool defs, bool items) {
-	if (indigo_debug_level) {
+void indigo_trace_property(const char *message, indigo_property *property, bool defs, bool items) {
+	if (indigo_trace_level) {
 		if (message != NULL)
-			indigo_debug(message);
+			indigo_trace(message);
 		if (defs)
-			indigo_debug("'%s'.'%s' %s %s %s %d.%d %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
+			indigo_trace("'%s'.'%s' %s %s %s %d.%d %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
 		else
-			indigo_debug("'%s'.'%s' %s %s %s %d.%d %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
+			indigo_trace("'%s'.'%s' %s %s %s %d.%d %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
 		if (items) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
 				switch (property->type) {
 				case INDIGO_TEXT_VECTOR:
 					if (defs)
-						indigo_debug("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
+						indigo_trace("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
 					else
-						indigo_debug("  '%s' = '%s' ",item->name, item->text.value);
+						indigo_trace("  '%s' = '%s' ",item->name, item->text.value);
 					break;
 				case INDIGO_NUMBER_VECTOR:
 					if (defs)
-						indigo_debug("  '%s' = %g (%g, %g, %g) // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->label);
+						indigo_trace("  '%s' = %g (%g, %g, %g) // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->label);
 					else
-						indigo_debug("  '%s' = %g ",item->name, item->number.value);
+						indigo_trace("  '%s' = %g ",item->name, item->number.value);
 					break;
 				case INDIGO_SWITCH_VECTOR:
 					if (defs)
-						indigo_debug("  '%s' = %s // %s", item->name, (item->sw.value ? "On" : "Off"), item->label);
+						indigo_trace("  '%s' = %s // %s", item->name, (item->sw.value ? "On" : "Off"), item->label);
 					else
-						indigo_debug("  '%s' = %s ",item->name, (item->sw.value ? "On" : "Off"));
+						indigo_trace("  '%s' = %s ",item->name, (item->sw.value ? "On" : "Off"));
 					break;
 				case INDIGO_LIGHT_VECTOR:
 					if (defs)
-						indigo_debug("  '%s' = %s // %s", item->name, indigo_property_state_text[item->light.value], item->label);
+						indigo_trace("  '%s' = %s // %s", item->name, indigo_property_state_text[item->light.value], item->label);
 					else
-						indigo_debug("  '%s' = %s ",item->name, indigo_property_state_text[item->light.value]);
+						indigo_trace("  '%s' = %s ",item->name, indigo_property_state_text[item->light.value]);
 					break;
 				case INDIGO_BLOB_VECTOR:
 					if (defs)
-						indigo_debug("  '%s' // %s", item->name, item->label);
+						indigo_trace("  '%s' // %s", item->name, item->label);
 					else
-						indigo_debug("  '%s' (%ld bytes, '%s', '%s')",item->name, item->blob.size, item->blob.format, item->blob.url);
+						indigo_trace("  '%s' (%ld bytes, '%s', '%s')",item->name, item->blob.size, item->blob.format, item->blob.url);
 					break;
 				}
 			}
 		}
-		indigo_debug("}");
+		indigo_trace("}");
 	}
 }
 
@@ -330,7 +330,7 @@ indigo_result indigo_detach_client(indigo_client *client) {
 
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
 	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
-	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property enumeration request", property, false, true));
+	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property enumeration request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->enumerate_properties != NULL) {
@@ -348,7 +348,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
 	assert(property != NULL);
 	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
-	INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property change request", property, false, true));
+	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->enumerate_properties != NULL) {
@@ -366,7 +366,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	assert(property != NULL);
 	if (!property->hidden) {
-		INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property definition", property, true, true));
+		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property definition", property, true, true));
 		char message[INDIGO_VALUE_SIZE];
 		if (format != NULL) {
 			va_list args;
@@ -388,7 +388,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 	assert(property != NULL);
 	if (!property->hidden) {
 		char message[INDIGO_VALUE_SIZE];
-		INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property update", property, false, true));
+		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property update", property, false, true));
 		if (format != NULL) {
 			va_list args;
 			va_start(args, format);
@@ -409,7 +409,7 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
 	assert(property != NULL);
 	if (!property->hidden) {
 		char message[INDIGO_VALUE_SIZE];
-		INDIGO_DEBUG(indigo_debug_property("INDIGO Bus: property removal", property, false, false));
+		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property removal", property, false, false));
 		if (format != NULL) {
 			va_list args;
 			va_start(args, format);
