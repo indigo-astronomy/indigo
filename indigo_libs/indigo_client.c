@@ -265,6 +265,7 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 
 static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 	INDIGO_LOG(indigo_log("Subprocess %s thread started", subprocess->executable));
+	int sleep_interval = 5;
 	while (subprocess->pid >= 0) {
 		int input[2], output[2];
 		if (pipe(input) < 0 || pipe(output) < 0) {
@@ -274,13 +275,15 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 		subprocess->pid = fork();
 		if (subprocess->pid == -1) {
 			INDIGO_ERROR(indigo_error("Can't create subprocess %s (%s)", subprocess->executable, strerror(errno)));
-			return NULL;
+			exit(0);
 		} else if (subprocess->pid == 0) {
 			close(0);
 			dup2(output[0], 0);
 			close(1);
 			dup2(input[1], 1);
-			execl(subprocess->executable, subprocess->executable, NULL);
+			execlp(subprocess->executable, subprocess->executable, NULL);
+			INDIGO_ERROR(indigo_error("Can't execute driver %s (%s)", subprocess->executable, strerror(errno)));
+			exit(0);
 		} else {
 			close(input[1]);
 			close(output[0]);
@@ -291,8 +294,13 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 			free(subprocess->protocol_adapter->device_context);
 			free(subprocess->protocol_adapter);
 		}
-		if (subprocess->pid >= 0)
-			sleep(5);
+		if (subprocess->pid >= 0) {
+			sleep(sleep_interval);
+			if (sleep_interval < 60)
+				sleep_interval *= 2;
+		} else {
+			sleep_interval = 5;
+		}
 	}
 	subprocess->thread_started = false;
 	INDIGO_LOG(indigo_log("Subprocess %s thread stopped", subprocess->executable));
