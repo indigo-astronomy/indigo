@@ -498,14 +498,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	int naxis = 2;
 	int size = frame_width * frame_height;
 	int blobsize = byte_per_pixel * size;
-	if (byte_per_pixel == 2 && !little_endian) {
-		short *raw = (short *)(data + FITS_HEADER_SIZE);
-		int size = CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value;
-		for (int i = 0; i < size; i++) {
-			int value = *raw;
-			*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-		}
-	} else if (byte_per_pixel == 3) {
+	if (byte_per_pixel == 3) {
 		byte_per_pixel = 1;
 		naxis = 3;
 		blobsize = 3 * size;
@@ -615,11 +608,17 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header[t] = ' ';
 		if (byte_per_pixel == 2) {
 			short *raw = (short *)(data + FITS_HEADER_SIZE);
-			int size = CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value;
+			if (little_endian) {
 				for (int i = 0; i < size; i++) {
 					int value = *raw - 32768;
 					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 				}
+			} else {
+				for (int i = 0; i < size; i++) {
+					int value = *raw - 32768;
+					*raw++ = value;
+				}
+			}
 		} else if (byte_per_pixel == 1 && naxis == 3) {
 			unsigned char *raw = malloc(3 * size);
 			unsigned char *red = raw;
@@ -652,9 +651,16 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		indigo_raw_header *header = (indigo_raw_header *)(data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
 		if (naxis == 2 && byte_per_pixel == 1)
 			header->signature = INDIGO_RAW_MONO8;
-		else if (naxis == 2 && byte_per_pixel == 2)
+		else if (naxis == 2 && byte_per_pixel == 2) {
 			header->signature = INDIGO_RAW_MONO16;
-		else if (naxis == 3 && byte_per_pixel == 1) {
+			if (!little_endian) {
+				short *b16 = (short *)(data + FITS_HEADER_SIZE);
+				for (int i = 0; i < size; i++) {
+					int value = *b16;
+					*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+				}
+			}
+		} else if (naxis == 3 && byte_per_pixel == 1) {
 			header->signature = INDIGO_RAW_RGB24;
 			if (!little_endian) {
 				unsigned char *b8 = data + FITS_HEADER_SIZE;
@@ -681,14 +687,22 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		cinfo.image_width = frame_width;
 		cinfo.image_height = frame_height;
 		if (naxis == 2) {
-			if (byte_per_pixel == 1) {
-			} else if (byte_per_pixel == 2) {
+			if (byte_per_pixel == 2) {
 				unsigned short *b16 = data + FITS_HEADER_SIZE;
 				unsigned short max = 0;
-				for (int i = 0; i < size; i++) {
-					unsigned short value = *b16++;
-					if (max < value)
-						max = value;
+				if (little_endian) {
+					for (int i = 0; i < size; i++) {
+						int value = *b16++;
+						if (max < value)
+							max = value;
+					}
+				} else {
+					for (int i = 0; i < size; i++) {
+						int value = *b16;
+						*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+						if (max < value)
+							max = value;
+					}
 				}
 				int shift = 0;
 				if (max > 0x8000)
@@ -741,8 +755,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			row_pointer[0] = &tmp[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
 			jpeg_write_scanlines(&cinfo, row_pointer, 1);
 		}
-		jpeg_finish_compress( &cinfo );
-		jpeg_destroy_compress( &cinfo );
+		jpeg_finish_compress(&cinfo);
+		jpeg_destroy_compress(&cinfo);
 		if (mem_size < size) {
 			memcpy(data, mem, mem_size);
 		}
