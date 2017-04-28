@@ -57,7 +57,7 @@ This is the list of requirements taken into the consideration:
 ### Prerequisits
 #### Ubuntu / Debian / Raspbian
 
-`sudo apt-get install build-essential autotools-dev libtool libudev-dev libavahi-compat-libdnssd-dev`
+`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev`
 
 It is advised to remove libraw1394-dev
 
