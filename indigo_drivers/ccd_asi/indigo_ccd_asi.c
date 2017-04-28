@@ -210,6 +210,7 @@ static bool asi_open(indigo_device *device) {
 static bool asi_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/vertical_bin,  horizontal_bin, get_pixel_format(device));
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -228,25 +229,24 @@ static bool asi_setup_exposure(indigo_device *device, double exposure, int frame
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
 		return false;
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
 static bool asi_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (!asi_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = ASIStartExposure(id, dark);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStartExposure(%d) = %d", id, res);
 		return false;
 	}
 
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
@@ -266,12 +266,11 @@ static bool asi_read_pixels(indigo_device *device) {
 	if(status == ASI_EXP_SUCCESS) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res);
 			return false;
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (PRIVATE_DATA->is_asi120)
 			usleep(150000);
 		return true;
@@ -383,7 +382,6 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void streaming_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	char *color_string = get_bayer_string(device);
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
@@ -396,10 +394,11 @@ static void streaming_timer_callback(indigo_device *device) {
 	ASI_ERROR_CODE res;
 	PRIVATE_DATA->can_check_temperature = true;
 	if (asi_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value)) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIStartVideoCapture(id);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStartVideoCapture(%d) = %d", id, res);
-		else {
+		} else {
 			while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 				res = ASIGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, timeout);
 				if (res) {
@@ -420,11 +419,11 @@ static void streaming_timer_callback(indigo_device *device) {
 			if (res)
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStopVideoCapture(%d) = %d", id, res);
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	} else {
 		res = ASI_ERROR_GENERAL_ERROR;
 	}
 	PRIVATE_DATA->can_check_temperature = false;
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res)
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	else
@@ -773,14 +772,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				int res = ASIGetNumOfControls(id, &ctrl_count);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
 					return INDIGO_NOT_FOUND;
 				}
 				ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
 				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					init_camera_property(device, ctrl_caps);
 				}
 				indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
@@ -1335,7 +1338,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				}
 			}
 			if (!removed) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "No ASI Camera unplugged (maybe EFW wheel)!");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI Camera unplugged (maybe EFW wheel)!");
 			}
 		}
 	}
