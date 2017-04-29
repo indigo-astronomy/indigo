@@ -800,6 +800,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- FLI_NFLUSHES
 	} else if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			FLI_NFLUSHES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
@@ -810,6 +811,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH_ENABLE
 	} else if (indigo_property_match(FLI_RBI_FLUSH_ENABLE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			FLI_RBI_FLUSH_ENABLE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
@@ -822,6 +824,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
 	} else if (indigo_property_match(FLI_RBI_FLUSH_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			FLI_RBI_FLUSH_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
@@ -834,6 +837,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
 	} else if (indigo_property_match(FLI_CAMERA_MODE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			FLI_CAMERA_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
