@@ -799,12 +799,20 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	// -------------------------------------------------------------------------------- FLI_NFLUSHES
 	} else if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, FLI_NFLUSHES_PROPERTY, NULL);
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(FLI_NFLUSHES_PROPERTY, property, false);
 		if (IS_CONNECTED) {
 			handle_nflushes_property(device, property);
 		}
 	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH_ENABLE
 	} else if (indigo_property_match(FLI_RBI_FLUSH_ENABLE_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(FLI_RBI_FLUSH_ENABLE_PROPERTY, property, false);
 		if (IS_CONNECTED) {
 			FLI_RBI_FLUSH_ENABLE_PROPERTY->state = INDIGO_OK_STATE;
@@ -813,6 +821,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
 	} else if (indigo_property_match(FLI_RBI_FLUSH_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(FLI_RBI_FLUSH_PROPERTY, property, false);
 		if (IS_CONNECTED) {
 			FLI_RBI_FLUSH_PROPERTY->state = INDIGO_OK_STATE;
@@ -821,6 +833,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
 	} else if (indigo_property_match(FLI_CAMERA_MODE_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(FLI_CAMERA_MODE_PROPERTY, property, false);
 		if (IS_CONNECTED) {
 			handle_camera_mode_property(device, property);
