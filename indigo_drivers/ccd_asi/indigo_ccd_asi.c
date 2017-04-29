@@ -921,6 +921,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT
 	} else if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			PIXEL_FORMAT_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
@@ -953,6 +954,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- ADVANCED_FORMAT
 	} else if (indigo_property_match(ASI_ADVANCED_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			ASI_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, ASI_ADVANCED_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
