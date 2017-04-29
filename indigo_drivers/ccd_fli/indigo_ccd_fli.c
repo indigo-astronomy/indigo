@@ -801,7 +801,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(FLI_NFLUSHES_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FLI_NFLUSHES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FLI_NFLUSHES_PROPERTY, NULL);
+			indigo_update_property(device, FLI_NFLUSHES_PROPERTY, "Exposure in progress, number of flushes can not be changed.");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(FLI_NFLUSHES_PROPERTY, property, false);
@@ -812,7 +812,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(FLI_RBI_FLUSH_ENABLE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FLI_RBI_FLUSH_ENABLE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, NULL);
+			indigo_update_property(device, FLI_RBI_FLUSH_ENABLE_PROPERTY, "Exposure in progress, RBI flush can not be changed.");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(FLI_RBI_FLUSH_ENABLE_PROPERTY, property, false);
@@ -825,7 +825,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(FLI_RBI_FLUSH_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FLI_RBI_FLUSH_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FLI_RBI_FLUSH_PROPERTY, NULL);
+			indigo_update_property(device, FLI_RBI_FLUSH_PROPERTY, "Exposure in progress, RBI flush can not be changed.");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(FLI_RBI_FLUSH_PROPERTY, property, false);
@@ -838,7 +838,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(FLI_CAMERA_MODE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FLI_CAMERA_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
+			indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, "Exposure in progress, camera mode can not be changed.");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(FLI_CAMERA_MODE_PROPERTY, property, false);
