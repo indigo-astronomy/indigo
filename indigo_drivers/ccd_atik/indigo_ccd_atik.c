@@ -216,23 +216,23 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
-			indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			if (CCD_EXPOSURE_ITEM->number.target < PRIVATE_DATA->device_context->min_exposure)
-				CCD_EXPOSURE_ITEM->number.target = PRIVATE_DATA->device_context->min_exposure;
-			if (CCD_EXPOSURE_ITEM->number.target <= 1) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+			return INDIGO_OK;
+		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		if (CCD_EXPOSURE_ITEM->number.target < PRIVATE_DATA->device_context->min_exposure)
+			CCD_EXPOSURE_ITEM->number.target = PRIVATE_DATA->device_context->min_exposure;
+		if (CCD_EXPOSURE_ITEM->number.target <= 1) {
+			PRIVATE_DATA->can_check_temperature = false;
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, short_exposure_timer_callback);
+		} else {
+			libatik_start_exposure(PRIVATE_DATA->device_context, CCD_FRAME_TYPE_DARK_ITEM->sw.value);
+			if (CCD_EXPOSURE_ITEM->number.target > 2)
+				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 2, pre_exposure_timer_callback);
+			else {
 				PRIVATE_DATA->can_check_temperature = false;
-				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, short_exposure_timer_callback);
-			} else {
-				libatik_start_exposure(PRIVATE_DATA->device_context, CCD_FRAME_TYPE_DARK_ITEM->sw.value);
-				if (CCD_EXPOSURE_ITEM->number.target > 2)
-					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 2, pre_exposure_timer_callback);
-				else {
-					PRIVATE_DATA->can_check_temperature = false;
-					PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
-				}
+				PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
 			}
 		}
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
