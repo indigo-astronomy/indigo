@@ -784,6 +784,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		if (IS_CONNECTED) {
 			handle_exposure_property(device, property);

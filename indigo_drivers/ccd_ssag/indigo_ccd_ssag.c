@@ -338,6 +338,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		ssag_start_exposure(device, CCD_EXPOSURE_ITEM->number.target);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
