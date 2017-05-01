@@ -1183,7 +1183,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 			pointer = buffer;
 			buffer_end = buffer + count;
 			buffer[count] = 0;
-			INDIGO_DEBUG_PROTOCOL(indigo_debug("received: %s", buffer));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("received: %s", buffer));
 		}
 		if (c == '&') {
 			entity_pointer = entity_buffer;
