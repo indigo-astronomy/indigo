@@ -727,14 +727,14 @@ static indigo_device *mount_guider = NULL;
 
 indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = {
-		MOUNT_LX200_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_LX200_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
 		mount_enumerate_properties,
 		mount_change_property,
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
-		MOUNT_LX200_GUIDER_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_LX200_GUIDER_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,

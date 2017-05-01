@@ -450,6 +450,8 @@ static bool sbig_open(indigo_device *device) {
 	OpenDeviceParams odp;
 	short res;
 
+	if (device->is_connected) return false;
+
 	pthread_mutex_lock(&driver_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		odp.deviceType = PRIVATE_DATA->usb_id;
@@ -487,6 +489,7 @@ static bool sbig_open(indigo_device *device) {
 			return false;
 		}
 	}
+	device->is_connected = true;
 	pthread_mutex_unlock(&driver_mutex);
 	return true;
 }
@@ -761,6 +764,8 @@ static bool sbig_set_cooler(indigo_device *device, double target, double *curren
 static void sbig_close(indigo_device *device) {
 	int res;
 
+	if (!device->is_connected) return;
+
 	pthread_mutex_lock(&driver_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		res = set_sbig_handle(PRIVATE_DATA->driver_handle);
@@ -778,6 +783,7 @@ static void sbig_close(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "close_driver(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		}
 	}
+	device->is_connected = false;
 	pthread_mutex_unlock(&driver_mutex);
 }
 
@@ -971,7 +977,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (CONNECTION_CONNECTED_ITEM->sw.value){
+			if (device->is_connected) return INDIGO_OK;
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (sbig_open(device)) {
@@ -1405,6 +1412,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (device->is_connected) return INDIGO_OK;
 			if (sbig_open(device)) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
@@ -1556,6 +1564,7 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 		char message[1024] = {0};
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (device->is_connected) return INDIGO_OK;
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			snprintf(message, 1024, "Conneting to %s. This may take several minutes.", DEVICE_PORT_ITEM->text.value);
@@ -1575,9 +1584,12 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 				snprintf(message, 1024, "Conneting to %s failed.", DEVICE_PORT_ITEM->text.value);
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
+			device->is_connected = true;
 		} else {
+			if (!device->is_connected) return INDIGO_OK;
 			remove_eth_devices();
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			device->is_connected = false;
 		}
 
 		if (message[0] == '\0')
@@ -1675,6 +1687,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (device->is_connected) return INDIGO_OK;
 			if (sbig_open(device)) {
 				pthread_mutex_lock(&driver_mutex);
 				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
@@ -1863,7 +1876,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	GetCCDInfoResults0 gcir0;
 
 	static indigo_device ccd_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		sbig_enumerate_properties,
 		ccd_change_property,
@@ -1871,7 +1884,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	};
 
 	static indigo_device guider_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -1879,7 +1892,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	};
 
 	static indigo_device wheel_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
@@ -2251,7 +2264,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	static indigo_device sbig_eth_template = {
-		"SBIG Ethernet Device", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"SBIG Ethernet Device", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		eth_attach,
 		indigo_device_enumerate_properties,
 		eth_change_property,
