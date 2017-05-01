@@ -39,16 +39,14 @@ This is the list of requirements taken into the consideration:
 15. FLI CCD driver
 16. FLI focuser driver (testers needed)
 17. USB_Focus v3 driver
-18. SBIG CCD driver (with guider and guider CCD)
+18. SBIG CCD driver (with guider, guider CCD and external guider head)
 19. SBIG Filter wheel driver (part of CCD driver)
 20.	ASCOM driver for INDIGO Camera
 21.	ASCOM driver for INDIGO Filter Wheel
 
 ## This is under development
 
-1. SBIG focuser driver (part of the CCD driver)
-2. QHY (5II-L) CCD driver
-
+1. QHY CCD driver
 
 ------------------------------------------------------------------------------------------------
 

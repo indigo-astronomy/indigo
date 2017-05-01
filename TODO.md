@@ -2,7 +2,7 @@
 
 ### General
 
-1. Add autoconfig support
+1. Add autoconfig or cmake build
 
 ### Documents
 
@@ -53,6 +53,7 @@
 9. Fishcamp CCD driver (based on Fishcamp SDK)
 10. Andor CCD driver (based on Andor SDK - payed :( we will require but not provide it)
 12. DSI II Pro driver.
+13. ATIK CCD driver __DONE__
 
 #### DSLRs
 
