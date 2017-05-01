@@ -85,6 +85,7 @@
 
 #define PRIVATE_DATA               ((sbig_private_data *)device->private_data)
 #define PRIMARY_CCD                (device == PRIVATE_DATA->primary_ccd)
+#define EXTERNAL_GUIDE_HEAD        (PRIVATE_DATA->guider_ccd_extended_info4.capabilitiesBits & CB_CCD_EXT_TRACKER_YES)
 
 #define SBIG_ADVANCED_GROUP              "Advanced"
 
@@ -108,6 +109,7 @@ typedef struct {
 	indigo_timer *imager_ccd_exposure_timer, *imager_ccd_temperature_timer;
 	GetCCDInfoResults0 imager_ccd_basic_info;
 	GetCCDInfoResults2 imager_ccd_extended_info1;
+	GetCCDInfoResults4 imager_ccd_extended_info4;
 	GetCCDInfoResults6 imager_ccd_extended_info6;
 	StartExposureParams2 imager_ccd_exp_params;
 	double target_temperature, current_temperature;
@@ -121,6 +123,7 @@ typedef struct {
 	indigo_timer *guider_ccd_exposure_timer, *guider_ccd_temperature_timer;
 	GetCCDInfoResults0 guider_ccd_basic_info;
 	StartExposureParams2 guider_ccd_exp_params;
+	GetCCDInfoResults4 guider_ccd_extended_info4;
 	bool guider_no_check_temperature;
 	unsigned char *guider_buffer;
 
@@ -521,7 +524,8 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 		sep->ccd = CCD_IMAGING;
 	} else {
 		sep = &(PRIVATE_DATA->guider_ccd_exp_params);
-		sep->ccd = CCD_TRACKING;
+		sep->ccd = EXTERNAL_GUIDE_HEAD ? CCD_EXT_TRACKING : CCD_TRACKING;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Using %s guider CCD.", EXTERNAL_GUIDE_HEAD ? "external" : "internal");
 
 		unsigned short status;
 		res = get_command_status(CC_START_EXPOSURE2, &status);
@@ -571,7 +575,7 @@ static bool sbig_exposure_complete(indigo_device *device) {
 	if (PRIMARY_CCD) {
 		ccd = CCD_IMAGING;
 	} else {
-		ccd = CCD_TRACKING;
+		ccd = EXTERNAL_GUIDE_HEAD ? CCD_EXT_TRACKING : CCD_TRACKING;
 	}
 
 	unsigned short status;
@@ -635,7 +639,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 		srp.height = PRIVATE_DATA->imager_ccd_exp_params.height;
 	} else {
 		frame_buffer = PRIVATE_DATA->guider_buffer + FITS_HEADER_SIZE;
-		srp.ccd = CCD_TRACKING;
+		srp.ccd = EXTERNAL_GUIDE_HEAD ? CCD_EXT_TRACKING : CCD_TRACKING;
 		srp.readoutMode	= PRIVATE_DATA->guider_ccd_exp_params.readoutMode;
 		srp.left = PRIVATE_DATA->guider_ccd_exp_params.left;
 		srp.top = PRIVATE_DATA->guider_ccd_exp_params.top;
@@ -705,11 +709,11 @@ static bool sbig_abort_exposure(indigo_device *device) {
 	}
 
 	if (PRIMARY_CCD) {
-		eep.ccd = CCD_IMAGING;
 		PRIVATE_DATA->imager_no_check_temperature = false;
+		eep.ccd = CCD_IMAGING;
 	} else {
-		eep.ccd = CCD_TRACKING;
 		PRIVATE_DATA->guider_no_check_temperature = false;
+		eep.ccd = EXTERNAL_GUIDE_HEAD ? CCD_EXT_TRACKING : CCD_TRACKING;
 	}
 
 	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
@@ -1012,6 +1016,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
 					}
 
+					cip.request = CCD_INFO_EXTENDED2_IMAGING; /* imaging CCD */
+					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_extended_info4));
+					if (res != CE_NO_ERROR) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
+					}
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "imager_ccd_extended_info4.capabilitiesBits = 0x%x", PRIVATE_DATA->imager_ccd_extended_info4.capabilitiesBits);
+
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
@@ -1100,6 +1111,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->guider_ccd_basic_info.name);
 
 					indigo_update_property(device, INFO_PROPERTY, NULL);
+
+					cip.request = CCD_INFO_EXTENDED2_TRACKING; /* Guider CCD */
+					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->guider_ccd_extended_info4));
+					if (res != CE_NO_ERROR) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
+					}
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "guider_ccd_extended_info4.capabilitiesBits = 0x%x", PRIVATE_DATA->guider_ccd_extended_info4.capabilitiesBits);
 
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
