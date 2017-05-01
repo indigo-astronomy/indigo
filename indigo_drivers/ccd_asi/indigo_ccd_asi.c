@@ -361,6 +361,8 @@ static void exposure_timer_callback(indigo_device *device) {
 		if (asi_read_pixels(device)) {
 			char *color_string = get_bayer_string(device);
 			if(color_string) {
+				/* NOTE: There is no need to take care about the offsets,
+				   the SDK takes care the image to be in the correct bayer pattern */
 				indigo_fits_keyword keywords[] = {
 					{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
 					{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
