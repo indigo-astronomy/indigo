@@ -111,8 +111,8 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		bool status;
 		if (libatik_check_cooler(PRIVATE_DATA->device_context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature)) {
-			if (CCD_COOLER_ON_ITEM->sw.value != status)
-				libatik_set_cooler(PRIVATE_DATA->device_context, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature);
+			//if (CCD_COOLER_ON_ITEM->sw.value != status)
+			libatik_set_cooler(PRIVATE_DATA->device_context, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature);
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
 			if (CCD_COOLER_ON_ITEM->sw.value)
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 1 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
