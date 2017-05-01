@@ -804,6 +804,8 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 		{ 0 }
 	};
 
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
@@ -837,6 +839,7 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
 static void clear_reg_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->imager_no_check_temperature = true;
 		PRIVATE_DATA->imager_ccd_exposure_timer = indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback);
@@ -847,6 +850,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 
 
 static void imager_ccd_temperature_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
 		if (sbig_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -876,6 +880,7 @@ static void imager_ccd_temperature_callback(indigo_device *device) {
 
 
 static void guider_ccd_temperature_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
 		pthread_mutex_lock(&driver_mutex);
 
@@ -1323,6 +1328,8 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	int res;
 	ushort relay_map = 0;
 
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	pthread_mutex_lock(&driver_mutex);
 
 	PRIVATE_DATA->guider_timer_ra = NULL;
@@ -1355,6 +1362,8 @@ static void guider_timer_callback_ra(indigo_device *device) {
 static void guider_timer_callback_dec(indigo_device *device) {
 	int res;
 	ushort relay_map = 0;
+
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
 	pthread_mutex_lock(&driver_mutex);
 
@@ -1605,6 +1614,9 @@ static const char *cfw_type[] = {
 
 static void wheel_timer_callback(indigo_device *device) {
 	int res;
+
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	pthread_mutex_lock(&driver_mutex);
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 	if ( res != CE_NO_ERROR ) {

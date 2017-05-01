@@ -159,6 +159,8 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 
 static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
+
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_EXPOSURE_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) -> %s", CCD_EXPOSURE_ITEM->number.value, dc1394_error_get_string(err));
@@ -189,6 +191,7 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void streaming_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_STREAMING_EXPOSURE_ITEM->number.value);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) -> %s", CCD_STREAMING_EXPOSURE_ITEM->number.value, dc1394_error_get_string(err));
 	setup_camera(device);
@@ -225,6 +228,7 @@ static void streaming_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	uint32_t target_temperature, temperature;
 	dc1394error_t err = dc1394_feature_temperature_get_value(PRIVATE_DATA->camera, &target_temperature, &temperature);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_temperature_get_value() -> %s (%u, %u)", dc1394_error_get_string(err),  target_temperature, temperature);
@@ -651,12 +655,12 @@ static void debuglog_handler(dc1394log_t type, const char *message, void* user) 
 //	IONotificationPortRef firewire_notification_port;
 //	io_iterator_t firewire_remove_device_iterator;
 //	io_iterator_t firewire_add_device_iterator;
-//	
+//
 //	pthread_setname_np("indigo.firewire-hotplug");
-//	
+//
 //	CFRetain(runloop = CFRunLoopGetCurrent());
 //	CFRunLoopAddSource(runloop, firewire_notification_cfsource = IONotificationPortGetRunLoopSource (firewire_notification_port = IONotificationPortCreate(kIOMasterPortDefault)), kCFRunLoopDefaultMode);
-//	
+//
 //	kresult = IOServiceAddMatchingNotification(firewire_notification_port, kIOTerminatedNotification, IOServiceMatching("IOFireWireDevice"), firewire_devices_detached, NULL, &firewire_remove_device_iterator);
 //	if (kresult != kIOReturnSuccess) {
 //		indigo_error("indigo_ccd_iidc: Could not add hot-unplug event source: 0x%08x", kresult);
@@ -674,7 +678,7 @@ static void debuglog_handler(dc1394log_t type, const char *message, void* user) 
 //	INDIGO_DRIVER_LOG(DRIVER_NAME, "indigo_ccd_iidc: RunLoop for FireWire devices detection started");
 //	CFRunLoopRun();
 //	INDIGO_DRIVER_LOG(DRIVER_NAME, "indigo_ccd_iidc: RunLoop for FireWire devices detection finished");
-//	
+//
 //	CFRunLoopRemoveSource(runloop, firewire_notification_cfsource, kCFRunLoopDefaultMode);
 //	IONotificationPortDestroy(firewire_notification_port);
 //	IOObjectRelease(firewire_remove_device_iterator);
