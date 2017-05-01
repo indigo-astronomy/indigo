@@ -119,7 +119,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 static indigo_result detach(indigo_device *device);
 
 static indigo_device server_device = {
-	"Server", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	"Server", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 	attach,
 	enumerate_properties,
 	change_property,

@@ -249,7 +249,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	EFW_INFO info;
 
 	static indigo_device wheel_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,

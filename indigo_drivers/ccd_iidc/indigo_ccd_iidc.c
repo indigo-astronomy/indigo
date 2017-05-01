@@ -487,7 +487,7 @@ static dc1394_t *context;
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
