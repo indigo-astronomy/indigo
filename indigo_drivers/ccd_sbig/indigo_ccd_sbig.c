@@ -797,10 +797,10 @@ static const char *camera_type[] = {
 static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 	unsigned char *frame_buffer;
 	indigo_fits_keyword *bayer_keys = NULL;
-	const static indigo_fits_keyword keywords[] = {
-		{ INDIGO_FITS_STRING, "BAYERPAT", .string = "BGGR", "Bayer color pattern" },
-		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
-		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
+	static indigo_fits_keyword keywords[] = {
+		{ INDIGO_FITS_STRING, "BAYERPAT", .string = "BGGR", "Bayer color pattern" }, /* index 0 */
+		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" }, /* index 1 */
+		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" }, /* index 2 */
 		{ 0 }
 	};
 
@@ -816,6 +816,8 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 				   (CCD_BIN_HORIZONTAL_ITEM->number.value == 1) &&
 				   (CCD_BIN_VERTICAL_ITEM->number.value == 1)) {
 					bayer_keys = (indigo_fits_keyword*)keywords;
+					bayer_keys[1].number = ((int)(CCD_FRAME_LEFT_ITEM->number.value) % 2) ? 1 : 0; /* set XBAYROFF */
+					bayer_keys[2].number = ((int)(CCD_FRAME_TOP_ITEM->number.value) % 2) ? 1 : 0; /* set YBAYROFF */
 				}
 			} else {
 				frame_buffer = PRIVATE_DATA->guider_buffer;
