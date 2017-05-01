@@ -355,6 +355,8 @@ static void asi_close(indigo_device *device) {
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -384,6 +386,8 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void streaming_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	char *color_string = get_bayer_string(device);
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
@@ -435,6 +439,7 @@ static void streaming_timer_callback(indigo_device *device) {
 
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
 static void clear_reg_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 4, exposure_timer_callback);
@@ -444,6 +449,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (asi_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -473,6 +479,8 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_ra = NULL;
 	int id = PRIVATE_DATA->dev_id;
 
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ASIPulseGuideOff(id, ASI_GUIDE_EAST);
 	ASIPulseGuideOff(id, ASI_GUIDE_WEST);
@@ -492,6 +500,8 @@ static void guider_timer_callback_ra(indigo_device *device) {
 static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
 	int id = PRIVATE_DATA->dev_id;
+
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ASIPulseGuideOff(id, ASI_GUIDE_SOUTH);

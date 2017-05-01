@@ -267,6 +267,8 @@ static void ssag_close(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
