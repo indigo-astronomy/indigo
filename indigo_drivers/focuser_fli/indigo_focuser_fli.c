@@ -239,6 +239,7 @@ static void fli_focuser_connect(indigo_device *device) {
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		device->is_connected = true;
 		indigo_update_property(device, CONNECTION_PROPERTY, "Connected");
 	} else {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -258,12 +259,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, "Connecting to focuser, this may take time!");
-			indigo_set_timer(device, 0, fli_focuser_connect);
+			if (!device->is_connected) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, "Connecting to focuser, this may take time!");
+				indigo_set_timer(device, 0, fli_focuser_connect);
+			}
 		} else {
-			fli_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			if (device->is_connected) {
+				fli_close(device);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_STEPS
