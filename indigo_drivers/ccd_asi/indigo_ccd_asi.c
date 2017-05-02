@@ -177,6 +177,9 @@ static indigo_result asi_enumerate_properties(indigo_device *device, indigo_clie
 static bool asi_open(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
+
+	if (device->is_connected) return false;
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		res = ASIOpenCamera(id);
@@ -337,8 +340,10 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 
 
 static void asi_close(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
+	if (!device->is_connected) return;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		ASICloseCamera(PRIVATE_DATA->dev_id);
 		if (PRIVATE_DATA->buffer != NULL) {
@@ -346,7 +351,6 @@ static void asi_close(indigo_device *device) {
 			PRIVATE_DATA->buffer = NULL;
 		}
 	}
-
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
@@ -777,45 +781,51 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (asi_open(device)) {
-				int id = PRIVATE_DATA->dev_id;
-				int ctrl_count;
-				ASI_CONTROL_CAPS ctrl_caps;
+			if (!device->is_connected) {
+				if (asi_open(device)) {
+					int id = PRIVATE_DATA->dev_id;
+					int ctrl_count;
+					ASI_CONTROL_CAPS ctrl_caps;
 
-				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+					indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				int res = ASIGetNumOfControls(id, &ctrl_count);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				if (res) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
-					return INDIGO_NOT_FOUND;
-				}
-				ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
-				for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+					int res = ASIGetNumOfControls(id, &ctrl_count);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					init_camera_property(device, ctrl_caps);
-				}
-				indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
+					if (res) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
+						return INDIGO_NOT_FOUND;
+					}
+					ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
+					for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+						ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						init_camera_property(device, ctrl_caps);
+					}
+					indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
 
-				if (PRIVATE_DATA->has_temperature_sensor) {
-					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-				}
+					if (PRIVATE_DATA->has_temperature_sensor) {
+						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+					}
 
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					device->is_connected = true;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
 			}
 		} else {
-			PRIVATE_DATA->can_check_temperature = false;
-			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-			indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-			indigo_delete_property(device, ASI_ADVANCED_PROPERTY, NULL);
-			asi_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			if(device->is_connected) {
+				PRIVATE_DATA->can_check_temperature = false;
+				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+				indigo_delete_property(device, ASI_ADVANCED_PROPERTY, NULL);
+				asi_close(device);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
@@ -1078,17 +1088,23 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (asi_open(device)) {
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
-				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			if (!device->is_connected) {
+				if (asi_open(device)) {
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+					GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+					device->is_connected = true;
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
 			}
 		} else {
-			asi_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			if (device->is_connected) {
+				asi_close(device);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
