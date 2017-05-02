@@ -209,6 +209,8 @@ static short open_driver(short *handle) {
 	if (res == CE_NO_ERROR) {
 		*handle = gdhr.handle;
 	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME,"New driver handle = %d", *handle);
 	return res;
 }
 
@@ -988,6 +990,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_COOLER_PROPERTY->hidden = false;
 						CCD_INFO_PROPERTY->hidden = false;
 
+						res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+						if ( res != CE_NO_ERROR ) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
+						}
+
 						cip.request = CCD_INFO_IMAGING; /* imaging CCD */
 						res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_basic_info));
 						if (res != CE_NO_ERROR) {
@@ -1103,6 +1110,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_MODE_PROPERTY->hidden = false;
 						CCD_COOLER_PROPERTY->hidden = true;
 						CCD_INFO_PROPERTY->hidden = false;
+
+						res = set_sbig_handle(PRIVATE_DATA->driver_handle);
+						if ( res != CE_NO_ERROR ) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
+						}
 
 						cip.request = CCD_INFO_TRACKING; /* guiding CCD */
 						res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->guider_ccd_basic_info));
