@@ -23,9 +23,6 @@
  \file indigo_ccd_sbig.c
  */
 
-// TODO:
-// 1. Add external guider CCD support
-
 
 #define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_ccd_sbig"
