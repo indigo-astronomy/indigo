@@ -50,6 +50,9 @@
 
 #define PRIVATE_DATA        ((fli_private_data *)device->private_data)
 
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
+
 typedef struct {
 	flidev_t dev_id;
 	char dev_file_name[MAX_PATH];

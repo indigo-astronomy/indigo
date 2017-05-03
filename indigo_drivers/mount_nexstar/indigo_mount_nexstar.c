@@ -58,6 +58,9 @@
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount is parking is in progress, please wait until complete!"
 
+// gp_bits is used as boolean
+#define is_connected                   gp_bits
+
 typedef struct {
 	int dev_id;
 	bool parked;

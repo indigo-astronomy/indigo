@@ -54,7 +54,10 @@
 #include "indigo_focuser_fli.h"
 
 
-#define PRIVATE_DATA													((fli_private_data *)device->private_data)
+#define PRIVATE_DATA		((fli_private_data *)device->private_data)
+
+// gp_bits is used as boolean
+#define is_connected            gp_bits
 
 typedef struct {
 	flidev_t dev_id;
