@@ -1198,7 +1198,7 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int asi_products[100];
 static int asi_id_count = 0;
 
-static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+static indigo_device *devices[MAX_DEVICES] = {NULL};
 static bool connected_ids[ASICAMERA_ID_MAX] = {false};
 
 
