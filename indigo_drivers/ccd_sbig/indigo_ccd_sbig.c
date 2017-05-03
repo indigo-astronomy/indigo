@@ -1874,7 +1874,7 @@ pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define MAX_ETH_DEVICES                8
 #define MAX_DEVICES                   32
 
-static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+static indigo_device *devices[MAX_DEVICES] = {NULL};
 static indigo_device *sbig_eth = NULL;
 
 static QueryUSBResults2 usb_cams = {0};

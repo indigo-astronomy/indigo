@@ -182,7 +182,7 @@ static int efw_products[100];
 static int efw_id_count = 0;
 
 
-static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+static indigo_device *devices[MAX_DEVICES] = {NULL};
 static bool connected_ids[EFW_ID_MAX];
 
 
