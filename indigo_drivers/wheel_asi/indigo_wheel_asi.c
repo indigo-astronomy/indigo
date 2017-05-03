@@ -49,6 +49,9 @@
 
 #define PRIVATE_DATA        ((asi_private_data *)device->private_data)
 
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
+
 typedef struct {
 	int dev_id;
 	int current_slot, target_slot;

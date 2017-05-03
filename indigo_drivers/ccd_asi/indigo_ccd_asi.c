@@ -65,6 +65,8 @@
 
 #define ASI_ADVANCED_PROPERTY      (PRIVATE_DATA->asi_advanced_property)
 
+// gp_bits is used as boolean
+#define is_connected               gp_bits
 
 // -------------------------------------------------------------------------------- ZWO ASI USB interface implementation
 
@@ -1197,7 +1199,7 @@ static int asi_products[100];
 static int asi_id_count = 0;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
-static bool connected_ids[ASICAMERA_ID_MAX] = {false} ;
+static bool connected_ids[ASICAMERA_ID_MAX] = {false};
 
 
 static int find_index_by_device_id(int id) {

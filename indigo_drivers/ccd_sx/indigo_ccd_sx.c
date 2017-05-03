@@ -139,6 +139,9 @@
 
 #define PRIVATE_DATA        ((sx_private_data *)device->private_data)
 
+// gp_bits is used as boolean
+#define is_connected                   gp_bits
+
 typedef struct {
 	libusb_device *dev;
 	libusb_device_handle *handle;

@@ -27,6 +27,7 @@
 #define indigo_bus_h
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "indigo_config.h"
 
@@ -201,7 +202,7 @@ typedef struct {
  */
 typedef struct indigo_device {
 	char name[INDIGO_NAME_SIZE];        ///< device name
-	bool is_connected;                  ///< keep track if the device is open or closed
+	uint16_t gp_bits;                   ///< general purpose bits for driver specific usage
 	void *device_context;               ///< any device specific data
 	void *private_data;                 ///< private data
 	indigo_result last_result;          ///< result of last bus operation

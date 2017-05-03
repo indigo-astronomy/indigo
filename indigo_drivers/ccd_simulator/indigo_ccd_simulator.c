@@ -43,6 +43,9 @@
 #define SIN									0.8414709848078965
 #define COS									0.5403023058681398
 
+// gp_bits is used as boolean
+#define is_connected                     gp_bits
+
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
 static unsigned short background[] = {

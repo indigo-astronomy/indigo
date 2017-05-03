@@ -94,6 +94,9 @@
 
 #define FLI_CAMERA_MODE_PROPERTY        (PRIVATE_DATA->fli_camera_mode_property)
 
+// gp_bits is used as boolean
+#define is_connected                     gp_bits
+
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
 

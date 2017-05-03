@@ -93,6 +93,9 @@
 #define SBIG_FREEZE_TEC_ENABLED_ITEM     (SBIG_FREEZE_TEC_PROPERTY->items + 0)
 #define SBIG_FREEZE_TEC_DISABLED_ITEM    (SBIG_FREEZE_TEC_PROPERTY->items + 1)
 
+// gp_bits is used as boolean
+#define is_connected                     gp_bits
+
 // -------------------------------------------------------------------------------- SBIG USB interface implementation
 
 typedef struct {
