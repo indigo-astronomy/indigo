@@ -1261,6 +1261,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			PRIVATE_DATA->guider_no_check_temperature = false;
 		}
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+	// -------------------------------------------------------------------------------- CCD_BIN
+	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
+		int prev_bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int prev_bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+
+		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
+
+		/* SBIG requires BIN_X and BIN_Y to be equal, so keep them entangled */
+		if ((int)CCD_BIN_HORIZONTAL_ITEM->number.value != prev_bin_x) {
+			CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.value;
+		} else if ((int)CCD_BIN_VERTICAL_ITEM->number.value != prev_bin_y) {
+			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.value;
+		}
+		/* let the base base class handle the rest with the manipulated property values */
+		return indigo_ccd_change_property(device, client, CCD_BIN_PROPERTY);
 	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
