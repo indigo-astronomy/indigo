@@ -950,16 +950,14 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (SBIG_ABG_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "imager_ccd_extended_info1.imagingABG = %d", PRIVATE_DATA->imager_ccd_extended_info1.imagingABG);
-		if (PRIVATE_DATA->imager_ccd_extended_info1.imagingABG == ABG_PRESENT)
-			SBIG_ABG_PROPERTY->hidden = false;
-		else
-			SBIG_ABG_PROPERTY->hidden = true;
 
-		indigo_init_switch_item(SBIG_ABG_LOW_ITEM, "SBIG_ABG_LOW", "Clock Low (No ABG)", true);
-		indigo_init_switch_item(SBIG_ABG_CLK_LOW_ITEM, "SBIG_ABG_CLK_LOW", "Clock Low (ABG)", false);
-		indigo_init_switch_item(SBIG_ABG_CLK_MED_ITEM, "SBIG_ABG_CLK_MED", "Clock Medium (ABG)", false);
-		indigo_init_switch_item(SBIG_ABG_CLK_HI_ITEM, "SBIG_ABG_CLK_LOW_HI", "Clock High (ABG)", false);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "imager_ccd_extended_info1.imagingABG = %d", PRIVATE_DATA->imager_ccd_extended_info1.imagingABG);
+		SBIG_ABG_PROPERTY->hidden = (PRIVATE_DATA->imager_ccd_extended_info1.imagingABG != ABG_PRESENT) ? true : false;
+
+		indigo_init_switch_item(SBIG_ABG_LOW_ITEM, "SBIG_ABG_LOW", "Clock Low, No ABG", true);
+		indigo_init_switch_item(SBIG_ABG_CLK_LOW_ITEM, "SBIG_ABG_CLK_LOW", "Clock Low, ABG", false);
+		indigo_init_switch_item(SBIG_ABG_CLK_MED_ITEM, "SBIG_ABG_CLK_MED", "Clock Medium, ABG", false);
+		indigo_init_switch_item(SBIG_ABG_CLK_HI_ITEM, "SBIG_ABG_CLK_LOW_HI", "Clock High, ABG", false);
 
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	} else if ((!PRIMARY_CCD) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
