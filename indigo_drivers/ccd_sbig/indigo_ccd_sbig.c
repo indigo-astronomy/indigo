@@ -1500,6 +1500,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!DEVICE_CONNECTED) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (sbig_open(device)) {
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
@@ -1782,6 +1784,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!DEVICE_CONNECTED) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (sbig_open(device)) {
 					pthread_mutex_lock(&driver_mutex);
 					res = set_sbig_handle(PRIVATE_DATA->driver_handle);
