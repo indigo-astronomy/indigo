@@ -89,6 +89,14 @@
 #define SBIG_FREEZE_TEC_ENABLED_ITEM     (SBIG_FREEZE_TEC_PROPERTY->items + 0)
 #define SBIG_FREEZE_TEC_DISABLED_ITEM    (SBIG_FREEZE_TEC_PROPERTY->items + 1)
 
+#define SBIG_ABG_PROPERTY                (PRIVATE_DATA->sbig_abg_property)
+#define SBIG_ABG_LOW_ITEM                (SBIG_ABG_PROPERTY->items + 0)
+#define SBIG_ABG_CLK_LOW_ITEM            (SBIG_ABG_PROPERTY->items + 1)
+#define SBIG_ABG_CLK_MED_ITEM            (SBIG_ABG_PROPERTY->items + 2)
+#define SBIG_ABG_CLK_HI_ITEM             (SBIG_ABG_PROPERTY->items + 3)
+
+
+
 
 #define DEVICE_CONNECTED_MASK            0x01
 #define PRIMARY_CCD_MASK                 0x02
@@ -120,12 +128,14 @@ typedef struct {
 	GetCCDInfoResults4 imager_ccd_extended_info4;
 	GetCCDInfoResults6 imager_ccd_extended_info6;
 	StartExposureParams2 imager_ccd_exp_params;
+	ABG_STATE7 imager_abg_state;
 	double target_temperature, current_temperature;
 	double cooler_power;
 	bool freeze_tec;
 	bool imager_no_check_temperature;
 	unsigned char *imager_buffer;
 	indigo_property *sbig_freeze_tec_property;
+	indigo_property *sbig_abg_property;
 
 	/* Guider CCD Specific */
 	indigo_timer *guider_ccd_exposure_timer, *guider_ccd_temperature_timer;
@@ -410,6 +420,8 @@ static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_cli
 	if ((CONNECTION_CONNECTED_ITEM->sw.value) && (PRIMARY_CCD)) {
 		if (indigo_property_match(SBIG_FREEZE_TEC_PROPERTY, property))
 			indigo_define_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
+		if (indigo_property_match(SBIG_ABG_PROPERTY, property))
+			indigo_define_property(device, SBIG_ABG_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -534,8 +546,11 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 	if(PRIMARY_CCD) {
 		sep = &(PRIVATE_DATA->imager_ccd_exp_params);
 		sep->ccd = CCD_IMAGING;
+		sep->abgState = (unsigned short)PRIVATE_DATA->imager_abg_state;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Imager ABG mode = %d", PRIVATE_DATA->imager_abg_state);
 	} else {
 		sep = &(PRIVATE_DATA->guider_ccd_exp_params);
+		sep->abgState = (unsigned short)ABG_LOW7;
 		sep->ccd = EXTERNAL_GUIDE_HEAD ? CCD_EXT_TRACKING : CCD_TRACKING;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Using %s guider CCD.", EXTERNAL_GUIDE_HEAD ? "external" : "internal");
 
@@ -551,7 +566,6 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 		}
 	}
 
-	sep->abgState = (unsigned short)ABG_LOW7;
 	sep->openShutter = (unsigned short)shutter_mode;
 	sep->exposureTime = (unsigned long)floor(exposure * 100.0 + 0.5);;
 	sep->readoutMode = binning_mode;
@@ -927,11 +941,25 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (SBIG_FREEZE_TEC_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-
 		SBIG_FREEZE_TEC_PROPERTY->hidden = false;
 
 		indigo_init_switch_item(SBIG_FREEZE_TEC_ENABLED_ITEM, "SBIG_FREEZE_TEC_ENABLED", "Enabled", false);
 		indigo_init_switch_item(SBIG_FREEZE_TEC_DISABLED_ITEM, "SBIG_FREEZE_TEC_DISABLED", "Disabled", true);
+
+		SBIG_ABG_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_ABG_STATE", SBIG_ADVANCED_GROUP,"ABG State", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		if (SBIG_ABG_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "imager_ccd_extended_info1.imagingABG = %d", PRIVATE_DATA->imager_ccd_extended_info1.imagingABG);
+		if (PRIVATE_DATA->imager_ccd_extended_info1.imagingABG == ABG_PRESENT)
+			SBIG_ABG_PROPERTY->hidden = false;
+		else
+			SBIG_ABG_PROPERTY->hidden = true;
+
+		indigo_init_switch_item(SBIG_ABG_LOW_ITEM, "SBIG_ABG_LOW", "Clock Low (No ABG)", true);
+		indigo_init_switch_item(SBIG_ABG_CLK_LOW_ITEM, "SBIG_ABG_CLK_LOW", "Clock Low (ABG)", false);
+		indigo_init_switch_item(SBIG_ABG_CLK_MED_ITEM, "SBIG_ABG_CLK_MED", "Clock Medium (ABG)", false);
+		indigo_init_switch_item(SBIG_ABG_CLK_HI_ITEM, "SBIG_ABG_CLK_LOW_HI", "Clock High (ABG)", false);
 
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	} else if ((!PRIMARY_CCD) && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
@@ -1014,6 +1042,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						//}
 
 						indigo_define_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
+						indigo_define_property(device, SBIG_ABG_PROPERTY, NULL);
 
 						CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].width;
 						CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].height;
@@ -1224,6 +1253,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (PRIMARY_CCD) {
 					PRIVATE_DATA->imager_no_check_temperature = false;
 					indigo_delete_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
+					indigo_delete_property(device, SBIG_ABG_PROPERTY, NULL);
 					indigo_cancel_timer(device, &PRIVATE_DATA->imager_ccd_temperature_timer);
 					if (PRIVATE_DATA->imager_buffer != NULL) {
 						free(PRIVATE_DATA->imager_buffer);
@@ -1331,10 +1361,30 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
 		return INDIGO_OK;
+	// --------------------------------------------------------------------------------- ABG
+	} else if ((PRIMARY_CCD) && (indigo_property_match(SBIG_ABG_PROPERTY, property))) {
+		indigo_property_copy_values(SBIG_ABG_PROPERTY, property, false);
+		SBIG_ABG_PROPERTY->state = INDIGO_OK_STATE;
+
+		if (SBIG_ABG_LOW_ITEM->sw.value) {
+			PRIVATE_DATA->imager_abg_state = ABG_LOW7;
+		} else if (SBIG_ABG_CLK_LOW_ITEM->sw.value) {
+			PRIVATE_DATA->imager_abg_state = ABG_CLK_LOW7;
+		} else if (SBIG_ABG_CLK_MED_ITEM->sw.value) {
+			PRIVATE_DATA->imager_abg_state = ABG_CLK_MED7;
+		} else if (SBIG_ABG_CLK_HI_ITEM->sw.value) {
+			PRIVATE_DATA->imager_abg_state = ABG_CLK_HI7;
+		} else {
+			PRIVATE_DATA->imager_abg_state = ABG_LOW7;
+		}
+
+		indigo_update_property(device, SBIG_ABG_PROPERTY, NULL);
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, SBIG_FREEZE_TEC_PROPERTY);
+			indigo_save_property(device, NULL, SBIG_ABG_PROPERTY);
 		}
 	}
 	// -----------------------------------------------------------------------------
@@ -1352,6 +1402,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 	if (PRIMARY_CCD) {
 		indigo_release_property(SBIG_FREEZE_TEC_PROPERTY);
+		indigo_release_property(SBIG_ABG_PROPERTY);
 	}
 
 	return indigo_ccd_detach(device);
@@ -2028,6 +2079,8 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		private_data->is_usb = true;
 		sprintf(device_index_str, "%d", usb_to_index(device_type));
 	}
+
+	private_data->imager_abg_state = ABG_LOW7;
 	sprintf(device->name, "SBIG %s CCD #%s", cam_name, device_index_str);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 	set_primary_ccd_flag(device);
