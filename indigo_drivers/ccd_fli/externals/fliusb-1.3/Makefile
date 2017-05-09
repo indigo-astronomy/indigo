@@ -34,17 +34,17 @@ uninstall:
 INSTALL_PREFIX=/usr/local
 PACKAGE_NAME="indigo-fliusb"
 PACKAGE_VERSION="1.3"
-BUILD_NO="2"
+BUILD_NO="5"
 
-ARCH_DETECTED=$(shell uname -m)
+ifdef ARCH
+	ARCH_DETECTED=$(ARCH)
+else
+	ARCH_DETECTED=$(shell uname -m)
+endif
 ifeq ($(ARCH_DETECTED),armv7l)
 	DEBIAN_ARCH=armhf
-endif
-ifeq ($(ARCH_DETECTED),i686)
-	DEBIAN_ARCH=i386
-endif
-ifeq ($(ARCH_DETECTED),x86_64)
-	DEBIAN_ARCH=amd64
+else
+	DEBIAN_ARCH=all
 endif
 
 FULL_NAME=$(PACKAGE_NAME)-$(PACKAGE_VERSION)-$(BUILD_NO)-$(DEBIAN_ARCH)
