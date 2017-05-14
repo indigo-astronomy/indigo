@@ -49,6 +49,9 @@
 
 #define PRIVATE_DATA        ((asi_private_data *)device->private_data)
 
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
+
 typedef struct {
 	int dev_id;
 	int current_slot, target_slot;
@@ -102,31 +105,37 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			EFWGetID(index, &(PRIVATE_DATA->dev_id));
-			int res = EFWOpen(PRIVATE_DATA->dev_id);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			if (!res) {
+			if (!device->is_connected) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				EFWGetProperty(PRIVATE_DATA->dev_id, &info);
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
-				EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+				EFWGetID(index, &(PRIVATE_DATA->dev_id));
+				int res = EFWOpen(PRIVATE_DATA->dev_id);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				PRIVATE_DATA->target_slot++;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWOpen(%d) = %d", index, res);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				return INDIGO_FAILED;
+				if (!res) {
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					EFWGetProperty(PRIVATE_DATA->dev_id, &info);
+					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
+					EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					PRIVATE_DATA->target_slot++;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					device->is_connected = true;
+					PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWOpen(%d) = %d", index, res);
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					return INDIGO_FAILED;
+				}
 			}
 		} else {
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			EFWClose(PRIVATE_DATA->dev_id);
-			EFWGetID(index, &(PRIVATE_DATA->dev_id));
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			if (device->is_connected) {
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				EFWClose(PRIVATE_DATA->dev_id);
+				EFWGetID(index, &(PRIVATE_DATA->dev_id));
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -173,7 +182,7 @@ static int efw_products[100];
 static int efw_id_count = 0;
 
 
-static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+static indigo_device *devices[MAX_DEVICES] = {NULL};
 static bool connected_ids[EFW_ID_MAX];
 
 
@@ -249,7 +258,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	EFW_INFO info;
 
 	static indigo_device wheel_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,

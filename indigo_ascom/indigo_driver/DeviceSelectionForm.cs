@@ -176,7 +176,7 @@ namespace ASCOM.INDIGO {
       InitializeComponent();
       this.driver = driver;
       interfaceMask = (int)driver.deviceInterface;
-      Text = "INDIGO " + driver.deviceInterface.ToString("g") + " selection";
+      Text = "INDIGO " + driver.deviceInterface.ToString("g") + " Selector";
       Client client = BaseDriver.client;
       client.Mutex.WaitOne();
       foreach (Server server in client.Servers) {

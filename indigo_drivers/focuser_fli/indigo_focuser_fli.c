@@ -54,7 +54,10 @@
 #include "indigo_focuser_fli.h"
 
 
-#define PRIVATE_DATA													((fli_private_data *)device->private_data)
+#define PRIVATE_DATA		((fli_private_data *)device->private_data)
+
+// gp_bits is used as boolean
+#define is_connected            gp_bits
 
 typedef struct {
 	flidev_t dev_id;
@@ -155,6 +158,7 @@ static void fli_focuser_connect(indigo_device *device) {
 	long res = FLIOpen(&id, PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 	if (!res) {
 		PRIVATE_DATA->dev_id = id;
+		device->is_connected = true;
 		res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetModel(%d) = %d", id, res);
@@ -258,12 +262,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, "Connecting to focuser, this may take time!");
-			indigo_set_timer(device, 0, fli_focuser_connect);
+			if (!device->is_connected) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, "Connecting to focuser, this may take time!");
+				//indigo_set_timer(device, 0, fli_focuser_connect);
+				fli_focuser_connect(device);
+			}
 		} else {
-			fli_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			if (device->is_connected) {
+				fli_close(device);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_STEPS
@@ -401,7 +411,7 @@ static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
 static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
 static flidomain_t fli_domains[MAX_DEVICES] = {0};
 
-static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+static indigo_device *devices[MAX_DEVICES] = {NULL};
 
 
 static void enumerate_devices() {
@@ -508,7 +518,7 @@ static int find_unplugged_device(char *fname) {
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 
 	static indigo_device focuser_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,

@@ -277,14 +277,14 @@ static indigo_device *mount_guider = NULL;
 
 indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = {
-		MOUNT_SIMULATOR_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_SIMULATOR_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
 		indigo_mount_enumerate_properties,
 		mount_change_property,
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
-		MOUNT_SIMULATOR_GUIDER_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_SIMULATOR_GUIDER_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,

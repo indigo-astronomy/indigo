@@ -143,7 +143,7 @@ static indigo_device *device = NULL;
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device wheel_template = {
-		"ATIK Filter Wheel", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"ATIK Filter Wheel", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,

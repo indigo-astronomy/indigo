@@ -43,6 +43,9 @@
 #define SIN									0.8414709848078965
 #define COS									0.5403023058681398
 
+// gp_bits is used as boolean
+#define is_connected                     gp_bits
+
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
 static unsigned short background[] = {
@@ -155,7 +158,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
 		int offset = (int)CCD_OFFSET_ITEM->number.value;
 		double gamma = CCD_GAMMA_ITEM->number.value;
-		
+
 		if (device == PRIVATE_DATA->imager) {
 			for (int j = 0; j < frame_height; j++) {
 				int jj = (frame_top + j) * vertical_bin;
@@ -167,7 +170,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			for (int i = 0; i < size; i++)
 				raw[i] = (rand() & 0x7F);
 		}
-		
+
 		if (device == PRIVATE_DATA->guider) {
 			double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
 			double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
@@ -330,10 +333,16 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		if (CONNECTION_CONNECTED_ITEM->sw.value)
-			PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
-		else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			if (!device->is_connected) { /* Do not double open device */
+				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
+				device->is_connected = true;
+			}
+		} else {
+			if (device->is_connected) {  /* Do not double close device */
+				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				device->is_connected = false;
+			}
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -672,48 +681,48 @@ static indigo_device *guider_guider = NULL;
 
 indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device imager_camera_template = {
-		CCD_SIMULATOR_IMAGER_CAMERA_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_IMAGER_CAMERA_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device imager_wheel_template = {
-		CCD_SIMULATOR_WHEEL_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_WHEEL_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
 		wheel_detach
 	};
 	static indigo_device imager_focuser_template = {
-		CCD_SIMULATOR_FOCUSER_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_FOCUSER_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,
 		focuser_detach
 	};
 	static indigo_device guider_camera_template = {
-		CCD_SIMULATOR_GUIDER_CAMERA_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_GUIDER_CAMERA_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		CCD_SIMULATOR_GUIDER_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_GUIDER_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
 		guider_detach
 	};
-	
+
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-	
+
 	SET_DRIVER_INFO(info, "Camera Simulator", __FUNCTION__, DRIVER_VERSION, last_action);
-	
+
 	if (action == last_action)
 		return INDIGO_OK;
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -748,7 +757,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			guider_guider->private_data = private_data;
 			indigo_attach_device(guider_guider);
 			break;
-			
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
 			if (imager_ccd != NULL) {
@@ -781,10 +790,9 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 				private_data = NULL;
 			}
 			break;
-			
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
 	return INDIGO_OK;
 }
-
