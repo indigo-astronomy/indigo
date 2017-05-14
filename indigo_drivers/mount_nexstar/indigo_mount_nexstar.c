@@ -58,6 +58,9 @@
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount is parking is in progress, please wait until complete!"
 
+// gp_bits is used as boolean
+#define is_connected                   gp_bits
+
 typedef struct {
 	int dev_id;
 	bool parked;
@@ -76,6 +79,8 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static bool mount_open(indigo_device *device) {
+	if (device->is_connected) return false;
+
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		int dev_id = open_telescope(DEVICE_PORT_ITEM->text.value);
@@ -379,13 +384,13 @@ static bool mount_cancel_slew(indigo_device *device) {
 
 
 static void mount_close(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	if (!device->is_connected) return;
 
+	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		close_telescope(PRIVATE_DATA->dev_id);
 		PRIVATE_DATA->dev_id = -1;
 	}
-
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 }
 
@@ -522,85 +527,91 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (mount_open(device)) {
-				int dev_id = PRIVATE_DATA->dev_id;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			if (!device->is_connected) {
+				if (mount_open(device)) {
+					int dev_id = PRIVATE_DATA->dev_id;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
-				/* initialize info prop */
-				int vendor_id = guess_mount_vendor(dev_id);
-				if (vendor_id < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "guess_mount_vendor(%d) = %d", dev_id, vendor_id);
-				} else if (vendor_id == VNDR_SKYWATCHER) {
-					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher", INDIGO_VALUE_SIZE);
-				} else if (vendor_id == VNDR_CELESTRON) {
-					strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron", INDIGO_VALUE_SIZE);
-				}
-				PRIVATE_DATA->vendor_id = vendor_id;
-
-				int model_id = tc_get_model(dev_id);
-				if (model_id < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_model(%d) = %d", dev_id, model_id);
-				} else {
-					get_model_name(model_id,MOUNT_INFO_MODEL_ITEM->text.value,  INDIGO_VALUE_SIZE);
-				}
-
-				int firmware = tc_get_version(dev_id, NULL, NULL);
-				if (firmware < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_version(%d) = %d", dev_id, firmware);
-				} else {
-					if (vendor_id == VNDR_SKYWATCHER) {
-						snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware), GET_PATCH(firmware));
-					} else {
-						snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware));
+					/* initialize info prop */
+					int vendor_id = guess_mount_vendor(dev_id);
+					if (vendor_id < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "guess_mount_vendor(%d) = %d", dev_id, vendor_id);
+					} else if (vendor_id == VNDR_SKYWATCHER) {
+						strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher", INDIGO_VALUE_SIZE);
+					} else if (vendor_id == VNDR_CELESTRON) {
+						strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron", INDIGO_VALUE_SIZE);
 					}
-				}
+					PRIVATE_DATA->vendor_id = vendor_id;
 
-				/* initialize guidingrate prop */
-				int offset = 1;                                             /* for Ceslestron 0 is 1% and 99 is 100% */
-				if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) offset = 0; /* there is no offset for Sky-Watcher */
+					int model_id = tc_get_model(dev_id);
+					if (model_id < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_model(%d) = %d", dev_id, model_id);
+					} else {
+						get_model_name(model_id,MOUNT_INFO_MODEL_ITEM->text.value,  INDIGO_VALUE_SIZE);
+					}
 
-				int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
-				if (st4_ra_rate < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d", dev_id, st4_ra_rate);
+					int firmware = tc_get_version(dev_id, NULL, NULL);
+					if (firmware < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_version(%d) = %d", dev_id, firmware);
+					} else {
+						if (vendor_id == VNDR_SKYWATCHER) {
+							snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware), GET_PATCH(firmware));
+						} else {
+							snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", GET_RELEASE(firmware), GET_REVISION(firmware));
+						}
+					}
+
+					/* initialize guidingrate prop */
+					int offset = 1;                                             /* for Ceslestron 0 is 1% and 99 is 100% */
+					if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) offset = 0; /* there is no offset for Sky-Watcher */
+
+					int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
+					if (st4_ra_rate < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d", dev_id, st4_ra_rate);
+					} else {
+						MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
+						PRIVATE_DATA->st4_ra_rate = st4_ra_rate + offset;
+					}
+
+					int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
+					if (st4_dec_rate < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d", dev_id, st4_dec_rate);
+					} else {
+						MOUNT_GUIDE_RATE_DEC_ITEM->number.value = st4_dec_rate + offset;
+						PRIVATE_DATA->st4_dec_rate = st4_dec_rate + offset;
+					}
+
+					/* initialize tracking prop */
+					int mode = tc_get_tracking_mode(PRIVATE_DATA->dev_id);
+					if (mode < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, mode);
+					} else if (mode == TC_TRACK_OFF) {
+						MOUNT_TRACKING_OFF_ITEM->sw.value = true;
+						MOUNT_TRACKING_ON_ITEM->sw.value = false;
+						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+					} else {
+						MOUNT_TRACKING_OFF_ITEM->sw.value = false;
+						MOUNT_TRACKING_ON_ITEM->sw.value = true;
+						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+					}
+
+					device->is_connected = true;
+					/* start updates */
+					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 				} else {
-					MOUNT_GUIDE_RATE_RA_ITEM->number.value = st4_ra_rate + offset;
-					PRIVATE_DATA->st4_ra_rate = st4_ra_rate + offset;
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				}
-
-				int st4_dec_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_DE);
-				if (st4_dec_rate < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d", dev_id, st4_dec_rate);
-				} else {
-					MOUNT_GUIDE_RATE_DEC_ITEM->number.value = st4_dec_rate + offset;
-					PRIVATE_DATA->st4_dec_rate = st4_dec_rate + offset;
-				}
-
-				/* initialize tracking prop */
-				int mode = tc_get_tracking_mode(PRIVATE_DATA->dev_id);
-				if (mode < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, mode);
-				} else if (mode == TC_TRACK_OFF) {
-					MOUNT_TRACKING_OFF_ITEM->sw.value = true;
-					MOUNT_TRACKING_ON_ITEM->sw.value = false;
-					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-				} else {
-					MOUNT_TRACKING_OFF_ITEM->sw.value = false;
-					MOUNT_TRACKING_ON_ITEM->sw.value = true;
-					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-				}
-
-				/* start updates */
-				PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
-			mount_close(device);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			if (device->is_connected) {
+				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+				mount_close(device);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
@@ -831,21 +842,27 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (mount_open(device)) {
-				indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
-				PRIVATE_DATA->guider_timer_ra = NULL;
-				PRIVATE_DATA->guider_timer_dec = NULL;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
-				GUIDER_GUIDE_RA_PROPERTY->hidden = false;
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			if (!device->is_connected) {
+				if (mount_open(device)) {
+					device->is_connected = true;
+					indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
+					PRIVATE_DATA->guider_timer_ra = NULL;
+					PRIVATE_DATA->guider_timer_dec = NULL;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+					GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
 			}
 		} else {
-			mount_close(device);
-			indigo_delete_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			if (device->is_connected) {
+				mount_close(device);
+				indigo_delete_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
@@ -936,14 +953,14 @@ static indigo_device *mount_guider = NULL;
 
 indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = {
-		MOUNT_NEXSTAR_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_NEXSTAR_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
 		indigo_mount_enumerate_properties,
 		mount_change_property,
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
-		MOUNT_NEXSTAR_GUIDER_NAME, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_NEXSTAR_GUIDER_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		nexstar_guider_enumerate_properties,
 		guider_change_property,
@@ -1001,4 +1018,3 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 
 	return INDIGO_OK;
 }
-

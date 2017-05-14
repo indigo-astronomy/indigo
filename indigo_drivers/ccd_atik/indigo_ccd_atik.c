@@ -53,7 +53,7 @@ typedef struct {
 	libatik_device_context *device_context;
 	libusb_device *dev;
 	int device_count;
-	indigo_timer *exposure_timer, *temperture_timer, *guider_timer;
+	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	double cooler_power, target_temperature, current_temperature;
 	int target_slot, current_slot;
 	unsigned short relay_mask;
@@ -67,6 +67,8 @@ typedef struct {
 
 static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -83,6 +85,8 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void pre_exposure_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 2, exposure_timer_callback);
@@ -92,6 +96,8 @@ static void pre_exposure_timer_callback(indigo_device *device) {
 }
 
 static void short_exposure_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -108,6 +114,8 @@ static void short_exposure_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	if (PRIVATE_DATA->can_check_temperature) {
 		bool status;
 		if (libatik_check_cooler(PRIVATE_DATA->device_context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature)) {
@@ -131,7 +139,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperture_timer);
+	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
 }
 
 static indigo_result ccd_attach(indigo_device *device) {
@@ -189,12 +197,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					bool status;
 					libatik_check_cooler(PRIVATE_DATA->device_context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature);
 					PRIVATE_DATA->target_temperature = 0;
-					PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 				}
 				PRIVATE_DATA->can_check_temperature = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
+				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				if (PRIVATE_DATA->buffer != NULL) {
 					free(PRIVATE_DATA->buffer);
 					PRIVATE_DATA->buffer = NULL;
@@ -204,7 +212,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
+			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 			if (PRIVATE_DATA->buffer != NULL) {
 				free(PRIVATE_DATA->buffer);
 				PRIVATE_DATA->buffer = NULL;
@@ -295,6 +303,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 static void guider_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->guider_timer = NULL;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	libatik_guide_relays(PRIVATE_DATA->device_context, 0);
 	if (PRIVATE_DATA->relay_mask & (ATIK_GUIDE_NORTH | ATIK_GUIDE_SOUTH)) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
@@ -407,6 +417,8 @@ static indigo_result guider_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
 
 static void wheel_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
 	libatik_check_filter_wheel(PRIVATE_DATA->device_context, &PRIVATE_DATA->current_slot);
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
@@ -499,21 +511,21 @@ static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
 		guider_detach
 	};
 	static indigo_device wheel_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,

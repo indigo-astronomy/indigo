@@ -139,6 +139,9 @@
 
 #define PRIVATE_DATA        ((sx_private_data *)device->private_data)
 
+// gp_bits is used as boolean
+#define is_connected                   gp_bits
+
 typedef struct {
 	libusb_device *dev;
 	libusb_device_handle *handle;
@@ -613,6 +616,7 @@ static void sx_close(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
@@ -630,6 +634,7 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void clear_reg_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		sx_clear_regs(device);
@@ -640,6 +645,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (sx_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -684,44 +690,50 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			bool result = true;
-			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				result = sx_open(device);
-			}
-			if (result) {
-				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->ccd_width;
-				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->ccd_height;
-				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->pix_width * 100)/100;
-				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(PRIVATE_DATA->pix_height * 100) / 100;
-				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-				CCD_MODE_PROPERTY->count = 3;
-				char name[32];
-				sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height);
-				indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-				sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->ccd_width/2, PRIVATE_DATA->ccd_height/2);
-				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-				sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->ccd_width/4, PRIVATE_DATA->ccd_height/4);
-				indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
-				if (PRIVATE_DATA->extra_caps & CAPS_COOLER) {
-					CCD_COOLER_PROPERTY->hidden = false;
-					CCD_TEMPERATURE_PROPERTY->hidden = false;
-					PRIVATE_DATA->target_temperature = 0;
-					PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+			if (!device->is_connected) {
+				bool result = true;
+				if (PRIVATE_DATA->device_count++ == 0) {
+					CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+					result = sx_open(device);
 				}
-				PRIVATE_DATA->can_check_temperature = true;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				if (result) {
+					CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->ccd_width;
+					CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->ccd_height;
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(PRIVATE_DATA->pix_width * 100)/100;
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(PRIVATE_DATA->pix_height * 100) / 100;
+					CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_MODE_PROPERTY->count = 3;
+					char name[32];
+					sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height);
+					indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+					sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->ccd_width/2, PRIVATE_DATA->ccd_height/2);
+					indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+					sprintf(name, "RAW 16 %dx%d", PRIVATE_DATA->ccd_width/4, PRIVATE_DATA->ccd_height/4);
+					indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
+					if (PRIVATE_DATA->extra_caps & CAPS_COOLER) {
+						CCD_COOLER_PROPERTY->hidden = false;
+						CCD_TEMPERATURE_PROPERTY->hidden = false;
+						PRIVATE_DATA->target_temperature = 0;
+						PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+					}
+					PRIVATE_DATA->can_check_temperature = true;
+					device->is_connected = true;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
 			}
 		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
-			if (--PRIVATE_DATA->device_count == 0) {
-				sx_close(device);
+			if (device->is_connected) {
+				indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
+				if (--PRIVATE_DATA->device_count == 0) {
+					sx_close(device);
+				}
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -795,6 +807,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	PRIVATE_DATA->guider_timer = NULL;
 	sx_guide_relays(device, 0);
 	if (PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH)) {
@@ -830,26 +843,32 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			bool result = true;
-			if (PRIVATE_DATA->device_count++ == 0) {
-				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				result = sx_open(device);
-			}
-			if (result) {
-				assert(PRIVATE_DATA->extra_caps & CAPS_STAR2K);
-				sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				PRIVATE_DATA->device_count--;
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			if (!device->is_connected) {
+				bool result = true;
+				if (PRIVATE_DATA->device_count++ == 0) {
+					CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+					result = sx_open(device);
+				}
+				if (result) {
+					assert(PRIVATE_DATA->extra_caps & CAPS_STAR2K);
+					sx_guide_relays(device, PRIVATE_DATA->relay_mask = 0);
+					device->is_connected = true;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					PRIVATE_DATA->device_count--;
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
 			}
 		} else {
-			if (--PRIVATE_DATA->device_count == 0) {
-				sx_close(device);
+			if (device->is_connected) {
+				if (--PRIVATE_DATA->device_count == 0) {
+					sx_close(device);
+				}
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
@@ -957,14 +976,14 @@ static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -1076,5 +1095,3 @@ indigo_result indigo_ccd_sx(indigo_driver_action action, indigo_driver_info *inf
 
 	return INDIGO_OK;
 }
-
-

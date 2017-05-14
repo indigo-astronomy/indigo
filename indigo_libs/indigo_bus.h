@@ -27,6 +27,7 @@
 #define indigo_bus_h
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "indigo_config.h"
 
@@ -201,6 +202,7 @@ typedef struct {
  */
 typedef struct indigo_device {
 	char name[INDIGO_NAME_SIZE];        ///< device name
+	uint16_t gp_bits;                   ///< general purpose bits for driver specific usage
 	void *device_context;               ///< any device specific data
 	void *private_data;                 ///< private data
 	indigo_result last_result;          ///< result of last bus operation
@@ -296,7 +298,7 @@ extern void indigo_set_log_level(indigo_log_levels level);
 /** Get log level; see enum indigo_log_levels
  */
 extern indigo_log_levels indigo_get_log_level();
-	
+
 /** Attach device to bus.
  Return value of attach() callback function is assigned to last_result in device structure.
  */

@@ -795,7 +795,7 @@ install:
 	sudo install -D -m 0644 $(DRIVERS) $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.so $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 $(DRIVER_SOLIBS) $(INSTALL_PREFIX)/lib
-	mkdir sbig_scratch; cd sbig_scratch; cmake ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
+	mkdir sbig_scratch; cd sbig_scratch; cmake cmake -DCMAKE_INSTALL_PREFIX=/ -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
@@ -810,6 +810,7 @@ install:
 #
 #---------------------------------------------------------------------
 
+REWRITE_DEBS="libsbigudrv2"
 package: $(PACKAGE_NAME).$(PACKAGE_TYPE)
 
 $(PACKAGE_NAME).deb: all
@@ -831,7 +832,7 @@ $(PACKAGE_NAME).deb: all
 	install -D -m 0644 indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/99-efw.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_wheel_asi.rules
 	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)
 	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
-	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0, libavahi-compat-libdnssd1\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nReplaces: $(REWRITE_DEBS)\nMaintainer: CloudMakers, s. r. o.\nDepends: libusb-1.0-0, libgudev-1.0-0, libavahi-compat-libdnssd1\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	sudo chown root /tmp/$(PACKAGE_NAME)
 	dpkg --build /tmp/$(PACKAGE_NAME)
 	mv /tmp/$(PACKAGE_NAME).deb .
@@ -840,7 +841,7 @@ $(PACKAGE_NAME).deb: all
 packages: package fliusb-package
 
 fliusb-package:
-	cd indigo_drivers/ccd_fli/externals/fliusb-1.3 && make package && cd ../../../..
+	cd indigo_drivers/ccd_fli/externals/fliusb-1.3 && ARCH="all" make package && ARCH="armv7l" make package && cd ../../../..
 	cp indigo_drivers/ccd_fli/externals/fliusb-1.3/*.deb .
 	rm indigo_drivers/ccd_fli/externals/fliusb-1.3/*.deb
 

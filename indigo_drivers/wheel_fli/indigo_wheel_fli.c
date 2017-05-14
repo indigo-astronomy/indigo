@@ -50,6 +50,9 @@
 
 #define PRIVATE_DATA        ((fli_private_data *)device->private_data)
 
+// gp_bits is used as boolean
+#define is_connected                    gp_bits
+
 typedef struct {
 	flidev_t dev_id;
 	char dev_file_name[MAX_PATH];
@@ -118,81 +121,85 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			if (!res) {
-				flidev_t id = PRIVATE_DATA->dev_id;
-				long int num_slots;
-
+			if (!device->is_connected) {
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-				FLIGetFilterCount(id, &num_slots);
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = (int)num_slots;
-				WHEEL_SLOT_ITEM->number.min = 1;
-				FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
-				if (PRIVATE_DATA->target_slot < 0) {
-					FLISetFilterPos(id, 0);
-					PRIVATE_DATA->target_slot = 1;
-					PRIVATE_DATA->current_slot = 1;
-					WHEEL_SLOT_ITEM->number.value = 1;
-				} else {
-					PRIVATE_DATA->target_slot++;
-					WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot;
-				}
-				res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
-				if (res) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetModel(%d) = %d", id, res);
-				}
-
-				res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
-				if (res) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetSerialString(%d) = %d", id, res);
-				}
-
-				long hw_rev, fw_rev;
-				res = FLIGetFWRevision(id, &fw_rev);
-				if (res) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetFWRevision(%d) = %d", id, res);
-				}
-
-				res = FLIGetHWRevision(id, &hw_rev);
-				if (res) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetHWRevision(%d) = %d", id, res);
-				}
+				long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				if (!res) {
+					flidev_t id = PRIVATE_DATA->dev_id;
+					long int num_slots;
+					device->is_connected = true;
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-				sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
-				sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
+					FLIGetFilterCount(id, &num_slots);
+					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = (int)num_slots;
+					WHEEL_SLOT_ITEM->number.min = 1;
+					FLIGetFilterPos(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+					if (PRIVATE_DATA->target_slot < 0) {
+						FLISetFilterPos(id, 0);
+						PRIVATE_DATA->target_slot = 1;
+						PRIVATE_DATA->current_slot = 1;
+						WHEEL_SLOT_ITEM->number.value = 1;
+					} else {
+						PRIVATE_DATA->target_slot++;
+						WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot;
+					}
+					res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
+					if (res) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetModel(%d) = %d", id, res);
+					}
 
-				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-				indigo_set_timer(device, 0, wheel_timer_callback);
+					res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
+					if (res) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetSerialString(%d) = %d", id, res);
+					}
 
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				return INDIGO_FAILED;
+					long hw_rev, fw_rev;
+					res = FLIGetFWRevision(id, &fw_rev);
+					if (res) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetFWRevision(%d) = %d", id, res);
+					}
+
+					res = FLIGetHWRevision(id, &hw_rev);
+					if (res) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetHWRevision(%d) = %d", id, res);
+					}
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
+					sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+
+					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+					indigo_set_timer(device, 0, wheel_timer_callback);
+
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
+					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+					return INDIGO_FAILED;
+				}
 			}
 		} else {
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			long res = FLIClose(PRIVATE_DATA->dev_id);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+			if (device->is_connected) {
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				long res = FLIClose(PRIVATE_DATA->dev_id);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				if (res) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+				}
+				PRIVATE_DATA->dev_id = -1;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				device->is_connected = false;
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			}
-			PRIVATE_DATA->dev_id = -1;
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		}
 
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
@@ -235,7 +242,7 @@ static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
 static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
 static flidomain_t fli_domains[MAX_DEVICES] = {0};
 
-static indigo_device *devices[MAX_DEVICES] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+static indigo_device *devices[MAX_DEVICES] = {NULL};
 
 
 static void enumerate_devices() {
@@ -341,7 +348,7 @@ static int find_unplugged_device(char *fname) {
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 
 	static indigo_device wheel_template = {
-		"", NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,

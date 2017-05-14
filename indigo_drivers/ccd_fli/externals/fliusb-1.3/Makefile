@@ -34,21 +34,22 @@ uninstall:
 INSTALL_PREFIX=/usr/local
 PACKAGE_NAME="indigo-fliusb"
 PACKAGE_VERSION="1.3"
-BUILD_NO="2"
+BUILD_NO="6"
 
-ARCH_DETECTED=$(shell uname -m)
+ifdef ARCH
+	ARCH_DETECTED=$(ARCH)
+else
+	ARCH_DETECTED=$(shell uname -m)
+endif
 ifeq ($(ARCH_DETECTED),armv7l)
 	DEBIAN_ARCH=armhf
-endif
-ifeq ($(ARCH_DETECTED),i686)
-	DEBIAN_ARCH=i386
-endif
-ifeq ($(ARCH_DETECTED),x86_64)
-	DEBIAN_ARCH=amd64
+else
+	DEBIAN_ARCH=all
 endif
 
 FULL_NAME=$(PACKAGE_NAME)-$(PACKAGE_VERSION)-$(BUILD_NO)-$(DEBIAN_ARCH)
 
+REWRITE_DEBS="fliusb-dkms"
 package: $(FULL_NAME).deb
 
 $(FULL_NAME).deb:
@@ -61,10 +62,10 @@ $(FULL_NAME).deb:
 	install README /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
 	install -d /tmp/$(FULL_NAME)/DEBIAN
 ifeq ($(ARCH_DETECTED),armv7l)
-	printf "Package: $(PACKAGE_NAME)\nVersion: $(PACKAGE_VERSION)-$(BUILD_NO)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: INDIGO Community\nDepends: build-essential, raspberrypi-kernel-headers\nDescription: Kernel module for FLI USB devices\n" > /tmp/$(FULL_NAME)/DEBIAN/control
+	printf "Package: $(PACKAGE_NAME)\nVersion: $(PACKAGE_VERSION)-$(BUILD_NO)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nReplaces: $(REWRITE_DEBS)\nMaintainer: INDIGO Community\nDepends: build-essential, raspberrypi-kernel-headers\nDescription: Kernel module for FLI USB devices\n" > /tmp/$(FULL_NAME)/DEBIAN/control
 	printf "#!/bin/bash\nln -s /usr/src/linux-headers-$(uname -r) /lib/modules/$(uname -r)/build\ncd $(INSTALL_PREFIX)/share/$(PACKAGE_NAME) && make clean && make && make install && modprobe fliusb\ngrep -q 'fliusb' /etc/modules || echo 'fliusb' >>/etc/modules" >/tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-install-fliusb
 else
-	printf "Package: $(PACKAGE_NAME)\nVersion: $(PACKAGE_VERSION)-$(BUILD_NO)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nMaintainer: INDIGO Community\nDepends: build-essential, linux-headers\nDescription: Kernel module for FLI USB devices\n" > /tmp/$(FULL_NAME)/DEBIAN/control
+	printf "Package: $(PACKAGE_NAME)\nVersion: $(PACKAGE_VERSION)-$(BUILD_NO)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nReplaces: $(REWRITE_DEBS)\nMaintainer: INDIGO Community\nDepends: build-essential, linux-headers\nDescription: Kernel module for FLI USB devices\n" > /tmp/$(FULL_NAME)/DEBIAN/control
 	printf "#!/bin/bash\ncd $(INSTALL_PREFIX)/share/$(PACKAGE_NAME) && make clean && make && make install && modprobe fliusb\ngrep -q 'fliusb' /etc/modules || echo 'fliusb' >>/etc/modules" >/tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-install-fliusb
 endif
 	printf "#!/bin/bash\ncd $(INSTALL_PREFIX)/share/$(PACKAGE_NAME) && rmmod fliusb && make uninstall && make clean\nsed -i.bak '/^fliusb/d' /etc/modules" >/tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-remove-fliusb
