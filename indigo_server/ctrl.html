@@ -284,7 +284,7 @@
 																		<label class="col-sm-4 control-label">{{item.label}}</label>
 																		<div class="col-sm-8" ng-if="property.state=='Ok' && item.value!=undefined">
 																			<img width="100%" ng-src="{{'http://' + indigoServer + item.value}}" ng-if="item.jpeg"/>
-																			<a ng-href="{{'http://' + indigoServer + item.value}}" ng-if="!item.jpeg">{{'http://' + indigoServer + item.value}}</a>
+																			<label class="control-label"><a ng-href="{{'http://' + indigoServer + item.value}}" ng-if="!item.jpeg">{{'http://' + indigoServer + item.value}}</a></label>
 																		</div>
 																	</div>
 																</form>
@@ -643,7 +643,7 @@
 								item.jpeg = false;
 								if (item != undefined) {
 									if (vector.items[i].value != undefined) {
-										item.value = vector.items[i].value;
+										item.value = vector.items[i].value + '?' + new Date().getTime();
 										item.jpeg = vector.items[i].value.substr(-5) === ".jpeg";
 									}
 								}
