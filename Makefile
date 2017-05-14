@@ -97,11 +97,11 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
 	ifeq ($(ARCH_DETECTED),arm)
-		CFLAGS=-g -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE)  -std=gnu11 -pthread -DINDIGO_LINUX
+		CFLAGS=$(CFLAGS) -g -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE)  -std=gnu11 -pthread -DINDIGO_LINUX
 	else
-		CFLAGS=-g -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+		CFLAGS=$(CFLAGS) -g -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
 	endif
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
+	LDFLAGS=$(LDFLAGS) -lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
@@ -195,7 +195,7 @@ externals/hidapi/configure: externals/hidapi/configure.ac
 	cd externals/hidapi; autoreconf -fiv; cd ../..
 
 externals/hidapi/Makefile: externals/hidapi/configure
-	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) --with-pic; cd ../..
+	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)" --with-pic; cd ../..
 
 $(LIBHIDAPI): externals/hidapi/Makefile
 	cd externals/hidapi; make; make install; cd ../..
