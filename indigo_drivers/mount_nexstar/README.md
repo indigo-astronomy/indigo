@@ -16,7 +16,7 @@ INDIGO Astronomy open-source license.
 
 ## Use
 
-indigo_server indigo_mount_lx200
+indigo_server indigo_mount_nexstar
 
 ## Comments
 
