@@ -1448,6 +1448,9 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					} else
 						state = TEXT;
 					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' ATTRIBUTE_NAME1 -> TEXT", c));
+				} else {
+					state = ERROR;
+					INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: '%c' error ATTRIBUTE_NAME1", c));
 				}
 				break;
 			case ATTRIBUTE_NAME:
