@@ -843,7 +843,7 @@ $(PACKAGE_NAME).deb: all
 packages: package fliusb-package
 
 fliusb-package:
-	cd indigo_drivers/ccd_fli/externals/fliusb-1.3 && ARCH="all" make package && ARCH="armv7l" make package && cd ../../../..
+	cd indigo_drivers/ccd_fli/externals/fliusb-1.3 && make package && cd ../../../..
 	cp indigo_drivers/ccd_fli/externals/fliusb-1.3/*.deb .
 	rm indigo_drivers/ccd_fli/externals/fliusb-1.3/*.deb
 
