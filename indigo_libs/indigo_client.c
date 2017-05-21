@@ -320,6 +320,7 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 		} else if (!indigo_available_subprocesses[dc].thread_started) {
 			empty_slot = dc;
 		}
+    pthread_mutex_unlock(&mutex);
 	}
 
 	if (empty_slot > INDIGO_MAX_SERVERS) {
