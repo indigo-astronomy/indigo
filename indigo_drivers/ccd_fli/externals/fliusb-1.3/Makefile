@@ -42,7 +42,7 @@ FULL_NAME=$(PACKAGE_NAME)-$(PACKAGE_VERSION)-$(BUILD_NO)-$(DEBIAN_ARCH)
 REWRITE_DEBS="fliusb-dkms"
 package: $(FULL_NAME).deb
 
-$(FULL_NAME).deb:
+deb-prepare:
 	install -d /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin
 	install -d /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
 	install fliusb.c /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
@@ -50,12 +50,14 @@ $(FULL_NAME).deb:
 	install fliusb_ioctl.h /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
 	install Makefile /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
 	install README /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/share/$(PACKAGE_NAME)
-	install -d /tmp/$(FULL_NAME)/DEBIAN
-	printf "Package: $(PACKAGE_NAME)\nVersion: $(PACKAGE_VERSION)-$(BUILD_NO)\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nReplaces: $(REWRITE_DEBS)\nMaintainer: INDIGO Community\nDepends: build-essential, raspberrypi-kernel-headers | linux-headers\nDescription: Kernel module for FLI USB devices\n" > /tmp/$(FULL_NAME)/DEBIAN/control
 	printf "#!/bin/bash\ncd $(INSTALL_PREFIX)/share/$(PACKAGE_NAME) && make clean && make && make install && modprobe fliusb\ngrep -q 'fliusb' /etc/modules || echo 'fliusb' >>/etc/modules" >/tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-install-fliusb
 	printf "#!/bin/bash\ncd $(INSTALL_PREFIX)/share/$(PACKAGE_NAME) && rmmod fliusb && make uninstall && make clean\nsed -i.bak '/^fliusb/d' /etc/modules" >/tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-remove-fliusb
 	chmod +x /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-install-fliusb
 	chmod +x /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-remove-fliusb
+
+$(FULL_NAME).deb: deb-prepare
+	install -d /tmp/$(FULL_NAME)/DEBIAN
+	printf "Package: $(PACKAGE_NAME)\nVersion: $(PACKAGE_VERSION)-$(BUILD_NO)\nInstalled-Size: $(shell echo $$((`du -s /tmp/$(FULL_NAME) | cut -f1`)))\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nReplaces: $(REWRITE_DEBS)\nMaintainer: INDIGO Community\nDepends: build-essential, raspberrypi-kernel-headers | linux-headers\nDescription: Kernel module for FLI USB devices\n" > /tmp/$(FULL_NAME)/DEBIAN/control
 	cp /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-install-fliusb /tmp/$(FULL_NAME)/DEBIAN/postinst
 	cp /tmp/$(FULL_NAME)/$(INSTALL_PREFIX)/bin/indigo-remove-fliusb /tmp/$(FULL_NAME)/DEBIAN/prerm
 	sudo chown root /tmp/$(FULL_NAME)
