@@ -21,31 +21,27 @@
 
 
 /** INDIGO QHY CCD driver
- \file indigo_ccd_qhy2.c
+ \file indigo_ccd_qhy.h
  */
 
-#define DRIVER_VERSION 0x0001
-#define DRIVER_NAME "indigo_ccd_qhy2"
+#ifndef ccd_qhy_h
+#define ccd_qhy_h
 
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <math.h>
-#include <assert.h>
-#include <pthread.h>
-#include <sys/time.h>
+#include "indigo_driver.h"
+#include "indigo_ccd_driver.h"
+#include "indigo_guider_driver.h"
 
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#include "indigo_ccd_qhy2.h"
-#include "indigo_driver_xml.h"
+/** Register QHY CCD hot-plug callback
+ */
 
-indigo_result indigo_ccd_qhy2(indigo_driver_action action, indigo_driver_info *info) {
-	return INDIGO_OK;
+extern indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* ccd_qhy_h */
