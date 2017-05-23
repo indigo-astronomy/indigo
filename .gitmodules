@@ -7,9 +7,6 @@
 [submodule "externals/novas"]
 	path = externals/novas
 	url = https://github.com/indigo-astronomy/novas.git
-[submodule "indigo_drivers/ccd_qhy/externals/libqhy"]
-	path = indigo_drivers/ccd_qhy/externals/libqhy
-	url = https://github.com/indigo-astronomy/libqhy.git
 [submodule "indigo_drivers/ccd_iidc/externals/libdc1394"]
 	path = indigo_drivers/ccd_iidc/externals/libdc1394
 	url = https://github.com/indigo-astronomy/libdc1394.git
