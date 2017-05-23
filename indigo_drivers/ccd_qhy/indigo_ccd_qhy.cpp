@@ -48,5 +48,9 @@
 #include "indigo_driver_xml.h"
 
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
+	uint32_t res = InitQHYCCDResource();
+	if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "InitQHYCCDResource() ERROR = %d", res);
+	else INDIGO_DRIVER_ERROR(DRIVER_NAME, "InitQHYCCDResource() OK = %d", res);
+	ReleaseQHYCCDResource();
 	return INDIGO_OK;
 }
