@@ -569,7 +569,7 @@ $(BUILD_DRIVERS)/indigo_ccd_qhy.a: indigo_drivers/ccd_qhy/indigo_ccd_qhy.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_ccd_qhy: indigo_drivers/ccd_qhy/indigo_ccd_qhy_main.o $(BUILD_DRIVERS)/indigo_ccd_qhy.a $(BUILD_LIB)/libqhy.a
-	$(CC) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
 $(BUILD_DRIVERS)/indigo_ccd_qhy.$(SOEXT): indigo_drivers/ccd_qhy/indigo_ccd_qhy.o $(BUILD_LIB)/libqhy.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
