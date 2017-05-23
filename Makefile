@@ -563,17 +563,17 @@ $(BUILD_DRIVERS)/indigo_wheel_asi.$(SOEXT): indigo_drivers/wheel_asi/indigo_whee
 
 #---------------------------------------------------------------------
 #
-#	Build QHY CCD driver 2 (based on the official SDK)
+#	Build QHY CCD driver (based on the official SDK)
 #
 #---------------------------------------------------------------------
 
-$(BUILD_DRIVERS)/indigo_ccd_qhy2.a: indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.o
+$(BUILD_DRIVERS)/indigo_ccd_qhy.a: indigo_drivers/ccd_qhy/indigo_ccd_qhy.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_DRIVERS)/indigo_ccd_qhy2: indigo_drivers/ccd_qhy2/indigo_ccd_qhy2_main.o $(BUILD_DRIVERS)/indigo_ccd_qhy2.a #$(BUILD_LIB)/libqhy.a
+$(BUILD_DRIVERS)/indigo_ccd_qhy: indigo_drivers/ccd_qhy/indigo_ccd_qhy_main.o $(BUILD_DRIVERS)/indigo_ccd_qhy.a #$(BUILD_LIB)/libqhy.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_ccd_qhy2.$(SOEXT): indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.o #$(BUILD_LIB)/libqhy.a
+$(BUILD_DRIVERS)/indigo_ccd_qhy.$(SOEXT): indigo_drivers/ccd_qhy/indigo_ccd_qhy.o #$(BUILD_LIB)/libqhy.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------

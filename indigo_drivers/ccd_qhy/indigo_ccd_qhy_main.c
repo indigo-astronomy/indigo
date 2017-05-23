@@ -20,13 +20,13 @@
 // 2.0 Build 0 - PoC by Rumen G. Bogdanovski
 
 /** INDIGO QHY CCD driver main
- \file indigo_ccd_qhy2_main.c
+ \file indigo_ccd_qhy_main.c
  */
 
 #include <stdio.h>
 #include <string.h>
 
-#include "indigo_ccd_qhy2.h"
+#include "indigo_ccd_qhy.h"
 #include "indigo_driver_xml.h"
 
 int main(int argc, const char * argv[]) {
@@ -34,10 +34,10 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
-	indigo_ccd_qhy2(INDIGO_DRIVER_INIT, NULL);
+	indigo_ccd_qhy(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_ccd_qhy2(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_ccd_qhy(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_stop();
 	return 0;
 }
