@@ -85,7 +85,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a
+	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a
 endif
 
 #---------------------------------------------------------------------
@@ -106,7 +106,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a
+	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a
 endif
 
 #---------------------------------------------------------------------
@@ -257,14 +257,14 @@ $(BUILD_LIB)/libatik.a: $(BUILD_INCLUDE)/libatik/libatik.h
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libqhy/libqhy.h: indigo_drivers/ccd_qhy/externals/libqhy/include/libqhy/libqhy.h
-	install -d $(BUILD_INCLUDE)
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_qhy/externals/libqhy/include/libqhy $(BUILD_INCLUDE)
+#$(BUILD_INCLUDE)/libqhy/libqhy.h: indigo_drivers/ccd_qhy/externals/libqhy/include/libqhy/libqhy.h
+#	install -d $(BUILD_INCLUDE)
+#	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_qhy/externals/libqhy/include/libqhy $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libqhy.a: $(BUILD_INCLUDE)/libqhy/libqhy.h
-	cd indigo_drivers/ccd_qhy/externals/libqhy; make clean; make; cd ../../../..
-	install -d $(BUILD_LIB)
-	ln -sf $(INDIGO_ROOT)/$(LIBQHY) $(BUILD_LIB)
+#$(BUILD_LIB)/libqhy.a: $(BUILD_INCLUDE)/libqhy/libqhy.h
+#	cd indigo_drivers/ccd_qhy/externals/libqhy; make clean; make; cd ../../../..
+#	install -d $(BUILD_LIB)
+#	ln -sf $(INDIGO_ROOT)/$(LIBQHY) $(BUILD_LIB)
 
 
 #---------------------------------------------------------------------
@@ -560,21 +560,6 @@ $(BUILD_DRIVERS)/indigo_wheel_asi: indigo_drivers/wheel_asi/indigo_wheel_asi_mai
 
 $(BUILD_DRIVERS)/indigo_wheel_asi.$(SOEXT): indigo_drivers/wheel_asi/indigo_wheel_asi.o $(BUILD_LIB)/libEFWFilter.a $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
-
-#---------------------------------------------------------------------
-#
-#	Build QHY CCD driver
-#
-#---------------------------------------------------------------------
-
-$(BUILD_DRIVERS)/indigo_ccd_qhy.a: indigo_drivers/ccd_qhy/indigo_ccd_qhy.o
-	$(AR) $(ARFLAGS) $@ $^
-
-$(BUILD_DRIVERS)/indigo_ccd_qhy: indigo_drivers/ccd_qhy/indigo_ccd_qhy_main.o $(BUILD_DRIVERS)/indigo_ccd_qhy.a $(BUILD_LIB)/libqhy.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
-
-$(BUILD_DRIVERS)/indigo_ccd_qhy.$(SOEXT): indigo_drivers/ccd_qhy/indigo_ccd_qhy.o $(BUILD_LIB)/libqhy.a
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
 #
