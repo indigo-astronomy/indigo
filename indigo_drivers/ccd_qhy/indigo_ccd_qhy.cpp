@@ -44,10 +44,12 @@
 #endif
 
 #include "qhyccd.h"
+#include "log4z.h"
 #include "indigo_ccd_qhy.h"
 #include "indigo_driver_xml.h"
 
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
+	SetQHYCCDLogLevel(LOG_LEVEL_FATAL);
 	uint32_t res = InitQHYCCDResource();
 	if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "InitQHYCCDResource() ERROR = %d", res);
 	else INDIGO_DRIVER_ERROR(DRIVER_NAME, "InitQHYCCDResource() OK = %d", res);
