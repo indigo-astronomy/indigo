@@ -578,6 +578,21 @@ $(BUILD_DRIVERS)/indigo_ccd_qhy.$(SOEXT): indigo_drivers/ccd_qhy/indigo_ccd_qhy.
 
 #---------------------------------------------------------------------
 #
+#	Build QHY CCD driver 2 (based on the official SDK)
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_ccd_qhy2.a: indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_qhy2: indigo_drivers/ccd_qhy2/indigo_ccd_qhy2_main.o $(BUILD_DRIVERS)/indigo_ccd_qhy2.a #$(BUILD_LIB)/libqhy.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_ccd_qhy2.$(SOEXT): indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.o #$(BUILD_LIB)/libqhy.a
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build Shoestring FCUSB focuser driver
 #
 #---------------------------------------------------------------------
