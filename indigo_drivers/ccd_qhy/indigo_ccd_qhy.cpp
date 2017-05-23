@@ -19,9 +19,9 @@
 // version history
 // 2.0 Build 0 - PoC by Rumen G. Bogdanovski
 
-
 /** INDIGO QHY CCD driver
- \file indigo_ccd_qhy.c
+ \file indigo_ccd_qhy.cpp
+ \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
 #define DRIVER_VERSION 0x0001
@@ -43,6 +43,7 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
+#include "qhyccd.h"
 #include "indigo_ccd_qhy.h"
 #include "indigo_driver_xml.h"
 
