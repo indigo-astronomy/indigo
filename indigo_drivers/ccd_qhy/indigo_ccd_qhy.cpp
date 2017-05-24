@@ -49,14 +49,22 @@
 #include "indigo_driver_xml.h"
 
 indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *info) {
-	//SetQHYCCDLogLevel(LOG_LEVEL_FATAL);
+	SetQHYCCDLogLevel(LOG_LEVEL_FATAL);
 	uint32_t res = InitQHYCCDResource();
 	if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "InitQHYCCDResource() ERROR = %d", res);
 	else INDIGO_DRIVER_ERROR(DRIVER_NAME, "InitQHYCCDResource() OK = %d", res);
 
+	uint32_t cnt = ScanQHYCCD();
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "ScanQHYCCD(before) = %d", cnt);
 	res = OSXInitQHYCCDFirmware("/Users/rumen/Dropbox/indigo-astronomy.mac/indigo_drivers/ccd_qhy/bin_externals/qhyccd/" );
-
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "OSXInitQHYCCDFirmware() = %d", res);
+	sleep(5);
+	cnt = ScanQHYCCD();
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "ScanQHYCCD(after) = %d", cnt);
+
+	char camera_id[128];
+	res = GetQHYCCDId(0, camera_id);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDId() = %d  id = %s", res, camera_id);
 
 	ReleaseQHYCCDResource();
 	return INDIGO_OK;
