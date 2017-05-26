@@ -1306,22 +1306,7 @@ static int find_unplugged_device_slot() {
 }
 
 
-void *fwloader_thread_func(void *none) {
-	pthread_mutex_lock(&device_mutex);
-	//sleep(2);
-	char firmware_base_dir[255] = "/usr/local/lib/qhy";
-	if (getenv("INDIGO_QHY_FIRMWARE_BASE") != NULL) {
-		strncpy(firmware_base_dir, getenv("INDIGO_QHY_FIRMWARE_BASE"), 255);
-	}
-	OSXInitQHYCCDFirmware(firmware_base_dir);
-	pthread_mutex_unlock(&device_mutex);
-	return NULL;
-}
-
-
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	//ASI_CAMERA_INFO info;
-
+static void process_hotplug() {
 	static indigo_device ccd_template = {
 		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -1336,6 +1321,69 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		guider_change_property,
 		guider_detach
 	};
+
+	int slot = find_available_device_slot();
+	if (slot < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
+		return;
+	}
+
+	char sid[MAX_SID_LEN];
+	bool found = find_plugged_device_sid(sid);
+	if (!found) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No plugged device found.");
+		return;
+	}
+
+	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
+
+	//ASIGetCameraProperty(&info, index);
+	assert(device != NULL);
+	memcpy(device, &ccd_template, sizeof(indigo_device));
+	sprintf(device->name, "%s", sid);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+	qhy_private_data *private_data = (qhy_private_data*)malloc(sizeof(qhy_private_data));
+	assert(private_data);
+	memset(private_data, 0, sizeof(qhy_private_data));
+	sprintf(private_data->dev_sid, "%s", sid);
+	//memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
+	device->private_data = private_data;
+	indigo_async((void *(*)(void *))indigo_attach_device, device);
+	devices[slot]=device;
+
+	if (0) {
+		slot = find_available_device_slot();
+		if (slot < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
+			return;
+		}
+		device = (indigo_device*)malloc(sizeof(indigo_device));
+		assert(device != NULL);
+		memcpy(device, &guider_template, sizeof(indigo_device));
+		//sprintf(device->name, "%s Guider #%d", info.Name, id);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+		device->private_data = private_data;
+		indigo_async((void *(*)(void *))indigo_attach_device, device);
+		devices[slot]=device;
+	}
+}
+
+
+void *fwloader_thread_func(void *sid) {
+	pthread_mutex_lock(&device_mutex);
+	char firmware_base_dir[255] = "/usr/local/lib/qhy";
+	if (getenv("INDIGO_QHY_FIRMWARE_BASE") != NULL) {
+		strncpy(firmware_base_dir, getenv("INDIGO_QHY_FIRMWARE_BASE"), 255);
+	}
+	OSXInitQHYCCDFirmware(firmware_base_dir);
+	process_hotplug();
+	pthread_mutex_unlock(&device_mutex);
+	pthread_exit(NULL);
+	return NULL;
+}
+
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 
 	struct libusb_device_descriptor descriptor;
 
@@ -1358,58 +1406,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				pthread_t fwloader_thread;
 				if (pthread_create(&fwloader_thread, NULL, fwloader_thread_func, NULL)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
-					pthread_mutex_unlock(&device_mutex);
-					return 0;
 				}
+				pthread_mutex_unlock(&device_mutex);
+				return 0;
+			#else
+				process_hotplug();
 			#endif
-			int slot = find_available_device_slot();
-			if (slot < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
-				pthread_mutex_unlock(&device_mutex);
-				return 0;
-			}
-
-			char sid[MAX_SID_LEN];
-			bool found = find_plugged_device_sid(sid);
-
-			if (!found) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No plugged device found.");
-				pthread_mutex_unlock(&device_mutex);
-				return 0;
-			}
-
-			indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
-
-			//ASIGetCameraProperty(&info, index);
-			assert(device != NULL);
-			memcpy(device, &ccd_template, sizeof(indigo_device));
-			sprintf(device->name, "%s", sid);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
-			qhy_private_data *private_data = (qhy_private_data*)malloc(sizeof(qhy_private_data));
-			assert(private_data);
-			memset(private_data, 0, sizeof(qhy_private_data));
-			sprintf(private_data->dev_sid, "%s", sid);
-			//memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
-			device->private_data = private_data;
-			indigo_async((void *(*)(void *))indigo_attach_device, device);
-			devices[slot]=device;
-
-			if (0) {
-				slot = find_available_device_slot();
-				if (slot < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
-					pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-				device = (indigo_device*)malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &guider_template, sizeof(indigo_device));
-				//sprintf(device->name, "%s Guider #%d", info.Name, id);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
-				device->private_data = private_data;
-				indigo_async((void *(*)(void *))indigo_attach_device, device);
-				devices[slot]=device;
-			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
