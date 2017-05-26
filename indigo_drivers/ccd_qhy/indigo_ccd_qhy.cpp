@@ -1253,7 +1253,7 @@ static bool find_plugged_device_sid(char *new_sid) {
 				break;
 			}
 		}
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sid = %s, %d", sid, found);
+
 		if (!found) {
 			strncpy(new_sid, sid, MAX_SID_LEN);
 			return true;
@@ -1291,22 +1291,18 @@ static int find_unplugged_device_slot() {
 	int count = ScanQHYCCD();
 	for(slot = 0; slot < MAX_DEVICES; slot++) {
 		device = devices[slot];
-		found = true;
 		if (device == NULL) continue;
+		found = false;
 		for(int i = 0; i < count; i++) {
 			GetQHYCCDId(i, sid);
 			if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "HERE");
 				found = true;
 				break;
 			}
 		}
+		if (!found) return slot;
 	}
-	if (device) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sid = %s, slot=%d %d", PRIVATE_DATA->dev_sid, slot, found);
-	if (!found) {
-		return slot;
-	}
-	return false;
+	return -1;
 }
 
 
@@ -1329,12 +1325,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	};
 
 	struct libusb_device_descriptor descriptor;
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED!");
 
 	pthread_mutex_lock(&device_mutex);
 
 	libusb_get_device_descriptor(dev, &descriptor);
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
+	//INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 	if ((descriptor.idVendor != QHY_VENDOR_ID1) &&
 		(descriptor.idVendor != QHY_VENDOR_ID2) &&
 		(descriptor.idVendor != QHY_VENDOR_ID3) &&
@@ -1346,7 +1341,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ARRIVED FIRED!");
 			int slot = find_available_device_slot();
 			if (slot < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
@@ -1357,7 +1351,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			char sid[MAX_SID_LEN];
 			bool found = find_plugged_device_sid(sid);
 			if (!found) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No plugged device found.");
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
@@ -1399,7 +1393,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			int id, slot;
 			bool removed = false;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "LEFT FIRED!");
 			qhy_private_data *private_data = NULL;
 			while ((slot = find_unplugged_device_slot()) != -1) {
 				indigo_device **device = &devices[slot];
