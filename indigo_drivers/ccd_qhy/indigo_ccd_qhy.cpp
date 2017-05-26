@@ -49,7 +49,7 @@
 #include "indigo_ccd_qhy.h"
 #include "indigo_driver_xml.h"
 
-#define MAX_SID_LEN                 255
+#define MAX_SID_LEN                255
 #define QHY_MAX_FORMATS            4
 
 #define QHY_VENDOR_ID1             0x16c0
@@ -1306,6 +1306,18 @@ static int find_unplugged_device_slot() {
 }
 
 
+void *fwloader_thread_func(void *none) {
+	sleep(2);
+	char firmware_base_dir[255] = "/usr/local/lib/qhy";
+	if (getenv("INDIGO_QHY_FIRMWARE_BASE") != NULL) {
+		strncpy(firmware_base_dir, getenv("INDIGO_QHY_FIRMWARE_BASE"), 255);
+	}
+	OSXInitQHYCCDFirmware(firmware_base_dir);
+
+	return NULL;
+}
+
+
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	//ASI_CAMERA_INFO info;
 
@@ -1329,7 +1341,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	pthread_mutex_lock(&device_mutex);
 
 	libusb_get_device_descriptor(dev, &descriptor);
-	//INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 	if ((descriptor.idVendor != QHY_VENDOR_ID1) &&
 		(descriptor.idVendor != QHY_VENDOR_ID2) &&
 		(descriptor.idVendor != QHY_VENDOR_ID3) &&
@@ -1341,6 +1353,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
+			#ifdef __APPLE__
+				pthread_t fwloader_thread;
+				if (pthread_create(&fwloader_thread, NULL, fwloader_thread_func, NULL)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
+					pthread_mutex_unlock(&device_mutex);
+					return 0;
+				}
+			#endif
 			int slot = find_available_device_slot();
 			if (slot < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
@@ -1350,6 +1370,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			char sid[MAX_SID_LEN];
 			bool found = find_plugged_device_sid(sid);
+
 			if (!found) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No plugged device found.");
 				pthread_mutex_unlock(&device_mutex);
