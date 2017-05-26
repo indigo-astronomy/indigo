@@ -1282,26 +1282,31 @@ static int find_device_slot(const char *sid) {
 }
 
 
-static int find_unplugged_device_id() {
-	bool dev_tmp[255] = {false};
-	int i;
-	//ASI_CAMERA_INFO info;
+static int find_unplugged_device_slot() {
+	int slot;
+	indigo_device *device;
+	char sid[MAX_SID_LEN] = {0};
+	bool found = true;
 
 	int count = ScanQHYCCD();
-	for(i = 0; i < count; i++) {
-		//ASIGetCameraProperty(&info, i);
-		//dev_tmp[info.CameraID] = true;
+	for(slot = 0; slot < MAX_DEVICES; slot++) {
+		device = devices[slot];
+		found = true;
+		if (device == NULL) continue;
+		for(int i = 0; i < count; i++) {
+			GetQHYCCDId(i, sid);
+			if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "HERE");
+				found = true;
+				break;
+			}
+		}
 	}
-
-	int id = -1;
-	for(i = 0; i < 255; i++) {
-	//	if(connected_ids[i] && !dev_tmp[i]){
-	//		id = i;
-	//		connected_ids[id] = false;
-	//		break;
-	//	}
+	if (device) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sid = %s, slot=%d %d", PRIVATE_DATA->dev_sid, slot, found);
+	if (!found) {
+		return slot;
 	}
-	return id;
+	return false;
 }
 
 
@@ -1327,19 +1332,21 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED!");
 
 	pthread_mutex_lock(&device_mutex);
+
+	libusb_get_device_descriptor(dev, &descriptor);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
+	if ((descriptor.idVendor != QHY_VENDOR_ID1) &&
+		(descriptor.idVendor != QHY_VENDOR_ID2) &&
+		(descriptor.idVendor != QHY_VENDOR_ID3) &&
+		(descriptor.idVendor != QHY_VENDOR_ID4) &&
+		(descriptor.idVendor != QHY_VENDOR_ID5)) {
+		pthread_mutex_unlock(&device_mutex);
+		return 0;
+	}
+
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			libusb_get_device_descriptor(dev, &descriptor);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-			if ((descriptor.idVendor != QHY_VENDOR_ID1) &&
-			    (descriptor.idVendor != QHY_VENDOR_ID2) &&
-			    (descriptor.idVendor != QHY_VENDOR_ID3) &&
-			    (descriptor.idVendor != QHY_VENDOR_ID4) &&
-			    (descriptor.idVendor != QHY_VENDOR_ID5)) {
-				pthread_mutex_unlock(&device_mutex);
-				return 0;
-			}
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO CONT FIRED!");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ARRIVED FIRED!");
 			int slot = find_available_device_slot();
 			if (slot < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
@@ -1392,31 +1399,29 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			int id, slot;
 			bool removed = false;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "LEFT FIRED!");
 			qhy_private_data *private_data = NULL;
-			while ((id = find_unplugged_device_id()) != -1) {
-				//slot = find_device_slot(id);
-				while (slot >= 0) {
-					indigo_device **device = &devices[slot];
-					if (*device == NULL) {
-						pthread_mutex_unlock(&device_mutex);
-						return 0;
-					}
-					indigo_detach_device(*device);
-					if ((*device)->private_data) {
-						private_data = (qhy_private_data*)((*device)->private_data);
-					}
-					free(*device);
-					*device = NULL;
-					removed = true;
-					//slot = find_device_slot(id);
+			while ((slot = find_unplugged_device_slot()) != -1) {
+				indigo_device **device = &devices[slot];
+				if (*device == NULL) {
+					pthread_mutex_unlock(&device_mutex);
+					return 0;
 				}
-
-				if (private_data) {
-					//ASICloseCamera(id);
-					free(private_data);
-					private_data = NULL;
+				indigo_detach_device(*device);
+				if ((*device)->private_data) {
+					private_data = (qhy_private_data*)((*device)->private_data);
 				}
+				free(*device);
+				*device = NULL;
+				removed = true;
 			}
+
+			if (private_data) {
+				//ASICloseCamera(id);
+				free(private_data);
+				private_data = NULL;
+			}
+
 			if (!removed) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No QHY Camera unplugged (maybe EFW wheel)!");
 			}
