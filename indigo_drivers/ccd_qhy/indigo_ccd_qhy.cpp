@@ -1307,13 +1307,14 @@ static int find_unplugged_device_slot() {
 
 
 void *fwloader_thread_func(void *none) {
-	sleep(2);
+	pthread_mutex_lock(&device_mutex);
+	//sleep(2);
 	char firmware_base_dir[255] = "/usr/local/lib/qhy";
 	if (getenv("INDIGO_QHY_FIRMWARE_BASE") != NULL) {
 		strncpy(firmware_base_dir, getenv("INDIGO_QHY_FIRMWARE_BASE"), 255);
 	}
 	OSXInitQHYCCDFirmware(firmware_base_dir);
-
+	pthread_mutex_unlock(&device_mutex);
 	return NULL;
 }
 
