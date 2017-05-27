@@ -1326,8 +1326,6 @@ static void process_plug_event() {
 	}
 
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
-
-	//ASIGetCameraProperty(&info, index);
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
 	sprintf(device->name, "%s", sid);
@@ -1336,19 +1334,18 @@ static void process_plug_event() {
 	assert(private_data);
 	memset(private_data, 0, sizeof(qhy_private_data));
 	sprintf(private_data->dev_sid, "%s", sid);
-	//memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
 	device->private_data = private_data;
 	indigo_async((void *(*)(void *))indigo_attach_device, device);
 	devices[slot]=device;
 
 	/* Check if there is a guider port */
-	//qhyccd_handle *handle;
-	//handle = OpenQHYCCD(sid);
-	//if(handle == NULL) {
-	//	return;
-	//}
-	int res = 0; //IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
-	//CloseQHYCCD(handle);
+	qhyccd_handle *handle;
+	handle = OpenQHYCCD(sid);
+	if(handle == NULL) {
+		return;
+	}
+	int res = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
+	CloseQHYCCD(handle);
 	if(res == QHYCCD_SUCCESS) {
 		slot = find_available_device_slot();
 		if (slot < 0) {
