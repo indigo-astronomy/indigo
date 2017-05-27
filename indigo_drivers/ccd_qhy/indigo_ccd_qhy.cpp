@@ -1218,22 +1218,10 @@ static indigo_result guider_detach(indigo_device *device) {
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define MAX_DEVICES                   10
-#define NO_DEVICE                 (-1000)
+#define MAX_DEVICES                   20
+#define NOT_FOUND                     (-1)
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
-static char connected_ids[20][255] = {0};
-
-
-static int find_index_by_device_id(int id) {
-	//ASI_CAMERA_INFO info;
-	int count; // = ASIGetNumOfConnectedCameras();
-	for(int index = 0; index < count; index++) {
-		//ASIGetCameraProperty(&info, index);
-		//if (info.CameraID == id) return index;
-	}
-	return -1;
-}
 
 
 static bool find_plugged_device_sid(char *new_sid) {
@@ -1269,7 +1257,7 @@ static int find_available_device_slot() {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		if (devices[slot] == NULL) return slot;
 	}
-	return -1;
+	return NOT_FOUND;
 }
 
 
@@ -1279,7 +1267,7 @@ static int find_device_slot(const char *sid) {
 		if (device == NULL) continue;
 		if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) return slot;
 	}
-	return -1;
+	return NOT_FOUND;
 }
 
 
@@ -1304,7 +1292,7 @@ static int find_unplugged_device_slot() {
 		}
 		if (!found) return slot;
 	}
-	return -1;
+	return NOT_FOUND;
 }
 
 
@@ -1375,7 +1363,7 @@ static void process_unplug_event() {
 	int id, slot;
 	bool removed = false;
 	qhy_private_data *private_data = NULL;
-	while ((slot = find_unplugged_device_slot()) != -1) {
+	while ((slot = find_unplugged_device_slot()) != NOT_FOUND) {
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
 			pthread_mutex_unlock(&device_mutex);
@@ -1494,9 +1482,6 @@ static void remove_all_devices() {
 	for(i = 0; i < 255; i++) {
 		if (pds[i]) free(pds[i]);
 	}
-
-	for(i = 0; i < 20; i++)
-		connected_ids[i][0] = '\0';
 }
 
 
