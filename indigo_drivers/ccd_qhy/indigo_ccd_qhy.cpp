@@ -1237,7 +1237,7 @@ static bool find_plugged_device_sid(char *new_sid) {
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
 			if (device == NULL) continue;
-			if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) {
+			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN))) {
 				found = true;
 				break;
 			}
@@ -1285,7 +1285,7 @@ static int find_unplugged_device_slot() {
 		for(int i = 0; i < count; i++) {
 			GetQHYCCDId(i, sid);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,"- %d of %d: %s", i , count, sid);
-			if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) {
+			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN))) {
 				found = true;
 				break;
 			}
@@ -1475,8 +1475,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 
 static void remove_all_devices() {
-	int i;
+	int i, k;
 	qhy_private_data *pds[255] = {NULL};
+	qhy_private_data *freed_pds[255] = {NULL};
 
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -1485,10 +1486,18 @@ static void remove_all_devices() {
 		indigo_detach_device(device);
 		free(device);
 		device = NULL;
+		devices[i] = NULL;
 	}
 	/* free private data */
 	for(i = 0; i < 255; i++) {
-		if (pds[i]) free(pds[i]);
+		for(k = 0; k < 255; k++) {
+			if (freed_pds[k] == pds[i]) continue; /* prevent double free */
+			if (pds[i]) {
+				freed_pds[i] = pds[i];
+				free(pds[i]);
+				break;
+			}
+		}
 	}
 }
 
