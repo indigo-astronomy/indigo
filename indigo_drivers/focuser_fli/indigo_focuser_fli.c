@@ -371,7 +371,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 			PRIVATE_DATA->steps_to_go = 0;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, 0);
