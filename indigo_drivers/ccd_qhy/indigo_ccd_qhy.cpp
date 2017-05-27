@@ -1244,6 +1244,7 @@ static bool find_plugged_device_sid(char *new_sid) {
 	int count = ScanQHYCCD();
 	for(i = 0; i < count; i++) {
 		GetQHYCCDId(i, sid);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,"+ %d of %d: %s", i , count, sid);
 		found = false;
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
@@ -1295,6 +1296,7 @@ static int find_unplugged_device_slot() {
 		found = false;
 		for(int i = 0; i < count; i++) {
 			GetQHYCCDId(i, sid);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,"- %d of %d: %s", i , count, sid);
 			if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) {
 				found = true;
 				break;
@@ -1395,13 +1397,13 @@ static void process_unplug_event() {
 	}
 
 	if (!removed) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No QHY Camera unplugged (maybe EFW wheel)!");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No QHY Camera unplugged!");
 	}
 }
 
 
 #ifdef __APPLE__
-void *fwloader_thread_func(void *sid) {
+void *plug_thread_func(void *sid) {
 	pthread_mutex_lock(&device_mutex);
 	char firmware_base_dir[255] = "/usr/local/lib/qhy";
 	if (getenv("INDIGO_QHY_FIRMWARE_BASE") != NULL) {
@@ -1413,7 +1415,16 @@ void *fwloader_thread_func(void *sid) {
 	pthread_exit(NULL);
 	return NULL;
 }
-#endif
+
+
+void *unplug_thread_func(void *sid) {
+	pthread_mutex_lock(&device_mutex);
+	process_unplug_event();
+	pthread_mutex_unlock(&device_mutex);
+	pthread_exit(NULL);
+	return NULL;
+}
+#endif /* __APPLE__ */
 
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
@@ -1421,7 +1432,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	pthread_mutex_lock(&device_mutex);
 	libusb_get_device_descriptor(dev, &descriptor);
-	//INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 	if ((descriptor.idVendor != QHY_VENDOR_ID1) &&
 		(descriptor.idVendor != QHY_VENDOR_ID2) &&
 		(descriptor.idVendor != QHY_VENDOR_ID3) &&
@@ -1430,22 +1440,36 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		pthread_mutex_unlock(&device_mutex);
 		return 0;
 	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hotplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			#ifdef __APPLE__
-				pthread_t fwloader_thread;
-				if (pthread_create(&fwloader_thread, NULL, fwloader_thread_func, NULL)) {
+				pthread_t plug_thread;
+				/* This is ugly hack but otherwise QHY5IIL does not work!!!
+				   The camera does not respond in the hotpliug callback on MacOS,
+				   so the thread waits the callback to complete and initializes
+				   the camera.
+				 */
+				if (pthread_create(&plug_thread, NULL, plug_thread_func, NULL)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
 				}
-				pthread_mutex_unlock(&device_mutex);
-				return 0;
 			#else
 				process_plug_event();
-				break;
-			#endif
+			#endif /* __APPLE__ */
+			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			process_unplug_event();
+			#ifdef __APPLE__
+				pthread_t unplug_thread;
+				/* This is ugly hack but otherwise QHY5IIL does not work!!!
+				   See the note in LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED case.
+				*/
+				if (pthread_create(&unplug_thread, NULL, unplug_thread_func, NULL)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
+				}
+			#else
+				process_unplug_event();
+			#endif /* __APPLE__ */
 			break;
 		}
 	}
