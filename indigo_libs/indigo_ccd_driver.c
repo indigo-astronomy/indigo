@@ -395,11 +395,15 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				if (sscanf(item->name, "BIN_%dx%d", &h, &v) == 2) {
 					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = h;
 					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = v;
+					CCD_FRAME_WIDTH_ITEM->number.value = ((int)CCD_FRAME_WIDTH_ITEM->number.value / (int)CCD_BIN_HORIZONTAL_ITEM->number.value) * (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+					CCD_FRAME_HEIGHT_ITEM->number.value = ((int)CCD_FRAME_HEIGHT_ITEM->number.value / (int)CCD_BIN_VERTICAL_ITEM->number.value) * (int)CCD_BIN_VERTICAL_ITEM->number.value;
 				}
 				break;
 			}
 		}
 		if (IS_CONNECTED) {
+			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 			CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 			CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
