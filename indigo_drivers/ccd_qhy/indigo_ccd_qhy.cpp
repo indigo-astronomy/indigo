@@ -1306,7 +1306,7 @@ static int find_unplugged_device_slot() {
 }
 
 
-static void process_hotplug() {
+static void process_plug_event() {
 	static indigo_device ccd_template = {
 		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -1369,6 +1369,38 @@ static void process_hotplug() {
 }
 
 
+static void process_unplug_event() {
+	int id, slot;
+	bool removed = false;
+	qhy_private_data *private_data = NULL;
+	while ((slot = find_unplugged_device_slot()) != -1) {
+		indigo_device **device = &devices[slot];
+		if (*device == NULL) {
+			pthread_mutex_unlock(&device_mutex);
+			return;
+		}
+		indigo_detach_device(*device);
+		if ((*device)->private_data) {
+			private_data = (qhy_private_data*)((*device)->private_data);
+		}
+		free(*device);
+		*device = NULL;
+		removed = true;
+	}
+
+	if (private_data) {
+		//ASICloseCamera(id);
+		free(private_data);
+		private_data = NULL;
+	}
+
+	if (!removed) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No QHY Camera unplugged (maybe EFW wheel)!");
+	}
+}
+
+
+#ifdef __APPLE__
 void *fwloader_thread_func(void *sid) {
 	pthread_mutex_lock(&device_mutex);
 	char firmware_base_dir[255] = "/usr/local/lib/qhy";
@@ -1376,21 +1408,20 @@ void *fwloader_thread_func(void *sid) {
 		strncpy(firmware_base_dir, getenv("INDIGO_QHY_FIRMWARE_BASE"), 255);
 	}
 	OSXInitQHYCCDFirmware(firmware_base_dir);
-	process_hotplug();
+	process_plug_event();
 	pthread_mutex_unlock(&device_mutex);
 	pthread_exit(NULL);
 	return NULL;
 }
+#endif
 
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-
 	struct libusb_device_descriptor descriptor;
 
 	pthread_mutex_lock(&device_mutex);
-
 	libusb_get_device_descriptor(dev, &descriptor);
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
+	//INDIGO_DRIVER_ERROR(DRIVER_NAME, "FIRED vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 	if ((descriptor.idVendor != QHY_VENDOR_ID1) &&
 		(descriptor.idVendor != QHY_VENDOR_ID2) &&
 		(descriptor.idVendor != QHY_VENDOR_ID3) &&
@@ -1399,7 +1430,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		pthread_mutex_unlock(&device_mutex);
 		return 0;
 	}
-
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			#ifdef __APPLE__
@@ -1410,38 +1440,13 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			#else
-				process_hotplug();
+				process_plug_event();
+				break;
 			#endif
-			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			int id, slot;
-			bool removed = false;
-			qhy_private_data *private_data = NULL;
-			while ((slot = find_unplugged_device_slot()) != -1) {
-				indigo_device **device = &devices[slot];
-				if (*device == NULL) {
-					pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-				indigo_detach_device(*device);
-				if ((*device)->private_data) {
-					private_data = (qhy_private_data*)((*device)->private_data);
-				}
-				free(*device);
-				*device = NULL;
-				removed = true;
-			}
-
-			if (private_data) {
-				//ASICloseCamera(id);
-				free(private_data);
-				private_data = NULL;
-			}
-
-			if (!removed) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No QHY Camera unplugged (maybe EFW wheel)!");
-			}
+			process_unplug_event();
+			break;
 		}
 	}
 	pthread_mutex_unlock(&device_mutex);
