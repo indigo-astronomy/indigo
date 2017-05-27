@@ -1314,7 +1314,7 @@ static void process_plug_event() {
 
 	int slot = find_available_device_slot();
 	if (slot < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
 		return;
 	}
 
@@ -1341,16 +1341,24 @@ static void process_plug_event() {
 	indigo_async((void *(*)(void *))indigo_attach_device, device);
 	devices[slot]=device;
 
-	if (0) {
+	/* Check if there is a guider port */
+	qhyccd_handle *handle;
+	handle = OpenQHYCCD(sid);
+	if(handle == NULL) {
+		return;
+	}
+	int res = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
+	CloseQHYCCD(handle);
+	if(res == QHYCCD_SUCCESS) {
 		slot = find_available_device_slot();
 		if (slot < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
 			return;
 		}
 		device = (indigo_device*)malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &guider_template, sizeof(indigo_device));
-		//sprintf(device->name, "%s Guider #%d", info.Name, id);
+		sprintf(device->name, "%s Guider", sid);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 		device->private_data = private_data;
 		indigo_async((void *(*)(void *))indigo_attach_device, device);
