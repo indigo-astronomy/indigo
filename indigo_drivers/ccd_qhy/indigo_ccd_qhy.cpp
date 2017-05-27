@@ -1218,8 +1218,8 @@ static indigo_result guider_detach(indigo_device *device) {
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define MAX_DEVICES                   20
-#define NOT_FOUND                     (-1)
+#define MAX_DEVICES                   32
+#define NOT_FOUND                    (-1)
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 
@@ -1232,12 +1232,12 @@ static bool find_plugged_device_sid(char *new_sid) {
 	int count = ScanQHYCCD();
 	for(i = 0; i < count; i++) {
 		GetQHYCCDId(i, sid);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME,"+ %d of %d: %s", i , count, sid);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME,"+ %d of %d: %s", i , count, sid);
 		found = false;
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
 			if (device == NULL) continue;
-			if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) {
+			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN))) {
 				found = true;
 				break;
 			}
@@ -1284,8 +1284,8 @@ static int find_unplugged_device_slot() {
 		found = false;
 		for(int i = 0; i < count; i++) {
 			GetQHYCCDId(i, sid);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME,"- %d of %d: %s", i , count, sid);
-			if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"- %d of %d: %s", i , count, sid);
+			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN))) {
 				found = true;
 				break;
 			}
@@ -1342,13 +1342,13 @@ static void process_plug_event() {
 	devices[slot]=device;
 
 	/* Check if there is a guider port */
-	qhyccd_handle *handle;
-	handle = OpenQHYCCD(sid);
-	if(handle == NULL) {
-		return;
-	}
-	int res = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
-	CloseQHYCCD(handle);
+	//qhyccd_handle *handle;
+	//handle = OpenQHYCCD(sid);
+	//if(handle == NULL) {
+	//	return;
+	//}
+	int res = 0; //IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
+	//CloseQHYCCD(handle);
 	if(res == QHYCCD_SUCCESS) {
 		slot = find_available_device_slot();
 		if (slot < 0) {
@@ -1475,20 +1475,35 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 
 static void remove_all_devices() {
-	int i;
-	qhy_private_data *pds[255] = {NULL};
+	int i, k;
+	qhy_private_data *pds[MAX_DEVICES] = {NULL};
+	qhy_private_data *freed_pds[MAX_DEVICES] = {NULL};
 
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device == NULL) continue;
-		if (PRIVATE_DATA) pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
+		if (PRIVATE_DATA) pds[i] = PRIVATE_DATA; /* preserve pointers to private data */
 		indigo_detach_device(device);
 		free(device);
 		device = NULL;
+		devices[i] = NULL;
 	}
 	/* free private data */
-	for(i = 0; i < 255; i++) {
-		if (pds[i]) free(pds[i]);
+	bool found;
+	for(i = 0; i < MAX_DEVICES; i++) {
+		found = false;
+		for(k = 0; k <= i; k++) {
+			if (freed_pds[k] == pds[i]) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME,"freed_pds[%d] = %10p  pds[%d] = %10p => prevent free", k,freed_pds[k],  i, pds[i]);
+				found = true; /* prevent double free */
+				break;
+			}
+		}
+		if (!found && pds[i]) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"freed_pds[%d] = %10p  pds[%d] = %10p => FREE", k,freed_pds[k],  i, pds[i]);
+			freed_pds[i] = pds[i];
+			free(pds[i]);
+		}
 	}
 }
 
