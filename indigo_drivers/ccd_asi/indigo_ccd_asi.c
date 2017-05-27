@@ -1401,7 +1401,7 @@ static void remove_all_devices() {
 		if (PRIVATE_DATA) pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
 		indigo_detach_device(device);
 		free(device);
-		device = NULL;
+		devices[i] = NULL;
 	}
 
 	/* free private data */
