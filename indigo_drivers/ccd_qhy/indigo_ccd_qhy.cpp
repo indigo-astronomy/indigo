@@ -196,6 +196,13 @@ static bool qhy_open(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
+		/* UGLY KLUDGE !!!
+		   QHY5LII segfaults at second open-close cycle after scan
+		   this way there will never be second rescan. HA-HA-HA...
+		   However this comes at a proce of 378kb memory leak per
+		   connected caera per scan.
+		*/
+		ScanQHYCCD();
 		PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->dev_sid);
 		if (PRIVATE_DATA->handle == NULL) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
