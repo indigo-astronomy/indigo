@@ -84,6 +84,12 @@ typedef struct {
 	char dev_sid[MAX_SID_LEN];
 	int count_open;
 	int count_connected;
+	uint32_t frame_width;
+	uint32_t frame_height;
+	uint32_t bpp;
+	double pixel_width;
+	double pixel_height;
+
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	long cooler_power;
@@ -91,7 +97,6 @@ typedef struct {
 	unsigned char *buffer;
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
-	long is_asi120;
 	bool can_check_temperature, has_temperature_sensor;
 	//ASI_CAMERA_INFO info;
 	indigo_property *pixel_format_property;
@@ -100,21 +105,18 @@ typedef struct {
 
 
 static char *get_bayer_string(indigo_device *device) {
-	/*
-	if (!PRIVATE_DATA->info.IsColorCam) return NULL;
-
-	switch (PRIVATE_DATA->info.BayerPattern) {
-		case ASI_BAYER_BG:
-			return "BGGR";
-		case ASI_BAYER_GR:
-			return "GRBG";
-		case ASI_BAYER_GB:
-			return "GBRG";
-		case ASI_BAYER_RG:
-		default:
-			return "RGGB";
+	int pattern = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_COLOR);
+	if (pattern != QHYCCD_ERROR) {
+		if(pattern == BAYER_GB)
+			return (char*)"GBGR";
+		else if (pattern == BAYER_GR)
+			return (char*)"GRGB";
+		else if (pattern == BAYER_BG)
+			return (char*)"BGGR";
+		else
+			return (char*)"RGGB";
 	}
-	*/
+	return NULL;
 }
 
 
@@ -197,22 +199,45 @@ static bool qhy_open(indigo_device *device) {
 		PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->dev_sid);
 		if (PRIVATE_DATA->handle == NULL) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "OpenQHYCCD(%s) = NULL", PRIVATE_DATA->dev_sid);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "OpenQHYCCD('%s') = NULL", PRIVATE_DATA->dev_sid);
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
-		/*
-		if (PRIVATE_DATA->buffer == NULL) {
-			if(PRIVATE_DATA->info.IsColorCam)
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*3 + FITS_HEADER_SIZE;
-			else
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*2 + FITS_HEADER_SIZE;
 
+		double chipw, chiph;
+		res = GetQHYCCDChipInfo(
+			PRIVATE_DATA->handle,
+			&chipw,
+			&chiph,
+			&PRIVATE_DATA->frame_width,
+			&PRIVATE_DATA->frame_height,
+			&PRIVATE_DATA->pixel_width,
+			&PRIVATE_DATA->pixel_height,
+			&PRIVATE_DATA->bpp
+		);
+		if (res != QHYCCD_SUCCESS) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not open camera: GetQHYCCDChipInfo('%s') = %d", PRIVATE_DATA->dev_sid, res);
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+			"Open %s: %dx%d %.2fum %.2fum %dbpp handle = %p\n",
+			PRIVATE_DATA->dev_sid,
+			PRIVATE_DATA->frame_width,
+			PRIVATE_DATA->frame_height,
+			PRIVATE_DATA->pixel_width,
+			PRIVATE_DATA->pixel_height,
+			PRIVATE_DATA->bpp,
+			PRIVATE_DATA->handle
+		);
+
+		if (PRIVATE_DATA->buffer == NULL) {
+			PRIVATE_DATA->buffer_size = PRIVATE_DATA->frame_height * PRIVATE_DATA->frame_width * 2 + FITS_HEADER_SIZE;
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
-		*/
 	}
-	//PRIVATE_DATA->is_asi120 = strstr(PRIVATE_DATA->info.Name, "ASI120M") != NULL;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -354,7 +379,11 @@ static void qhy_close(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
-		CloseQHYCCD(PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Close %s: handle = %p\n", PRIVATE_DATA->dev_sid, PRIVATE_DATA->handle);
+		if (PRIVATE_DATA->handle) {
+			CloseQHYCCD(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = NULL;
+		}
 		if (PRIVATE_DATA->buffer != NULL) {
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
