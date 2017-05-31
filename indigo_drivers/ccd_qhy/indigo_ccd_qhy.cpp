@@ -84,9 +84,13 @@ typedef struct {
 	char dev_sid[MAX_SID_LEN];
 	int count_open;
 	int count_connected;
+	uint32_t total_frame_width;
+	uint32_t total_frame_height;
+	uint32_t bpp;
+	uint32_t frame_offset_x;
+	uint32_t frame_offset_y;
 	uint32_t frame_width;
 	uint32_t frame_height;
-	uint32_t bpp;
 	double pixel_width;
 	double pixel_height;
 
@@ -170,7 +174,8 @@ static int get_pixel_format(indigo_device *device) {
 static bool pixel_format_supported(indigo_device *device, int type) {
 	/*
 	for (int i = 0; i < ASI_MAX_FORMATS; i++) {
-		if (i == ASI_IMG_END) return false;
+		if (i == ASI_IMG_END) return false;&PRIVATE_DATA->total_frame_width,
+			&PRIVATE_DATA->total_frame_height,
 		if (type == PRIVATE_DATA->info.SupportedVideoFormat[i]) return true;
 	}
 	*/
@@ -197,7 +202,8 @@ static bool qhy_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		/* UGLY KLUDGE !!!
-		   QHY5LII segfaults at second open-close cycle after scan
+		   QHY5LII segfaults at second open-close cycle after&PRIVATE_DATA->total_frame_width,
+			&PRIVATE_DATA->total_frame_height, scan
 		   this way there will never be second rescan. HA-HA-HA...
 		   However this comes at a proce of 378kb memory leak per
 		   connected caera per scan.
@@ -210,14 +216,15 @@ static bool qhy_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
+		InitQHYCCD(PRIVATE_DATA->handle);
 
 		double chipw, chiph;
 		res = GetQHYCCDChipInfo(
 			PRIVATE_DATA->handle,
 			&chipw,
 			&chiph,
-			&PRIVATE_DATA->frame_width,
-			&PRIVATE_DATA->frame_height,
+			&PRIVATE_DATA->total_frame_width,
+			&PRIVATE_DATA->total_frame_height,
 			&PRIVATE_DATA->pixel_width,
 			&PRIVATE_DATA->pixel_height,
 			&PRIVATE_DATA->bpp
@@ -229,11 +236,32 @@ static bool qhy_open(indigo_device *device) {
 			return false;
 		}
 
+		res = GetQHYCCDEffectiveArea(
+			PRIVATE_DATA->handle,
+			&PRIVATE_DATA->frame_offset_x,
+			&PRIVATE_DATA->frame_offset_y,
+			&PRIVATE_DATA->frame_width,
+			&PRIVATE_DATA->frame_height
+		);
+		if (res != QHYCCD_SUCCESS) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not open camera: GetQHYCCDEffectiveArea('%s') = %d", PRIVATE_DATA->dev_sid, res);
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+		/* kludge: GetQHYCCDEffectiveArea() is not implemented for most of the cmeras so use full frame */
+		if ((PRIVATE_DATA->frame_width == 0) || (PRIVATE_DATA->frame_height == 0)) {
+			PRIVATE_DATA->frame_width = PRIVATE_DATA->total_frame_width;
+			PRIVATE_DATA->frame_height = PRIVATE_DATA->total_frame_height;
+		}
+
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
-			"Open %s: %dx%d %.2fum %.2fum %dbpp handle = %p\n",
+			"Open %s: %dx%d (%d,%d) %.2fx%.2fum %dbpp handle = %p\n",
 			PRIVATE_DATA->dev_sid,
 			PRIVATE_DATA->frame_width,
 			PRIVATE_DATA->frame_height,
+			PRIVATE_DATA->frame_offset_x,
+			PRIVATE_DATA->frame_offset_y,
 			PRIVATE_DATA->pixel_width,
 			PRIVATE_DATA->pixel_height,
 			PRIVATE_DATA->bpp,
