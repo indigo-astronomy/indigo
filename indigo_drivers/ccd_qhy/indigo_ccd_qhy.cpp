@@ -80,10 +80,20 @@
 
 
 typedef struct {
-	int dev_id;
+	qhyccd_handle *handle;
 	char dev_sid[MAX_SID_LEN];
 	int count_open;
 	int count_connected;
+	uint32_t total_frame_width;
+	uint32_t total_frame_height;
+	uint32_t bpp;
+	uint32_t frame_offset_x;
+	uint32_t frame_offset_y;
+	uint32_t frame_width;
+	uint32_t frame_height;
+	double pixel_width;
+	double pixel_height;
+
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	long cooler_power;
@@ -91,7 +101,6 @@ typedef struct {
 	unsigned char *buffer;
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
-	long is_asi120;
 	bool can_check_temperature, has_temperature_sensor;
 	//ASI_CAMERA_INFO info;
 	indigo_property *pixel_format_property;
@@ -100,21 +109,18 @@ typedef struct {
 
 
 static char *get_bayer_string(indigo_device *device) {
-	/*
-	if (!PRIVATE_DATA->info.IsColorCam) return NULL;
-
-	switch (PRIVATE_DATA->info.BayerPattern) {
-		case ASI_BAYER_BG:
-			return "BGGR";
-		case ASI_BAYER_GR:
-			return "GRBG";
-		case ASI_BAYER_GB:
-			return "GBRG";
-		case ASI_BAYER_RG:
-		default:
-			return "RGGB";
+	int pattern = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_COLOR);
+	if (pattern != QHYCCD_ERROR) {
+		if(pattern == BAYER_GB)
+			return (char*)"GBGR";
+		else if (pattern == BAYER_GR)
+			return (char*)"GRGB";
+		else if (pattern == BAYER_BG)
+			return (char*)"BGGR";
+		else
+			return (char*)"RGGB";
 	}
-	*/
+	return NULL;
 }
 
 
@@ -168,7 +174,8 @@ static int get_pixel_format(indigo_device *device) {
 static bool pixel_format_supported(indigo_device *device, int type) {
 	/*
 	for (int i = 0; i < ASI_MAX_FORMATS; i++) {
-		if (i == ASI_IMG_END) return false;
+		if (i == ASI_IMG_END) return false;&PRIVATE_DATA->total_frame_width,
+			&PRIVATE_DATA->total_frame_height,
 		if (type == PRIVATE_DATA->info.SupportedVideoFormat[i]) return true;
 	}
 	*/
@@ -188,45 +195,90 @@ static indigo_result qhy_enumerate_properties(indigo_device *device, indigo_clie
 
 
 static bool qhy_open(indigo_device *device) {
-	int id = PRIVATE_DATA->dev_id;
-	//ASI_ERROR_CODE res;
+	int res;
 
 	if (device->is_connected) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
-		/*
-		res = ASIOpenCamera(id);
-		if (res) {
+		/* UGLY KLUDGE !!!
+		   QHY5LII segfaults at second open-close cycle after&PRIVATE_DATA->total_frame_width,
+			&PRIVATE_DATA->total_frame_height, scan
+		   this way there will never be second rescan. HA-HA-HA...
+		   However this comes at a proce of 378kb memory leak per
+		   connected caera per scan.
+		*/
+		ScanQHYCCD();
+		PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->dev_sid);
+		if (PRIVATE_DATA->handle == NULL) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIOpenCamera(%d) = %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "OpenQHYCCD('%s') = NULL", PRIVATE_DATA->dev_sid);
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
-		res = ASIInitCamera(id);
-		if (res) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIInitCamera(%d) = %d", id, res);
-			PRIVATE_DATA->count_open--;
-			return false;
-		}
-		if (PRIVATE_DATA->buffer == NULL) {
-			if(PRIVATE_DATA->info.IsColorCam)
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*3 + FITS_HEADER_SIZE;
-			else
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*2 + FITS_HEADER_SIZE;
+		InitQHYCCD(PRIVATE_DATA->handle);
 
+		double chipw, chiph;
+		res = GetQHYCCDChipInfo(
+			PRIVATE_DATA->handle,
+			&chipw,
+			&chiph,
+			&PRIVATE_DATA->total_frame_width,
+			&PRIVATE_DATA->total_frame_height,
+			&PRIVATE_DATA->pixel_width,
+			&PRIVATE_DATA->pixel_height,
+			&PRIVATE_DATA->bpp
+		);
+		if (res != QHYCCD_SUCCESS) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not open camera: GetQHYCCDChipInfo('%s') = %d", PRIVATE_DATA->dev_sid, res);
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+
+		res = GetQHYCCDEffectiveArea(
+			PRIVATE_DATA->handle,
+			&PRIVATE_DATA->frame_offset_x,
+			&PRIVATE_DATA->frame_offset_y,
+			&PRIVATE_DATA->frame_width,
+			&PRIVATE_DATA->frame_height
+		);
+		if (res != QHYCCD_SUCCESS) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not open camera: GetQHYCCDEffectiveArea('%s') = %d", PRIVATE_DATA->dev_sid, res);
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+		/* kludge: GetQHYCCDEffectiveArea() is not implemented for most of the cmeras so use full frame */
+		if ((PRIVATE_DATA->frame_width == 0) || (PRIVATE_DATA->frame_height == 0)) {
+			PRIVATE_DATA->frame_width = PRIVATE_DATA->total_frame_width;
+			PRIVATE_DATA->frame_height = PRIVATE_DATA->total_frame_height;
+		}
+
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+			"Open %s: %dx%d (%d,%d) %.2fx%.2fum %dbpp handle = %p\n",
+			PRIVATE_DATA->dev_sid,
+			PRIVATE_DATA->frame_width,
+			PRIVATE_DATA->frame_height,
+			PRIVATE_DATA->frame_offset_x,
+			PRIVATE_DATA->frame_offset_y,
+			PRIVATE_DATA->pixel_width,
+			PRIVATE_DATA->pixel_height,
+			PRIVATE_DATA->bpp,
+			PRIVATE_DATA->handle
+		);
+
+		if (PRIVATE_DATA->buffer == NULL) {
+			PRIVATE_DATA->buffer_size = PRIVATE_DATA->frame_height * PRIVATE_DATA->frame_width * 2 + FITS_HEADER_SIZE;
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
-		*/
 	}
-	//PRIVATE_DATA->is_asi120 = strstr(PRIVATE_DATA->info.Name, "ASI120M") != NULL;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
 static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-	int id = PRIVATE_DATA->dev_id;
+//	int id = PRIVATE_DATA->dev_id;
 	//ASI_ERROR_CODE res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	/*
@@ -254,7 +306,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 }
 
 static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-	int id = PRIVATE_DATA->dev_id;
+	//int id = PRIVATE_DATA->dev_id;
 	/*
 	ASI_ERROR_CODE res;
 	if (!qhy_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
@@ -304,9 +356,9 @@ static bool qhy_read_pixels(indigo_device *device) {
 
 static bool qhy_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int err; //= ASIStopExposure(PRIVATE_DATA->dev_id);
+	int err = CancelQHYCCDExposingAndReadout(PRIVATE_DATA->handle);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if(err) return false;
+	if (err !=  QHYCCD_SUCCESS) return false;
 	else return true;
 }
 
@@ -314,7 +366,7 @@ static bool qhy_set_cooler(indigo_device *device, bool status, double target, do
 	//ASI_ERROR_CODE res;
 	//ASI_BOOL unused;
 
-	int id = PRIVATE_DATA->dev_id;
+	//int id = PRIVATE_DATA->dev_id;
 	long current_status;
 	long temp_x10;
 
@@ -362,7 +414,11 @@ static void qhy_close(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
-		//ASICloseCamera(PRIVATE_DATA->dev_id);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Close %s: handle = %p\n", PRIVATE_DATA->dev_sid, PRIVATE_DATA->handle);
+		if (PRIVATE_DATA->handle) {
+			CloseQHYCCD(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = NULL;
+		}
 		if (PRIVATE_DATA->buffer != NULL) {
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
@@ -416,7 +472,6 @@ static void streaming_timer_callback(indigo_device *device) {
 	//	{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 	//	{ 0 }
 	//};
-	int id = PRIVATE_DATA->dev_id;
 	int timeout = 1000 * (CCD_STREAMING_EXPOSURE_ITEM->number.value * 2 + 500);
 	int res;
 	PRIVATE_DATA->can_check_temperature = true;
@@ -500,7 +555,6 @@ static void ccd_temperature_callback(indigo_device *device) {
 
 static void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_ra = NULL;
-	int id = PRIVATE_DATA->dev_id;
 
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	/*
@@ -523,7 +577,6 @@ static void guider_timer_callback_ra(indigo_device *device) {
 
 static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
-	int id = PRIVATE_DATA->dev_id;
 
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	/*
@@ -648,7 +701,6 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	int ctrl_count;
 	//ASI_CONTROL_CAPS ctrl_caps;
 	//ASI_ERROR_CODE res;
-	int id = PRIVATE_DATA->dev_id;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
@@ -676,7 +728,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 
 /*
 static indigo_result init_camera_property(indigo_device *device, ... ctrl_caps) {
-	int id = PRIVATE_DATA->dev_id;
+
 	long value;
 	ASI_ERROR_CODE res;
 	ASI_BOOL unused;
@@ -812,7 +864,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				if (qhy_open(device)) {
-					int id = PRIVATE_DATA->dev_id;
 					int ctrl_count;
 					//ASI_CONTROL_CAPS ctrl_caps;
 
@@ -822,7 +873,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					int res; // = ASIGetNumOfControls(id, &ctrl_count);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
+						//INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
 						return INDIGO_NOT_FOUND;
 					}
 					QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, 0);
@@ -935,7 +986,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		int res; // = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAMMA, (long)(CCD_GAMMA_ITEM->number.value), ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAMMA) = %d", PRIVATE_DATA->dev_id, res);
+		//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAMMA) = %d", PRIVATE_DATA->dev_id, res);
 
 		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED)
@@ -949,7 +1000,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		int res; // = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
+		//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
 
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED)
@@ -1111,7 +1162,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	int res;
-	int id = PRIVATE_DATA->dev_id;
+//	int id = PRIVATE_DATA->dev_id;
 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -1145,7 +1196,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			//res = ASIPulseGuideOn(id, ASI_GUIDE_NORTH);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res);
+			//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res);
 			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 			//PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = true;
 		} else {
@@ -1155,7 +1206,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				//res = ASIPulseGuideOn(id, ASI_GUIDE_SOUTH);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res);
+				//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res);
 				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
 				//PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = true;
 			}
@@ -1178,7 +1229,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			//res = ASIPulseGuideOn(id, ASI_GUIDE_EAST);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res);
+			//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res);
 			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 			//PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = true;
 		} else {
@@ -1188,7 +1239,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				//res = ASIPulseGuideOn(id, ASI_GUIDE_WEST);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res);
+				//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res);
 				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
 				//PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = true;
 			}
@@ -1326,8 +1377,6 @@ static void process_plug_event() {
 	}
 
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
-
-	//ASIGetCameraProperty(&info, index);
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
 	sprintf(device->name, "%s", sid);
@@ -1336,19 +1385,18 @@ static void process_plug_event() {
 	assert(private_data);
 	memset(private_data, 0, sizeof(qhy_private_data));
 	sprintf(private_data->dev_sid, "%s", sid);
-	//memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
 	device->private_data = private_data;
 	indigo_async((void *(*)(void *))indigo_attach_device, device);
 	devices[slot]=device;
 
 	/* Check if there is a guider port */
-	//qhyccd_handle *handle;
-	//handle = OpenQHYCCD(sid);
-	//if(handle == NULL) {
-	//	return;
-	//}
-	int res = 0; //IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
-	//CloseQHYCCD(handle);
+	qhyccd_handle *handle;
+	handle = OpenQHYCCD(sid);
+	if(handle == NULL) {
+		return;
+	}
+	int res = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
+	CloseQHYCCD(handle);
 	if(res == QHYCCD_SUCCESS) {
 		slot = find_available_device_slot();
 		if (slot < 0) {
@@ -1368,7 +1416,7 @@ static void process_plug_event() {
 
 
 static void process_unplug_event() {
-	int id, slot;
+	int slot;
 	bool removed = false;
 	qhy_private_data *private_data = NULL;
 	while ((slot = find_unplugged_device_slot()) != NOT_FOUND) {
