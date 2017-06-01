@@ -1162,7 +1162,6 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	int res;
-//	int id = PRIVATE_DATA->dev_id;
 
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -1274,6 +1273,27 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 
+bool get_usb_path_str(qhyccd_handle *handle, char *path) {
+	libusb_device* device = libusb_get_device(handle);
+	uint8_t data[10];
+	char buf[10];
+	int i;
+
+	data[0]=libusb_get_bus_number(device);
+	int n = libusb_get_port_numbers(device, &data[1], 10);
+	if (n != LIBUSB_ERROR_OVERFLOW) {
+		sprintf(path,"%x", data[0]);
+		for (i = 1; i <= n; i++) {
+			sprintf(buf, "%d", data[i]);
+			strcat(path, ".");
+			strcat(path, buf);
+		}
+	} else {
+		path[0] = '\0';
+		return false;
+	}
+	return true;
+}
 
 static bool find_plugged_device_sid(char *new_sid) {
 	int i;
@@ -1376,10 +1396,25 @@ static void process_plug_event() {
 		return;
 	}
 
+	char dev_usbpath[MAX_SID_LEN];
+	char dev_name[MAX_SID_LEN];
+	GetQHYCCDModel(sid, dev_name);
+
+	/* Check if there is a guider port and get usbpath */
+	qhyccd_handle *handle;
+	handle = OpenQHYCCD(sid);
+	if(handle == NULL) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
+		return;
+	}
+	int check_st4 = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
+	get_usb_path_str(handle, dev_usbpath);
+	CloseQHYCCD(handle);
+
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
-	sprintf(device->name, "%s", sid);
+	sprintf(device->name, "%s #%s", dev_name, dev_usbpath);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 	qhy_private_data *private_data = (qhy_private_data*)malloc(sizeof(qhy_private_data));
 	assert(private_data);
@@ -1389,15 +1424,7 @@ static void process_plug_event() {
 	indigo_async((void *(*)(void *))indigo_attach_device, device);
 	devices[slot]=device;
 
-	/* Check if there is a guider port */
-	qhyccd_handle *handle;
-	handle = OpenQHYCCD(sid);
-	if(handle == NULL) {
-		return;
-	}
-	int res = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
-	CloseQHYCCD(handle);
-	if(res == QHYCCD_SUCCESS) {
+	if(check_st4 == QHYCCD_SUCCESS) {
 		slot = find_available_device_slot();
 		if (slot < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
@@ -1406,7 +1433,7 @@ static void process_plug_event() {
 		device = (indigo_device*)malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &guider_template, sizeof(indigo_device));
-		sprintf(device->name, "%s Guider", sid);
+		sprintf(device->name, "%s Guider #%s", dev_name, dev_usbpath);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 		device->private_data = private_data;
 		indigo_async((void *(*)(void *))indigo_attach_device, device);
