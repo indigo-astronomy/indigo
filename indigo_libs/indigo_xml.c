@@ -179,7 +179,10 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 				record->mode = INDIGO_ENABLE_BLOB_ALSO;
 			record->next = client->enable_blob_mode_records;
 			client->enable_blob_mode_records = record;
-		}
+			indigo_enable_blob(client, property, record->mode);
+		} else {
+			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_NEVER);
+		}		
 		INDIGO_DEBUG(indigo_debug("enableBLOB device='%s' name='%s' mode='%s'", property->device, property->name, value));
 		INDIGO_DEBUG(record = client->enable_blob_mode_records; while (record) { indigo_debug("   %s %s %d", record->device, record->name, record->mode); record = record->next; });
 	} else if (state == END_TAG) {

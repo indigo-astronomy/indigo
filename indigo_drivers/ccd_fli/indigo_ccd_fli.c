@@ -1058,6 +1058,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_attach,
 		fli_enumerate_properties,
 		ccd_change_property,
+		NULL,
 		ccd_detach
 	};
 

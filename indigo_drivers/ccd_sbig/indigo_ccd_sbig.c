@@ -1983,6 +1983,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		ccd_attach,
 		sbig_enumerate_properties,
 		ccd_change_property,
+		NULL,
 		ccd_detach
 	};
 
@@ -1991,6 +1992,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
+		NULL,
 		guider_detach
 	};
 
@@ -1999,6 +2001,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
+		NULL,
 		wheel_detach
 	};
 
@@ -2374,6 +2377,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		eth_attach,
 		indigo_device_enumerate_properties,
 		eth_change_property,
+		NULL,
 		eth_detach
 	};
 

@@ -382,6 +382,7 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 		focuser_attach,
 		focuser_enumerate_properties,
 		focuser_change_property,
+		NULL,
 		focuser_detach
 	};
 	

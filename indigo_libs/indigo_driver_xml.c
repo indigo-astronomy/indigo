@@ -288,7 +288,7 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 
 indigo_client *indigo_xml_device_adapter(int input, int ouput) {
 	static indigo_client client_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_NONE, INDIGO_ENABLE_BLOB_ALSO,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_NONE, NULL,
 		NULL,
 		xml_device_adapter_define_property,
 		xml_device_adapter_update_property,

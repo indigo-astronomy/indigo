@@ -352,6 +352,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
+		NULL,
 		wheel_detach
 	};
 

@@ -685,6 +685,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
+		NULL,
 		ccd_detach
 	};
 	static indigo_device imager_wheel_template = {
@@ -692,6 +693,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
+		NULL,
 		wheel_detach
 	};
 	static indigo_device imager_focuser_template = {
@@ -699,6 +701,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		focuser_attach,
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,
+		NULL,
 		focuser_detach
 	};
 	static indigo_device guider_camera_template = {
@@ -706,6 +709,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
+		NULL,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
@@ -713,6 +717,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
+		NULL,
 		guider_detach
 	};
 
