@@ -171,8 +171,8 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 		}
 		if (strcmp(value, "Never")) {
 			record = malloc(sizeof(indigo_enable_blob_mode_record));
-			strncmp(record->device, property->device, INDIGO_NAME_SIZE);
-			strncmp(record->name, property->name, INDIGO_NAME_SIZE);
+			strncpy(record->device, property->device, INDIGO_NAME_SIZE);
+			strncpy(record->name, property->name, INDIGO_NAME_SIZE);
 			if (!strcmp(value, "URL"))
 				record->mode = INDIGO_ENABLE_BLOB_URL;
 			else
