@@ -176,7 +176,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 			indigo_enable_blob_mode mode = INDIGO_ENABLE_BLOB_NEVER;
 			indigo_enable_blob_mode_record *record = client->enable_blob_mode_records;
 			while (record) {
-				if (!strcmp(property->device, record->device) && (*record->name == 0 || !strcmp(property->name, record->name))) {
+				if ((*record->device == 0 || !strcmp(property->device, record->device)) && (*record->name == 0 || !strcmp(property->name, record->name))) {
 					mode = record->mode;
 					break;
 				}
