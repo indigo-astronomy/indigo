@@ -278,80 +278,72 @@ static bool qhy_open(indigo_device *device) {
 }
 
 static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-//	int id = PRIVATE_DATA->dev_id;
-	//ASI_ERROR_CODE res;
+	int res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	/*
-	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/vertical_bin,  horizontal_bin, get_pixel_format(device));
-	if (res) {
+
+	res = SetQHYCCDBinMode(PRIVATE_DATA->handle, horizontal_bin, vertical_bin);
+	if (res != QHYCCD_SUCCESS) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetROIFormat(%d) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDBinMode(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-	res = ASISetStartPos(id, frame_left/horizontal_bin, frame_top/vertical_bin);
-	if (res) {
+
+	res = SetQHYCCDResolution(PRIVATE_DATA->handle, frame_left/horizontal_bin, frame_top/vertical_bin, frame_width/horizontal_bin, frame_height/vertical_bin);
+	if (res != QHYCCD_SUCCESS) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetStartPos(%d) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDResolution(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-	res = ASISetControlValue(id, ASI_EXPOSURE, (long)s2us(exposure), ASI_FALSE);
-	if (res) {
+
+	res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_EXPOSURE, (long)s2us(exposure));
+	if (res != QHYCCD_SUCCESS) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-	*/
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
 static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-	//int id = PRIVATE_DATA->dev_id;
-	/*
-	ASI_ERROR_CODE res;
+	int res;
 	if (!qhy_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
 		return false;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = ASIStartExposure(id, dark);
+	res = ExpQHYCCDSingleFrame(PRIVATE_DATA->handle);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStartExposure(%d) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ExpQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-	*/
 	return true;
 }
 
 static bool qhy_read_pixels(indigo_device *device) {
-	/*
-	ASI_ERROR_CODE res;
-	ASI_EXPOSURE_STATUS status;
-	int wait_cycles = 9000;
-	status = ASI_EXP_WORKING;
+	int res;
+	uint32_t ret, w,h,bpp,channels;
 
-	while((status == ASI_EXP_WORKING) && wait_cycles--) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int remaining = GetQHYCCDExposureRemaining(PRIVATE_DATA->handle);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+	while (remaining > 100) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
+		remaining = GetQHYCCDExposureRemaining(PRIVATE_DATA->handle);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		usleep(2000);
 	}
-	if(status == ASI_EXP_SUCCESS) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res);
-			return false;
-		}
-		if (PRIVATE_DATA->is_asi120)
-			usleep(150000);
-		return true;
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status);
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	res = GetQHYCCDSingleFrame(PRIVATE_DATA->handle, &w, &h, &bpp, &channels, PRIVATE_DATA->buffer + FITS_HEADER_SIZE);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res != QHYCCD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-    */
+    return true;
 }
 
 static bool qhy_abort_exposure(indigo_device *device) {
