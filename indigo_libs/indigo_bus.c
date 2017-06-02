@@ -369,6 +369,24 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 	return INDIGO_OK;
 }
 
+indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode) {
+	assert(property != NULL);
+	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
+	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: enable BLOB mode change request", property, false, true));
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		indigo_device *device = devices[i];
+		if (device != NULL && device->enable_blob != NULL) {
+			bool route = *property->device == 0;
+			route = route || !strcmp(property->device, device->name);
+			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
+			route = route || (!indigo_use_host_suffix && *device->name == '@');
+			if (route)
+				device->last_result = device->enable_blob(device, client, property, mode);
+		}
+	}
+	return INDIGO_OK;
+}
+
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	assert(property != NULL);
 	if (!property->hidden) {
