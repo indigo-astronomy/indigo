@@ -128,10 +128,19 @@ extern char *indigo_switch_rule_text[];
 typedef enum {
 	INDIGO_ENABLE_BLOB_ALSO,
 	INDIGO_ENABLE_BLOB_NEVER,
-	INDIGO_ENABLE_BLOB_ONLY,
 	INDIGO_ENABLE_BLOB_URL
-} indigo_enable_blob;
+} indigo_enable_blob_mode;
 
+/** Enable BLOB mode record
+ */
+
+typedef struct indigo_enable_blob_mode_record {
+	char device[INDIGO_NAME_SIZE];				///< device name
+	char name[INDIGO_NAME_SIZE];					///< property name
+	indigo_enable_blob_mode mode;					///< mode
+	struct indigo_enable_blob_mode_record *next; ///< next record
+} indigo_enable_blob_mode_record;
+	
 typedef enum {
 	INDIGO_LOG_ERROR,
 	INDIGO_LOG_INFO,
@@ -225,11 +234,11 @@ typedef struct indigo_device {
 /** Client structure definition
  */
 typedef struct indigo_client {
-	char name[INDIGO_NAME_SIZE];        ///< client name
-	void *client_context;               ///< any client specific data
-	indigo_result last_result;          ///< result of last bus operation
-	indigo_version version;             ///< client version
-	indigo_enable_blob enable_blob;     ///< enable blob mode
+	char name[INDIGO_NAME_SIZE];															///< client name
+	void *client_context;																			///< any client specific data
+	indigo_result last_result;																///< result of last bus operation
+	indigo_version version;																		///< client version
+	indigo_enable_blob_mode_record *enable_blob_mode_records;	///< enable blob mode
 
 	/** callback called when client is attached to the bus
 	 */
@@ -343,6 +352,10 @@ extern indigo_result indigo_enumerate_properties(indigo_client *client, indigo_p
  */
 extern indigo_result indigo_change_property(indigo_client *client, indigo_property *property);
 
+/** Broadcast enableBLOB request.
+ */
+extern indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property);
+	
 /** Stop bus operation.
  Call has no effect if bus is already stopped.
  */

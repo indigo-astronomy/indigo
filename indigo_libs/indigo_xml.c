@@ -140,22 +140,51 @@ static void *set_light_vector_handler(parser_state state, parser_context *contex
 static void *set_blob_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message);
 
 static void *enable_blob_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
+	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
 	assert(client != NULL);
 	INDIGO_TRACE_PROTOCOL(indigo_trace("XML Parser: enable_blob_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
-	if (state == END_TAG) {
-		return top_level_handler;
-	} else if (state == TEXT) {
-		if (!strcmp(value, "Also")) {
-			client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
-		} else if (!strcmp(value, "Never")) {
-			client->enable_blob = INDIGO_ENABLE_BLOB_NEVER;
-		} else if (!strcmp(value, "Only")) {
-			client->enable_blob = INDIGO_ENABLE_BLOB_ONLY;
-		} else if (!strcmp(value, "URL")) {
-			client->enable_blob = INDIGO_ENABLE_BLOB_URL;
+	if (state == ATTRIBUTE_VALUE) {
+		if (!strcmp(name, "device")) {
+			strncpy(property->device, value,INDIGO_NAME_SIZE);
+		} else if (!strcmp(name, "name")) {
+			indigo_copy_property_name(client ? client->version : INDIGO_VERSION_CURRENT, property, value);
 		}
-		INDIGO_DEBUG(indigo_debug("BLOB mode is '%s'", value));
+	} else if (state == TEXT) {
+		indigo_enable_blob_mode_record *record = client->enable_blob_mode_records;
+		indigo_enable_blob_mode_record *prev = NULL;
+		while (record) {
+			if (!strcmp(property->device, record->device) && (*record->name == 0 || !strcmp(property->name, record->name))) {
+				if (prev) {
+					prev->next = record->next;
+					free(record);
+					record = prev->next;
+				} else {
+					client->enable_blob_mode_records = record->next;
+					free(record);
+					record = client->enable_blob_mode_records;
+				}
+			} else {
+				prev = record;
+				record = record->next;
+			}
+		}
+		if (strcmp(value, "Never")) {
+			record = malloc(sizeof(indigo_enable_blob_mode_record));
+			strncmp(record->device, property->device, INDIGO_NAME_SIZE);
+			strncmp(record->name, property->name, INDIGO_NAME_SIZE);
+			if (!strcmp(value, "URL"))
+				record->mode = INDIGO_ENABLE_BLOB_URL;
+			else
+				record->mode = INDIGO_ENABLE_BLOB_ALSO;
+			record->next = client->enable_blob_mode_records;
+			client->enable_blob_mode_records = record;
+		}
+		INDIGO_DEBUG(indigo_debug("enableBLOB device='%s' name='%s' mode='%s'", property->device, property->name, value));
+		INDIGO_DEBUG(record = client->enable_blob_mode_records; while (record) { indigo_debug("   %s %s %d", record->device, record->name, record->mode); record = record->next; });
+	} else if (state == END_TAG) {
+		memset(property, 0, PROPERTY_SIZE);
+		return top_level_handler;
 	}
 	return enable_blob_handler;
 }
@@ -191,10 +220,6 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 			indigo_copy_property_name(client->version, property, value);;
 		}
 	} else if (state == END_TAG) {
-		if (client->version == INDIGO_VERSION_LEGACY)
-			client->enable_blob = INDIGO_ENABLE_BLOB_ALSO;
-		else
-			client->enable_blob = INDIGO_ENABLE_BLOB_URL;
 		indigo_enumerate_properties(client, property);
 		memset(property, 0, PROPERTY_SIZE);
 		return top_level_handler;
