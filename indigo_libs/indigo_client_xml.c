@@ -123,6 +123,36 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 	return INDIGO_OK;
 }
 
+static indigo_result xml_client_parser_enable_blob(indigo_device *device, indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode) {
+	assert(device != NULL);
+	assert(property != NULL);
+	pthread_mutex_lock(&xml_mutex);
+	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
+	assert(device_context != NULL);
+	int handle = device_context->output;
+	char device_name[INDIGO_NAME_SIZE];
+	strcpy(device_name, property->device);
+	if (indigo_use_host_suffix) {
+		char *at = strrchr(device_name, '@');
+		if (at != NULL) {
+			while (at > device_name && at[-1] == ' ')
+				at--;
+			*at = 0;
+		}
+	}
+	char *mode_text = "Also";
+	if (mode == INDIGO_ENABLE_BLOB_NEVER)
+		mode_text = "Never";
+	else if (mode == INDIGO_ENABLE_BLOB_URL)
+		mode_text = "URL";
+	if (*property->name)
+		indigo_printf(handle, "<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property), mode_text);
+	else
+		indigo_printf(handle, "<enableBLOB device='%s'>%s</enableBLOB>\n", indigo_xml_escape(device_name), mode_text);
+	pthread_mutex_unlock(&xml_mutex);
+	return INDIGO_OK;
+}
+
 static indigo_result xml_client_parser_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
@@ -137,6 +167,7 @@ indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input
 		NULL,
 		xml_client_parser_enumerate_properties,
 		xml_client_parser_change_property,
+		xml_client_parser_enable_blob,
 		xml_client_parser_detach
 	};
 	indigo_device *device = malloc(sizeof(indigo_device));

@@ -481,6 +481,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
+		NULL,
 		ccd_detach
 	};
 	static indigo_device guider_template = {
@@ -488,6 +489,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
+		NULL,
 		guider_detach
 	};
 	struct libusb_device_descriptor descriptor;

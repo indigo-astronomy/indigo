@@ -491,6 +491,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
+		NULL,
 		ccd_detach
 	};
 	pthread_mutex_lock(&device_mutex);

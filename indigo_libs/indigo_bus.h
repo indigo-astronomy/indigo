@@ -226,6 +226,9 @@ typedef struct indigo_device {
 	/** callback called when client broadcast property change request
 	 */
 	indigo_result (*change_property)(indigo_device *device, indigo_client *client, indigo_property *property);
+	/** callback called when client broadcast enableBLOB mode change request
+	 */
+	indigo_result (*enable_blob)(indigo_device *device, indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
 	/** callback called when device is detached from the bus
 	 */
 	indigo_result (*detach)(indigo_device *device);
@@ -354,7 +357,7 @@ extern indigo_result indigo_change_property(indigo_client *client, indigo_proper
 
 /** Broadcast enableBLOB request.
  */
-extern indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property);
+extern indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
 	
 /** Stop bus operation.
  Call has no effect if bus is already stopped.

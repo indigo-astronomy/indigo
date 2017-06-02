@@ -281,6 +281,7 @@ indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_
 		mount_attach,
 		indigo_mount_enumerate_properties,
 		mount_change_property,
+		NULL,
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
@@ -288,6 +289,7 @@ indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
+		NULL,
 		guider_detach
 	};
 	

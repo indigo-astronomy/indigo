@@ -203,6 +203,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		focuser_attach,
 		focuser_enumerate_properties,
 		focuser_change_property,
+		NULL,
 		focuser_detach
 	};
 
