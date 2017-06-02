@@ -1454,7 +1454,7 @@ static void process_unplug_event() {
 	}
 
 	if (private_data) {
-		//ASICloseCamera(id);
+		CloseQHYCCD(private_data->handle);
 		free(private_data);
 		private_data = NULL;
 	}
