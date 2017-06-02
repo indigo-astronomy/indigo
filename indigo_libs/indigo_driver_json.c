@@ -361,7 +361,7 @@ static indigo_result json_detach(indigo_client *client) {
 
 indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket) {
 	static indigo_client client_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
+		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		NULL,
 		json_define_property,
 		json_update_property,
@@ -379,12 +379,22 @@ indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket)
 	client_context->output = ouput;
 	client_context->web_socket = web_socket;
 	client->client_context = client_context;
+	indigo_enable_blob_mode_record *record = malloc(sizeof(indigo_enable_blob_mode_record));
+	memset(record, 0, sizeof(indigo_enable_blob_mode_record));
+	record->mode = INDIGO_ENABLE_BLOB_URL;
+	client->enable_blob_mode_records = record;
 	return client;
 }
 
 void indigo_release_json_device_adapter(indigo_client *client) {
 	assert(client != NULL);
 	assert(client->client_context != NULL);
+	indigo_enable_blob_mode_record *record = client->enable_blob_mode_records;
+	while (record) {
+		indigo_enable_blob_mode_record *tmp = record;
+		record = record->next;
+		free(tmp);
+	}
 	free(client->client_context);
 	free(client);
 }
