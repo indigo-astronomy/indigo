@@ -463,9 +463,8 @@ static void exposure_timer_callback(indigo_device *device) {
 				};
 				if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 1) &&
 					(CCD_BIN_VERTICAL_ITEM->number.value == 1)) {
-				 	//indigo_fits_keyword *bayer_keys = (indigo_fits_keyword*)keywords;
-				 	keywords[1].number = ((int)(CCD_FRAME_LEFT_ITEM->number.value) % 2) ? 1 : 0; /* set XBAYROFF */
-				 	keywords[2].number = ((int)(CCD_FRAME_TOP_ITEM->number.value) % 2) ? 1 : 0; /* set YBAYROFF */
+					keywords[1].number = ((int)(CCD_FRAME_LEFT_ITEM->number.value) % 2) ? 1 : 0; /* set XBAYROFF */
+					keywords[2].number = ((int)(CCD_FRAME_TOP_ITEM->number.value) % 2) ? 1 : 0; /* set YBAYROFF */
 				}
 				indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->ci_params.width, PRIVATE_DATA->ci_params.height, true, keywords);
 			} else {
@@ -893,7 +892,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
 
 					/* find max binning */
-					int max_bin = 1;
+					int max_bin = 4;
 					//for (int num = 0; (num < 16) && PRIVATE_DATA->info.SupportedBins[num]; num++) {
 					//	max_bin = PRIVATE_DATA->info.SupportedBins[num];
 					//}
