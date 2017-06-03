@@ -78,6 +78,11 @@
 #define us2s(s) ((s) / 1000000.0)
 #define s2us(us) ((us) * 1000000)
 
+typedef struct {
+	uint32_t width;
+	uint32_t height;
+	uint32_t bpp;
+} img_params;
 
 typedef struct {
 	qhyccd_handle *handle;
@@ -93,6 +98,7 @@ typedef struct {
 	uint32_t frame_height;
 	double pixel_width;
 	double pixel_height;
+	img_params ci_params;
 
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
@@ -323,7 +329,7 @@ static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark
 
 static bool qhy_read_pixels(indigo_device *device) {
 	int res;
-	uint32_t ret, w,h,bpp,channels;
+	uint32_t ret,channels;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int remaining = GetQHYCCDExposureRemaining(PRIVATE_DATA->handle);
@@ -337,7 +343,14 @@ static bool qhy_read_pixels(indigo_device *device) {
 	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = GetQHYCCDSingleFrame(PRIVATE_DATA->handle, &w, &h, &bpp, &channels, PRIVATE_DATA->buffer + FITS_HEADER_SIZE);
+	res = GetQHYCCDSingleFrame(
+		PRIVATE_DATA->handle,
+		&PRIVATE_DATA->ci_params.width,
+		&PRIVATE_DATA->ci_params.height,
+		&PRIVATE_DATA->ci_params.bpp,
+		&channels,
+		PRIVATE_DATA->buffer + FITS_HEADER_SIZE
+	);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res != QHYCCD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
@@ -442,7 +455,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				//};
 				//indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, keywords);
 			} else {
-				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+				indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->ci_params.width, PRIVATE_DATA->ci_params.height, true, NULL);
 			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -619,31 +632,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		*/
 		PIXEL_FORMAT_PROPERTY->count = format_count;
-
-		//CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
-		//CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
-		//CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
-		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
-
-		//CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
-		//CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
-		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
-
-		/* find max binning */
-		int max_bin = 1;
-		//for (int num = 0; (num < 16) && PRIVATE_DATA->info.SupportedBins[num]; num++) {
-		//	max_bin = PRIVATE_DATA->info.SupportedBins[num];
-		//}
-
-		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-		CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
-		CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-		CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
-
-		CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
-		CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
-
 		int mode_count = 0;
 		char name[32], label[64];
 		/*
@@ -677,7 +665,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		*/
 		CCD_MODE_PROPERTY->count = mode_count;
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_STREAMING_PROPERTY->hidden = true;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		QHY_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
@@ -876,6 +864,33 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						//init_camera_property(device, ctrl_caps);
 					}
 					indigo_define_property(device, QHY_ADVANCED_PROPERTY, NULL);
+
+					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->frame_width;
+					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->frame_height;
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA-> pixel_width;
+					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->pixel_width;
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
+					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
+
+					CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->frame_width;
+					CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->frame_height;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
+
+					/* find max binning */
+					int max_bin = 1;
+					//for (int num = 0; (num < 16) && PRIVATE_DATA->info.SupportedBins[num]; num++) {
+					//	max_bin = PRIVATE_DATA->info.SupportedBins[num];
+					//}
+
+					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+					CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
+					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+					CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
+
+					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
 
 					if (PRIVATE_DATA->has_temperature_sensor) {
 						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
