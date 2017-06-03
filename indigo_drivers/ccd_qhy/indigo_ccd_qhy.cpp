@@ -117,7 +117,7 @@ static char *get_bayer_string(indigo_device *device) {
 	int pattern = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_COLOR);
 	if (pattern != QHYCCD_ERROR) {
 		if(pattern == BAYER_GB)
-			return (char*)"GBGR";
+			return (char*)"GBRG";
 		else if (pattern == BAYER_GR)
 			return (char*)"GRBG";
 		else if (pattern == BAYER_BG)
