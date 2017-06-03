@@ -108,7 +108,6 @@ typedef struct {
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
-	//ASI_CAMERA_INFO info;
 	indigo_property *pixel_format_property;
 	indigo_property *qhy_advanced_property;
 } qhy_private_data;
@@ -120,7 +119,7 @@ static char *get_bayer_string(indigo_device *device) {
 		if(pattern == BAYER_GB)
 			return (char*)"GBGR";
 		else if (pattern == BAYER_GR)
-			return (char*)"GRGB";
+			return (char*)"GRBG";
 		else if (pattern == BAYER_BG)
 			return (char*)"BGGR";
 		else
@@ -329,7 +328,7 @@ static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = ExpQHYCCDSingleFrame(PRIVATE_DATA->handle);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res) {
+	if (res != QHYCCD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ExpQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
@@ -456,13 +455,13 @@ static void exposure_timer_callback(indigo_device *device) {
 			if(color_string) {
 				/* NOTE: There is no need to take care about the offsets,
 				   the SDK takes care the image to be in the correct bayer pattern */
-				//indigo_fits_keyword keywords[] = {
-				//	{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
-				//	{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
-				//	{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
-				//	{ 0 }
-				//};
-				//indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, keywords);
+				indigo_fits_keyword keywords[] = {
+					{ .type = INDIGO_FITS_STRING, .name = "BAYERPAT", {.string = color_string }, .comment = "Bayer color pattern" },
+					{ .type = INDIGO_FITS_NUMBER, .name = "XBAYROFF", {.number = 0 }, .comment = "X offset of Bayer array" },
+					{ .type = INDIGO_FITS_NUMBER, .name = "YBAYROFF", {.number = 0 }, .comment = "Y offset of Bayer array" },
+					{ .type = (indigo_fits_keyword_type)0 }
+				};
+				indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->ci_params.width, PRIVATE_DATA->ci_params.height, true, keywords);
 			} else {
 				indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->ci_params.width, PRIVATE_DATA->ci_params.height, true, NULL);
 			}
