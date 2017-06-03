@@ -880,8 +880,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
 					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
 
-					CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->frame_width;
-					CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->frame_height;
+					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->frame_width;
+					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->frame_height;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
