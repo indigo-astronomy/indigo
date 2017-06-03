@@ -193,6 +193,7 @@ static bool asi_open(indigo_device *device) {
 		}
 		res = ASIInitCamera(id);
 		if (res) {
+			ASICloseCamera(id);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIInitCamera(%d) = %d", id, res);
 			PRIVATE_DATA->count_open--;
