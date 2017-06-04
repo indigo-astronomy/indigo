@@ -1301,11 +1301,11 @@ bool get_usb_path_str(qhyccd_handle *handle, char *path) {
 	int i;
 
 	data[0]=libusb_get_bus_number(device);
-	int n = libusb_get_port_numbers(device, &data[1], 10);
+	int n = libusb_get_port_numbers(device, &data[1], 9);
 	if (n != LIBUSB_ERROR_OVERFLOW) {
 		sprintf(path,"%x", data[0]);
 		for (i = 1; i <= n; i++) {
-			sprintf(buf, "%d", data[i]);
+			sprintf(buf, "%x", data[i]);
 			strcat(path, ".");
 			strcat(path, buf);
 		}
@@ -1470,7 +1470,6 @@ static void process_unplug_event() {
 	while ((slot = find_unplugged_device_slot()) != NOT_FOUND) {
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
-			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
 		indigo_detach_device(*device);
