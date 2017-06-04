@@ -352,6 +352,7 @@ static bool qhy_read_pixels(indigo_device *device) {
 		return false;
 	}
     */
+	return false;
 }
 
 static bool qhy_abort_exposure(indigo_device *device) {
