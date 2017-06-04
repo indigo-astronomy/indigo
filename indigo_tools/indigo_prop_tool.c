@@ -371,6 +371,7 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 				break;
 			case INDIGO_BLOB_VECTOR:
 				printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
+				indigo_enable_blob(client, property, indigo_use_blob_urls ? INDIGO_ENABLE_BLOB_URL : INDIGO_ENABLE_BLOB_ALSO);
 				break;
 			}
 
