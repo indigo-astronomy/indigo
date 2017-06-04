@@ -1499,8 +1499,8 @@ static void process_unplug_event() {
 void *plug_thread_func(void *sid) {
 	pthread_mutex_lock(&device_mutex);
 	char firmware_base_dir[255] = "/usr/local/lib/qhy";
-	if (getenv("INDIGO_QHY_FIRMWARE_BASE") != NULL) {
-		strncpy(firmware_base_dir, getenv("INDIGO_QHY_FIRMWARE_BASE"), 255);
+	if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
+		strncpy(firmware_base_dir, getenv("INDIGO_FIRMWARE_BASE"), 255);
 	}
 	OSXInitQHYCCDFirmware(firmware_base_dir);
 	process_plug_event();
