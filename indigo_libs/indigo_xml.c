@@ -713,20 +713,6 @@ static void def_property(parser_context *context, indigo_property *other, char *
 						item->blob.value = tmp;
 					}
 				}
-				if (context->device != NULL) {
-					int handle = ((indigo_adapter_context *)context->device->device_context)->output;
-					int use_url = indigo_use_blob_urls && *((indigo_adapter_context *)context->device->device_context)->url_prefix != 0 && other->version != INDIGO_VERSION_LEGACY;
-					char device_name[INDIGO_NAME_SIZE];
-					strcpy(device_name, property->device);
-					if (indigo_use_host_suffix) {
-						char *at = strrchr(device_name, '@');
-						if (at != NULL) {
-							while (at > device_name && at[-1] == ' ')
-								at--;
-							*at = 0;
-						}
-					}
-				}
 				break;
 		}
 		context->properties[index] = property;
