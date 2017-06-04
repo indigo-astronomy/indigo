@@ -78,6 +78,11 @@
 #define us2s(s) ((s) / 1000000.0)
 #define s2us(us) ((us) * 1000000)
 
+typedef struct {
+	uint32_t width;
+	uint32_t height;
+	uint32_t bpp;
+} img_params;
 
 typedef struct {
 	qhyccd_handle *handle;
@@ -93,6 +98,7 @@ typedef struct {
 	uint32_t frame_height;
 	double pixel_width;
 	double pixel_height;
+	img_params ci_params;
 
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
@@ -102,7 +108,6 @@ typedef struct {
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
-	//ASI_CAMERA_INFO info;
 	indigo_property *pixel_format_property;
 	indigo_property *qhy_advanced_property;
 } qhy_private_data;
@@ -112,9 +117,9 @@ static char *get_bayer_string(indigo_device *device) {
 	int pattern = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_COLOR);
 	if (pattern != QHYCCD_ERROR) {
 		if(pattern == BAYER_GB)
-			return (char*)"GBGR";
+			return (char*)"GBRG";
 		else if (pattern == BAYER_GR)
-			return (char*)"GRGB";
+			return (char*)"GRBG";
 		else if (pattern == BAYER_BG)
 			return (char*)"BGGR";
 		else
@@ -216,6 +221,15 @@ static bool qhy_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
+
+		/* Disable the stream mode */
+		res = SetQHYCCDStreamMode(PRIVATE_DATA->handle, 0);
+		if (res != QHYCCD_SUCCESS) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDStreamMode('%s') = %d", PRIVATE_DATA->dev_sid, res);
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
 		InitQHYCCD(PRIVATE_DATA->handle);
 
 		double chipw, chiph;
@@ -278,81 +292,79 @@ static bool qhy_open(indigo_device *device) {
 }
 
 static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-//	int id = PRIVATE_DATA->dev_id;
-	//ASI_ERROR_CODE res;
+	int res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	/*
-	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/vertical_bin,  horizontal_bin, get_pixel_format(device));
-	if (res) {
+
+	res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_EXPOSURE, (long)s2us(exposure));
+	if (res != QHYCCD_SUCCESS) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetROIFormat(%d) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-	res = ASISetStartPos(id, frame_left/horizontal_bin, frame_top/vertical_bin);
-	if (res) {
+
+	res = SetQHYCCDBinMode(PRIVATE_DATA->handle, horizontal_bin, vertical_bin);
+	if (res != QHYCCD_SUCCESS) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetStartPos(%d) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDBinMode(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-	res = ASISetControlValue(id, ASI_EXPOSURE, (long)s2us(exposure), ASI_FALSE);
-	if (res) {
+
+	res = SetQHYCCDResolution(PRIVATE_DATA->handle, frame_left/horizontal_bin, frame_top/vertical_bin, frame_width/horizontal_bin, frame_height/vertical_bin);
+	if (res != QHYCCD_SUCCESS) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDResolution(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-	*/
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
 static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-	//int id = PRIVATE_DATA->dev_id;
-	/*
-	ASI_ERROR_CODE res;
+	int res;
 	if (!qhy_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
 		return false;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = ASIStartExposure(id, dark);
+	res = ExpQHYCCDSingleFrame(PRIVATE_DATA->handle);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStartExposure(%d) = %d", id, res);
+	if (res != QHYCCD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ExpQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-	*/
 	return true;
 }
 
 static bool qhy_read_pixels(indigo_device *device) {
-	/*
-	ASI_ERROR_CODE res;
-	ASI_EXPOSURE_STATUS status;
-	int wait_cycles = 9000;
-	status = ASI_EXP_WORKING;
+	int res;
+	uint32_t ret,channels;
 
-	while((status == ASI_EXP_WORKING) && wait_cycles--) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int remaining = GetQHYCCDExposureRemaining(PRIVATE_DATA->handle);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+	while (remaining > 100) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
+		remaining = GetQHYCCDExposureRemaining(PRIVATE_DATA->handle);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		usleep(2000);
 	}
-	if(status == ASI_EXP_SUCCESS) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res);
-			return false;
-		}
-		if (PRIVATE_DATA->is_asi120)
-			usleep(150000);
-		return true;
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status);
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	res = GetQHYCCDSingleFrame(
+		PRIVATE_DATA->handle,
+		&PRIVATE_DATA->ci_params.width,
+		&PRIVATE_DATA->ci_params.height,
+		&PRIVATE_DATA->ci_params.bpp,
+		&channels,
+		PRIVATE_DATA->buffer + FITS_HEADER_SIZE
+	);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res != QHYCCD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-    */
-	return false;
+    return true;
 }
 
 static bool qhy_abort_exposure(indigo_device *device) {
@@ -443,15 +455,20 @@ static void exposure_timer_callback(indigo_device *device) {
 			if(color_string) {
 				/* NOTE: There is no need to take care about the offsets,
 				   the SDK takes care the image to be in the correct bayer pattern */
-				//indigo_fits_keyword keywords[] = {
-				//	{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
-				//	{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
-				//	{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
-				//	{ 0 }
-				//};
-				//indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, keywords);
+				indigo_fits_keyword keywords[] = {
+					{ .type = INDIGO_FITS_STRING, .name = "BAYERPAT", {.string = color_string }, .comment = "Bayer color pattern" },
+					{ .type = INDIGO_FITS_NUMBER, .name = "XBAYROFF", {.number = 0 }, .comment = "X offset of Bayer array" },
+					{ .type = INDIGO_FITS_NUMBER, .name = "YBAYROFF", {.number = 0 }, .comment = "Y offset of Bayer array" },
+					{ .type = (indigo_fits_keyword_type)0 }
+				};
+				if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 1) &&
+					(CCD_BIN_VERTICAL_ITEM->number.value == 1)) {
+					keywords[1].number = ((int)(CCD_FRAME_LEFT_ITEM->number.value) % 2) ? 1 : 0; /* set XBAYROFF */
+					keywords[2].number = ((int)(CCD_FRAME_TOP_ITEM->number.value) % 2) ? 1 : 0; /* set YBAYROFF */
+				}
+				indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->ci_params.width, PRIVATE_DATA->ci_params.height, true, keywords);
 			} else {
-				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+				indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->ci_params.width, PRIVATE_DATA->ci_params.height, true, NULL);
 			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -628,31 +645,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		*/
 		PIXEL_FORMAT_PROPERTY->count = format_count;
-
-		//CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
-		//CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
-		//CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
-		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
-
-		//CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
-		//CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
-		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
-
-		/* find max binning */
-		int max_bin = 1;
-		//for (int num = 0; (num < 16) && PRIVATE_DATA->info.SupportedBins[num]; num++) {
-		//	max_bin = PRIVATE_DATA->info.SupportedBins[num];
-		//}
-
-		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-		CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
-		CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-		CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
-
-		CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
-		CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
-
 		int mode_count = 0;
 		char name[32], label[64];
 		/*
@@ -686,7 +678,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		*/
 		CCD_MODE_PROPERTY->count = mode_count;
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_STREAMING_PROPERTY->hidden = true;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		QHY_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
@@ -886,6 +878,34 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					}
 					indigo_define_property(device, QHY_ADVANCED_PROPERTY, NULL);
 
+					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->frame_width;
+					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->frame_height;
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA-> pixel_width;
+					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->pixel_width;
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
+					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
+
+					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->frame_width;
+					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->frame_height;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
+
+					/* find max binning */
+					int max_bin = 4;
+					//for (int num = 0; (num < 16) && PRIVATE_DATA->info.SupportedBins[num]; num++) {
+					//	max_bin = PRIVATE_DATA->info.SupportedBins[num];
+					//}
+
+					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+					CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
+					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+					CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
+
+					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
+
 					if (PRIVATE_DATA->has_temperature_sensor) {
 						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 					}
@@ -1010,14 +1030,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
-		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
-		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
+		//CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
+		//CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
 		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64)
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
 		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value > 8) ? 16 : 8;
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1031,7 +1051,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(PIXEL_FORMAT_PROPERTY, property, false);
 		PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 
-		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value > 8) ? 16 : 8;
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -1281,11 +1301,11 @@ bool get_usb_path_str(qhyccd_handle *handle, char *path) {
 	int i;
 
 	data[0]=libusb_get_bus_number(device);
-	int n = libusb_get_port_numbers(device, &data[1], 10);
+	int n = libusb_get_port_numbers(device, &data[1], 9);
 	if (n != LIBUSB_ERROR_OVERFLOW) {
 		sprintf(path,"%x", data[0]);
 		for (i = 1; i <= n; i++) {
-			sprintf(buf, "%d", data[i]);
+			sprintf(buf, "%x", data[i]);
 			strcat(path, ".");
 			strcat(path, buf);
 		}
@@ -1452,7 +1472,6 @@ static void process_unplug_event() {
 	while ((slot = find_unplugged_device_slot()) != NOT_FOUND) {
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
-			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
 		indigo_detach_device(*device);
@@ -1465,7 +1484,7 @@ static void process_unplug_event() {
 	}
 
 	if (private_data) {
-		//ASICloseCamera(id);
+		CloseQHYCCD(private_data->handle);
 		free(private_data);
 		private_data = NULL;
 	}
