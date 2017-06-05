@@ -69,6 +69,12 @@
 #define SHUTTERHEATING_DESC        "Shutter Motor Heatring"
 
 
+#define QHY_GUIDE_NORTH            1
+#define QHY_GUIDE_SOUTH            2
+#define QHY_GUIDE_EAST             0
+#define QHY_GUIDE_WEST             3
+
+
 #define PRIVATE_DATA               ((qhy_private_data *)device->private_data)
 
 #define PIXEL_FORMAT_PROPERTY      (PRIVATE_DATA->pixel_format_property)
@@ -566,45 +572,62 @@ static void ccd_temperature_callback(indigo_device *device) {
 
 static void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_ra = NULL;
-
+	int res;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-	/*
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	ASIPulseGuideOff(id, ASI_GUIDE_EAST);
-	ASIPulseGuideOff(id, ASI_GUIDE_WEST);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-	if (PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] || PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST]) {
-		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
+	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+	if (duration > 0) {
+		/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
+		res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_EAST, duration);
+
+		if (res != QHYCCD_SUCCESS)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_EAST) = %d", PRIVATE_DATA->dev_sid, res);
+	} else {
+		int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+		if (duration > 0) {
+			/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
+			res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_WEST, duration);
+
+			if (res != QHYCCD_SUCCESS)
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_WEST) = %d", PRIVATE_DATA->dev_sid, res);
+		}
 	}
-	PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = false;
-	PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = false;
-	*/
+
+	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
 
 static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
-
+	int res;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-	/*
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	ASIPulseGuideOff(id, ASI_GUIDE_SOUTH);
-	ASIPulseGuideOff(id, ASI_GUIDE_NORTH);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-	if (PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH]) {
-		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+	if (duration > 0) {
+		/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
+		res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_NORTH, duration);
+
+		if (res != QHYCCD_SUCCESS)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_NORTH) = %d", PRIVATE_DATA->dev_sid, res);
+	} else {
+		int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		if (duration > 0) {
+			/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
+			res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_SOUTH, duration);
+
+			if (res != QHYCCD_SUCCESS)
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_SOUTH) = %d", PRIVATE_DATA->dev_sid, res);
+		}
 	}
-	PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = false;
-	PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = false;
-	*/
+
+	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
 
 
@@ -1127,66 +1150,23 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			//res = ASIPulseGuideOn(id, ASI_GUIDE_NORTH);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-			//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res);
-			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
-			//PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = true;
+		if ((GUIDER_GUIDE_NORTH_ITEM->number.value > 0) || (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0)) {
+			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, guider_timer_callback_dec);
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
-			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				//res = ASIPulseGuideOn(id, ASI_GUIDE_SOUTH);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-				//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res);
-				PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec);
-				//PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = true;
-			}
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		}
-
-		//if (PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH])
-		//	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		//else
-		//	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
-		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			//res = ASIPulseGuideOn(id, ASI_GUIDE_EAST);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-			//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res);
-			PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
-			//PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = true;
+		if ((GUIDER_GUIDE_EAST_ITEM->number.value > 0) || (GUIDER_GUIDE_WEST_ITEM->number.value > 0)) {
+			PRIVATE_DATA->guider_timer_dec = indigo_set_timer(device, 0, guider_timer_callback_ra);
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
-			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				//res = ASIPulseGuideOn(id, ASI_GUIDE_WEST);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-				//if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res);
-				PRIVATE_DATA->guider_timer_ra = indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra);
-				//PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = true;
-			}
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		}
-
-		//if (PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] || PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST])
-		//	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-		//else
-		//	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
