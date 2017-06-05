@@ -613,7 +613,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_STREAMING_PROPERTY->hidden = true;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
-		QHY_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
+		QHY_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "QHY_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
 		if (QHY_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		// --------------------------------------------------------------------------------
@@ -651,132 +651,6 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	return INDIGO_OK;
 }
 
-/*
-static indigo_result init_camera_property(indigo_device *device, ... ctrl_caps) {
-
-	long value;
-	ASI_ERROR_CODE res;
-	ASI_BOOL unused;
-
-	if (ctrl_caps.ControlType == ASI_EXPOSURE) {
-		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
-
-		CCD_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.MinValue);
-		CCD_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.MaxValue);
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASIGetControlValue(id, ASI_EXPOSURE, &value, &unused);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
-		CCD_EXPOSURE_ITEM->number.value = us2s(value);
-		return INDIGO_OK;
-	}
-
-	if (ctrl_caps.ControlType == ASI_GAIN) {
-		CCD_GAIN_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
-			CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_GAIN_PROPERTY->perm = INDIGO_RO_PERM;
-
-		CCD_GAIN_ITEM->number.min = ctrl_caps.MinValue;
-		CCD_GAIN_ITEM->number.max = ctrl_caps.MaxValue;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASIGetControlValue(id, ASI_GAIN, &value, &unused);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_GAIN) = %d", id, res);
-		CCD_GAIN_ITEM->number.value = value;
-		CCD_GAIN_ITEM->number.step = 1;
-		return INDIGO_OK;
-	}
-
-	if (ctrl_caps.ControlType == ASI_GAMMA) {
-		CCD_GAMMA_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
-			CCD_GAMMA_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_GAMMA_PROPERTY->perm = INDIGO_RO_PERM;
-
-		CCD_GAMMA_ITEM->number.min = ctrl_caps.MinValue;
-		CCD_GAMMA_ITEM->number.max = ctrl_caps.MaxValue;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASIGetControlValue(id, ASI_GAMMA, &value, &unused);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_GAMMA) = %d", id, res);
-		CCD_GAMMA_ITEM->number.value = value;
-		CCD_GAMMA_ITEM->number.step = 1;
-		return INDIGO_OK;
-	}
-
-	if (ctrl_caps.ControlType == ASI_TARGET_TEMP) {
-		CCD_TEMPERATURE_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-
-		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.MinValue;
-		CCD_TEMPERATURE_ITEM->number.max = ctrl_caps.MaxValue;
-		CCD_TEMPERATURE_ITEM->number.value = ctrl_caps.DefaultValue;
-		PRIVATE_DATA->target_temperature = ctrl_caps.DefaultValue;
-		PRIVATE_DATA->can_check_temperature = true;
-		return INDIGO_OK;
-	}
-
-	if (ctrl_caps.ControlType == ASI_TEMPERATURE) {
-		if (CCD_TEMPERATURE_PROPERTY->hidden) {
-			PRIVATE_DATA->can_check_temperature = true;
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-			CCD_TEMPERATURE_PROPERTY->hidden = false;
-		}
-		PRIVATE_DATA->has_temperature_sensor = true;
-		return INDIGO_OK;
-	}
-
-	if (ctrl_caps.ControlType == ASI_COOLER_ON) {
-		CCD_COOLER_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
-			CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_COOLER_PROPERTY->perm = INDIGO_RO_PERM;
-
-		return INDIGO_OK;
-	}
-
-	if (ctrl_caps.ControlType == ASI_COOLER_POWER_PERC) {
-		CCD_COOLER_POWER_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
-			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
-
-		CCD_COOLER_POWER_ITEM->number.min = ctrl_caps.MinValue;
-		CCD_COOLER_POWER_ITEM->number.max = ctrl_caps.MaxValue;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, &value, &unused);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
-		CCD_COOLER_POWER_ITEM->number.value = value;
-		return INDIGO_OK;
-	}
-
-	int offset = QHY_ADVANCED_PROPERTY->count;
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = ASISetControlValue(id, ctrl_caps.ControlType, ctrl_caps.DefaultValue, false);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res)
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res);
-	else {
-		QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, offset + 1);
-		indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, ctrl_caps.DefaultValue);
-	}
-
-	return INDIGO_OK;
-}
-*/
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -789,16 +663,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				if (qhy_open(device)) {
-					/*
-					QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, 0);
-					for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
-						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-						//ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-						//init_camera_property(device, ctrl_caps);
-					}
-					indigo_define_property(device, QHY_ADVANCED_PROPERTY, NULL);
-					*/
 					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->frame_width;
 					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->frame_height;
 					CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA-> pixel_width;
@@ -812,23 +676,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = PRIVATE_DATA->bpp;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
 
-					// --------------------------------------------------------------------------------- PIXEL_FORMAT
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					int res = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_TRANSFERBIT);
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (res == QHYCCD_SUCCESS) {
-						PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-						if (PIXEL_FORMAT_PROPERTY == NULL)
-							return INDIGO_FAILED;
 
+					// --------------------------------------------------------------------------------- PIXEL_FORMAT
+					PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+					if (PIXEL_FORMAT_PROPERTY == NULL)
+						return INDIGO_FAILED;
+
+					int res = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_TRANSFERBIT);
+					if (res == QHYCCD_SUCCESS) {
 						indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 0, RAW8_NAME, RAW8_NAME, true);
 						indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 1, RAW16_NAME, RAW16_NAME, false);
 						indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
+					} else {
+						PIXEL_FORMAT_PROPERTY->hidden = true;
 					}
 
-					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					// --------------------------------------------------------------------------------- BINNING
 					int max_bin = 0;
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN1X1MODE) == QHYCCD_SUCCESS)
@@ -850,23 +715,23 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
 
 					// --------------------------------------------------------------------------------- MODE
-					int mode_count = 0;
+					int count = 0;
 					char name[32], label[64];
 					for (int bin = 1; bin <= max_bin; bin++) {
 						if (bpp_supported(device, 8)) {
 							snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
 							snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
-							indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, bin == 1);
-							mode_count++;
+							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1);
+							count++;
 						}
 						if (bpp_supported(device, 16)) {
 							snprintf(name, 32, "%s %dx%d", RAW16_NAME, bin, bin);
 							snprintf(label, 64, "%s %dx%d", RAW16_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
-							indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, false);
-							mode_count++;
+							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, false);
+							count++;
 						}
 					}
-					CCD_MODE_PROPERTY->count = mode_count;
+					CCD_MODE_PROPERTY->count = count;
 
 					// --------------------------------------------------------------------------------- GAIN
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_GAIN) == QHYCCD_SUCCESS) {
@@ -886,6 +751,58 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_GAMMA_PROPERTY->hidden = true;
 					}
 
+					// --------------------------------------------------------------------------------- ADVANCED
+					count = 0;
+					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC) == QHYCCD_SUCCESS) {
+						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
+						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, "USBTRAFFIC", "USB Traffic", 0, 0, 1, 0);
+						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC,
+							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
+							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
+							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
+						);
+						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
+						count++;
+					}
+
+					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_SPEED) == QHYCCD_SUCCESS) {
+						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
+						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, "SPEED", "Speed", 0, 0, 1, 0);
+						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_SPEED,
+							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
+							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
+							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
+						);
+						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
+						count++;
+					}
+
+					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_OFFSET) == QHYCCD_SUCCESS) {
+						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
+						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, "OFFSET", "Offset", 0, 0, 1, 0);
+						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_OFFSET,
+							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
+							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
+							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
+						);
+						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
+						count++;
+					}
+
+					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE) == QHYCCD_SUCCESS) {
+						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
+						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, "SHUTTER_MOTOR_HEATING", "Shutter Motor Heating", 0, 0, 1, 0);
+						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE,
+							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
+							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
+							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
+						);
+						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
+						count++;
+					}
+					// -------------------------------------------------------------------------------------- END
+
+					indigo_define_property(device, QHY_ADVANCED_PROPERTY, NULL);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 					if (PRIVATE_DATA->has_temperature_sensor) {
