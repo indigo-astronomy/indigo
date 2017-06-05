@@ -616,30 +616,25 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 
 static indigo_result handle_advanced_property(indigo_device *device, indigo_property *property) {
-	int ctrl_count;
-	//ASI_CONTROL_CAPS ctrl_caps;
-	//ASI_ERROR_CODE res;
-
+	int res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	/*
-	res = ASIGetNumOfControls(id, &ctrl_count);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
-		return INDIGO_NOT_FOUND;
-	}
-
-	for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
-		ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-		for(int item = 0; item < property->count; item++) {
-			if(!strncmp(ctrl_caps.Name, property->items[item].name, INDIGO_NAME_SIZE)) {
-				res = ASISetControlValue(id, ctrl_caps.ControlType,property->items[item].number.value, ASI_FALSE);
-				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res);
-			}
+	for(int item = 0; item < property->count; item++) {
+		if(!strncmp(USBSPEED_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
+			res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_SPEED, property->items[item].number.value);
+			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "(%s, %s) = %d", PRIVATE_DATA->dev_sid, USBSPEED_NAME, res);
+		} else if(!strncmp(USBTRAFFIC_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
+			res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC, property->items[item].number.value);
+			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "(%s, %s) = %d", PRIVATE_DATA->dev_sid, USBTRAFFIC_NAME, res);
+		} else if(!strncmp(OFFSET_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
+			res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_OFFSET, property->items[item].number.value);
+			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "(%s, %s) = %d", PRIVATE_DATA->dev_sid, OFFSET_NAME, res);
+		} else if(!strncmp(SHUTTERHEATING_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
+			res = SetQHYCCDParam(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE, property->items[item].number.value);
+			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "(%s, %s) = %d", PRIVATE_DATA->dev_sid, SHUTTERHEATING_NAME, res);
 		}
 	}
-	*/
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return INDIGO_OK;
 }
