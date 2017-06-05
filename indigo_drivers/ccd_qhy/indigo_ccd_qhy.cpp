@@ -59,6 +59,15 @@
 #define QHY_VENDOR_ID5             0x0547
 
 #define CCD_ADVANCED_GROUP         "Advanced"
+#define USBTRAFFIC_NAME            "USBTRAFFIC"
+#define USBTRAFFIC_DESC            "USB Traffic"
+#define USBSPEED_NAME              "USBSPEED"
+#define USBSPEED_DESC              "USB Speed"
+#define OFFSET_NAME                "OFFSET"
+#define OFFSET_DESC                "Offset"
+#define SHUTTERHEATING_NAME        "SHUTTERMOTORHEATING"
+#define SHUTTERHEATING_DESC        "Shutter Motor Heatring"
+
 
 #define PRIVATE_DATA               ((qhy_private_data *)device->private_data)
 
@@ -141,30 +150,6 @@ static int get_pixel_depth(indigo_device *device) {
 		item++;
 	}
 	return 8;
-}
-
-
-static int get_pixel_format(indigo_device *device) {
-	int item = 0;
-	/*
-	while (item < ASI_MAX_FORMATS) {
-		if (PIXEL_FORMAT_PROPERTY->items[item].sw.value) {
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW8_NAME)) {
-				return ASI_IMG_RAW8;
-			}
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RGB24_NAME)) {
-				return ASI_IMG_RGB24;
-			}
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW16_NAME)) {
-				return ASI_IMG_RAW16;
-			}
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, Y8_NAME)) {
-				return ASI_IMG_Y8;
-			}
-		}
-		item++;
-	} */
-	return -1;
 }
 
 
@@ -280,6 +265,7 @@ static bool qhy_open(indigo_device *device) {
 	return true;
 }
 
+
 static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
 	int res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -309,6 +295,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 	return true;
 }
 
+
 static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
 	int res;
 	if (!qhy_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
@@ -323,6 +310,7 @@ static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark
 	}
 	return true;
 }
+
 
 static bool qhy_read_pixels(indigo_device *device) {
 	int res;
@@ -356,6 +344,7 @@ static bool qhy_read_pixels(indigo_device *device) {
     return true;
 }
 
+
 static bool qhy_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int err = CancelQHYCCDExposingAndReadout(PRIVATE_DATA->handle);
@@ -363,6 +352,7 @@ static bool qhy_abort_exposure(indigo_device *device) {
 	if (err !=  QHYCCD_SUCCESS) return false;
 	else return true;
 }
+
 
 static bool qhy_set_cooler(indigo_device *device, bool status, double target, double *current, long *cooler_power) {
 	//ASI_ERROR_CODE res;
@@ -469,6 +459,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->can_check_temperature = true;
 }
 
+
 static void streaming_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
@@ -532,6 +523,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
+
 
 static void ccd_temperature_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
@@ -621,6 +613,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	}
 	return INDIGO_FAILED;
 }
+
 
 static indigo_result handle_advanced_property(indigo_device *device, indigo_property *property) {
 	int ctrl_count;
@@ -755,7 +748,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					count = 0;
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC) == QHYCCD_SUCCESS) {
 						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
-						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, "USBTRAFFIC", "USB Traffic", 0, 0, 1, 0);
+						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, USBTRAFFIC_NAME, USBTRAFFIC_DESC, 0, 0, 1, 0);
 						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC,
 							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
 							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
@@ -767,7 +760,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_SPEED) == QHYCCD_SUCCESS) {
 						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
-						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, "SPEED", "Speed", 0, 0, 1, 0);
+						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, USBSPEED_NAME, USBSPEED_DESC, 0, 0, 1, 0);
 						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_SPEED,
 							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
 							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
@@ -779,7 +772,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_OFFSET) == QHYCCD_SUCCESS) {
 						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
-						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, "OFFSET", "Offset", 0, 0, 1, 0);
+						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, OFFSET_NAME, OFFSET_DESC, 0, 0, 1, 0);
 						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_OFFSET,
 							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
 							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
@@ -791,7 +784,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE) == QHYCCD_SUCCESS) {
 						QHY_ADVANCED_PROPERTY = indigo_resize_property(QHY_ADVANCED_PROPERTY, count+1);
-						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, "SHUTTER_MOTOR_HEATING", "Shutter Motor Heating", 0, 0, 1, 0);
+						indigo_init_number_item(QHY_ADVANCED_PROPERTY->items+count, SHUTTERHEATING_NAME, SHUTTERHEATING_DESC, 0, 0, 1, 0);
 						GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE,
 							&(QHY_ADVANCED_PROPERTY->items[count].number.min),
 							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
@@ -1088,6 +1081,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1225,6 +1219,7 @@ bool get_usb_path_str(qhyccd_handle *handle, char *path) {
 	}
 	return true;
 }
+
 
 static bool find_plugged_device_sid(char *new_sid) {
 	int i;
