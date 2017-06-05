@@ -106,6 +106,7 @@ typedef struct {
 	double pixel_width;
 	double pixel_height;
 	img_params ci_params;
+	bool has_shutter;
 
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
@@ -301,7 +302,18 @@ static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark
 	if (!qhy_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
 		return false;
 	}
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (PRIVATE_DATA->has_shutter) {
+		if (dark) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Taking DARK Frame.");
+			res = ControlQHYCCDShutter(PRIVATE_DATA->handle, MACHANICALSHUTTER_CLOSE);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Taking LIGHT frame.");
+			res = ControlQHYCCDShutter(PRIVATE_DATA->handle, MACHANICALSHUTTER_FREE);
+		}
+		if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDShutter(%s) = %d", PRIVATE_DATA->dev_sid, res);
+	}
 	res = ExpQHYCCDSingleFrame(PRIVATE_DATA->handle);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res != QHYCCD_SUCCESS) {
@@ -604,6 +616,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		CCD_STREAMING_PROPERTY->hidden = true;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
+		// --------------------------------------------------------------------------------- PIXEL_FORMAT
+		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (PIXEL_FORMAT_PROPERTY == NULL)
+			return INDIGO_FAILED;
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		QHY_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "QHY_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
 		if (QHY_ADVANCED_PROPERTY == NULL)
@@ -666,11 +682,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
+					PRIVATE_DATA->has_shutter = (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_MECHANICALSHUTTER) == QHYCCD_SUCCESS);
 					// --------------------------------------------------------------------------------- PIXEL_FORMAT
-					PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-					if (PIXEL_FORMAT_PROPERTY == NULL)
-						return INDIGO_FAILED;
-
 					int res = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_TRANSFERBIT);
 					if (res == QHYCCD_SUCCESS) {
 						indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 0, RAW8_NAME, RAW8_NAME, true);
@@ -820,7 +833,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		qhy_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
+		qhy_start_exposure(
+			device, CCD_EXPOSURE_ITEM->number.target, (CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value),
+			CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
+			CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
+			CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value
+		);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
