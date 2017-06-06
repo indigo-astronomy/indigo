@@ -390,6 +390,9 @@ static bool qhy_set_cooler(indigo_device *device, bool status, double target, do
 
 	if (PRIVATE_DATA->cooler_on) {
 		*cooler_power = (GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_CURPWM) / 2.55); /* make it in percent (PWM is 0-255) */
+		/* ControlQHYCCDTemp() should be called once in a couple of seconds
+		   in order to maintain the requested temperature
+		 */
 		res = ControlQHYCCDTemp(PRIVATE_DATA->handle, target);
 		if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDTemp(%s) = %d", PRIVATE_DATA->dev_sid, res);
 	}
@@ -791,6 +794,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_EXPOSURE_ITEM->number.min /= 1e6;
 					CCD_EXPOSURE_ITEM->number.max /= 1e6;
 					CCD_EXPOSURE_ITEM->number.step /= 1e6;
+					/* Kludge: some cameras report ridiculous max exposure times like QHY6 (~80s) while it can happily can do 900s */
+					CCD_EXPOSURE_ITEM->number.max = (CCD_EXPOSURE_ITEM->number.max < 900) ? 900 : CCD_EXPOSURE_ITEM->number.max;
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exposure params min = %fs max = %fs step = %fs", CCD_EXPOSURE_ITEM->number.min, CCD_EXPOSURE_ITEM->number.max, CCD_EXPOSURE_ITEM->number.step);
 
 					// --------------------------------------------------------------------------------- ADVANCED
