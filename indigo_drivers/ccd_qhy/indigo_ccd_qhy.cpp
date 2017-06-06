@@ -159,7 +159,7 @@ static int get_pixel_depth(indigo_device *device) {
 		}
 		item++;
 	}
-	return 8;
+	return CCD_INFO_BITS_PER_PIXEL_ITEM->number.value;
 }
 
 
