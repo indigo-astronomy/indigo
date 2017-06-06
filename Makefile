@@ -810,7 +810,7 @@ install:
 #
 #---------------------------------------------------------------------
 
-REWRITE_DEBS="libsbigudrv2"
+REWRITE_DEBS="libsbigudrv2,libqhy"
 package: $(PACKAGE_NAME).$(PACKAGE_TYPE)
 
 package-prepare: all
