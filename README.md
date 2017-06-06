@@ -41,12 +41,13 @@ This is the list of requirements taken into the consideration:
 17. USB_Focus v3 driver
 18. SBIG CCD driver (with guider, guider CCD and external guider head)
 19. SBIG Filter wheel driver (part of CCD driver)
-20.	ASCOM driver for INDIGO Camera
-21.	ASCOM driver for INDIGO Filter Wheel
+20. ASCOM driver for INDIGO Camera
+21. ASCOM driver for INDIGO Filter Wheel
+22. QHY CCD driver (NOTE: Maybe unstable due to inherited instability in the QHY SDK)
 
 ## This is under development
 
-1. QHY CCD driver
+1. ZWO USB-ST4 port
 
 ------------------------------------------------------------------------------------------------
 
