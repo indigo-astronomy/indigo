@@ -729,15 +729,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					}
 
 					// --------------------------------------------------------------------------------- BINNING
+					bool bins_ok[4] = {false};
 					int max_bin = 0;
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN1X1MODE) == QHYCCD_SUCCESS)
+					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN1X1MODE) == QHYCCD_SUCCESS) {
 						max_bin = 1;
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN2X2MODE) == QHYCCD_SUCCESS)
+						bins_ok[0] = true;
+					}
+					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN2X2MODE) == QHYCCD_SUCCESS) {
 						max_bin = 2;
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN3X3MODE) == QHYCCD_SUCCESS)
+						bins_ok[1] = true;
+					}
+					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN3X3MODE) == QHYCCD_SUCCESS) {
 						max_bin = 3;
-					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN4X4MODE) == QHYCCD_SUCCESS)
+						bins_ok[2] = true;
+					}
+					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN4X4MODE) == QHYCCD_SUCCESS) {
 						max_bin = 4;
+						bins_ok[3] = true;
+					}
 
 					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
@@ -753,6 +762,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					char name[32], label[64];
 					int min_bpp = 0, max_bpp = 0;
 					for (int bin = 1; bin <= max_bin; bin++) {
+						if (!bins_ok[bin-1]) continue;
 						if (bpp_supported(device, 8)) {
 							if (min_bpp > 8) {
 								min_bpp = 8;
@@ -781,7 +791,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_MODE_PROPERTY->count = count;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = min_bpp;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = max_bpp;
-					
+
 					// --------------------------------------------------------------------------------- GAIN
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_GAIN) == QHYCCD_SUCCESS) {
 						CCD_GAIN_PROPERTY->hidden = false;
