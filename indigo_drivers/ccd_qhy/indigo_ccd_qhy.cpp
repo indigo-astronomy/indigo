@@ -781,6 +781,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_GAMMA_PROPERTY->hidden = true;
 					}
 
+					// ---------------------------------------------------------------------------------- EXPOSURE
+					GetQHYCCDParamMinMaxStep(PRIVATE_DATA->handle, CONTROL_EXPOSURE,
+						&(CCD_EXPOSURE_ITEM->number.min),
+						&(CCD_EXPOSURE_ITEM->number.max),
+						&(CCD_EXPOSURE_ITEM->number.step)
+					);
+					/* convert to seconds */
+					CCD_EXPOSURE_ITEM->number.min /= 1e6;
+					CCD_EXPOSURE_ITEM->number.max /= 1e6;
+					CCD_EXPOSURE_ITEM->number.step /= 1e6;
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exposure params min = %fs max = %fs step = %fs", CCD_EXPOSURE_ITEM->number.min, CCD_EXPOSURE_ITEM->number.max, CCD_EXPOSURE_ITEM->number.step);
+
 					// --------------------------------------------------------------------------------- ADVANCED
 					count = 0;
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC) == QHYCCD_SUCCESS) {
