@@ -1251,9 +1251,9 @@ bool get_usb_path_str(qhyccd_handle *handle, char *path) {
 	data[0]=libusb_get_bus_number(device);
 	int n = libusb_get_port_numbers(device, &data[1], 9);
 	if (n != LIBUSB_ERROR_OVERFLOW) {
-		sprintf(path,"%x", data[0]);
+		sprintf(path,"%X", data[0]);
 		for (i = 1; i <= n; i++) {
-			sprintf(buf, "%x", data[i]);
+			sprintf(buf, "%X", data[i]);
 			strcat(path, ".");
 			strcat(path, buf);
 		}
