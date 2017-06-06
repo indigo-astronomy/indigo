@@ -74,6 +74,10 @@
 #define QHY_GUIDE_EAST             0
 #define QHY_GUIDE_WEST             3
 
+#define MIN_CCD_TEMP               -50.0
+#define MAX_CCD_TEMP               40.0
+#define TEMP_THRESHOLD             0.3
+
 
 #define PRIVATE_DATA               ((qhy_private_data *)device->private_data)
 
@@ -113,11 +117,12 @@ typedef struct {
 	double pixel_height;
 	img_params ci_params;
 	bool has_shutter;
+	bool has_cooler;
+	bool cooler_on;
 
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	long cooler_power;
-	bool guide_relays[4];
 	unsigned char *buffer;
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
@@ -333,7 +338,6 @@ static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark
 static bool qhy_read_pixels(indigo_device *device) {
 	int res;
 	uint32_t ret,channels;
-
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int remaining = GetQHYCCDExposureRemaining(PRIVATE_DATA->handle);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -373,46 +377,31 @@ static bool qhy_abort_exposure(indigo_device *device) {
 
 
 static bool qhy_set_cooler(indigo_device *device, bool status, double target, double *current, long *cooler_power) {
-	//ASI_ERROR_CODE res;
-	//ASI_BOOL unused;
-
-	//int id = PRIVATE_DATA->dev_id;
-	long current_status;
-	long temp_x10;
-
+	int res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	/*
-	if (PRIVATE_DATA->has_temperature_sensor) {
-		res = ASIGetControlValue(id, ASI_TEMPERATURE, &temp_x10, &unused);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res);
-		*current = temp_x10/10.0;
-	} else {
-		*current = 0;
-	}
 
-	if (!PRIVATE_DATA->info.IsCoolerCam) {
+	*current = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_CURTEMP);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDParam(%s, CONTROL_CURTEMP) = %f", PRIVATE_DATA->dev_sid, *current);
+
+	if (!PRIVATE_DATA->has_cooler) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return true;
 	}
 
-	res = ASIGetControlValue(id, ASI_COOLER_ON, &current_status, &unused);
-	if(res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
-		return false;
+	if (PRIVATE_DATA->cooler_on) {
+		*cooler_power = (GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_CURPWM) / 2.55); /* make it in percent (PWM is 0-255) */
+		res = ControlQHYCCDTemp(PRIVATE_DATA->handle, target);
+		if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDTemp(%s) = %d", PRIVATE_DATA->dev_sid, res);
 	}
 
-	if (current_status != status) {
-		res = ASISetControlValue(id, ASI_COOLER_ON, status, false);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
-	} else if(status) {
-		res = ASISetControlValue(id, ASI_TARGET_TEMP, (long)target, false);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+	if (!status) {
+		/* Stop Temperature Control */
+		SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_MANULPWM, 0);
+		PRIVATE_DATA->cooler_on = false;
+	} else {
+		PRIVATE_DATA->cooler_on = true;
 	}
 
-	res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, cooler_power, &unused);
-	if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
-	*/
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -549,7 +538,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		if (qhy_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
 			if (CCD_COOLER_ON_ITEM->sw.value)
-				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > TEMP_THRESHOLD ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 			else
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
@@ -566,7 +555,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
+	indigo_reschedule_timer(device, 2, &PRIVATE_DATA->temperature_timer);
 }
 
 
@@ -706,6 +695,23 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 					PRIVATE_DATA->has_shutter = (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_MECHANICALSHUTTER) == QHYCCD_SUCCESS);
+
+					PRIVATE_DATA->has_cooler = (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_COOLER) == QHYCCD_SUCCESS);
+					if(PRIVATE_DATA->has_cooler) {
+						CCD_COOLER_PROPERTY->hidden = false;
+						CCD_COOLER_POWER_PROPERTY->hidden = false;
+						CCD_TEMPERATURE_PROPERTY->hidden = false;
+						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+						CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
+						CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
+						CCD_TEMPERATURE_ITEM->number.step = 0;
+						PRIVATE_DATA->cooler_on = (GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_CURPWM) > 0);
+					} else {
+						CCD_COOLER_PROPERTY->hidden = true;
+						CCD_COOLER_POWER_PROPERTY->hidden = true;
+						CCD_TEMPERATURE_PROPERTY->hidden = false;
+						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+					}
 					// --------------------------------------------------------------------------------- PIXEL_FORMAT
 					int res = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_TRANSFERBIT);
 					if (res == QHYCCD_SUCCESS) {
@@ -829,9 +835,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_define_property(device, QHY_ADVANCED_PROPERTY, NULL);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-					if (PRIVATE_DATA->has_temperature_sensor) {
-						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-					}
+					PRIVATE_DATA->can_check_temperature = true;
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
