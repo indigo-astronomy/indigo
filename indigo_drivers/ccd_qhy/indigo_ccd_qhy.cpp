@@ -803,7 +803,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
 							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
 						);
-						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
+						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC);
+						/* Kludge - default is 30 but 5LII hangs on readout with exposeures > 15s and usbtraffic < 40 so set it to 50 :) */
+						QHY_ADVANCED_PROPERTY->items[count].number.value =
+							(QHY_ADVANCED_PROPERTY->items[count].number.value < 50) ? 50 : QHY_ADVANCED_PROPERTY->items[count].number.value;
+						SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC, QHY_ADVANCED_PROPERTY->items[count].number.value);
 						count++;
 					}
 
@@ -815,7 +819,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
 							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
 						);
-						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
+						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_SPEED);
 						count++;
 					}
 
@@ -827,7 +831,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
 							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
 						);
-						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
+						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_OFFSET);
 						count++;
 					}
 
@@ -839,7 +843,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 							&(QHY_ADVANCED_PROPERTY->items[count].number.max),
 							&(QHY_ADVANCED_PROPERTY->items[count].number.step)
 						);
-						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_GAMMA);
+						QHY_ADVANCED_PROPERTY->items[count].number.value = GetQHYCCDParam(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE);
 						count++;
 					}
 					// -------------------------------------------------------------------------------------- END
