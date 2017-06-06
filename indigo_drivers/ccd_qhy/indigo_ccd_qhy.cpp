@@ -103,7 +103,6 @@ typedef struct {
 	qhyccd_handle *handle;
 	char dev_sid[MAX_SID_LEN];
 	int count_open;
-	int count_connected;
 	uint32_t total_frame_width;
 	uint32_t total_frame_height;
 	uint32_t bpp;
@@ -124,7 +123,7 @@ typedef struct {
 	unsigned char *buffer;
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
-	bool can_check_temperature, has_temperature_sensor;
+	bool can_check_temperature;
 	indigo_property *pixel_format_property;
 	indigo_property *qhy_advanced_property;
 } qhy_private_data;
@@ -398,6 +397,7 @@ static bool qhy_set_cooler(indigo_device *device, bool status, double target, do
 	if (!status) {
 		/* Stop Temperature Control */
 		SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_MANULPWM, 0);
+		*cooler_power = 0;
 		PRIVATE_DATA->cooler_on = false;
 	} else {
 		PRIVATE_DATA->cooler_on = true;
