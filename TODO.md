@@ -42,7 +42,7 @@
 
 #### CCDs
 
-1. QHY CCD driver
+1. QHY CCD driver __DONE__
 2. ASI CCD driver __DONE__
 3. IIDC CCD driver (based on libdc1394) __DONE__
 4. MI CCD driver (based on MI SDK)
@@ -74,6 +74,7 @@
 
 1. CGUSBST4 guider driver
 2. GPUSB guider driver
+3. ZWO USB-ST4
 
 #### Focusers
 
