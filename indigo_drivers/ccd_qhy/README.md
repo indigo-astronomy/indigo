@@ -27,9 +27,10 @@ location INDIGO_FIRMWARE_BASE environment variable should be set to point to tha
 For example: if the firmware location is "/usr/local/firmware/" one should set INDIGO_FIRMWARE_BASE="/usr/local/"
 
 ### Underlaying SDK is not stable
-Due to instability of the vendor provided SDK problems on all platforms should be expected. Therefore it is
+Due to instability in the vendor provided SDK problems on all platforms should be expected. Therefore it is
 advised to use this driver with -i option like this:
 
 indigo_server -i indigo_ccd_qhy
 
-This will execute the driver in a separate process and in case of a driver crash the server will not crash.
+This will execute the driver in a separate process and in case of a driver crash the server will not be affected.
+This will come at the cost of somewhat reduced performance.
