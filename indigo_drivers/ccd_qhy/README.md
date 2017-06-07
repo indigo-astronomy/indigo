@@ -7,6 +7,7 @@ http://www.qhyccd.com
 All QHY cameras.
 
 This driver supports hot-plug (multiple devices).
+
 NOTE: Due to instability of the vendor provided SDK problems on all platforms should be expected.
 
 ## Supported platforms
