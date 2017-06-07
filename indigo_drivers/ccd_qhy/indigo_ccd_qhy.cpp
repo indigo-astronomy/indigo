@@ -653,16 +653,13 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	for(int item = 0; item < property->count; item++) {
 		if(!strncmp(USBSPEED_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
 			res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_SPEED, property->items[item].number.value);
-			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "(%s, %s) = %d", PRIVATE_DATA->dev_sid, USBSPEED_NAME, res);
+			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, %s) = %d", PRIVATE_DATA->dev_sid, USBSPEED_NAME, res);
 		} else if(!strncmp(USBTRAFFIC_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
 			res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_USBTRAFFIC, property->items[item].number.value);
-			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "(%s, %s) = %d", PRIVATE_DATA->dev_sid, USBTRAFFIC_NAME, res);
-		} else if(!strncmp(CCD_OFFSET_PROPERTY_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
-			res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_OFFSET, property->items[item].number.value);
-			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "(%s, %s) = %d", PRIVATE_DATA->dev_sid, CCD_OFFSET_PROPERTY_NAME, res);
+			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, %s) = %d", PRIVATE_DATA->dev_sid, USBTRAFFIC_NAME, res);
 		} else if(!strncmp(SHUTTERHEATING_NAME, property->items[item].name, INDIGO_NAME_SIZE)) {
 			res = SetQHYCCDParam(PRIVATE_DATA->handle, CAM_SHUTTERMOTORHEATING_INTERFACE, property->items[item].number.value);
-			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "(%s, %s) = %d", PRIVATE_DATA->dev_sid, SHUTTERHEATING_NAME, res);
+			if (res != QHYCCD_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, %s) = %d", PRIVATE_DATA->dev_sid, SHUTTERHEATING_NAME, res);
 		}
 	}
 
@@ -1047,6 +1044,26 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 		}
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- OFFSET
+	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_OFFSET_PROPERTY, "Exposure in progress, settings can not be changed.");
+			return INDIGO_OK;
+		}
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		int res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_OFFSET, CCD_OFFSET_ITEM->number.value);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res != QHYCCD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDParam(%s, %s) = %d", PRIVATE_DATA->dev_sid, "OFFSET", res);
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
+		if (IS_CONNECTED)
+			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADVANCED
 	} else if (indigo_property_match(QHY_ADVANCED_PROPERTY, property)) {
