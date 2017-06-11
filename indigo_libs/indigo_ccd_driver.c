@@ -857,3 +857,78 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
 }
+
+void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize) {
+	assert(device != NULL);
+	assert(data != NULL);
+	INDIGO_DEBUG(clock_t start = clock());
+	
+	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
+		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
+		char *sufix;
+		if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+			sufix = ".raw";
+		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+			sufix = ".jpeg";
+		}
+		int handle = 0;
+		char *message = NULL;
+		if (strlen(dir) + strlen(prefix) + strlen(sufix) < INDIGO_VALUE_SIZE) {
+			char file_name[INDIGO_VALUE_SIZE];
+			char *xxx = strstr(prefix, "XXX");
+			if (xxx == NULL) {
+				strcpy(file_name, dir);
+				strcat(file_name, prefix);
+				strcat(file_name, sufix);
+			} else {
+				char format[INDIGO_VALUE_SIZE];
+				strcpy(format, dir);
+				strncat(format, prefix, xxx - prefix);
+				strcat(format, "%03d");
+				strcat(format, xxx+3);
+				strcat(format, sufix);
+				struct stat sb;
+				int i = 1;
+				while (true) {
+					snprintf(file_name, sizeof(file_name), format, i);
+					if (stat(file_name, &sb) == 0 && S_ISREG(sb.st_mode))
+						i++;
+					else
+						break;
+				}
+			}
+			strncpy(CCD_IMAGE_FILE_ITEM->text.value, file_name, INDIGO_VALUE_SIZE);
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+			handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			if (handle) {
+				if (!indigo_write(handle, data, blobsize)) {
+					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+					message = strerror(errno);
+				}
+				close(handle);
+			} else {
+				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+				message = strerror(errno);
+			}
+		} else {
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+			message = "dir + prefix + suffix is too long";
+		}
+		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, message);
+		INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+	}
+	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+		*CCD_IMAGE_ITEM->blob.url = 0;
+		CCD_IMAGE_ITEM->blob.value = data;
+		CCD_IMAGE_ITEM->blob.size = blobsize;
+		if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+			strncpy(CCD_IMAGE_ITEM->blob.format, ".raw", INDIGO_NAME_SIZE);
+		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+			strncpy(CCD_IMAGE_ITEM->blob.format, ".jpeg", INDIGO_NAME_SIZE);
+		}
+		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+	}
+}

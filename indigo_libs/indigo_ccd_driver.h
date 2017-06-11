@@ -373,6 +373,10 @@ typedef struct {
  */
 extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, bool little_endian, indigo_fits_keyword *keywords);
 
+/** Process DSLR image in image buffer (starting on data).
+ */
+extern void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize);
+	
 #ifdef __cplusplus
 }
 #endif

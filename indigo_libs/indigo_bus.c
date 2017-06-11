@@ -802,7 +802,7 @@ bool indigo_get_switch(indigo_property *property, char *item_name) {
 void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state) {
 	assert(property != NULL);
 	assert(other != NULL);
-	if (property->perm == INDIGO_RW_PERM) {
+	if (property->perm != INDIGO_RO_PERM) {
 		if (property->type == other->type) {
 			if (with_state)
 				property->state = other->state;
