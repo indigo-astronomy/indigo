@@ -50,6 +50,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
 	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
 	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac/libASICamera2.a
+	LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac/libUSB2ST4Conv.a
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
 	PACKAGE_TYPE=dmg
 	UINT=-Duint=unsigned
@@ -62,9 +63,11 @@ ifeq ($(OS_DETECTED),Linux)
 	ifeq ($(ARCH_DETECTED),arm)
 		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/armv6/libEFWFilter.a
 		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/armv6/libASICamera2.a
+		LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/armv6/libUSB2ST4Conv.a
 	else
 		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/$(ARCH_DETECTED)/libEFWFilter.a
 		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/$(ARCH_DETECTED)/libASICamera2.a
+		LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/$(ARCH_DETECTED)/libUSB2ST4Conv.a
 	endif
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	INSTALL_PREFIX=/usr/local
@@ -86,7 +89,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a
+	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a
 endif
 
 #---------------------------------------------------------------------
@@ -109,7 +112,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a
+	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a
 endif
 
 #---------------------------------------------------------------------
@@ -133,19 +136,22 @@ DRIVERS=\
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*))) \
-	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))
+	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))) \
+	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*)))
 
 DRIVER_LIBS=\
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
-	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))))
+	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))) \
+	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*))))
 
 DRIVER_SOLIBS=\
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
-	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))))
+	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))) \
+	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*))))
 
 SIMULATOR_LIBS=\
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/*_simulator))))
@@ -291,6 +297,21 @@ $(BUILD_INCLUDE)/asi_ccd/ASICamera2.h: indigo_drivers/ccd_asi/bin_externals/liba
 $(BUILD_LIB)/libASICamera2.a: $(BUILD_INCLUDE)/asi_ccd/ASICamera2.h
 	install -d $(BUILD_LIB)
 	cp $(LIBASICAMERA) $(BUILD_LIB)
+
+
+#---------------------------------------------------------------------
+#
+# Install libUSB2ST4Conv.a
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/asi_guider/USB2ST4_Conv.h: indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include/USB2ST4_Conv.h
+	install -d $(BUILD_INCLUDE)/asi_guider
+	cp indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include/USB2ST4_Conv.h $(BUILD_INCLUDE)/asi_guider
+
+$(BUILD_LIB)/libUSB2ST4Conv.a: $(BUILD_INCLUDE)/asi_guider/USB2ST4_Conv.h
+	install -d $(BUILD_LIB)
+	cp $(LIBASIST4) $(BUILD_LIB)
 
 
 #---------------------------------------------------------------------
@@ -556,6 +577,23 @@ $(BUILD_DRIVERS)/indigo_wheel_asi: indigo_drivers/wheel_asi/indigo_wheel_asi_mai
 
 $(BUILD_DRIVERS)/indigo_wheel_asi.$(SOEXT): indigo_drivers/wheel_asi/indigo_wheel_asi.o $(BUILD_LIB)/libEFWFilter.a $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
+
+
+#---------------------------------------------------------------------
+#
+#	Build ASI USB2ST4 guider driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_guider_asi.a: indigo_drivers/guider_asi/indigo_guider_asi.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_guider_asi: indigo_drivers/guider_asi/indigo_guider_asi_main.o $(BUILD_DRIVERS)/indigo_guider_asi.a $(BUILD_LIB)/libUSB2ST4Conv.a $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
+
+$(BUILD_DRIVERS)/indigo_guider_asi.$(SOEXT): indigo_drivers/guider_asi/indigo_guider_asi.o $(BUILD_LIB)/libUSB2ST4Conv.a $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
+
 
 #---------------------------------------------------------------------
 #

@@ -43,8 +43,9 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "asi_guider/USB_ST4_Conv.h"
-#include "indigo_ccd_asi.h"
+#include <stdbool.h>
+#include "asi_guider/USB2ST4_Conv.h"
+#include "indigo_guider_asi.h"
 #include "indigo_driver_xml.h"
 
 #define ASI_VENDOR_ID              0x03c3
@@ -64,7 +65,6 @@
 
 typedef struct {
 	int dev_id;
-	int count_open;
 	int count_connected;
 	indigo_timer *guider_timer_ra, *guider_timer_dec;
 	bool guide_relays[4];
@@ -79,14 +79,12 @@ static bool asi_open(indigo_device *device) {
 	if (device->is_connected) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (PRIVATE_DATA->count_open++ == 0) {
-		res = USB2ST4Open(id);
-		if (res) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB2ST4Open(%d) = %d", id, res);
-			PRIVATE_DATA->count_open--;
-			return false;
-		}
+	res = USB2ST4Open(id);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB2ST4Open(%d) = %d", id, res);
+		return false;
+	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -98,13 +96,7 @@ static void asi_close(indigo_device *device) {
 	if (!device->is_connected) return;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (--PRIVATE_DATA->count_open == 0) {
-		USB2ST4Close(PRIVATE_DATA->dev_id);
-		if (PRIVATE_DATA->buffer != NULL) {
-			free(PRIVATE_DATA->buffer);
-			PRIVATE_DATA->buffer = NULL;
-		}
-	}
+	USB2ST4Close(PRIVATE_DATA->dev_id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
@@ -304,7 +296,7 @@ static int find_plugged_device_id() {
 
 	int count = USB2ST4GetNum();
 	for(i = 0; i < count; i++) {
-		USB2ST4GetID(index, &id);
+		USB2ST4GetID(i, &id);
 		if(!connected_ids[id]) {
 			new_id = id;
 			connected_ids[id] = true;
@@ -339,7 +331,7 @@ static int find_unplugged_device_id() {
 
 	int count = USB2ST4GetNum();
 	for(i = 0; i < count; i++) {
-		USB2ST4GetID(index, &id);
+		USB2ST4GetID(i, &id);
 		dev_tmp[id] = true;
 	}
 
@@ -473,7 +465,7 @@ static void remove_all_devices() {
 
 static libusb_hotplug_callback_handle callback_handle;
 
-indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "ZWO ASI USB2ST4 guider", __FUNCTION__, DRIVER_VERSION, last_action);
