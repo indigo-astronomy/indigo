@@ -65,7 +65,6 @@
 
 typedef struct {
 	int dev_id;
-	int count_connected;
 	indigo_timer *guider_timer_ra, *guider_timer_dec;
 	bool guide_relays[4];
 	pthread_mutex_t usb_mutex;
