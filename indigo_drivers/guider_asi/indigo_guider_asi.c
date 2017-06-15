@@ -151,7 +151,6 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		//INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -390,7 +389,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				}
 				assert(device != NULL);
 				memcpy(device, &guider_template, sizeof(indigo_device));
-				sprintf(device->name, "ASI USB2ST4 Guider #%d", id);
+				sprintf(device->name, "ASI USB-St4 Guider #%d", id);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 				asi_private_data *private_data = malloc(sizeof(asi_private_data));
 				assert(private_data);
@@ -431,7 +430,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				}
 			}
 			if (!removed) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI USB2ST4 Guider unplugged (maybe EFW wheel)!");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI USB-St4 Guider unplugged (maybe other ASI device)!");
 			}
 		}
 	}
@@ -468,7 +467,7 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "ZWO ASI USB2ST4 guider", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "ASI USB-St4 Guider", __FUNCTION__, DRIVER_VERSION, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
