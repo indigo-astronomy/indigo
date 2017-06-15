@@ -77,7 +77,6 @@
 typedef struct {
 	int dev_id;
 	int count_open;
-	int count_connected;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	long cooler_power;
