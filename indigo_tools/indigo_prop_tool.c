@@ -425,7 +425,7 @@ static void print_help(const char *name) {
 	       "       -l  | --use_legacy_blobs\n"
 	       "       -e  | --extended-info\n"
 	       "       -v  | --enable-log\n"
-	       "       -vv | --enable-devug\n"
+	       "       -vv | --enable-debug\n"
 	       "       -vvv| --enable-trace\n"
 	       "       -r  | --remote-server host[:port]   (default: localhost)\n"
 	       "       -p  | --port port                   (default: 7624)\n"
@@ -540,4 +540,3 @@ int main(int argc, const char * argv[]) {
 	indigo_disconnect_server(server);
 	return 0;
 }
-
