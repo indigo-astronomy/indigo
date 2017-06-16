@@ -74,7 +74,7 @@
 
 1. CGUSBST4 guider driver
 2. GPUSB guider driver
-3. ZWO USB-ST4
+3. ZWO USB-ST4 __DONE__
 
 #### Focusers
 
