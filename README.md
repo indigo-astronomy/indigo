@@ -44,10 +44,11 @@ This is the list of requirements taken into the consideration:
 20. ASCOM driver for INDIGO Camera
 21. ASCOM driver for INDIGO Filter Wheel
 22. QHY CCD driver (NOTE: Maybe unstable due to inherited instability in the QHY SDK)
+23. ZWO USB-ST4 port
 
 ## This is under development
-
-1. ZWO USB-ST4 port
+1. ASCOM driver for INDIGO mount
+2. ASCOM driver for INDIGO focuser
 
 ------------------------------------------------------------------------------------------------
 
