@@ -635,13 +635,17 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
 		return INDIGO_NOT_FOUND;
 	}
-
+	ASI_BOOL unused;
+	long value;
 	for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 		ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
 		for(int item = 0; item < property->count; item++) {
 			if(!strncmp(ctrl_caps.Name, property->items[item].name, INDIGO_NAME_SIZE)) {
 				res = ASISetControlValue(id, ctrl_caps.ControlType,property->items[item].number.value, ASI_FALSE);
 				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res);
+				res = ASIGetControlValue(id, ctrl_caps.ControlType,&value, &unused);
+				property->items[item].number.value = value;
+				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, %s) = %d, value = %d", id, ctrl_caps.Name, res, property->items[item].number.value);
 			}
 		}
 	}
@@ -763,14 +767,12 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	int offset = ASI_ADVANCED_PROPERTY->count;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = ASISetControlValue(id, ctrl_caps.ControlType, ctrl_caps.DefaultValue, false);
+	res = ASIGetControlValue(id, ctrl_caps.ControlType, &value, &unused);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res)
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res);
-	else {
-		ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, offset + 1);
-		indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, ctrl_caps.DefaultValue);
-	}
+	if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res);
+
+	ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, offset + 1);
+	indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, value);
 	return INDIGO_OK;
 }
 
