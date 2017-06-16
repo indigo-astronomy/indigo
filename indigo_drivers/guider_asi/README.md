@@ -4,7 +4,7 @@ https://astronomy-imaging-camera.com
 
 ## Supported devices
 
-All ASI USB-ST4 guiders.
+All ZWO ASI USB-ST4 guider adapters.
 
 This driver supports hot-plug (multiple devices).
 
@@ -19,4 +19,3 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 ## Use
 
 indigo_server indigo_guider_asi
-
