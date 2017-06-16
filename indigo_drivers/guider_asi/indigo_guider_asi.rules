@@ -1,2 +1,0 @@
-# FILTER Guiders
-ACTION=="add", ATTRS{idVendor}=="03c3", ATTRS{idProduct}=="cccc", GROUP="users", MODE="0666"
