@@ -12,6 +12,8 @@
 		59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59019E0F1DE112A600CCB3ED /* ASICamera2.h */; };
 		59019E131DE112B700CCB3ED /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59019E111DE112B000CCB3ED /* libASICamera2.a */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
+		593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 593AD1011EF8399500C059BC /* indigo_guider_asi.c */; };
+		593AD10A1EF839F200C059BC /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 593AD1081EF839EF00C059BC /* libUSB2ST4Conv.a */; };
 		593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */ = {isa = PBXBuildFile; fileRef = 593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */; };
 		593CFE451DFC8A12003B63D4 /* indigo_wheel_atik.h in Headers */ = {isa = PBXBuildFile; fileRef = 593CFE421DFC8A12003B63D4 /* indigo_wheel_atik.h */; };
 		5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5981C8DE1DC291AF00C7705F /* libfcusb.a */; };
@@ -260,6 +262,11 @@
 		5925E3491E982BE800FF373F /* jquery.min.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = jquery.min.js; sourceTree = "<group>"; };
 		592662AD1D9590630021746A /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
 		592662B01D9590630021746A /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		593AD1011EF8399500C059BC /* indigo_guider_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_asi.c; sourceTree = "<group>"; };
+		593AD1031EF8399500C059BC /* indigo_guider_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_asi_main.c; sourceTree = "<group>"; };
+		593AD1041EF8399500C059BC /* indigo_guider_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_asi.h; sourceTree = "<group>"; };
+		593AD1081EF839EF00C059BC /* libUSB2ST4Conv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libUSB2ST4Conv.a; path = lib/mac/libUSB2ST4Conv.a; sourceTree = "<group>"; };
+		593AD1091EF839EF00C059BC /* USB2ST4_Conv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = USB2ST4_Conv.h; path = include/USB2ST4_Conv.h; sourceTree = "<group>"; };
 		593CFE401DFC8A12003B63D4 /* indigo_wheel_atik_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_atik_main.c; sourceTree = "<group>"; };
 		593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_atik.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		593CFE421DFC8A12003B63D4 /* indigo_wheel_atik.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_atik.h; sourceTree = "<group>"; };
@@ -452,6 +459,7 @@
 				9DB9180C1DFEC19E00678721 /* libnexstar.a in Frameworks */,
 				59F654731EE4755F007B8C93 /* libqhy.a in Frameworks */,
 				5992F7B71E1EC8EF0035242E /* libfli.a in Frameworks */,
+				593AD10A1EF839F200C059BC /* libUSB2ST4Conv.a in Frameworks */,
 				599A63D51DF3670100ABC827 /* libjpeg.a in Frameworks */,
 				59019E131DE112B700CCB3ED /* libASICamera2.a in Frameworks */,
 				9DBC346D1DCB26B400588DB9 /* libEFWFilter.a in Frameworks */,
@@ -602,6 +610,34 @@
 				599A63AD1DEA070E00ABC827 /* websocket_test.html */,
 			);
 			path = indigo_test;
+			sourceTree = "<group>";
+		};
+		593AD1001EF8396A00C059BC /* guider_asi */ = {
+			isa = PBXGroup;
+			children = (
+				593AD1061EF839BE00C059BC /* bin_externals */,
+				593AD1041EF8399500C059BC /* indigo_guider_asi.h */,
+				593AD1011EF8399500C059BC /* indigo_guider_asi.c */,
+				593AD1031EF8399500C059BC /* indigo_guider_asi_main.c */,
+			);
+			path = guider_asi;
+			sourceTree = "<group>";
+		};
+		593AD1061EF839BE00C059BC /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				593AD1071EF839DC00C059BC /* libusb2st4conv */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		593AD1071EF839DC00C059BC /* libusb2st4conv */ = {
+			isa = PBXGroup;
+			children = (
+				593AD1081EF839EF00C059BC /* libUSB2ST4Conv.a */,
+				593AD1091EF839EF00C059BC /* USB2ST4_Conv.h */,
+			);
+			path = libusb2st4conv;
 			sourceTree = "<group>";
 		};
 		593CFE3F1DFC89F5003B63D4 /* wheel_atik */ = {
@@ -829,6 +865,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				593AD1001EF8396A00C059BC /* guider_asi */,
 				59F654681EE47371007B8C93 /* ccd_qhy */,
 				59F4EC6F1E941CF400CC7772 /* ccd_sbig */,
 				59D62CD61E731479004DDD9C /* focuser_usbv3 */,
@@ -1384,6 +1421,7 @@
 				9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */,
 				9DB918031DF8546800678721 /* indigo_mount_lx200.c in Sources */,
 				593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */,
+				593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */,
 				9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */,
 				9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */,
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
@@ -1692,6 +1730,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/mac",
+					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1705,6 +1744,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/mac",
+					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
