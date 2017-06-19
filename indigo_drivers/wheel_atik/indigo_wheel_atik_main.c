@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO Atik filter wheel driver main
  \file indigo_wheel_atik_main.c

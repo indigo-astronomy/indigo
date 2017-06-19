@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 Build 0 - PoC by Rumen Bogdanovski <rumen@skyarchive.org>
+// 2.0 by Rumen Bogdanovski <rumen@skyarchive.org>
 
 /** INDIGO FLI focuser driver
  \file indigo_focuser_fli.h
