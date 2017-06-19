@@ -368,8 +368,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
-		CCD_FRAME_WIDTH_ITEM->number.value = ((int)CCD_INFO_WIDTH_ITEM->number.value / (int)CCD_BIN_HORIZONTAL_ITEM->number.value) * (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
-		CCD_FRAME_HEIGHT_ITEM->number.value = ((int)CCD_INFO_HEIGHT_ITEM->number.value / (int)CCD_BIN_VERTICAL_ITEM->number.value) * (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		char name[32];
 		snprintf(name, 32, "BIN_%dx%d", (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value);
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
@@ -377,8 +375,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			item->sw.value = !strcmp(item->name, name);
 		}
 		if (IS_CONNECTED) {
-			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 			CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 			CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
