@@ -18,7 +18,7 @@
 
 
 // version history
-// 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO mount Mount driver main
  \file indigo_mount_simulator_main.c

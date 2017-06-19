@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 Build 0 - PoC by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO FCUSB focuser driver
  \file indigo_focuser_fcusb.h

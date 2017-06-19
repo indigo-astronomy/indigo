@@ -18,7 +18,7 @@
 
 
 // version history
-// 2.0 Build 0 - PoC by Rumen G. Bogdanovski
+// 2.0 by Rumen G. Bogdanovski
 
 /** INDIGO mount nexstar driver main
  \file indigo_mount_nexstar_main.c
