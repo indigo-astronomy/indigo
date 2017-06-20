@@ -1604,7 +1604,7 @@ int dsi_scan_usb(dsi_device_list devices) {
  * @return a dsi_camera_t handle which should be used for subsequent calls to
  * control the camera.
  */
-dsi_camera_t *dsi_open(const char *identifier) {
+dsi_camera_t *dsi_open_camera(const char *identifier) {
 	struct libusb_device *dev;
 	struct libusb_device_handle *handle = NULL;
 	struct libusb_device **list = NULL;
@@ -1653,7 +1653,7 @@ dsi_camera_t *dsi_open(const char *identifier) {
 	return dsi;
 }
 
-void dsi_close(dsi_camera_t *dsi) {
+void dsi_close_camera(dsi_camera_t *dsi) {
 	assert(libusb_release_interface(dsi->handle, 0) >= 0);
 	libusb_close(dsi->handle);
 	if (dsi->read_buffer_odd) free(dsi->read_buffer_odd);
@@ -2022,7 +2022,7 @@ int dsitst_read_image(dsi_camera_t *dsi, const char *filename, int is_binary) {
 		fptr = fopen(filename, "r");
 		assert(fptr != 0);
 
-		fgets(line, 1000, fptr);
+		char *res = fgets(line, 1000, fptr);
 		while (!feof(fptr)) {
 
 			if (regexec(&preg, line, 32, pmatch, 0) == 0) {
@@ -2066,7 +2066,7 @@ int dsitst_read_image(dsi_camera_t *dsi, const char *filename, int is_binary) {
 			if (state > 3)
 				break;
 
-			fgets(line, 1000, fptr);
+			char *res = fgets(line, 1000, fptr);
 		}
 		regfree(&preg);
 	}
