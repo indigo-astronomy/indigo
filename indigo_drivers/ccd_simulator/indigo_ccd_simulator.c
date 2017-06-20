@@ -158,8 +158,9 @@ static void exposure_timer_callback(indigo_device *device) {
 		int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
 		int offset = (int)CCD_OFFSET_ITEM->number.value;
 		double gamma = CCD_GAMMA_ITEM->number.value;
+		bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
 
-		if (device == PRIVATE_DATA->imager) {
+		if (device == PRIVATE_DATA->imager && light_frame) {
 			for (int j = 0; j < frame_height; j++) {
 				int jj = (frame_top + j) * vertical_bin;
 				for (int i = 0; i < frame_width; i++) {
@@ -171,7 +172,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				raw[i] = (rand() & 0x7F);
 		}
 
-		if (device == PRIVATE_DATA->guider) {
+		if (device == PRIVATE_DATA->guider || light_frame) {
 			double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
 			double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
 			for (int i = 0; i < STARS; i++) {
