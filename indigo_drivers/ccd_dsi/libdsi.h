@@ -6,7 +6,13 @@
 #ifndef __libdsi_h
 #define __libdsi_h
 
+#if defined(INDIGO_MACOS)
+#include <libusb-1.0/libusb.h>
+#elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
+#else
+#include <libusb-1.0/libusb.h>
+#endif
 
 struct DSI_CAMERA;
 
@@ -187,8 +193,8 @@ int libdsi_get_verbose_init();
 void dsi_load_firmware();
 int dsi_scan_usb(dsi_device_list devices);
 
-dsi_camera_t *dsi_open(const char *identifier);
-void dsi_close(dsi_camera_t *dsi);
+dsi_camera_t *dsi_open_camera(const char *identifier);
+void dsi_close_camera(dsi_camera_t *dsi);
 
 void dsi_set_verbose(dsi_camera_t *dsi, int on);
 int dsi_get_verbose(dsi_camera_t *dsi);
