@@ -74,15 +74,16 @@ ifeq ($(OS_DETECTED),Linux)
 	PACKAGE_TYPE=deb
 endif
 
-#--------------------indigo_drivers/ccd_qhy/indigo_ccd_qhy.c-------------------------------------------------
+#---------------------------------------------------------------------
 #
 #	Darwin/macOS parameters
 #
 #---------------------------------------------------------------------
 
 ifeq ($(OS_DETECTED),Darwin)
-	CC=gcc
+	CC=clang
 	CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS
+	MFLAGS=$(DEBUG_BUILD) -fPIC -fpascal-strings -fno-common -O3 -fobjc-arc -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu99 -DINDIGO_MACOS
 	CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
 	LDFLAGS=-framework Cocoa -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -lobjc  -L$(BUILD_LIB) -lusb-1.0
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi.a
@@ -95,7 +96,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 
 %.o: %.m $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+	$(CC) -c -o $@ $< $(MFLAGS)
 
 #---------------------------------------------------------------------
 #
