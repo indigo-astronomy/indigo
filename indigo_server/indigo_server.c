@@ -28,11 +28,16 @@
 #include <signal.h>
 #include <dns_sd.h>
 #include <libgen.h>
+#include <pthread.h>
+
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #ifdef INDIGO_LINUX
 #include <sys/prctl.h>
+#endif
+#ifdef INDIGO_MACOS
+#include <CoreFoundation/CoreFoundation.h>
 #endif
 
 #include "indigo_bus.h"
@@ -114,6 +119,9 @@ static bool use_sigkill = false;
 static bool server_startup = true;
 static bool use_bonjour = true;
 static bool use_control_panel = true;
+
+static char const *server_argv[128];
+static int server_argc = 1;
 
 static indigo_result attach(indigo_device *device);
 static indigo_result enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -350,22 +358,22 @@ static indigo_result detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
-static void server_main(int argc, const char * argv[]) {
+static void server_main() {
 	indigo_log("INDIGO server %d.%d-%d built on %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __TIMESTAMP__);
 
 	indigo_start_usb_event_handler();
 
 	indigo_start();
 
-	for (int i = 1; i < argc; i++) {
-		if ((!strcmp(argv[i], "-p") || !strcmp(argv[i], "--port")) && i < argc - 1) {
-			indigo_server_tcp_port = atoi(argv[i + 1]);
+	for (int i = 1; i < server_argc; i++) {
+		if ((!strcmp(server_argv[i], "-p") || !strcmp(server_argv[i], "--port")) && i < server_argc - 1) {
+			indigo_server_tcp_port = atoi(server_argv[i + 1]);
 			i++;
-		} else if (!strcmp(argv[i], "-s") || !strcmp(argv[i], "--enable-simulators")) {
+		} else if (!strcmp(server_argv[i], "-s") || !strcmp(server_argv[i], "--enable-simulators")) {
 			first_driver = 0;
-		} else if ((!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) && i < argc - 1) {
+		} else if ((!strcmp(server_argv[i], "-r") || !strcmp(server_argv[i], "--remote-server")) && i < server_argc - 1) {
 			char host[INDIGO_NAME_SIZE];
-			strncpy(host, argv[i + 1], INDIGO_NAME_SIZE);
+			strncpy(host, server_argv[i + 1], INDIGO_NAME_SIZE);
 			char *colon = strchr(host, ':');
 			int port = 7624;
 			if (colon != NULL) {
@@ -374,22 +382,22 @@ static void server_main(int argc, const char * argv[]) {
 			}
 			indigo_connect_server(NULL, host, port, NULL);
 			i++;
-		} else if ((!strcmp(argv[i], "-i") || !strcmp(argv[i], "--indi-driver")) && i < argc - 1) {
+		} else if ((!strcmp(server_argv[i], "-i") || !strcmp(server_argv[i], "--indi-driver")) && i < server_argc - 1) {
 			char executable[INDIGO_NAME_SIZE];
-			strncpy(executable, argv[i + 1], INDIGO_NAME_SIZE);
+			strncpy(executable, server_argv[i + 1], INDIGO_NAME_SIZE);
 			indigo_start_subprocess(executable, NULL);
 			i++;
-		} else if (!strcmp(argv[i], "-b-") || !strcmp(argv[i], "--disable-bonjour")) {
+		} else if (!strcmp(server_argv[i], "-b-") || !strcmp(server_argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
-		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--bonjour")) {
-			strncpy(servicename, argv[i + 1], INDIGO_NAME_SIZE);
+		} else if (!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) {
+			strncpy(servicename, server_argv[i + 1], INDIGO_NAME_SIZE);
 			i++;
-		} else if (!strcmp(argv[i], "-c-") || !strcmp(argv[i], "--disable-control-panel")) {
+		} else if (!strcmp(server_argv[i], "-c-") || !strcmp(server_argv[i], "--disable-control-panel")) {
 			use_control_panel = false;
-		} else if (!strcmp(argv[i], "-u-") || !strcmp(argv[i], "--disable-blob-urls")) {
+		} else if (!strcmp(server_argv[i], "-u-") || !strcmp(server_argv[i], "--disable-blob-urls")) {
 			indigo_use_blob_urls = false;
-		} else if(argv[i][0] != '-') {
-			indigo_load_driver(argv[i], false, NULL);
+		} else if(server_argv[i][0] != '-') {
+			indigo_load_driver(server_argv[i], false, NULL);
 		}
 	}
 
@@ -430,6 +438,7 @@ static void server_main(int argc, const char * argv[]) {
 	}
 	indigo_detach_device(&server_device);
 	indigo_stop();
+	exit(EXIT_SUCCESS);
 }
 
 static void signal_handler(int signo) {
@@ -455,8 +464,6 @@ static void signal_handler(int signo) {
 }
 
 int main(int argc, const char * argv[]) {
-	char const *server_argv[argc];
-	int server_argc = 1;
 	bool do_fork = true;
 	server_argv[0] = argv[0];
 	indigo_main_argc = argc;
@@ -484,6 +491,7 @@ int main(int argc, const char * argv[]) {
 				INDIGO_ERROR(indigo_error("Server start failed!"));
 				return EXIT_FAILURE;
 			} else if (server_pid == 0) {
+#ifdef INDIGO_LINUX
 				/* Preserve process name for logging */
 				char *name = strrchr(server_argv[0], '/');
 				if (name != NULL) {
@@ -497,14 +505,20 @@ int main(int argc, const char * argv[]) {
 				static char process_name[]="indigo_worker";
 				int len = strlen(server_argv[0]);
 				strncpy((char*)server_argv[0], process_name, len);
-
-#ifdef INDIGO_LINUX
 				prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
-
 				/* Linux requires additional step to change process name */
 				prctl(PR_SET_NAME, process_name, 0, 0, 0);
+				server_main();
 #endif
-				server_main(server_argc, server_argv);
+#ifdef INDIGO_MACOS
+				pthread_t server_thread;
+				if (pthread_create(&server_thread, NULL, server_main, NULL)) {
+					INDIGO_ERROR(indigo_error("Error creating thread for server"));
+				}
+				while (true) {
+					CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false);
+				}
+#endif
 				return EXIT_SUCCESS;
 			} else {
 				if (waitpid(server_pid, NULL, 0) == -1 ) {
@@ -520,6 +534,17 @@ int main(int argc, const char * argv[]) {
 		}
 		INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 	} else {
-		server_main(server_argc, server_argv);
+#ifdef INDIGO_LINUX
+		server_main();
+#endif
+#ifdef INDIGO_MACOS
+		pthread_t server_thread;
+		if (pthread_create(&server_thread, NULL, server_main, NULL)) {
+			INDIGO_ERROR(indigo_error("Error creating thread for server"));
+		}
+		while (true) {
+			CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false);
+		}
+#endif
 	}
 }
