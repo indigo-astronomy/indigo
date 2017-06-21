@@ -568,8 +568,9 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   NSUInteger dataLength = [data length];
   if ((data == NULL) || (dataLength < 12))
     return NULL;
+  self = [super init];
   unsigned char* buffer = (unsigned char*)[data bytes];
-  if ((self = [super init])) {
+  if (self) {
     unsigned char* buf = buffer;
     _standardVersion = ptpReadUnsignedShort(&buf);
     _vendorExtensionID = ptpReadUnsignedInt(&buf);
