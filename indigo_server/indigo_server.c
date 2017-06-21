@@ -484,9 +484,7 @@ int main(int argc, const char * argv[]) {
 				INDIGO_ERROR(indigo_error("Server start failed!"));
 				return EXIT_FAILURE;
 			} else if (server_pid == 0) {
-#ifdef INDIGO_LINUX
-				prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
-#endif
+				/* Preserve process name for logging */
 				char *name = strrchr(server_argv[0], '/');
 				if (name != NULL) {
 					name++;
@@ -494,10 +492,18 @@ int main(int argc, const char * argv[]) {
 					name = (char *)server_argv[0];
 				}
 				strncpy(indigo_log_name, name, 255);
+
+				/* Change process name for user convinience */
 				static char process_name[]="indigo_worker";
 				int len = strlen(server_argv[0]);
 				strncpy((char*)server_argv[0], process_name, len);
 
+#ifdef INDIGO_LINUX
+				prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
+
+				/* Linux requires additional step to change process name */
+				prctl(PR_SET_NAME, process_name, 0, 0, 0);
+#endif
 				server_main(server_argc, server_argv);
 				return EXIT_SUCCESS;
 			} else {
