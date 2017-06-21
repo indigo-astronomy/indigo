@@ -95,9 +95,6 @@ ifeq ($(OS_DETECTED),Darwin)
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib
 endif
 
-%.o: %.m $(DEPS)
-	$(CC) -c -o $@ $< $(MFLAGS)
-
 #---------------------------------------------------------------------
 #
 #	Linux parameters
@@ -751,8 +748,10 @@ $(BUILD_DRIVERS)/indigo_focuser_usbv3.$(SOEXT): indigo_drivers/focuser_usbv3/ind
 #---------------------------------------------------------------------
 
 indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o:	indigo_mac_drivers/ccd_ica/indigo_ccd_ica.m
+	$(CC) -c -o $@ $< $(MFLAGS)
 
 indigo_mac_drivers/ccd_ica/indigo_ica_ptp.o:	indigo_mac_drivers/ccd_ica/indigo_ica_ptp.m
+	$(CC) -c -o $@ $< $(MFLAGS)
 
 $(BUILD_DRIVERS)/indigo_ccd_ica.a: indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp.o
 	$(AR) $(ARFLAGS) $@ $^
