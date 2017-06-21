@@ -260,6 +260,18 @@ static NSString *ptpReadString(unsigned char** buf) {
   return nil;
 }
 
+static unsigned char ptpWriteString(unsigned char **buf, NSString *value) {
+  const char *cstr = [value cStringUsingEncoding:NSUnicodeStringEncoding];
+  unsigned int length = (unsigned int)value.length;
+  if (length < 256) {
+    **buf = length;
+    memcpy(*buf + 1, cstr, 2 * length);
+    *buf = (*buf) + 2 * length + 1;
+    return 2 * length + 1;
+  }
+  return -1;
+}
+
 static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   switch (type) {
     case PTPDataTypeCodeSInt8:
@@ -709,7 +721,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 - (void)didSendPTPCommand:(NSData*)command inData:(NSData*)data response:(NSData*)response error:(NSError*)error contextInfo:(void*)contextInfo {
   PTPOperationRequest*  ptpRequest  = (__bridge PTPOperationRequest*)contextInfo;
   if (ptpRequest) {
-    if (indigo_get_log_level() >= INDIGO_LOG_TRACE)
+//    if (indigo_get_log_level() >= INDIGO_LOG_TRACE)
       NSLog(@"Completed %@", [ptpRequest description]);
     switch (ptpRequest.operationCode) {
       case PTPOperationCodeGetStorageIDs: {
@@ -725,9 +737,22 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   if (response) {
     PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
     PTPOperationResponse* ptpResponse = [[PTPOperationResponse alloc] initWithData:response vendorExtension:info.vendorExtensionID];
+    if (ptpRequest.operationCode == PTPOperationCodeSetDevicePropValue) {
+      switch (ptpRequest.parameter1) {
+        case PTPPropertyCodeExposureProgramMode:
+        case PTPPropertyCodeFNumber:
+        case PTPPropertyCodeExposureTime:
+        case PTPPropertyCodeImageSize:
+        case PTPPropertyCodeCompressionSetting:
+        case PTPPropertyCodeWhiteBalance:
+        case PTPPropertyCodeExposureIndex:
+          [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:ptpRequest.parameter1];
+          break;
+      }
+    }
     if (ptpRequest.operationCode == PTPOperationCodeGetDevicePropDesc && ptpResponse.responseCode == PTPResponseCodeDevicePropNotSupported) {
       [(NSMutableDictionary *)info.propertiesSupported removeObjectForKey:[NSNumber numberWithUnsignedShort:ptpRequest.parameter1]];
-    } else if (indigo_get_log_level() >= INDIGO_LOG_TRACE || ptpResponse.responseCode != PTPResponseCodeOK)
+    } else //if (indigo_get_log_level() >= INDIGO_LOG_TRACE || ptpResponse.responseCode != PTPResponseCodeOK)
       NSLog(@"Received %@", [ptpResponse description]);
   }
   if (data) {
@@ -870,6 +895,54 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return self.userData[PTP_DEVICE_INFO];
 }
 
+-(void)setAperture:(NSObject *)value {
+  unsigned char *buffer = malloc(sizeof (unsigned short));
+  unsigned char *buf = buffer;
+  ptpWriteUnsignedShort(&buf, ((NSNumber *)value).unsignedShortValue);
+  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeFNumber withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
+  free(buffer);
+}
+
+-(void)setShutter:(NSObject *)value {
+  unsigned char *buffer = malloc(sizeof (unsigned int));
+  unsigned char *buf = buffer;
+  ptpWriteUnsignedShort(&buf, ((NSNumber *)value).unsignedIntValue);
+  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeExposureTime withData:[NSData dataWithBytes:buffer length:sizeof (unsigned int)]];
+  free(buffer);
+}
+
+-(void)setImageSize:(NSObject *)value {
+  unsigned char *buffer = malloc(256);
+  unsigned char *buf = buffer;
+  int length = ptpWriteString(&buf, value.description);
+  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeImageSize withData:[NSData dataWithBytes:buffer length:length]];
+  free(buffer);
+}
+
+-(void)setCompression:(NSObject *)value {
+  unsigned char *buffer = malloc(sizeof (unsigned char));
+  unsigned char *buf = buffer;
+  ptpWriteUnsignedChar(&buf, ((NSNumber *)value).unsignedCharValue);
+  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeCompressionSetting withData:[NSData dataWithBytes:buffer length:sizeof (unsigned char)]];
+  free(buffer);
+}
+
+-(void)setWhiteBalance:(NSObject *)value {
+  unsigned char *buffer = malloc(sizeof (unsigned short));
+  unsigned char *buf = buffer;
+  ptpWriteUnsignedShort(&buf, ((NSNumber *)value).unsignedShortValue);
+  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeWhiteBalance withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
+  free(buffer);
+}
+
+-(void)setISO:(NSObject *)value {
+  unsigned char *buffer = malloc(sizeof (unsigned short));
+  unsigned char *buf = buffer;
+  ptpWriteUnsignedShort(&buf, ((NSNumber *)value).unsignedShortValue);
+  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeExposureIndex withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
+  free(buffer);
+}
+
 -(void)sendPTPRequest:(PTPOperationCode)operationCode {
   PTPOperationRequest *request = [[PTPOperationRequest alloc] initWithVendorExtension:self.ptpDeviceInfo.vendorExtensionID];
   request.operationCode = operationCode;
@@ -883,6 +956,14 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   request.numberOfParameters = 1;
   request.parameter1 = parameter1;
   [self requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
+}
+
+-(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 withData:(NSData *)data {
+  PTPOperationRequest *request = [[PTPOperationRequest alloc] initWithVendorExtension:self.ptpDeviceInfo.vendorExtensionID];
+  request.operationCode = operationCode;
+  request.numberOfParameters = 1;
+  request.parameter1 = parameter1;
+  [self requestSendPTPCommand:request.commandBuffer outData:data sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 
 @end
