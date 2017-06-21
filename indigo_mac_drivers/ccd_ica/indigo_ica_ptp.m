@@ -874,7 +874,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   PTPOperationRequest *request = [[PTPOperationRequest alloc] initWithVendorExtension:self.ptpDeviceInfo.vendorExtensionID];
   request.operationCode = operationCode;
   request.numberOfParameters = 0;
-  [self requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:CFBridgingRetain(request)];
+  [self requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 
 -(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 {
@@ -882,7 +882,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   request.operationCode = operationCode;
   request.numberOfParameters = 1;
   request.parameter1 = parameter1;
-  [self requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:CFBridgingRetain(request)];
+  [self requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 
 @end
