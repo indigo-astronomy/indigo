@@ -487,6 +487,17 @@ int main(int argc, const char * argv[]) {
 #ifdef INDIGO_LINUX
 				prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
 #endif
+				char *name = strrchr(server_argv[0], '/');
+				if (name != NULL) {
+					name++;
+				} else {
+					name = (char *)server_argv[0];
+				}
+				strncpy(indigo_log_name, name, 255);
+				static char process_name[]="indigo_worker";
+				int len = strlen(server_argv[0]);
+				strncpy((char*)server_argv[0], process_name, len);
+
 				server_main(server_argc, server_argv);
 				return EXIT_SUCCESS;
 			} else {
