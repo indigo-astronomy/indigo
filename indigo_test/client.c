@@ -96,7 +96,7 @@ static indigo_result client_detach(indigo_client *client) {
 }
 
 static indigo_client client = {
-	"Test", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, INDIGO_ENABLE_BLOB_ALSO,
+	"Test", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 	client_attach,
 	client_define_property,
 	client_update_property,
