@@ -95,6 +95,7 @@ const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
 
 char indigo_last_message[1024];
+char indigo_log_name[255] = {0};
 
 static void log_message(const char *format, va_list args) {
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -129,16 +130,17 @@ static void log_message(const char *format, va_list args) {
 #else
 		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
 #endif
-		static const char *log_executable_name = NULL;
-		if (log_executable_name == NULL) {
+		if (indigo_log_name[0] == '\0') {
 			if (indigo_main_argc == 0) {
-				log_executable_name = "Application";
+				strncpy(indigo_log_name, "Application", sizeof(indigo_log_name));
 			} else {
-				log_executable_name = strrchr(indigo_main_argv[0], '/');
-				if (log_executable_name != NULL)
-					log_executable_name++;
-				else
-					log_executable_name = indigo_main_argv[0];
+				char *name = strrchr(indigo_main_argv[0], '/');
+				if (name != NULL) {
+					name++;
+				} else {
+					name = (char *)indigo_main_argv[0];
+				}
+				strncpy(indigo_log_name, name, sizeof(indigo_log_name));
 			}
 		}
 		while (line) {
@@ -146,7 +148,7 @@ static void log_message(const char *format, va_list args) {
 			if (eol)
 				*eol = 0;
 			if (*line)
-				fprintf(stderr, "%s %s: %s\n", timestamp, log_executable_name, line);
+				fprintf(stderr, "%s %s: %s\n", timestamp, indigo_log_name, line);
 			if (eol)
 				line = eol + 1;
 			else

@@ -140,7 +140,7 @@ typedef struct indigo_enable_blob_mode_record {
 	indigo_enable_blob_mode mode;					///< mode
 	struct indigo_enable_blob_mode_record *next; ///< next record
 } indigo_enable_blob_mode_record;
-	
+
 typedef enum {
 	INDIGO_LOG_ERROR,
 	INDIGO_LOG_INFO,
@@ -277,6 +277,10 @@ typedef struct {
  */
 extern char indigo_last_message[1024];
 
+/** Name to be used in log (if not changed ot will be filled with executable name).
+ */
+extern char indigo_log_name[255];
+
 /** If set, handler is used to print message instead of stderr/syslog output.
  */
 extern void (*indigo_log_message_handler)(const char *message);
@@ -358,7 +362,7 @@ extern indigo_result indigo_change_property(indigo_client *client, indigo_proper
 /** Broadcast enableBLOB request.
  */
 extern indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
-	
+
 /** Stop bus operation.
  Call has no effect if bus is already stopped.
  */
