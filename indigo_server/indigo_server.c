@@ -97,8 +97,8 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_usbv3,
 	indigo_ccd_sbig,
 #ifdef INDIGO_MACOS
-#endif
 	indigo_ccd_ica,
+#endif
 #endif
 	NULL
 };
