@@ -83,7 +83,7 @@ endif
 ifeq ($(OS_DETECTED),Darwin)
 	CC=clang
 	CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS
-	MFLAGS=$(DEBUG_BUILD) -fPIC -fpascal-strings -fno-common -O3 -fobjc-arc -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu99 -DINDIGO_MACOS
+	MFLAGS=$(DEBUG_BUILD) -fPIC -fno-common -O3 -fobjc-arc -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS
 	CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
 	LDFLAGS=-framework Cocoa -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -lobjc  -L$(BUILD_LIB) -lusb-1.0
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi.a
@@ -924,6 +924,7 @@ clean: init
 	rm -f indigo_libs/*.o
 	rm -f indigo_server/*.o
 	rm -f $(wildcard indigo_drivers/*/*.o)
+	rm -f $(wildcard indigo_mac_drivers/*/*.o)
 	rm -f $(wildcard indigo_test/*.o)
 
 #---------------------------------------------------------------------
