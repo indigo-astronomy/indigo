@@ -238,7 +238,87 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
     ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
     CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+    CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+    indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
     [camera requestTakePicture];
+    return INDIGO_OK;
+  } else if (indigo_property_match(PRIVATE_DATA->aperture_property, property)) {
+    // -------------------------------------------------------------------------------- DSLR_APERTURE
+    indigo_property_copy_values(PRIVATE_DATA->aperture_property, property, false);
+    ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+    for (int i = 0; i < PRIVATE_DATA->aperture_property->count; i++) {
+      if (PRIVATE_DATA->aperture_property->items[i].sw.value) {
+        PRIVATE_DATA->aperture_property->state = INDIGO_BUSY_STATE;
+        indigo_update_property(device, PRIVATE_DATA->aperture_property, NULL);
+        [camera setAperture:[NSNumber numberWithInt:atoi(PRIVATE_DATA->aperture_property->items[i].name)]];
+        break;
+      }
+    }
+    return INDIGO_OK;
+  } else if (indigo_property_match(PRIVATE_DATA->shutter_property, property)) {
+    // -------------------------------------------------------------------------------- DSLR_SHUTTER
+    indigo_property_copy_values(PRIVATE_DATA->shutter_property, property, false);
+    ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+    for (int i = 0; i < PRIVATE_DATA->shutter_property->count; i++) {
+      if (PRIVATE_DATA->shutter_property->items[i].sw.value) {
+        PRIVATE_DATA->shutter_property->state = INDIGO_BUSY_STATE;
+        indigo_update_property(device, PRIVATE_DATA->shutter_property, NULL);
+        [camera setShutter:[NSNumber numberWithInt:atoi(PRIVATE_DATA->shutter_property->items[i].name)]];
+        break;
+      }
+    }
+    return INDIGO_OK;
+  } else if (indigo_property_match(PRIVATE_DATA->image_size_property, property)) {
+    // -------------------------------------------------------------------------------- DSLR_IMAGE_SIZE
+    indigo_property_copy_values(PRIVATE_DATA->image_size_property, property, false);
+    ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+    for (int i = 0; i < PRIVATE_DATA->image_size_property->count; i++) {
+      if (PRIVATE_DATA->image_size_property->items[i].sw.value) {
+        PRIVATE_DATA->image_size_property->state = INDIGO_BUSY_STATE;
+        indigo_update_property(device, PRIVATE_DATA->image_size_property, NULL);
+        [camera setImageSize:[NSString stringWithCString:PRIVATE_DATA->image_size_property->items[i].name encoding:NSUTF8StringEncoding]];
+        break;
+      }
+    }
+    return INDIGO_OK;
+  } else if (indigo_property_match(PRIVATE_DATA->compression_property, property)) {
+    // -------------------------------------------------------------------------------- DSLR_COMPRESSION
+    indigo_property_copy_values(PRIVATE_DATA->compression_property, property, false);
+    ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+    for (int i = 0; i < PRIVATE_DATA->compression_property->count; i++) {
+      if (PRIVATE_DATA->compression_property->items[i].sw.value) {
+        PRIVATE_DATA->compression_property->state = INDIGO_BUSY_STATE;
+        indigo_update_property(device, PRIVATE_DATA->compression_property, NULL);
+        [camera setCompression:[NSNumber numberWithInt:atoi(PRIVATE_DATA->compression_property->items[i].name)]];
+        break;
+      }
+    }
+    return INDIGO_OK;
+  } else if (indigo_property_match(PRIVATE_DATA->white_balance_property, property)) {
+    // -------------------------------------------------------------------------------- DSLR_WHITE_BALANCE
+    indigo_property_copy_values(PRIVATE_DATA->white_balance_property, property, false);
+    ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+    for (int i = 0; i < PRIVATE_DATA->white_balance_property->count; i++) {
+      if (PRIVATE_DATA->white_balance_property->items[i].sw.value) {
+        PRIVATE_DATA->white_balance_property->state = INDIGO_BUSY_STATE;
+        indigo_update_property(device, PRIVATE_DATA->white_balance_property, NULL);
+        [camera setWhiteBalance:[NSNumber numberWithInt:atoi(PRIVATE_DATA->white_balance_property->items[i].name)]];
+        break;
+      }
+    }
+    return INDIGO_OK;
+  } else if (indigo_property_match(PRIVATE_DATA->iso_property, property)) {
+    // -------------------------------------------------------------------------------- DSLR_ISO
+    indigo_property_copy_values(PRIVATE_DATA->iso_property, property, false);
+    ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+    for (int i = 0; i < PRIVATE_DATA->iso_property->count; i++) {
+      if (PRIVATE_DATA->iso_property->items[i].sw.value) {
+        PRIVATE_DATA->iso_property->state = INDIGO_BUSY_STATE;
+        indigo_update_property(device, PRIVATE_DATA->iso_property, NULL);
+        [camera setISO:[NSNumber numberWithInt:atoi(PRIVATE_DATA->iso_property->items[i].name)]];
+        break;
+      }
+    }
     return INDIGO_OK;
     // --------------------------------------------------------------------------------
   }
@@ -347,6 +427,7 @@ static indigo_result ccd_detach(indigo_device *device) {
     int index = 0;
     for (NSObject *object in [supportedValues.allKeys sortedArrayUsingSelector:@selector(compare:)])
       (*property)->items[index++].sw.value = [object isEqual:value];
+    (*property)->state = INDIGO_OK_STATE;
     indigo_update_property(device, *property, NULL);
   }
   
@@ -397,12 +478,16 @@ static indigo_result ccd_detach(indigo_device *device) {
 - (void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data {
   indigo_device *device = [camera.userData[DEVICE] pointerValue];
   indigo_process_dslr_image(device, (void *)data.bytes, (int)data.length);
+  CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+  indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
   CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
   indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
 
 - (void)cameraExposureFailed:(ICCameraDevice*)camera {
   indigo_device *device = [camera.userData[DEVICE] pointerValue];
+  CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+  indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
   CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
   indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
 }

@@ -925,6 +925,13 @@ typedef unsigned short PTPDataTypeCode;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
 
+-(void)setAperture:(NSObject *)value;
+-(void)setShutter:(NSObject *)value;
+-(void)setImageSize:(NSObject *)value;
+-(void)setCompression:(NSObject *)value;
+-(void)setWhiteBalance:(NSObject *)value;
+-(void)setISO:(NSObject *)value;
+
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
