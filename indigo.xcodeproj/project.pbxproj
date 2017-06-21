@@ -41,6 +41,10 @@
 		599C9A5D1DA028E4008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
+		59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */; };
+		59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */; };
+		59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */; };
+		59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E41EFADFE000E750AA /* indigo_ica_ptp.m */; };
 		59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */; };
 		59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
 		59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */ = {isa = PBXBuildFile; fileRef = 59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */; };
@@ -326,6 +330,11 @@
 		599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_main.c; sourceTree = "<group>"; };
 		599C9A6D1DA05063008BBCC1 /* BridgingHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
 		59BFB3DB1E11845900064E9C /* iOptron Telescope RS-232 Command language.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "iOptron Telescope RS-232 Command language.pdf"; sourceTree = "<group>"; };
+		59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ica.h; sourceTree = "<group>"; };
+		59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ccd_ica.m; sourceTree = "<group>"; };
+		59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp.h; sourceTree = "<group>"; };
+		59C499E41EFADFE000E750AA /* indigo_ica_ptp.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp.m; sourceTree = "<group>"; };
+		59C499E91EFAE08600E750AA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59C8E7EE1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_sx.rules; sourceTree = "<group>"; };
 		59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_ssag.rules; sourceTree = "<group>"; };
 		59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_asi.rules; sourceTree = "<group>"; };
@@ -572,6 +581,7 @@
 				59D381C71D96A33D00E87393 /* README.md */,
 				5981C8E21DC2A2D300C7705F /* TODO.md */,
 				59D381AF1D95998300E87393 /* indigo_drivers */,
+				59C499DF1EFADF7600E750AA /* indigo_mac_drivers */,
 				59D381A61D9590EA00E87393 /* indigo_libs */,
 				9D1880BF1E534B89002F75D7 /* indigo_tools */,
 				599A63D61DF5D93500ABC827 /* indigo_server */,
@@ -783,6 +793,26 @@
 				599C9A6D1DA05063008BBCC1 /* BridgingHeader.h */,
 			);
 			path = "INDIGO Server for macOS";
+			sourceTree = "<group>";
+		};
+		59C499DF1EFADF7600E750AA /* indigo_mac_drivers */ = {
+			isa = PBXGroup;
+			children = (
+				59C499E01EFADF9700E750AA /* ccd_ica */,
+			);
+			path = indigo_mac_drivers;
+			sourceTree = "<group>";
+		};
+		59C499E01EFADF9700E750AA /* ccd_ica */ = {
+			isa = PBXGroup;
+			children = (
+				59C499E91EFAE08600E750AA /* README.md */,
+				59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */,
+				59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */,
+				59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */,
+				59C499E41EFADFE000E750AA /* indigo_ica_ptp.m */,
+			);
+			path = ccd_ica;
 			sourceTree = "<group>";
 		};
 		59C8E7CC1DBBC00000AA3F0A /* externals */ = {
@@ -1079,8 +1109,10 @@
 				599A63B11DEA2F4700ABC827 /* indigo_driver_json.h in Headers */,
 				9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */,
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
+				59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */,
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
 				9DBC346B1DCB26AC00588DB9 /* EFW_filter.h in Headers */,
+				59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */,
 				9DB918091DFEA42E00678721 /* indigo_io.h in Headers */,
 				9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */,
 				599A63A81DE8BD1700ABC827 /* indigo_json.h in Headers */,
@@ -1397,6 +1429,7 @@
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
+				59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */,
 				59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */,
 				599C9A4F1DA022E3008BBCC1 /* indigo_version.c in Sources */,
 				59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */,
@@ -1414,6 +1447,7 @@
 				9D9EA6B41DBFA30600E11841 /* indigo_guider_driver.c in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */,
+				59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */,
 				599A63A71DE8BD1700ABC827 /* indigo_json.c in Sources */,
 				599C9A531DA022E3008BBCC1 /* indigo_server_tcp.c in Sources */,
 				9DB9180A1DFEA71C00678721 /* indigo_mount_nexstar.c in Sources */,
@@ -1591,7 +1625,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-w";
 				SDKROOT = macosx;
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers";
+				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
 				WARNING_LDFLAGS = "";
 			};
 			name = Debug;
@@ -1642,7 +1676,7 @@
 				OTHER_LDFLAGS = "-w";
 				SDKROOT = macosx;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers";
+				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
 				WARNING_LDFLAGS = "";
 			};
 			name = Release;
