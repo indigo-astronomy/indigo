@@ -699,8 +699,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 - (void)processEvent:(PTPEvent *)event {
-  if (event.eventCode == PTPEventCodeDevicePropChanged) {
-    [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:event.parameter1];
+	switch (event.eventCode) {
+		case PTPEventCodeDevicePropChanged: {
+			[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:event.parameter1];
+			break;
+		}
   }
 }
 
@@ -723,18 +726,21 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   if (response) {
     PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
     PTPOperationResponse* ptpResponse = [[PTPOperationResponse alloc] initWithData:response vendorExtension:info.vendorExtensionID];
-    if (ptpRequest.operationCode == PTPOperationCodeSetDevicePropValue) {
-      switch (ptpRequest.parameter1) {
-        case PTPPropertyCodeExposureProgramMode:
-        case PTPPropertyCodeFNumber:
-        case PTPPropertyCodeExposureTime:
-        case PTPPropertyCodeImageSize:
-        case PTPPropertyCodeCompressionSetting:
-        case PTPPropertyCodeWhiteBalance:
-        case PTPPropertyCodeExposureIndex:
-          [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:ptpRequest.parameter1];
-          break;
-      }
+		switch (ptpRequest.operationCode) {
+			case PTPOperationCodeSetDevicePropValue: {
+				switch (ptpRequest.parameter1) {
+					case PTPPropertyCodeExposureProgramMode:
+					case PTPPropertyCodeFNumber:
+					case PTPPropertyCodeExposureTime:
+					case PTPPropertyCodeImageSize:
+					case PTPPropertyCodeCompressionSetting:
+					case PTPPropertyCodeWhiteBalance:
+					case PTPPropertyCodeExposureIndex:
+						[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:ptpRequest.parameter1];
+						break;
+				}
+				break;
+			}
     }
     if (ptpRequest.operationCode == PTPOperationCodeGetDevicePropDesc && ptpResponse.responseCode == PTPResponseCodeDevicePropNotSupported) {
       [(NSMutableDictionary *)info.propertiesSupported removeObjectForKey:[NSNumber numberWithUnsignedShort:ptpRequest.parameter1]];
@@ -754,6 +760,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeCompressionSetting];
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeWhiteBalance];
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureIndex];
+				[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeNikonLiveViewStatus];
         [self sendPTPRequest:PTPOperationCodeGetStorageIDs];
         break;
       }
@@ -853,6 +860,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
             break;
           }
+					case PTPPropertyCodeNikonLiveViewStatus: {
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:nil readOnly:property.readOnly];
+						if (property.value.description.intValue)
+							[self sendPTPRequest:PTPOperationCodeNikonGetLiveViewImg];
+					}
         }
         break;
       }
@@ -864,10 +876,27 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           PTPEventCode code = ptpReadUnsignedShort(&buf);
           unsigned int parameter1 = ptpReadUnsignedInt(&buf);
           PTPEvent *event = [[PTPEvent alloc] initWithCode:code parameter1:parameter1 vendorExtension:self.ptpDeviceInfo.vendorExtensionID];
+					if (indigo_get_log_level() >= INDIGO_LOG_TRACE) {
+						NSLog(@"Received %@", [event description]);
+					}
           [self processEvent:event];
         }
         break;
       }
+			case PTPOperationCodeNikonGetLiveViewImg: {
+				NSData *image;
+				if ((bytes[64] & 0xFF) == 0xFF && (bytes[65] & 0xFF) == 0xD8)
+					image = [NSData dataWithBytes:bytes + 64 length:data.length - 64];
+				else if ((bytes[128] & 0xFF) == 0xFF && (bytes[129] & 0xFF) == 0xD8)
+					image = [NSData dataWithBytes:bytes + 128 length:data.length - 128];
+				else if ((bytes[384] & 0xFF) == 0xFF && (bytes[385] & 0xFF) == 0xD8)
+					image = [NSData dataWithBytes:bytes + 384 length:data.length - 384];
+				if (image) {
+					[(PTPDelegate *)self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
+					[self sendPTPRequest:PTPOperationCodeNikonGetLiveViewImg];
+				}
+				break;
+			}
       default:
         if (indigo_get_log_level() >= INDIGO_LOG_TRACE) {
           NSLog(@"Received data:");
@@ -959,6 +988,24 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 				break;
 			}
 		}
+	}
+}
+
+-(void)startLiveView {
+	PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+	switch (info.vendorExtensionID) {
+		case PTPVendorExtensionNikon:
+			[self sendPTPRequest:PTPOperationCodeNikonStartLiveView];
+			break;
+	}
+}
+
+-(void)stopLiveView {
+	PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+	switch (info.vendorExtensionID) {
+		case PTPVendorExtensionNikon:
+			[self sendPTPRequest:PTPOperationCodeNikonEndLiveView];
+			break;
 	}
 }
 

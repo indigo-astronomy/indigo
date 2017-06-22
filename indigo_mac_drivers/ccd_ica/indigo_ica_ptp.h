@@ -935,6 +935,9 @@ typedef unsigned short PTPDataTypeCode;
 
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 
+-(void)startLiveView;
+-(void)stopLiveView;
+
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
