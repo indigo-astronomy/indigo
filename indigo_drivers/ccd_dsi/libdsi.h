@@ -20,6 +20,7 @@ typedef struct DSI_CAMERA dsi_camera_t;
 
 #define DSI_ID_LEN 32
 #define DSI_NAME_LEN 32
+#define DSI_BAYER_LEN 5
 #define DSI_MAX_DEVICES 32
 #define NO_TEMP_SENSOR  99999999
 
@@ -94,12 +95,14 @@ typedef enum DSI_COMMAND dsi_command_t;
  * this driver only actually supports DSI_USB_SPEED_HIGH.
  */
 enum DSI_USB_SPEED {
+	DSI_USB_SPEED_INVALID = -1,
 	DSI_USB_SPEED_FULL = 0,
 	DSI_USB_SPEED_HIGH = 1,
 };
 
 
 enum DSI_FW_DEBUG {
+	DSI_FW_DEBUG_INVALID = -1,
 	DSI_FW_DEBUG_OFF = 0,
 	DSI_FW_DEBUG_ON  = 1,
 };
@@ -208,6 +211,7 @@ const char *dsi_get_model_name(dsi_camera_t *dsi);
 const char *dsi_get_serial_number(dsi_camera_t *dsi);
 const char *dsi_get_camera_name(dsi_camera_t *dsi);
 const char *dsi_set_camera_name(dsi_camera_t *dsi, const char *name);
+const char *dsi_get_bayer_pattern(dsi_camera_t *dsi);
 
 int dsi_start_exposure(dsi_camera_t *dsi, double exptime);
 int dsi_abort_exposure(dsi_camera_t *dsi);
@@ -217,6 +221,7 @@ int dsi_get_image_width(dsi_camera_t *dsi);
 int dsi_get_image_height(dsi_camera_t *dsi);
 double dsi_get_pixel_width(dsi_camera_t *dsi);
 double dsi_get_pixel_height(dsi_camera_t *dsi);
+double dsi_get_exposure_time_left(dsi_camera_t *dsi);
 
 int dsi_set_amp_gain(dsi_camera_t *dsi, int gain);
 int dsi_get_amp_gain(dsi_camera_t *dsi);
