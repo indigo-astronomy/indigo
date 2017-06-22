@@ -375,7 +375,7 @@ extern void indigo_process_image(indigo_device *device, void *data, int frame_wi
 
 /** Process DSLR image in image buffer (starting on data).
  */
-extern void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize);
+extern void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix);
 	
 #ifdef __cplusplus
 }

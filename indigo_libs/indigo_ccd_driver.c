@@ -768,30 +768,30 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
-		char *sufix;
+		char *suffix;
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-			sufix = ".fits";
+			suffix = ".fits";
 		} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-			sufix = ".raw";
+			suffix = ".raw";
 		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-			sufix = ".jpeg";
+			suffix = ".jpeg";
 		}
 		int handle = 0;
 		char *message = NULL;
-		if (strlen(dir) + strlen(prefix) + strlen(sufix) < INDIGO_VALUE_SIZE) {
+		if (strlen(dir) + strlen(prefix) + strlen(suffix) < INDIGO_VALUE_SIZE) {
 			char file_name[INDIGO_VALUE_SIZE];
 			char *xxx = strstr(prefix, "XXX");
 			if (xxx == NULL) {
 				strcpy(file_name, dir);
 				strcat(file_name, prefix);
-				strcat(file_name, sufix);
+				strcat(file_name, suffix);
 			} else {
 				char format[INDIGO_VALUE_SIZE];
 				strcpy(format, dir);
 				strncat(format, prefix, xxx - prefix);
 				strcat(format, "%03d");
 				strcat(format, xxx+3);
-				strcat(format, sufix);
+				strcat(format, suffix);
 				struct stat sb;
 				int i = 1;
 				while (true) {
@@ -855,7 +855,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	}
 }
 
-void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize) {
+void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix) {
 	assert(device != NULL);
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
@@ -863,28 +863,22 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize) 
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
-		char *sufix;
-		if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-			sufix = ".raw";
-		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-			sufix = ".jpeg";
-		}
 		int handle = 0;
 		char *message = NULL;
-		if (strlen(dir) + strlen(prefix) + strlen(sufix) < INDIGO_VALUE_SIZE) {
+		if (strlen(dir) + strlen(prefix) + strlen(suffix) < INDIGO_VALUE_SIZE) {
 			char file_name[INDIGO_VALUE_SIZE];
 			char *xxx = strstr(prefix, "XXX");
 			if (xxx == NULL) {
 				strcpy(file_name, dir);
 				strcat(file_name, prefix);
-				strcat(file_name, sufix);
+				strcat(file_name, suffix);
 			} else {
 				char format[INDIGO_VALUE_SIZE];
 				strcpy(format, dir);
 				strncat(format, prefix, xxx - prefix);
 				strcat(format, "%03d");
 				strcat(format, xxx+3);
-				strcat(format, sufix);
+				strcat(format, suffix);
 				struct stat sb;
 				int i = 1;
 				while (true) {
@@ -919,11 +913,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize) 
 		*CCD_IMAGE_ITEM->blob.url = 0;
 		CCD_IMAGE_ITEM->blob.value = data;
 		CCD_IMAGE_ITEM->blob.size = blobsize;
-		if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-			strncpy(CCD_IMAGE_ITEM->blob.format, ".raw", INDIGO_NAME_SIZE);
-		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-			strncpy(CCD_IMAGE_ITEM->blob.format, ".jpeg", INDIGO_NAME_SIZE);
-		}
+		strncpy(CCD_IMAGE_ITEM->blob.format, suffix, INDIGO_NAME_SIZE);
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
