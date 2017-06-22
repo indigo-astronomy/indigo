@@ -157,7 +157,8 @@ struct {
 	{ DSLR_IMAGE_SIZE_PROPERTY_NAME, "Image size" },
 	{ DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
 	{ DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
-	{ DSLR_ISO_PROPERTY_NAME, "ISO" }
+	{ DSLR_ISO_PROPERTY_NAME, "ISO" },
+	{ NULL, NULL }
 };
 
 typedef struct {
@@ -184,7 +185,7 @@ static indigo_result ccd_attach(indigo_device *device) {
     CCD_BIN_PROPERTY->hidden =  CCD_FRAME_PROPERTY->hidden = true;
     CCD_IMAGE_FORMAT_PROPERTY->perm = INDIGO_RO_PERM;
 		indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
-		for (int i = 0; PRIVATE_DATA->dslr_properties[i]; i++) {
+		for (int i = 0; dslr_properties[i].name; i++) {
 			PRIVATE_DATA->dslr_properties[i] = indigo_init_switch_property(NULL, device->name, dslr_properties[i].name, "DSLR", dslr_properties[i].label, INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
 			PRIVATE_DATA->dslr_properties[i]->hidden = true;
 		}
@@ -207,27 +208,27 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
   return result;
 }
 
-static indigo_result process_dslr_property(indigo_device *device, indigo_property *dslr_property, indigo_property *property, bool string_enum) {
+static NSObject *process_dslr_property(indigo_device *device, indigo_property *dslr_property, indigo_property *property, bool string_enum) {
 	indigo_property_copy_values(dslr_property, property, false);
-	ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
 	for (int i = 0; i < dslr_property->count; i++) {
 		if (dslr_property->items[i].sw.value) {
 			dslr_property->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, dslr_property, NULL);
 			if (string_enum)
-				[camera setImageSize:[NSString stringWithCString:DSLR_IMAGE_SIZE_PROPERTY->items[i].name encoding:NSUTF8StringEncoding]];
+				return [NSString stringWithCString:DSLR_IMAGE_SIZE_PROPERTY->items[i].name encoding:NSUTF8StringEncoding];
 			else
-				[camera setAperture:[NSNumber numberWithInt:atoi(dslr_property->items[i].name)]];
+				return [NSNumber numberWithInt:atoi(dslr_property->items[i].name)];
 			break;
 		}
 	}
-	return INDIGO_OK;
+	return nil;
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
   assert(device != NULL);
   assert(DEVICE_CONTEXT != NULL);
   assert(property != NULL);
+	ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
   if (indigo_property_match(CONNECTION_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CONNECTION
     indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -254,22 +255,28 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
     return INDIGO_OK;
   } else if (indigo_property_match(DSLR_APERTURE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_APERTURE
-		return process_dslr_property(device, DSLR_APERTURE_PROPERTY, property, false);
+		[camera setAperture:process_dslr_property(device, DSLR_APERTURE_PROPERTY, property, false)];
+		return INDIGO_OK;
   } else if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_SHUTTER
-		return process_dslr_property(device, DSLR_SHUTTER_PROPERTY, property, false);
+		[camera setShutter:process_dslr_property(device, DSLR_SHUTTER_PROPERTY, property, false)];
+		return INDIGO_OK;
   } else if (indigo_property_match(DSLR_IMAGE_SIZE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_IMAGE_SIZE
-		return process_dslr_property(device, DSLR_IMAGE_SIZE_PROPERTY, property, true);
+		[camera setImageSize:process_dslr_property(device, DSLR_IMAGE_SIZE_PROPERTY, property, false)];
+		return INDIGO_OK;
   } else if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_COMPRESSION
-		return process_dslr_property(device, DSLR_COMPRESSION_PROPERTY, property, false);
+		[camera setCompression:process_dslr_property(device, DSLR_COMPRESSION_PROPERTY, property, false)];
+		return INDIGO_OK;
   } else if (indigo_property_match(DSLR_WHITE_BALANCE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_WHITE_BALANCE
-		return process_dslr_property(device, DSLR_WHITE_BALANCE_PROPERTY, property, false);
+		[camera setWhiteBalance:process_dslr_property(device, DSLR_WHITE_BALANCE_PROPERTY, property, false)];
+		return INDIGO_OK;
   } else if (indigo_property_match(DSLR_ISO_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_ISO
-		return process_dslr_property(device, DSLR_ISO_PROPERTY, property, false);
+		[camera setISO:process_dslr_property(device, DSLR_ISO_PROPERTY, property, false)];
+		return INDIGO_OK;
     // --------------------------------------------------------------------------------
   }
   return indigo_ccd_change_property(device, client, property);
