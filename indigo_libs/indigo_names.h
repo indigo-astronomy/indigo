@@ -365,6 +365,42 @@
  */
 #define CCD_COOLER_POWER_ITEM_NAME            "POWER"
 
+
+//----------------------------------------------------------------------
+/** DSLR_PROGRAM property name.
+ */
+#define DSLR_PROGRAM_PROPERTY_NAME						"DSLR_PROGRAM"
+
+//----------------------------------------------------------------------
+/** DSLR_APERTURE property name.
+ */
+#define DSLR_APERTURE_PROPERTY_NAME						"DSLR_APERTURE"
+
+//----------------------------------------------------------------------
+/** DSLR_SHUTTER property name.
+ */
+#define DSLR_SHUTTER_PROPERTY_NAME						"DSLR_SHUTTER"
+
+//----------------------------------------------------------------------
+/** DSLR_IMAGE_SIZE property name.
+ */
+#define DSLR_IMAGE_SIZE_PROPERTY_NAME					"DSLR_IMAGE_SIZE"
+
+//----------------------------------------------------------------------
+/** DSLR_COMPRESSION property name.
+ */
+#define DSLR_COMPRESSION_PROPERTY_NAME				"DSLR_COMPRESSION"
+
+//----------------------------------------------------------------------
+/** DSLR_WHITE_BALANCE property name.
+ */
+#define DSLR_WHITE_BALANCE_PROPERTY_NAME			"DSLR_WHITE_BALANCE"
+
+//----------------------------------------------------------------------
+/** DSLR_ISO property name.
+ */
+#define DSLR_ISO_PROPERTY_NAME								"DSLR_ISO"
+
 //----------------------------------------------------------------------
 /** GUIDER_GUIDE_DEC property name.
  */
