@@ -1011,7 +1011,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     if (folder != nil && name != nil) {
       NSURL *url = [NSURL URLWithString:name relativeToURL:folder];
       NSData *data = [NSData dataWithContentsOfURL:url];
-      [self cameraExposureDone:camera data:data];
+			[self cameraExposureDone:camera data:data filename:name];
       [NSFileManager.defaultManager removeItemAtURL:url error:nil];
       return;
     }

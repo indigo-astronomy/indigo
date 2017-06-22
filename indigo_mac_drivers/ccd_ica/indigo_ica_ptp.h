@@ -939,7 +939,7 @@ typedef unsigned short PTPDataTypeCode;
 @interface PTPDelegate : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate>
 - (void)cameraAdded:(ICCameraDevice*)camera;
 - (void)cameraConnected:(ICCameraDevice*)camera;
-- (void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data;
+- (void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data filename:(NSString *)filename;
 - (void)cameraExposureFailed:(ICCameraDevice*)camera;
 - (void)cameraExposureProgramChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly;
 - (void)cameraApertureChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly;
