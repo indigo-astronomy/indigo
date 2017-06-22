@@ -1137,7 +1137,7 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 
 		dsi->pixel_size_x     = 9.6;
 		dsi->pixel_size_y     = 7.5;
-		strncpy(dsi->bayer_pattern,"CYMG", DSI_BAYER_LEN);
+		strncpy(dsi->bayer_pattern,"MCGY", DSI_BAYER_LEN);
 
 	} else if (strncmp(dsi->chip_name, "ICX429A", 7) == 0) {
 		/* DSI Pro/Color II.
@@ -1165,7 +1165,7 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		dsi->is_interlaced    = 1;
 
 		if (strncmp(dsi->chip_name, "ICX429AK", 8) == 0)
-			strncpy(dsi->bayer_pattern,"CYMG", DSI_BAYER_LEN);
+			strncpy(dsi->bayer_pattern,"MCGY", DSI_BAYER_LEN);
 		else /* ICX429ALL */
 			dsi->bayer_pattern[0] = '\0';
 
