@@ -46,11 +46,11 @@ struct DSI_CAMERA {
 	int image_height;
 	int image_offset_x;
 	int image_offset_y;
-	int is_color;
 	int has_temperature_sensor;
 	int is_binnable;
 	int is_interlaced;
 	int little_endian_data;
+	char bayer_pattern[DSI_BAYER_LEN];
 
 	double pixel_size_x;
 	double pixel_size_y;
@@ -333,6 +333,9 @@ const char *dsicmd_lookup_usb_speed_r(enum DSI_USB_SPEED speed, char *buffer, in
 			break;
 		case DSI_USB_SPEED_HIGH:
 			bufptr = "DSI_USB_SPEED_HIGH";
+			break;
+		case DSI_USB_SPEED_INVALID:
+			bufptr = "DSI_USB_SPEED_INVALID";
 			break;
 	}
 	if (bufptr != 0) {
@@ -737,11 +740,11 @@ static int dsicmd_usb_command(dsi_camera_t *dsi, unsigned char *ibuf, int ibuf_l
 	}
 
 	int actual_length;
-	retcode = libusb_bulk_transfer(dsi->handle, 0x01, (char *) ibuf, ibuf[0], &actual_length, dsi->write_command_timeout);
+	retcode = libusb_bulk_transfer(dsi->handle, 0x01, (unsigned char *) ibuf, ibuf[0], &actual_length, dsi->write_command_timeout);
 	if (retcode < 0)
 		return retcode;
 
-	retcode = libusb_bulk_transfer(dsi->handle, 0x81, obuf, obuf_size, &actual_length, dsi->read_command_timeout);
+	retcode = libusb_bulk_transfer(dsi->handle, 0x81, (unsigned char *)obuf, obuf_size, &actual_length, dsi->read_command_timeout);
 	if (retcode < 0)
 		return retcode;
 
@@ -781,7 +784,7 @@ static int dsicmd_reset_camera(dsi_camera_t *dsi) {
 }
 
 static int dsicmd_set_exposure_time(dsi_camera_t *dsi, int ticks) {
-	/* FIXME: check time for validity */
+	if (ticks <= 0) ticks = 1;
 	dsi->exposure_time = ticks;
 	return dsicmd_command_2(dsi, SET_EXP_TIME, ticks);
 }
@@ -927,17 +930,17 @@ static int dsicmd_set_eeprom_data(dsi_camera_t *dsi, char *buffer, int start, in
 
 static void dsicmd_get_eeprom_string(dsi_camera_t *dsi, unsigned char *buffer, int start, int length) {
 	int i;
-	dsicmd_get_eeprom_data(dsi, buffer, start, length);
+	dsicmd_get_eeprom_data(dsi, (char *)buffer, start, length);
 	if ((buffer[0] == 0xff) || (buffer[1] == 0xff) || (buffer[2] == 0xff)) {
-		strncpy(buffer, "None", length);
+		strncpy((char *)buffer, "None", length);
 	} else {
-		for (i = 0; i < length-1; i++) buffer[i] = buffer[i+1];
-		buffer[length-1] = '\0';
-	}
-	for (i = 0; i < length; i++) {
-		if (buffer[i] == 0xff) {
-			buffer[i] = '\0';
-			break;
+		for (i = 0; i < length-1; i++) {
+			if (!isprint(buffer[i+1])) {
+				/* some camera use GS as delimiter stop at any nonprinable character */
+				buffer[i] = '\0';
+				break;
+			}
+			buffer[i] = buffer[i+1];
 		}
 	}
 }
@@ -990,7 +993,7 @@ int dsicmd_get_version(dsi_camera_t *dsi) {
 }
 
 static void dsicmd_load_status(dsi_camera_t *dsi) {
-	if ((dsi->usb_speed == -1) || (dsi->fw_debug == -1)) {
+	if ((dsi->usb_speed == DSI_USB_SPEED_INVALID) || (dsi->fw_debug == DSI_FW_DEBUG_INVALID)) {
 		int result = dsicmd_command_1(dsi, GET_STATUS);
 		int usb_speed = (result & 0x0ff);
 		int fw_debug  = ((result << 8) & 0x0ff);
@@ -1046,10 +1049,11 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 	dsi->exposure_time    = 10;
 
 	dsi->version.value = -1;
-	dsi->fw_debug  = -1;
-	dsi->usb_speed = -1;
+	dsi->fw_debug  = DSI_FW_DEBUG_INVALID;
+	dsi->usb_speed = DSI_USB_SPEED_INVALID;
 
 	dsi->little_endian_data = 1;
+	dsi->bayer_pattern[0] = '\0';
 
 	if (!dsi->is_simulation) {
 		dsicmd_command_1(dsi, PING);
@@ -1069,7 +1073,9 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 
 	/* You would think these could be found by asking the camera, but I can't
 	   find an example of it happening. */
-	if (strcmp(dsi->chip_name, "ICX254AL") == 0) {
+
+	/* IMPORTANT: Compare only 7 or 8 characters as the rest may vary */
+	if (strncmp(dsi->chip_name, "ICX254AL", 8) == 0) {
 		/* DSI Pro I.
 		 * Sony reports the following information:
 		 * Effective pixels: 510 x 492
@@ -1099,14 +1105,14 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		dsi->image_offset_y   = 13;
 
 		dsi->is_binnable      = 0;
-		dsi->is_color         = 0;
 		dsi->is_interlaced    = 1;
 		dsi->has_temperature_sensor = 0;
 
 		dsi->pixel_size_x     = 9.6;
 		dsi->pixel_size_y     = 7.5;
+		dsi->bayer_pattern[0] = '\0';
 
-	} else if (strcmp(dsi->chip_name, "ICX404AK") == 0) {
+	} else if (strncmp(dsi->chip_name, "ICX404AK", 8) == 0) {
 		/* DSI Color I.
 		 * Sony reports the following information:
 		 * Effective pixels: 510 x 492
@@ -1124,15 +1130,16 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		dsi->image_height     = 488;
 		dsi->image_offset_x   = 23;
 		dsi->image_offset_y   = 17;
+
 		dsi->is_binnable      = 0;
-		dsi->is_color         = 1;
 		dsi->is_interlaced    = 1;
 		dsi->has_temperature_sensor = 0;
 
 		dsi->pixel_size_x     = 9.6;
 		dsi->pixel_size_y     = 7.5;
+		strncpy(dsi->bayer_pattern,"CYMG", DSI_BAYER_LEN);
 
-	} else if (strncmp(dsi->chip_name, "ICX429", 6) == 0) {
+	} else if (strncmp(dsi->chip_name, "ICX429A", 7) == 0) {
 		/* DSI Pro/Color II.
 		 * Sony reports the following information:
 		 * Effective pixels: 752 x 582
@@ -1157,10 +1164,10 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		dsi->has_temperature_sensor = 1;
 		dsi->is_interlaced    = 1;
 
-		if (strcmp(dsi->chip_name, "ICX429AKL") == 0)
-			dsi->is_color = 1;
+		if (strncmp(dsi->chip_name, "ICX429AK", 8) == 0)
+			strncpy(dsi->bayer_pattern,"CYMG", DSI_BAYER_LEN);
 		else /* ICX429ALL */
-			dsi->is_color = 0;
+			dsi->bayer_pattern[0] = '\0';
 
 		/* FIXME: Don't know if these are B&W specific or not. */
 		dsicmd_command_2(dsi, SET_ROW_COUNT_EVEN, dsi->read_height_even);
@@ -1168,14 +1175,13 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		dsicmd_command_2(dsi, AD_WRITE,  88);
 		dsicmd_command_2(dsi, AD_WRITE, 704);
 
-	} else if (strncmp(dsi->chip_name, "ICX285AL", 8) == 0) {
-		/* DSI Pro III.
+	} else if (strncmp(dsi->chip_name, "ICX285A", 7) == 0) {
+		/* DSI Pro/Color III.
 		 * Sony reports the following information:
 		 * Effective pixels: 1360 x 1024
 		 * Total pixels:     1434 x 1050
 		 */
 
-		dsi->is_color         = 0;
 		dsi->is_interlaced    = 0;
 		dsi->read_width       = 1434;
 		dsi->read_height_even = 0;
@@ -1189,6 +1195,16 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		dsi->pixel_size_x     = 6.45;
 		dsi->pixel_size_y     = 6.45;
 		dsi->has_temperature_sensor = 1;
+
+		if (strncmp(dsi->chip_name, "ICX285AQ", 8) == 0)
+			strncpy(dsi->bayer_pattern,"RGGB", DSI_BAYER_LEN);
+		else /* ICX285AL */
+			dsi->bayer_pattern[0] = '\0';
+
+		dsicmd_command_2(dsi, SET_ROW_COUNT_EVEN, dsi->read_height_even);
+		dsicmd_command_2(dsi, SET_ROW_COUNT_ODD,  dsi->read_height_odd);
+		dsicmd_command_2(dsi, AD_WRITE, 216);
+		dsicmd_command_2(dsi, AD_WRITE, 704);
 
 	} else {
 		/* Die, camera not supported. */
@@ -1214,7 +1230,7 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 	dsi->amp_offset_pct =  50;
 
 	dsi->imaging_state = DSI_IMAGE_IDLE;
-
+	dsicmd_command_1(dsi, RESET);
 	return dsi;
 }
 
@@ -1299,6 +1315,7 @@ static void dsicmd_init_usb_device(dsi_camera_t *dsi) {
 	assert(libusb_clear_halt(dsi->handle, 0x02) >= 0);
 	assert(libusb_clear_halt(dsi->handle, 0x04) >= 0);
 	assert(libusb_clear_halt(dsi->handle, 0x88) >= 0);
+
 }
 
 
@@ -1435,7 +1452,7 @@ double dsi_get_temperature(dsi_camera_t *dsi) {
 const char *dsi_get_chip_name(dsi_camera_t *dsi) {
 	if (dsi->chip_name[0] == 0) {
 		memset(dsi->chip_name, 0, 21);
-		dsicmd_get_eeprom_string(dsi, dsi->chip_name, 8, 20);
+		dsicmd_get_eeprom_string(dsi, (unsigned char *)dsi->chip_name, 8, 20);
 	}
 	return dsi->chip_name;
 }
@@ -1444,27 +1461,34 @@ const char *dsi_get_model_name(dsi_camera_t *dsi) {
 	if (dsi->model_name[0] == 0) {
 		memset(dsi->chip_name, 0, DSI_NAME_LEN);
 		dsi_get_chip_name(dsi);
-		if (!strncmp(dsi->chip_name, "ICX254AL", DSI_NAME_LEN)) {
+		/* IMPORTANT: compare only 8 characters as the 9th may vary */
+		if (!strncmp(dsi->chip_name, "ICX254AL", 8)) {
 			strncpy(dsi->model_name, "DSI Pro", DSI_NAME_LEN);
-		} else if (!strncmp(dsi->chip_name, "ICX429ALL", DSI_NAME_LEN)) {
+		} else if (!strncmp(dsi->chip_name, "ICX429ALL", 8)) {
 			strncpy(dsi->model_name, "DSI Pro II", DSI_NAME_LEN);
-		} else if (!strncmp(dsi->chip_name, "ICX429AKL", DSI_NAME_LEN)) {
+		} else if (!strncmp(dsi->chip_name, "ICX429AKL", 8)) {
 			strncpy(dsi->model_name, "DSI Color II", DSI_NAME_LEN);
-		} else if (!strncmp(dsi->chip_name, "ICX404AK", DSI_NAME_LEN)) {
+		} else if (!strncmp(dsi->chip_name, "ICX404AK", 8)) {
 			strncpy(dsi->model_name, "DSI Color", DSI_NAME_LEN);
-		} else if (!strncmp(dsi->chip_name, "ICX285AL", DSI_NAME_LEN)) {
-		   strncpy(dsi->model_name, "DSI Pro III", DSI_NAME_LEN);
+		} else if (!strncmp(dsi->chip_name, "ICX285AL", 8)) {
+			strncpy(dsi->model_name, "DSI Pro III", DSI_NAME_LEN);
+		} else if (!strncmp(dsi->chip_name, "ICX285AQ", 8)) {
+			strncpy(dsi->model_name, "DSI Color III", DSI_NAME_LEN);
 		} else {
-		   strncpy(dsi->model_name, "DSI Unknown", DSI_NAME_LEN);
+			strncpy(dsi->model_name, "DSI Unknown", DSI_NAME_LEN);
 		}
 	}
 	return dsi->model_name;
 }
 
+const char *dsi_get_bayer_pattern(dsi_camera_t *dsi) {
+	return dsi->bayer_pattern;
+}
+
 const char *dsi_get_camera_name(dsi_camera_t *dsi) {
 	if (dsi->camera_name[0] == 0) {
 		memset(dsi->camera_name, 0, DSI_NAME_LEN);
-		dsicmd_get_eeprom_string(dsi, dsi->camera_name, 0x1c, 0x20);
+		dsicmd_get_eeprom_string(dsi, (unsigned char*)dsi->camera_name, 0x1c, 0x20);
 	}
 	return dsi->camera_name;
 }
@@ -1503,7 +1527,7 @@ const char *dsi_get_serial_number(dsi_camera_t *dsi) {
 }
 
 int dsi_get_identifier(libusb_device *device, char *identifier) {
-	char data[11];
+	uint8_t data[11];
 	int i;
 	data[0]=libusb_get_bus_number(device);
 	/* port munbers will fit in data[] as max(n)=7 */
@@ -1528,9 +1552,7 @@ static int dsicmd_write_firmware(libusb_device_handle *handle) {
 		length = (*pnt++) & 0xFF;
 		address = (*pnt++) & 0xFF;
 		address = (address  << 8)| ((*pnt++) & 0xFF);
-		pnt++;
 		rc = libusb_control_transfer(handle, LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, 0xA0, address, 0, pnt, length, 3000);
-		pnt++;
 		pnt += length;
 	}
 	if (rc >= 0) {
@@ -1643,17 +1665,24 @@ dsi_camera_t *dsi_open_camera(const char *identifier) {
 	dsicmd_init_usb_device(dsi);
 	dsicmd_init_dsi(dsi);
 
-	dsi_start_exposure(dsi, 0.1);
+	dsi_start_exposure(dsi, 0.0001);
 	dsi_read_image(dsi, 0, 0);
-	dsi_start_exposure(dsi, 0.1);
-	dsi_read_image(dsi, 0, 0);
-	dsi_start_exposure(dsi, 0.1);
-	dsi_read_image(dsi, 0, 0);
+//	dsi_start_exposure(dsi, 0.0001);
+//	dsi_read_image(dsi, 0, 0);
+//	dsi_start_exposure(dsi, 0.1);
+//	dsi_read_image(dsi, 0, 0);
 
 	return dsi;
 }
 
 void dsi_close_camera(dsi_camera_t *dsi) {
+	/* Next is guesswork but seems to work! */
+	if(dsi->is_interlaced) {
+		dsicmd_command_1(dsi, RESET);
+	}
+	dsicmd_command_1(dsi, PING);
+	dsicmd_command_1(dsi, RESET);
+
 	assert(libusb_release_interface(dsi->handle, 0) >= 0);
 	libusb_close(dsi->handle);
 	if (dsi->read_buffer_odd) free(dsi->read_buffer_odd);
@@ -1729,6 +1758,8 @@ int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 	}
 
 	if (dsi->is_interlaced) {
+		dsicmd_set_gain(dsi, 0);
+		dsicmd_set_offset(dsi, 0);
 		dsicmd_set_exposure_time(dsi, exposure_ticks);
 		if (exposure_ticks < 10000) {
 			dsicmd_set_readout_speed(dsi, DSI_READOUT_SPEED_HIGH);
@@ -1753,12 +1784,13 @@ int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 		dsicmd_set_readout_delay(dsi, 4);
 		if (exposure_ticks < 10000) {
 			dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_DUAL);
+			dsicmd_get_readout_mode(dsi);
 			dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_ON);
 		} else {
 			dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_SINGLE);
+			dsicmd_get_readout_mode(dsi);
 			dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_OFF);
 		}
-		dsicmd_get_readout_mode(dsi);
 		//FIXME! should take vdd_mode in to account
 		//if ((dsi->vdd_mode) || (dsi->exposure_time < VDD_TRH)) {
 		//	dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_ON);
@@ -1775,6 +1807,10 @@ int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 
 	dsi->imaging_state = DSI_IMAGE_EXPOSING;
 	return 0;
+}
+
+double dsi_get_exposure_time_left(dsi_camera_t *dsi) {
+	return dsicmd_get_exposure_time_left(dsi) / 10000.0;
 }
 
 int dsi_abort_exposure(dsi_camera_t *dsi) {
@@ -1838,10 +1874,9 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
 					fprintf(stderr, "non-blocking requested, returning now\n");
 				return EWOULDBLOCK;
 			}
-			// usleep(100 * (ticks_left - dsi->read_image_timeout) + 100);
 			if (dsi->log_commands)
-				fprintf(stderr, "sleeping 1.005 sec\n");
-			usleep(1005000);
+				fprintf(stderr, "sleeping for %.4fs\n", ticks_left / 10000.0);
+			usleep(100 * ticks_left);
 			ticks_left = dsicmd_get_exposure_time_left(dsi);
 		}
 		/*    if (ticks_left < 0) {
@@ -1859,7 +1894,7 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
 		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_even, read_size_even, &actual_length,
 							   3 * dsi->read_image_timeout);
 		if (dsi->log_commands)
-			dsi_log_command_info(dsi, 1, "r 86", read_size_even, dsi->read_buffer_even, 0);
+			dsi_log_command_info(dsi, 1, "r 86", read_size_even, (char *)dsi->read_buffer_even, 0);
 		if (status < 0) {
 			//fprintf(stderr, "libusb_bulk_transfer(%p, 0x86, %p, %d, %d) (even) -> returned %d\n",
 			//		dsi->handle, dsi->read_buffer_even, read_size_even, 2*dsi->read_image_timeout, status);
@@ -1871,7 +1906,7 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
 		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_odd, read_size_odd, &actual_length,
 							   3 * dsi->read_image_timeout);
 		if (dsi->log_commands)
-			dsi_log_command_info(dsi, 1, "r 86", read_size_odd, dsi->read_buffer_odd, 0);
+			dsi_log_command_info(dsi, 1, "r 86", read_size_odd, (char *)dsi->read_buffer_odd, 0);
 		if (status < 0) {
 			//fprintf(stderr, "libusb_bulk_transfer(%p, 0x86, %p, %d, %d) (odd) -> returned %d\n",
 			//		dsi->handle, dsi->read_buffer_odd, read_size_odd, 2*dsi->read_image_timeout, status);
@@ -1879,7 +1914,7 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
 			return EIO;
 		}
 	} else { /* Non interlaced -> DSI III */
-		int exposure_ticks = dsi->exposure_time * 1000;
+		int exposure_ticks = dsi->exposure_time * 10000;
 		if (exposure_ticks >= 10000) {
 			dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_ON);
 		}
@@ -1887,7 +1922,7 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
 		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_odd, read_size_odd, &actual_length,
 							   3 * dsi->read_image_timeout);
 		if (dsi->log_commands)
-			dsi_log_command_info(dsi, 1, "r 86", read_size_odd, dsi->read_buffer_odd, 0);
+			dsi_log_command_info(dsi, 1, "r 86", read_size_odd, (char *)dsi->read_buffer_odd, 0);
 		if (status < 0) {
 			//fprintf(stderr, "libusb_bulk_transfer(%p, 0x86, %p, %d, %d) (odd) -> returned %d\n",
 			//		dsi->handle, dsi->read_buffer_odd, read_size_odd, 2*dsi->read_image_timeout, status);
