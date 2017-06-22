@@ -819,6 +819,7 @@ typedef unsigned short PTPDataTypeCode;
 
 #define PTP_DEVICE_INFO @"PTP_DEVICE_INFO"
 #define PTP_EVENT_TIMER @"PTP_EVENT_TIMER"
+#define PTP_PROPERTY		@"PTP_PROPERTY_0x%04x"
 
 //---------------------------------------------------------------------------------------------------------- PTPOperationRequest
 
@@ -880,7 +881,7 @@ typedef unsigned short PTPDataTypeCode;
 @property PTPVendorExtension vendorExtension;
 @property PTPPropertyCode propertyCode;
 @property PTPDataTypeCode type;
-@property BOOL writable;
+@property BOOL readOnly;
 @property NSObject* defaultValue;
 @property NSObject* value;
 @property NSObject* min;
@@ -915,6 +916,13 @@ typedef unsigned short PTPDataTypeCode;
 
 @end
 
+//------------------------------------------------------------------------------------------------------------------------------
+
+@interface NSObject(PTPExtensions)
+
+-(NSString *)hexString;
+
+@end
 
 //------------------------------------------------------------------------------------------------------------------------------
 
@@ -925,12 +933,7 @@ typedef unsigned short PTPDataTypeCode;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
 
--(void)setAperture:(NSObject *)value;
--(void)setShutter:(NSObject *)value;
--(void)setImageSize:(NSObject *)value;
--(void)setCompression:(NSObject *)value;
--(void)setWhiteBalance:(NSObject *)value;
--(void)setISO:(NSObject *)value;
+-(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 
 @end
 
@@ -941,14 +944,8 @@ typedef unsigned short PTPDataTypeCode;
 - (void)cameraConnected:(ICCameraDevice*)camera;
 - (void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data filename:(NSString *)filename;
 - (void)cameraExposureFailed:(ICCameraDevice*)camera;
-- (void)cameraExposureProgramChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly;
-- (void)cameraApertureChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly;
-- (void)cameraShutterChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly;
-- (void)cameraImageSizeChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly;
-- (void)cameraCompressionChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly;
-- (void)cameraWhiteBalanceChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly;
-- (void)cameraISOChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly;
 
+- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value supportedValues:(NSDictionary<NSString *, NSString *> *)supportedValues readOnly:(BOOL)readOnly;
 
 - (void)cameraDisconnected:(ICCameraDevice*)camera;
 - (void)cameraRemoved:(ICCameraDevice*)camera;

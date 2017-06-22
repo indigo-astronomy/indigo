@@ -499,7 +499,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     unsigned char* buf = buffer;
     _propertyCode = ptpReadUnsignedShort(&buf);
     _type = ptpReadUnsignedShort(&buf);
-    _writable = ptpReadUnsignedChar(&buf);
+    _readOnly = !ptpReadUnsignedChar(&buf);
     _defaultValue = ptpReadValue(_type, &buf);
     if (buf - buffer < dataLength) {
       _value = ptpReadValue(_type, &buf);
@@ -527,32 +527,8 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return self;
 }
 
-- (BOOL)isRedefinedFrom:(PTPProperty *)other {
-  if (_type != other.type)
-    return true;
-  if (_writable != other.writable)
-    return true;
-  if ((_min == nil && other.min != nil) || (_min != nil && other.min == nil))
-    return true;
-  if (_min && [_min isNotEqualTo:other.min])
-    return true;
-  if ((_max == nil && other.max != nil) || (_max != nil && other.max == nil))
-    return true;
-  if (_max && [_max isNotEqualTo:other.max])
-    return true;
-  if ((_step == nil && other.step != nil) || (_step != nil && other.step == nil))
-    return true;
-  if (_step && [_step isNotEqualTo:other.step])
-    return true;
-  if ((_supportedValues == nil && other.supportedValues != nil) || (_supportedValues != nil && other.supportedValues == nil))
-    return true;
-  if (_supportedValues && ![_supportedValues isEqualToArray:other.supportedValues])
-    return true;
-  return false;
-}
-
 - (NSString*)description {
-  NSMutableString* s = [NSMutableString stringWithFormat:@"%@ 0x%04x 0x%04x %@", [self class], _propertyCode, _type, _writable ? @"rw" : @"ro"];
+  NSMutableString* s = [NSMutableString stringWithFormat:@"%@ 0x%04x 0x%04x %@", [self class], _propertyCode, _type, _readOnly ? @"ro" : @"rw"];
   if (_min)
     [s appendFormat:@", min = %@", _min];
   if (_max)
@@ -646,6 +622,16 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     [s appendFormat:@", %04x", [_propertiesSupported objectAtIndex:i].unsignedShortValue];
   [s appendString:@"]\n"];
   return s;
+}
+
+@end
+
+//------------------------------------------------------------------------------------------------------------------------------
+
+@implementation NSObject(PTPExtensions)
+
+-(NSString *)hexString {
+	return [NSString stringWithFormat:@"%010lld", self.description.longLongValue];
 }
 
 @end
@@ -774,96 +760,97 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       case PTPOperationCodeGetDevicePropDesc: {
         PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
         PTPProperty *property = [[PTPProperty alloc] initWithData:data vendorExtension:info.vendorExtensionID];
+				self.userData[[NSString stringWithFormat:PTP_PROPERTY, property.propertyCode]] = property;
         switch (property.propertyCode) {
           case PTPPropertyCodeExposureProgramMode: {
             NSDictionary *labels = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority", @32784: @"Auto", @32785: @"Portrait", @32786: @"Landscape", @32787:@"Macro", @32788: @"Sport", @32789: @"Night portrait", @32790:@"Night landscape", @32791: @"Child", @32792: @"Scene", @32793: @"Effects" };
             NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
-            for (NSNumber *number in property.supportedValues) {
-              NSString *label = labels[number];
+            for (NSNumber *value in property.supportedValues) {
+              NSString *label = labels[value];
               if (label)
-                supportedValues[number] = labels[number];
+                supportedValues[value.hexString] = labels[value];
               else
-                supportedValues[number] = [NSString stringWithFormat:@"mode %@", number];
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"mode %@", value];
             }
-            [(PTPDelegate *)self.delegate cameraExposureProgramChanged:self value:property.value supportedValues:supportedValues readOnly:!property.writable];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeFNumber: {
             NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
-            for (NSNumber *number in property.supportedValues) {
-              supportedValues[number] = [NSString stringWithFormat:@"f/%g", number.intValue / 100.0];
+            for (NSNumber *value in property.supportedValues) {
+              supportedValues[value.hexString] = [NSString stringWithFormat:@"f/%g", value.intValue / 100.0];
             }
-            [(PTPDelegate *)self.delegate cameraApertureChanged:self value:property.value supportedValues:supportedValues readOnly:!property.writable];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeExposureTime: {
             NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
-            for (NSNumber *number in property.supportedValues) {
-              int value = number.intValue;
-              if (value == -1)
-                supportedValues[number] = [NSString stringWithFormat:@"Bulb"];
-              else if (value == 1)
-                supportedValues[number] = [NSString stringWithFormat:@"1/8000 s"];
-              else if (value == 3)
-                supportedValues[number] = [NSString stringWithFormat:@"1/3200 s"];
-              else if (value == 6)
-                supportedValues[number] = [NSString stringWithFormat:@"1/1600 s"];
-              else if (value == 12)
-                supportedValues[number] = [NSString stringWithFormat:@"1/800 s"];
-              else if (value == 15)
-                supportedValues[number] = [NSString stringWithFormat:@"1/640 s"];
-              else if (value == 80)
-                supportedValues[number] = [NSString stringWithFormat:@"1/125 s"];
-              else if (value < 100)
-                supportedValues[number] = [NSString stringWithFormat:@"1/%g s", round(1000.0 / number.intValue) * 10];
-              else if (value < 10000)
-                supportedValues[number] = [NSString stringWithFormat:@"1/%g s", round(10000.0 / number.intValue)];
+            for (NSNumber *value in property.supportedValues) {
+              int intValue = value.intValue;
+              if (intValue == -1)
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"Bulb"];
+              else if (intValue == 1)
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/8000 s"];
+              else if (intValue == 3)
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/3200 s"];
+              else if (intValue == 6)
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/1600 s"];
+              else if (intValue == 12)
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/800 s"];
+              else if (intValue == 15)
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/640 s"];
+              else if (intValue == 80)
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/125 s"];
+              else if (intValue < 100)
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/%g s", round(1000.0 / value.intValue) * 10];
+              else if (intValue < 10000)
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/%g s", round(10000.0 / value.intValue)];
               else
-                supportedValues[number] = [NSString stringWithFormat:@"%g s", number.intValue / 10000.0];
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"%g s", value.intValue / 10000.0];
             }
-            [(PTPDelegate *)self.delegate cameraShutterChanged:self value:property.value supportedValues:supportedValues readOnly:!property.writable];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeImageSize: {
             NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
-            for (NSString *string in property.supportedValues) {
-              supportedValues[string] = string;
+            for (NSString *value in property.supportedValues) {
+              supportedValues[value] = value;
             }
-            [(PTPDelegate *)self.delegate cameraImageSizeChanged:self value:property.value supportedValues:supportedValues readOnly:!property.writable];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description supportedValues:supportedValues readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeCompressionSetting: {
             NSDictionary *labels = @{ @0: @"JPEG Basic", @1: @"JPEG Norm", @2: @"JPEG Fine", @4: @"RAW", @5: @"RAW + JPEG Basic", @6: @"RAW + JPEG Norm", @7: @"RAW + JPEG Fine" };
             NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
-            for (NSNumber *number in property.supportedValues) {
-              NSString *label = labels[number];
+            for (NSNumber *value in property.supportedValues) {
+              NSString *label = labels[value];
               if (label)
-                supportedValues[number] = labels[number];
+                supportedValues[value.hexString] = labels[value];
               else
-                supportedValues[number] = [NSString stringWithFormat:@"compression %@", number];
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"compression %@", value];
             }
-            [(PTPDelegate *)self.delegate cameraCompressionChanged:self value:property.value supportedValues:supportedValues readOnly:!property.writable];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeWhiteBalance: {
             NSDictionary *labels = @{ @1: @"Manual", @2: @"Auto", @3: @"One-push Auto", @4: @"Daylight", @5: @"Fluorescent", @6: @"Incandescent", @7: @"Flash", @32784: @"Cloudy", @32785: @"Shade", @32786: @"Color Temperature", @32787: @"Preset" };
             NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
-            for (NSNumber *number in property.supportedValues) {
-              NSString *label = labels[number];
+            for (NSNumber *value in property.supportedValues) {
+              NSString *label = labels[value];
               if (label)
-                supportedValues[number] = labels[number];
+                supportedValues[value.hexString] = labels[value];
               else
-                supportedValues[number] = [NSString stringWithFormat:@"compression %@", number];
+                supportedValues[value.hexString] = [NSString stringWithFormat:@"compression %@", value];
             }
-            [(PTPDelegate *)self.delegate cameraWhiteBalanceChanged:self value:property.value supportedValues:supportedValues readOnly:!property.writable];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeExposureIndex: {
             NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
-            for (NSNumber *number in property.supportedValues) {
-              supportedValues[number] = [NSString stringWithFormat:@"%d", number.intValue];
+            for (NSNumber *value in property.supportedValues) {
+              supportedValues[value.hexString] = value.description;
             }
-            [(PTPDelegate *)self.delegate cameraISOChanged:self value:property.value supportedValues:supportedValues readOnly:!property.writable];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
             break;
           }
         }
@@ -895,52 +882,84 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return self.userData[PTP_DEVICE_INFO];
 }
 
--(void)setAperture:(NSObject *)value {
-  unsigned char *buffer = malloc(sizeof (unsigned short));
-  unsigned char *buf = buffer;
-  ptpWriteUnsignedShort(&buf, ((NSNumber *)value).unsignedShortValue);
-  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeFNumber withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
-  free(buffer);
-}
-
--(void)setShutter:(NSObject *)value {
-  unsigned char *buffer = malloc(sizeof (unsigned int));
-  unsigned char *buf = buffer;
-  ptpWriteUnsignedShort(&buf, ((NSNumber *)value).unsignedIntValue);
-  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeExposureTime withData:[NSData dataWithBytes:buffer length:sizeof (unsigned int)]];
-  free(buffer);
-}
-
--(void)setImageSize:(NSObject *)value {
-  unsigned char *buffer = malloc(256);
-  unsigned char *buf = buffer;
-  int length = ptpWriteString(&buf, value.description);
-  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeImageSize withData:[NSData dataWithBytes:buffer length:length]];
-  free(buffer);
-}
-
--(void)setCompression:(NSObject *)value {
-  unsigned char *buffer = malloc(sizeof (unsigned char));
-  unsigned char *buf = buffer;
-  ptpWriteUnsignedChar(&buf, ((NSNumber *)value).unsignedCharValue);
-  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeCompressionSetting withData:[NSData dataWithBytes:buffer length:sizeof (unsigned char)]];
-  free(buffer);
-}
-
--(void)setWhiteBalance:(NSObject *)value {
-  unsigned char *buffer = malloc(sizeof (unsigned short));
-  unsigned char *buf = buffer;
-  ptpWriteUnsignedShort(&buf, ((NSNumber *)value).unsignedShortValue);
-  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeWhiteBalance withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
-  free(buffer);
-}
-
--(void)setISO:(NSObject *)value {
-  unsigned char *buffer = malloc(sizeof (unsigned short));
-  unsigned char *buf = buffer;
-  ptpWriteUnsignedShort(&buf, ((NSNumber *)value).unsignedShortValue);
-  [self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:PTPPropertyCodeExposureIndex withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
-  free(buffer);
+-(void)setProperty:(PTPPropertyCode)code value:(NSString *)value {
+	PTPProperty *property = self.userData[[NSString stringWithFormat:PTP_PROPERTY, code]];
+	if (property) {
+		switch (property.type) {
+			case PTPDataTypeCodeSInt8: {
+				unsigned char *buffer = malloc(sizeof (char));
+				unsigned char *buf = buffer;
+				ptpWriteChar(&buf, (char)value.longLongValue);
+				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (char)]];
+				free(buffer);
+				break;
+			}
+			case PTPDataTypeCodeUInt8: {
+				unsigned char *buffer = malloc(sizeof (unsigned char));
+				unsigned char *buf = buffer;
+				ptpWriteUnsignedChar(&buf, (unsigned char)value.longLongValue);
+				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned char)]];
+				free(buffer);
+				break;
+			}
+			case PTPDataTypeCodeSInt16: {
+				unsigned char *buffer = malloc(sizeof (short));
+				unsigned char *buf = buffer;
+				ptpWriteShort(&buf, (short)value.longLongValue);
+				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (short)]];
+				free(buffer);
+				break;
+			}
+			case PTPDataTypeCodeUInt16: {
+				unsigned char *buffer = malloc(sizeof (unsigned short));
+				unsigned char *buf = buffer;
+				ptpWriteUnsignedShort(&buf, (unsigned short)value.longLongValue);
+				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
+				free(buffer);
+				break;
+			}
+			case PTPDataTypeCodeSInt32: {
+				unsigned char *buffer = malloc(sizeof (int));
+				unsigned char *buf = buffer;
+				ptpWriteInt(&buf, (int)value.longLongValue);
+				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (int)]];
+				free(buffer);
+				break;
+			}
+			case PTPDataTypeCodeUInt32: {
+				unsigned char *buffer = malloc(sizeof (unsigned int));
+				unsigned char *buf = buffer;
+				ptpWriteUnsignedInt(&buf, (unsigned int)value.longLongValue);
+				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned int)]];
+				free(buffer);
+				break;
+			}
+			case PTPDataTypeCodeSInt64: {
+				unsigned char *buffer = malloc(sizeof (long));
+				unsigned char *buf = buffer;
+				ptpWriteLong(&buf, (long)value.longLongValue);
+				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (long)]];
+				free(buffer);
+				break;
+			}
+			case PTPDataTypeCodeUInt64: {
+				unsigned char *buffer = malloc(sizeof (unsigned long));
+				unsigned char *buf = buffer;
+				ptpWriteUnsignedLong(&buf, (unsigned long)value.longLongValue);
+				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned long)]];
+				free(buffer);
+				break;
+			}
+			case PTPDataTypeCodeUnicodeString: {
+				unsigned char *buffer = malloc(256);
+				unsigned char *buf = buffer;
+				int length = ptpWriteString(&buf, value);
+				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:length]];
+				free(buffer);
+				break;
+			}
+		}
+	}
 }
 
 -(void)sendPTPRequest:(PTPOperationCode)operationCode {
