@@ -263,7 +263,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
   } else if (indigo_property_match(DSLR_IMAGE_SIZE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_IMAGE_SIZE
-		[camera setImageSize:process_dslr_property(device, DSLR_IMAGE_SIZE_PROPERTY, property, false)];
+		[camera setImageSize:process_dslr_property(device, DSLR_IMAGE_SIZE_PROPERTY, property, true)];
 		return INDIGO_OK;
   } else if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_COMPRESSION
@@ -401,7 +401,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 - (void)cameraCompressionChanged:(ICCameraDevice *)camera value:(NSObject *)value supportedValues:(NSDictionary *)supportedValues readOnly:(BOOL)readOnly {
   indigo_device *device = [camera.userData[DEVICE] pointerValue];
-	if ([value.description containsString:@"RAW"]) {
+	if (((NSNumber *)value).unsignedShortValue >= 4) {
 		if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
 			indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_RAW_ITEM, true);
 			indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);

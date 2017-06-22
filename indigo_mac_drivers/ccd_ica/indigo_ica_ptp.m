@@ -262,11 +262,11 @@ static NSString *ptpReadString(unsigned char** buf) {
 
 static unsigned char ptpWriteString(unsigned char **buf, NSString *value) {
   const char *cstr = [value cStringUsingEncoding:NSUnicodeStringEncoding];
-  unsigned int length = (unsigned int)value.length;
+  unsigned int length = (unsigned int)value.length + 1;
   if (length < 256) {
     **buf = length;
     memcpy(*buf + 1, cstr, 2 * length);
-    *buf = (*buf) + 2 * length + 1;
+		*buf = (*buf) + 2 * length + 1;
     return 2 * length + 1;
   }
   return -1;
@@ -721,7 +721,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 - (void)didSendPTPCommand:(NSData*)command inData:(NSData*)data response:(NSData*)response error:(NSError*)error contextInfo:(void*)contextInfo {
   PTPOperationRequest*  ptpRequest  = (__bridge PTPOperationRequest*)contextInfo;
   if (ptpRequest) {
-//    if (indigo_get_log_level() >= INDIGO_LOG_TRACE)
+    if (indigo_get_log_level() >= INDIGO_LOG_TRACE)
       NSLog(@"Completed %@", [ptpRequest description]);
     switch (ptpRequest.operationCode) {
       case PTPOperationCodeGetStorageIDs: {
@@ -752,7 +752,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     }
     if (ptpRequest.operationCode == PTPOperationCodeGetDevicePropDesc && ptpResponse.responseCode == PTPResponseCodeDevicePropNotSupported) {
       [(NSMutableDictionary *)info.propertiesSupported removeObjectForKey:[NSNumber numberWithUnsignedShort:ptpRequest.parameter1]];
-    } else //if (indigo_get_log_level() >= INDIGO_LOG_TRACE || ptpResponse.responseCode != PTPResponseCodeOK)
+    } else if (indigo_get_log_level() >= INDIGO_LOG_TRACE || ptpResponse.responseCode != PTPResponseCodeOK)
       NSLog(@"Received %@", [ptpResponse description]);
   }
   if (data) {
