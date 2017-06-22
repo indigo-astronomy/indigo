@@ -1301,6 +1301,9 @@ static void dsicmd_init_usb_device(dsi_camera_t *dsi) {
 	assert(libusb_set_configuration(dsi->handle, 1) >= 0);
 	assert(libusb_claim_interface(dsi->handle, 0) >= 0);
 
+	/* This seems to solve the connect issue after reconnect without close ot close after short exposure */
+	assert(libusb_reset_device(dsi->handle) >= 0);
+
 	/* This is included out of desperation, but it works :-|
 	 *
 	 * After running once, an attempt to run a second time appears, for some
@@ -1814,7 +1817,9 @@ double dsi_get_exposure_time_left(dsi_camera_t *dsi) {
 }
 
 int dsi_abort_exposure(dsi_camera_t *dsi) {
-	return dsicmd_abort_exposure(dsi);
+	int res = dsicmd_abort_exposure(dsi);
+	dsicmd_reset_camera(dsi);
+	return res;
 }
 
 int dsi_reset_camera(dsi_camera_t *dsi) {
