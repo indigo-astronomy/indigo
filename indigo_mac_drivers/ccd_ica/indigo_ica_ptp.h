@@ -817,14 +817,22 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-#define PTP_DEVICE_INFO @"PTP_DEVICE_INFO"
-#define PTP_EVENT_TIMER @"PTP_EVENT_TIMER"
-#define PTP_PROPERTY		@"PTP_PROPERTY_0x%04x"
+#define PTP_DEVICE_INFO			@"PTP_DEVICE_INFO"
+#define PTP_EVENT_TIMER			@"PTP_EVENT_TIMER"
+#define PTP_LIVE_VIEW_TIMER @"PTP_LIVE_VIEW_TIMER"
+#define PTP_PROPERTY				@"PTP_PROPERTY_0x%04x"
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-@interface PTPOperationRequest : NSObject
+@interface PTPVendor : NSObject
 @property PTPVendorExtension vendorExtension;
+- (id)initWithVendorExtension:(PTPVendorExtension)vendorExtension;
+@end
+
+
+//------------------------------------------------------------------------------------------------------------------------------
+
+@interface PTPOperationRequest : PTPVendor
 @property PTPOperationCode operationCode;
 @property unsigned short numberOfParameters;
 @property unsigned int parameter1;
@@ -838,8 +846,7 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-@interface PTPOperationResponse : NSObject
-@property PTPVendorExtension vendorExtension;
+@interface PTPOperationResponse : PTPVendor
 @property PTPResponseCode responseCode;
 @property unsigned int transactionID;
 @property unsigned short numberOfParameters;
@@ -853,8 +860,7 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-@interface PTPEvent : NSObject
-@property PTPVendorExtension vendorExtension;
+@interface PTPEvent : PTPVendor
 @property PTPEventCode eventCode;
 @property unsigned int transactionID;
 @property unsigned short numberOfParameters;
@@ -867,8 +873,7 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-@interface PTPProperty : NSObject
-@property PTPVendorExtension vendorExtension;
+@interface PTPProperty : PTPVendor
 @property PTPPropertyCode propertyCode;
 @property PTPDataTypeCode type;
 @property BOOL readOnly;
@@ -884,9 +889,8 @@ typedef unsigned short PTPDataTypeCode;
 
 //--------------------------------------------------------------------------------------------------------------------- PTPDeviceInfo
 
-@interface PTPDeviceInfo : NSObject
+@interface PTPDeviceInfo : PTPVendor
 @property unsigned short standardVersion;
-@property unsigned int vendorExtensionID;
 @property unsigned short vendorExtensionVersion;
 @property NSString *vendorExtensionDesc;
 @property unsigned short functionalMode;

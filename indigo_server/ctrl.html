@@ -642,7 +642,7 @@
 								var item = getItem(property, vector.items[i].name);
 								item.jpeg = false;
 								if (item != undefined) {
-									if (vector.items[i].value != undefined) {
+									if (vector.items[i].value != undefined && vector.state == 'Ok') {
 										item.value = vector.items[i].value + '?' + new Date().getTime();
 										item.jpeg = vector.items[i].value.substr(-5) === ".jpeg";
 									}
