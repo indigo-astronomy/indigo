@@ -709,7 +709,7 @@ static void process_unplug_event() {
 	}
 
 	if (!removed) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No QHY Camera unplugged!");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No DSI Camera unplugged!");
 	}
 }
 
@@ -749,7 +749,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			#ifdef __APPLE__
 				pthread_t plug_thread;
-				/* This is ugly hack but otherwise QHY5IIL does not work!!!
+				/* This is ugly hack but otherwise does not work!!!
 				   The camera does not respond in the hotpliug callback on MacOS,
 				   so the thread waits the callback to complete and initializes
 				   the camera.
@@ -765,7 +765,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			#ifdef __APPLE__
 				pthread_t unplug_thread;
-				/* This is ugly hack but otherwise QHY5IIL does not work!!!
+				/* This is ugly hack but otherwise does not work!!!
 				   See the note in LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED case.
 				*/
 				if (pthread_create(&unplug_thread, NULL, unplug_thread_func, NULL)) {
