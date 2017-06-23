@@ -532,7 +532,7 @@ $(BUILD_DRIVERS)/indigo_ccd_dsi.a: indigo_drivers/ccd_dsi/indigo_ccd_dsi.o indig
 $(BUILD_DRIVERS)/indigo_ccd_dsi: indigo_drivers/ccd_dsi/indigo_ccd_dsi_main.o $(BUILD_DRIVERS)/indigo_ccd_dsi.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_ccd_dsi.$(SOEXT): $(BUILD_DRIVERS)/indigo_ccd_dsi.a
+$(BUILD_DRIVERS)/indigo_ccd_dsi.$(SOEXT): indigo_drivers/ccd_dsi/indigo_ccd_dsi.o indigo_drivers/ccd_dsi/libdsi.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------

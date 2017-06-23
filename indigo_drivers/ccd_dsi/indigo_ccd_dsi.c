@@ -568,23 +568,23 @@ static bool find_plugged_device_sid(char *new_sid) {
 	int i;
 	char sid[DSI_ID_LEN] = {0};
 	bool found = false;
+	dsi_device_list dev_list;
 
-	int count = 0; //ScanQHYCCD();
+	int count = dsi_scan_usb(dev_list);
 	for(i = 0; i < count; i++) {
-		//GetQHYCCDId(i, sid);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME,"+ %d of %d: %s", i , count, sid);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME,"+ %d of %d: %s", i , count, dev_list[i]);
 		found = false;
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
 			if (device == NULL) continue;
-			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, sid, DSI_ID_LEN))) {
+			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, dev_list[i], DSI_ID_LEN))) {
 				found = true;
 				break;
 			}
 		}
 
 		if (!found) {
-			strncpy(new_sid, sid, DSI_ID_LEN);
+			strncpy(new_sid, dev_list[i], DSI_ID_LEN);
 			return true;
 		}
 	}
@@ -616,16 +616,16 @@ static int find_unplugged_device_slot() {
 	indigo_device *device;
 	char sid[DSI_ID_LEN] = {0};
 	bool found = true;
+	dsi_device_list dev_list;
 
-	int count = 0; //ScanQHYCCD();
+	int count = dsi_scan_usb(dev_list);
 	for(slot = 0; slot < MAX_DEVICES; slot++) {
 		device = devices[slot];
 		if (device == NULL) continue;
 		found = false;
 		for(int i = 0; i < count; i++) {
-			//GetQHYCCDId(i, sid);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"- %d of %d: %s", i , count, sid);
-			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, sid, DSI_ID_LEN))) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"- %d of %d: %s", i , count, dev_list[i]);
+			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, dev_list[i], DSI_ID_LEN))) {
 				found = true;
 				break;
 			}
@@ -659,25 +659,20 @@ static void process_plug_event() {
 		return;
 	}
 
-	char dev_usbpath[DSI_ID_LEN];
-	char dev_name[DSI_ID_LEN];
-	//GetQHYCCDModel(sid, dev_name);
-
-	/* Check if there is a guider port and get usbpath */
-	//qhyccd_handle *handle;
-	//handle = OpenQHYCCD(sid);
-	//if(handle == NULL) {
-	//	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
-	//	return;
-	//}
-	//int check_st4 = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
-	//get_usb_path_str(handle, dev_usbpath);
-	//CloseQHYCCD(handle);
+	char dev_name[DSI_NAME_LEN];
+	dsi_camera_t *dsi;
+	dsi = dsi_open_camera(sid);
+	if(dsi == NULL) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
+		return;
+	}
+	strncpy(dev_name, dsi_get_model_name(dsi), DSI_NAME_LEN);
+	dsi_close_camera(dsi);
 
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
-	sprintf(device->name, "%s #%s", dev_name, dev_usbpath);
+	sprintf(device->name, "%s #%s", dev_name, sid);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 	dsi_private_data *private_data = (dsi_private_data*)malloc(sizeof(dsi_private_data));
 	assert(private_data);
@@ -708,7 +703,7 @@ static void process_unplug_event() {
 	}
 
 	if (private_data) {
-		//CloseQHYCCD(private_data->handle);
+		dsi_close_camera(private_data->dsi);
 		free(private_data);
 		private_data = NULL;
 	}
@@ -722,7 +717,7 @@ static void process_unplug_event() {
 #ifdef __APPLE__
 void *plug_thread_func(void *sid) {
 	pthread_mutex_lock(&device_mutex);
-	// load firmware
+	dsi_load_firmware();
 	process_plug_event();
 	pthread_mutex_unlock(&device_mutex);
 	pthread_exit(NULL);
