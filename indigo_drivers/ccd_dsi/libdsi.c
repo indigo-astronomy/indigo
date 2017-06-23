@@ -1586,7 +1586,6 @@ void dsi_load_firmware() {
 					rc = dsicmd_write_firmware(handle);
 					rc = libusb_release_interface(handle, 0);
 					libusb_close(handle);
-					sleep(3);
 				}
 			}
 		}
