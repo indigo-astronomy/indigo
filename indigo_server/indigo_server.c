@@ -270,7 +270,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		for (int i = 0; i < drivers_property->count; i++)
 			if (drivers_property->items[i].sw.value) {
 				indigo_available_drivers[i].initialized = indigo_available_drivers[i].driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
-			} else {
+			} else if (indigo_available_drivers[i].initialized) {
 				indigo_available_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
 				indigo_available_drivers[i].initialized = false;
 			}
