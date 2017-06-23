@@ -821,10 +821,9 @@ typedef unsigned short PTPDataTypeCode;
 #define PTP_EVENT_TIMER @"PTP_EVENT_TIMER"
 #define PTP_PROPERTY		@"PTP_PROPERTY_0x%04x"
 
-//---------------------------------------------------------------------------------------------------------- PTPOperationRequest
+//------------------------------------------------------------------------------------------------------------------------------
 
 @interface PTPOperationRequest : NSObject
-
 @property PTPVendorExtension vendorExtension;
 @property PTPOperationCode operationCode;
 @property unsigned short numberOfParameters;
@@ -833,16 +832,13 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter3;
 @property unsigned int parameter4;
 @property unsigned int parameter5;
-
 - (id)initWithVendorExtension:(PTPVendorExtension)vendorExtension;
 - (NSData*)commandBuffer;
-
 @end
 
-//--------------------------------------------------------------------------------------------------------- PTPOperationResponse
+//------------------------------------------------------------------------------------------------------------------------------
 
 @interface PTPOperationResponse : NSObject
-
 @property PTPVendorExtension vendorExtension;
 @property PTPResponseCode responseCode;
 @property unsigned int transactionID;
@@ -852,15 +848,12 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter3;
 @property unsigned int parameter4;
 @property unsigned int parameter5;
-
 - (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
-
 @end
 
-//--------------------------------------------------------------------------------------------------------------------- PTPEvent
+//------------------------------------------------------------------------------------------------------------------------------
 
 @interface PTPEvent : NSObject
-
 @property PTPVendorExtension vendorExtension;
 @property PTPEventCode eventCode;
 @property unsigned int transactionID;
@@ -868,16 +861,13 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter1;
 @property unsigned int parameter2;
 @property unsigned int parameter3;
-
 - (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
 - (id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1 vendorExtension:(PTPVendorExtension)vendorExtension;
-
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
 
 @interface PTPProperty : NSObject
-
 @property PTPVendorExtension vendorExtension;
 @property PTPPropertyCode propertyCode;
 @property PTPDataTypeCode type;
@@ -888,17 +878,13 @@ typedef unsigned short PTPDataTypeCode;
 @property NSObject* max;
 @property NSObject* step;
 @property NSArray<NSObject*> *supportedValues;
-
 - (id)initWithCode:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension;
 - (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
-- (BOOL)isRedefinedFrom:(PTPProperty *)other;
-
 @end
 
 //--------------------------------------------------------------------------------------------------------------------- PTPDeviceInfo
 
 @interface PTPDeviceInfo : NSObject
-
 @property unsigned short standardVersion;
 @property unsigned int vendorExtensionID;
 @property unsigned short vendorExtensionVersion;
@@ -911,47 +897,48 @@ typedef unsigned short PTPDataTypeCode;
 @property NSString *model;
 @property NSString *version;
 @property NSString *serial;
-
 - (id)initWithData:(NSData*)data;
+@end
 
+@interface PTPDeviceInfo(PTPDebug)
+- (NSString *)debug;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
 
 @interface NSObject(PTPExtensions)
-
 -(NSString *)hexString;
-
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
 
 @interface ICCameraDevice(PTPExtensions)
-
 -(PTPDeviceInfo *)ptpDeviceInfo;
-
 -(void)sendPTPRequest:(PTPOperationCode)operationCode;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
-
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
-
 -(void)startLiveView;
 -(void)stopLiveView;
+@end
 
+@interface ICCameraDevice(PTPDebug)
+- (void)dumpData:(void*)data length:(int)length comment:(NSString*)comment;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-@interface PTPDelegate : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate>
+@protocol PTPDelegateProtocol <NSObject>
+@optional
 - (void)cameraAdded:(ICCameraDevice*)camera;
 - (void)cameraConnected:(ICCameraDevice*)camera;
 - (void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data filename:(NSString *)filename;
 - (void)cameraExposureFailed:(ICCameraDevice*)camera;
-
 - (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value supportedValues:(NSDictionary<NSString *, NSString *> *)supportedValues readOnly:(BOOL)readOnly;
-
 - (void)cameraDisconnected:(ICCameraDevice*)camera;
 - (void)cameraRemoved:(ICCameraDevice*)camera;
+@end
+
+@interface PTPDelegate : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate, PTPDelegateProtocol>
 
 @end
 

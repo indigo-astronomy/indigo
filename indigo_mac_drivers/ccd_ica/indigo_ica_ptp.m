@@ -317,6 +317,14 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 
 @implementation PTPOperationRequest
 
+- (id)init {
+	self = [super init];
+	if (self) {
+		_numberOfParameters = 0;
+	}
+	return self;
+}
+
 - (id)initWithVendorExtension:(PTPVendorExtension)vendorExtension {
   self = [super init];
   if (self) {
@@ -344,30 +352,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   if (_numberOfParameters > 4)
     ptpWriteUnsignedInt(&buf, _parameter5);
   return [NSData dataWithBytesNoCopy:buffer length:len freeWhenDone:YES];
-}
-
-- (NSString*)description {
-  NSMutableString* s = [NSMutableString stringWithFormat:@"%@ 0x%04x params = [", [self class], _operationCode];
-  if (_numberOfParameters > 0)
-    [s appendFormat:@"0x%08X", _parameter1];
-  if (_numberOfParameters > 1)
-    [s appendFormat:@", 0x%08X", _parameter2];
-  if (_numberOfParameters > 2)
-    [s appendFormat:@", 0x%08X", _parameter3];
-  if (_numberOfParameters > 3)
-    [s appendFormat:@", 0x%08X", _parameter4];
-  if (_numberOfParameters > 4)
-    [s appendFormat:@", 0x%08X", _parameter5];
-  [s appendString:@"]"];
-  return s;
-}
-
-- (id)init {
-  self = [super init];
-  if (self) {
-    _numberOfParameters = 0;
-  }
-  return self;
 }
 
 @end
@@ -403,22 +387,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       _parameter5 = ptpReadUnsignedInt(&buf);
   }
   return self;
-}
-
-- (NSString*)description {
-  NSMutableString* s = [NSMutableString stringWithFormat:@"%@ 0x%04x params = [", [self class], _responseCode];
-  if (_numberOfParameters > 0)
-    [s appendFormat:@"0x%08X", _parameter1];
-  if (_numberOfParameters > 1)
-    [s appendFormat:@", 0x%08X", _parameter2];
-  if (_numberOfParameters > 2)
-    [s appendFormat:@", 0x%08X", _parameter3];
-  if (_numberOfParameters > 3)
-    [s appendFormat:@", 0x%08X", _parameter4];
-  if (_numberOfParameters > 4)
-    [s appendFormat:@", 0x%08X", _parameter5];
-  [s appendString:@"]"];
-  return s;
 }
 
 @end
@@ -461,18 +429,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     _vendorExtension = vendorExtension;
   }
   return self;
-}
-
-- (NSString*)description {
-  NSMutableString* s = [NSMutableString stringWithFormat:@"%@ 0x%04x params = [", [self class], _eventCode];
-  if (_numberOfParameters > 0)
-    [s appendFormat:@"0x%08X", _parameter1];
-  if (_numberOfParameters > 1)
-    [s appendFormat:@", 0x%08X", _parameter2];
-  if (_numberOfParameters > 2)
-    [s appendFormat:@", 0x%08X", _parameter3];
-  [s appendString:@"]"];
-  return s;
 }
 
 @end
@@ -525,25 +481,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     }
   }
   return self;
-}
-
-- (NSString*)description {
-  NSMutableString* s = [NSMutableString stringWithFormat:@"%@ 0x%04x 0x%04x %@", [self class], _propertyCode, _type, _readOnly ? @"ro" : @"rw"];
-  if (_min)
-    [s appendFormat:@", min = %@", _min];
-  if (_max)
-    [s appendFormat:@", max = %@", _max];
-  if (_step)
-    [s appendFormat:@", step = %@", _step];
-  if (_supportedValues) {
-    [s appendFormat:@", values = [%@", _supportedValues.firstObject];
-    for (int i = 1; i < _supportedValues.count; i++)
-      [s appendFormat:@", %@", [_supportedValues objectAtIndex:i]];
-    [s appendString:@"]"];
-  }
-  [s appendFormat:@", default = %@", _defaultValue];
-  [s appendFormat:@", value = %@", _value];
-  return s;
 }
 
 @end
@@ -603,27 +540,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return self;
 }
 
-- (NSString*)description {
-  NSMutableString* s = [NSMutableString stringWithFormat:@"%@ <%p>:\n", [self class], self];
-  [s appendFormat:@"Standard version: %.2f\n", _standardVersion / 100.0];
-  [s appendFormat:@"Vendor extension: 0x%08x (%.2f) '%@'\n", _vendorExtensionID, _vendorExtensionVersion / 100.0, _vendorExtensionDesc];
-  [s appendFormat:@"Functional mode:  0x%04x\n", _functionalMode];
-  [s appendFormat:@"Manufacturer:     %@\n", _manufacturer];
-  [s appendFormat:@"Model:            %@ %@\n", _model, _version];
-  [s appendFormat:@"Serial:           %@\n", _serial];
-  [s appendFormat:@"Operations:       [%04x", _operationsSupported.firstObject.unsignedShortValue];
-  for (int i = 1; i < _operationsSupported.count; i++)
-    [s appendFormat:@", %04x", [_operationsSupported objectAtIndex:i].unsignedShortValue];
-  [s appendFormat:@"]\nEvents:           [%04x", _eventsSupported.firstObject.unsignedShortValue];
-  for (int i = 1; i < _eventsSupported.count; i++)
-    [s appendFormat:@", %04x", [_eventsSupported objectAtIndex:i].unsignedShortValue];
-  [s appendFormat:@"]\nProperties:       [%04x", _propertiesSupported.firstObject.unsignedShortValue];
-  for (int i = 1; i < _propertiesSupported.count; i++)
-    [s appendFormat:@", %04x", [_propertiesSupported objectAtIndex:i].unsignedShortValue];
-  [s appendString:@"]\n"];
-  return s;
-}
-
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -639,57 +555,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 //------------------------------------------------------------------------------------------------------------------------------
 
 @implementation ICCameraDevice(PTPExtensions)
-
-- (void)dumpData:(void*)data length:(int)length comment:(NSString*)comment {
-  UInt32	i, j;
-  UInt8*  p;
-  char	fStr[80];
-  char*   fStrP = NULL;
-  NSMutableString*  s = [NSMutableString stringWithFormat:@"\n  %@ [%d bytes]:\n\n", comment, length];
-  p = (UInt8*)data;
-  for ( i = 0; i < length; i++ ) {
-    if ( (i % 16) == 0 ) {
-      fStrP = fStr;
-      fStrP += snprintf( fStrP, 10, "    %4X:", (unsigned int)i );
-    }
-    if ( (i % 4) == 0 )
-      fStrP += snprintf( fStrP, 2, " " );
-    fStrP += snprintf( fStrP, 3, "%02X", (UInt8)(*(p+i)) );
-    if ( (i % 16) == 15 ) {
-      fStrP += snprintf( fStrP, 2, " " );
-      for ( j = i-15; j <= i; j++ ) {
-        if ( *(p+j) < 32 || *(p+j) > 126 )
-          fStrP += snprintf( fStrP, 2, "." );
-        else
-          fStrP += snprintf( fStrP, 2, "%c", *(p+j) );
-      }
-      [s appendFormat:@"%s\n", fStr];
-    }
-    if ( (i % 256) == 255 )
-      [s appendString:@"\n"];
-  }
-  if ( (i % 16) ) {
-    for ( j = (i % 16); j < 16; j ++ )
-    {
-      fStrP += snprintf( fStrP, 3, "  " );
-      if ( (j % 4) == 0 )
-        fStrP += snprintf( fStrP, 2, " " );
-    }
-    fStrP += snprintf( fStrP, 2, " " );
-    for ( j = i - (i % 16 ); j < length; j++ ) {
-      if ( *(p+j) < 32 || *(p+j) > 126 )
-        fStrP += snprintf( fStrP, 2, "." );
-      else
-        fStrP += snprintf( fStrP, 2, "%c", *(p+j) );
-    }
-    for ( j = (i % 16); j < 16; j ++ ) {
-      fStrP += snprintf( fStrP, 2, " " );
-    }
-    [s appendFormat:@"%s\n", fStr];
-  }
-  [s appendString:@"\n"];
-  NSLog(@"%@", s);
-}
 
 - (void)checkForEvent {
   PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
@@ -715,7 +580,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     switch (ptpRequest.operationCode) {
       case PTPOperationCodeGetStorageIDs: {
         PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
-        NSLog(@"\nDevice info: %@\n", info);
+        NSLog(@"Initialized %@\n", info.debug);
         [(PTPDelegate *)self.delegate cameraConnected:self];
         NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(checkForEvent) userInfo:nil repeats:true];
         [self.userData setObject:timer forKey:PTP_EVENT_TIMER];
@@ -742,9 +607,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 				break;
 			}
     }
-    if (ptpRequest.operationCode == PTPOperationCodeGetDevicePropDesc && ptpResponse.responseCode == PTPResponseCodeDevicePropNotSupported) {
-      [(NSMutableDictionary *)info.propertiesSupported removeObjectForKey:[NSNumber numberWithUnsignedShort:ptpRequest.parameter1]];
-    } else if (indigo_get_log_level() >= INDIGO_LOG_TRACE || ptpResponse.responseCode != PTPResponseCodeOK)
+    if (indigo_get_log_level() >= INDIGO_LOG_TRACE || ptpResponse.responseCode != PTPResponseCodeOK)
       NSLog(@"Received %@", [ptpResponse description]);
   }
   if (data) {
@@ -1058,7 +921,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 - (void)device:(ICDevice*)camera didEncounterError:(NSError*)error {
-  NSLog(@"device:%@ didEncounterError:%@", camera, error);
+  NSLog(@"device:'%@' didEncounterError:'%@'", camera.name, error.localizedDescription);
 }
 
 - (void)cameraDevice:(ICCameraDevice*)camera didAddItem:(ICCameraItem*)item {
@@ -1090,7 +953,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 - (void)cameraDevice:(ICCameraDevice*)camera didReceivePTPEvent:(NSData*)eventData {
-  NSLog(@"Received event: %@", [[PTPEvent alloc] initWithData:eventData vendorExtension:camera.ptpDeviceInfo.vendorExtensionID]);
+  NSLog(@"Received %@", [[PTPEvent alloc] initWithData:eventData vendorExtension:camera.ptpDeviceInfo.vendorExtensionID]);
 }
 
 @end
