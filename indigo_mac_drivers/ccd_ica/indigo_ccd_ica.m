@@ -235,12 +235,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
-		ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
-		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		[camera startLiveView];
+		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
+			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_STREAMING_PROPERTY, "Count = 0");
+		} else {
+			ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+			CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			[camera startLiveView];
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
@@ -439,6 +444,16 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	}
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
+			CCD_STREAMING_COUNT_ITEM->number.value--;
+			if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
+				[camera stopLiveView];
+				CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+		}
 	}
 }
 
