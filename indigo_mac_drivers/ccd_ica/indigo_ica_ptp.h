@@ -900,10 +900,6 @@ typedef unsigned short PTPDataTypeCode;
 - (id)initWithData:(NSData*)data;
 @end
 
-@interface PTPDeviceInfo(PTPDebug)
-- (NSString *)debug;
-@end
-
 //------------------------------------------------------------------------------------------------------------------------------
 
 @interface NSObject(PTPExtensions)
