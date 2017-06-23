@@ -518,7 +518,7 @@ int main(int argc, const char * argv[]) {
 #endif
 #ifdef INDIGO_MACOS
 				pthread_t server_thread;
-				if (pthread_create(&server_thread, NULL, server_main, NULL)) {
+				if (pthread_create(&server_thread, NULL, (void * (*)(void *))server_main, NULL)) {
 					INDIGO_ERROR(indigo_error("Error creating thread for server"));
 				}
 				while (true) {
@@ -545,7 +545,7 @@ int main(int argc, const char * argv[]) {
 #endif
 #ifdef INDIGO_MACOS
 		pthread_t server_thread;
-		if (pthread_create(&server_thread, NULL, server_main, NULL)) {
+		if (pthread_create(&server_thread, NULL, (void * (*)(void *))server_main, NULL)) {
 			INDIGO_ERROR(indigo_error("Error creating thread for server"));
 		}
 		while (true) {
