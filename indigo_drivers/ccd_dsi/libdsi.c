@@ -1679,6 +1679,7 @@ dsi_camera_t *dsi_open_camera(const char *identifier) {
 }
 
 void dsi_close_camera(dsi_camera_t *dsi) {
+	if (dsi == NULL) return;
 	/* Next is guesswork but seems to work! */
 	if(dsi->is_interlaced) {
 		dsicmd_command_1(dsi, RESET);
