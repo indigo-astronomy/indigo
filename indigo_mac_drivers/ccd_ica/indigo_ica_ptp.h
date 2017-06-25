@@ -938,6 +938,7 @@ typedef unsigned short PTPDataTypeCode;
 - (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly;
 - (void)cameraDisconnected:(ICCameraDevice *)camera;
 - (void)cameraRemoved:(ICCameraDevice *)camera;
+- (void)cameraCanCapture:(ICCameraDevice *)camera;
 - (void)cameraCanFocus:(ICCameraDevice *)camera;
 @end
 

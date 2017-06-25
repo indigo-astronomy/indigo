@@ -188,6 +188,8 @@ typedef struct {
 	struct info *info;
   indigo_device *focuser;
 	indigo_property *dslr_properties[sizeof(dslr_properties)/sizeof(struct dslr_properties)];
+  void *buffer;
+  int buffer_size;
 } ica_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -206,7 +208,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_INFO_PROPERTY->hidden = CCD_FRAME_PROPERTY->hidden = true;
 		}
 		CCD_BIN_PROPERTY->hidden =  CCD_FRAME_PROPERTY->hidden = true;
-		CCD_IMAGE_FORMAT_PROPERTY->perm = INDIGO_RO_PERM;
+    CCD_IMAGE_FORMAT_PROPERTY->perm = CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
 		indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
 		for (int i = 0; dslr_properties[i].code; i++) {
 			PRIVATE_DATA->dslr_properties[i] = indigo_init_switch_property(NULL, device->name, dslr_properties[i].name, "DSLR", dslr_properties[i].label, INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
@@ -415,10 +417,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	if (device) {
-		if ([camera.capabilities containsObject:ICCameraDeviceCanTakePicture])
-			[camera requestEnableTethering];
-		else
-			CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
 		for (int i = 0; PRIVATE_DATA->dslr_properties[i]; i++)
 			indigo_define_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -464,7 +462,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 						break;
 					}
 					case PTPPropertyCodeCompressionSetting: {
-						if (value.intValue >= 4) {
+						if (value.intValue >= 4 && value.intValue <= 8) {
 							if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
 								indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_RAW_ITEM, true);
 								indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
@@ -514,11 +512,15 @@ static indigo_result focuser_detach(indigo_device *device) {
 	if ([extension isEqualToString:@".jpg"])
 		extension = @".jpeg";
 	bool is_jpeg = [extension isEqualToString:@".jpeg"];
+  int length = (int)data.length;
+  if (PRIVATE_DATA->buffer == NULL)
+    PRIVATE_DATA->buffer = malloc(length);
+  else if (PRIVATE_DATA->buffer_size < length)
+    PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer, length);
+  memcpy(PRIVATE_DATA->buffer, data.bytes, length);
 	if ((CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value && is_jpeg) || (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value && !is_jpeg)) {
 		indigo_device *device = [camera.userData[DEVICE] pointerValue];
-		indigo_process_dslr_image(device, (void *)data.bytes, (int)data.length, [extension cStringUsingEncoding:NSASCIIStringEncoding]);
-		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSASCIIStringEncoding]);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
@@ -540,6 +542,13 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
+}
+
+- (void)cameraCanCapture:(ICCameraDevice *)camera {
+  indigo_device *device = [camera.userData[DEVICE] pointerValue];
+  [camera requestEnableTethering];
+  CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
+  indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
 
 - (void)cameraCanFocus:(ICCameraDevice *)camera {
@@ -584,6 +593,8 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	if (device) {
 		indigo_detach_device(device);
+    if (PRIVATE_DATA->buffer)
+      free(PRIVATE_DATA->buffer);
 		free(PRIVATE_DATA);
 		free(device);
 	}

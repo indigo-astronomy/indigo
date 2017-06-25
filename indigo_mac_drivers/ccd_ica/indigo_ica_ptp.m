@@ -1209,7 +1209,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 
 - (void)checkForEvent {
   PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
-  if (info.vendorExtension == PTPVendorExtensionNikon) {
+  if (info.vendorExtension == PTPVendorExtensionNikon && [info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonCheckEvent]]) {
     [self sendPTPRequest:PTPOperationCodeNikonCheckEvent];
   }
 }
@@ -1247,6 +1247,28 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 		case PTPOperationCodeGetStorageIDs: {
 			PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
 			NSLog(@"Initialized %@\n", info);
+      if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+        NSMutableString *s = [NSMutableString string];
+        if (info.operationsSupported.count > 0) {
+          [s appendFormat:@"operations=[ 0x%04x", info.operationsSupported.firstObject.intValue];
+          for (int i = 1; i < info.operationsSupported.count; i++)
+            [s appendFormat:@", 0x%04x", info.operationsSupported[i].intValue];
+          [s appendString:@"]\n"];
+        }
+        if (info.eventsSupported.count > 0) {
+          [s appendFormat:@"events=[ 0x%04x", info.eventsSupported.firstObject.intValue];
+          for (int i = 1; i < info.eventsSupported.count; i++)
+            [s appendFormat:@", 0x%04x", info.eventsSupported[i].intValue];
+          [s appendString:@"]\n"];
+        }
+        if (info.propertiesSupported.count > 0) {
+          [s appendFormat:@"properties=[ 0x%04x", info.propertiesSupported.firstObject.intValue];
+          for (int i = 1; i < info.propertiesSupported.count; i++)
+            [s appendFormat:@", 0x%04x", info.propertiesSupported[i].intValue];
+          [s appendString:@"]\n"];
+        }
+        NSLog(@"%@", s);
+      }
 			[(PTPDelegate *)self.delegate cameraConnected:self];
 			NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(checkForEvent) userInfo:nil repeats:true];
 			[self.userData setObject:timer forKey:PTP_EVENT_TIMER];
@@ -1259,6 +1281,12 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       case PTPOperationCodeGetDeviceInfo: {
         PTPDeviceInfo *info = [[PTPDeviceInfo alloc] initWithData:data];
         [self.userData setObject:info forKey:PTP_DEVICE_INFO];
+        if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeInitiateCapture]]) {
+          [(PTPDelegate *)self.delegate cameraCanCapture:self];
+        }
+        if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonMfDrive]]) {
+          [(PTPDelegate *)self.delegate cameraCanFocus:self];
+        }
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureProgramMode];
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeFNumber];
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureTime];
@@ -1273,9 +1301,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeNikonAutofocusMode];
 				[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeNikonLiveViewStatus];
         [self sendPTPRequest:PTPOperationCodeGetStorageIDs];
-        if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonMfDrive]]) {
-          [(PTPDelegate *)self.delegate cameraCanFocus:self];
-        }
         break;
       }
       case PTPOperationCodeGetDevicePropDesc: {
@@ -1295,7 +1320,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
               if (label)
                 [labels addObject:label];
               else
-                [labels addObject:[NSString stringWithFormat:@"mode %@", value]];
+                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
             }
 						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
@@ -1360,7 +1385,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
               if (label)
                 [labels addObject:label];
               else
-                [labels addObject:[NSString stringWithFormat:@"compression %@", value]];
+                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
             }
 						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
@@ -1375,7 +1400,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
               if (label)
                 [labels addObject:label];
               else
-                [labels addObject:[NSString stringWithFormat:@"wb %@", value]];
+                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
             }
 						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
@@ -1410,7 +1435,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
               if (label)
                 [labels addObject:label];
               else
-                [labels addObject:[NSString stringWithFormat:@"wb %@", value]];
+                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
             }
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
@@ -1425,7 +1450,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
               if (label)
                 [labels addObject:label];
               else
-                [labels addObject:[NSString stringWithFormat:@"focuse metering %@", value]];
+                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
             }
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
@@ -1441,7 +1466,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
                 if (label)
                   [labels addObject:label];
                 else
-                  [labels addObject:[NSString stringWithFormat:@"focus mode %@", value]];
+                  [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
               }
               [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             }
