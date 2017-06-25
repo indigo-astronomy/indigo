@@ -30,6 +30,7 @@
 #import <ImageCaptureCore/ImageCaptureCore.h>
 
 #include "indigo_ccd_driver.h"
+#include "indigo_focuser_driver.h"
 
 #include "indigo_ccd_ica.h"
 #include "indigo_ica_ptp.h"
@@ -40,19 +41,40 @@ static struct info {
 	int width, height;
 	float pixel_size;
 } info[] = {
-	{ "D3", "Nikon D3", 4256, 2832, 8.45 },
+  { "D1", "Nikon D1", 2000, 1312, 11.8 },
+  { "D1H", "Nikon D1H", 2000, 1312, 11.8 },
+  { "D1X", "Nikon D1X", 3008, 2000, 7.87 },
+  { "D100", "Nikon D100", 3008, 2000, 7.87 },
+  { "D2H", "Nikon D2H", 2464, 1632, 9.45 },
+  { "D2HS", "Nikon D2Hs", 2464, 1632, 9.45 },
+  { "D2X", "Nikon D2X", 4288, 2848, 5.52 },
+  { "D2XS", "Nikon D2Xs", 4288, 2848, 5.52 },
+  { "D200", "Nikon D200", 3872, 2592, 6.12 },
+  { "D3", "Nikon D3", 4256, 2832, 8.45 },
+  { "D3S", "Nikon D3s", 4256, 2832, 8.45 },
+  { "D3X", "Nikon D3X", 6048, 4032, 5.95 },
 	{ "D300", "Nikon D300", 4288, 2848, 5.50 },
 	{ "D300S", "Nikon D300S", 4288, 2848, 5.50 },
+  { "D3000", "Nikon D40X", 3872, 2592, 6.09 },
+  { "D3100", "Nikon D3100", 4608, 3072, 4.94 },
+  { "D3200", "Nikon D3300", 6016, 4000, 3.92 },
+  { "D3300", "Nikon D3300", 6016, 4000, 3.92 },
+  { "D3400", "Nikon D3400", 6000, 4000, 3.92 },
 	{ "D3A", "Nikon D3A", 4256, 2832, 8.45 },
 	{ "D4", "Nikon D4", 4928, 3280, 7.30 },
 	{ "D4S", "Nikon D4S", 4928, 3280, 7.30 },
+  { "D40", "Nikon D40", 3008, 2000, 7.87 },
+  { "D40X", "Nikon D40X", 3872, 2592, 6.09 },
 	{ "D5", "Nikon D5", 5568, 3712, 6.40 },
+  { "D50", "Nikon D50", 3008, 2000, 7.87 },
 	{ "D500", "Nikon D500", 5568, 3712, 4.23 },
 	{ "D5000", "Nikon D5000", 4288, 2848, 5.50 },
 	{ "D5100", "Nikon D5100", 4928, 3264, 4.78 },
 	{ "D5200", "Nikon D5200", 6000, 4000, 3.92 },
 	{ "D5300", "Nikon D5300", 6000, 4000, 3.92 },
 	{ "D5500", "Nikon D5500", 6000, 4000, 3.92 },
+  { "D5600", "Nikon D5600", 6000, 4000, 3.92 },
+  { "D60", "Nikon D60", 3872, 2592, 6.09 },
 	{ "D600", "Nikon D600", 6016, 4016, 5.95 },
 	{ "D610", "Nikon D610", 6016, 4016, 5.95 },
 	{ "D70", "Nikon D70", 3008, 2000, 7.87 },
@@ -62,11 +84,14 @@ static struct info {
 	{ "D7100", "Nikon D7100", 6000, 4000, 3.92 },
 	{ "D7200", "Nikon D7200", 6000, 4000, 3.92 },
 	{ "D750", "Nikon D750", 6016, 4016, 3.92 },
+  { "D7500", "Nikon D7500", 5568, 3712, 6.40 },
+  { "D80", "Nikon D80", 3872, 2592, 6.09 },
 	{ "D800", "Nikon D800", 7360, 4912, 4.88 },
 	{ "D800E", "Nikon D800E", 7360, 4912, 4.88 },
 	{ "D810", "Nikon D810", 7360, 4912, 4.88 },
 	{ "D810A", "Nikon D810A", 7360, 4912, 4.88 },
 	{ "D90", "Nikon D90", 4288, 2848, 5.50 },
+  { "DF", "Nikon Df", 4928, 3264, 4.78 },
 	
 	{ "Canon EOS REBEL XTI", "Canon Rebel XTI", 3888, 2592, 5.7 },
 	{ "Canon EOS REBEL XT", "Canon Rebel XT", 3456, 2304, 6.4 },
@@ -151,12 +176,17 @@ struct dslr_properties {
 	{ PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
 	{ PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
 	{ PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO" },
+  { PTPPropertyCodeExposureBiasCompensation, DSLR_COMPENSATION_PROPERTY_NAME, "Compensation" },
+  { PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
+  { PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering" },
+  { PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
 	{ 0, NULL, NULL }
 };
 
 typedef struct {
 	void* camera;
 	struct info *info;
+  indigo_device *focuser;
 	indigo_property *dslr_properties[sizeof(dslr_properties)/sizeof(struct dslr_properties)];
 } ica_private_data;
 
@@ -297,6 +327,53 @@ static indigo_result ccd_detach(indigo_device *device) {
 	return indigo_ccd_detach(device);
 }
 
+static indigo_result focuser_attach(indigo_device *device) {
+  assert(device != NULL);
+  assert(PRIVATE_DATA != NULL);
+  if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+    // --------------------------------------------------------------------------------
+    FOCUSER_ABORT_MOTION_PROPERTY->hidden = true;
+    FOCUSER_POSITION_PROPERTY->hidden = true;
+    FOCUSER_SPEED_PROPERTY->hidden = true;
+    // --------------------------------------------------------------------------------
+    INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+    return indigo_focuser_enumerate_properties(device, NULL, NULL);
+  }
+  return INDIGO_FAILED;
+}
+
+static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+  assert(device != NULL);
+  assert(DEVICE_CONTEXT != NULL);
+  assert(property != NULL);
+  ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+  if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- CONNECTION
+    indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+    CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_STEPS
+		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+      [camera mfDrive:(int)FOCUSER_STEPS_ITEM->number.value];
+		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
+      [camera mfDrive:(int)-FOCUSER_STEPS_ITEM->number.value];
+		}
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		return INDIGO_OK;
+  }
+  return indigo_focuser_change_property(device, client, property);
+}
+
+static indigo_result focuser_detach(indigo_device *device) {
+  assert(device != NULL);
+  if (CONNECTION_CONNECTED_ITEM->sw.value)
+    indigo_device_disconnect(NULL, device->name);
+  INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+  return indigo_focuser_detach(device);
+}
+
 // -------------------------------------------------------------------------------- ICA interface
 
 @interface ICADelegate : PTPDelegate
@@ -349,7 +426,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	}
 }
 
-- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value supportedValues:(NSDictionary<NSString *, NSString *> *)supportedValues readOnly:(BOOL)readOnly {
+- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	if (code == PTPPropertyCodeNikonLiveViewStatus)
 		CCD_STREAMING_PROPERTY->hidden = false;
@@ -358,10 +435,10 @@ static indigo_result ccd_detach(indigo_device *device) {
 			if (dslr_properties[i].code == code) {
 				indigo_property *property = PRIVATE_DATA->dslr_properties[i];
 				bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
-				redefine = redefine || (property->count != (int)supportedValues.count);
+				redefine = redefine || (property->count != (int)values.count);
 				if (!redefine) {
 					int index = 0;
-					for (NSString *key in [supportedValues.allKeys sortedArrayUsingSelector:@selector(compare:)]) {
+					for (NSString *key in values) {
 						char name[INDIGO_NAME_SIZE];
 						strncpy(name, [key cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
 						if (strcmp(property->items[index].name, name)) {
@@ -405,14 +482,14 @@ static indigo_result ccd_detach(indigo_device *device) {
 				if (redefine) {
 					if (IS_CONNECTED)
 						indigo_delete_property(device, property, NULL);
-					PRIVATE_DATA->dslr_properties[i] = property = indigo_resize_property(property, (int)supportedValues.count);
+					PRIVATE_DATA->dslr_properties[i] = property = indigo_resize_property(property, (int)values.count);
 					property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
 					int index = 0;
-					for (NSString *key in [supportedValues.allKeys sortedArrayUsingSelector:@selector(compare:)]) {
+					for (NSString *key in values) {
 						char name[INDIGO_NAME_SIZE];
 						char label[INDIGO_VALUE_SIZE];
 						strncpy(name, [key cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
-						strncpy(label, [supportedValues[key] cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_VALUE_SIZE);
+						strncpy(label, [labels[index] cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_VALUE_SIZE);
 						indigo_init_switch_item(property->items + index, name, label, [key isEqual:value]);
 						index++;
 					}
@@ -420,7 +497,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 						indigo_define_property(device, property, NULL);
 				} else {
 					int index = 0;
-					for (NSObject *object in [supportedValues.allKeys sortedArrayUsingSelector:@selector(compare:)])
+					for (NSObject *object in values)
 						property->items[index++].sw.value = [object isEqual:value];
 					property->state = INDIGO_OK_STATE;
 					indigo_update_property(device, property, NULL);
@@ -465,10 +542,36 @@ static indigo_result ccd_detach(indigo_device *device) {
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
 }
 
+- (void)cameraCanFocus:(ICCameraDevice *)camera {
+  indigo_device *device = [camera.userData[DEVICE] pointerValue];
+  static indigo_device focuser_template = {
+    "", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+    focuser_attach,
+    indigo_focuser_enumerate_properties,
+    focuser_change_property,
+    NULL,
+    focuser_detach
+  };
+  indigo_device *focuser = malloc(sizeof(indigo_device));
+  assert(focuser != NULL);
+  memcpy(focuser, &focuser_template, sizeof(indigo_device));
+  strcpy(focuser->name, device->name);
+  strcat(focuser->name, " (focuser)");
+  focuser->private_data = PRIVATE_DATA;
+	PRIVATE_DATA->focuser = focuser;
+  indigo_async((void *)(void *)indigo_attach_device, focuser);
+}
+
 - (void)cameraDisconnected:(ICCameraDevice*)camera {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	if (device) {
+    indigo_device *focuser = PRIVATE_DATA->focuser;
+    if (focuser) {
+      indigo_detach_device(focuser);
+      free(focuser);
+      PRIVATE_DATA->focuser = NULL;
+    }
 		for (int i = 0; PRIVATE_DATA->dslr_properties[i]; i++)
 			indigo_delete_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

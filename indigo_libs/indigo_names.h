@@ -402,6 +402,26 @@
 #define DSLR_ISO_PROPERTY_NAME								"DSLR_ISO"
 
 //----------------------------------------------------------------------
+/** DSLR_COMPENSATION property name.
+ */
+#define DSLR_COMPENSATION_PROPERTY_NAME								"DSLR_COMPENSATION"
+
+//----------------------------------------------------------------------
+/** DSLR_EXPOSURE_METERING property name.
+ */
+#define DSLR_EXPOSURE_METERING_PROPERTY_NAME								"DSLR_EXPOSURE_METERING"
+
+//----------------------------------------------------------------------
+/** DSLR_FOCUC_METERING property name.
+ */
+#define DSLR_FOCUS_METERING_PROPERTY_NAME								"DSLR_FOCUC_METERING"
+
+//----------------------------------------------------------------------
+/** DSLR_FOCUS_MODE property name.
+ */
+#define DSLR_FOCUS_MODE_PROPERTY_NAME								"DSLR_FOCUS_MODE"
+
+//----------------------------------------------------------------------
 /** GUIDER_GUIDE_DEC property name.
  */
 #define GUIDER_GUIDE_DEC_PROPERTY_NAME        "GUIDER_GUIDE_DEC"

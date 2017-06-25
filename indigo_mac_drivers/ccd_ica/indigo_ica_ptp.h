@@ -907,7 +907,7 @@ typedef unsigned short PTPDataTypeCode;
 //------------------------------------------------------------------------------------------------------------------------------
 
 @interface NSObject(PTPExtensions)
--(NSString *)hexString;
+-(int)intValue;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -916,9 +916,11 @@ typedef unsigned short PTPDataTypeCode;
 -(PTPDeviceInfo *)ptpDeviceInfo;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
+-(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 -(void)startLiveView;
 -(void)stopLiveView;
+-(void)mfDrive:(int)steps;
 @end
 
 @interface ICCameraDevice(PTPDebug)
@@ -929,13 +931,14 @@ typedef unsigned short PTPDataTypeCode;
 
 @protocol PTPDelegateProtocol <NSObject>
 @optional
-- (void)cameraAdded:(ICCameraDevice*)camera;
-- (void)cameraConnected:(ICCameraDevice*)camera;
-- (void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data filename:(NSString *)filename;
-- (void)cameraExposureFailed:(ICCameraDevice*)camera;
-- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value supportedValues:(NSDictionary<NSString *, NSString *> *)supportedValues readOnly:(BOOL)readOnly;
-- (void)cameraDisconnected:(ICCameraDevice*)camera;
-- (void)cameraRemoved:(ICCameraDevice*)camera;
+- (void)cameraAdded:(ICCameraDevice *)camera;
+- (void)cameraConnected:(ICCameraDevice *)camera;
+- (void)cameraExposureDone:(ICCameraDevice *)camera data:(NSData *)data filename:(NSString *)filename;
+- (void)cameraExposureFailed:(ICCameraDevice *)camera;
+- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly;
+- (void)cameraDisconnected:(ICCameraDevice *)camera;
+- (void)cameraRemoved:(ICCameraDevice *)camera;
+- (void)cameraCanFocus:(ICCameraDevice *)camera;
 @end
 
 @interface PTPDelegate : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate, PTPDelegateProtocol>
