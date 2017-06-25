@@ -1146,8 +1146,8 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 
 @implementation NSObject(PTPExtensions)
 
--(NSString *)hexString {
-	return [NSString stringWithFormat:@"%010lld", self.description.longLongValue];
+-(int)intValue {
+	return self.description.intValue;
 }
 
 @end
@@ -1233,22 +1233,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
     PTPOperationResponse* ptpResponse = [[PTPOperationResponse alloc] initWithData:response vendorExtension:info.vendorExtension];
 		switch (ptpRequest.operationCode) {
-			case PTPOperationCodeSetDevicePropValue: {
-				switch (ptpRequest.parameter1) {
-					case PTPPropertyCodeExposureProgramMode:
-					case PTPPropertyCodeFNumber:
-					case PTPPropertyCodeExposureTime:
-					case PTPPropertyCodeImageSize:
-					case PTPPropertyCodeCompressionSetting:
-					case PTPPropertyCodeWhiteBalance:
-					case PTPPropertyCodeExposureIndex:
-						[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:ptpRequest.parameter1];
-						break;
-				}
+			case PTPOperationCodeSetDevicePropValue:
+				[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:ptpRequest.parameter1];
 				break;
-			}
     }
-    if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
+    if (ptpResponse.responseCode != PTPResponseCodeOK || indigo_get_log_level() >= INDIGO_LOG_DEBUG)
       NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
 	} else {
 		if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
@@ -1277,109 +1266,199 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeCompressionSetting];
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeWhiteBalance];
         [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureIndex];
+        [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureBiasCompensation];
+        [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureMeteringMode];
+        [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeFocusMeteringMode];
+        [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeFocusMode];
+        [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeNikonAutofocusMode];
 				[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeNikonLiveViewStatus];
         [self sendPTPRequest:PTPOperationCodeGetStorageIDs];
+        if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonMfDrive]]) {
+          [(PTPDelegate *)self.delegate cameraCanFocus:self];
+        }
         break;
       }
       case PTPOperationCodeGetDevicePropDesc: {
         PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
         PTPProperty *property = [[PTPProperty alloc] initWithData:data vendorExtension:info.vendorExtension];
-				NSLog(@"Translated to %@", property);
+        if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
+          NSLog(@"Translated to %@", property);
 				self.userData[[NSString stringWithFormat:PTP_PROPERTY, property.propertyCode]] = property;
         switch (property.propertyCode) {
           case PTPPropertyCodeExposureProgramMode: {
-            NSDictionary *labels = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority", @32784: @"Auto", @32785: @"Portrait", @32786: @"Landscape", @32787:@"Macro", @32788: @"Sport", @32789: @"Night portrait", @32790:@"Night landscape", @32791: @"Child", @32792: @"Scene", @32793: @"Effects" };
-            NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
+            NSDictionary *map = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority", @32784: @"Auto", @32785: @"Portrait", @32786: @"Landscape", @32787:@"Macro", @32788: @"Sport", @32789: @"Night portrait", @32790:@"Night landscape", @32791: @"Child", @32792: @"Scene", @32793: @"Effects" };
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
             for (NSNumber *value in property.supportedValues) {
-              NSString *label = labels[value];
+              [values addObject:value.description];
+              NSString *label = map[value];
               if (label)
-                supportedValues[value.hexString] = labels[value];
+                [labels addObject:label];
               else
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"mode %@", value];
+                [labels addObject:[NSString stringWithFormat:@"mode %@", value]];
             }
-						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeFNumber: {
-            NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
             for (NSNumber *value in property.supportedValues) {
-              supportedValues[value.hexString] = [NSString stringWithFormat:@"f/%g", value.intValue / 100.0];
+              [values addObject:value.description];
+              [labels addObject:[NSString stringWithFormat:@"f/%g", value.intValue / 100.0]];
             }
-						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeExposureTime: {
-            NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
             for (NSNumber *value in property.supportedValues) {
+              [values addObject:value.description];
               int intValue = value.intValue;
               if (intValue == -1)
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"Bulb"];
+                [labels addObject:[NSString stringWithFormat:@"Bulb"]];
               else if (intValue == 1)
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/8000 s"];
+                [labels addObject:[NSString stringWithFormat:@"1/8000 s"]];
               else if (intValue == 3)
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/3200 s"];
+                [labels addObject:[NSString stringWithFormat:@"1/3200 s"]];
               else if (intValue == 6)
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/1600 s"];
+                [labels addObject:[NSString stringWithFormat:@"1/1600 s"]];
               else if (intValue == 12)
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/800 s"];
+                [labels addObject:[NSString stringWithFormat:@"1/800 s"]];
               else if (intValue == 15)
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/640 s"];
+                [labels addObject:[NSString stringWithFormat:@"1/640 s"]];
               else if (intValue == 80)
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/125 s"];
+                [labels addObject:[NSString stringWithFormat:@"1/125 s"]];
               else if (intValue < 100)
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/%g s", round(1000.0 / value.intValue) * 10];
+                [labels addObject:[NSString stringWithFormat:@"1/%g s", round(1000.0 / value.intValue) * 10]];
               else if (intValue < 10000)
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"1/%g s", round(10000.0 / value.intValue)];
+                [labels addObject:[NSString stringWithFormat:@"1/%g s", round(10000.0 / value.intValue)]];
               else
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"%g s", value.intValue / 10000.0];
+                [labels addObject:[NSString stringWithFormat:@"%g s", value.intValue / 10000.0]];
             }
-						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeImageSize: {
-            NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
             for (NSString *value in property.supportedValues) {
-              supportedValues[value] = value;
+              [values addObject:value];
+              [labels addObject:value];
             }
-						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description supportedValues:supportedValues readOnly:property.readOnly];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeCompressionSetting: {
-            NSDictionary *labels = @{ @0: @"JPEG Basic", @1: @"JPEG Norm", @2: @"JPEG Fine", @4: @"RAW", @5: @"RAW + JPEG Basic", @6: @"RAW + JPEG Norm", @7: @"RAW + JPEG Fine" };
-            NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
+            NSDictionary *map = @{ @0: @"JPEG Basic", @1: @"JPEG Norm", @2: @"JPEG Fine", @4: @"RAW", @5: @"RAW + JPEG Basic", @6: @"RAW + JPEG Norm", @7: @"RAW + JPEG Fine" };
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
             for (NSNumber *value in property.supportedValues) {
-              NSString *label = labels[value];
+              [values addObject:value.description];
+              NSString *label = map[value];
               if (label)
-                supportedValues[value.hexString] = labels[value];
+                [labels addObject:label];
               else
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"compression %@", value];
+                [labels addObject:[NSString stringWithFormat:@"compression %@", value]];
             }
-						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeWhiteBalance: {
-            NSDictionary *labels = @{ @1: @"Manual", @2: @"Auto", @3: @"One-push Auto", @4: @"Daylight", @5: @"Fluorescent", @6: @"Incandescent", @7: @"Flash", @32784: @"Cloudy", @32785: @"Shade", @32786: @"Color Temperature", @32787: @"Preset" };
-            NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
+            NSDictionary *map = @{ @1: @"Manual", @2: @"Auto", @3: @"One-push Auto", @4: @"Daylight", @5: @"Fluorescent", @6: @"Incandescent", @7: @"Flash", @32784: @"Cloudy", @32785: @"Shade", @32786: @"Color Temperature", @32787: @"Preset" };
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
             for (NSNumber *value in property.supportedValues) {
-              NSString *label = labels[value];
+              [values addObject:value.description];
+              NSString *label = map[value];
               if (label)
-                supportedValues[value.hexString] = labels[value];
+                [labels addObject:label];
               else
-                supportedValues[value.hexString] = [NSString stringWithFormat:@"compression %@", value];
+                [labels addObject:[NSString stringWithFormat:@"wb %@", value]];
             }
-						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeExposureIndex: {
-            NSMutableDictionary *supportedValues = [NSMutableDictionary dictionary];
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
             for (NSNumber *value in property.supportedValues) {
-              supportedValues[value.hexString] = value.description;
+              [values addObject:value.description];
+              [labels addObject:value.description];
             }
-						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:supportedValues readOnly:property.readOnly];
+						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
+          }
+          case PTPPropertyCodeExposureBiasCompensation: {
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
+            for (NSNumber *value in property.supportedValues) {
+              [values addObject:value.description];
+              [labels addObject:[NSString stringWithFormat:@"%.1f", round(value.intValue / 100.0) / 10.0]];
+            }
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
+          }
+          case PTPPropertyCodeExposureMeteringMode: {
+            NSDictionary *map = @{ @1: @"Average", @2: @"Center-Weighted Average", @3: @"Multi-spot", @4: @"Center-spot" };
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
+            for (NSNumber *value in property.supportedValues) {
+              [values addObject:value.description];
+              NSString *label = map[value];
+              if (label)
+                [labels addObject:label];
+              else
+                [labels addObject:[NSString stringWithFormat:@"wb %@", value]];
+            }
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
+          }
+          case PTPPropertyCodeFocusMeteringMode: {
+            NSDictionary *map = @{ @1: @"Center-spot", @2: @"Multi-spot", @32784: @"Single Area", @32785: @"Auto area", @32786: @"3D tracking" };
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
+            for (NSNumber *value in property.supportedValues) {
+              [values addObject:value.description];
+              NSString *label = map[value];
+              if (label)
+                [labels addObject:label];
+              else
+                [labels addObject:[NSString stringWithFormat:@"focuse metering %@", value]];
+            }
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
+          }
+          case PTPPropertyCodeFocusMode: {
+            if (info.vendorExtension != PTPVendorExtensionNikon) {
+              NSDictionary *map = @{ @1: @"Manual", @2: @"Automatic", @3:@"Macro", @32784: @"AF-S", @32785: @"AF-C", @32786: @"AF-A" };
+              NSMutableArray *values = [NSMutableArray array];
+              NSMutableArray *labels = [NSMutableArray array];
+              for (NSNumber *value in property.supportedValues) {
+                [values addObject:value.description];
+                NSString *label = map[value];
+                if (label)
+                  [labels addObject:label];
+                else
+                  [labels addObject:[NSString stringWithFormat:@"focus mode %@", value]];
+              }
+              [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            }
+            break;
+          }
+          case PTPPropertyCodeNikonAutofocusMode: {
+            if (info.vendorExtension == PTPVendorExtensionNikon) {
+              if (property.value.description.intValue == 3) {
+                [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:@"3" values:@[@"3"] labels:@[@"M (fixed)"] readOnly:true];
+              } else {
+                [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:property.value.description values:@[@"0", @"1", @"2", @"4"] labels:@[@"AF-S", @"AF-C", @"AF-A", @"M"] readOnly:property.readOnly];
+              }
+            }
             break;
           }
 					case PTPPropertyCodeNikonLiveViewStatus: {
-						[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.hexString supportedValues:nil readOnly:property.readOnly];
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:nil labels:nil readOnly:property.readOnly];
 						if (property.value.description.intValue) {
 						//	[self sendPTPRequest:PTPOperationCodeNikonGetLiveViewImg];
 							NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
@@ -1388,6 +1467,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 							NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
 							[timer invalidate];
 						}
+            break;
 					}
         }
         break;
@@ -1435,6 +1515,9 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value {
+  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  if (code == PTPPropertyCodeFocusMode && info.vendorExtension == PTPVendorExtensionNikon)
+    code = PTPPropertyCodeNikonAutofocusMode;
 	PTPProperty *property = self.userData[[NSString stringWithFormat:PTP_PROPERTY, code]];
 	if (property) {
 		switch (property.type) {
@@ -1532,6 +1615,14 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 	}
 }
 
+-(void)mfDrive:(int)steps {
+  if (steps >= 0) {
+    [self sendPTPRequest:PTPOperationCodeNikonMfDrive param1:1 param2:steps];
+  } else {
+    [self sendPTPRequest:PTPOperationCodeNikonMfDrive param1:2 param2:-steps];
+  }
+}
+
 -(void)sendPTPRequest:(PTPOperationCode)operationCode {
   PTPOperationRequest *request = [[PTPOperationRequest alloc] initWithVendorExtension:self.ptpDeviceInfo.vendorExtension];
   request.operationCode = operationCode;
@@ -1544,6 +1635,15 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   request.operationCode = operationCode;
   request.numberOfParameters = 1;
   request.parameter1 = parameter1;
+  [self requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
+}
+
+-(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2 {
+  PTPOperationRequest *request = [[PTPOperationRequest alloc] initWithVendorExtension:self.ptpDeviceInfo.vendorExtension];
+  request.operationCode = operationCode;
+  request.numberOfParameters = 2;
+  request.parameter1 = parameter1;
+  request.parameter2 = parameter2;
   [self requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 
