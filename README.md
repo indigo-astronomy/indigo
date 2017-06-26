@@ -51,8 +51,7 @@ This is the list of requirements taken into the consideration:
 2. ASCOM driver for INDIGO focuser
 
 ------------------------------------------------------------------------------------------------
-
-##To build PoC
+## How to build
 
 ### Prerequisits
 #### Ubuntu / Debian / Raspbian
