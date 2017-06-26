@@ -157,7 +157,7 @@ static bool camera_start_exposure(indigo_device *device, double exposure, bool d
 
 static bool camera_read_pixels(indigo_device *device) {
 	long res;
-
+	dsi_set_image_little_endian(PRIVATE_DATA->dsi, 0);
 	while ((res = dsi_read_image(PRIVATE_DATA->dsi, (unsigned char*)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), O_NONBLOCK)) != 0) {
 		if (res == EWOULDBLOCK) {
 			double time_left = dsi_get_exposure_time_left(PRIVATE_DATA->dsi);

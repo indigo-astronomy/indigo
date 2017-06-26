@@ -616,8 +616,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				}
 			} else {
 				for (int i = 0; i < size; i++) {
-					int value = *raw - 32768;
-					*raw++ = value;
+					int value = *raw;
+					value = ((value & 0xff) << 8 | (value & 0xff00) >> 8 ) - 32768;
+					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 				}
 			}
 		} else if (byte_per_pixel == 1 && naxis == 3) {
@@ -859,7 +860,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 	assert(device != NULL);
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
-	
+
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
