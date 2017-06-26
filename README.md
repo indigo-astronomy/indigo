@@ -1,4 +1,4 @@
-# INDIGO is a proof-of-concept of future INDI based on layered architecture and software bus.
+# INDIGO is the next generation of INDI, based on layered architecture and software bus.
 
 This is the list of requirements taken into the consideration:
 
@@ -51,7 +51,7 @@ This is the list of requirements taken into the consideration:
 2. ASCOM driver for INDIGO focuser
 
 ------------------------------------------------------------------------------------------------
-## How to build
+## How to build INDIGO
 
 ### Prerequisits
 #### Ubuntu / Debian / Raspbian
