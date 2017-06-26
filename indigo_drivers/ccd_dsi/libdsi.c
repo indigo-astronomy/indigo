@@ -1386,7 +1386,20 @@ static unsigned char *dsicmd_decode_image(dsi_camera_t *dsi, unsigned char *buff
 				}
 			}
 		} else {  /* just copy data as camera givers big endian */
-			memcpy(buffer, dsi->read_buffer_odd, dsi->image_width * dsi->image_height * dsi->read_bpp);
+			for (ypix = 0; ypix < dsi->image_height; ypix++) {
+				int ixypos;
+				row_start  = dsi->read_width * (ypix + dsi->image_offset_y);
+				ixypos = 2 * (row_start + dsi->image_offset_x);
+				/*
+				  fprintf(stderr, "starting image row %d, outpos=%d, is_odd_row=%d, row_start=%d, ixypos=%d\n",
+				  ypix, outpos, is_odd_row, row_start, ixypos);
+				 */
+
+				for (xpix = 0; xpix < dsi->image_width; xpix++) {
+					buffer[outpos++] = dsi->read_buffer_odd[ixypos++];
+					buffer[outpos++] = dsi->read_buffer_odd[ixypos++];
+				}
+			}
 		}
 	}
 	return buffer;
