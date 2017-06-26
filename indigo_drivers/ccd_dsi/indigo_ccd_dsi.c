@@ -47,26 +47,12 @@
 
 #define MAX_CCD_TEMP         45     /* Max CCD temperature */
 #define MIN_CCD_TEMP        -55     /* Min CCD temperature */
-#define MAX_X_BIN            16     /* Max Horizontal binning */
-#define MAX_Y_BIN            16     /* Max Vertical binning */
+#define MAX_X_BIN            1      /* Max Horizontal binning */
+#define MAX_Y_BIN            1      /* Max Vertical binning */
 
 #define DEFAULT_BPP          16     /* Default bits per pixel */
-
-#define MIN_N_FLUSHES         0     /* Min number of array flushes before exposure */
-#define MAX_N_FLUSHES        16     /* Max number of array flushes before exposure */
-#define DEFAULT_N_FLUSHES     1     /* Default number of array flushes before exposure */
-
-#define MIN_NIR_FLOOD         0     /* Min seconds to flood the frame with NIR light */
-#define MAX_NIR_FLOOD        16     /* Max seconds to flood the frame with NIR light */
-#define DEFAULT_NIR_FLOOD     3     /* Default seconds to flood the frame with NIR light */
-
-#define MIN_FLUSH_COUNT       1     /* Min flushes after flood */
-#define MAX_FLUSH_COUNT      10     /* Max flushes after flood */
-#define DEFAULT_FLUSH_COUNT   2     /* Default flushes after flood */
-
 #define MAX_PATH            255     /* Maximal Path Length */
 
-#define TEMP_THRESHOLD     0.15
 #define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
 
 #include "libdsi.h"
@@ -126,38 +112,25 @@ static bool camera_open(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	long res = 0; //FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
-	id = 0; //PRIVATE_DATA->dev_id;
-	if (res) {
+	PRIVATE_DATA->dsi = dsi_open_camera(PRIVATE_DATA->dev_sid);
+	if (PRIVATE_DATA->dsi == NULL) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_open_camera(%s) = %p", PRIVATE_DATA->dev_sid, PRIVATE_DATA->dsi);
 		return false;
 	}
-
-	//res = FLIGetArrayArea(id, &(PRIVATE_DATA->total_area.ul_x), &(PRIVATE_DATA->total_area.ul_y), &(PRIVATE_DATA->total_area.lr_x), &(PRIVATE_DATA->total_area.lr_y));
-	if (res) {
-		//FLIClose(id);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetArrayArea(%d) = %d", id, res);
-		return false;
-	}
-
-	//res = FLIGetVisibleArea(id, &(PRIVATE_DATA->visible_area.ul_x), &(PRIVATE_DATA->visible_area.ul_y), &(PRIVATE_DATA->visible_area.lr_x), &(PRIVATE_DATA->visible_area.lr_y));
-	if (res) {
-		//FLIClose(id);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetVisibleArea(%d) = %d", id, res);
-		return false;
-	}
-
-	//INDIGO_DRIVER_ERROR(DRIVER_NAME, "%ld %ld %ld %ld - %ld, %ld", PRIVATE_DATA->total_area.lr_x, PRIVATE_DATA->total_area.lr_y, PRIVATE_DATA->total_area.ul_x, PRIVATE_DATA->total_area.ul_y, height, width);
 
 	if (PRIVATE_DATA->buffer == NULL) {
 		PRIVATE_DATA->buffer_size = dsi_get_image_width(PRIVATE_DATA->dsi) *
 		                            dsi_get_image_height(PRIVATE_DATA->dsi) *
-									dsi_get_bytespp(PRIVATE_DATA->dsi) +
-									FITS_HEADER_SIZE;
+		                            dsi_get_bytespp(PRIVATE_DATA->dsi) +
+		                            FITS_HEADER_SIZE;
 		PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
+		if (PRIVATE_DATA->buffer == NULL) {
+			dsi_close_camera(PRIVATE_DATA->dsi);
+			PRIVATE_DATA->dsi = NULL;
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			return true;
+		}
 	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -165,50 +138,15 @@ static bool camera_open(indigo_device *device) {
 }
 
 
-static bool camera_start_exposure(indigo_device *device, double exposure, bool dark, bool rbi_flood, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
-	int id = 0; //PRIVATE_DATA->dev_id;
+static bool camera_start_exposure(indigo_device *device, double exposure, bool dark) {
 	long res;
-
-
-	long right_x  = offset_x + (frame_width / bin_x);
-	long right_y = offset_y + (frame_height / bin_y);
-
-	/* needed to read frame data */
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	//res = FLISetHBin(id, bin_x);
+	res = dsi_start_exposure(PRIVATE_DATA->dsi, exposure);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetHBin(%d) = %d", id, res);
-		return false;
-	}
-
-	//res = FLISetVBin(id, bin_y);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetVBin(%d) = %d", id, res);
-		return false;
-	}
-
-	//res = FLISetImageArea(id, offset_x, offset_y, right_x, right_y);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetImageArea(%d) = %d", id, res);
-		return false;
-	}
-
-	//res = FLISetExposureTime(id, (long)s2ms(exposure));
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetExposureTime(%d) = %d", id, res);
-		return false;
-	}
-
-	//res = FLIExposeFrame(id);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIExposeFrame(%d) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_start_exposure(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
 
@@ -218,67 +156,33 @@ static bool camera_start_exposure(indigo_device *device, double exposure, bool d
 
 
 static bool camera_read_pixels(indigo_device *device) {
-	long timeleft = 0;
-	long res, dev_status;
-	long wait_cycles = 4000;
-	int id = 0; //PRIVATE_DATA->dev_id;
+	long res;
 
-	do {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	//	res = FLIGetExposureStatus(id, &timeleft);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (timeleft) usleep(timeleft);
-	} while (timeleft*1000);
-
-	do {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		//FLIGetDeviceStatus(id, &dev_status);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		//if((dev_status != FLI_CAMERA_STATUS_UNKNOWN) && ((dev_status & FLI_CAMERA_DATA_READY) != 0)) {
-		//	break;
-		//}
-		usleep(10000);
-		wait_cycles--;
-	} while (wait_cycles);
-
-	if (wait_cycles == 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure Failed! id=%d", id);
-		return false;
-	}
-
-	long row_size = PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x * PRIVATE_DATA->frame_params.bpp / 8;
-	long width = PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x;
-	long height = PRIVATE_DATA->frame_params.height / PRIVATE_DATA->frame_params.bin_y ;
-	unsigned char *image = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
-
-	bool success = true;
-	for (int i = 0; i < height; i++) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		//res = FLIGrabRow(id, image + (i * row_size), width);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) {
-			/* print this error once but read to the end to flush the array */
-			if (success) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGrabRow(%d) = %d at row %d.", id, res, i);
-			success = false;
+	while ((res = dsi_read_image(PRIVATE_DATA->dsi, (unsigned char*)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), O_NONBLOCK)) != 0) {
+		if (res == EWOULDBLOCK) {
+			double time_left = dsi_get_exposure_time_left(PRIVATE_DATA->dsi);
+			INDIGO_DRIVER_DEBUG(stderr, "Image not ready, sleeping for %.3fs...\n", time_left);
+			usleep((int)(time_left*1000000));
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure Failed! dsi_read_image(%s) = %d", PRIVATE_DATA->dev_sid, res);
+			dsi_abort_exposure(PRIVATE_DATA->dsi);
+			dsi_reset_camera(PRIVATE_DATA->dsi);
+			return false;
 		}
 	}
-
-	return success;
+	return true;
 }
 
 
 static bool camera_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	long err = 0;// FLICancelExposure(PRIVATE_DATA->dev_id);
-	//FLICancelExposure(PRIVATE_DATA->dev_id);
-	//FLICancelExposure(PRIVATE_DATA->dev_id);
+	dsi_abort_exposure(PRIVATE_DATA->dsi);
 	PRIVATE_DATA->can_check_temperature = true;
 	PRIVATE_DATA->abort_flag = true;
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if(err) return false;
-	else return true;
+	return true;
 }
 
 
@@ -286,11 +190,8 @@ static void camera_close(indigo_device *device) {
 	if (!device->is_connected) return;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	long res = 0;//FLIClose(PRIVATE_DATA->dev_id);
+	dsi_close_camera(PRIVATE_DATA->dsi);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res) {
-		//INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-	}
 	if (PRIVATE_DATA->buffer != NULL) {
 		free(PRIVATE_DATA->buffer);
 		PRIVATE_DATA->buffer = NULL;
@@ -307,7 +208,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (camera_read_pixels(device)) {
-			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), false, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
@@ -361,9 +262,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	long ok;
 	PRIVATE_DATA->abort_flag = false;
 
-	ok = camera_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, 0,
-	                                CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-	                                CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
+	ok = camera_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value);
 
 	if (ok) {
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
@@ -408,8 +307,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					int i;
 					char mode_name[INDIGO_NAME_SIZE];
 
-					CCD_INFO_WIDTH_ITEM->number.value = 0; //TBD
-					CCD_INFO_HEIGHT_ITEM->number.value = 0; //TBD
+					CCD_INFO_WIDTH_ITEM->number.value = dsi_get_image_width(PRIVATE_DATA->dsi);
+					CCD_INFO_HEIGHT_ITEM->number.value = dsi_get_image_height(PRIVATE_DATA->dsi);
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
 					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
 
@@ -448,18 +347,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
 					//INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetPixelSize(%d) = %f %f", id, size_x, size_y);
-					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = m2um(size_x);
-					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = m2um(size_y);
+					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = dsi_get_pixel_width(PRIVATE_DATA->dsi);
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = dsi_get_pixel_height(PRIVATE_DATA->dsi);
 					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
-					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 1;
-					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 1;
+					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
+					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
 
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
-					/* FLISetBitDepth() does not seem to work so set max and min to DEFAULT and do not chanage it! */
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
 
-					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_BIN_PROPERTY->hidden = true;  // keep it hidden as we do not support binning yet!
+					CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
 					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
 					CCD_BIN_HORIZONTAL_ITEM->number.max = MAX_X_BIN;
 					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
@@ -468,19 +367,20 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
-					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
 					CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
 					CCD_TEMPERATURE_ITEM->number.step = 0;
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					//res = FLIGetTemperature(id,&(CCD_TEMPERATURE_ITEM->number.value));
+					double temp = dsi_get_temperature(PRIVATE_DATA->dsi);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetTemperature(%d) = %d", id, res);
+					if (temp > 1000) {  /* no sensor */
+						CCD_TEMPERATURE_PROPERTY->hidden = true;
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsi_get_temperature(%s) = NO_SENSOR", PRIVATE_DATA->dev_sid);
+					} else {
+						PRIVATE_DATA->can_check_temperature = true;
+						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 					}
-					PRIVATE_DATA->can_check_temperature = true;
-
-					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

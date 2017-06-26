@@ -13,6 +13,8 @@
 #else
 #include <libusb-1.0/libusb.h>
 #endif
+#include <fcntl.h>
+#include <errno.h>
 
 struct DSI_CAMERA;
 
