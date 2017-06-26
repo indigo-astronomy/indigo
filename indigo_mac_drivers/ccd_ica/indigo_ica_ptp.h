@@ -102,11 +102,25 @@ enum PTPOperationCode {
   PTPOperationCodeCopyObject = 0x101A,
   PTPOperationCodeGetPartialObject = 0x101B,
   PTPOperationCodeInitiateOpenCapture = 0x101C,
-  
   PTPOperationCodeGetNumDownloadableObjects = 0x9001,
   PTPOperationCodeGetAllObjectInfo = 0x9002,
   PTPOperationCodeGetUserAssignedDeviceName = 0x9003,
+
+  // MTP codes
   
+  PTPOperationCodeMTPGetObjectPropsSupported = 0x9801,
+  PTPOperationCodeMTPGetObjectPropDesc = 0x9802,
+  PTPOperationCodeMTPGetObjectPropValue = 0x9803,
+  PTPOperationCodeMTPSetObjectPropValue = 0x9804,
+  PTPOperationCodeMTPGetObjPropList = 0x9805,
+  PTPOperationCodeMTPSetObjPropList = 0x9806,
+  PTPOperationCodeMTPGetInterdependendPropdesc = 0x9807,
+  PTPOperationCodeMTPSendObjectPropList = 0x9808,
+  PTPOperationCodeMTPGetObjectReferences = 0x9810,
+  PTPOperationCodeMTPSetObjectReferences = 0x9811,
+  PTPOperationCodeMTPUpdateDeviceFirmware = 0x9812,
+  PTPOperationCodeMTPSkip = 0x9820,
+
   // Nikon codes
   
   PTPOperationCodeNikonGetProfileAllData = 0x9006,
@@ -187,6 +201,19 @@ enum PTPResponseCode {
   PTPResponseCodeSessionAlreadyOpen = 0x201E,
   PTPResponseCodeTransactionCancelled = 0x201F,
   PTPResponseCodeSpecificationOfDestinationUnsupported = 0x2020,
+  
+  // MTP codes
+  
+  PTPResponseCodeMTPUndefined = 0xA800,
+  PTPResponseCodeMTPInvalid_ObjectPropCode = 0xA801,
+  PTPResponseCodeMTPInvalid_ObjectProp_Format = 0xA802,
+  PTPResponseCodeMTPInvalid_ObjectProp_Value = 0xA803,
+  PTPResponseCodeMTPInvalid_ObjectReference = 0xA804,
+  PTPResponseCodeMTPInvalid_Dataset = 0xA806,
+  PTPResponseCodeMTPSpecification_By_Group_Unsupported = 0xA807,
+  PTPResponseCodeMTPSpecification_By_Depth_Unsupported = 0xA808,
+  PTPResponseCodeMTPObject_Too_Large = 0xA809,
+  PTPResponseCodeMTPObjectProp_Not_Supported = 0xA80A,
   
   // Nikon codes
   
@@ -294,6 +321,19 @@ enum PTPPropertyCode {
   PTPPropertyCodeAudioSamplingRate = 0x502A,
   PTPPropertyCodeAudioBitPerSample = 0x502B,
   PTPPropertyCodeAudioVolume = 0x502C,
+
+  // MTP codes
+  
+  PTPPropertyCodeMTPSynchronizationPartner = 0xD401,
+  PTPPropertyCodeMTPDeviceFriendlyName = 0xD402,
+  PTPPropertyCodeMTPVolumeLevel = 0xD403,
+  PTPPropertyCodeMTPDeviceIcon = 0xD405,
+  PTPPropertyCodeMTPSessionInitiatorInfo = 0xD406,
+  PTPPropertyCodeMTPPerceivedDeviceType = 0xD407,
+  PTPPropertyCodeMTPPlaybackRate = 0xD410,
+  PTPPropertyCodeMTPPlaybackObject = 0xD411,
+  PTPPropertyCodeMTPPlaybackContainerIndex = 0xD412,
+  PTPPropertyCodeMTPPlaybackPosition = 0xD413,
   
   // Nikon codes
   
@@ -820,12 +860,12 @@ typedef unsigned short PTPDataTypeCode;
 #define PTP_DEVICE_INFO			@"PTP_DEVICE_INFO"
 #define PTP_EVENT_TIMER			@"PTP_EVENT_TIMER"
 #define PTP_LIVE_VIEW_TIMER @"PTP_LIVE_VIEW_TIMER"
-#define PTP_PROPERTY				@"PTP_PROPERTY_0x%04x"
 
 //------------------------------------------------------------------------------------------------------------------------------
 
 @interface PTPVendor : NSObject
 @property PTPVendorExtension vendorExtension;
++ (NSString *)vendorExtensionName:(PTPVendorExtension)vendorExtension;
 - (id)initWithVendorExtension:(PTPVendorExtension)vendorExtension;
 @end
 
@@ -840,6 +880,7 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter3;
 @property unsigned int parameter4;
 @property unsigned int parameter5;
++ (NSString *)operationCodeName:(PTPOperationCode)operationCode vendorExtension:(PTPVendorExtension)vendorExtension;
 - (id)initWithVendorExtension:(PTPVendorExtension)vendorExtension;
 - (NSData*)commandBuffer;
 @end
@@ -855,6 +896,7 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter3;
 @property unsigned int parameter4;
 @property unsigned int parameter5;
++ (NSString *)responseCodeName:(PTPResponseCode)responseCode vendorExtension:(PTPVendorExtension)vendorExtension;
 - (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
 @end
 
@@ -867,6 +909,7 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter1;
 @property unsigned int parameter2;
 @property unsigned int parameter3;
++ (NSString *)eventCodeName:(PTPEventCode)eventCode vendorExtension:(PTPVendorExtension)vendorExtension;
 - (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
 - (id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1 vendorExtension:(PTPVendorExtension)vendorExtension;
 @end
@@ -883,6 +926,8 @@ typedef unsigned short PTPDataTypeCode;
 @property NSObject* max;
 @property NSObject* step;
 @property NSArray<NSObject*> *supportedValues;
++ (NSString *)propertyCodeName:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension;
++ (NSString *)typeName:(PTPDataTypeCode)type;
 - (id)initWithCode:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension;
 - (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
 @end
@@ -901,6 +946,7 @@ typedef unsigned short PTPDataTypeCode;
 @property NSString *model;
 @property NSString *version;
 @property NSString *serial;
+@property NSMutableDictionary<NSNumber *, PTPProperty *> *properties;
 - (id)initWithData:(NSData*)data;
 @end
 
