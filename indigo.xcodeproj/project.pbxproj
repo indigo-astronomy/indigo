@@ -11,6 +11,8 @@
 		59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */ = {isa = PBXBuildFile; fileRef = 59019E0A1DE0AC7400CCB3ED /* indigo_client.h */; };
 		59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59019E0F1DE112A600CCB3ED /* ASICamera2.h */; };
 		59019E131DE112B700CCB3ED /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59019E111DE112B000CCB3ED /* libASICamera2.a */; };
+		5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
+		5911F7B41F02E1400053F3CA /* libdsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7B01F02E1330053F3CA /* libdsi.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
 		593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 593AD1011EF8399500C059BC /* indigo_guider_asi.c */; };
 		593AD10A1EF839F200C059BC /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 593AD1081EF839EF00C059BC /* libUSB2ST4Conv.a */; };
@@ -256,6 +258,13 @@
 		590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi_main.c; sourceTree = "<group>"; };
 		590A86401DB80A04002F12FB /* indigo_ccd_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_asi.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		590A86411DB80A04002F12FB /* indigo_ccd_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_asi.h; sourceTree = "<group>"; };
+		5911F7AC1F02E1330053F3CA /* indigo_ccd_dsi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_dsi_main.c; sourceTree = "<group>"; };
+		5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_dsi.c; sourceTree = "<group>"; };
+		5911F7AE1F02E1330053F3CA /* indigo_ccd_dsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_dsi.h; sourceTree = "<group>"; };
+		5911F7AF1F02E1330053F3CA /* libdsi_firmware.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libdsi_firmware.h; sourceTree = "<group>"; };
+		5911F7B01F02E1330053F3CA /* libdsi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libdsi.c; sourceTree = "<group>"; };
+		5911F7B11F02E1330053F3CA /* libdsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libdsi.h; sourceTree = "<group>"; };
+		5911F7B21F02E1330053F3CA /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = indigo_focuser_fli_main.c; path = focuser_fli/indigo_focuser_fli_main.c; sourceTree = "<group>"; };
 		591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_focuser_fli.c; path = focuser_fli/indigo_focuser_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = indigo_focuser_fli.h; path = focuser_fli/indigo_focuser_fli.h; sourceTree = "<group>"; };
@@ -548,6 +557,20 @@
 				59019E0D1DE1125900CCB3ED /* bin_externals */,
 			);
 			path = ccd_asi;
+			sourceTree = "<group>";
+		};
+		5911F7AB1F02E10B0053F3CA /* ccd_dsi */ = {
+			isa = PBXGroup;
+			children = (
+				5911F7AC1F02E1330053F3CA /* indigo_ccd_dsi_main.c */,
+				5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */,
+				5911F7AE1F02E1330053F3CA /* indigo_ccd_dsi.h */,
+				5911F7AF1F02E1330053F3CA /* libdsi_firmware.h */,
+				5911F7B01F02E1330053F3CA /* libdsi.c */,
+				5911F7B11F02E1330053F3CA /* libdsi.h */,
+				5911F7B21F02E1330053F3CA /* README.md */,
+			);
+			path = ccd_dsi;
 			sourceTree = "<group>";
 		};
 		591FAB761E391AFA0076BD6E /* focuser_fli */ = {
@@ -894,6 +917,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				5911F7AB1F02E10B0053F3CA /* ccd_dsi */,
 				593AD1001EF8396A00C059BC /* guider_asi */,
 				59F654681EE47371007B8C93 /* ccd_qhy */,
 				59F4EC6F1E941CF400CC7772 /* ccd_sbig */,
@@ -1436,6 +1460,7 @@
 				9DBC34661DCB267700588DB9 /* indigo_wheel_asi.c in Sources */,
 				59019E0B1DE0AC7400CCB3ED /* indigo_client.c in Sources */,
 				9D9EA6A51DBE1F7300E11841 /* indigo_ccd_atik.c in Sources */,
+				5911F7B41F02E1400053F3CA /* libdsi.c in Sources */,
 				9D9EA6B21DBFA30600E11841 /* indigo_ccd_driver.c in Sources */,
 				599C9A501DA022E3008BBCC1 /* indigo_xml.c in Sources */,
 				9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */,
@@ -1455,6 +1480,7 @@
 				593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */,
 				593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */,
 				9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */,
+				5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */,
 				9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */,
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
 				591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */,
