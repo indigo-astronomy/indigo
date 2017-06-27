@@ -307,42 +307,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					int i;
 					char mode_name[INDIGO_NAME_SIZE];
 
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					CCD_INFO_WIDTH_ITEM->number.value = dsi_get_image_width(PRIVATE_DATA->dsi);
 					CCD_INFO_HEIGHT_ITEM->number.value = dsi_get_image_height(PRIVATE_DATA->dsi);
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
 					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
 
-					double size_x, size_y;
-					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					//res = FLIGetPixelSize(id, &size_x, &size_y);
-					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetPixelSize(%d) = %d", id, res);
-					}
-
-					//res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
-					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetModel(%d) = %d", id, res);
-					}
-
-					//res = FLIGetSerialString(id, INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE);
-					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetSerialString(%d) = %d", id, res);
-					}
-
-					long hw_rev, fw_rev;
-					//res = FLIGetFWRevision(id, &fw_rev);
-					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetFWRevision(%d) = %d", id, res);
-					}
-
-					//res = FLIGetHWRevision(id, &hw_rev);
-					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetHWRevision(%d) = %d", id, res);
-					}
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
-					sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
+					//sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
+					//sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
+					sprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "%s", dsi_get_serial_number(PRIVATE_DATA->dsi));
 
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
@@ -353,6 +326,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
 					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
 
+					CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
@@ -371,7 +345,19 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
 					CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
 					CCD_TEMPERATURE_ITEM->number.step = 0;
-					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+					CCD_GAIN_PROPERTY->hidden = false;
+					CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_GAIN_ITEM->number.min = 0;
+					CCD_GAIN_ITEM->number.max = 100;
+					CCD_GAIN_ITEM->number.value = dsi_get_amp_gain(PRIVATE_DATA->dsi);
+
+					CCD_OFFSET_PROPERTY->hidden = false;
+					CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_OFFSET_ITEM->number.min = 0;
+					CCD_OFFSET_ITEM->number.max = 100;
+					CCD_OFFSET_ITEM->number.value = dsi_get_amp_offset(PRIVATE_DATA->dsi);
+
 					double temp = dsi_get_temperature(PRIVATE_DATA->dsi);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (temp > 1000) {  /* no sensor */
@@ -416,24 +402,31 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-	// ------------------------------------------------------------------------------- CCD_FRAME
-	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
-		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
-		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
-		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
-		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64)
-			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
-		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
-			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
-		/* FLISetBitDepth() does not seem to work so this should be always 16 bits */
-		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12.0) {
-			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8.0;
-		} else {
-			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16.0;
-		}
+	// ------------------------------------------------------------------------------- GAIN
+	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+		CCD_GAIN_PROPERTY->state = INDIGO_IDLE_STATE;
+		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 
-		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		dsi_set_amp_gain(PRIVATE_DATA->dsi, (int)(CCD_GAIN_ITEM->number.value));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED)
+			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		return INDIGO_OK;
+	// ------------------------------------------------------------------------------- OFFSET
+} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
+		CCD_OFFSET_PROPERTY->state = INDIGO_IDLE_STATE;
+		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
+
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		dsi_set_amp_offset(PRIVATE_DATA->dsi, (int)(CCD_OFFSET_ITEM->number.value));
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED)
+			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
