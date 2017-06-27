@@ -422,6 +422,11 @@
 #define DSLR_FOCUS_MODE_PROPERTY_NAME								"DSLR_FOCUS_MODE"
 
 //----------------------------------------------------------------------
+/** DSLR_BATTERY_LEVEL property name.
+ */
+#define DSLR_BATTERY_LEVEL_PROPERTY_NAME								"DSLR_BATTERY_LEVEL"
+
+//----------------------------------------------------------------------
 /** GUIDER_GUIDE_DEC property name.
  */
 #define GUIDER_GUIDE_DEC_PROPERTY_NAME        "GUIDER_GUIDE_DEC"

@@ -168,18 +168,20 @@ struct dslr_properties {
 	PTPPropertyCode code;
 	char *name;
 	char *label;
+  indigo_property_type type;
 } dslr_properties[] = {
-	{ PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
-	{ PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
-	{ PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
-	{ PTPPropertyCodeImageSize, DSLR_IMAGE_SIZE_PROPERTY_NAME, "Image size" },
-	{ PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
-	{ PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
-	{ PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO" },
-  { PTPPropertyCodeExposureBiasCompensation, DSLR_COMPENSATION_PROPERTY_NAME, "Compensation" },
-  { PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
-  { PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering" },
-  { PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
+	{ PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program", INDIGO_SWITCH_VECTOR },
+	{ PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture", INDIGO_SWITCH_VECTOR },
+	{ PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter", INDIGO_SWITCH_VECTOR },
+	{ PTPPropertyCodeImageSize, DSLR_IMAGE_SIZE_PROPERTY_NAME, "Image size", INDIGO_SWITCH_VECTOR },
+	{ PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression", INDIGO_SWITCH_VECTOR },
+	{ PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance", INDIGO_SWITCH_VECTOR },
+	{ PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO", INDIGO_SWITCH_VECTOR },
+  { PTPPropertyCodeExposureBiasCompensation, DSLR_COMPENSATION_PROPERTY_NAME, "Compensation", INDIGO_SWITCH_VECTOR },
+  { PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering", INDIGO_SWITCH_VECTOR },
+  { PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering", INDIGO_SWITCH_VECTOR },
+  { PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode", INDIGO_SWITCH_VECTOR },
+  { PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level", INDIGO_NUMBER_VECTOR },
 	{ 0, NULL, NULL }
 };
 
@@ -187,7 +189,7 @@ typedef struct {
 	void* camera;
 	struct info *info;
   indigo_device *focuser;
-	indigo_property *dslr_properties[sizeof(dslr_properties)/sizeof(struct dslr_properties)];
+	indigo_property **dslr_properties;
   void *buffer;
   int buffer_size;
 } ica_private_data;
@@ -210,10 +212,21 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_BIN_PROPERTY->hidden =  CCD_FRAME_PROPERTY->hidden = true;
     CCD_IMAGE_FORMAT_PROPERTY->perm = CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
 		indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
-		for (int i = 0; dslr_properties[i].code; i++) {
-			PRIVATE_DATA->dslr_properties[i] = indigo_init_switch_property(NULL, device->name, dslr_properties[i].name, "DSLR", dslr_properties[i].label, INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+    PRIVATE_DATA->dslr_properties = malloc(sizeof(dslr_properties));
+    int i;
+		for (i = 0; dslr_properties[i].code; i++) {
+      switch (dslr_properties[i].type) {
+        case INDIGO_SWITCH_VECTOR:
+          PRIVATE_DATA->dslr_properties[i] = indigo_init_switch_property(NULL, device->name, dslr_properties[i].name, "DSLR", dslr_properties[i].label, INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+          break;
+        case INDIGO_NUMBER_VECTOR:
+          PRIVATE_DATA->dslr_properties[i] = indigo_init_number_property(NULL, device->name, dslr_properties[i].name, "DSLR", dslr_properties[i].label, INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+          indigo_init_number_item(PRIVATE_DATA->dslr_properties[i]->items, "VALUE", dslr_properties[i].label, 0, 0, 0, 0);
+          break;
+      }
 			PRIVATE_DATA->dslr_properties[i]->hidden = true;
 		}
+    PRIVATE_DATA->dslr_properties[i] = NULL;
 		// --------------------------------------------------------------------------------
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -426,83 +439,126 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 - (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
-	if (code == PTPPropertyCodeNikonLiveViewStatus)
-		CCD_STREAMING_PROPERTY->hidden = false;
-	else {
-		for (int i = 0; dslr_properties[i].code; i++) {
-			if (dslr_properties[i].code == code) {
-				indigo_property *property = PRIVATE_DATA->dslr_properties[i];
-				bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
-				redefine = redefine || (property->count != (int)values.count);
-				if (!redefine) {
-					int index = 0;
-					for (NSString *key in values) {
-						char name[INDIGO_NAME_SIZE];
-						strncpy(name, [key cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
-						if (strcmp(property->items[index].name, name)) {
-							redefine = true;
-							break;
-						}
-						index++;
-					}
-				}
-				switch (code) {
-					case PTPPropertyCodeExposureTime: {
-						int intValue = value.intValue;
-						if (IS_CONNECTED)
-							indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-						if (intValue != 0x7FFFFFFF) {
-							CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.max = intValue / 10000.0;
-						} else {
-							CCD_EXPOSURE_ITEM->number.min = 0;
-							CCD_EXPOSURE_ITEM->number.max = 10000;
-						}
-						if (IS_CONNECTED)
-							indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-						break;
-					}
-					case PTPPropertyCodeCompressionSetting: {
-						if (value.intValue >= 4 && value.intValue <= 8) {
-							if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-								indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_RAW_ITEM, true);
-								indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
-							}
-						} else {
-							if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-								indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
-								indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
-							}
-						}
-						break;
-					}
-				}
-				property->hidden = false;
-				if (redefine) {
-					if (IS_CONNECTED)
-						indigo_delete_property(device, property, NULL);
-					PRIVATE_DATA->dslr_properties[i] = property = indigo_resize_property(property, (int)values.count);
-					property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
-					int index = 0;
-					for (NSString *key in values) {
-						char name[INDIGO_NAME_SIZE];
-						char label[INDIGO_VALUE_SIZE];
-						strncpy(name, [key cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
-						strncpy(label, [labels[index] cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_VALUE_SIZE);
-						indigo_init_switch_item(property->items + index, name, label, [key isEqual:value]);
-						index++;
-					}
-					if (IS_CONNECTED)
-						indigo_define_property(device, property, NULL);
-				} else {
-					int index = 0;
-					for (NSObject *object in values)
-						property->items[index++].sw.value = [object isEqual:value];
-					property->state = INDIGO_OK_STATE;
-					indigo_update_property(device, property, NULL);
-				}
-			}
-		}
+  for (int i = 0; dslr_properties[i].code; i++) {
+    if (dslr_properties[i].code == code) {
+      indigo_property *property = PRIVATE_DATA->dslr_properties[i];
+      bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
+      redefine = redefine || (property->count != (int)values.count);
+      if (!redefine) {
+        int index = 0;
+        for (NSString *key in values) {
+          char name[INDIGO_NAME_SIZE];
+          strncpy(name, [key cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
+          if (strcmp(property->items[index].name, name)) {
+            redefine = true;
+            break;
+          }
+          index++;
+        }
+      }
+      switch (code) {
+        case PTPPropertyCodeExposureTime: {
+          int intValue = value.intValue;
+          if (IS_CONNECTED)
+            indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+          if (intValue != 0x7FFFFFFF) {
+            CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.max = intValue / 10000.0;
+          } else {
+            CCD_EXPOSURE_ITEM->number.min = 0;
+            CCD_EXPOSURE_ITEM->number.max = 10000;
+          }
+          if (IS_CONNECTED)
+            indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+          break;
+        }
+        case PTPPropertyCodeCompressionSetting: {
+          if (value.intValue >= 4 && value.intValue <= 8) {
+            if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+              indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_RAW_ITEM, true);
+              indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
+            }
+          } else {
+            if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+              indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
+              indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
+            }
+          }
+          break;
+        }
+      }
+      property->hidden = false;
+      if (redefine) {
+        if (IS_CONNECTED)
+          indigo_delete_property(device, property, NULL);
+        PRIVATE_DATA->dslr_properties[i] = property = indigo_resize_property(property, (int)values.count);
+        property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
+        int index = 0;
+        for (NSString *key in values) {
+          char name[INDIGO_NAME_SIZE];
+          char label[INDIGO_VALUE_SIZE];
+          strncpy(name, [key cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
+          strncpy(label, [labels[index] cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_VALUE_SIZE);
+          indigo_init_switch_item(property->items + index, name, label, [key isEqual:value]);
+          index++;
+        }
+        if (IS_CONNECTED)
+          indigo_define_property(device, property, NULL);
+      } else {
+        int index = 0;
+        for (NSObject *object in values)
+          property->items[index++].sw.value = [object isEqual:value];
+        property->state = INDIGO_OK_STATE;
+        indigo_update_property(device, property, NULL);
+      }
+      return;
+    }
 	}
+}
+
+- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly {
+  indigo_device *device = [camera.userData[DEVICE] pointerValue];
+  int i;
+  if (code == PTPPropertyCodeNikonLiveViewStatus)
+    CCD_STREAMING_PROPERTY->hidden = false;
+  else {
+    for (i = 0; dslr_properties[i].code; i++) {
+      if (dslr_properties[i].code == code) {
+        indigo_property *property = PRIVATE_DATA->dslr_properties[i];
+        bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
+        redefine = redefine || (property->items[0].number.min != min.intValue);
+        redefine = redefine || (property->items[0].number.max != max.intValue);
+        redefine = redefine || (property->items[0].number.step != step.intValue);
+        property->hidden = false;
+        if (redefine) {
+          if (IS_CONNECTED)
+            indigo_delete_property(device, property, NULL);
+          property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
+          property->items[0].number.min = min.intValue;
+          property->items[0].number.max = max.intValue;
+          property->items[0].number.step = step.intValue;
+          property->items[0].number.value = value.intValue;
+          if (IS_CONNECTED)
+            indigo_define_property(device, property, NULL);
+        } else {
+          property->items[0].number.value = value.intValue;
+          indigo_update_property(device, property, NULL);
+        }
+        return;
+      }
+    }
+//    PRIVATE_DATA->dslr_properties = realloc(PRIVATE_DATA->dslr_properties, (i + 1) * sizeof(struct dslr_properties));
+//    const char *name = [[PTPProperty propertyCodeName:code vendorExtension:camera.ptpDeviceInfo.vendorExtension] cStringUsingEncoding:NSASCIIStringEncoding];
+//    indigo_property *property = indigo_init_number_property(NULL, device->name, name, "Advanced", name, INDIGO_IDLE_STATE, readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM, 1);
+//    indigo_init_number_item(property->items, "VALUE", name, min.intValue, max.intValue, step.intValue, value.intValue);
+//    PRIVATE_DATA->dslr_properties[i] = property;
+//    PRIVATE_DATA->dslr_properties[i + 1] = NULL;
+//    if (IS_CONNECTED)
+//      indigo_define_property(device, property, NULL);
+  }
+}
+
+- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly {
+  
 }
 
 - (void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data filename:(NSString *)filename {
@@ -595,6 +651,8 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_detach_device(device);
     if (PRIVATE_DATA->buffer)
       free(PRIVATE_DATA->buffer);
+    if (PRIVATE_DATA->dslr_properties)
+      free(dslr_properties);
 		free(PRIVATE_DATA);
 		free(device);
 	}
