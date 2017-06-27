@@ -52,7 +52,7 @@
 8. Apogee CCD driver (based on Apogee SDK)
 9. Fishcamp CCD driver (based on Fishcamp SDK)
 10. Andor CCD driver (based on Andor SDK - payed :( we will require but not provide it)
-12. DSI II Pro driver.
+12. DSI driver. __DONE__
 13. ATIK CCD driver __DONE__
 
 #### DSLRs
