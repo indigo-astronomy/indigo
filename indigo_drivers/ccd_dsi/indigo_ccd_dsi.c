@@ -66,7 +66,7 @@
 #define PRIVATE_DATA               ((dsi_private_data *)device->private_data)
 
 // gp_bits is used as boolean
-#define is_connected                     gp_bits
+#define is_connected               gp_bits
 
 #undef INDIGO_DEBUG_DRIVER
 #define INDIGO_DEBUG_DRIVER(c) c
@@ -75,34 +75,17 @@
 
 #define ms2s(s)      ((s) / 1000.0)
 #define s2ms(ms)     ((ms) * 1000)
-#define m2um(m)      ((m) * 1e6)  /* meters to umeters */
-
-typedef struct {
-	long bin_x, bin_y;
-	long width, height;
-	int bpp;
-} cframe_params;
 
 typedef struct {
 	char dev_sid[DSI_ID_LEN];
 	dsi_camera_t *dsi;
-	char dev_file_name[MAX_PATH];
-	char dev_name[MAX_PATH];
-	bool abort_flag;
 	int count_open;
 	indigo_timer *exposure_timer, *temperature_timer;
 	long int buffer_size;
 	char *buffer;
-	int width, height;
-	cframe_params frame_params;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature;
 } dsi_private_data;
-
-
-static indigo_result dsi_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
-}
 
 
 static bool camera_open(indigo_device *device) {
@@ -179,7 +162,6 @@ static bool camera_abort_exposure(indigo_device *device) {
 
 	dsi_abort_exposure(PRIVATE_DATA->dsi);
 	PRIVATE_DATA->can_check_temperature = true;
-	PRIVATE_DATA->abort_flag = true;
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -260,7 +242,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
 	long ok;
-	PRIVATE_DATA->abort_flag = false;
 
 	ok = camera_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value);
 
@@ -301,7 +282,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				if (camera_open(device)) {
-					//flidev_t id = PRIVATE_DATA->dev_id;
 					int id = 0;
 					long res;
 					int i;
@@ -316,10 +296,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					//sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
 					//sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
 					sprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "%s", dsi_get_serial_number(PRIVATE_DATA->dsi));
+					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", dsi_get_model_name(PRIVATE_DATA->dsi));
 
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
-					//INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetPixelSize(%d) = %f %f", id, size_x, size_y);
 					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = dsi_get_pixel_width(PRIVATE_DATA->dsi);
 					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = dsi_get_pixel_height(PRIVATE_DATA->dsi);
 					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
@@ -533,7 +513,7 @@ static void process_plug_event() {
 	static indigo_device ccd_template = {
 		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
-		dsi_enumerate_properties,
+		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
