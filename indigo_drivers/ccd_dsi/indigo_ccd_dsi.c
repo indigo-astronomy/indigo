@@ -190,7 +190,32 @@ static void exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (camera_read_pixels(device)) {
-			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), false, NULL);
+			const char *color_string = dsi_get_bayer_pattern(PRIVATE_DATA->dsi);
+			if (color_string[0] != '\0') {
+				/* NOTE: There is no need to take care about the offsets,
+				   the SDK takes care the image to be in the correct bayer pattern */
+				indigo_fits_keyword keywords[] = {
+					{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
+					{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
+					{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
+					{ 0 }
+				};
+				indigo_process_image(
+					device,
+					PRIVATE_DATA->buffer,
+					(int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value),
+					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value),
+					false, keywords
+				);
+			} else {
+				indigo_process_image(
+					device,
+					PRIVATE_DATA->buffer,
+					(int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value),
+					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value),
+					false, NULL
+				);
+			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
