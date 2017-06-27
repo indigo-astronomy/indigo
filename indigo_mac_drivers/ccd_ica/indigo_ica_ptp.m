@@ -1089,9 +1089,9 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         int form = ptpReadUnsignedChar(&buf);
         switch (form) {
           case 1: {
-            _min = ptpReadValue(_type, &buf);
-            _max = ptpReadValue(_type, &buf);
-            _step = ptpReadValue(_type, &buf);
+            _min = (NSNumber *)ptpReadValue(_type, &buf);
+            _max = (NSNumber *)ptpReadValue(_type, &buf);
+            _step = (NSNumber *)ptpReadValue(_type, &buf);
             break;
           }
           case 2: {
@@ -1217,7 +1217,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     [s appendFormat:@"\nProperties:\n"];
     for (NSNumber *code in _propertiesSupported) {
       PTPProperty *property = _properties[code];
-      NSLog(@"%@", property);
       if (property)
         [s appendFormat:@"%@\n", property];
       else
@@ -1333,7 +1332,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 	switch (ptpRequest.operationCode) {
 		case PTPOperationCodeGetStorageIDs: {
 			PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
-			NSLog(@"Initialized %@\n", info);
+			NSLog(@"Initialized %@\n", info.debug);
 			[(PTPDelegate *)self.delegate cameraConnected:self];
 			NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(checkForEvent) userInfo:nil repeats:true];
 			[self.userData setObject:timer forKey:PTP_EVENT_TIMER];
@@ -1552,8 +1551,13 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
             }
             break;
           }
+          case PTPPropertyCodeBatteryLevel:
+          case PTPPropertyCodeFocalLength: {
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:property.min max:property.max step:property.step readOnly:property.readOnly];
+            break;
+          }
 					case PTPPropertyCodeNikonLiveViewStatus: {
-            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:nil labels:nil readOnly:property.readOnly];
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:@0 max:@1 step:@1 readOnly:true];
 						if (property.value.description.intValue) {
 						//	[self sendPTPRequest:PTPOperationCodeNikonGetLiveViewImg];
 							NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
