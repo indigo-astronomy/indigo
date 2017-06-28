@@ -181,6 +181,8 @@ struct dslr_properties {
   { PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering" },
   { PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
   { PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
+	{ PTPPropertyCodeFocalLength, DSLR_FOCAL_LENGTH_PROPERTY_NAME, "Focal length" },
+	{ PTPPropertyCodeFlashMode, DSLR_FLASH_MODE_PROPERTY_NAME, "Flash mode" },
 	{ 0, NULL, NULL }
 };
 
@@ -258,7 +260,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		[camera requestTakePicture];
+		[camera startCapture];
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
@@ -267,7 +269,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
 			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_STREAMING_PROPERTY, "Count = 0");
 		} else {
 			ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
 			CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -298,6 +299,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_OK_STATE ? "Exposure canceled" : "Failed to cancel exposure");
 		return INDIGO_OK;
 	}
+  NSLog(@"count = %d", PRIVATE_DATA->dslr_properties_count);
 	for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++) {
 		indigo_property *dslr_property = PRIVATE_DATA->dslr_properties[i];
 		if (indigo_property_match(dslr_property, property)) {
@@ -323,25 +325,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					return INDIGO_OK;
 				}
 				case INDIGO_NUMBER_VECTOR: {
-					for (int j = 0; j < dslr_property->count; j++) {
-						if (dslr_property->items[j].sw.value) {
-							dslr_property->state = INDIGO_BUSY_STATE;
-							indigo_update_property(device, dslr_property, NULL);
-							[camera setProperty:code value:[NSString stringWithFormat:@"%d", (int)dslr_property->items[0].number.value]];
-							break;
-						}
-					}
+          dslr_property->state = INDIGO_BUSY_STATE;
+          indigo_update_property(device, dslr_property, NULL);
+          [camera setProperty:code value:[NSString stringWithFormat:@"%d", (int)dslr_property->items[0].number.value]];
 					return INDIGO_OK;
 				}
 				default: {
-					for (int j = 0; j < dslr_property->count; j++) {
-						if (dslr_property->items[j].sw.value) {
-							dslr_property->state = INDIGO_BUSY_STATE;
-							indigo_update_property(device, dslr_property, NULL);
-							[camera setProperty:code value:[NSString stringWithCString:dslr_property->items[0].text.value encoding:NSUTF8StringEncoding]];
-							break;
-						}
-					}
+          dslr_property->state = INDIGO_BUSY_STATE;
+          indigo_update_property(device, dslr_property, NULL);
+          [camera setProperty:code value:[NSString stringWithCString:dslr_property->items[0].text.value encoding:NSUTF8StringEncoding]];
 					return INDIGO_OK;
 				}
 			}
@@ -595,6 +587,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 			indigo_define_property(device, property, NULL);
 	} else {
 		property->items[0].number.value = value.intValue;
+    property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, property, NULL);
 	}
 }
@@ -614,6 +607,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 			indigo_define_property(device, property, NULL);
 	} else {
 		strncpy(property->items[0].text.value, [value cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_VALUE_SIZE);
+    property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, property, NULL);
 	}
 }

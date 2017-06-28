@@ -1544,6 +1544,21 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             break;
           }
+          case PTPPropertyCodeFlashMode: {
+            NSDictionary *map = @{ @0: @"Undefined", @1: @"Automatic flash", @2: @"Flash off", @3: @"Fill flash", @4: @"Automatic Red-eye Reduction", @5: @"Red-eye fill flash", @6: @"External sync", @32784: @"Auto", @32785: @"Auto Slow Sync", @32786: @"Rear Curtain Sync + Slow Sync", @32787: @"Red-eye Reduction + Slow Sync" };
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
+            for (NSNumber *value in property.supportedValues) {
+              [values addObject:value.description];
+              NSString *label = map[value];
+              if (label)
+                [labels addObject:label];
+              else
+                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
+            }
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
+          }
           case PTPPropertyCodeFocusMode: {
             if (info.vendorExtension != PTPVendorExtensionNikon) {
               NSDictionary *map = @{ @1: @"Manual", @2: @"Automatic", @3:@"Macro", @32784: @"AF-S", @32785: @"AF-C", @32786: @"AF-A" };
@@ -1569,6 +1584,10 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
                 [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:property.value.description values:@[@"0", @"1", @"2", @"4"] labels:@[@"AF-S", @"AF-C", @"AF-A", @"M"] readOnly:property.readOnly];
               }
             }
+            break;
+          }
+          case PTPPropertyCodeFocalLength: {
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)[NSNumber numberWithInt:property.value.intValue / 100] min:[NSNumber numberWithInt:property.min.intValue / 100] max:[NSNumber numberWithInt:property.max.intValue / 100] step:nil readOnly:true];
             break;
           }
           default: {
@@ -1735,6 +1754,25 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 			[self sendPTPRequest:PTPOperationCodeNikonEndLiveView];
 			break;
 	}
+}
+
+-(void)startCapture {
+  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  switch (info.vendorExtension) {
+    case PTPVendorExtensionNikon:
+      [self sendPTPRequest:PTPOperationCodeNikonInitiateCaptureRecInMedia param1:0xffffffff param2:0];
+      //[self requestTakePicture];
+      break;
+  }
+}
+
+-(void)stopCapture {
+  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  switch (info.vendorExtension) {
+    case PTPVendorExtensionNikon:
+      [self sendPTPRequest:PTPOperationCodeNikonTerminateCapture];
+      break;
+  }
 }
 
 -(void)mfDrive:(int)steps {
