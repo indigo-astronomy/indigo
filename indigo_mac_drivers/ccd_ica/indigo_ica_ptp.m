@@ -161,6 +161,12 @@ static void ptpWriteUnsignedLong(unsigned char** buf, unsigned long value) {
   (*buf) += 8;
 }
 
+static NSString *ptpRead128(unsigned char** buf) {
+	NSString *value = [NSString stringWithFormat:@"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", (*buf)[0], (*buf)[1], (*buf)[2], (*buf)[3], (*buf)[4], (*buf)[5], (*buf)[6], (*buf)[7], (*buf)[8], (*buf)[9], (*buf)[10], (*buf)[11], (*buf)[12], (*buf)[13], (*buf)[14], (*buf)[15]];
+	(*buf) += 16;
+	return value;
+}
+
 static NSArray<NSNumber *> *ptpReadCharArray(unsigned char** buf) {
   int length = ptpReadUnsignedInt(buf);
   if (length) {
@@ -292,6 +298,9 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       return [NSNumber numberWithLong:ptpReadLong(buf)];
     case PTPDataTypeCodeUInt64:
       return [NSNumber numberWithUnsignedLong:ptpReadUnsignedLong(buf)];
+		case PTPDataTypeCodeSInt128:
+		case PTPDataTypeCodeUInt128:
+			return ptpRead128(buf);
     case PTPDataTypeCodeArrayOfSInt8:
       return ptpReadCharArray(buf);
     case PTPDataTypeCodeArrayOfUInt8:
@@ -1379,6 +1388,17 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           NSLog(@"Translated to %@", property);
         info.properties[[NSNumber numberWithUnsignedShort:property.propertyCode]] = property;
         switch (property.propertyCode) {
+					case PTPPropertyCodeNikonLiveViewStatus: {
+						[(PTPDelegate *)self.delegate cameraCanStream:self];
+						if (property.value.description.intValue) {
+							NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
+							[self.userData setObject:timer forKey:PTP_LIVE_VIEW_TIMER];
+						} else {
+							NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
+							[timer invalidate];
+						}
+						break;
+					}
           case PTPPropertyCodeExposureProgramMode: {
             NSDictionary *map = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority", @32784: @"Auto", @32785: @"Portrait", @32786: @"Landscape", @32787:@"Macro", @32788: @"Sport", @32789: @"Night portrait", @32790:@"Night landscape", @32791: @"Child", @32792: @"Scene", @32793: @"Effects" };
             NSMutableArray *values = [NSMutableArray array];
@@ -1551,23 +1571,23 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
             }
             break;
           }
-          case PTPPropertyCodeBatteryLevel:
-          case PTPPropertyCodeFocalLength: {
-            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:property.min max:property.max step:property.step readOnly:property.readOnly];
-            break;
-          }
-					case PTPPropertyCodeNikonLiveViewStatus: {
-            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:@0 max:@1 step:@1 readOnly:true];
-						if (property.value.description.intValue) {
-						//	[self sendPTPRequest:PTPOperationCodeNikonGetLiveViewImg];
-							NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
-							[self.userData setObject:timer forKey:PTP_LIVE_VIEW_TIMER];
-						} else {
-							NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
-							[timer invalidate];
+          default: {
+						if (property.supportedValues) {
+							NSMutableArray *values = [NSMutableArray array];
+							for (NSNumber *number in property.supportedValues)
+								[values addObject:number.description];
+							[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:property.value.description values:values labels:values readOnly:property.readOnly];
+						} else if (property.type >= PTPDataTypeCodeSInt8 && property.type <= PTPDataTypeCodeUInt64) {
+							[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:property.min max:property.max step:property.step readOnly:property.readOnly];
+						} else if (property.type == PTPDataTypeCodeSInt128 || property.type == PTPDataTypeCodeUInt128) {
+							[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSString *)property.value.description readOnly:true];
+						} else if (property.type == PTPDataTypeCodeUnicodeString) {
+							[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSString *)property.value.description readOnly:property.readOnly];
+						} else if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+								NSLog(@"Ignored %@", property);
 						}
             break;
-					}
+          }
         }
         break;
       }

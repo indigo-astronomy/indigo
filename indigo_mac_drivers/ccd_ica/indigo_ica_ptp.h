@@ -988,6 +988,7 @@ typedef unsigned short PTPDataTypeCode;
 - (void)cameraRemoved:(ICCameraDevice *)camera;
 - (void)cameraCanCapture:(ICCameraDevice *)camera;
 - (void)cameraCanFocus:(ICCameraDevice *)camera;
+- (void)cameraCanStream:(ICCameraDevice *)camera;
 @end
 
 @interface PTPDelegate : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate, PTPDelegateProtocol>
