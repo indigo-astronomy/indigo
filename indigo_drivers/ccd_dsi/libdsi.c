@@ -1699,7 +1699,7 @@ void dsi_close_camera(dsi_camera_t *dsi) {
 	dsicmd_command_1(dsi, PING);
 	dsicmd_command_1(dsi, RESET);
 
-	assert(libusb_release_interface(dsi->handle, 0) >= 0);
+	libusb_release_interface(dsi->handle, 0);
 	libusb_close(dsi->handle);
 	if (dsi->read_buffer_odd) free(dsi->read_buffer_odd);
 	if (dsi->read_buffer_even) free(dsi->read_buffer_even);
