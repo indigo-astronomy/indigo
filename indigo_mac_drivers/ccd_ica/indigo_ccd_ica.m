@@ -245,6 +245,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			[camera requestOpenSession];
 		} else {
+      [camera unlock];
 			[camera requestCloseSession];
 		}
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -281,6 +282,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ) {
+      [camera stopCapture];
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -299,7 +301,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_OK_STATE ? "Exposure canceled" : "Failed to cancel exposure");
 		return INDIGO_OK;
 	}
-  NSLog(@"count = %d", PRIVATE_DATA->dslr_properties_count);
 	for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++) {
 		indigo_property *dslr_property = PRIVATE_DATA->dslr_properties[i];
 		if (indigo_property_match(dslr_property, property)) {
@@ -437,6 +438,8 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 - (void)cameraConnected:(ICCameraDevice*)camera {
+  [camera requestEnableTethering];
+  [camera lock];
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	if (device) {
