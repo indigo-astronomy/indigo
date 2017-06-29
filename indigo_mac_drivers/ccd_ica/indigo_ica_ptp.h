@@ -860,6 +860,7 @@ typedef unsigned short PTPDataTypeCode;
 #define PTP_DEVICE_INFO			@"PTP_DEVICE_INFO"
 #define PTP_EVENT_TIMER			@"PTP_EVENT_TIMER"
 #define PTP_LIVE_VIEW_TIMER @"PTP_LIVE_VIEW_TIMER"
+#define PTP_OBJECT_ADDED		@"PTP_OBJECT_ADDED"
 
 //------------------------------------------------------------------------------------------------------------------------------
 
@@ -964,6 +965,8 @@ typedef unsigned short PTPDataTypeCode;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
+-(void)lock;
+-(void)unlock;
 -(void)startLiveView;
 -(void)stopLiveView;
 -(void)startCapture;

@@ -1319,6 +1319,17 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 			[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:event.parameter1];
 			break;
 		}
+    case PTPEventCodeObjectAdded: {
+      self.userData[PTP_OBJECT_ADDED] = @TRUE;
+      break;
+    }
+    case PTPEventCodeCaptureComplete: {
+      if (self.userData[PTP_OBJECT_ADDED] == nil) {
+        [(PTPDelegate *)self.delegate cameraExposureFailed:self];
+      } else {
+        [self.userData removeObjectForKey:PTP_OBJECT_ADDED];
+      }
+    }
   }
 }
 
@@ -1344,7 +1355,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 			NSLog(@"Initialized %@\n", info.debug);
 			[(PTPDelegate *)self.delegate cameraConnected:self];
 			NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(checkForEvent) userInfo:nil repeats:true];
-			[self.userData setObject:timer forKey:PTP_EVENT_TIMER];
+			self.userData[PTP_EVENT_TIMER] = timer;
 			break;
 		}
 	}
@@ -1352,7 +1363,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     switch (ptpRequest.operationCode) {
       case PTPOperationCodeGetDeviceInfo: {
         PTPDeviceInfo *info = [[PTPDeviceInfo alloc] initWithData:data];
-        [self.userData setObject:info forKey:PTP_DEVICE_INFO];
+        self.userData[PTP_DEVICE_INFO] = info;
         if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeInitiateCapture]]) {
           [(PTPDelegate *)self.delegate cameraCanCapture:self];
         }
@@ -1392,7 +1403,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 						[(PTPDelegate *)self.delegate cameraCanStream:self];
 						if (property.value.description.intValue) {
 							NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
-							[self.userData setObject:timer forKey:PTP_LIVE_VIEW_TIMER];
+							self.userData[PTP_LIVE_VIEW_TIMER] = timer;
 						} else {
 							NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
 							[timer invalidate];
@@ -1580,6 +1591,8 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
             if (info.vendorExtension == PTPVendorExtensionNikon) {
               if (property.value.description.intValue == 3) {
                 [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:@"3" values:@[@"3"] labels:@[@"M (fixed)"] readOnly:true];
+              } else if (property.max.intValue == 1) {
+                [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:property.value.description values:@[@"0", @"1"] labels:@[@"AF-S", @"AF-C"] readOnly:property.readOnly];
               } else {
                 [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:property.value.description values:@[@"0", @"1", @"2", @"4"] labels:@[@"AF-S", @"AF-C", @"AF-A", @"M"] readOnly:property.readOnly];
               }
@@ -1595,7 +1608,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 							NSMutableArray *values = [NSMutableArray array];
 							for (NSNumber *number in property.supportedValues)
 								[values addObject:number.description];
-							[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:property.value.description values:values labels:values readOnly:property.readOnly];
+							[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:values readOnly:property.readOnly];
 						} else if (property.type >= PTPDataTypeCodeSInt8 && property.type <= PTPDataTypeCodeUInt64) {
 							[(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:property.min max:property.max step:property.step readOnly:property.readOnly];
 						} else if (property.type == PTPDataTypeCodeSInt128 || property.type == PTPDataTypeCodeUInt128) {
@@ -1738,6 +1751,14 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 	}
 }
 
+-(void)lock {
+  [self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:1];
+}
+
+-(void)unlock {
+  [self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:0];
+}
+
 -(void)startLiveView {
 	PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
 	switch (info.vendorExtension) {
@@ -1760,8 +1781,13 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
-      [self sendPTPRequest:PTPOperationCodeNikonInitiateCaptureRecInMedia param1:0xffffffff param2:0];
-      //[self requestTakePicture];
+      if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonInitiateCaptureRecInMedia]])
+        [self sendPTPRequest:PTPOperationCodeNikonInitiateCaptureRecInMedia param1:-1 param2:0];
+      else
+        [self requestTakePicture];
+      break;
+    default:
+      [self requestTakePicture];
       break;
   }
 }
