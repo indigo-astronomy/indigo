@@ -1342,6 +1342,17 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 			case PTPOperationCodeSetDevicePropValue:
 				[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:ptpRequest.parameter1];
 				break;
+      case PTPOperationCodeNikonInitiateCaptureRecInMedia:
+        if (ptpResponse.responseCode != PTPResponseCodeOK &&  ptpResponse.responseCode != PTPResponseCodeDeviceBusy) {
+          [(PTPDelegate *)self.delegate cameraExposureFailed:self];
+        }
+        break;
+      case PTPOperationCodeNikonMfDrive:
+        if (ptpResponse.responseCode == PTPResponseCodeOK)
+          [(PTPDelegate *)self.delegate cameraFocusDone:self];
+        else
+          [(PTPDelegate *)self.delegate cameraFocusFailed:self];
+        break;
     }
     if (ptpResponse.responseCode != PTPResponseCodeOK || indigo_get_log_level() >= INDIGO_LOG_DEBUG)
       NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
@@ -1402,7 +1413,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 					case PTPPropertyCodeNikonLiveViewStatus: {
 						[(PTPDelegate *)self.delegate cameraCanStream:self];
 						if (property.value.description.intValue) {
-							NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
+							NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.2 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
 							self.userData[PTP_LIVE_VIEW_TIMER] = timer;
 						} else {
 							NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
@@ -1649,7 +1660,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 					image = [NSData dataWithBytes:bytes + 384 length:data.length - 384];
 				if (image) {
 					[(PTPDelegate *)self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
-					//[self sendPTPRequest:PTPOperationCodeNikonGetLiveViewImg];
 				}
 				break;
 			}
@@ -1782,7 +1792,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
       if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonInitiateCaptureRecInMedia]])
-        [self sendPTPRequest:PTPOperationCodeNikonInitiateCaptureRecInMedia param1:-1 param2:0];
+        [self sendPTPRequest:PTPOperationCodeNikonInitiateCaptureRecInMedia param1:-2 param2:0];
       else
         [self requestTakePicture];
       break;
@@ -1801,7 +1811,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
--(void)mfDrive:(int)steps {
+-(void)focus:(int)steps {
   if (steps >= 0) {
     [self sendPTPRequest:PTPOperationCodeNikonMfDrive param1:1 param2:steps];
   } else {

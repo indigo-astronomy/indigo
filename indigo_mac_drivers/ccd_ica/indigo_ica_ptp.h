@@ -861,6 +861,7 @@ typedef unsigned short PTPDataTypeCode;
 #define PTP_EVENT_TIMER			@"PTP_EVENT_TIMER"
 #define PTP_LIVE_VIEW_TIMER @"PTP_LIVE_VIEW_TIMER"
 #define PTP_OBJECT_ADDED		@"PTP_OBJECT_ADDED"
+#define PTP_FOCUS_LOCKED		@"PTP_FOCUS_LOCKED"
 
 //------------------------------------------------------------------------------------------------------------------------------
 
@@ -960,18 +961,18 @@ typedef unsigned short PTPDataTypeCode;
 //------------------------------------------------------------------------------------------------------------------------------
 
 @interface ICCameraDevice(PTPExtensions)
--(PTPDeviceInfo *)ptpDeviceInfo;
--(void)sendPTPRequest:(PTPOperationCode)operationCode;
--(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
--(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
--(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
--(void)lock;
--(void)unlock;
--(void)startLiveView;
--(void)stopLiveView;
--(void)startCapture;
--(void)stopCapture;
--(void)mfDrive:(int)steps;
+- (PTPDeviceInfo *)ptpDeviceInfo;
+- (void)sendPTPRequest:(PTPOperationCode)operationCode;
+- (void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
+- (void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
+- (void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
+- (void)lock;
+- (void)unlock;
+- (void)startLiveView;
+- (void)stopLiveView;
+- (void)startCapture;
+- (void)stopCapture;
+- (void)focus:(int)steps;
 @end
 
 @interface ICCameraDevice(PTPDebug)
@@ -994,6 +995,8 @@ typedef unsigned short PTPDataTypeCode;
 - (void)cameraCanCapture:(ICCameraDevice *)camera;
 - (void)cameraCanFocus:(ICCameraDevice *)camera;
 - (void)cameraCanStream:(ICCameraDevice *)camera;
+- (void)cameraFocusDone:(ICCameraDevice *)camera;
+- (void)cameraFocusFailed:(ICCameraDevice *)camera;
 @end
 
 @interface PTPDelegate : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate, PTPDelegateProtocol>
