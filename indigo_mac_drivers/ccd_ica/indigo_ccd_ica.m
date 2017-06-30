@@ -172,7 +172,7 @@ struct dslr_properties {
 	{ PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
 	{ PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
 	{ PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
-	{ PTPPropertyCodeImageSize, DSLR_IMAGE_SIZE_PROPERTY_NAME, "Image size" },
+	{ PTPPropertyCodeImageSize, CCD_MODE_PROPERTY_NAME, "Image size" },
 	{ PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
 	{ PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
 	{ PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO" },
@@ -211,7 +211,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		} else {
 			CCD_INFO_PROPERTY->hidden = CCD_FRAME_PROPERTY->hidden = true;
 		}
-		CCD_BIN_PROPERTY->hidden =  CCD_FRAME_PROPERTY->hidden = true;
+		CCD_MODE_PROPERTY->hidden = CCD_BIN_PROPERTY->hidden =  CCD_FRAME_PROPERTY->hidden = true;
     CCD_IMAGE_FORMAT_PROPERTY->perm = CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
 		indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
 		// --------------------------------------------------------------------------------
@@ -381,11 +381,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-      [camera mfDrive:(int)FOCUSER_STEPS_ITEM->number.value];
+      [camera focus:(int)FOCUSER_STEPS_ITEM->number.value];
 		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-      [camera mfDrive:(int)-FOCUSER_STEPS_ITEM->number.value];
+      [camera focus:(int)-FOCUSER_STEPS_ITEM->number.value];
 		}
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
   }
@@ -644,6 +644,18 @@ static indigo_result focuser_detach(indigo_device *device) {
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		}
 	}
+}
+
+- (void)cameraFocusDone:(ICCameraDevice *)camera {
+  indigo_device *device = ((ica_private_data *)((indigo_device *)[camera.userData[DEVICE] pointerValue])->private_data)->focuser;
+  FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+  indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+- (void)cameraFocusFailed:(ICCameraDevice *)camera {
+  indigo_device *device = ((ica_private_data *)((indigo_device *)[camera.userData[DEVICE] pointerValue])->private_data)->focuser;
+  FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+  indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
 - (void)cameraExposureFailed:(ICCameraDevice*)camera {
