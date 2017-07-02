@@ -176,13 +176,18 @@ struct dslr_properties {
 	{ PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
 	{ PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
 	{ PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO" },
-  { PTPPropertyCodeExposureBiasCompensation, DSLR_COMPENSATION_PROPERTY_NAME, "Compensation" },
   { PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
   { PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering" },
   { PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
   { PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
 	{ PTPPropertyCodeFocalLength, DSLR_FOCAL_LENGTH_PROPERTY_NAME, "Focal length" },
-	{ PTPPropertyCodeFlashMode, DSLR_FLASH_MODE_PROPERTY_NAME, "Flash mode" },
+	{ PTPPropertyCodeStillCaptureMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
+  { PTPPropertyCodeFlashMode, DSLR_FLASH_MODE_PROPERTY_NAME, "Flash mode" },
+  { PTPPropertyCodeNikonEVStep, DSLR_COMPENSATION_STEP_PROPERTY_NAME, "Compensation step" },
+  { PTPPropertyCodeExposureBiasCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
+  { PTPPropertyCodeNikonFlashExposureCompensation, DSLR_FLASH_COMPENSATION_PROPERTY_NAME, "Flash compensation" },
+  { PTPPropertyCodeNikonExternalFlashMode, DSLR_EXT_FLASH_MODE_PROPERTY_NAME, "External flash mode" },
+  { PTPPropertyCodeNikonExternalFlashCompensation, DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME, "External flash compensation" },
 	{ 0, NULL, NULL }
 };
 
@@ -456,7 +461,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	indigo_property *property;
 	sprintf(name, "%04x", code);
-	strncpy(label, [[PTPProperty propertyCodeName:code vendorExtension:camera.ptpDeviceInfo.vendorExtension] cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
+	strncpy(label, [[PTPProperty propertyCodeName:code vendorExtension:camera.ptpDeviceInfo.vendorExtension] cStringUsingEncoding:NSASCIIStringEncoding] + 15, INDIGO_NAME_SIZE);
 	for (int i = 0; i < dslr_properties[i].code; i++) {
 		if (code == dslr_properties[i].code) {
 			strcpy(name, dslr_properties[i].name);
@@ -662,8 +667,13 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
+  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+    CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
+  } else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+    CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+    indigo_update_property(device, CCD_STREAMING_PROPERTY, "Failed to exposure");
+  }
 }
 
 - (void)cameraCanCapture:(ICCameraDevice *)camera {

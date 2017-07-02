@@ -402,19 +402,19 @@
 #define DSLR_ISO_PROPERTY_NAME								"DSLR_ISO"
 
 //----------------------------------------------------------------------
-/** DSLR_COMPENSATION property name.
+/** DSLR_EXPOSURE_COMPENSATION property name.
  */
-#define DSLR_COMPENSATION_PROPERTY_NAME								"DSLR_COMPENSATION"
+#define DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME		"DSLR_EXPOSURE_COMPENSATION"
 
 //----------------------------------------------------------------------
 /** DSLR_EXPOSURE_METERING property name.
  */
-#define DSLR_EXPOSURE_METERING_PROPERTY_NAME								"DSLR_EXPOSURE_METERING"
+#define DSLR_EXPOSURE_METERING_PROPERTY_NAME				"DSLR_EXPOSURE_METERING"
 
 //----------------------------------------------------------------------
-/** DSLR_FOCUC_METERING property name.
+/** DSLR_FOCUS_METERING property name.
  */
-#define DSLR_FOCUS_METERING_PROPERTY_NAME								"DSLR_FOCUC_METERING"
+#define DSLR_FOCUS_METERING_PROPERTY_NAME						"DSLR_FOCUS_METERING"
 
 //----------------------------------------------------------------------
 /** DSLR_FOCUS_MODE property name.
@@ -424,17 +424,42 @@
 //----------------------------------------------------------------------
 /** DSLR_BATTERY_LEVEL property name.
  */
-#define DSLR_BATTERY_LEVEL_PROPERTY_NAME								"DSLR_BATTERY_LEVEL"
+#define DSLR_BATTERY_LEVEL_PROPERTY_NAME						"DSLR_BATTERY_LEVEL"
 
 //----------------------------------------------------------------------
 /** DSLR_FOCAL_LENGTH property name.
  */
-#define DSLR_FOCAL_LENGTH_PROPERTY_NAME								"DSLR_FOCAL_LENGTH"
+#define DSLR_FOCAL_LENGTH_PROPERTY_NAME							"DSLR_FOCAL_LENGTH"
+
+//----------------------------------------------------------------------
+/** DSLR_CAPTURE_MODE property name.
+ */
+#define DSLR_CAPTURE_MODE_PROPERTY_NAME							"DSLR_CAPTURE_MODE"
+
+//----------------------------------------------------------------------
+/** DSLR_COMPENSATION_STEP property name.
+ */
+#define DSLR_COMPENSATION_STEP_PROPERTY_NAME				"DSLR_COMPENSATION_STEP"
 
 //----------------------------------------------------------------------
 /** DSLR_FLASH_MODE property name.
  */
 #define DSLR_FLASH_MODE_PROPERTY_NAME								"DSLR_FLASH_MODE"
+
+//----------------------------------------------------------------------
+/** DSLR_FLASH_COMPENSATION property name.
+ */
+#define DSLR_FLASH_COMPENSATION_PROPERTY_NAME		"DSLR_FLASH_COMPENSATION"
+
+//----------------------------------------------------------------------
+/** DSLR_EXT_FLASH_MODE property name.
+ */
+#define DSLR_EXT_FLASH_MODE_PROPERTY_NAME								"DSLR_EXT_FLASH_MODE"
+
+//----------------------------------------------------------------------
+/** DSLR_EXT_FLASH_COMPENSATION property name.
+ */
+#define DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME		"DSLR_EXT_FLASH_COMPENSATION"
 
 //----------------------------------------------------------------------
 /** GUIDER_GUIDE_DEC property name.
