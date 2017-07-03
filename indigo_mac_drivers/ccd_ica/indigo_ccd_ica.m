@@ -163,6 +163,8 @@ static struct info {
 #define DEVICE @"INDIGO_DEVICE"
 
 #define PRIVATE_DATA        ((ica_private_data *)device->private_data)
+#define DSLR_LOCK_PROPERTY  PRIVATE_DATA->dslr_lock_property
+#define DSLR_LOCK_ITEM      PRIVATE_DATA->dslr_lock_property->items
 
 struct dslr_properties {
 	PTPPropertyCode code;
@@ -195,11 +197,13 @@ typedef struct {
 	void* camera;
 	struct info *info;
   indigo_device *focuser;
+  indigo_property *dslr_lock_property;
 	indigo_property **dslr_properties;
   int dslr_properties_count;
   void *buffer;
   int buffer_size;
 } ica_private_data;
+
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
@@ -218,6 +222,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		CCD_MODE_PROPERTY->hidden = CCD_BIN_PROPERTY->hidden =  CCD_FRAME_PROPERTY->hidden = true;
     CCD_IMAGE_FORMAT_PROPERTY->perm = CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
+    DSLR_LOCK_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_LOCK_PROPERTY_NAME, "DSLR", "Lock camera GUI", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+    indigo_init_switch_item(DSLR_LOCK_ITEM, DSLR_LOCK_ITEM_NAME, "Lock", false);
 		indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
 		// --------------------------------------------------------------------------------
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
@@ -233,6 +239,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 			for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
 				if (indigo_property_match(PRIVATE_DATA->dslr_properties[i], property))
 					indigo_define_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
+      if (indigo_property_match(DSLR_LOCK_PROPERTY, property))
+        indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -256,6 +264,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		return INDIGO_OK;
+  } else if (indigo_property_match(DSLR_LOCK_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- DSLR_LOCK
+    indigo_property_copy_values(DSLR_LOCK_PROPERTY, property, false);
+    ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+    DSLR_LOCK_PROPERTY->state = INDIGO_OK_STATE;
+    indigo_update_property(device, DSLR_LOCK_PROPERTY, NULL);
+    if (DSLR_LOCK_ITEM->sw.value)
+      [camera lock];
+    else
+      [camera unlock];
+    return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -354,6 +373,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
 		indigo_release_property(PRIVATE_DATA->dslr_properties[i]);
+  indigo_release_property(DSLR_LOCK_PROPERTY);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_ccd_detach(device);
 }
@@ -450,6 +470,11 @@ static indigo_result focuser_detach(indigo_device *device) {
 	if (device) {
 		for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
 			indigo_define_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
+    indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
+    if (DSLR_LOCK_ITEM->sw.value)
+      [camera lock];
+    else
+      [camera unlock];
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 	}
@@ -720,6 +745,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     }
 		for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
 			indigo_delete_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
+    indigo_delete_property(device, DSLR_LOCK_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 	}
@@ -773,10 +799,4 @@ indigo_result indigo_ccd_ica(indigo_driver_action action, indigo_driver_info *in
 	}
 	
 	return INDIGO_OK;
-}
-
-NSImage *fix_nef_image(NSData *data) {
-  NSURL *url = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"tmp.nef"]];
-  [data writeToURL:url atomically:true];
-  return [[NSImage alloc] initWithContentsOfURL:url];
 }
