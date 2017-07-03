@@ -189,6 +189,14 @@ enum DSI_FLUSH_MODE {
 	DSI_FLUSH_MODE_NEVER  = 2,
 };
 
+/**
+ * DSI flush mode mnemonics.
+ */
+enum DSI_BIN_MODE {
+	BIN1X1 = 1,
+	BIN2X2 = 2,
+};
+
 #define libdsi_inint() libusb_init(NULL)
 #define libdsi_exit() libusb_exit(NULL)
 
@@ -224,6 +232,9 @@ int dsi_get_image_height(dsi_camera_t *dsi);
 double dsi_get_pixel_width(dsi_camera_t *dsi);
 double dsi_get_pixel_height(dsi_camera_t *dsi);
 double dsi_get_exposure_time_left(dsi_camera_t *dsi);
+
+int dsi_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin);
+enum DSI_BIN_MODE dsi_get_binning(dsi_camera_t *dsi);
 
 int dsi_set_amp_gain(dsi_camera_t *dsi, int gain);
 int dsi_get_amp_gain(dsi_camera_t *dsi);
