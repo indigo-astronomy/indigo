@@ -234,6 +234,7 @@ double dsi_get_pixel_height(dsi_camera_t *dsi);
 double dsi_get_exposure_time_left(dsi_camera_t *dsi);
 
 int dsi_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin);
+enum DSI_BIN_MODE dsi_get_max_binning(dsi_camera_t *dsi);
 enum DSI_BIN_MODE dsi_get_binning(dsi_camera_t *dsi);
 
 int dsi_set_amp_gain(dsi_camera_t *dsi, int gain);

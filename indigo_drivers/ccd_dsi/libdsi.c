@@ -1557,6 +1557,11 @@ int dsicmd_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin) {
 	return res;
 }
 
+enum DSI_BIN_MODE dsi_get_max_binning(dsi_camera_t *dsi) {
+	if (dsi->is_binnable) return BIN2X2;
+	else return BIN1X1;
+}
+
 int dsi_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin) {
 	if (dsi->is_binnable) {
 		dsi->bin_mode = bin;
