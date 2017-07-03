@@ -37,6 +37,8 @@ extern "C" {
 
 extern indigo_result indigo_ccd_ica(indigo_driver_action action, indigo_driver_info *info);
 
+extern NSImage *fix_nef_image(NSData *data);
+  
 #ifdef __cplusplus
 }
 #endif
