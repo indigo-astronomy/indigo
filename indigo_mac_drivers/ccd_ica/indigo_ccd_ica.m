@@ -774,3 +774,9 @@ indigo_result indigo_ccd_ica(indigo_driver_action action, indigo_driver_info *in
 	
 	return INDIGO_OK;
 }
+
+NSImage *fix_nef_image(NSData *data) {
+  NSURL *url = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"tmp.nef"]];
+  [data writeToURL:url atomically:true];
+  return [[NSImage alloc] initWithContentsOfURL:url];
+}
