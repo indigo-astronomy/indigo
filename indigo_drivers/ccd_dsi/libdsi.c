@@ -65,6 +65,7 @@ struct DSI_CAMERA {
 
 	enum DSI_FW_DEBUG fw_debug;
 	enum DSI_USB_SPEED usb_speed;
+	enum DSI_BIN_MODE bin_mode;
 
 	union {
 		int value;
@@ -1054,6 +1055,7 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 
 	dsi->little_endian_data = 1;
 	dsi->bayer_pattern[0] = '\0';
+	dsi->bin_mode = BIN1X1;
 
 	if (!dsi->is_simulation) {
 		dsicmd_command_1(dsi, PING);
@@ -1162,6 +1164,7 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		dsi->pixel_size_x     = 8.6;
 		dsi->pixel_size_y     = 8.3;
 		dsi->has_temperature_sensor = 1;
+		dsi->is_binnable      = 0;
 		dsi->is_interlaced    = 1;
 
 		if (strncmp(dsi->chip_name, "ICX429AK", 8) == 0)
@@ -1182,6 +1185,7 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		 * Total pixels:     1434 x 1050
 		 */
 
+		dsi->is_binnable      = 1;
 		dsi->is_interlaced    = 0;
 		dsi->read_width       = 1434;
 		dsi->read_height_even = 0;
@@ -1540,6 +1544,31 @@ const char *dsi_get_serial_number(dsi_camera_t *dsi) {
 		}
 	}
 	return dsi->serial_number;
+}
+
+int dsicmd_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin) {
+	unsigned int read_height_odd = dsi->read_height_odd / bin;
+	int res = 0;
+	if (dsi->is_binnable) {
+		res = dsicmd_command_1(dsi, GET_EXP_MODE);
+		res = dsicmd_command_2(dsi, SET_EXP_MODE, bin);
+		res = dsicmd_command_2(dsi, SET_ROW_COUNT_ODD, read_height_odd);
+	}
+	return res;
+}
+
+int dsi_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin) {
+	if (dsi->is_binnable) {
+		dsi->bin_mode = bin;
+		return 0;
+	}
+
+	dsi->bin_mode = BIN1X1;
+	return -1;
+}
+
+enum DSI_BIN_MODE dsi_get_binning(dsi_camera_t *dsi) {
+	return dsi->bin_mode;
 }
 
 int dsi_get_identifier(libusb_device *device, char *identifier) {
