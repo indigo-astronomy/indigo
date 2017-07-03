@@ -462,6 +462,15 @@
 #define DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME		"DSLR_EXT_FLASH_COMPENSATION"
 
 //----------------------------------------------------------------------
+/** DSLR_LOCK property name.
+ */
+#define DSLR_LOCK_PROPERTY_NAME		"DSLR_LOCK"
+
+/** DSLR_LOCK.LOCK property item name.
+ */
+#define DSLR_LOCK_ITEM_NAME        "LOCK"
+
+//----------------------------------------------------------------------
 /** GUIDER_GUIDE_DEC property name.
  */
 #define GUIDER_GUIDE_DEC_PROPERTY_NAME        "GUIDER_GUIDE_DEC"

@@ -1292,7 +1292,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
   PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
   PTPOperationResponse* ptpResponse = [[PTPOperationResponse alloc] initWithData:response vendorExtension:info.vendorExtension];
-  if (ptpResponse.responseCode != PTPResponseCodeOK || indigo_get_log_level() >= INDIGO_LOG_DEBUG)
+  if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
   switch (ptpRequest.operationCode) {
     case PTPOperationCodeGetStorageIDs: {
@@ -1784,11 +1784,21 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)lock {
-  //[self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:1];
+  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  switch (info.vendorExtension) {
+    case PTPVendorExtensionNikon:
+      [self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:1];
+      break;
+  }
 }
 
 -(void)unlock {
-  [self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:0];
+  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  switch (info.vendorExtension) {
+    case PTPVendorExtensionNikon:
+      [self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:0];
+      break;
+  }
 }
 
 -(void)startLiveView {
