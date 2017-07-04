@@ -1341,13 +1341,13 @@ static unsigned char *dsicmd_decode_image(dsi_camera_t *dsi, unsigned char *buff
 	if (buffer == NULL) return NULL;
 
 	if (dsi->bin_mode == BIN2X2) {
-		read_width       = ((dsi->read_bpp * dsi->read_width / 512) + 1) * 128;
+		read_width       = dsi->read_width / 2;
 		image_width      = dsi->image_width / 2;
 		image_height     = dsi->image_height / 2;
 		image_offset_x   = dsi->image_offset_x / 2;
 		image_offset_y   = dsi->image_offset_y / 2;
 	} else {
-		read_width       = ((dsi->read_bpp * dsi->read_width / 512) + 1) * 256;
+		read_width       = dsi->read_width;
 		image_width      = dsi->image_width;
 		image_height     = dsi->image_height;
 		image_offset_x   = dsi->image_offset_x;
@@ -1957,11 +1957,11 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
 	}
 
 	if (dsi->bin_mode == BIN2X2) {
-		read_width       = ((dsi->read_bpp * dsi->read_width / 512) + 1) * 128;
+		read_width       = dsi->read_width / 2;
 		read_height_even = dsi->read_height_even / 2;
 		read_height_odd  = dsi->read_height_odd / 2;
 	} else {
-		read_width       = ((dsi->read_bpp * dsi->read_width / 512) + 1) * 256;
+		read_width       = dsi->read_width;
 		read_height_even = dsi->read_height_even;
 		read_height_odd  = dsi->read_height_odd;
     }
