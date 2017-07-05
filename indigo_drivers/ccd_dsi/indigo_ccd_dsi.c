@@ -47,8 +47,6 @@
 
 #define MAX_CCD_TEMP         45     /* Max CCD temperature */
 #define MIN_CCD_TEMP        -55     /* Min CCD temperature */
-#define MAX_X_BIN            1      /* Max Horizontal binning */
-#define MAX_Y_BIN            1      /* Max Vertical binning */
 
 #define DEFAULT_BPP          16     /* Default bits per pixel */
 #define MAX_PATH            255     /* Maximal Path Length */
@@ -121,10 +119,18 @@ static bool camera_open(indigo_device *device) {
 }
 
 
-static bool camera_start_exposure(indigo_device *device, double exposure, bool dark) {
+static bool camera_start_exposure(indigo_device *device, double exposure, bool dark, int binning) {
 	long res;
+	enum DSI_BIN_MODE bin_mode = (binning > 1) ? BIN2X2 : BIN1X1;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	res = dsi_set_binning(PRIVATE_DATA->dsi, bin_mode);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_set_binning(%s, %d) = %d", PRIVATE_DATA->dev_sid, bin_mode, res);
+		return false;
+	}
 
 	res = dsi_start_exposure(PRIVATE_DATA->dsi, exposure);
 	if (res) {
@@ -268,7 +274,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
 	long ok;
 
-	ok = camera_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value);
+	ok = camera_start_exposure(
+		device,
+		CCD_EXPOSURE_ITEM->number.target,
+		CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
+		CCD_BIN_VERTICAL_ITEM->number.value
+	);
 
 	if (ok) {
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
@@ -328,20 +339,33 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = dsi_get_pixel_width(PRIVATE_DATA->dsi);
 					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = dsi_get_pixel_height(PRIVATE_DATA->dsi);
 					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
-					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = MAX_X_BIN;
-					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = MAX_Y_BIN;
+					CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 1;
+					CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 1;
 
 					CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
 
-					CCD_BIN_PROPERTY->hidden = true;  // keep it hidden as we do not support binning yet!
-					CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
+					if (dsi_get_max_binning(PRIVATE_DATA->dsi) > 1) {
+						CCD_BIN_PROPERTY->hidden = false;
+						CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+
+						CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+						CCD_MODE_PROPERTY->count = 2;
+						char name[32];
+						sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi), dsi_get_frame_height(PRIVATE_DATA->dsi));
+						indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+						sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi)/2, dsi_get_frame_height(PRIVATE_DATA->dsi)/2);
+						indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+					} else {
+						CCD_BIN_PROPERTY->hidden = true;  // keep it hidden as device does not support binning!
+						CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
+					}
 					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-					CCD_BIN_HORIZONTAL_ITEM->number.max = MAX_X_BIN;
+					CCD_BIN_HORIZONTAL_ITEM->number.max = dsi_get_max_binning(PRIVATE_DATA->dsi);
 					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-					CCD_BIN_VERTICAL_ITEM->number.max = MAX_Y_BIN;
+					CCD_BIN_VERTICAL_ITEM->number.max = dsi_get_max_binning(PRIVATE_DATA->dsi);
 
 					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
 
@@ -420,8 +444,23 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- CCD_BIN
+	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
+		int prev_bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int prev_bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+
+		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
+
+		/* DSI requires BIN_X and BIN_Y to be equal, so keep them entangled */
+		if ((int)CCD_BIN_HORIZONTAL_ITEM->number.value != prev_bin_x) {
+			CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.value;
+		} else if ((int)CCD_BIN_VERTICAL_ITEM->number.value != prev_bin_y) {
+			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.value;
+		}
+		/* let the base base class handle the rest with the manipulated property values */
+		return indigo_ccd_change_property(device, client, CCD_BIN_PROPERTY);
 	// ------------------------------------------------------------------------------- OFFSET
-} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
+	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
 		CCD_OFFSET_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 
