@@ -349,13 +349,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
 
+					char name[32];
 					if (dsi_get_max_binning(PRIVATE_DATA->dsi) > 1) {
 						CCD_BIN_PROPERTY->hidden = false;
 						CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 
 						CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 						CCD_MODE_PROPERTY->count = 2;
-						char name[32];
 						sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi), dsi_get_frame_height(PRIVATE_DATA->dsi));
 						indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
 						sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi)/2, dsi_get_frame_height(PRIVATE_DATA->dsi)/2);
@@ -363,6 +363,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					} else {
 						CCD_BIN_PROPERTY->hidden = true;  // keep it hidden as device does not support binning!
 						CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
+
+						CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+						CCD_MODE_PROPERTY->count = 1;
+						sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi), dsi_get_frame_height(PRIVATE_DATA->dsi));
+						indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
 					}
 					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
 					CCD_BIN_HORIZONTAL_ITEM->number.max = dsi_get_max_binning(PRIVATE_DATA->dsi);
