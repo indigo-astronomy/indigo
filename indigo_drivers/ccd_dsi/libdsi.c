@@ -1462,12 +1462,20 @@ int dsi_get_amp_offset(dsi_camera_t *dsi) {
 	return dsi->amp_offset_pct;
 }
 
-int dsi_get_image_width(dsi_camera_t *dsi) {
+int dsi_get_frame_width(dsi_camera_t *dsi) {
 	return dsi->image_width;
 }
 
-int dsi_get_image_height(dsi_camera_t *dsi) {
+int dsi_get_frame_height(dsi_camera_t *dsi) {
 	return dsi->image_height;
+}
+
+int dsi_get_image_width(dsi_camera_t *dsi) {
+	return dsi->image_width / dsi->bin_mode;
+}
+
+int dsi_get_image_height(dsi_camera_t *dsi) {
+	return dsi->image_height / dsi->bin_mode;
 }
 
 double dsi_get_pixel_width(dsi_camera_t *dsi) {
