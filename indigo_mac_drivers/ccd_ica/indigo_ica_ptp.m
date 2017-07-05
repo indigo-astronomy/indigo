@@ -258,9 +258,14 @@ static NSArray<NSNumber *> *ptpReadUnsignedLongArray(unsigned char** buf) {
 static NSString *ptpReadString(unsigned char** buf) {
   int length = **buf;
   if (length) {
-    NSString *result = [NSString stringWithString:[NSString stringWithCharacters: (const unichar *)(*buf + 1) length:length - 1]];
-    if ([result hasSuffix:@"\0"])
-      result = [result stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\0"]];
+    int fixed;
+    const unichar *pnt = (const unichar *)(*buf + 1);
+    for (fixed = 0; fixed < length; fixed++) {
+      if (*pnt++ == 0) {
+        break;
+      }
+    }
+    NSString *result = [NSString stringWithString:[NSString stringWithCharacters: (const unichar *)(*buf + 1) length:fixed]];
     *buf = (*buf) + length * 2 + 1;
     return result;
   }
@@ -1295,6 +1300,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
   switch (ptpRequest.operationCode) {
+    case PTPOperationCodeNikonDeviceReady: {
+      if (ptpResponse.responseCode == PTPResponseCodeDeviceBusy) {
+        usleep(100000);
+      }
+    }
     case PTPOperationCodeGetStorageIDs: {
       if (ptpResponse.responseCode == PTPResponseCodeOK) {
         NSLog(@"Initialized %@\n", info.debug);
@@ -1444,6 +1454,8 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
             int intValue = value.intValue;
             if (intValue == -1)
               [labels addObject:[NSString stringWithFormat:@"Bulb"]];
+            else if (intValue == -3)
+              [labels addObject:[NSString stringWithFormat:@"Time"]];
             else if (intValue == 1)
               [labels addObject:[NSString stringWithFormat:@"1/8000 s"]];
             else if (intValue == 3)
@@ -1542,7 +1554,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           break;
         }
         case PTPPropertyCodeFocusMeteringMode: {
-          NSDictionary *map = @{ @1: @"Center-spot", @2: @"Multi-spot", @32784: @"Single Area", @32785: @"Auto area", @32786: @"3D tracking" };
+          NSDictionary *map = @{ @1: @"Center-spot", @2: @"Multi-spot", @32784: @"Single Area", @32785: @"Auto area", @32786: @"3D tracking", @32787: @"21 points", @32788: @"39 points" };
           NSMutableArray *values = [NSMutableArray array];
           NSMutableArray *labels = [NSMutableArray array];
           for (NSNumber *value in property.supportedValues) {
@@ -1838,7 +1850,8 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
-      [self sendPTPRequest:PTPOperationCodeNikonTerminateCapture];
+      [self sendPTPRequest:PTPOperationCodeNikonTerminateCapture param1:0 param2:0];
+      [self sendPTPRequest:PTPOperationCodeNikonDeviceReady];
       break;
   }
 }
