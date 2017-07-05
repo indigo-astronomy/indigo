@@ -125,11 +125,13 @@ static bool camera_start_exposure(indigo_device *device, double exposure, bool d
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	res = dsi_set_binning(PRIVATE_DATA->dsi, bin_mode);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_set_binning(%s, %d) = %d", PRIVATE_DATA->dev_sid, bin_mode, res);
-		return false;
+	if (dsi_get_max_binning(PRIVATE_DATA->dsi) > 1) {
+		res = dsi_set_binning(PRIVATE_DATA->dsi, bin_mode);
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_set_binning(%s, %d) = %d", PRIVATE_DATA->dev_sid, bin_mode, res);
+			return false;
+		}
 	}
 
 	res = dsi_start_exposure(PRIVATE_DATA->dsi, exposure);
