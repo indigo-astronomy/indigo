@@ -227,8 +227,14 @@ int dsi_start_exposure(dsi_camera_t *dsi, double exptime);
 int dsi_abort_exposure(dsi_camera_t *dsi);
 void dsi_set_image_little_endian(dsi_camera_t *dsi, int little_endian);
 int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags);
+
+/* get frame width and height unaffected by binning */
+int dsi_get_frame_width(dsi_camera_t *dsi);
+int dsi_get_frame_height(dsi_camera_t *dsi);
+/* get image width and height after binning */
 int dsi_get_image_width(dsi_camera_t *dsi);
 int dsi_get_image_height(dsi_camera_t *dsi);
+
 double dsi_get_pixel_width(dsi_camera_t *dsi);
 double dsi_get_pixel_height(dsi_camera_t *dsi);
 double dsi_get_exposure_time_left(dsi_camera_t *dsi);

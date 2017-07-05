@@ -103,8 +103,8 @@ static bool camera_open(indigo_device *device) {
 	}
 
 	if (PRIVATE_DATA->buffer == NULL) {
-		PRIVATE_DATA->buffer_size = dsi_get_image_width(PRIVATE_DATA->dsi) *
-		                            dsi_get_image_height(PRIVATE_DATA->dsi) *
+		PRIVATE_DATA->buffer_size = dsi_get_frame_width(PRIVATE_DATA->dsi) *
+		                            dsi_get_frame_height(PRIVATE_DATA->dsi) *
 		                            dsi_get_bytespp(PRIVATE_DATA->dsi) +
 		                            FITS_HEADER_SIZE;
 		PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
@@ -313,8 +313,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					char mode_name[INDIGO_NAME_SIZE];
 
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					CCD_INFO_WIDTH_ITEM->number.value = dsi_get_image_width(PRIVATE_DATA->dsi);
-					CCD_INFO_HEIGHT_ITEM->number.value = dsi_get_image_height(PRIVATE_DATA->dsi);
+					CCD_INFO_WIDTH_ITEM->number.value = dsi_get_frame_width(PRIVATE_DATA->dsi);
+					CCD_INFO_HEIGHT_ITEM->number.value = dsi_get_frame_height(PRIVATE_DATA->dsi);
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
 					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
 
