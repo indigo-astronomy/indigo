@@ -1928,8 +1928,10 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 - (void)cameraDevice:(ICCameraDevice*)camera didAddItem:(ICCameraItem*)item {
   if (item.class == ICCameraFile.class) {
     ICCameraFile *file = (ICCameraFile *)item;
-    if (file.wasAddedAfterContentCatalogCompleted)
+    if (file.wasAddedAfterContentCatalogCompleted) {
+      camera.userData[PTP_OBJECT_ADDED] = @TRUE;
       [camera requestDownloadFile:file options:@{ ICDeleteAfterSuccessfulDownload: @TRUE, ICOverwrite: @TRUE, ICDownloadsDirectoryURL: [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:true] } downloadDelegate:self didDownloadSelector:@selector(didDownloadFile:error:options:contextInfo:) contextInfo:nil];
+    }
   }
 }
 
@@ -1958,10 +1960,16 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 - (void)cameraDevice:(ICCameraDevice*)camera didReceivePTPEvent:(NSData*)eventData {
-	PTPEvent *event = [[PTPEvent alloc] initWithData:eventData vendorExtension:camera.ptpDeviceInfo.vendorExtension];
-	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
-		NSLog(@"Received %@", event);
-	[camera processEvent:event];
+  PTPEvent *event = [[PTPEvent alloc] initWithData:eventData vendorExtension:camera.ptpDeviceInfo.vendorExtension];
+  if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
+    NSLog(@"Received %@", event);
+  switch (camera.ptpDeviceInfo.vendorExtension) {
+    case PTPVendorExtensionNikon:
+      break;
+    default:
+      [camera processEvent:event];
+      break;
+  }
 }
 
 @end
