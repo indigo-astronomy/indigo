@@ -202,6 +202,8 @@ typedef struct {
   int dslr_properties_count;
   void *buffer;
   int buffer_size;
+  bool bulb;
+  indigo_timer *exposure_timer;
 } ica_private_data;
 
 
@@ -246,6 +248,15 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	return result;
 }
 
+static void exposure_timer_callback(indigo_device *device) {
+  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+    CCD_EXPOSURE_ITEM->number.value = 0;
+    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+    ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
+    [camera stopCapture];
+  }
+}
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -286,7 +297,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		[camera startCapture];
-		return INDIGO_OK;
+    if (PRIVATE_DATA->bulb)
+      PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
+    return indigo_ccd_change_property(device, client, property);
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -306,24 +319,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ) {
+      indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
       [camera stopCapture];
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			CCD_EXPOSURE_ITEM->number.value = 0;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			ICCameraDevice *camera = (__bridge ICCameraDevice *)(PRIVATE_DATA->camera);
 			[camera stopLiveView];
-			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-			CCD_STREAMING_COUNT_ITEM->number.value = 0;
-			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_OK_STATE ? "Exposure canceled" : "Failed to cancel exposure");
-		return INDIGO_OK;
+    return indigo_ccd_change_property(device, client, property);
 	}
 	for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++) {
 		indigo_property *dslr_property = PRIVATE_DATA->dslr_properties[i];
@@ -550,9 +552,11 @@ static indigo_result focuser_detach(indigo_device *device) {
 				indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			if (intValue != 0x7FFFFFFF) {
 				CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.max = intValue / 10000.0;
+        PRIVATE_DATA->bulb = false;
 			} else {
 				CCD_EXPOSURE_ITEM->number.min = 0;
 				CCD_EXPOSURE_ITEM->number.max = 10000;
+        PRIVATE_DATA->bulb = true;
 			}
 			if (IS_CONNECTED)
 				indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -676,6 +680,19 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 }
 
+- (void)cameraExposureFailed:(ICCameraDevice*)camera {
+  indigo_device *device = [camera.userData[DEVICE] pointerValue];
+  CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+  indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+    CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
+  } else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+    CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+    indigo_update_property(device, CCD_STREAMING_PROPERTY, "Failed to exposure");
+  }
+}
+
 - (void)cameraFocusDone:(ICCameraDevice *)camera {
   indigo_device *device = ((ica_private_data *)((indigo_device *)[camera.userData[DEVICE] pointerValue])->private_data)->focuser;
   FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -686,19 +703,6 @@ static indigo_result focuser_detach(indigo_device *device) {
   indigo_device *device = ((ica_private_data *)((indigo_device *)[camera.userData[DEVICE] pointerValue])->private_data)->focuser;
   FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
   indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-}
-
-- (void)cameraExposureFailed:(ICCameraDevice*)camera {
-	indigo_device *device = [camera.userData[DEVICE] pointerValue];
-	CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-    CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
-  } else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-    CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-    indigo_update_property(device, CCD_STREAMING_PROPERTY, "Failed to exposure");
-  }
 }
 
 - (void)cameraCanCapture:(ICCameraDevice *)camera {
