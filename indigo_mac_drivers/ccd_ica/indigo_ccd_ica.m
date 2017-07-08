@@ -190,6 +190,7 @@ struct dslr_properties {
   { PTPPropertyCodeNikonFlashExposureCompensation, DSLR_FLASH_COMPENSATION_PROPERTY_NAME, "Flash compensation" },
   { PTPPropertyCodeNikonExternalFlashMode, DSLR_EXT_FLASH_MODE_PROPERTY_NAME, "External flash mode" },
   { PTPPropertyCodeNikonExternalFlashCompensation, DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME, "External flash compensation" },
+  { PTPPropertyCodeNikonActivePicCtrlItem, DSLR_PICTURE_STYLE_PROPERTY_NAME, "Picture style" },
 	{ 0, NULL, NULL }
 };
 
@@ -198,6 +199,7 @@ typedef struct {
 	struct info *info;
   indigo_device *focuser;
   indigo_property *dslr_lock_property;
+  indigo_property *dslr_lv_af_property;
 	indigo_property **dslr_properties;
   int dslr_properties_count;
   void *buffer;
@@ -209,6 +211,8 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
+static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -216,20 +220,20 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		if (PRIVATE_DATA->info) {
 			CCD_INFO_PROPERTY->hidden = false;
-			CCD_INFO_WIDTH_ITEM->number.value =  PRIVATE_DATA->info->width;
-			CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info->height;
+			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info->width;
+			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info->height;
 			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info->pixel_size;
 		} else {
 			CCD_INFO_PROPERTY->hidden = CCD_FRAME_PROPERTY->hidden = true;
 		}
-		CCD_MODE_PROPERTY->hidden = CCD_BIN_PROPERTY->hidden =  CCD_FRAME_PROPERTY->hidden = true;
+		CCD_MODE_PROPERTY->hidden = CCD_BIN_PROPERTY->hidden =  true;
     CCD_IMAGE_FORMAT_PROPERTY->perm = CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
     DSLR_LOCK_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_LOCK_PROPERTY_NAME, "DSLR", "Lock camera GUI", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
     indigo_init_switch_item(DSLR_LOCK_ITEM, DSLR_LOCK_ITEM_NAME, "Lock", false);
 		indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
 		// --------------------------------------------------------------------------------
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -313,7 +317,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-			[camera startLiveView];
+      int zoomWidth = (int)(CCD_INFO_WIDTH_ITEM->number.value / CCD_FRAME_WIDTH_ITEM->number.value);
+      int zoomHeight = (int)(CCD_INFO_HEIGHT_ITEM->number.value / CCD_FRAME_HEIGHT_ITEM->number.value);
+      int zoom = zoomWidth < zoomHeight ? zoomWidth : zoomHeight;
+      int x = CCD_FRAME_LEFT_ITEM->number.value + CCD_FRAME_WIDTH_ITEM->number.value / 2;
+      int y = CCD_FRAME_TOP_ITEM->number.value + CCD_FRAME_HEIGHT_ITEM->number.value / 2;
+      [camera startLiveViewZoom:zoom x:x y:y];
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -649,6 +658,22 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 }
 
+- (void)cameraFrame:(ICCameraDevice*)camera left:(int)left top:(int)top width:(int)width height:(int)height {
+  indigo_device *device = [camera.userData[DEVICE] pointerValue];
+  CCD_FRAME_LEFT_ITEM->number.value = left;
+  CCD_FRAME_TOP_ITEM->number.value = top;
+  if (width > 0)
+    CCD_FRAME_WIDTH_ITEM->number.value = width;
+  else
+    CCD_FRAME_WIDTH_ITEM->number.value = CCD_INFO_WIDTH_ITEM->number.value;
+  if (height > 0)
+    CCD_FRAME_HEIGHT_ITEM->number.value = height;
+  else
+    CCD_FRAME_HEIGHT_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.value;
+  CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+  indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+}
+
 - (void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data filename:(NSString *)filename {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	filename = filename.lowercaseString;
@@ -680,16 +705,22 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 }
 
-- (void)cameraExposureFailed:(ICCameraDevice*)camera {
+- (void)cameraExposureFailed:(ICCameraDevice*)camera message:(NSString *)message {
   indigo_device *device = [camera.userData[DEVICE] pointerValue];
   CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
   indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
+    if (message)
+      indigo_update_property(device, CCD_EXPOSURE_PROPERTY, [message cStringUsingEncoding:NSASCIIStringEncoding]);
+    else
+      indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
   } else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-    indigo_update_property(device, CCD_STREAMING_PROPERTY, "Failed to exposure");
+    if (message)
+      indigo_update_property(device, CCD_STREAMING_PROPERTY, [message cStringUsingEncoding:NSASCIIStringEncoding]);
+    else
+      indigo_update_property(device, CCD_STREAMING_PROPERTY, "Failed to exposure");
   }
 }
 
@@ -699,10 +730,13 @@ static indigo_result focuser_detach(indigo_device *device) {
   indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
-- (void)cameraFocusFailed:(ICCameraDevice *)camera {
+- (void)cameraFocusFailed:(ICCameraDevice *)camera message:(NSString *)message {
   indigo_device *device = ((ica_private_data *)((indigo_device *)[camera.userData[DEVICE] pointerValue])->private_data)->focuser;
   FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-  indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+  if (message)
+    indigo_update_property(device, FOCUSER_STEPS_PROPERTY, [message cStringUsingEncoding:NSASCIIStringEncoding]);
+  else
+    indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Failed to focus");
 }
 
 - (void)cameraCanCapture:(ICCameraDevice *)camera {
@@ -735,6 +769,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 - (void)cameraCanStream:(ICCameraDevice *)camera {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	CCD_STREAMING_PROPERTY->hidden = false;
+  CCD_FRAME_PROPERTY->perm = INDIGO_RW_PERM;
 }
 
 - (void)cameraDisconnected:(ICCameraDevice*)camera {
