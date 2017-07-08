@@ -462,6 +462,11 @@
 #define DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME		"DSLR_EXT_FLASH_COMPENSATION"
 
 //----------------------------------------------------------------------
+/** DSLR_PICTURE_STYLE property name.
+ */
+#define DSLR_PICTURE_STYLE_PROPERTY_NAME		"DSLR_PICTURE_STYLE"
+
+//----------------------------------------------------------------------
 /** DSLR_LOCK property name.
  */
 #define DSLR_LOCK_PROPERTY_NAME		"DSLR_LOCK"

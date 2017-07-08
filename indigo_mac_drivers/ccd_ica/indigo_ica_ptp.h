@@ -384,10 +384,10 @@ enum PTPPropertyCode {
   PTPPropertyCodeNikonMenuBankNameC = 0xD043,
   PTPPropertyCodeNikonMenuBankNameD = 0xD044,
   PTPPropertyCodeNikonResetBank = 0xD045,
-  PTPPropertyCodeNikonA1AFCModePriority = 0xD048,
-  PTPPropertyCodeNikonA2AFSModePriority = 0xD049,
-  PTPPropertyCodeNikonA3GroupDynamicAF = 0xD04A,
-  PTPPropertyCodeNikonA4AFActivation = 0xD04B,
+  PTPPropertyCodeNikonAFCModePriority = 0xD048,
+  PTPPropertyCodeNikonAFSModePriority = 0xD049,
+  PTPPropertyCodeNikonGroupDynamicAF = 0xD04A,
+  PTPPropertyCodeNikonAFActivation = 0xD04B,
   PTPPropertyCodeNikonFocusAreaIllumManualFocus = 0xD04C,
   PTPPropertyCodeNikonFocusAreaIllumContinuous = 0xD04D,
   PTPPropertyCodeNikonFocusAreaIllumWhenSelected = 0xD04E,
@@ -415,37 +415,37 @@ enum PTPPropertyCode {
   PTPPropertyCodeNikonImgConfTime = 0xD065,
   PTPPropertyCodeNikonAutoOffTimers = 0xD066,
   PTPPropertyCodeNikonAngleLevel = 0xD067,
-  PTPPropertyCodeNikonD1ShootingSpeed = 0xD068,
-  PTPPropertyCodeNikonD2MaximumShots = 0xD069,
+  PTPPropertyCodeNikonShootingSpeed = 0xD068,
+  PTPPropertyCodeNikonMaximumShots = 0xD069,
   PTPPropertyCodeNikonExposureDelayMode = 0xD06A,
   PTPPropertyCodeNikonLongExposureNoiseReduction = 0xD06B,
   PTPPropertyCodeNikonFileNumberSequence = 0xD06C,
   PTPPropertyCodeNikonControlPanelFinderRearControl = 0xD06D,
   PTPPropertyCodeNikonControlPanelFinderViewfinder = 0xD06E,
-  PTPPropertyCodeNikonD7Illumination = 0xD06F,
+  PTPPropertyCodeNikonIllumination = 0xD06F,
   PTPPropertyCodeNikonNrHighISO = 0xD070,
   PTPPropertyCodeNikonSHSETCHGUIDDISP = 0xD071,
   PTPPropertyCodeNikonArtistName = 0xD072,
   PTPPropertyCodeNikonCopyrightInfo = 0xD073,
   PTPPropertyCodeNikonFlashSyncSpeed = 0xD074,
   PTPPropertyCodeNikonFlashShutterSpeed = 0xD075,
-  PTPPropertyCodeNikonE3AAFlashMode = 0xD076,
-  PTPPropertyCodeNikonE4ModelingFlash = 0xD077,
+  PTPPropertyCodeNikonAAFlashMode = 0xD076,
+  PTPPropertyCodeNikonModelingFlash = 0xD077,
   PTPPropertyCodeNikonBracketSet = 0xD078,
-  PTPPropertyCodeNikonE6ManualModeBracketing = 0xD079,
+  PTPPropertyCodeNikonManualModeBracketing = 0xD079,
   PTPPropertyCodeNikonBracketOrder = 0xD07A,
-  PTPPropertyCodeNikonE8AutoBracketSelection = 0xD07B,
+  PTPPropertyCodeNikonAutoBracketSelection = 0xD07B,
   PTPPropertyCodeNikonBracketingSet = 0xD07C,
-  PTPPropertyCodeNikonF1CenterButtonShootingMode = 0xD080,
+  PTPPropertyCodeNikonCenterButtonShootingMode = 0xD080,
   PTPPropertyCodeNikonCenterButtonPlaybackMode = 0xD081,
-  PTPPropertyCodeNikonF2Multiselector = 0xD082,
-  PTPPropertyCodeNikonF3PhotoInfoPlayback = 0xD083,
-  PTPPropertyCodeNikonF4AssignFuncButton = 0xD084,
-  PTPPropertyCodeNikonF5CustomizeCommDials = 0xD085,
+  PTPPropertyCodeNikonMultiselector = 0xD082,
+  PTPPropertyCodeNikonPhotoInfoPlayback = 0xD083,
+  PTPPropertyCodeNikonAssignFuncButton = 0xD084,
+  PTPPropertyCodeNikonCustomizeCommDials = 0xD085,
   PTPPropertyCodeNikonReverseCommandDial = 0xD086,
   PTPPropertyCodeNikonApertureSetting = 0xD087,
   PTPPropertyCodeNikonMenusAndPlayback = 0xD088,
-  PTPPropertyCodeNikonF6ButtonsAndDials = 0xD089,
+  PTPPropertyCodeNikonButtonsAndDials = 0xD089,
   PTPPropertyCodeNikonNoCFCard = 0xD08A,
   PTPPropertyCodeNikonCenterButtonZoomRatio = 0xD08B,
   PTPPropertyCodeNikonFunctionButton2 = 0xD08C,
@@ -462,9 +462,12 @@ enum PTPPropertyCode {
   PTPPropertyCodeNikonMovFileSlot = 0xD0A3,
   PTPPropertyCodeNikonMovRecProhibitCondition = 0xD0A4,
   PTPPropertyCodeNikonManualMovieSetting = 0xD0A6,
-  PTPPropertyCodeNikonMovQuality = 0xD0A7,
+  PTPPropertyCodeNikonMovHiQuality = 0xD0A7,
+  PTPPropertyCodeNikonMovMicSensitivity = 0xD0A8,
+  PTPPropertyCodeNikonMovWindNoiceReduction = 0xD0AA,
   PTPPropertyCodeNikonLiveViewScreenDisplaySetting = 0xD0B2,
   PTPPropertyCodeNikonMonitorOffDelay = 0xD0B3,
+  PTPPropertyCodeNikonISOSensitivity = 0xD0B5,
   PTPPropertyCodeNikonBracketing = 0xD0C0,
   PTPPropertyCodeNikonAutoExposureBracketStep = 0xD0C1,
   PTPPropertyCodeNikonAutoExposureBracketProgram = 0xD0C2,
@@ -491,18 +494,18 @@ enum PTPPropertyCode {
   PTPPropertyCodeNikonExposureTime = 0xD100,
   PTPPropertyCodeNikonACPower = 0xD101,
   PTPPropertyCodeNikonWarningStatus = 0xD102,
-  PTPPropertyCodeNikonMaximumShots = 0xD103,
+  PTPPropertyCodeNikonRemainingShots = 0xD103,
   PTPPropertyCodeNikonAFLockStatus = 0xD104,
   PTPPropertyCodeNikonAELockStatus = 0xD105,
   PTPPropertyCodeNikonFVLockStatus = 0xD106,
   PTPPropertyCodeNikonAutofocusLCDTopMode2 = 0xD107,
-  PTPPropertyCodeNikonAutofocusArea = 0xD108,
+  PTPPropertyCodeNikonAutofocusSensor = 0xD108,
   PTPPropertyCodeNikonFlexibleProgram = 0xD109,
   PTPPropertyCodeNikonLightMeter = 0xD10A,
-  PTPPropertyCodeNikonRecordingMedia = 0xD10B,
+  PTPPropertyCodeNikonSaveMedia = 0xD10B,
   PTPPropertyCodeNikonUSBSpeed = 0xD10C,
   PTPPropertyCodeNikonCCDNumber = 0xD10D,
-  PTPPropertyCodeNikonCameraOrientation = 0xD10E,
+  PTPPropertyCodeNikonCameraInclination = 0xD10E,
   PTPPropertyCodeNikonGroupPtnType = 0xD10F,
   PTPPropertyCodeNikonFNumberLock = 0xD110,
   PTPPropertyCodeNikonExposureApertureLock = 0xD111,
@@ -577,8 +580,8 @@ enum PTPPropertyCode {
   PTPPropertyCodeNikonMovieShutterSpeed = 0xD1A8,
   PTPPropertyCodeNikonMovieFNumber = 0xD1A9,
   PTPPropertyCodeNikonMovieISO = 0xD1AA,
-  PTPPropertyCodeNikonLiveViewMovieMode = 0xD1AC,
-  PTPPropertyCodeNikonExposureDisplayStatus = 0xD1B0,
+  PTPPropertyCodeNikonLiveViewImageSize = 0xD1AC,
+  PTPPropertyCodeNikonBlinkingStatus = 0xD1B0,
   PTPPropertyCodeNikonExposureIndicateStatus = 0xD1B1,
   PTPPropertyCodeNikonInfoDispErrStatus = 0xD1B2,
   PTPPropertyCodeNikonExposureIndicateLightup = 0xD1B3,
@@ -857,11 +860,14 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-#define PTP_DEVICE_INFO			@"PTP_DEVICE_INFO"
-#define PTP_EVENT_TIMER			@"PTP_EVENT_TIMER"
-#define PTP_LIVE_VIEW_TIMER @"PTP_LIVE_VIEW_TIMER"
-#define PTP_OBJECT_ADDED		@"PTP_OBJECT_ADDED"
-#define PTP_FOCUS_LOCKED		@"PTP_FOCUS_LOCKED"
+#define PTP_DEVICE_INFO       @"PTP_DEVICE_INFO"
+#define PTP_EVENT_TIMER       @"PTP_EVENT_TIMER"
+#define PTP_LIVE_VIEW_TIMER   @"PTP_LIVE_VIEW_TIMER"
+#define PTP_OBJECT_ADDED      @"PTP_OBJECT_ADDED"
+#define PTP_FOCUS_LOCKED      @"PTP_FOCUS_LOCKED"
+#define PTP_LIVE_VIEW_ZOOM    @"PTP_LIVE_VIEW_ZOOM"
+#define PTP_LIVE_VIEW_X       @"PTP_LIVE_VIEW_X"
+#define PTP_LIVE_VIEW_Y       @"PTP_LIVE_VIEW_Y"
 
 //------------------------------------------------------------------------------------------------------------------------------
 
@@ -968,7 +974,7 @@ typedef unsigned short PTPDataTypeCode;
 - (void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 - (void)lock;
 - (void)unlock;
-- (void)startLiveView;
+- (void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y;
 - (void)stopLiveView;
 - (void)startCapture;
 - (void)stopCapture;
@@ -986,7 +992,7 @@ typedef unsigned short PTPDataTypeCode;
 - (void)cameraAdded:(ICCameraDevice *)camera;
 - (void)cameraConnected:(ICCameraDevice *)camera;
 - (void)cameraExposureDone:(ICCameraDevice *)camera data:(NSData *)data filename:(NSString *)filename;
-- (void)cameraExposureFailed:(ICCameraDevice *)camera;
+- (void)cameraExposureFailed:(ICCameraDevice *)camera message:(NSString *)message;
 - (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly;
 - (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly;
 - (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly;
@@ -996,7 +1002,8 @@ typedef unsigned short PTPDataTypeCode;
 - (void)cameraCanFocus:(ICCameraDevice *)camera;
 - (void)cameraCanStream:(ICCameraDevice *)camera;
 - (void)cameraFocusDone:(ICCameraDevice *)camera;
-- (void)cameraFocusFailed:(ICCameraDevice *)camera;
+- (void)cameraFocusFailed:(ICCameraDevice *)camera message:(NSString *)message;
+- (void)cameraFrame:(ICCameraDevice *)camera left:(int)left top:(int)top width:(int)width height:(int)height;
 @end
 
 @interface PTPDelegate : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate, PTPDelegateProtocol>
