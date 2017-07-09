@@ -1278,6 +1278,9 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 			[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:event.parameter1];
 			break;
 		}
+    case PTPEventCodeNikonObjectAddedInSDRAM: {
+      NSLog(@"Object added to SDRAM");
+    }
     case PTPEventCodeObjectAdded: {
       self.userData[PTP_OBJECT_ADDED] = @TRUE;
       break;
@@ -1922,9 +1925,8 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           PTPEventCode code = ptpReadUnsignedShort(&buf);
           unsigned int parameter1 = ptpReadUnsignedInt(&buf);
           PTPEvent *event = [[PTPEvent alloc] initWithCode:code parameter1:parameter1 vendorExtension:self.ptpDeviceInfo.vendorExtension];
-          if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+          if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
             NSLog(@"Translated to %@", [event description]);
-          }
           [self processEvent:event];
         }
         break;
@@ -2086,7 +2088,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
       if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonInitiateCaptureRecInMedia]]) {
-        [self sendPTPRequest:PTPOperationCodeNikonInitiateCaptureRecInMedia param1:-2 param2:0];
+        [self sendPTPRequest:PTPOperationCodeNikonInitiateCaptureRecInMedia param1:-1 param2:0];
         [self sendPTPRequest:PTPOperationCodeNikonDeviceReady];
       }
       else
