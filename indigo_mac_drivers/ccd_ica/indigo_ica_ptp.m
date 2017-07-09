@@ -1262,7 +1262,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 @implementation ICCameraDevice(PTPExtensions)
 
 - (void)checkForEvent {
-  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPDeviceInfo *info = self.ptpDeviceInfo;
   if (info.vendorExtension == PTPVendorExtensionNikon && [info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonCheckEvent]]) {
     [self sendPTPRequest:PTPOperationCodeNikonCheckEvent];
   }
@@ -1298,24 +1298,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
       NSLog(@"Completed %@ with error %@", ptpRequest, error);
   }
-  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPDeviceInfo *info = self.ptpDeviceInfo;
   PTPOperationResponse* ptpResponse = [[PTPOperationResponse alloc] initWithData:response vendorExtension:info.vendorExtension];
-  
-//  if (ptpRequest.operationCode == PTPOperationCodeNikonStartLiveView)
-//    NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
-//  if (ptpRequest.operationCode == PTPOperationCodeNikonChangeAfArea)
-//    NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
-//  if (ptpRequest.operationCode == PTPOperationCodeSetDevicePropValue)
-//    NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
-  
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
   switch (ptpRequest.operationCode) {
-    case PTPOperationCodeNikonDeviceReady: {
-      if (ptpResponse.responseCode == PTPResponseCodeDeviceBusy) {
-        usleep(100000);
-      }
-    }
     case PTPOperationCodeGetStorageIDs: {
       if (ptpResponse.responseCode == PTPResponseCodeOK) {
         NSLog(@"Initialized %@\n", info.debug);
@@ -1348,112 +1335,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           [self sendPTPRequest:PTPOperationCodeGetStorageIDs];
         }
       }
-      break;
-    }
-    case PTPOperationCodeNikonGetVendorPropCodes: {
-      unsigned char* buffer = (unsigned char*)[data bytes];
-      unsigned char* buf = buffer;
-      NSArray *codes = ptpReadUnsignedShortArray(&buf);
-      PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
-      [(NSMutableArray *)info.propertiesSupported addObjectsFromArray:codes];
-      for (NSNumber *code in info.propertiesSupported) {
-        [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:code.unsignedShortValue];
-      }
-      [self sendPTPRequest:PTPOperationCodeGetStorageIDs];
-      break;
-    }
-    case PTPOperationCodeNikonInitiateCaptureRecInMedia: {
-      if (ptpResponse.responseCode != PTPResponseCodeOK &&  ptpResponse.responseCode != PTPResponseCodeDeviceBusy) {
-        [(PTPDelegate *)self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"InitiateCaptureRecInMedia failed (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
-      }
-      break;
-    }
-    case PTPOperationCodeNikonMfDrive: {
-      if (ptpResponse.responseCode == PTPResponseCodeOK) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-          [(PTPDelegate *)self.delegate cameraFocusDone:self];
-        });
-
-      }
-      else
-        [(PTPDelegate *)self.delegate cameraFocusFailed:self message:[NSString stringWithFormat:@"MfDrive failed (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
-      break;
-    }
-    case PTPOperationCodeNikonGetLiveViewImg: {
-      if (ptpResponse.responseCode == PTPResponseCodeOK && data) {
-        char *bytes = (void*)[data bytes];
-        NSData *image;
-        if ((bytes[64] & 0xFF) == 0xFF && (bytes[65] & 0xFF) == 0xD8) {
-          image = [NSData dataWithBytes:bytes + 64 length:data.length - 64];
-          image = [NSData dataWithBytes:bytes + 128 length:data.length - 128];
-          unsigned char *buf = (unsigned char *)bytes;
-          ptpReadUnsignedShort(&buf); // image width
-          ptpReadUnsignedShort(&buf); // image height
-          ptpReadUnsignedShort(&buf); // whole width
-          ptpReadUnsignedShort(&buf); // whole height
-          int frameWidth = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
-          int frameHeight = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
-          int frameLeft = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameWidth / 2;
-          int frameTop = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameHeight / 2;
-          [(PTPDelegate *)self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
-        } else if ((bytes[128] & 0xFF) == 0xFF && (bytes[129] & 0xFF) == 0xD8) {
-          image = [NSData dataWithBytes:bytes + 128 length:data.length - 128];
-          unsigned char *buf = (unsigned char *)bytes;
-          ptpReadUnsignedShort(&buf); // image width
-          ptpReadUnsignedShort(&buf); // image height
-          ptpReadUnsignedShort(&buf); // whole width
-          ptpReadUnsignedShort(&buf); // whole height
-          int frameWidth = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
-          int frameHeight = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
-          int frameLeft = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameWidth / 2;
-          int frameTop = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameHeight / 2;
-          [(PTPDelegate *)self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
-        } else if ((bytes[384] & 0xFF) == 0xFF && (bytes[385] & 0xFF) == 0xD8) {
-          image = [NSData dataWithBytes:bytes + 384 length:data.length - 384];
-          unsigned char *buf = (unsigned char *)bytes;
-          int header = CFSwapInt32BigToHost(ptpReadUnsignedInt(&buf)); // header size
-          NSLog(@"%d", header);
-          if (header == 376) {
-            ptpReadUnsignedInt(&buf); // image size
-            ptpReadUnsignedShort(&buf); // image width
-            ptpReadUnsignedShort(&buf); // image height
-          }
-          ptpReadUnsignedShort(&buf); // whole width
-          ptpReadUnsignedShort(&buf); // whole height
-          int frameWidth = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
-          int frameHeight = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
-          int frameLeft = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameWidth / 2;
-          int frameTop = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameHeight / 2;
-          [(PTPDelegate *)self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
-        }
-        if (image)
-          [(PTPDelegate *)self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
-        else
-          [(PTPDelegate *)self.delegate cameraExposureFailed:self message:@"JPEG magic not found"];
-      } else {
-        [(PTPDelegate *)self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No data received (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
-        NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
-        [timer invalidate];
-      }
-      break;
-    }
-    case PTPOperationCodeNikonCheckEvent: {
-      unsigned char* buffer = (unsigned char*)[data bytes];
-      unsigned char* buf = buffer;
-      int count = ptpReadUnsignedShort(&buf);
-      for (int i = 0; i < count; i++) {
-        PTPEventCode code = ptpReadUnsignedShort(&buf);
-        unsigned int parameter1 = ptpReadUnsignedInt(&buf);
-        PTPEvent *event = [[PTPEvent alloc] initWithCode:code parameter1:parameter1 vendorExtension:self.ptpDeviceInfo.vendorExtension];
-        if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-          NSLog(@"Translated to %@", [event description]);
-        }
-        [self processEvent:event];
-      }
-      break;
-    }
-    case PTPOperationCodeNikonSetControlMode: {
-      [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureProgramMode];
       break;
     }
     case PTPOperationCodeGetDevicePropDesc: {
@@ -1974,6 +1855,120 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       }
     }
   }
+  if (info.vendorExtension == PTPVendorExtensionNikon) {
+    switch (ptpRequest.operationCode) {
+      case PTPOperationCodeNikonDeviceReady: {
+        if (ptpResponse.responseCode == PTPResponseCodeDeviceBusy) {
+          usleep(100000);
+        }
+      }
+      case PTPOperationCodeNikonGetVendorPropCodes: {
+        unsigned char* buffer = (unsigned char*)[data bytes];
+        unsigned char* buf = buffer;
+        NSArray *codes = ptpReadUnsignedShortArray(&buf);
+        PTPDeviceInfo *info = self.ptpDeviceInfo;
+        [(NSMutableArray *)info.propertiesSupported addObjectsFromArray:codes];
+        for (NSNumber *code in info.propertiesSupported) {
+          [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:code.unsignedShortValue];
+        }
+        [self sendPTPRequest:PTPOperationCodeGetStorageIDs];
+        break;
+      }
+      case PTPOperationCodeNikonInitiateCaptureRecInMedia: {
+        if (ptpResponse.responseCode != PTPResponseCodeOK &&  ptpResponse.responseCode != PTPResponseCodeDeviceBusy) {
+          [(PTPDelegate *)self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"InitiateCaptureRecInMedia failed (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
+        }
+        break;
+      }
+      case PTPOperationCodeNikonMfDrive: {
+        if (ptpResponse.responseCode == PTPResponseCodeOK) {
+          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+            [(PTPDelegate *)self.delegate cameraFocusDone:self];
+          });
+
+        }
+        else
+          [(PTPDelegate *)self.delegate cameraFocusFailed:self message:[NSString stringWithFormat:@"MfDrive failed (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
+        break;
+      }
+      case PTPOperationCodeNikonGetLiveViewImg: {
+        if (ptpResponse.responseCode == PTPResponseCodeOK && data) {
+          char *bytes = (void*)[data bytes];
+          NSData *image;
+          if ((bytes[64] & 0xFF) == 0xFF && (bytes[65] & 0xFF) == 0xD8) {
+            image = [NSData dataWithBytes:bytes + 64 length:data.length - 64];
+            image = [NSData dataWithBytes:bytes + 128 length:data.length - 128];
+            unsigned char *buf = (unsigned char *)bytes;
+            ptpReadUnsignedShort(&buf); // image width
+            ptpReadUnsignedShort(&buf); // image height
+            ptpReadUnsignedShort(&buf); // whole width
+            ptpReadUnsignedShort(&buf); // whole height
+            int frameWidth = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
+            int frameHeight = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
+            int frameLeft = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameWidth / 2;
+            int frameTop = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameHeight / 2;
+            [(PTPDelegate *)self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
+          } else if ((bytes[128] & 0xFF) == 0xFF && (bytes[129] & 0xFF) == 0xD8) {
+            image = [NSData dataWithBytes:bytes + 128 length:data.length - 128];
+            unsigned char *buf = (unsigned char *)bytes;
+            ptpReadUnsignedShort(&buf); // image width
+            ptpReadUnsignedShort(&buf); // image height
+            ptpReadUnsignedShort(&buf); // whole width
+            ptpReadUnsignedShort(&buf); // whole height
+            int frameWidth = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
+            int frameHeight = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
+            int frameLeft = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameWidth / 2;
+            int frameTop = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameHeight / 2;
+            [(PTPDelegate *)self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
+          } else if ((bytes[384] & 0xFF) == 0xFF && (bytes[385] & 0xFF) == 0xD8) {
+            image = [NSData dataWithBytes:bytes + 384 length:data.length - 384];
+            unsigned char *buf = (unsigned char *)bytes;
+            int header = CFSwapInt32BigToHost(ptpReadUnsignedInt(&buf)); // header size
+            if (header == 376) {
+              ptpReadUnsignedInt(&buf); // image size
+              ptpReadUnsignedShort(&buf); // image width
+              ptpReadUnsignedShort(&buf); // image height
+            }
+            ptpReadUnsignedShort(&buf); // whole width
+            ptpReadUnsignedShort(&buf); // whole height
+            int frameWidth = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
+            int frameHeight = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
+            int frameLeft = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameWidth / 2;
+            int frameTop = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameHeight / 2;
+            [(PTPDelegate *)self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
+          }
+          if (image)
+            [(PTPDelegate *)self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
+          else
+            [(PTPDelegate *)self.delegate cameraExposureFailed:self message:@"JPEG magic not found"];
+        } else {
+          [(PTPDelegate *)self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No data received (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
+          NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
+          [timer invalidate];
+        }
+        break;
+      }
+      case PTPOperationCodeNikonCheckEvent: {
+        unsigned char* buffer = (unsigned char*)[data bytes];
+        unsigned char* buf = buffer;
+        int count = ptpReadUnsignedShort(&buf);
+        for (int i = 0; i < count; i++) {
+          PTPEventCode code = ptpReadUnsignedShort(&buf);
+          unsigned int parameter1 = ptpReadUnsignedInt(&buf);
+          PTPEvent *event = [[PTPEvent alloc] initWithCode:code parameter1:parameter1 vendorExtension:self.ptpDeviceInfo.vendorExtension];
+          if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+            NSLog(@"Translated to %@", [event description]);
+          }
+          [self processEvent:event];
+        }
+        break;
+      }
+      case PTPOperationCodeNikonSetControlMode: {
+        [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureProgramMode];
+        break;
+      }
+    }
+  }
 }
 
 -(PTPDeviceInfo *)ptpDeviceInfo {
@@ -1981,7 +1976,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value {
-  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPDeviceInfo *info = self.ptpDeviceInfo;
   if (code == PTPPropertyCodeFocusMode && info.vendorExtension == PTPVendorExtensionNikon)
     code = PTPPropertyCodeNikonAutofocusMode;
   PTPProperty *property = info.properties[[NSNumber numberWithUnsignedShort:code]];
@@ -2064,7 +2059,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)lock {
-  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPDeviceInfo *info = self.ptpDeviceInfo;
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
       [self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:1];
@@ -2073,7 +2068,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)unlock {
-  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPDeviceInfo *info = self.ptpDeviceInfo;
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
       [self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:0];
@@ -2082,7 +2077,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 - (void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y {
-	PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+	PTPDeviceInfo *info = self.ptpDeviceInfo;
 	switch (info.vendorExtension) {
     case PTPVendorExtensionNikon: {
       if (zoom < 2)
@@ -2107,7 +2102,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)stopLiveView {
-	PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+	PTPDeviceInfo *info = self.ptpDeviceInfo;
 	switch (info.vendorExtension) {
     case PTPVendorExtensionNikon: {
       NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
@@ -2119,7 +2114,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)startCapture {
-  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPDeviceInfo *info = self.ptpDeviceInfo;
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
       if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonInitiateCaptureRecInMedia]])
@@ -2134,7 +2129,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)stopCapture {
-  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPDeviceInfo *info = self.ptpDeviceInfo;
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
       [self sendPTPRequest:PTPOperationCodeNikonTerminateCapture param1:0 param2:0];
@@ -2144,7 +2139,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)focus:(int)steps {
-  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPDeviceInfo *info = self.ptpDeviceInfo;
   PTPProperty *afMode = info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonLiveViewAFFocus]];
   if (afMode.value.intValue != 0) {
     [self setProperty:PTPPropertyCodeNikonLiveViewAFFocus value:@"0"];
@@ -2157,7 +2152,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 - (void)setFrameLeft:(int)left top:(int)top width:(int)width height:(int)height {
-  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPDeviceInfo *info = self.ptpDeviceInfo;
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
       [self sendPTPRequest:PTPOperationCodeNikonChangeAfArea param1:(left + width / 2) param2:(top + height/2)];
