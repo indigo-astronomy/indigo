@@ -1301,12 +1301,12 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
   PTPOperationResponse* ptpResponse = [[PTPOperationResponse alloc] initWithData:response vendorExtension:info.vendorExtension];
   
-  if (ptpRequest.operationCode == PTPOperationCodeNikonStartLiveView)
-    NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
-  if (ptpRequest.operationCode == PTPOperationCodeNikonChangeAfArea)
-    NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
-  if (ptpRequest.operationCode == PTPOperationCodeSetDevicePropValue)
-    NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
+//  if (ptpRequest.operationCode == PTPOperationCodeNikonStartLiveView)
+//    NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
+//  if (ptpRequest.operationCode == PTPOperationCodeNikonChangeAfArea)
+//    NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
+//  if (ptpRequest.operationCode == PTPOperationCodeSetDevicePropValue)
+//    NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
   
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
@@ -1396,8 +1396,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           int frameLeft = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameWidth / 2;
           int frameTop = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameHeight / 2;
           [(PTPDelegate *)self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
-        }
-        else if ((bytes[128] & 0xFF) == 0xFF && (bytes[129] & 0xFF) == 0xD8) {
+        } else if ((bytes[128] & 0xFF) == 0xFF && (bytes[129] & 0xFF) == 0xD8) {
           image = [NSData dataWithBytes:bytes + 128 length:data.length - 128];
           unsigned char *buf = (unsigned char *)bytes;
           ptpReadUnsignedShort(&buf); // image width
@@ -1409,14 +1408,16 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           int frameLeft = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameWidth / 2;
           int frameTop = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameHeight / 2;
           [(PTPDelegate *)self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
-        }
-        else if ((bytes[384] & 0xFF) == 0xFF && (bytes[385] & 0xFF) == 0xD8) {
+        } else if ((bytes[384] & 0xFF) == 0xFF && (bytes[385] & 0xFF) == 0xD8) {
           image = [NSData dataWithBytes:bytes + 384 length:data.length - 384];
           unsigned char *buf = (unsigned char *)bytes;
-          ptpReadUnsignedInt(&buf); // header size
-          ptpReadUnsignedInt(&buf); // image size
-          ptpReadUnsignedShort(&buf); // image width
-          ptpReadUnsignedShort(&buf); // image height
+          int header = CFSwapInt32BigToHost(ptpReadUnsignedInt(&buf)); // header size
+          NSLog(@"%d", header);
+          if (header == 376) {
+            ptpReadUnsignedInt(&buf); // image size
+            ptpReadUnsignedShort(&buf); // image width
+            ptpReadUnsignedShort(&buf); // image height
+          }
           ptpReadUnsignedShort(&buf); // whole width
           ptpReadUnsignedShort(&buf); // whole height
           int frameWidth = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf));
@@ -1449,6 +1450,10 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         }
         [self processEvent:event];
       }
+      break;
+    }
+    case PTPOperationCodeNikonSetControlMode: {
+      [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureProgramMode];
       break;
     }
     case PTPOperationCodeGetDevicePropDesc: {
@@ -1504,7 +1509,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
             if (intValue == -1)
               [labels addObject:[NSString stringWithFormat:@"Bulb"]];
             else if (intValue == -3)
-              [labels addObject:[NSString stringWithFormat:@"Time"]];
+              [values removeLastObject]; //[labels addObject:[NSString stringWithFormat:@"Time"]];
             else if (intValue == 1)
               [labels addObject:[NSString stringWithFormat:@"1/8000 s"]];
             else if (intValue == 3)
@@ -2139,6 +2144,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)focus:(int)steps {
+  PTPDeviceInfo *info = self.userData[PTP_DEVICE_INFO];
+  PTPProperty *afMode = info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonLiveViewAFFocus]];
+  if (afMode.value.intValue != 0) {
+    [self setProperty:PTPPropertyCodeNikonLiveViewAFFocus value:@"0"];
+  }
   if (steps >= 0) {
     [self sendPTPRequest:PTPOperationCodeNikonMfDrive param1:1 param2:steps];
   } else {
