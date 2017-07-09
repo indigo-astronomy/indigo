@@ -1343,19 +1343,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         NSLog(@"Translated to %@", property);
       info.properties[[NSNumber numberWithUnsignedShort:property.propertyCode]] = property;
       switch (property.propertyCode) {
-        case PTPPropertyCodeNikonLiveViewStatus: {
-          [(PTPDelegate *)self.delegate cameraCanStream:self];
-          if (property.value.description.intValue) {
-            [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:[self.userData[PTP_LIVE_VIEW_ZOOM] description]];
-            [self sendPTPRequest:PTPOperationCodeNikonChangeAfArea param1:[self.userData[PTP_LIVE_VIEW_X] intValue] param2:[self.userData[PTP_LIVE_VIEW_Y] intValue]];
-            NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
-            self.userData[PTP_LIVE_VIEW_TIMER] = timer;
-          } else {
-            NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
-            [timer invalidate];
-          }
-          break;
-        }
         case PTPPropertyCodeExposureProgramMode: {
           NSDictionary *map = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority", @32784: @"Auto", @32785: @"Portrait", @32786: @"Landscape", @32787:@"Macro", @32788: @"Sport", @32789: @"Night portrait", @32790:@"Night landscape", @32791: @"Child", @32792: @"Scene", @32793: @"Effects" };
           NSMutableArray *values = [NSMutableArray array];
@@ -1385,12 +1372,12 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           NSMutableArray *values = [NSMutableArray array];
           NSMutableArray *labels = [NSMutableArray array];
           for (NSNumber *value in property.supportedValues) {
-            [values addObject:value.description];
             int intValue = value.intValue;
+            [values addObject:value.description];
             if (intValue == -1)
               [labels addObject:[NSString stringWithFormat:@"Bulb"]];
             else if (intValue == -3)
-              [values removeLastObject]; //[labels addObject:[NSString stringWithFormat:@"Time"]];
+              [labels addObject:[NSString stringWithFormat:@"Time"]];
             else if (intValue == 1)
               [labels addObject:[NSString stringWithFormat:@"1/8000 s"]];
             else if (intValue == 3)
@@ -1503,7 +1490,10 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
           break;
         }
-        case PTPPropertyCodeNikonExternalFlashMode:
+        case PTPPropertyCodeFocalLength: {
+          [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)[NSNumber numberWithInt:property.value.intValue / 100] min:[NSNumber numberWithInt:property.min.intValue / 100] max:[NSNumber numberWithInt:property.max.intValue / 100] step:nil readOnly:true];
+          break;
+        }
         case PTPPropertyCodeFlashMode: {
           NSDictionary *map = @{ @0: @"Undefined", @1: @"Automatic flash", @2: @"Flash off", @3: @"Fill flash", @4: @"Automatic Red-eye Reduction", @5: @"Red-eye fill flash", @6: @"External sync", @32784: @"Auto", @32785: @"Auto Slow Sync", @32786: @"Rear Curtain Sync + Slow Sync", @32787: @"Red-eye Reduction + Slow Sync" };
           NSMutableArray *values = [NSMutableArray array];
@@ -1551,102 +1541,103 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
           break;
         }
-        case PTPPropertyCodeNikonColorSpace: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+      }
+      if (info.vendorExtension == PTPVendorExtensionNikon) {
+        switch (property.propertyCode) {
+          case PTPPropertyCodeFocusMode: {
+            break;
+          }
+          case PTPPropertyCodeNikonLiveViewStatus: {
+            [(PTPDelegate *)self.delegate cameraCanStream:self];
+            if (property.value.description.intValue) {
+              [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:[self.userData[PTP_LIVE_VIEW_ZOOM] description]];
+              [self sendPTPRequest:PTPOperationCodeNikonChangeAfArea param1:[self.userData[PTP_LIVE_VIEW_X] intValue] param2:[self.userData[PTP_LIVE_VIEW_Y] intValue]];
+              NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
+              self.userData[PTP_LIVE_VIEW_TIMER] = timer;
+            } else {
+              NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
+              [timer invalidate];
+            }
+            break;
+          }
+          case PTPPropertyCodeNikonExternalFlashMode:
+          case PTPPropertyCodeNikonColorSpace: {
             NSArray *values = @[ @"0", @"1" ];
             NSArray *labels = @[ @"sRGB", @"Adobe RGB" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonLiveViewImageZoomRatio: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonLiveViewImageZoomRatio: {
             NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5" ];
             NSArray *labels = @[ @"1x", @"2x", @"3x", @"4x", @"6x", @"8x" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonVignetteCtrl: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonVignetteCtrl: {
             NSArray *values = @[ @"0", @"1", @"2", @"3" ];
             NSArray *labels = @[ @"High", @"Normal", @"Low", @"Off" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonBlinkingStatus: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonBlinkingStatus: {
             NSArray *values = @[ @"0", @"1", @"2", @"3" ];
             NSArray *labels = @[ @"None", @"Shutter", @"Aperture", @"Shutter + Aperture" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonCleanImageSensor: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonCleanImageSensor: {
             NSArray *values = @[ @"0", @"1", @"2", @"3" ];
             NSArray *labels = @[ @"At startup", @"At shutdown", @"At startup + shutdown", @"Off" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonHDRMode: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonHDRMode: {
             NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5" ];
             NSArray *labels = @[ @"Off", @"Low", @"Normal", @"High", @"Extra high", @"Auto" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonMovScreenSize: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonMovScreenSize: {
             NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5", @"6", @"7" ];
             NSArray *labels = @[ @"1920x1080 50p", @"1920x1080 25p", @"1920x1080 24p", @"1280x720 50p", @"640x424 25p", @"1920x1080 25p", @"1920x1080 24p", @"1280x720 50p" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonEnableCopyright:
-        case PTPPropertyCodeNikonAutoDistortionControl:
-        case PTPPropertyCodeNikonAELockStatus:
-        case PTPPropertyCodeNikonAFLockStatus:
-        case PTPPropertyCodeNikonExternalFlashAttached:
-        case PTPPropertyCodeNikonAFCModePriority:
-        case PTPPropertyCodeNikonISOAutoTime:
-        case PTPPropertyCodeNikonMovHiQuality:
-        case PTPPropertyCodeNikonImageRotation:
-        case PTPPropertyCodeNikonImageCommentEnable:
-        case PTPPropertyCodeNikonManualMovieSetting:
-        case PTPPropertyCodeNikonResetBank:
-        case PTPPropertyCodeNikonResetBank0:
-        case PTPPropertyCodeNikonExposureDelayMode:
-        case PTPPropertyCodeNikonLongExposureNoiseReduction:
-        case PTPPropertyCodeNikonMovWindNoiceReduction:
-        case PTPPropertyCodeNikonBracketing:
-        case PTPPropertyCodeNikonNoCFCard:
-        case PTPPropertyCodeNikonACPower: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonEnableCopyright:
+          case PTPPropertyCodeNikonAutoDistortionControl:
+          case PTPPropertyCodeNikonAELockStatus:
+          case PTPPropertyCodeNikonAFLockStatus:
+          case PTPPropertyCodeNikonExternalFlashAttached:
+          case PTPPropertyCodeNikonAFCModePriority:
+          case PTPPropertyCodeNikonISOAutoTime:
+          case PTPPropertyCodeNikonMovHiQuality:
+          case PTPPropertyCodeNikonImageRotation:
+          case PTPPropertyCodeNikonImageCommentEnable:
+          case PTPPropertyCodeNikonManualMovieSetting:
+          case PTPPropertyCodeNikonResetBank:
+          case PTPPropertyCodeNikonResetBank0:
+          case PTPPropertyCodeNikonExposureDelayMode:
+          case PTPPropertyCodeNikonLongExposureNoiseReduction:
+          case PTPPropertyCodeNikonMovWindNoiceReduction:
+          case PTPPropertyCodeNikonBracketing:
+          case PTPPropertyCodeNikonNoCFCard:
+          case PTPPropertyCodeNikonACPower: {
             NSArray *values = @[ @"0", @"1" ];
             NSArray *labels = @[ @"Off", @"On" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonEVStep: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonEVStep: {
             NSArray *values = @[ @"0", @"1" ];
             NSArray *labels = @[ @"1/3", @"1/2" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
             [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureBiasCompensation];
             [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeNikonFlashExposureCompensation];
             [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeNikonExternalFlashCompensation];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonFlashExposureCompensation:
-        case PTPPropertyCodeNikonExternalFlashCompensation: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonFlashExposureCompensation:
+          case PTPPropertyCodeNikonExternalFlashCompensation: {
             NSMutableArray *values = [NSMutableArray array];
             NSMutableArray *labels = [NSMutableArray array];
             int step;
@@ -1659,99 +1650,75 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
               [labels addObject:[NSString stringWithFormat:@"%.1f", i * 0.16666 ]];
             }
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonCameraInclination: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonCameraInclination: {
             NSArray *values = @[ @"0", @"1", @"2", @"3" ];
             NSArray *labels = @[ @"Level", @"Grip is top", @"Grip is bottom", @"Up Down" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonLensID: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonLensID: {
             property.type = PTPDataTypeCodeUnicodeString;
             NSDictionary *lens = @{ @0x0000: @"Fisheye Nikkor 8mm f/2.8 AiS", @0x0001: @"AF Nikkor 50mm f/1.8", @0x0002: @"AF Zoom-Nikkor 35-70mm f/3.3-4.5", @0x0003: @"AF Zoom-Nikkor 70-210mm f/4", @0x0004: @"AF Nikkor 28mm f/2.8", @0x0005: @"AF Nikkor 50mm f/1.4", @0x0006: @"AF Micro-Nikkor 55mm f/2.8", @0x0007: @"AF Zoom-Nikkor 28-85mm f/3.5-4.5", @0x0008: @"AF Zoom-Nikkor 35-105mm f/3.5-4.5", @0x0009: @"AF Nikkor 24mm f/2.8", @0x000A: @"AF Nikkor 300mm f/2.8 IF-ED", @0x000B: @"AF Nikkor 180mm f/2.8 IF-ED", @0x000D: @"AF Zoom-Nikkor 35-135mm f/3.5-4.5", @0x000E: @"AF Zoom-Nikkor 70-210mm f/4", @0x000F: @"AF Nikkor 50mm f/1.8 N", @0x0010: @"AF Nikkor 300mm f/4 IF-ED", @0x0011: @"AF Zoom-Nikkor 35-70mm f/2.8", @0x0012: @"AF Nikkor 70-210mm f/4-5.6", @0x0013: @"AF Zoom-Nikkor 24-50mm f/3.3-4.5", @0x0014: @"AF Zoom-Nikkor 80-200mm f/2.8 ED", @0x0015: @"AF Nikkor 85mm f/1.8", @0x0017: @"Nikkor 500mm f/4 P ED IF", @0x0018: @"AF Zoom-Nikkor 35-135mm f/3.5-4.5 N", @0x001A: @"AF Nikkor 35mm f/2", @0x001B: @"AF Zoom-Nikkor 75-300mm f/4.5-5.6", @0x001C: @"AF Nikkor 20mm f/2.8", @0x001D: @"AF Zoom-Nikkor 35-70mm f/3.3-4.5 N", @0x001E: @"AF Micro-Nikkor 60mm f/2.8", @0x001F: @"AF Micro-Nikkor 105mm f/2.8", @0x0020: @"AF Zoom-Nikkor 80-200mm f/2.8 ED", @0x0021: @"AF Zoom-Nikkor 28-70mm f/3.5-4.5", @0x0022: @"AF DC-Nikkor 135mm f/2", @0x0023: @"Zoom-Nikkor 1200-1700mm f/5.6-8 P ED IF", @0x0024: @"AF Zoom-Nikkor 80-200mm f/2.8D ED", @0x0025: @"AF Zoom-Nikkor 35-70mm f/2.8D", @0x0026: @"AF Zoom-Nikkor 28-70mm f/3.5-4.5D", @0x0027: @"AF-I Nikkor 300mm f/2.8D IF-ED", @0x0028: @"AF-I Nikkor 600mm f/4D IF-ED", @0x002A: @"AF Nikkor 28mm f/1.4D", @0x002B: @"AF Zoom-Nikkor 35-80mm f/4-5.6D", @0x002C: @"AF DC-Nikkor 105mm f/2D", @0x002D: @"AF Micro-Nikkor 200mm f/4D IF-ED", @0x002E: @"AF Nikkor 70-210mm f/4-5.6D", @0x002F: @"AF Zoom-Nikkor 20-35mm f/2.8D IF", @0x0030: @"AF-I Nikkor 400mm f/2.8D IF-ED", @0x0031: @"AF Micro-Nikkor 60mm f/2.8D", @0x0032: @"AF Micro-Nikkor 105mm f/2.8D", @0x0033: @"AF Nikkor 18mm f/2.8D", @0x0034: @"AF Fisheye Nikkor 16mm f/2.8D", @0x0035: @"AF-I Nikkor 500mm f/4D IF-ED", @0x0036: @"AF Nikkor 24mm f/2.8D", @0x0037: @"AF Nikkor 20mm f/2.8D", @0x0038: @"AF Nikkor 85mm f/1.8D", @0x003A: @"AF Zoom-Nikkor 28-70mm f/3.5-4.5D", @0x003B: @"AF Zoom-Nikkor 35-70mm f/2.8D N", @0x003C: @"AF Zoom-Nikkor 80-200mm f/2.8D ED", @0x003D: @"AF Zoom-Nikkor 35-80mm f/4-5.6D", @0x003E: @"AF Nikkor 28mm f/2.8D", @0x003F: @"AF Zoom-Nikkor 35-105mm f/3.5-4.5D", @0x0041: @"AF Nikkor 180mm f/2.8D IF-ED", @0x0042: @"AF Nikkor 35mm f/2D", @0x0043: @"AF Nikkor 50mm f/1.4D", @0x0044: @"AF Zoom-Nikkor 80-200mm f/4.5-5.6D", @0x0045: @"AF Zoom-Nikkor 28-80mm f/3.5-5.6D", @0x0046: @"AF Zoom-Nikkor 35-80mm f/4-5.6D N", @0x0047: @"AF Zoom-Nikkor 24-50mm f/3.3-4.5D", @0x0048: @"AF-S Nikkor 300mm f/2.8D IF-ED", @0x0049: @"AF-S Nikkor 600mm f/4D IF-ED", @0x004A: @"AF Nikkor 85mm f/1.4D IF", @0x004B: @"AF-S Nikkor 500mm f/4D IF-ED", @0x004C: @"AF Zoom-Nikkor 24-120mm f/3.5-5.6D IF", @0x004D: @"AF Zoom-Nikkor 28-200mm f/3.5-5.6D IF", @0x004E: @"AF DC-Nikkor 135mm f/2D", @0x004F: @"IX-Nikkor 24-70mm f/3.5-5.6", @0x0050: @"IX-Nikkor 60-180mm f/4-5.6", @0x0053: @"AF Zoom-Nikkor 80-200mm f/2.8D ED", @0x0054: @"AF Zoom-Micro Nikkor 70-180mm f/4.5-5.6D ED", @0x0056: @"AF Zoom-Nikkor 70-300mm f/4-5.6D ED", @0x0059: @"AF-S Nikkor 400mm f/2.8D IF-ED", @0x005A: @"IX-Nikkor 30-60mm f/4-5.6", @0x005B: @"IX-Nikkor 60-180mm f/4.5-5.6", @0x005D: @"AF-S Zoom-Nikkor 28-70mm f/2.8D IF-ED", @0x005E: @"AF-S Zoom-Nikkor 80-200mm f/2.8D IF-ED", @0x005F: @"AF Zoom-Nikkor 28-105mm f/3.5-4.5D IF", @0x0060: @"AF Zoom-Nikkor 28-80mm f/3.5-5.6D", @0x0061: @"AF Zoom-Nikkor 75-240mm f/4.5-5.6D", @0x0063: @"AF-S Nikkor 17-35mm f/2.8D IF-ED", @0x0064: @"PC Micro-Nikkor 85mm f/2.8D", @0x0065: @"AF VR Zoom-Nikkor 80-400mm f/4.5-5.6D ED", @0x0066: @"AF Zoom-Nikkor 18-35mm f/3.5-4.5D IF-ED", @0x0067: @"AF Zoom-Nikkor 24-85mm f/2.8-4D IF", @0x0068: @"AF Zoom-Nikkor 28-80mm f/3.3-5.6G", @0x0069: @"AF Zoom-Nikkor 70-300mm f/4-5.6G", @0x006A: @"AF-S Nikkor 300mm f/4D IF-ED", @0x006B: @"AF Nikkor ED 14mm f/2.8D", @0x006D: @"AF-S Nikkor 300mm f/2.8D IF-ED II", @0x006E: @"AF-S Nikkor 400mm f/2.8D IF-ED II", @0x006F: @"AF-S Nikkor 500mm f/4D IF-ED II", @0x0070: @"AF-S Nikkor 600mm f/4D IF-ED II", @0x0072: @"Nikkor 45mm f/2.8 P", @0x0074: @"AF-S Zoom-Nikkor 24-85mm f/3.5-4.5G IF-ED", @0x0075: @"AF Zoom-Nikkor 28-100mm f/3.5-5.6G", @0x0076: @"AF Nikkor 50mm f/1.8D", @0x0077: @"AF-S VR Zoom-Nikkor 70-200mm f/2.8G IF-ED", @0x0078: @"AF-S VR Zoom-Nikkor 24-120mm f/3.5-5.6G IF-ED", @0x0079: @"AF Zoom-Nikkor 28-200mm f/3.5-5.6G IF-ED", @0x007A: @"AF-S DX Zoom-Nikkor 12-24mm f/4G IF-ED", @0x007B: @"AF-S VR Zoom-Nikkor 200-400mm f/4G IF-ED", @0x007D: @"AF-S DX Zoom-Nikkor 17-55mm f/2.8G IF-ED", @0x007F: @"AF-S DX Zoom-Nikkor 18-70mm f/3.5-4.5G IF-ED", @0x0080: @"AF DX Fisheye-Nikkor 10.5mm f/2.8G ED", @0x0081: @"AF-S VR Nikkor 200mm f/2G IF-ED", @0x0082: @"AF-S VR Nikkor 300mm f/2.8G IF-ED", @0x0083: @"FSA-L2, EDG 65, 800mm F13 G", @0x0089: @"AF-S DX Zoom-Nikkor 55-200mm f/4-5.6G ED", @0x008A: @"AF-S VR Micro-Nikkor 105mm f/2.8G IF-ED", @0x008B: @"AF-S DX VR Zoom-Nikkor 18-200mm f/3.5-5.6G IF-ED", @0x008C: @"AF-S DX Zoom-Nikkor 18-55mm f/3.5-5.6G ED", @0x008D: @"AF-S VR Zoom-Nikkor 70-300mm f/4.5-5.6G IF-ED", @0x008F: @"AF-S DX Zoom-Nikkor 18-135mm f/3.5-5.6G IF-ED", @0x0090: @"AF-S DX VR Zoom-Nikkor 55-200mm f/4-5.6G IF-ED", @0x0092: @"AF-S Zoom-Nikkor 14-24mm f/2.8G ED", @0x0093: @"AF-S Zoom-Nikkor 24-70mm f/2.8G ED", @0x0094: @"AF-S DX Zoom-Nikkor 18-55mm f/3.5-5.6G ED II", @0x0095: @"PC-E Nikkor 24mm f/3.5D ED", @0x0096: @"AF-S VR Nikkor 400mm f/2.8G ED", @0x0097: @"AF-S VR Nikkor 500mm f/4G ED", @0x0098: @"AF-S VR Nikkor 600mm f/4G ED", @0x0099: @"AF-S DX VR Zoom-Nikkor 16-85mm f/3.5-5.6G ED", @0x009A: @"AF-S DX VR Zoom-Nikkor 18-55mm f/3.5-5.6G", @0x009B: @"PC-E Micro Nikkor 45mm f/2.8D ED", @0x009C: @"AF-S Micro Nikkor 60mm f/2.8G ED", @0x009D: @"PC-E Micro Nikkor 85mm f/2.8D", @0x009E: @"AF-S DX VR Zoom-Nikkor 18-105mm f/3.5-5.6G ED", @0x009F: @"AF-S DX Nikkor 35mm f/1.8G", @0x00A0: @"AF-S Nikkor 50mm f/1.4G", @0x00A1: @"AF-S DX Nikkor 10-24mm f/3.5-4.5G ED", @0x00A2: @"AF-S Nikkor 70-200mm f/2.8G ED VR II", @0x00A3: @"AF-S Nikkor 16-35mm f/4G ED VR", @0x00A4: @"AF-S Nikkor 24mm f/1.4G ED", @0x00A5: @"AF-S Nikkor 28-300mm f/3.5-5.6G ED VR", @0x00A6: @"AF-S Nikkor 300mm f/2.8G IF-ED VR II", @0x00A7: @"AF-S DX Micro Nikkor 85mm f/3.5G ED VR", @0x00A8: @"AF-S Zoom-Nikkor 200-400mm f/4G IF-ED VR II", @0x00A9: @"AF-S Nikkor 200mm f/2G ED VR II", @0x00AA: @"AF-S Nikkor 24-120mm f/4G ED VR", @0x00AC: @"AF-S DX Nikkor 55-300mm f/4.5-5.6G ED VR", @0x00AD: @"AF-S DX Nikkor 18-300mm f/3.5-5.6G ED VR", @0x00AE: @"AF-S Nikkor 85mm f/1.4G", @0x00AF: @"AF-S Nikkor 35mm f/1.4G", @0x00B0: @"AF-S Nikkor 50mm f/1.8G", @0x00B1: @"AF-S DX Micro Nikkor 40mm f/2.8G", @0x00B2: @"AF-S Nikkor 70-200mm f/4G ED VR", @0x00B3: @"AF-S Nikkor 85mm f/1.8G", @0x00B4: @"AF-S Nikkor 24-85mm f/3.5-4.5G ED VR", @0x00B5: @"AF-S Nikkor 28mm f/1.8G", @0x00B6: @"AF-S VR Nikkor 800mm f/5.6E FL ED", @0x00B7: @"AF-S Nikkor 80-400mm f/4.5-5.6G ED VR", @0x00B8: @"AF-S Nikkor 18-35mm f/3.5-4.5G ED", @0x01A0: @"AF-S DX Nikkor 18-140mm f/3.5-5.6G ED VR", @0x01A1: @"AF-S Nikkor 58mm f/1.4G", @0x01A2: @"AF-S DX Nikkor 18-55mm f/3.5-5.6G VR II", @0x01A4: @"AF-S DX Nikkor 18-300mm f/3.5-6.3G ED VR", @0x01A5: @"AF-S Nikkor 35mm f/1.8G ED", @0x01A6: @"AF-S Nikkor 400mm f/2.8E FL ED VR", @0x01A7: @"AF-S DX Nikkor 55-200mm f/4-5.6G ED VR II", @0x01A8: @"AF-S Nikkor 300mm f/4E PF ED VR", @0x01A9: @"AF-S Nikkor 20mm f/1.8G ED", @0x02AA: @"AF-S Nikkor 24-70mm f/2.8E ED VR", @0x02AB: @"AF-S Nikkor 500mm f/4E FL ED VR", @0x02AC: @"AF-S Nikkor 600mm f/4E FL ED VR", @0x02AD: @"AF-S DX Nikkor 16-80mm f/2.8-4E ED VR", @0x02AE: @"AF-S Nikkor 200-500mm f/5.6E ED VR", @0x03A0: @"AF-P DX Nikkor 18-55mm f/3.5-5.6G VR", @0x03A3: @"AF-P DX Nikkor 70–300mm f/4.5–6.3G ED VR", @0x03A4: @"AF-S Nikkor 70-200mm f/2.8E FL ED VR", @0x03A5: @"AF-S Nikkor 105mm f/1.4E ED", @0x03AF: @"AF-S Nikkor 24mm f/1.8G ED" };
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:lens[property.value] readOnly:true];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonLiveViewImageSize: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonLiveViewImageSize: {
             NSArray *values = @[ @"1", @"2" ];
             NSArray *labels = @[ @"QVGA", @"VGA" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonRawBitMode: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonRawBitMode: {
             NSArray *values = @[ @"0", @"1" ];
             NSArray *labels = @[ @"12 bit", @"14 bit" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonSaveMedia: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonSaveMedia: {
             NSArray *values = @[ @"0", @"1", @"2" ];
             NSArray *labels = @[ @"Card", @"SDRAM", @"Card + SDRAM" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonLiveViewAFArea: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonLiveViewAFArea: {
             NSArray *values = @[ @"0", @"1", @"2" ];
             NSArray *labels = @[ @"Face priority", @"Wide area", @"Normal area" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonFlourescentType: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonFlourescentType: {
             NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5" ];
             NSArray *labels = @[ @"Sodium-vapor", @"Warm-white", @"White", @"Cool-white", @"Day white", @"Daylight", @"High temp. mercury-vapor" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonActiveDLighting: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonActiveDLighting: {
             NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5" ];
             NSArray *labels = @[ @"High", @"Normal", @"Low", @"Off", @"Extra high", @"Auto" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonActivePicCtrlItem: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonActivePicCtrlItem: {
             NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5", @"6", @"7", @"201", @"202", @"203", @"204", @"205", @"206", @"207", @"208", @"209" ];
             NSArray *labels = @[ @"Undefined", @"Standard", @"Neutral", @"Vivid", @"Monochrome", @"Portrait", @"Landscape", @"Flat", @"Custom 1", @"Custom 2", @"Custom 3", @"Custom 4", @"Custom 5", @"Custom 6", @"Custom 7", @"Custom 8", @"Custom 9" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonEffectMode: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonEffectMode: {
             NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5", @"6" ];
             NSArray *labels = @[ @"Night Vision", @"Color Sketch", @"Miniature Effect", @"Selective Color", @"Silhouette", @"High Key", @"Low Key" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonSceneMode: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonSceneMode: {
             NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5", @"6", @"7", @"8", @"9", @"10", @"11", @"12", @"13", @"14", @"15", @"16", @"17", @"18" ];
             NSArray *labels = @[ @"NightLandscape", @"PartyIndoor", @"BeachSnow", @"Sunset", @"Duskdawn", @"Petportrait", @"Candlelight", @"Blossom", @"AutumnColors", @"Food", @"Silhouette", @"Highkey", @"Lowkey", @"Portrait", @"Landscape", @"Child", @"Sports", @"Closeup", @"NightPortrait" ];
             [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonLiveViewAFFocus: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonLiveViewAFFocus: {
             if (property.value.description.intValue == 3) {
               [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"3" values:@[@"3"] labels:@[@"M (fixed)"] readOnly:true];
             } else if (property.max.intValue == 1) {
@@ -1759,11 +1726,9 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
             } else {
               [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:@[@"0", @"2", @"4"] labels:@[@"AF-S", @"AF-F", @"M"] readOnly:property.readOnly];
             }
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeNikonAutofocusMode: {
-          if (info.vendorExtension == PTPVendorExtensionNikon) {
+          case PTPPropertyCodeNikonAutofocusMode: {
             if (property.value.description.intValue == 3) {
               [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:@"3" values:@[@"3"] labels:@[@"M (fixed)"] readOnly:true];
             } else if (property.max.intValue == 1) {
@@ -1771,88 +1736,87 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
             } else {
               [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:property.value.description values:@[@"0", @"1", @"2", @"4"] labels:@[@"AF-S", @"AF-C", @"AF-A", @"M"] readOnly:property.readOnly];
             }
+            break;
           }
-          break;
-        }
-        case PTPPropertyCodeFocalLength: {
-          [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)[NSNumber numberWithInt:property.value.intValue / 100] min:[NSNumber numberWithInt:property.min.intValue / 100] max:[NSNumber numberWithInt:property.max.intValue / 100] step:nil readOnly:true];
-          break;
-        }
-        default: {
-          if (property.supportedValues) {
-            NSMutableArray *values = [NSMutableArray array];
-            for (NSNumber *number in property.supportedValues)
-              [values addObject:number.description];
-            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:values readOnly:property.readOnly];
-          } else if (property.type >= PTPDataTypeCodeSInt8 && property.type <= PTPDataTypeCodeUInt64) {
-            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:property.min max:property.max step:property.step readOnly:property.readOnly];
-          } else if (property.type == PTPDataTypeCodeSInt128 || property.type == PTPDataTypeCodeUInt128) {
-            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSString *)property.value.description readOnly:true];
-          } else if (property.type == PTPDataTypeCodeUnicodeString) {
-            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSString *)property.value.description readOnly:property.readOnly];
-          } else if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-            NSLog(@"Ignored %@", property);
+          default: {
+            if (property.supportedValues) {
+              NSMutableArray *values = [NSMutableArray array];
+              for (NSNumber *number in property.supportedValues)
+                [values addObject:number.description];
+              [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:values readOnly:property.readOnly];
+            } else if (property.type >= PTPDataTypeCodeSInt8 && property.type <= PTPDataTypeCodeUInt64) {
+              [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:property.min max:property.max step:property.step readOnly:property.readOnly];
+            } else if (property.type == PTPDataTypeCodeSInt128 || property.type == PTPDataTypeCodeUInt128) {
+              [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSString *)property.value.description readOnly:true];
+            } else if (property.type == PTPDataTypeCodeUnicodeString) {
+              [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSString *)property.value.description readOnly:property.readOnly];
+            } else if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+              NSLog(@"Ignored %@", property);
+            }
+            break;
           }
-          break;
         }
       }
       break;
     }
     case PTPOperationCodeGetDevicePropValue: {
-      switch (ptpRequest.parameter1) {
-        case PTPPropertyCodeNikonLiveViewProhibitCondition: {
-          if (ptpResponse.responseCode == PTPResponseCodeOK) {
-            unsigned char *bytes = (void*)[data bytes];
-            unsigned int value = ptpReadUnsignedInt(&bytes);
-            if (value == 0) {
-              [self sendPTPRequest:PTPOperationCodeNikonStartLiveView];
-              usleep(100000);
+      if (info.vendorExtension == PTPVendorExtensionNikon) {
+        switch (ptpRequest.parameter1) {
+          case PTPPropertyCodeNikonLiveViewProhibitCondition: {
+            if (ptpResponse.responseCode == PTPResponseCodeOK) {
+              unsigned char *bytes = (void*)[data bytes];
+              unsigned int value = ptpReadUnsignedInt(&bytes);
+              if (value == 0) {
+                [self sendPTPRequest:PTPOperationCodeNikonStartLiveView];
+                usleep(100000);
+              } else {
+                NSMutableString *text = [NSMutableString stringWithFormat:@"LiveViewProhibitCondition 0x%08x", value];
+                if (value & 0x80000000)
+                  [text appendString:@", Exposure Mode is non-P,S,A,M"];
+                if (value & 0x01000000)
+                  [text appendString:@", When Retractable lens is set, the zoom ring does not extend"];
+                if (value & 0x00200000)
+                  [text appendString:@", Bulb warning, ShutterSpeed is Time"];
+                if (value & 0x00100000)
+                  [text appendString:@", Card not formatted"];
+                if (value & 0x00080000)
+                  [text appendString:@", Card error"];
+                if (value & 0x00040000)
+                  [text appendString:@", Card protected"];
+                if (value & 0x00020000)
+                  [text appendString:@", High temperature"];
+                if (value & 0x00008000)
+                  [text appendString:@", Capture command is executing"];
+                if (value & 0x00004000)
+                  [text appendString:@", No memory card is inserted in the camera"];
+                if (value & 0x00000800)
+                  [text appendString:@", Non-CPU lens is attached and ExposureMode is not Manual or Aperture priority"];
+                if (value & 0x00000400)
+                  [text appendString:@", The setting by Aperture ring is valid"];
+                if (value & 0x00000200)
+                  [text appendString:@", TTL error"];
+                if (value & 0x00000100)
+                  [text appendString:@", Battery shortage"];
+                if (value & 0x00000080)
+                  [text appendString:@", Mirror up"];
+                if (value & 0x00000040)
+                  [text appendString:@", Shutter bulb"];
+                if (value & 0x00000020)
+                  [text appendString:@", Aperture ring is not minimum"];
+                if (value & 0x00000004)
+                  [text appendString:@", Sequence error"];
+                if (value & 0x00000001)
+                  [text appendString:@", Recording media is CF/SD card"];
+                [(PTPDelegate *)self.delegate cameraExposureFailed:self message:text];
+              }
             } else {
-              NSMutableString *text = [NSMutableString stringWithFormat:@"LiveViewProhibitCondition 0x%08x", value];
-              if (value & 0x80000000)
-                [text appendString:@", Exposure Mode is non-P,S,A,M"];
-              if (value & 0x01000000)
-                [text appendString:@", When Retractable lens is set, the zoom ring does not extend"];
-              if (value & 0x00200000)
-                [text appendString:@", Bulb warning, ShutterSpeed is Time"];
-              if (value & 0x00100000)
-                [text appendString:@", Card not formatted"];
-              if (value & 0x00080000)
-                [text appendString:@", Card error"];
-              if (value & 0x00040000)
-                [text appendString:@", Card protected"];
-              if (value & 0x00020000)
-                [text appendString:@", High temperature"];
-              if (value & 0x00008000)
-                [text appendString:@", Capture command is executing"];
-              if (value & 0x00004000)
-                [text appendString:@", No memory card is inserted in the camera"];
-              if (value & 0x00000800)
-                [text appendString:@", Non-CPU lens is attached and ExposureMode is not Manual or Aperture priority"];
-              if (value & 0x00000400)
-                [text appendString:@", The setting by Aperture ring is valid"];
-              if (value & 0x00000200)
-                [text appendString:@", TTL error"];
-              if (value & 0x00000100)
-                [text appendString:@", Battery shortage"];
-              if (value & 0x00000080)
-                [text appendString:@", Mirror up"];
-              if (value & 0x00000040)
-                [text appendString:@", Shutter bulb"];
-              if (value & 0x00000020)
-                [text appendString:@", Aperture ring is not minimum"];
-              if (value & 0x00000004)
-                [text appendString:@", Sequence error"];
-              if (value & 0x00000001)
-                [text appendString:@", Recording media is CF/SD card"];
-              [(PTPDelegate *)self.delegate cameraExposureFailed:self message:text];
+              [(PTPDelegate *)self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"LiveViewProhibiCondition failed (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
             }
-          } else {
-            [(PTPDelegate *)self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"LiveViewProhibiCondition failed (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
+            break;
           }
-          break;
         }
       }
+      break;
     }
   }
   if (info.vendorExtension == PTPVendorExtensionNikon) {
@@ -1861,6 +1825,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         if (ptpResponse.responseCode == PTPResponseCodeDeviceBusy) {
           usleep(100000);
         }
+        break;
       }
       case PTPOperationCodeNikonGetVendorPropCodes: {
         unsigned char* buffer = (unsigned char*)[data bytes];
@@ -1876,6 +1841,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       }
       case PTPOperationCodeNikonInitiateCaptureRecInMedia: {
         if (ptpResponse.responseCode != PTPResponseCodeOK &&  ptpResponse.responseCode != PTPResponseCodeDeviceBusy) {
+          [self sendPTPRequest:PTPOperationCodeNikonTerminateCapture param1:0 param2:0];
           [(PTPDelegate *)self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"InitiateCaptureRecInMedia failed (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
         }
         break;
@@ -2096,6 +2062,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       self.userData[PTP_LIVE_VIEW_X] = [NSNumber numberWithUnsignedShort:x];
       self.userData[PTP_LIVE_VIEW_Y] = [NSNumber numberWithUnsignedShort:y];
       [self sendPTPRequest:PTPOperationCodeGetDevicePropValue param1:PTPPropertyCodeNikonLiveViewProhibitCondition];
+      [self sendPTPRequest:PTPOperationCodeNikonDeviceReady];
 			break;
     }
 	}
@@ -2108,6 +2075,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       NSTimer *timer = self.userData[PTP_LIVE_VIEW_TIMER];
       [timer invalidate];
 			[self sendPTPRequest:PTPOperationCodeNikonEndLiveView];
+      [self sendPTPRequest:PTPOperationCodeNikonDeviceReady];
 			break;
     }
 	}
@@ -2117,8 +2085,10 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   PTPDeviceInfo *info = self.ptpDeviceInfo;
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon:
-      if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonInitiateCaptureRecInMedia]])
+      if ([info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonInitiateCaptureRecInMedia]]) {
         [self sendPTPRequest:PTPOperationCodeNikonInitiateCaptureRecInMedia param1:-2 param2:0];
+        [self sendPTPRequest:PTPOperationCodeNikonDeviceReady];
+      }
       else
         [self requestTakePicture];
       break;
@@ -2154,9 +2124,10 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 - (void)setFrameLeft:(int)left top:(int)top width:(int)width height:(int)height {
   PTPDeviceInfo *info = self.ptpDeviceInfo;
   switch (info.vendorExtension) {
-    case PTPVendorExtensionNikon:
+    case PTPVendorExtensionNikon: {
       [self sendPTPRequest:PTPOperationCodeNikonChangeAfArea param1:(left + width / 2) param2:(top + height/2)];
       break;
+    }
   }
 }
 
@@ -2261,11 +2232,13 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     NSLog(@"Received %@", event);
   switch (camera.ptpDeviceInfo.vendorExtension) {
-    case PTPVendorExtensionNikon:
+    case PTPVendorExtensionNikon: {
       break;
-    default:
+    }
+    default: {
       [camera processEvent:event];
       break;
+    }
   }
 }
 
