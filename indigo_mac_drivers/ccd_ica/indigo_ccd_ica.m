@@ -475,7 +475,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 - (void)cameraConnected:(ICCameraDevice*)camera {
   [camera requestEnableTethering];
-  [camera lock];
+  sleep(1);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	if (device) {
