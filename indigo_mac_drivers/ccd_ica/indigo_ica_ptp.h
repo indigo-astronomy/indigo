@@ -1253,13 +1253,23 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-@interface NSObject(PTPExtensions)
--(int)intValue;
-@end
+@protocol PTPDelegateProtocol;
 
-//------------------------------------------------------------------------------------------------------------------------------
+@interface PTPCamera: NSObject<ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate>
 
-@interface ICCameraDevice(PTPExtensions)
+@property (readonly) ICCameraDevice *icCamera;
+@property (readonly) NSObject<PTPDelegateProtocol> *delegate;
+@property (readonly) NSString *name;
+@property (readonly) PTPDeviceInfo *info;
+
+@property NSObject *userData;
+
+-(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate;
+
+-(void)requestOpenSession;
+-(void)requestCloseSession;
+-(void)requestEnableTethering;
+
 -(PTPDeviceInfo *)ptpDeviceInfo;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode;
 -(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
@@ -1272,35 +1282,37 @@ typedef unsigned short PTPDataTypeCode;
 -(void)startCapture;
 -(void)stopCapture;
 -(void)focus:(int)steps;
-@end
 
-@interface ICCameraDevice(PTPDebug)
--(void)dumpData:(void*)data length:(int)length comment:(NSString*)comment;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
 
 @protocol PTPDelegateProtocol <NSObject>
 @optional
--(void)cameraAdded:(ICCameraDevice *)camera;
--(void)cameraConnected:(ICCameraDevice *)camera;
--(void)cameraExposureDone:(ICCameraDevice *)camera data:(NSData *)data filename:(NSString *)filename;
--(void)cameraExposureFailed:(ICCameraDevice *)camera message:(NSString *)message;
--(void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly;
--(void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly;
--(void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly;
--(void)cameraDisconnected:(ICCameraDevice *)camera;
--(void)cameraRemoved:(ICCameraDevice *)camera;
--(void)cameraCanCapture:(ICCameraDevice *)camera;
--(void)cameraCanFocus:(ICCameraDevice *)camera;
--(void)cameraCanStream:(ICCameraDevice *)camera;
--(void)cameraFocusDone:(ICCameraDevice *)camera;
--(void)cameraFocusFailed:(ICCameraDevice *)camera message:(NSString *)message;
--(void)cameraFrame:(ICCameraDevice *)camera left:(int)left top:(int)top width:(int)width height:(int)height;
+-(void)cameraAdded:(PTPCamera *)camera;
+-(void)cameraConnected:(PTPCamera *)camera;
+-(void)cameraExposureDone:(PTPCamera *)camera data:(NSData *)data filename:(NSString *)filename;
+-(void)cameraExposureFailed:(PTPCamera *)camera message:(NSString *)message;
+-(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly;
+-(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly;
+-(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly;
+-(void)cameraDisconnected:(PTPCamera *)camera;
+-(void)cameraRemoved:(PTPCamera *)camera;
+-(void)cameraCanCapture:(PTPCamera *)camera;
+-(void)cameraCanFocus:(PTPCamera *)camera;
+-(void)cameraCanStream:(PTPCamera *)camera;
+-(void)cameraFocusDone:(PTPCamera *)camera;
+-(void)cameraFocusFailed:(PTPCamera *)camera message:(NSString *)message;
+-(void)cameraFrame:(PTPCamera *)camera left:(int)left top:(int)top width:(int)width height:(int)height;
 @end
 
-@interface PTPDelegate : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate, PTPDelegateProtocol>
+@interface PTPBrowser : NSObject <ICDeviceBrowserDelegate>
 
+@property (readonly) NSObject<PTPDelegateProtocol> *delegate;
+
+-(id)initWithDelegate:(NSObject<PTPDelegateProtocol> *)delegate;
+-(void)start;
+-(void)stop;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
