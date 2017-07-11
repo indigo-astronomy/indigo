@@ -406,187 +406,59 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 @end
-//---------------------------------------------------------------------------------------------------------- PTPOperationRequest
 
-@implementation PTPOperationRequest
+//---------------------------------------------------------------------------------------------------------- PTPRequest
 
-+ (NSString *)operationCodeName:(PTPOperationCode)operationCode vendorExtension:(PTPVendorExtension)vendorExtension {
+@implementation PTPRequest
+
++ (NSString *)operationCodeName:(PTPRequestCode)operationCode {
   switch (operationCode) {
-    case PTPOperationCodeUndefined: return @"PTPOperationCodeUndefined";
-    case PTPOperationCodeGetDeviceInfo: return @"PTPOperationCodeGetDeviceInfo";
-    case PTPOperationCodeOpenSession: return @"PTPOperationCodeOpenSession";
-    case PTPOperationCodeCloseSession: return @"PTPOperationCodeCloseSession";
-    case PTPOperationCodeGetStorageIDs: return @"PTPOperationCodeGetStorageIDs";
-    case PTPOperationCodeGetStorageInfo: return @"PTPOperationCodeGetStorageInfo";
-    case PTPOperationCodeGetNumObjects: return @"PTPOperationCodeGetNumObjects";
-    case PTPOperationCodeGetObjectHandles: return @"PTPOperationCodeGetObjectHandles";
-    case PTPOperationCodeGetObjectInfo: return @"PTPOperationCodeGetObjectInfo";
-    case PTPOperationCodeGetObject: return @"PTPOperationCodeGetObject";
-    case PTPOperationCodeGetThumb: return @"PTPOperationCodeGetThumb";
-    case PTPOperationCodeDeleteObject: return @"PTPOperationCodeDeleteObject";
-    case PTPOperationCodeSendObjectInfo: return @"PTPOperationCodeSendObjectInfo";
-    case PTPOperationCodeSendObject: return @"PTPOperationCodeSendObject";
-    case PTPOperationCodeInitiateCapture: return @"PTPOperationCodeInitiateCapture";
-    case PTPOperationCodeFormatStore: return @"PTPOperationCodeFormatStore";
-    case PTPOperationCodeResetDevice: return @"PTPOperationCodeResetDevice";
-    case PTPOperationCodeSelfTest: return @"PTPOperationCodeSelfTest";
-    case PTPOperationCodeSetObjectProtection: return @"PTPOperationCodeSetObjectProtection";
-    case PTPOperationCodePowerDown: return @"PTPOperationCodePowerDown";
-    case PTPOperationCodeGetDevicePropDesc: return @"PTPOperationCodeGetDevicePropDesc";
-    case PTPOperationCodeGetDevicePropValue: return @"PTPOperationCodeGetDevicePropValue";
-    case PTPOperationCodeSetDevicePropValue: return @"PTPOperationCodeSetDevicePropValue";
-    case PTPOperationCodeResetDevicePropValue: return @"PTPOperationCodeResetDevicePropValue";
-    case PTPOperationCodeTerminateOpenCapture: return @"PTPOperationCodeTerminateOpenCapture";
-    case PTPOperationCodeMoveObject: return @"PTPOperationCodeMoveObject";
-    case PTPOperationCodeCopyObject: return @"PTPOperationCodeCopyObject";
-    case PTPOperationCodeGetPartialObject: return @"PTPOperationCodeGetPartialObject";
-    case PTPOperationCodeInitiateOpenCapture: return @"PTPOperationCodeInitiateOpenCapture";
-    case PTPOperationCodeGetNumDownloadableObjects: return @"PTPOperationCodeGetNumDownloadableObjects";
-    case PTPOperationCodeGetAllObjectInfo: return @"PTPOperationCodeGetAllObjectInfo";
-    case PTPOperationCodeGetUserAssignedDeviceName: return @"PTPOperationCodeGetUserAssignedDeviceName";
-    case PTPOperationCodeMTPGetObjectPropsSupported: return @"PTPOperationCodeMTPGetObjectPropsSupported";
-    case PTPOperationCodeMTPGetObjectPropDesc: return @"PTPOperationCodeMTPGetObjectPropDesc";
-    case PTPOperationCodeMTPGetObjectPropValue: return @"PTPOperationCodeMTPGetObjectPropValue";
-    case PTPOperationCodeMTPSetObjectPropValue: return @"PTPOperationCodeMTPSetObjectPropValue";
-    case PTPOperationCodeMTPGetObjPropList: return @"PTPOperationCodeMTPGetObjPropList";
-    case PTPOperationCodeMTPSetObjPropList: return @"PTPOperationCodeMTPSetObjPropList";
-    case PTPOperationCodeMTPGetInterdependendPropdesc: return @"PTPOperationCodeMTPGetInterdependendPropdesc";
-    case PTPOperationCodeMTPSendObjectPropList: return @"PTPOperationCodeMTPSendObjectPropList";
-    case PTPOperationCodeMTPGetObjectReferences: return @"PTPOperationCodeMTPGetObjectReferences";
-    case PTPOperationCodeMTPSetObjectReferences: return @"PTPOperationCodeMTPSetObjectReferences";
-    case PTPOperationCodeMTPUpdateDeviceFirmware: return @"PTPOperationCodeMTPUpdateDeviceFirmware";
-    case PTPOperationCodeMTPSkip: return @"PTPOperationCodeMTPSkip";
+    case PTPRequestCodeUndefined: return @"PTPRequestCodeUndefined";
+    case PTPRequestCodeGetDeviceInfo: return @"PTPRequestCodeGetDeviceInfo";
+    case PTPRequestCodeOpenSession: return @"PTPRequestCodeOpenSession";
+    case PTPRequestCodeCloseSession: return @"PTPRequestCodeCloseSession";
+    case PTPRequestCodeGetStorageIDs: return @"PTPRequestCodeGetStorageIDs";
+    case PTPRequestCodeGetStorageInfo: return @"PTPRequestCodeGetStorageInfo";
+    case PTPRequestCodeGetNumObjects: return @"PTPRequestCodeGetNumObjects";
+    case PTPRequestCodeGetObjectHandles: return @"PTPRequestCodeGetObjectHandles";
+    case PTPRequestCodeGetObjectInfo: return @"PTPRequestCodeGetObjectInfo";
+    case PTPRequestCodeGetObject: return @"PTPRequestCodeGetObject";
+    case PTPRequestCodeGetThumb: return @"PTPRequestCodeGetThumb";
+    case PTPRequestCodeDeleteObject: return @"PTPRequestCodeDeleteObject";
+    case PTPRequestCodeSendObjectInfo: return @"PTPRequestCodeSendObjectInfo";
+    case PTPRequestCodeSendObject: return @"PTPRequestCodeSendObject";
+    case PTPRequestCodeInitiateCapture: return @"PTPRequestCodeInitiateCapture";
+    case PTPRequestCodeFormatStore: return @"PTPRequestCodeFormatStore";
+    case PTPRequestCodeResetDevice: return @"PTPRequestCodeResetDevice";
+    case PTPRequestCodeSelfTest: return @"PTPRequestCodeSelfTest";
+    case PTPRequestCodeSetObjectProtection: return @"PTPRequestCodeSetObjectProtection";
+    case PTPRequestCodePowerDown: return @"PTPRequestCodePowerDown";
+    case PTPRequestCodeGetDevicePropDesc: return @"PTPRequestCodeGetDevicePropDesc";
+    case PTPRequestCodeGetDevicePropValue: return @"PTPRequestCodeGetDevicePropValue";
+    case PTPRequestCodeSetDevicePropValue: return @"PTPRequestCodeSetDevicePropValue";
+    case PTPRequestCodeResetDevicePropValue: return @"PTPRequestCodeResetDevicePropValue";
+    case PTPRequestCodeTerminateOpenCapture: return @"PTPRequestCodeTerminateOpenCapture";
+    case PTPRequestCodeMoveObject: return @"PTPRequestCodeMoveObject";
+    case PTPRequestCodeCopyObject: return @"PTPRequestCodeCopyObject";
+    case PTPRequestCodeGetPartialObject: return @"PTPRequestCodeGetPartialObject";
+    case PTPRequestCodeInitiateOpenCapture: return @"PTPRequestCodeInitiateOpenCapture";
+    case PTPRequestCodeGetNumDownloadableObjects: return @"PTPRequestCodeGetNumDownloadableObjects";
+    case PTPRequestCodeGetAllObjectInfo: return @"PTPRequestCodeGetAllObjectInfo";
+    case PTPRequestCodeGetUserAssignedDeviceName: return @"PTPRequestCodeGetUserAssignedDeviceName";
+    case PTPRequestCodeMTPGetObjectPropsSupported: return @"PTPRequestCodeMTPGetObjectPropsSupported";
+    case PTPRequestCodeMTPGetObjectPropDesc: return @"PTPRequestCodeMTPGetObjectPropDesc";
+    case PTPRequestCodeMTPGetObjectPropValue: return @"PTPRequestCodeMTPGetObjectPropValue";
+    case PTPRequestCodeMTPSetObjectPropValue: return @"PTPRequestCodeMTPSetObjectPropValue";
+    case PTPRequestCodeMTPGetObjPropList: return @"PTPRequestCodeMTPGetObjPropList";
+    case PTPRequestCodeMTPSetObjPropList: return @"PTPRequestCodeMTPSetObjPropList";
+    case PTPRequestCodeMTPGetInterdependendPropdesc: return @"PTPRequestCodeMTPGetInterdependendPropdesc";
+    case PTPRequestCodeMTPSendObjectPropList: return @"PTPRequestCodeMTPSendObjectPropList";
+    case PTPRequestCodeMTPGetObjectReferences: return @"PTPRequestCodeMTPGetObjectReferences";
+    case PTPRequestCodeMTPSetObjectReferences: return @"PTPRequestCodeMTPSetObjectReferences";
+    case PTPRequestCodeMTPUpdateDeviceFirmware: return @"PTPRequestCodeMTPUpdateDeviceFirmware";
+    case PTPRequestCodeMTPSkip: return @"PTPRequestCodeMTPSkip";
   }
-  if (vendorExtension == PTPVendorExtensionNikon) {
-    switch (operationCode) {
-      case PTPOperationCodeNikonGetProfileAllData: return @"PTPOperationCodeNikonGetProfileAllData";
-      case PTPOperationCodeNikonSendProfileData: return @"PTPOperationCodeNikonSendProfileData";
-      case PTPOperationCodeNikonDeleteProfile: return @"PTPOperationCodeNikonDeleteProfile";
-      case PTPOperationCodeNikonSetProfileData: return @"PTPOperationCodeNikonSetProfileData";
-      case PTPOperationCodeNikonAdvancedTransfer: return @"PTPOperationCodeNikonAdvancedTransfer";
-      case PTPOperationCodeNikonGetFileInfoInBlock: return @"PTPOperationCodeNikonGetFileInfoInBlock";
-      case PTPOperationCodeNikonCapture: return @"PTPOperationCodeNikonCapture";
-      case PTPOperationCodeNikonAfDrive: return @"PTPOperationCodeNikonAfDrive";
-      case PTPOperationCodeNikonSetControlMode: return @"PTPOperationCodeNikonSetControlMode";
-      case PTPOperationCodeNikonDelImageSDRAM: return @"PTPOperationCodeNikonDelImageSDRAM";
-      case PTPOperationCodeNikonGetLargeThumb: return @"PTPOperationCodeNikonGetLargeThumb";
-      case PTPOperationCodeNikonCurveDownload: return @"PTPOperationCodeNikonCurveDownload";
-      case PTPOperationCodeNikonCurveUpload: return @"PTPOperationCodeNikonCurveUpload";
-      case PTPOperationCodeNikonCheckEvent: return @"PTPOperationCodeNikonCheckEvent";
-      case PTPOperationCodeNikonDeviceReady: return @"PTPOperationCodeNikonDeviceReady";
-      case PTPOperationCodeNikonSetPreWBData: return @"PTPOperationCodeNikonSetPreWBData";
-      case PTPOperationCodeNikonGetVendorPropCodes: return @"PTPOperationCodeNikonGetVendorPropCodes";
-      case PTPOperationCodeNikonAfCaptureSDRAM: return @"PTPOperationCodeNikonAfCaptureSDRAM";
-      case PTPOperationCodeNikonGetPictCtrlData: return @"PTPOperationCodeNikonGetPictCtrlData";
-      case PTPOperationCodeNikonSetPictCtrlData: return @"PTPOperationCodeNikonSetPictCtrlData";
-      case PTPOperationCodeNikonDelCstPicCtrl: return @"PTPOperationCodeNikonDelCstPicCtrl";
-      case PTPOperationCodeNikonGetPicCtrlCapability: return @"PTPOperationCodeNikonGetPicCtrlCapability";
-      case PTPOperationCodeNikonGetPreviewImg: return @"PTPOperationCodeNikonGetPreviewImg";
-      case PTPOperationCodeNikonStartLiveView: return @"PTPOperationCodeNikonStartLiveView";
-      case PTPOperationCodeNikonEndLiveView: return @"PTPOperationCodeNikonEndLiveView";
-      case PTPOperationCodeNikonGetLiveViewImg: return @"PTPOperationCodeNikonGetLiveViewImg";
-      case PTPOperationCodeNikonMfDrive: return @"PTPOperationCodeNikonMfDrive";
-      case PTPOperationCodeNikonChangeAfArea: return @"PTPOperationCodeNikonChangeAfArea";
-      case PTPOperationCodeNikonAfDriveCancel: return @"PTPOperationCodeNikonAfDriveCancel";
-      case PTPOperationCodeNikonInitiateCaptureRecInMedia: return @"PTPOperationCodeNikonInitiateCaptureRecInMedia";
-      case PTPOperationCodeNikonGetVendorStorageIDs: return @"PTPOperationCodeNikonGetVendorStorageIDs";
-      case PTPOperationCodeNikonStartMovieRecInCard: return @"PTPOperationCodeNikonStartMovieRecInCard";
-      case PTPOperationCodeNikonEndMovieRec: return @"PTPOperationCodeNikonEndMovieRec";
-      case PTPOperationCodeNikonTerminateCapture: return @"PTPOperationCodeNikonTerminateCapture";
-      case PTPOperationCodeNikonGetDevicePTPIPInfo: return @"PTPOperationCodeNikonGetDevicePTPIPInfo";
-      case PTPOperationCodeNikonGetPartialObjectHiSpeed: return @"PTPOperationCodeNikonGetPartialObjectHiSpeed";
-    }
-  } else if (vendorExtension == PTPVendorExtensionCanon) {
-    switch (operationCode) {
-      case PTPOperationCodeCanonGetStorageIDs: return @"PTPOperationCodeCanonGetStorageIDs";
-      case PTPOperationCodeCanonGetStorageInfo: return @"PTPOperationCodeCanonGetStorageInfo";
-      case PTPOperationCodeCanonGetObjectInfo: return @"PTPOperationCodeCanonGetObjectInfo";
-      case PTPOperationCodeCanonGetObject: return @"PTPOperationCodeCanonGetObject";
-      case PTPOperationCodeCanonDeleteObject: return @"PTPOperationCodeCanonDeleteObject";
-      case PTPOperationCodeCanonFormatStore: return @"PTPOperationCodeCanonFormatStore";
-      case PTPOperationCodeCanonGetPartialObject: return @"PTPOperationCodeCanonGetPartialObject";
-      case PTPOperationCodeCanonGetDeviceInfoEx: return @"PTPOperationCodeCanonGetDeviceInfoEx";
-      case PTPOperationCodeCanonGetObjectInfoEx: return @"PTPOperationCodeCanonGetObjectInfoEx";
-      case PTPOperationCodeCanonGetThumbEx: return @"PTPOperationCodeCanonGetThumbEx";
-      case PTPOperationCodeCanonSendPartialObject: return @"PTPOperationCodeCanonSendPartialObject";
-      case PTPOperationCodeCanonSetObjectAttributes: return @"PTPOperationCodeCanonSetObjectAttributes";
-      case PTPOperationCodeCanonGetObjectTime: return @"PTPOperationCodeCanonGetObjectTime";
-      case PTPOperationCodeCanonSetObjectTime: return @"PTPOperationCodeCanonSetObjectTime";
-      case PTPOperationCodeCanonRemoteRelease: return @"PTPOperationCodeCanonRemoteRelease";
-      case PTPOperationCodeCanonSetDevicePropValueEx: return @"PTPOperationCodeCanonSetDevicePropValueEx";
-      case PTPOperationCodeCanonGetRemoteMode: return @"PTPOperationCodeCanonGetRemoteMode";
-      case PTPOperationCodeCanonSetRemoteMode: return @"PTPOperationCodeCanonSetRemoteMode";
-      case PTPOperationCodeCanonSetEventMode: return @"PTPOperationCodeCanonSetEventMode";
-      case PTPOperationCodeCanonGetEvent: return @"PTPOperationCodeCanonGetEvent";
-      case PTPOperationCodeCanonTransferComplete: return @"PTPOperationCodeCanonTransferComplete";
-      case PTPOperationCodeCanonCancelTransfer: return @"PTPOperationCodeCanonCancelTransfer";
-      case PTPOperationCodeCanonResetTransfer: return @"PTPOperationCodeCanonResetTransfer";
-      case PTPOperationCodeCanonPCHDDCapacity: return @"PTPOperationCodeCanonPCHDDCapacity";
-      case PTPOperationCodeCanonSetUILock: return @"PTPOperationCodeCanonSetUILock";
-      case PTPOperationCodeCanonResetUILock: return @"PTPOperationCodeCanonResetUILock";
-      case PTPOperationCodeCanonKeepDeviceOn: return @"PTPOperationCodeCanonKeepDeviceOn";
-      case PTPOperationCodeCanonSetNullPacketMode: return @"PTPOperationCodeCanonSetNullPacketMode";
-      case PTPOperationCodeCanonUpdateFirmware: return @"PTPOperationCodeCanonUpdateFirmware";
-      case PTPOperationCodeCanonTransferCompleteDT: return @"PTPOperationCodeCanonTransferCompleteDT";
-      case PTPOperationCodeCanonCancelTransferDT: return @"PTPOperationCodeCanonCancelTransferDT";
-      case PTPOperationCodeCanonSetWftProfile: return @"PTPOperationCodeCanonSetWftProfile";
-      case PTPOperationCodeCanonGetWftProfile: return @"PTPOperationCodeCanonGetWftProfile";
-      case PTPOperationCodeCanonSetProfileToWft: return @"PTPOperationCodeCanonSetProfileToWft";
-      case PTPOperationCodeCanonBulbStart: return @"PTPOperationCodeCanonBulbStart";
-      case PTPOperationCodeCanonBulbEnd: return @"PTPOperationCodeCanonBulbEnd";
-      case PTPOperationCodeCanonRequestDevicePropValue: return @"PTPOperationCodeCanonRequestDevicePropValue";
-      case PTPOperationCodeCanonRemoteReleaseOn: return @"PTPOperationCodeCanonRemoteReleaseOn";
-      case PTPOperationCodeCanonRemoteReleaseOff: return @"PTPOperationCodeCanonRemoteReleaseOff";
-      case PTPOperationCodeCanonRegistBackgroundImage: return @"PTPOperationCodeCanonRegistBackgroundImage";
-      case PTPOperationCodeCanonChangePhotoStudioMode: return @"PTPOperationCodeCanonChangePhotoStudioMode";
-      case PTPOperationCodeCanonGetPartialObjectEx: return @"PTPOperationCodeCanonGetPartialObjectEx";
-      case PTPOperationCodeCanonResetMirrorLockupState: return @"PTPOperationCodeCanonResetMirrorLockupState";
-      case PTPOperationCodeCanonPopupBuiltinFlash: return @"PTPOperationCodeCanonPopupBuiltinFlash";
-      case PTPOperationCodeCanonEndGetPartialObjectEx: return @"PTPOperationCodeCanonEndGetPartialObjectEx";
-      case PTPOperationCodeCanonMovieSelectSWOn: return @"PTPOperationCodeCanonMovieSelectSWOn";
-      case PTPOperationCodeCanonMovieSelectSWOff: return @"PTPOperationCodeCanonMovieSelectSWOff";
-      case PTPOperationCodeCanonGetCTGInfo: return @"PTPOperationCodeCanonGetCTGInfo";
-      case PTPOperationCodeCanonGetLensAdjust: return @"PTPOperationCodeCanonGetLensAdjust";
-      case PTPOperationCodeCanonSetLensAdjust: return @"PTPOperationCodeCanonSetLensAdjust";
-      case PTPOperationCodeCanonGetMusicInfo: return @"PTPOperationCodeCanonGetMusicInfo";
-      case PTPOperationCodeCanonCreateHandle: return @"PTPOperationCodeCanonCreateHandle";
-      case PTPOperationCodeCanonSendPartialObjectEx: return @"PTPOperationCodeCanonSendPartialObjectEx";
-      case PTPOperationCodeCanonEndSendPartialObjectEx: return @"PTPOperationCodeCanonEndSendPartialObjectEx";
-      case PTPOperationCodeCanonSetCTGInfo: return @"PTPOperationCodeCanonSetCTGInfo";
-      case PTPOperationCodeCanonSetRequestOLCInfoGroup: return @"PTPOperationCodeCanonSetRequestOLCInfoGroup";
-      case PTPOperationCodeCanonSetRequestRollingPitchingLevel: return @"PTPOperationCodeCanonSetRequestRollingPitchingLevel";
-      case PTPOperationCodeCanonGetCameraSupport: return @"PTPOperationCodeCanonGetCameraSupport";
-      case PTPOperationCodeCanonSetRating: return @"PTPOperationCodeCanonSetRating";
-      case PTPOperationCodeCanonRequestInnerDevelopStart: return @"PTPOperationCodeCanonRequestInnerDevelopStart";
-      case PTPOperationCodeCanonRequestInnerDevelopParamChange: return @"PTPOperationCodeCanonRequestInnerDevelopParamChange";
-      case PTPOperationCodeCanonRequestInnerDevelopEnd: return @"PTPOperationCodeCanonRequestInnerDevelopEnd";
-      case PTPOperationCodeCanonGpsLoggingDataMode: return @"PTPOperationCodeCanonGpsLoggingDataMode";
-      case PTPOperationCodeCanonGetGpsLogCurrentHandle: return @"PTPOperationCodeCanonGetGpsLogCurrentHandle";
-      case PTPOperationCodeCanonInitiateViewfinder: return @"PTPOperationCodeCanonInitiateViewfinder";
-      case PTPOperationCodeCanonTerminateViewfinder: return @"PTPOperationCodeCanonTerminateViewfinder";
-      case PTPOperationCodeCanonGetViewFinderData: return @"PTPOperationCodeCanonGetViewFinderData";
-      case PTPOperationCodeCanonDoAf: return @"PTPOperationCodeCanonDoAf";
-      case PTPOperationCodeCanonDriveLens: return @"PTPOperationCodeCanonDriveLens";
-      case PTPOperationCodeCanonDepthOfFieldPreview: return @"PTPOperationCodeCanonDepthOfFieldPreview";
-      case PTPOperationCodeCanonClickWB: return @"PTPOperationCodeCanonClickWB";
-      case PTPOperationCodeCanonZoom: return @"PTPOperationCodeCanonZoom";
-      case PTPOperationCodeCanonZoomPosition: return @"PTPOperationCodeCanonZoomPosition";
-      case PTPOperationCodeCanonSetLiveAfFrame: return @"PTPOperationCodeCanonSetLiveAfFrame";
-      case PTPOperationCodeCanonTouchAfPosition: return @"PTPOperationCodeCanonTouchAfPosition";
-      case PTPOperationCodeCanonSetLvPcFlavoreditMode: return @"PTPOperationCodeCanonSetLvPcFlavoreditMode";
-      case PTPOperationCodeCanonSetLvPcFlavoreditParam: return @"PTPOperationCodeCanonSetLvPcFlavoreditParam";
-      case PTPOperationCodeCanonAfCancel: return @"PTPOperationCodeCanonAfCancel";
-      case PTPOperationCodeCanonSetDefaultCameraSetting: return @"PTPOperationCodeCanonSetDefaultCameraSetting";
-      case PTPOperationCodeCanonGetAEData: return @"PTPOperationCodeCanonGetAEData";
-      case PTPOperationCodeCanonNotifyNetworkError: return @"PTPOperationCodeCanonNotifyNetworkError";
-      case PTPOperationCodeCanonAdapterTransferProgress: return @"PTPOperationCodeCanonAdapterTransferProgress";
-      case PTPOperationCodeCanonTransferComplete2: return @"PTPOperationCodeCanonTransferComplete2";
-      case PTPOperationCodeCanonCancelTransfer2: return @"PTPOperationCodeCanonCancelTransfer2";
-      case PTPOperationCodeCanonFAPIMessageTX: return @"PTPOperationCodeCanonFAPIMessageTX";
-      case PTPOperationCodeCanonFAPIMessageRX: return @"PTPOperationCodeCanonFAPIMessageRX";
-    }
-  }
-  return [NSString stringWithFormat:@"PTPOperationCode0x%04x", operationCode];
+  return [NSString stringWithFormat:@"PTPRequestCode0x%04x", operationCode];
 }
 
 -(id)init {
@@ -595,10 +467,6 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 		_numberOfParameters = 0;
 	}
 	return self;
-}
-
--(id)initWithVendorExtension:(PTPVendorExtension)vendorExtension {
-  return [super initWithVendorExtension:vendorExtension];
 }
 
 -(NSData*)commandBuffer {
@@ -623,7 +491,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(NSString *)operationCodeName {
-  return [PTPOperationRequest operationCodeName:_operationCode vendorExtension:self.vendorExtension];
+  return [PTPRequest operationCodeName:_operationCode];
 }
 
 -(NSString*)description {
@@ -645,11 +513,11 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 
 @end
 
-//--------------------------------------------------------------------------------------------------------- PTPOperationResponse
+//--------------------------------------------------------------------------------------------------------- PTPResponse
 
-@implementation PTPOperationResponse
+@implementation PTPResponse
 
-+ (NSString *)responseCodeName:(PTPResponseCode)responseCode vendorExtension:(PTPVendorExtension)vendorExtension {
++ (NSString *)responseCodeName:(PTPResponseCode)responseCode {
   switch (responseCode) {
     case PTPResponseCodeUndefined: return @"PTPResponseCodeUndefined";
     case PTPResponseCodeOK: return @"PTPResponseCodeOK";
@@ -695,36 +563,10 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
     case PTPResponseCodeMTPObject_Too_Large: return @"PTPResponseCodeMTPObject_Too_Large";
     case PTPResponseCodeMTPObjectProp_Not_Supported: return @"PTPResponseCodeMTPObjectProp_Not_Supported";
   }
-  if (vendorExtension == PTPVendorExtensionNikon) {
-    switch (responseCode) {
-      case PTPResponseCodeNikonHardwareError: return @"PTPResponseCodeNikonHardwareError";
-      case PTPResponseCodeNikonOutOfFocus: return @"PTPResponseCodeNikonOutOfFocus";
-      case PTPResponseCodeNikonChangeCameraModeFailed: return @"PTPResponseCodeNikonChangeCameraModeFailed";
-      case PTPResponseCodeNikonInvalidStatus: return @"PTPResponseCodeNikonInvalidStatus";
-      case PTPResponseCodeNikonSetPropertyNotSupported: return @"PTPResponseCodeNikonSetPropertyNotSupported";
-      case PTPResponseCodeNikonWbResetError: return @"PTPResponseCodeNikonWbResetError";
-      case PTPResponseCodeNikonDustReferenceError: return @"PTPResponseCodeNikonDustReferenceError";
-      case PTPResponseCodeNikonShutterSpeedBulb: return @"PTPResponseCodeNikonShutterSpeedBulb";
-      case PTPResponseCodeNikonMirrorUpSequence: return @"PTPResponseCodeNikonMirrorUpSequence";
-      case PTPResponseCodeNikonCameraModeNotAdjustFNumber: return @"PTPResponseCodeNikonCameraModeNotAdjustFNumber";
-      case PTPResponseCodeNikonNotLiveView: return @"PTPResponseCodeNikonNotLiveView";
-      case PTPResponseCodeNikonMfDriveStepEnd: return @"PTPResponseCodeNikonMfDriveStepEnd";
-      case PTPResponseCodeNikonMfDriveStepInsufficiency: return @"PTPResponseCodeNikonMfDriveStepInsufficiency";
-      case PTPResponseCodeNikonAdvancedTransferCancel: return @"PTPResponseCodeNikonAdvancedTransferCancel";
-    }
-  }
-  if (vendorExtension == PTPVendorExtensionCanon) {
-    switch (responseCode) {
-      case PTPResponseCodeUnknownCommand: return @"PTPResponseCodeUnknownCommand";
-      case PTPResponseCodeOperationRefused: return @"PTPResponseCodeOperationRefused";
-      case PTPResponseCodeLensCover: return @"PTPResponseCodeLensCover";
-      case PTPResponseCodeBatteryLow: return @"PTPResponseCodeBatteryLow";
-      case PTPResponseCodeNotReady: return @"PTPResponseCodeNotReady";    }
-  }
   return [NSString stringWithFormat:@"PTPResponseCode0x%04x", responseCode];
 }
 
--(id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension {
+-(id)initWithData:(NSData*)data {
   NSUInteger dataLength = [data length];
   if ((data == NULL) || (dataLength < 12) || (dataLength > 32))
     return NULL;
@@ -733,7 +575,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   unsigned short type = CFSwapInt16LittleToHost(*(unsigned short*)(buffer+4));
   if (size < 12 || size > 32 || type != 3)
     return NULL;
-  if ((self = [super initWithVendorExtension:vendorExtension])) {
+  if (self = [super init]) {
     unsigned char* buf = buffer + 6;
     _responseCode = ptpReadUnsignedShort(&buf);
     _transactionID = ptpReadUnsignedInt(&buf);
@@ -753,7 +595,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(NSString *)responseCodeName {
-  return [PTPOperationResponse responseCodeName:_responseCode vendorExtension:self.vendorExtension];
+  return [PTPResponse responseCodeName:_responseCode];
 }
 
 -(NSString*)description {
@@ -779,7 +621,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 
 @implementation PTPEvent
 
-+ (NSString *)eventCodeName:(PTPEventCode)eventCode vendorExtension:(PTPVendorExtension)vendorExtension {
++ (NSString *)eventCodeName:(PTPEventCode)eventCode {
   switch (eventCode) {
     case PTPEventCodeUndefined: return @"PTPEventCodeUndefined";
     case PTPEventCodeCancelTransaction: return @"PTPEventCodeCancelTransaction";
@@ -799,48 +641,10 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
     case PTPEventCodeAppleDeviceUnlocked: return @"PTPEventCodeAppleDeviceUnlocked";
     case PTPEventCodeAppleUserAssignedNameChanged: return @"PTPEventCodeAppleUserAssignedNameChanged";
   }
-  if (vendorExtension == PTPVendorExtensionNikon) {
-    switch (eventCode) {
-      case PTPEventCodeNikonObjectAddedInSDRAM: return @"PTPEventCodeNikonObjectAddedInSDRAM";
-      case PTPEventCodeNikonCaptureCompleteRecInSdram: return @"PTPEventCodeNikonCaptureCompleteRecInSdram";
-      case PTPEventCodeNikonAdvancedTransfer: return @"PTPEventCodeNikonAdvancedTransfer";
-      case PTPEventCodeNikonPreviewImageAdded: return @"PTPEventCodeNikonPreviewImageAdded";
-    }
-  }
-  if (vendorExtension == PTPVendorExtensionCanon) {
-    switch (eventCode) {
-      case PTPEventCodeCanonRequestGetEvent: return @"PTPEventCodeCanonRequestGetEvent";
-      case PTPEventCodeCanonObjectAddedEx: return @"PTPEventCodeCanonObjectAddedEx";
-      case PTPEventCodeCanonObjectRemoved: return @"PTPEventCodeCanonObjectRemoved";
-      case PTPEventCodeCanonRequestGetObjectInfoEx: return @"PTPEventCodeCanonRequestGetObjectInfoEx";
-      case PTPEventCodeCanonStorageStatusChanged: return @"PTPEventCodeCanonStorageStatusChanged";
-      case PTPEventCodeCanonStorageInfoChanged: return @"PTPEventCodeCanonStorageInfoChanged";
-      case PTPEventCodeCanonRequestObjectTransfer: return @"PTPEventCodeCanonRequestObjectTransfer";
-      case PTPEventCodeCanonObjectInfoChangedEx: return @"PTPEventCodeCanonObjectInfoChangedEx";
-      case PTPEventCodeCanonObjectContentChanged: return @"PTPEventCodeCanonObjectContentChanged";
-      case PTPEventCodeCanonPropValueChanged: return @"PTPEventCodeCanonPropValueChanged";
-      case PTPEventCodeCanonAvailListChanged: return @"PTPEventCodeCanonAvailListChanged";
-      case PTPEventCodeCanonCameraStatusChanged: return @"PTPEventCodeCanonCameraStatusChanged";
-      case PTPEventCodeCanonWillSoonShutdown: return @"PTPEventCodeCanonWillSoonShutdown";
-      case PTPEventCodeCanonShutdownTimerUpdated: return @"PTPEventCodeCanonShutdownTimerUpdated";
-      case PTPEventCodeCanonRequestCancelTransfer: return @"PTPEventCodeCanonRequestCancelTransfer";
-      case PTPEventCodeCanonRequestObjectTransferDT: return @"PTPEventCodeCanonRequestObjectTransferDT";
-      case PTPEventCodeCanonRequestCancelTransferDT: return @"PTPEventCodeCanonRequestCancelTransferDT";
-      case PTPEventCodeCanonStoreAdded: return @"PTPEventCodeCanonStoreAdded";
-      case PTPEventCodeCanonStoreRemoved: return @"PTPEventCodeCanonStoreRemoved";
-      case PTPEventCodeCanonBulbExposureTime: return @"PTPEventCodeCanonBulbExposureTime";
-      case PTPEventCodeCanonRecordingTime: return @"PTPEventCodeCanonRecordingTime";
-      case PTPEventCodeCanonRequestObjectTransferTS: return @"PTPEventCodeCanonRequestObjectTransferTS";
-      case PTPEventCodeCanonAfResult: return @"PTPEventCodeCanonAfResult";
-      case PTPEventCodeCanonCTGInfoCheckComplete: return @"PTPEventCodeCanonCTGInfoCheckComplete";
-      case PTPEventCodeCanonOLCInfoChanged: return @"PTPEventCodeCanonOLCInfoChanged";
-      case PTPEventCodeCanonRequestObjectTransferFTP: return @"PTPEventCodeCanonRequestObjectTransferFTP";
-    }
-  }
   return [NSString stringWithFormat:@"PTPEventCodeCode0x%04x", eventCode];
 }
 
--(id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension {
+-(id)initWithData:(NSData*)data {
   NSUInteger dataLength = [data length];
   if ((data == NULL) || (dataLength < 12) || (dataLength > 24))
     return NULL;
@@ -849,7 +653,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   unsigned short type = CFSwapInt16LittleToHost(*(unsigned short*)(buffer+4));
   if (size < 12 || size > 24 || type != 4)
     return NULL;
-  if ((self = [super initWithVendorExtension:vendorExtension])) {
+  if (self = [super init]) {
     unsigned char* buf = buffer + 6;
     _eventCode = ptpReadUnsignedShort(&buf);
     _transactionID = ptpReadUnsignedInt(&buf);
@@ -864,8 +668,8 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   return self;
 }
 
--(id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1 vendorExtension:(PTPVendorExtension)vendorExtension {
-  self = [super initWithVendorExtension:vendorExtension];
+-(id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1 {
+  self = [super init];
   if (self) {
     _eventCode = eventCode;
     _numberOfParameters = 1;
@@ -875,7 +679,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(NSString *)eventCodeName {
-	return [PTPEvent eventCodeName:_eventCode vendorExtension:self.vendorExtension];
+	return [PTPEvent eventCodeName:_eventCode];
 }
 
 -(NSString*)description {
@@ -1571,12 +1375,12 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   if (_operationsSupported.count > 0) {
     [s appendFormat:@"\nOperations:\n"];
     for (NSNumber *code in _operationsSupported)
-      [s appendFormat:@"%@\n", [PTPOperationRequest operationCodeName:code.intValue vendorExtension:self.vendorExtension]];
+      [s appendFormat:@"%@\n", [PTPRequest operationCodeName:code.intValue]];
   }
   if (_eventsSupported.count > 0) {
     [s appendFormat:@"\nEvents:\n"];
     for (NSNumber *code in _eventsSupported)
-      [s appendFormat:@"%@\n", [PTPEvent eventCodeName:code.intValue vendorExtension:self.vendorExtension]];
+      [s appendFormat:@"%@\n", [PTPEvent eventCodeName:code.intValue]];
   }
   if (_propertiesSupported.count > 0) {
     [s appendFormat:@"\nProperties:\n"];
@@ -1629,6 +1433,22 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   return self;
 }
 
+-(PTPRequest *)allocRequest {
+  return [PTPRequest alloc];
+}
+
+-(PTPResponse *)allocResponse {
+  return [PTPResponse alloc];
+}
+
+-(PTPEvent *)allocEvent {
+  return [PTPEvent alloc];
+}
+
+-(PTPDeviceInfo *)allocDeviceInfo {
+  return [PTPDeviceInfo alloc];
+}
+
 -(void)didRemoveDevice:(ICDevice *)device {
   [ptpLiveViewTimer invalidate];
   [ptpEventTimer invalidate];
@@ -1650,22 +1470,22 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)checkForEvent {
-  if (_info.vendorExtension == PTPVendorExtensionNikon && [_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonCheckEvent]]) {
-    [self sendPTPRequest:PTPOperationCodeNikonCheckEvent];
+  if (_info.vendorExtension == PTPVendorExtensionNikon && [_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonCheckEvent]]) {
+    [self sendPTPRequest:PTPRequestCodeNikonCheckEvent];
   }
-  if (_info.vendorExtension == PTPVendorExtensionCanon && [_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeCanonGetEvent]]) {
-    [self sendPTPRequest:PTPOperationCodeCanonGetEvent];
+  if (_info.vendorExtension == PTPVendorExtensionCanon && [_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonGetEvent]]) {
+    [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
   }
 }
 
 -(void)getLiveViewImage {
-	[self sendPTPRequest:PTPOperationCodeNikonGetLiveViewImg];
+	[self sendPTPRequest:PTPRequestCodeNikonGetLiveViewImg];
 }
 
 -(void)processEvent:(PTPEvent *)event {
 	switch (event.eventCode) {
 		case PTPEventCodeDevicePropChanged: {
-			[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:event.parameter1];
+			[self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:event.parameter1];
 			break;
 		}
     case PTPEventCodeNikonObjectAddedInSDRAM: {
@@ -1686,16 +1506,16 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)didSendPTPCommand:(NSData*)command inData:(NSData*)data response:(NSData*)response error:(NSError*)error contextInfo:(void*)contextInfo {
-  PTPOperationRequest*  ptpRequest  = (__bridge PTPOperationRequest*)contextInfo;
+  PTPRequest*  ptpRequest  = (__bridge PTPRequest*)contextInfo;
   if (response == nil) {
     if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
       NSLog(@"Completed %@ with error %@", ptpRequest, error);
   }
-  PTPOperationResponse* ptpResponse = [[PTPOperationResponse alloc] initWithData:response vendorExtension:_info.vendorExtension];
+  PTPResponse* ptpResponse = [[PTPResponse alloc] initWithData:response];
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     NSLog(@"Completed %@ with %@", ptpRequest, ptpResponse);
   switch (ptpRequest.operationCode) {
-    case PTPOperationCodeGetStorageIDs: {
+    case PTPRequestCodeGetStorageIDs: {
       if (ptpResponse.responseCode == PTPResponseCodeOK) {
         NSLog(@"Initialized %@\n", _info.debug);
         [_delegate cameraConnected:self];
@@ -1703,33 +1523,33 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
       }
       break;
     }
-    case PTPOperationCodeSetDevicePropValue: {
-      [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:ptpRequest.parameter1];
+    case PTPRequestCodeSetDevicePropValue: {
+      [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:ptpRequest.parameter1];
       break;
     }
-    case PTPOperationCodeGetDeviceInfo: {
+    case PTPRequestCodeGetDeviceInfo: {
       if (ptpResponse.responseCode == PTPResponseCodeOK && data) {
-        _info = [[PTPDeviceInfo alloc] initWithData:data];
-        if ([_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeInitiateCapture]]) {
+        _info = [[self allocDeviceInfo] initWithData:data];
+        if ([_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeInitiateCapture]]) {
           [_delegate cameraCanCapture:self];
         }
         if (_info.vendorExtension == PTPVendorExtensionNikon) {
-          if ([_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonMfDrive]]) {
+          if ([_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonMfDrive]]) {
             [_delegate cameraCanFocus:self];
           }
-          [self sendPTPRequest:PTPOperationCodeNikonGetVendorPropCodes];
+          [self sendPTPRequest:PTPRequestCodeNikonGetVendorPropCodes];
         } else if (_info.vendorExtension == PTPVendorExtensionCanon) {
-          [self sendPTPRequest:PTPOperationCodeCanonGetDeviceInfoEx];
+          [self sendPTPRequest:PTPRequestCodeCanonGetDeviceInfoEx];
         } else {
           for (NSNumber *code in _info.propertiesSupported) {
-            [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:code.unsignedShortValue];
+            [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:code.unsignedShortValue];
           }
-          [self sendPTPRequest:PTPOperationCodeGetStorageIDs];
+          [self sendPTPRequest:PTPRequestCodeGetStorageIDs];
         }
       }
       break;
     }
-    case PTPOperationCodeGetDevicePropDesc: {
+    case PTPRequestCodeGetDevicePropDesc: {
       PTPProperty *property = [[PTPProperty alloc] initWithData:data vendorExtension:_info.vendorExtension];
       if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
         NSLog(@"Translated to %@", property);
@@ -1943,7 +1763,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
             [_delegate cameraCanStream:self];
             if (property.value.description.intValue) {
               [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:liveViewZoom];
-              [self sendPTPRequest:PTPOperationCodeNikonChangeAfArea param1:liveViewX param2:liveViewX];
+              [self sendPTPRequest:PTPRequestCodeNikonChangeAfArea param1:liveViewX param2:liveViewX];
               ptpLiveViewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
             } else {
               [ptpLiveViewTimer invalidate];
@@ -2022,9 +1842,9 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
             NSArray *values = @[ @"0", @"1" ];
             NSArray *labels = @[ @"1/3", @"1/2" ];
             [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
-            [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureBiasCompensation];
-            [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeNikonFlashExposureCompensation];
-            [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeNikonExternalFlashCompensation];
+            [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:PTPPropertyCodeExposureBiasCompensation];
+            [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:PTPPropertyCodeNikonFlashExposureCompensation];
+            [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:PTPPropertyCodeNikonExternalFlashCompensation];
             break;
           }
           case PTPPropertyCodeNikonFlashExposureCompensation:
@@ -2150,7 +1970,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
       }
       break;
     }
-    case PTPOperationCodeGetDevicePropValue: {
+    case PTPRequestCodeGetDevicePropValue: {
       if (_info.vendorExtension == PTPVendorExtensionNikon) {
         switch (ptpRequest.parameter1) {
           case PTPPropertyCodeNikonLiveViewProhibitCondition: {
@@ -2158,7 +1978,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
               unsigned char *bytes = (void*)[data bytes];
               unsigned int value = ptpReadUnsignedInt(&bytes);
               if (value == 0) {
-                [self sendPTPRequest:PTPOperationCodeNikonStartLiveView];
+                [self sendPTPRequest:PTPRequestCodeNikonStartLiveView];
                 usleep(100000);
               } else {
                 NSMutableString *text = [NSMutableString stringWithFormat:@"LiveViewProhibitCondition 0x%08x", value];
@@ -2212,31 +2032,31 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   }
   if (_info.vendorExtension == PTPVendorExtensionNikon) {
     switch (ptpRequest.operationCode) {
-      case PTPOperationCodeNikonDeviceReady: {
+      case PTPRequestCodeNikonDeviceReady: {
         if (ptpResponse.responseCode == PTPResponseCodeDeviceBusy) {
           usleep(100000);
         }
         break;
       }
-      case PTPOperationCodeNikonGetVendorPropCodes: {
+      case PTPRequestCodeNikonGetVendorPropCodes: {
         unsigned char* buffer = (unsigned char*)[data bytes];
         unsigned char* buf = buffer;
         NSArray *codes = ptpReadUnsignedShortArray(&buf);
         [(NSMutableArray *)_info.propertiesSupported addObjectsFromArray:codes];
         for (NSNumber *code in _info.propertiesSupported) {
-          [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:code.unsignedShortValue];
+          [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:code.unsignedShortValue];
         }
-        [self sendPTPRequest:PTPOperationCodeGetStorageIDs];
+        [self sendPTPRequest:PTPRequestCodeGetStorageIDs];
         break;
       }
-      case PTPOperationCodeNikonInitiateCaptureRecInMedia: {
+      case PTPRequestCodeNikonInitiateCaptureRecInMedia: {
         if (ptpResponse.responseCode != PTPResponseCodeOK &&  ptpResponse.responseCode != PTPResponseCodeDeviceBusy) {
-          [self sendPTPRequest:PTPOperationCodeNikonTerminateCapture param1:0 param2:0];
+          [self sendPTPRequest:PTPRequestCodeNikonTerminateCapture param1:0 param2:0];
           [_delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"InitiateCaptureRecInMedia failed (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
         }
         break;
       }
-      case PTPOperationCodeNikonMfDrive: {
+      case PTPRequestCodeNikonMfDrive: {
         if (ptpResponse.responseCode == PTPResponseCodeOK) {
           dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
             [_delegate cameraFocusDone:self];
@@ -2247,7 +2067,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
           [_delegate cameraFocusFailed:self message:[NSString stringWithFormat:@"MfDrive failed (0x%04x = %@)", ptpResponse.responseCode, ptpResponse]];
         break;
       }
-      case PTPOperationCodeNikonGetLiveViewImg: {
+      case PTPRequestCodeNikonGetLiveViewImg: {
         if (ptpResponse.responseCode == PTPResponseCodeOK && data) {
           char *bytes = (void*)[data bytes];
           NSData *image;
@@ -2304,29 +2124,29 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
         }
         break;
       }
-      case PTPOperationCodeNikonCheckEvent: {
+      case PTPRequestCodeNikonCheckEvent: {
         unsigned char* buffer = (unsigned char*)[data bytes];
         unsigned char* buf = buffer;
         int count = ptpReadUnsignedShort(&buf);
         for (int i = 0; i < count; i++) {
           PTPEventCode code = ptpReadUnsignedShort(&buf);
           unsigned int parameter1 = ptpReadUnsignedInt(&buf);
-          PTPEvent *event = [[PTPEvent alloc] initWithCode:code parameter1:parameter1 vendorExtension:_info.vendorExtension];
+          PTPEvent *event = [[self allocEvent] initWithCode:code parameter1:parameter1];
           if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
             NSLog(@"Translated to %@", [event description]);
           [self processEvent:event];
         }
         break;
       }
-      case PTPOperationCodeNikonSetControlMode: {
-        [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:PTPPropertyCodeExposureProgramMode];
+      case PTPRequestCodeNikonSetControlMode: {
+        [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:PTPPropertyCodeExposureProgramMode];
         break;
       }
     }
   }
   if (_info.vendorExtension == PTPVendorExtensionCanon) {
     switch (ptpRequest.operationCode) {
-      case PTPOperationCodeCanonGetDeviceInfoEx: {
+      case PTPRequestCodeCanonGetDeviceInfoEx: {
         unsigned char* buffer = (unsigned char*)[data bytes];
         unsigned char* buf = buffer;
         ptpReadInt(&buf); // size
@@ -2339,15 +2159,15 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
         for (NSNumber *code in _info.propertiesSupported) {
           unsigned short ui = code.unsignedShortValue;
           if ((ui & 0xD100) != 0xD100)
-            [self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:ui];
+            [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:ui];
         }
-        [self sendPTPRequest:PTPOperationCodeCanonSetRemoteMode param1:1];
-        [self sendPTPRequest:PTPOperationCodeCanonSetEventMode param1:1];
-        [self sendPTPRequest:PTPOperationCodeCanonGetEvent];
-        [self sendPTPRequest:PTPOperationCodeGetStorageIDs];
+        [self sendPTPRequest:PTPRequestCodeCanonSetRemoteMode param1:1];
+        [self sendPTPRequest:PTPRequestCodeCanonSetEventMode param1:1];
+        [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
+        [self sendPTPRequest:PTPRequestCodeGetStorageIDs];
         break;
       }
-      case PTPOperationCodeCanonGetEvent: {
+      case PTPRequestCodeCanonGetEvent: {
         //NSLog(@"%@", data);
         long length = data.length;
         unsigned char* buffer = (unsigned char*)[data bytes];
@@ -2542,7 +2362,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 				unsigned char *buffer = malloc(sizeof (char));
 				unsigned char *buf = buffer;
 				ptpWriteChar(&buf, (char)value.longLongValue);
-				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (char)]];
+				[self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (char)]];
 				free(buffer);
 				break;
 			}
@@ -2550,7 +2370,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 				unsigned char *buffer = malloc(sizeof (unsigned char));
 				unsigned char *buf = buffer;
 				ptpWriteUnsignedChar(&buf, (unsigned char)value.longLongValue);
-				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned char)]];
+				[self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned char)]];
 				free(buffer);
 				break;
 			}
@@ -2558,7 +2378,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 				unsigned char *buffer = malloc(sizeof (short));
 				unsigned char *buf = buffer;
 				ptpWriteShort(&buf, (short)value.longLongValue);
-				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (short)]];
+				[self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (short)]];
 				free(buffer);
 				break;
 			}
@@ -2566,7 +2386,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 				unsigned char *buffer = malloc(sizeof (unsigned short));
 				unsigned char *buf = buffer;
 				ptpWriteUnsignedShort(&buf, (unsigned short)value.longLongValue);
-				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
+				[self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
 				free(buffer);
 				break;
 			}
@@ -2574,7 +2394,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 				unsigned char *buffer = malloc(sizeof (int));
 				unsigned char *buf = buffer;
 				ptpWriteInt(&buf, (int)value.longLongValue);
-				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (int)]];
+				[self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (int)]];
 				free(buffer);
 				break;
 			}
@@ -2582,7 +2402,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 				unsigned char *buffer = malloc(sizeof (unsigned int));
 				unsigned char *buf = buffer;
 				ptpWriteUnsignedInt(&buf, (unsigned int)value.longLongValue);
-				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned int)]];
+				[self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned int)]];
 				free(buffer);
 				break;
 			}
@@ -2590,7 +2410,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 				unsigned char *buffer = malloc(sizeof (long));
 				unsigned char *buf = buffer;
 				ptpWriteLong(&buf, (long)value.longLongValue);
-				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (long)]];
+				[self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (long)]];
 				free(buffer);
 				break;
 			}
@@ -2598,7 +2418,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 				unsigned char *buffer = malloc(sizeof (unsigned long));
 				unsigned char *buf = buffer;
 				ptpWriteUnsignedLong(&buf, (unsigned long)value.longLongValue);
-				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned long)]];
+				[self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned long)]];
 				free(buffer);
 				break;
 			}
@@ -2606,7 +2426,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 				unsigned char *buffer = malloc(256);
 				unsigned char *buf = buffer;
 				int length = ptpWriteString(&buf, value);
-				[self sendPTPRequest:PTPOperationCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:length]];
+				[self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:length]];
 				free(buffer);
 				break;
 			}
@@ -2617,10 +2437,10 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 -(void)lock {
   switch (_info.vendorExtension) {
     case PTPVendorExtensionNikon:
-      [self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:1];
+      [self sendPTPRequest:PTPRequestCodeNikonSetControlMode param1:1];
       break;
     case PTPVendorExtensionCanon:
-      [self sendPTPRequest:PTPOperationCodeCanonSetUILock];
+      [self sendPTPRequest:PTPRequestCodeCanonSetUILock];
       break;
   }
 }
@@ -2628,10 +2448,10 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 -(void)unlock {
   switch (_info.vendorExtension) {
     case PTPVendorExtensionNikon:
-      [self sendPTPRequest:PTPOperationCodeNikonSetControlMode param1:0];
+      [self sendPTPRequest:PTPRequestCodeNikonSetControlMode param1:0];
       break;
     case PTPVendorExtensionCanon:
-      [self sendPTPRequest:PTPOperationCodeCanonResetUILock];
+      [self sendPTPRequest:PTPRequestCodeCanonResetUILock];
       break;
   }
 }
@@ -2654,8 +2474,8 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
       liveViewZoom = [NSString stringWithFormat:@"%d", zoom];
       liveViewX = x;
       liveViewY = y;
-      [self sendPTPRequest:PTPOperationCodeGetDevicePropValue param1:PTPPropertyCodeNikonLiveViewProhibitCondition];
-      [self sendPTPRequest:PTPOperationCodeNikonDeviceReady];
+      [self sendPTPRequest:PTPRequestCodeGetDevicePropValue param1:PTPPropertyCodeNikonLiveViewProhibitCondition];
+      [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
 			break;
     }
 	}
@@ -2666,8 +2486,8 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
     case PTPVendorExtensionNikon: {
       [ptpLiveViewTimer invalidate];
       ptpLiveViewTimer = nil;
-			[self sendPTPRequest:PTPOperationCodeNikonEndLiveView];
-      [self sendPTPRequest:PTPOperationCodeNikonDeviceReady];
+			[self sendPTPRequest:PTPRequestCodeNikonEndLiveView];
+      [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
 			break;
     }
 	}
@@ -2676,9 +2496,9 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 -(void)startCapture {
   switch (_info.vendorExtension) {
     case PTPVendorExtensionNikon:
-      if ([_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonInitiateCaptureRecInMedia]]) {
-        [self sendPTPRequest:PTPOperationCodeNikonInitiateCaptureRecInMedia param1:-1 param2:0];
-        [self sendPTPRequest:PTPOperationCodeNikonDeviceReady];
+      if ([_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonInitiateCaptureRecInMedia]]) {
+        [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:-1 param2:0];
+        [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
       }
       else
         [_icCamera requestTakePicture];
@@ -2692,8 +2512,8 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 -(void)stopCapture {
   switch (_info.vendorExtension) {
     case PTPVendorExtensionNikon:
-      [self sendPTPRequest:PTPOperationCodeNikonTerminateCapture param1:0 param2:0];
-      [self sendPTPRequest:PTPOperationCodeNikonDeviceReady];
+      [self sendPTPRequest:PTPRequestCodeNikonTerminateCapture param1:0 param2:0];
+      [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
       break;
   }
 }
@@ -2704,38 +2524,38 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
     [self setProperty:PTPPropertyCodeNikonLiveViewAFFocus value:@"0"];
   }
   if (steps >= 0) {
-    [self sendPTPRequest:PTPOperationCodeNikonMfDrive param1:1 param2:steps];
+    [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:1 param2:steps];
   } else {
-    [self sendPTPRequest:PTPOperationCodeNikonMfDrive param1:2 param2:-steps];
+    [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:2 param2:-steps];
   }
 }
 
 -(void)setFrameLeft:(int)left top:(int)top width:(int)width height:(int)height {
   switch (_info.vendorExtension) {
     case PTPVendorExtensionNikon: {
-      [self sendPTPRequest:PTPOperationCodeNikonChangeAfArea param1:(left + width / 2) param2:(top + height/2)];
+      [self sendPTPRequest:PTPRequestCodeNikonChangeAfArea param1:(left + width / 2) param2:(top + height/2)];
       break;
     }
   }
 }
 
--(void)sendPTPRequest:(PTPOperationCode)operationCode {
-  PTPOperationRequest *request = [[PTPOperationRequest alloc] initWithVendorExtension:_info.vendorExtension];
+-(void)sendPTPRequest:(PTPRequestCode)operationCode {
+  PTPRequest *request = [[self allocRequest] init];
   request.operationCode = operationCode;
   request.numberOfParameters = 0;
   [_icCamera requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 
--(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 {
-  PTPOperationRequest *request = [[PTPOperationRequest alloc] initWithVendorExtension:_info.vendorExtension];
+-(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 {
+  PTPRequest *request = [[self allocRequest] init];
   request.operationCode = operationCode;
   request.numberOfParameters = 1;
   request.parameter1 = parameter1;
   [_icCamera requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 
--(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2 {
-  PTPOperationRequest *request = [[PTPOperationRequest alloc] initWithVendorExtension:_info.vendorExtension];
+-(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2 {
+  PTPRequest *request = [[self allocRequest] init];
   request.operationCode = operationCode;
   request.numberOfParameters = 2;
   request.parameter1 = parameter1;
@@ -2743,8 +2563,8 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   [_icCamera requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 
--(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 withData:(NSData *)data {
-  PTPOperationRequest *request = [[PTPOperationRequest alloc] initWithVendorExtension:_info.vendorExtension];
+-(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 withData:(NSData *)data {
+  PTPRequest *request = [[self allocRequest] init];
   request.operationCode = operationCode;
   request.numberOfParameters = 1;
   request.parameter1 = parameter1;
@@ -2752,7 +2572,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)device:(ICDevice*)camera didOpenSessionWithError:(NSError*)error {
-  [self sendPTPRequest:PTPOperationCodeGetDeviceInfo];
+  [self sendPTPRequest:PTPRequestCodeGetDeviceInfo];
 }
 
 -(void)device:(ICDevice*)camera didCloseSessionWithError:(NSError*)error {
@@ -2767,7 +2587,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   if (item.class == ICCameraFile.class) {
     ICCameraFile *file = (ICCameraFile *)item;
     if (file.wasAddedAfterContentCatalogCompleted) {
-      camera.userData[PTP_OBJECT_ADDED] = @TRUE;
+      objectAdded = true;
       [camera requestDownloadFile:file options:@{ ICDeleteAfterSuccessfulDownload: @TRUE, ICOverwrite: @TRUE, ICDownloadsDirectoryURL: [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:true] } downloadDelegate:self didDownloadSelector:@selector(didDownloadFile:error:options:contextInfo:) contextInfo:nil];
     }
   }
@@ -2791,7 +2611,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)cameraDevice:(ICCameraDevice*)camera didReceivePTPEvent:(NSData*)eventData {
-  PTPEvent *event = [[PTPEvent alloc] initWithData:eventData vendorExtension:_info.vendorExtension];
+  PTPEvent *event = [[self allocEvent] initWithData:eventData];
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     NSLog(@"Received %@", event);
   switch (_info.vendorExtension) {

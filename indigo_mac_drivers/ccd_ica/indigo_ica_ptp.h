@@ -72,191 +72,61 @@
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-enum PTPOperationCode {
-  PTPOperationCodeUndefined = 0x1000,
-  PTPOperationCodeGetDeviceInfo = 0x1001,
-  PTPOperationCodeOpenSession = 0x1002,
-  PTPOperationCodeCloseSession = 0x1003,
-  PTPOperationCodeGetStorageIDs = 0x1004,
-  PTPOperationCodeGetStorageInfo = 0x1005,
-  PTPOperationCodeGetNumObjects = 0x1006,
-  PTPOperationCodeGetObjectHandles = 0x1007,
-  PTPOperationCodeGetObjectInfo = 0x1008,
-  PTPOperationCodeGetObject = 0x1009,
-  PTPOperationCodeGetThumb = 0x100A,
-  PTPOperationCodeDeleteObject = 0x100B,
-  PTPOperationCodeSendObjectInfo = 0x100C,
-  PTPOperationCodeSendObject = 0x100D,
-  PTPOperationCodeInitiateCapture = 0x100E,
-  PTPOperationCodeFormatStore = 0x100F,
-  PTPOperationCodeResetDevice = 0x1010,
-  PTPOperationCodeSelfTest = 0x1011,
-  PTPOperationCodeSetObjectProtection = 0x1012,
-  PTPOperationCodePowerDown = 0x1013,
-  PTPOperationCodeGetDevicePropDesc = 0x1014,
-  PTPOperationCodeGetDevicePropValue = 0x1015,
-  PTPOperationCodeSetDevicePropValue = 0x1016,
-  PTPOperationCodeResetDevicePropValue = 0x1017,
-  PTPOperationCodeTerminateOpenCapture = 0x1018,
-  PTPOperationCodeMoveObject = 0x1019,
-  PTPOperationCodeCopyObject = 0x101A,
-  PTPOperationCodeGetPartialObject = 0x101B,
-  PTPOperationCodeInitiateOpenCapture = 0x101C,
-  PTPOperationCodeGetNumDownloadableObjects = 0x9001,
-  PTPOperationCodeGetAllObjectInfo = 0x9002,
-  PTPOperationCodeGetUserAssignedDeviceName = 0x9003,
+enum PTPRequestCodeEnum {
+  PTPRequestCodeUndefined = 0x1000,
+  PTPRequestCodeGetDeviceInfo = 0x1001,
+  PTPRequestCodeOpenSession = 0x1002,
+  PTPRequestCodeCloseSession = 0x1003,
+  PTPRequestCodeGetStorageIDs = 0x1004,
+  PTPRequestCodeGetStorageInfo = 0x1005,
+  PTPRequestCodeGetNumObjects = 0x1006,
+  PTPRequestCodeGetObjectHandles = 0x1007,
+  PTPRequestCodeGetObjectInfo = 0x1008,
+  PTPRequestCodeGetObject = 0x1009,
+  PTPRequestCodeGetThumb = 0x100A,
+  PTPRequestCodeDeleteObject = 0x100B,
+  PTPRequestCodeSendObjectInfo = 0x100C,
+  PTPRequestCodeSendObject = 0x100D,
+  PTPRequestCodeInitiateCapture = 0x100E,
+  PTPRequestCodeFormatStore = 0x100F,
+  PTPRequestCodeResetDevice = 0x1010,
+  PTPRequestCodeSelfTest = 0x1011,
+  PTPRequestCodeSetObjectProtection = 0x1012,
+  PTPRequestCodePowerDown = 0x1013,
+  PTPRequestCodeGetDevicePropDesc = 0x1014,
+  PTPRequestCodeGetDevicePropValue = 0x1015,
+  PTPRequestCodeSetDevicePropValue = 0x1016,
+  PTPRequestCodeResetDevicePropValue = 0x1017,
+  PTPRequestCodeTerminateOpenCapture = 0x1018,
+  PTPRequestCodeMoveObject = 0x1019,
+  PTPRequestCodeCopyObject = 0x101A,
+  PTPRequestCodeGetPartialObject = 0x101B,
+  PTPRequestCodeInitiateOpenCapture = 0x101C,
+  PTPRequestCodeGetNumDownloadableObjects = 0x9001,
+  PTPRequestCodeGetAllObjectInfo = 0x9002,
+  PTPRequestCodeGetUserAssignedDeviceName = 0x9003,
 
   // MTP codes
   
-  PTPOperationCodeMTPGetObjectPropsSupported = 0x9801,
-  PTPOperationCodeMTPGetObjectPropDesc = 0x9802,
-  PTPOperationCodeMTPGetObjectPropValue = 0x9803,
-  PTPOperationCodeMTPSetObjectPropValue = 0x9804,
-  PTPOperationCodeMTPGetObjPropList = 0x9805,
-  PTPOperationCodeMTPSetObjPropList = 0x9806,
-  PTPOperationCodeMTPGetInterdependendPropdesc = 0x9807,
-  PTPOperationCodeMTPSendObjectPropList = 0x9808,
-  PTPOperationCodeMTPGetObjectReferences = 0x9810,
-  PTPOperationCodeMTPSetObjectReferences = 0x9811,
-  PTPOperationCodeMTPUpdateDeviceFirmware = 0x9812,
-  PTPOperationCodeMTPSkip = 0x9820,
-
-  // Nikon codes
-  
-  PTPOperationCodeNikonGetProfileAllData = 0x9006,
-  PTPOperationCodeNikonSendProfileData = 0x9007,
-  PTPOperationCodeNikonDeleteProfile = 0x9008,
-  PTPOperationCodeNikonSetProfileData = 0x9009,
-  PTPOperationCodeNikonAdvancedTransfer = 0x9010,
-  PTPOperationCodeNikonGetFileInfoInBlock = 0x9011,
-  PTPOperationCodeNikonCapture = 0x90C0,
-  PTPOperationCodeNikonAfDrive = 0x90C1,
-  PTPOperationCodeNikonSetControlMode = 0x90C2,
-  PTPOperationCodeNikonDelImageSDRAM = 0x90C3,
-  PTPOperationCodeNikonGetLargeThumb = 0x90C4,
-  PTPOperationCodeNikonCurveDownload = 0x90C5,
-  PTPOperationCodeNikonCurveUpload = 0x90C6,
-  PTPOperationCodeNikonCheckEvent = 0x90C7,
-  PTPOperationCodeNikonDeviceReady = 0x90C8,
-  PTPOperationCodeNikonSetPreWBData = 0x90C9,
-  PTPOperationCodeNikonGetVendorPropCodes = 0x90CA,
-  PTPOperationCodeNikonAfCaptureSDRAM = 0x90CB,
-  PTPOperationCodeNikonGetPictCtrlData = 0x90CC,
-  PTPOperationCodeNikonSetPictCtrlData = 0x90CD,
-  PTPOperationCodeNikonDelCstPicCtrl = 0x90CE,
-  PTPOperationCodeNikonGetPicCtrlCapability = 0x90CF,
-  PTPOperationCodeNikonGetPreviewImg = 0x9200,
-  PTPOperationCodeNikonStartLiveView = 0x9201,
-  PTPOperationCodeNikonEndLiveView = 0x9202,
-  PTPOperationCodeNikonGetLiveViewImg = 0x9203,
-  PTPOperationCodeNikonMfDrive = 0x9204,
-  PTPOperationCodeNikonChangeAfArea = 0x9205,
-  PTPOperationCodeNikonAfDriveCancel = 0x9206,
-  PTPOperationCodeNikonInitiateCaptureRecInMedia = 0x9207,
-  PTPOperationCodeNikonGetVendorStorageIDs = 0x9209,
-  PTPOperationCodeNikonStartMovieRecInCard = 0x920a,
-  PTPOperationCodeNikonEndMovieRec = 0x920b,
-  PTPOperationCodeNikonTerminateCapture = 0x920c,
-  PTPOperationCodeNikonGetDevicePTPIPInfo = 0x90E0,
-  PTPOperationCodeNikonGetPartialObjectHiSpeed = 0x9400,
-  
-  // Canon codes
-  
-  PTPOperationCodeCanonGetStorageIDs = 0x9101,
-  PTPOperationCodeCanonGetStorageInfo = 0x9102,
-  PTPOperationCodeCanonGetObjectInfo = 0x9103,
-  PTPOperationCodeCanonGetObject = 0x9104,
-  PTPOperationCodeCanonDeleteObject = 0x9105,
-  PTPOperationCodeCanonFormatStore = 0x9106,
-  PTPOperationCodeCanonGetPartialObject = 0x9107,
-  PTPOperationCodeCanonGetDeviceInfoEx = 0x9108,
-  PTPOperationCodeCanonGetObjectInfoEx = 0x9109,
-  PTPOperationCodeCanonGetThumbEx = 0x910A,
-  PTPOperationCodeCanonSendPartialObject = 0x910B,
-  PTPOperationCodeCanonSetObjectAttributes = 0x910C,
-  PTPOperationCodeCanonGetObjectTime = 0x910D,
-  PTPOperationCodeCanonSetObjectTime = 0x910E,
-  PTPOperationCodeCanonRemoteRelease = 0x910F,
-  PTPOperationCodeCanonSetDevicePropValueEx = 0x9110,
-  PTPOperationCodeCanonGetRemoteMode = 0x9113,
-  PTPOperationCodeCanonSetRemoteMode = 0x9114,
-  PTPOperationCodeCanonSetEventMode = 0x9115,
-  PTPOperationCodeCanonGetEvent = 0x9116,
-  PTPOperationCodeCanonTransferComplete = 0x9117,
-  PTPOperationCodeCanonCancelTransfer = 0x9118,
-  PTPOperationCodeCanonResetTransfer = 0x9119,
-  PTPOperationCodeCanonPCHDDCapacity = 0x911A,
-  PTPOperationCodeCanonSetUILock = 0x911B,
-  PTPOperationCodeCanonResetUILock = 0x911C,
-  PTPOperationCodeCanonKeepDeviceOn = 0x911D,
-  PTPOperationCodeCanonSetNullPacketMode = 0x911E,
-  PTPOperationCodeCanonUpdateFirmware = 0x911F,
-  PTPOperationCodeCanonTransferCompleteDT = 0x9120,
-  PTPOperationCodeCanonCancelTransferDT = 0x9121,
-  PTPOperationCodeCanonSetWftProfile = 0x9122,
-  PTPOperationCodeCanonGetWftProfile = 0x9123,
-  PTPOperationCodeCanonSetProfileToWft = 0x9124,
-  PTPOperationCodeCanonBulbStart = 0x9125,
-  PTPOperationCodeCanonBulbEnd = 0x9126,
-  PTPOperationCodeCanonRequestDevicePropValue = 0x9127,
-  PTPOperationCodeCanonRemoteReleaseOn = 0x9128,
-  PTPOperationCodeCanonRemoteReleaseOff = 0x9129,
-  PTPOperationCodeCanonRegistBackgroundImage = 0x912A,
-  PTPOperationCodeCanonChangePhotoStudioMode = 0x912B,
-  PTPOperationCodeCanonGetPartialObjectEx = 0x912C,
-  PTPOperationCodeCanonResetMirrorLockupState = 0x9130,
-  PTPOperationCodeCanonPopupBuiltinFlash = 0x9131,
-  PTPOperationCodeCanonEndGetPartialObjectEx = 0x9132,
-  PTPOperationCodeCanonMovieSelectSWOn = 0x9133,
-  PTPOperationCodeCanonMovieSelectSWOff = 0x9134,
-  PTPOperationCodeCanonGetCTGInfo = 0x9135,
-  PTPOperationCodeCanonGetLensAdjust = 0x9136,
-  PTPOperationCodeCanonSetLensAdjust = 0x9137,
-  PTPOperationCodeCanonGetMusicInfo = 0x9138,
-  PTPOperationCodeCanonCreateHandle = 0x9139,
-  PTPOperationCodeCanonSendPartialObjectEx = 0x913A,
-  PTPOperationCodeCanonEndSendPartialObjectEx = 0x913B,
-  PTPOperationCodeCanonSetCTGInfo = 0x913C,
-  PTPOperationCodeCanonSetRequestOLCInfoGroup = 0x913D,
-  PTPOperationCodeCanonSetRequestRollingPitchingLevel = 0x913E,
-  PTPOperationCodeCanonGetCameraSupport = 0x913F,
-  PTPOperationCodeCanonSetRating = 0x9140,
-  PTPOperationCodeCanonRequestInnerDevelopStart = 0x9141,
-  PTPOperationCodeCanonRequestInnerDevelopParamChange = 0x9142,
-  PTPOperationCodeCanonRequestInnerDevelopEnd = 0x9143,
-  PTPOperationCodeCanonGpsLoggingDataMode = 0x9144,
-  PTPOperationCodeCanonGetGpsLogCurrentHandle = 0x9145,
-  PTPOperationCodeCanonInitiateViewfinder = 0x9151,
-  PTPOperationCodeCanonTerminateViewfinder = 0x9152,
-  PTPOperationCodeCanonGetViewFinderData = 0x9153,
-  PTPOperationCodeCanonDoAf = 0x9154,
-  PTPOperationCodeCanonDriveLens = 0x9155,
-  PTPOperationCodeCanonDepthOfFieldPreview = 0x9156,
-  PTPOperationCodeCanonClickWB = 0x9157,
-  PTPOperationCodeCanonZoom = 0x9158,
-  PTPOperationCodeCanonZoomPosition = 0x9159,
-  PTPOperationCodeCanonSetLiveAfFrame = 0x915A,
-  PTPOperationCodeCanonTouchAfPosition = 0x915B,
-  PTPOperationCodeCanonSetLvPcFlavoreditMode = 0x915C,
-  PTPOperationCodeCanonSetLvPcFlavoreditParam = 0x915D,
-  PTPOperationCodeCanonAfCancel = 0x9160,
-  PTPOperationCodeCanonSetDefaultCameraSetting = 0x91BE,
-  PTPOperationCodeCanonGetAEData = 0x91BF,
-  PTPOperationCodeCanonNotifyNetworkError = 0x91E8,
-  PTPOperationCodeCanonAdapterTransferProgress = 0x91E9,
-  PTPOperationCodeCanonTransferComplete2 = 0x91F0,
-  PTPOperationCodeCanonCancelTransfer2 = 0x91F1,
-  PTPOperationCodeCanonFAPIMessageTX = 0x91FE,
-  PTPOperationCodeCanonFAPIMessageRX = 0x91FF
+  PTPRequestCodeMTPGetObjectPropsSupported = 0x9801,
+  PTPRequestCodeMTPGetObjectPropDesc = 0x9802,
+  PTPRequestCodeMTPGetObjectPropValue = 0x9803,
+  PTPRequestCodeMTPSetObjectPropValue = 0x9804,
+  PTPRequestCodeMTPGetObjPropList = 0x9805,
+  PTPRequestCodeMTPSetObjPropList = 0x9806,
+  PTPRequestCodeMTPGetInterdependendPropdesc = 0x9807,
+  PTPRequestCodeMTPSendObjectPropList = 0x9808,
+  PTPRequestCodeMTPGetObjectReferences = 0x9810,
+  PTPRequestCodeMTPSetObjectReferences = 0x9811,
+  PTPRequestCodeMTPUpdateDeviceFirmware = 0x9812,
+  PTPRequestCodeMTPSkip = 0x9820,
 };
-typedef unsigned short PTPOperationCode;
 
-#define RESERVED_OPERATION_CODE(c) (!(c & 0x9000) && (c > PTPOperationCodeInitiateOpenCapture))
-#define VENDOR_SPECIFIC_OPERATION_CODE(c) (c & 0x9000)
+typedef unsigned short PTPRequestCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-enum PTPResponseCode {
+enum PTPResponseCodeEnum {
   PTPResponseCodeUndefined = 0x2000,
   PTPResponseCodeOK = 0x2001,
   PTPResponseCodeGeneralError = 0x2002,
@@ -303,40 +173,12 @@ enum PTPResponseCode {
   PTPResponseCodeMTPSpecification_By_Depth_Unsupported = 0xA808,
   PTPResponseCodeMTPObject_Too_Large = 0xA809,
   PTPResponseCodeMTPObjectProp_Not_Supported = 0xA80A,
-  
-  // Nikon codes
-  
-  PTPResponseCodeNikonHardwareError = 0xA001,
-  PTPResponseCodeNikonOutOfFocus = 0xA002,
-  PTPResponseCodeNikonChangeCameraModeFailed = 0xA003,
-  PTPResponseCodeNikonInvalidStatus = 0xA004,
-  PTPResponseCodeNikonSetPropertyNotSupported = 0xA005,
-  PTPResponseCodeNikonWbResetError = 0xA006,
-  PTPResponseCodeNikonDustReferenceError = 0xA007,
-  PTPResponseCodeNikonShutterSpeedBulb = 0xA008,
-  PTPResponseCodeNikonMirrorUpSequence = 0xA009,
-  PTPResponseCodeNikonCameraModeNotAdjustFNumber = 0xA00A,
-  PTPResponseCodeNikonNotLiveView = 0xA00B,
-  PTPResponseCodeNikonMfDriveStepEnd = 0xA00C,
-  PTPResponseCodeNikonMfDriveStepInsufficiency = 0xA00E,
-  PTPResponseCodeNikonAdvancedTransferCancel = 0xA022,
-  
-  // Canon codes
-
-  PTPResponseCodeUnknownCommand = 0xA001,
-  PTPResponseCodeOperationRefused = 0xA005,
-  PTPResponseCodeLensCover = 0xA006,
-  PTPResponseCodeBatteryLow = 0xA101,
-  PTPResponseCodeNotReady = 0xA102
 };
 typedef unsigned short PTPResponseCode;
 
-#define RESERVED_RESPONSE_CODE(c) (!(c & 0xA000) && (c > PTPResponseCodeSpecificationOfDestinationUnsupported))
-#define VENDOR_SPECIFIC_RESPONSE_CODE(c) (c & 0xA000)
-
 //------------------------------------------------------------------------------------------------------------------------------
 
-enum PTPEventCode {
+enum PTPEventCodeEnum {
   PTPEventCodeUndefined = 0x4000,
   PTPEventCodeCancelTransaction = 0x4001,
   PTPEventCodeObjectAdded = 0x4002,
@@ -353,50 +195,13 @@ enum PTPEventCode {
   PTPEventCodeCaptureComplete = 0x400D,
   PTPEventCodeUnreportedStatus = 0x400E,
   
+  // Apple codes
+  
   PTPEventCodeAppleDeviceUnlocked = 0xC001,
   PTPEventCodeAppleUserAssignedNameChanged = 0xC002,
-
-  // Nikon codes
-  
-  PTPEventCodeNikonObjectAddedInSDRAM = 0xC101,
-  PTPEventCodeNikonCaptureCompleteRecInSdram = 0xC102,
-  PTPEventCodeNikonAdvancedTransfer = 0xC103,
-  PTPEventCodeNikonPreviewImageAdded = 0xC104,
-  
-  // Canon codes
-  
-  PTPEventCodeCanonRequestGetEvent = 0xC101,
-  PTPEventCodeCanonObjectAddedEx = 0xC181,
-  PTPEventCodeCanonObjectRemoved = 0xC182,
-  PTPEventCodeCanonRequestGetObjectInfoEx = 0xC183,
-  PTPEventCodeCanonStorageStatusChanged = 0xC184,
-  PTPEventCodeCanonStorageInfoChanged = 0xC185,
-  PTPEventCodeCanonRequestObjectTransfer = 0xC186,
-  PTPEventCodeCanonObjectInfoChangedEx = 0xC187,
-  PTPEventCodeCanonObjectContentChanged = 0xC188,
-  PTPEventCodeCanonPropValueChanged = 0xC189,
-  PTPEventCodeCanonAvailListChanged = 0xC18A,
-  PTPEventCodeCanonCameraStatusChanged = 0xC18B,
-  PTPEventCodeCanonWillSoonShutdown = 0xC18D,
-  PTPEventCodeCanonShutdownTimerUpdated = 0xC18E,
-  PTPEventCodeCanonRequestCancelTransfer = 0xC18F,
-  PTPEventCodeCanonRequestObjectTransferDT = 0xC190,
-  PTPEventCodeCanonRequestCancelTransferDT = 0xC191,
-  PTPEventCodeCanonStoreAdded = 0xC192,
-  PTPEventCodeCanonStoreRemoved = 0xC193,
-  PTPEventCodeCanonBulbExposureTime = 0xC194,
-  PTPEventCodeCanonRecordingTime = 0xC195,
-  PTPEventCodeCanonRequestObjectTransferTS = 0xC1A2,
-  PTPEventCodeCanonAfResult = 0xC1A3,
-  PTPEventCodeCanonCTGInfoCheckComplete = 0xC1A4,
-  PTPEventCodeCanonOLCInfoChanged = 0xC1A5,
-  PTPEventCodeCanonRequestObjectTransferFTP = 0xC1F1
 };
 
 typedef unsigned short PTPEventCode;
-
-#define RESERVED_EVENT_CODE(c) (!(c & 0xC000) && (c > PTPEventCodeUnreportedStatus))
-#define VENDOR_SPECIFIC_EVENT_CODE(c) (c & 0xC000)
 
 //------------------------------------------------------------------------------------------------------------------------------
 
@@ -918,213 +723,6 @@ typedef unsigned short PTPVendorExtension;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-
-enum PTPFocusMode {
-  PTPFocusModeUndefined = 0x0000,
-  PTPFocusModeManual = 0x0001,
-  PTPFocusModeAutomatic = 0x0002,
-  PTPFocusModeAutomaticMacro = 0x0003
-};
-typedef unsigned short PTPFocusMode;
-
-// All values with Bit 15 set to 0 - Reserved
-// All values with Bit 15 set to 1 - Vendor-defined
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPExposureMeteringMode {
-  PTPExposureMeteringModeUndefined = 0x0000,
-  PTPExposureMeteringModeAverage = 0x0001,
-  PTPExposureMeteringModeCenterWeightedAverage = 0x0002,
-  PTPExposureMeteringModeMultispot = 0x0003,
-  PTPExposureMeteringModeCenterspot = 0x0004
-};
-typedef unsigned short PTPExposureMeteringMode;
-
-// All values with Bit 15 set to 0 - Reserved
-// All values with Bit 15 set to 1 - Vendor-defined
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPFlashMode {
-  PTPFlashModeUndefined = 0x0000,
-  PTPFlashModeAutoFlash = 0x0001,
-  PTPFlashModeFlashOff = 0x0002,
-  PTPFlashModeFillFlash = 0x0003,
-  PTPFlashModeRedEyeAuto = 0x0004,
-  PTPFlashModeRedEyeFill = 0x0005,
-  PTPFlashModeExternalSync = 0x0006
-};
-typedef unsigned short PTPFlashMode;
-
-// All values with Bit 15 set to 0 - Reserved
-// All values with Bit 15 set to 1 - Vendor-defined
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPExposureProgramMode {
-  PTPExposureProgramModeUndefined = 0x0000,
-  PTPExposureProgramModeManual = 0x0001,
-  PTPExposureProgramModeAutomatic = 0x0002,
-  PTPExposureProgramModeAperturePriority = 0x0003,
-  PTPExposureProgramModeShutterPriority = 0x0004,
-  PTPExposureProgramModeCreative = 0x0005,
-  PTPExposureProgramModeAction = 0x0006,
-  PTPExposureProgramModePortrait = 0x0007
-};
-typedef unsigned short PTPExposureProgramMode;
-
-// All values with Bit 15 set to 0 - Reserved
-// All values with Bit 15 set to 1 - Vendor-defined
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPStillCaptureMode {
-  PTPStillCaptureModeUndefined = 0x0000,
-  PTPStillCaptureModeNormal = 0x0001,
-  PTPStillCaptureModeBurst = 0x0002,
-  PTPStillCaptureModeTimelapse = 0x0003
-};
-typedef unsigned short PTPStillCaptureMode;
-
-// All values with Bit 15 set to 0 - Reserved
-// All values with Bit 15 set to 1 - Vendor-defined
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPEffectMode {
-  PTPEffectModeUndefined = 0x0000,
-  PTPEffectModeStandardColor = 0x0001,
-  PTPEffectModeBlackAndWhite = 0x0002,
-  PTPEffectModeSepia = 0x0003
-};
-typedef unsigned short PTPEffectMode;
-
-// All values with Bit 15 set to 0 - Reserved
-// All values with Bit 15 set to 1 - Vendor-defined
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPFocusMeteringMode {
-  PTPFocusMeteringModeUndefined = 0x0000,
-  PTPFocusMeteringModeCenterSpot = 0x0001,
-  PTPFocusMeteringModeMultiSpot = 0x0002
-};
-typedef unsigned short PTPFocusMeteringMode;
-
-// All values with Bit 15 set to 0 - Reserved
-// All values with Bit 15 set to 1 - Vendor-defined
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPFunctionalMode {
-  PTPFunctionalModeStandard = 0x0000,
-  PTPFunctionalModeSleepState = 0x0001
-};
-typedef unsigned short PTPFunctionalMode;
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPStorageType {
-  PTPStorageTypeUndefined = 0x0000,
-  PTPStorageTypeFixedROM = 0x0001,
-  PTPStorageTypeRemovableROM = 0x0002,
-  PTPStorageTypeFixedRAM = 0x0003,
-  PTPStorageTypeRemovableRAM = 0x0004
-};
-typedef unsigned short PTPStorageType;
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPFilesystemType {
-  PTPFilesystemTypeUndefined = 0x0000,
-  PTPFilesystemTypeGenericFlat = 0x0001,
-  PTPFilesystemTypeGenericHierarchical = 0x0002,
-  PTPFilesystemTypeDCF = 0x0003
-};
-typedef unsigned short PTPFilesystemType;
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPAccessCapability {
-  PTPAccessCapabilityReadWrite = 0x0000,
-  PTPAccessCapabilityReadOnlyWithoutObjectDeletion = 0x0001,
-  PTPAccessCapabilityReadOnlyWithObjectDeletion = 0x0002
-};
-typedef unsigned short PTPAccessCapability;
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPProtectionStatus {
-  PTPProtectionStatusNoProtection = 0x0000,
-  PTPProtectionStatusReadOnly = 0x0001
-};
-typedef unsigned short PTPProtectionStatus;
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPObjectFormatCode {
-  PTPObjectFormatCodeUndefinedNonImageObject = 0x3000,
-  PTPObjectFormatCodeAssociation = 0x3001, // e.g., folder
-  PTPObjectFormatCodeScript = 0x3002, // device-model-specific script
-  PTPObjectFormatCodeExecutable = 0x3003, // device-model-specific binary executable
-  PTPObjectFormatCodeText = 0x3004,
-  PTPObjectFormatCodeHTML = 0x3005,
-  PTPObjectFormatCodeDPOF = 0x3006,
-  PTPObjectFormatCodeAIFF = 0x3007,
-  PTPObjectFormatCodeWAV = 0x3008,
-  PTPObjectFormatCodeMP3 = 0x3009,
-  PTPObjectFormatCodeAVI = 0x300A,
-  PTPObjectFormatCodeMPEG = 0x300B,
-  PTPObjectFormatCodeASF = 0x300C,
-  PTPObjectFormatCodeUnknownImageObject = 0x3800,
-  PTPObjectFormatCodeEXIF_JPEG = 0x3801,
-  PTPObjectFormatCodeTIFF_EP = 0x3802,
-  PTPObjectFormatCodeFlashPix = 0x3803,
-  PTPObjectFormatCodeBMP = 0x3804,
-  PTPObjectFormatCodeCIFF = 0x3805,
-  PTPObjectFormatCodeReserved1 = 0x3806,
-  PTPObjectFormatCodeGIF = 0x3807,
-  PTPObjectFormatCodeJFIF = 0x3808,
-  PTPObjectFormatCodePCD = 0x3809,
-  PTPObjectFormatCodePICT = 0x380A,
-  PTPObjectFormatCodePNG = 0x380B,
-  PTPObjectFormatCodeReserved2 = 0x380C,
-  PTPObjectFormatCodeTIFF = 0x380D,
-  PTPObjectFormatCodeTIFF_IT = 0x380E,
-  PTPObjectFormatCodeJP2 = 0x380F, // JPEG 2000 Baseline File Format
-  PTPObjectFormatCodeJPX = 0x3810 // JPEG 2000 Extended File Format
-};
-typedef unsigned short PTPObjectFormatCode;
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPAssociationType {
-  PTPAssociationTypeUndefined = 0x0000,
-  PTPAssociationTypeGenericFolder = 0x0001,
-  PTPAssociationTypeAlbum = 0x0002, // Reserved
-  PTPAssociationTypeTimeSequence = 0x0003,
-  PTPAssociationTypeHorizontalPanoramic = 0x0004,
-  PTPAssociationTypeVerticalPanoramic = 0x0005,
-  PTPAssociationType2DPanoramic = 0x0006,
-  PTPAssociationTypeAncillaryData = 0x0007
-};
-typedef unsigned short PTPAssociationType;
-
-// All values with Bit 15 set to 0 - Reserved
-// All values with Bit 15 set to 1 - Vendor-defined
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-enum PTPInitFailReason {
-  PTPInitFailReasonRejectedInitiator = 0x00000001,
-  PTPInitFailReasonBusy = 0x00000002,
-  PTPInitFailReasonUnspecified = 0x00000003
-};
-typedef unsigned short PTPInitFailReason;
-
-//------------------------------------------------------------------------------------------------------------------------------
-
 enum PTPDataTypeCode {
   PTPDataTypeCodeUndefined = 0x0000,
   PTPDataTypeCodeSInt8 = 0x0001,
@@ -1153,17 +751,6 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-#define PTP_DEVICE_INFO       @"PTP_DEVICE_INFO"
-#define PTP_EVENT_TIMER       @"PTP_EVENT_TIMER"
-#define PTP_LIVE_VIEW_TIMER   @"PTP_LIVE_VIEW_TIMER"
-#define PTP_OBJECT_ADDED      @"PTP_OBJECT_ADDED"
-#define PTP_FOCUS_LOCKED      @"PTP_FOCUS_LOCKED"
-#define PTP_LIVE_VIEW_ZOOM    @"PTP_LIVE_VIEW_ZOOM"
-#define PTP_LIVE_VIEW_X       @"PTP_LIVE_VIEW_X"
-#define PTP_LIVE_VIEW_Y       @"PTP_LIVE_VIEW_Y"
-
-//------------------------------------------------------------------------------------------------------------------------------
-
 @interface PTPVendor : NSObject
 @property PTPVendorExtension vendorExtension;
 +(NSString *)vendorExtensionName:(PTPVendorExtension)vendorExtension;
@@ -1173,22 +760,21 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-@interface PTPOperationRequest : PTPVendor
-@property PTPOperationCode operationCode;
+@interface PTPRequest : NSObject
+@property PTPRequestCode operationCode;
 @property unsigned short numberOfParameters;
 @property unsigned int parameter1;
 @property unsigned int parameter2;
 @property unsigned int parameter3;
 @property unsigned int parameter4;
 @property unsigned int parameter5;
-+(NSString *)operationCodeName:(PTPOperationCode)operationCode vendorExtension:(PTPVendorExtension)vendorExtension;
--(id)initWithVendorExtension:(PTPVendorExtension)vendorExtension;
++(NSString *)operationCodeName:(PTPRequestCode)operationCode;
 -(NSData*)commandBuffer;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-@interface PTPOperationResponse : PTPVendor
+@interface PTPResponse : NSObject
 @property PTPResponseCode responseCode;
 @property unsigned int transactionID;
 @property unsigned short numberOfParameters;
@@ -1197,22 +783,22 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter3;
 @property unsigned int parameter4;
 @property unsigned int parameter5;
-+(NSString *)responseCodeName:(PTPResponseCode)responseCode vendorExtension:(PTPVendorExtension)vendorExtension;
--(id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
++(NSString *)responseCodeName:(PTPResponseCode)responseCode;
+-(id)initWithData:(NSData*)data;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
 
-@interface PTPEvent : PTPVendor
+@interface PTPEvent : NSObject
 @property PTPEventCode eventCode;
 @property unsigned int transactionID;
 @property unsigned short numberOfParameters;
 @property unsigned int parameter1;
 @property unsigned int parameter2;
 @property unsigned int parameter3;
-+(NSString *)eventCodeName:(PTPEventCode)eventCode vendorExtension:(PTPVendorExtension)vendorExtension;
--(id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
--(id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1 vendorExtension:(PTPVendorExtension)vendorExtension;
++(NSString *)eventCodeName:(PTPEventCode)eventCode;
+-(id)initWithData:(NSData*)data;
+-(id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -1266,14 +852,18 @@ typedef unsigned short PTPDataTypeCode;
 
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate;
 
+-(PTPRequest *)allocRequest;
+-(PTPResponse *)allocResponse;
+-(PTPEvent *)allocEvent;
+-(PTPDeviceInfo *)allocDeviceInfo;
+
 -(void)requestOpenSession;
 -(void)requestCloseSession;
 -(void)requestEnableTethering;
 
--(PTPDeviceInfo *)ptpDeviceInfo;
--(void)sendPTPRequest:(PTPOperationCode)operationCode;
--(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
--(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
+-(void)sendPTPRequest:(PTPRequestCode)operationCode;
+-(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1;
+-(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 -(void)lock;
 -(void)unlock;
