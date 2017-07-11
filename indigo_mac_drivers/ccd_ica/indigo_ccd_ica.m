@@ -443,7 +443,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 @implementation ICADelegate
 
-- (void)cameraAdded:(ICCameraDevice *)camera {
+-(void)cameraAdded:(ICCameraDevice *)camera {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	static indigo_device ccd_template = {
 		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
@@ -473,7 +473,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_async((void *)(void *)indigo_attach_device, device);
 }
 
-- (void)cameraConnected:(ICCameraDevice*)camera {
+-(void)cameraConnected:(ICCameraDevice*)camera {
   [camera requestEnableTethering];
   sleep(1);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
@@ -492,7 +492,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 
-- (int)propertyIndex:(ICCameraDevice *)camera code:(PTPPropertyCode)code type:(indigo_property_type)type {
+-(int)propertyIndex:(ICCameraDevice *)camera code:(PTPPropertyCode)code type:(indigo_property_type)type {
 	char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE], *group = "Advanced";
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	indigo_property *property;
@@ -535,7 +535,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	return PRIVATE_DATA->dslr_properties_count - 1;
 }
 
-- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly {
+-(void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
  
 	int index = [self propertyIndex:camera code:code type:INDIGO_SWITCH_VECTOR];
@@ -614,7 +614,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 }
 
-- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly {
+-(void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly {
   indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	int index = [self propertyIndex:camera code:code type:INDIGO_NUMBER_VECTOR];
 	indigo_property *property = PRIVATE_DATA->dslr_properties[index];
@@ -640,7 +640,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 }
 
-- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly {
+-(void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	int index = [self propertyIndex:camera code:code type:INDIGO_TEXT_VECTOR];
 	indigo_property *property = PRIVATE_DATA->dslr_properties[index];
@@ -660,7 +660,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 }
 
-- (void)cameraFrame:(ICCameraDevice*)camera left:(int)left top:(int)top width:(int)width height:(int)height {
+-(void)cameraFrame:(ICCameraDevice*)camera left:(int)left top:(int)top width:(int)width height:(int)height {
   indigo_device *device = [camera.userData[DEVICE] pointerValue];
   CCD_FRAME_LEFT_ITEM->number.value = left;
   CCD_FRAME_TOP_ITEM->number.value = top;
@@ -676,7 +676,7 @@ static indigo_result focuser_detach(indigo_device *device) {
   indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 }
 
-- (void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data filename:(NSString *)filename {
+-(void)cameraExposureDone:(ICCameraDevice*)camera data:(NSData *)data filename:(NSString *)filename {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	filename = filename.lowercaseString;
 	NSString *extension = [@"." stringByAppendingString:filename.pathExtension];
@@ -707,7 +707,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 }
 
-- (void)cameraExposureFailed:(ICCameraDevice*)camera message:(NSString *)message {
+-(void)cameraExposureFailed:(ICCameraDevice*)camera message:(NSString *)message {
   indigo_device *device = [camera.userData[DEVICE] pointerValue];
   CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
   indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
@@ -726,13 +726,13 @@ static indigo_result focuser_detach(indigo_device *device) {
   }
 }
 
-- (void)cameraFocusDone:(ICCameraDevice *)camera {
+-(void)cameraFocusDone:(ICCameraDevice *)camera {
   indigo_device *device = ((ica_private_data *)((indigo_device *)[camera.userData[DEVICE] pointerValue])->private_data)->focuser;
   FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
   indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
-- (void)cameraFocusFailed:(ICCameraDevice *)camera message:(NSString *)message {
+-(void)cameraFocusFailed:(ICCameraDevice *)camera message:(NSString *)message {
   indigo_device *device = ((ica_private_data *)((indigo_device *)[camera.userData[DEVICE] pointerValue])->private_data)->focuser;
   FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
   if (message)
@@ -741,14 +741,14 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Failed to focus");
 }
 
-- (void)cameraCanCapture:(ICCameraDevice *)camera {
+-(void)cameraCanCapture:(ICCameraDevice *)camera {
   indigo_device *device = [camera.userData[DEVICE] pointerValue];
   [camera requestEnableTethering];
   CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
   indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
 
-- (void)cameraCanFocus:(ICCameraDevice *)camera {
+-(void)cameraCanFocus:(ICCameraDevice *)camera {
   indigo_device *device = [camera.userData[DEVICE] pointerValue];
   static indigo_device focuser_template = {
     "", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
@@ -768,13 +768,13 @@ static indigo_result focuser_detach(indigo_device *device) {
   indigo_async((void *)(void *)indigo_attach_device, focuser);
 }
 
-- (void)cameraCanStream:(ICCameraDevice *)camera {
+-(void)cameraCanStream:(ICCameraDevice *)camera {
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	CCD_STREAMING_PROPERTY->hidden = false;
   CCD_FRAME_PROPERTY->perm = INDIGO_RW_PERM;
 }
 
-- (void)cameraDisconnected:(ICCameraDevice*)camera {
+-(void)cameraDisconnected:(ICCameraDevice*)camera {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	if (device) {
@@ -792,7 +792,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 }
 
-- (void)cameraRemoved:(ICCameraDevice *)camera {
+-(void)cameraRemoved:(ICCameraDevice *)camera {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [camera.userData[DEVICE] pointerValue];
 	if (device) {

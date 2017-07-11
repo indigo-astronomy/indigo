@@ -1166,8 +1166,8 @@ typedef unsigned short PTPDataTypeCode;
 
 @interface PTPVendor : NSObject
 @property PTPVendorExtension vendorExtension;
-+ (NSString *)vendorExtensionName:(PTPVendorExtension)vendorExtension;
-- (id)initWithVendorExtension:(PTPVendorExtension)vendorExtension;
++(NSString *)vendorExtensionName:(PTPVendorExtension)vendorExtension;
+-(id)initWithVendorExtension:(PTPVendorExtension)vendorExtension;
 @end
 
 
@@ -1181,9 +1181,9 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter3;
 @property unsigned int parameter4;
 @property unsigned int parameter5;
-+ (NSString *)operationCodeName:(PTPOperationCode)operationCode vendorExtension:(PTPVendorExtension)vendorExtension;
-- (id)initWithVendorExtension:(PTPVendorExtension)vendorExtension;
-- (NSData*)commandBuffer;
++(NSString *)operationCodeName:(PTPOperationCode)operationCode vendorExtension:(PTPVendorExtension)vendorExtension;
+-(id)initWithVendorExtension:(PTPVendorExtension)vendorExtension;
+-(NSData*)commandBuffer;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -1197,8 +1197,8 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter3;
 @property unsigned int parameter4;
 @property unsigned int parameter5;
-+ (NSString *)responseCodeName:(PTPResponseCode)responseCode vendorExtension:(PTPVendorExtension)vendorExtension;
-- (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
++(NSString *)responseCodeName:(PTPResponseCode)responseCode vendorExtension:(PTPVendorExtension)vendorExtension;
+-(id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -1210,9 +1210,9 @@ typedef unsigned short PTPDataTypeCode;
 @property unsigned int parameter1;
 @property unsigned int parameter2;
 @property unsigned int parameter3;
-+ (NSString *)eventCodeName:(PTPEventCode)eventCode vendorExtension:(PTPVendorExtension)vendorExtension;
-- (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
-- (id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1 vendorExtension:(PTPVendorExtension)vendorExtension;
++(NSString *)eventCodeName:(PTPEventCode)eventCode vendorExtension:(PTPVendorExtension)vendorExtension;
+-(id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
+-(id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1 vendorExtension:(PTPVendorExtension)vendorExtension;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -1227,10 +1227,10 @@ typedef unsigned short PTPDataTypeCode;
 @property NSNumber* max;
 @property NSNumber* step;
 @property NSArray<NSObject*> *supportedValues;
-+ (NSString *)propertyCodeName:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension;
-+ (NSString *)typeName:(PTPDataTypeCode)type;
-- (id)initWithCode:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension;
-- (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
++(NSString *)propertyCodeName:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension;
++(NSString *)typeName:(PTPDataTypeCode)type;
+-(id)initWithCode:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension;
+-(id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension;
 @end
 
 //--------------------------------------------------------------------------------------------------------------------- PTPDeviceInfo
@@ -1248,7 +1248,7 @@ typedef unsigned short PTPDataTypeCode;
 @property NSString *version;
 @property NSString *serial;
 @property NSMutableDictionary<NSNumber *, PTPProperty *> *properties;
-- (id)initWithData:(NSData*)data;
+-(id)initWithData:(NSData*)data;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -1260,43 +1260,43 @@ typedef unsigned short PTPDataTypeCode;
 //------------------------------------------------------------------------------------------------------------------------------
 
 @interface ICCameraDevice(PTPExtensions)
-- (PTPDeviceInfo *)ptpDeviceInfo;
-- (void)sendPTPRequest:(PTPOperationCode)operationCode;
-- (void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
-- (void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
-- (void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
-- (void)lock;
-- (void)unlock;
-- (void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y;
-- (void)stopLiveView;
-- (void)startCapture;
-- (void)stopCapture;
-- (void)focus:(int)steps;
+-(PTPDeviceInfo *)ptpDeviceInfo;
+-(void)sendPTPRequest:(PTPOperationCode)operationCode;
+-(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1;
+-(void)sendPTPRequest:(PTPOperationCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
+-(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
+-(void)lock;
+-(void)unlock;
+-(void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y;
+-(void)stopLiveView;
+-(void)startCapture;
+-(void)stopCapture;
+-(void)focus:(int)steps;
 @end
 
 @interface ICCameraDevice(PTPDebug)
-- (void)dumpData:(void*)data length:(int)length comment:(NSString*)comment;
+-(void)dumpData:(void*)data length:(int)length comment:(NSString*)comment;
 @end
 
 //------------------------------------------------------------------------------------------------------------------------------
 
 @protocol PTPDelegateProtocol <NSObject>
 @optional
-- (void)cameraAdded:(ICCameraDevice *)camera;
-- (void)cameraConnected:(ICCameraDevice *)camera;
-- (void)cameraExposureDone:(ICCameraDevice *)camera data:(NSData *)data filename:(NSString *)filename;
-- (void)cameraExposureFailed:(ICCameraDevice *)camera message:(NSString *)message;
-- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly;
-- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly;
-- (void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly;
-- (void)cameraDisconnected:(ICCameraDevice *)camera;
-- (void)cameraRemoved:(ICCameraDevice *)camera;
-- (void)cameraCanCapture:(ICCameraDevice *)camera;
-- (void)cameraCanFocus:(ICCameraDevice *)camera;
-- (void)cameraCanStream:(ICCameraDevice *)camera;
-- (void)cameraFocusDone:(ICCameraDevice *)camera;
-- (void)cameraFocusFailed:(ICCameraDevice *)camera message:(NSString *)message;
-- (void)cameraFrame:(ICCameraDevice *)camera left:(int)left top:(int)top width:(int)width height:(int)height;
+-(void)cameraAdded:(ICCameraDevice *)camera;
+-(void)cameraConnected:(ICCameraDevice *)camera;
+-(void)cameraExposureDone:(ICCameraDevice *)camera data:(NSData *)data filename:(NSString *)filename;
+-(void)cameraExposureFailed:(ICCameraDevice *)camera message:(NSString *)message;
+-(void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly;
+-(void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly;
+-(void)cameraPropertyChanged:(ICCameraDevice *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly;
+-(void)cameraDisconnected:(ICCameraDevice *)camera;
+-(void)cameraRemoved:(ICCameraDevice *)camera;
+-(void)cameraCanCapture:(ICCameraDevice *)camera;
+-(void)cameraCanFocus:(ICCameraDevice *)camera;
+-(void)cameraCanStream:(ICCameraDevice *)camera;
+-(void)cameraFocusDone:(ICCameraDevice *)camera;
+-(void)cameraFocusFailed:(ICCameraDevice *)camera message:(NSString *)message;
+-(void)cameraFrame:(ICCameraDevice *)camera left:(int)left top:(int)top width:(int)width height:(int)height;
 @end
 
 @interface PTPDelegate : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate, PTPDelegateProtocol>
