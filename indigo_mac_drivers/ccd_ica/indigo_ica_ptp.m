@@ -329,6 +329,50 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return nil;
 }
 
+static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
+  NSMutableString *result;
+  unsigned int count = ptpReadUnsignedInt(buf);
+  ptpReadUnsignedInt(buf);
+  ptpReadUnsignedInt(buf);
+  unsigned int quality = ptpReadUnsignedInt(buf);
+  unsigned int compression = ptpReadUnsignedInt(buf);
+  if (compression == 4)
+    result = [NSMutableString stringWithString:@"RAW"];
+  else if (quality == 0)
+    result = [NSMutableString stringWithFormat:@"Large%@ JPEG",( compression == 2 ? @"" : @"fine ")];
+  else if (quality == 1)
+    result = [NSMutableString stringWithFormat:@"Medium%@ JPEG",( compression == 2 ? @"" : @"fine ")];
+  else if (quality == 2)
+    result = [NSMutableString stringWithFormat:@"Small%@ JPEG",( compression == 2 ? @"" : @"fine ")];
+  else if (quality == 14)
+    result = [NSMutableString stringWithFormat:@"S1 %@JPEG",( compression == 2 ? @"" : @"fine ")];
+  else if (quality == 15)
+    result = [NSMutableString stringWithFormat:@"S2 %@JPEG",( compression == 2 ? @"" : @"fine ")];
+  else if (quality == 16)
+    result = [NSMutableString stringWithFormat:@"S3 %@JPEG",( compression == 2 ? @"" : @"fine ")];
+  if (count == 2) {
+    ptpReadUnsignedInt(buf);
+    ptpReadUnsignedInt(buf);
+    quality = ptpReadUnsignedInt(buf);
+    compression = ptpReadUnsignedInt(buf);
+    if (compression == 4)
+      [result appendString:@" + RAW"];
+    else if (quality == 0)
+      [result appendFormat:@" + Large %@JPEG",( compression == 2 ? @"" : @"fine ")];
+    else if (quality == 1)
+      [result appendFormat:@" + Medium %@JPEG",( compression == 2 ? @"" : @"fine ")];
+    else if (quality == 2)
+      [result appendFormat:@" + Small %@JPEG",( compression == 2 ? @"" : @"fine ")];
+    else if (quality == 14)
+      [result appendFormat:@" + S1 %@JPEG",( compression == 2 ? @"" : @"fine ")];
+    else if (quality == 15)
+      [result appendFormat:@" + S2 %@JPEG",( compression == 2 ? @"" : @"fine ")];
+    else if (quality == 16)
+      [result appendFormat:@" + S3 %@JPEG",( compression == 2 ? @"" : @"fine ")];
+  }
+  return result;
+}
+
 //---------------------------------------------------------------------------------------------------------- PTPVendor
 
 @implementation PTPVendor
@@ -347,7 +391,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return [NSString stringWithFormat:@"PTPVendorExtension0x%04x", vendorExtension];
 }
 
-- (id)initWithVendorExtension:(PTPVendorExtension)vendorExtension {
+-(id)initWithVendorExtension:(PTPVendorExtension)vendorExtension {
 	self = [super init];
 	if (self) {
 		_vendorExtension = vendorExtension;
@@ -355,7 +399,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 	return self;
 }
 
-- (NSString *)vendorExtensionName {
+-(NSString *)vendorExtensionName {
   return [PTPVendor vendorExtensionName:_vendorExtension];
 }
 
@@ -543,7 +587,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return [NSString stringWithFormat:@"PTPOperationCode0x%04x", operationCode];
 }
 
-- (id)init {
+-(id)init {
 	self = [super init];
 	if (self) {
 		_numberOfParameters = 0;
@@ -551,11 +595,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 	return self;
 }
 
-- (id)initWithVendorExtension:(PTPVendorExtension)vendorExtension {
+-(id)initWithVendorExtension:(PTPVendorExtension)vendorExtension {
   return [super initWithVendorExtension:vendorExtension];
 }
 
-- (NSData*)commandBuffer {
+-(NSData*)commandBuffer {
   unsigned int len = 12 + 4*_numberOfParameters;
   unsigned char* buffer = (unsigned char*)calloc(len, 1);
   unsigned char* buf = buffer;
@@ -576,11 +620,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return [NSData dataWithBytesNoCopy:buffer length:len freeWhenDone:YES];
 }
 
-- (NSString *)operationCodeName {
+-(NSString *)operationCodeName {
   return [PTPOperationRequest operationCodeName:_operationCode vendorExtension:self.vendorExtension];
 }
 
-- (NSString*)description {
+-(NSString*)description {
 	NSMutableString* s = [NSMutableString stringWithFormat:@"%@", self.operationCodeName];
 	if (self.numberOfParameters > 0)
 		[s appendFormat:@"[ 0x%08X", self.parameter1];
@@ -678,7 +722,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return [NSString stringWithFormat:@"PTPResponseCode0x%04x", responseCode];
 }
 
-- (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension {
+-(id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension {
   NSUInteger dataLength = [data length];
   if ((data == NULL) || (dataLength < 12) || (dataLength > 32))
     return NULL;
@@ -706,11 +750,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return self;
 }
 
-- (NSString *)responseCodeName {
+-(NSString *)responseCodeName {
   return [PTPOperationResponse responseCodeName:_responseCode vendorExtension:self.vendorExtension];
 }
 
-- (NSString*)description {
+-(NSString*)description {
 	NSMutableString* s = [NSMutableString stringWithFormat:@"%@", self.responseCodeName];
 	if (self.numberOfParameters > 0)
 		[s appendFormat:@"[ 0x%08X", self.parameter1];
@@ -794,7 +838,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return [NSString stringWithFormat:@"PTPEventCodeCode0x%04x", eventCode];
 }
 
-- (id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension {
+-(id)initWithData:(NSData*)data vendorExtension:(PTPVendorExtension)vendorExtension {
   NSUInteger dataLength = [data length];
   if ((data == NULL) || (dataLength < 12) || (dataLength > 24))
     return NULL;
@@ -818,7 +862,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return self;
 }
 
-- (id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1 vendorExtension:(PTPVendorExtension)vendorExtension {
+-(id)initWithCode:(PTPEventCode)eventCode parameter1:(unsigned int)parameter1 vendorExtension:(PTPVendorExtension)vendorExtension {
   self = [super initWithVendorExtension:vendorExtension];
   if (self) {
     _eventCode = eventCode;
@@ -828,11 +872,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return self;
 }
 
-- (NSString *)eventCodeName {
+-(NSString *)eventCodeName {
 	return [PTPEvent eventCodeName:_eventCode vendorExtension:self.vendorExtension];
 }
 
-- (NSString*)description {
+-(NSString*)description {
 	NSMutableString* s = [NSMutableString stringWithFormat:@"%@", self.eventCodeName];
 	if (self.numberOfParameters > 0)
 		[s appendFormat:@"[ 0x%08X", self.parameter1];
@@ -1378,14 +1422,14 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return [NSString stringWithFormat:@"PTPDataTypeCode0x%04x", type];
 }
 
-- (id)initWithCode:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension{
+-(id)initWithCode:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension{
   if ((self = [super initWithVendorExtension:vendorExtension])) {
     _propertyCode = propertyCode;
     _type = PTPDataTypeCodeUndefined;
   }
   return self;
 }
-- (id)initWithData:(NSData*)data  vendorExtension:(PTPVendorExtension)vendorExtension{
+-(id)initWithData:(NSData*)data  vendorExtension:(PTPVendorExtension)vendorExtension{
   NSUInteger dataLength = [data length];
   if ((data == NULL) || (dataLength < 5))
     return NULL;
@@ -1422,15 +1466,15 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return self;
 }
 
-- (NSString *)propertyCodeName {
+-(NSString *)propertyCodeName {
   return [PTPProperty propertyCodeName:_propertyCode vendorExtension:self.vendorExtension];
 }
 
-- (NSString *)typeName {
+-(NSString *)typeName {
   return [PTPProperty typeName:_type];
 }
 
-- (NSString*)description {
+-(NSString*)description {
 	NSMutableString* s = [NSMutableString stringWithFormat:@"%@ %@ %@", self.propertyCodeName, self.typeName, self.readOnly ? @"ro" : @"rw"];
 	if (self.min)
 		[s appendFormat:@", min = %@", self.min];
@@ -1455,7 +1499,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 
 @implementation PTPDeviceInfo
 
-- (id)initWithData:(NSData*)data {
+-(id)initWithData:(NSData*)data {
   NSUInteger dataLength = [data length];
   if ((data == NULL) || (dataLength < 12))
     return NULL;
@@ -1514,13 +1558,13 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return self;
 }
 
-- (NSString *)description {
+-(NSString *)description {
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     return [self debug];
   return [NSString stringWithFormat:@"%@ %@, PTP V%.2f + %8@ V%.2f", _model, _version, _standardVersion / 100.0, _vendorExtensionDesc, _vendorExtensionVersion / 100.0];
 }
 
-- (NSString *)debug {
+-(NSString *)debug {
   NSMutableString *s = [NSMutableString stringWithFormat:@"%@ %@, PTP V%.2f + %8@ V%.2f\n", _model, _version, _standardVersion / 100.0, _vendorExtensionDesc, _vendorExtensionVersion / 100.0];
   if (_operationsSupported.count > 0) {
     [s appendFormat:@"\nOperations:\n"];
@@ -1561,7 +1605,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 
 @implementation ICCameraDevice(PTPExtensions)
 
-- (void)checkForEvent {
+-(void)checkForEvent {
   PTPDeviceInfo *info = self.ptpDeviceInfo;
   if (info.vendorExtension == PTPVendorExtensionNikon && [info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPOperationCodeNikonCheckEvent]]) {
     [self sendPTPRequest:PTPOperationCodeNikonCheckEvent];
@@ -1571,11 +1615,11 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
-- (void)getLiveViewImage {
+-(void)getLiveViewImage {
 	[self sendPTPRequest:PTPOperationCodeNikonGetLiveViewImg];
 }
 
-- (void)processEvent:(PTPEvent *)event {
+-(void)processEvent:(PTPEvent *)event {
 	switch (event.eventCode) {
 		case PTPEventCodeDevicePropChanged: {
 			[self sendPTPRequest:PTPOperationCodeGetDevicePropDesc param1:event.parameter1];
@@ -1598,7 +1642,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
-- (void)didSendPTPCommand:(NSData*)command inData:(NSData*)data response:(NSData*)response error:(NSError*)error contextInfo:(void*)contextInfo {
+-(void)didSendPTPCommand:(NSData*)command inData:(NSData*)data response:(NSData*)response error:(NSError*)error contextInfo:(void*)contextInfo {
   PTPOperationRequest*  ptpRequest  = (__bridge PTPOperationRequest*)contextInfo;
   if (response == nil) {
     if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
@@ -2272,6 +2316,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char* buffer = (unsigned char*)[data bytes];
         unsigned char* buf = buffer;
         unsigned char* record;
+        NSMutableArray<PTPProperty *> *properties = [NSMutableArray array];
         while (buf - buffer < length) {
           record = buf;
           int size = ptpReadUnsignedInt(&buf);
@@ -2281,7 +2326,9 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
           switch (type) {
             case PTPEventCodeCanonPropValueChanged: {
               unsigned int code = ptpReadUnsignedInt(&buf);
-              PTPProperty *property = [[PTPProperty alloc] initWithCode:code vendorExtension:PTPVendorExtensionCanon];
+              PTPProperty *property = info.properties[[NSNumber numberWithUnsignedShort:code]];
+              if (property == nil)
+                property = [[PTPProperty alloc] initWithCode:code vendorExtension:PTPVendorExtensionCanon];
               switch (code) {
                 case PTPPropertyCodeCanonFocusMode:
                 case PTPPropertyCodeCanonBatteryPower:
@@ -2370,41 +2417,60 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
                 case PTPPropertyCodeCanonOwner:
                 case PTPPropertyCodeCanonArtist:
                 case PTPPropertyCodeCanonCopyright:
-                //case PTPPropertyCodeCanonSerialNumber:
+                case PTPPropertyCodeCanonSerialNumber:
                 case PTPPropertyCodeCanonLensName:
                   property.type = PTPDataTypeCodeUnicodeString;
                   break;
               }
               switch (property.type) {
                 case PTPDataTypeCodeUInt8:
-                  property.value = [NSNumber numberWithUnsignedChar:ptpReadUnsignedChar(&buf)];
+                  property.defaultValue = property.value = [NSNumber numberWithUnsignedChar:ptpReadUnsignedChar(&buf)];
                   break;
                 case PTPDataTypeCodeUInt16:
-                  property.value = [NSNumber numberWithUnsignedChar:ptpReadUnsignedShort(&buf)];
+                  property.defaultValue = property.value = [NSNumber numberWithUnsignedChar:ptpReadUnsignedShort(&buf)];
                   break;
                 case PTPDataTypeCodeSInt16:
-                  property.value = [NSNumber numberWithUnsignedChar:ptpReadShort(&buf)];
+                  property.defaultValue = property.value = [NSNumber numberWithUnsignedChar:ptpReadShort(&buf)];
                   break;
                 case PTPDataTypeCodeUInt32:
-                  property.value = [NSNumber numberWithUnsignedChar:ptpReadUnsignedInt(&buf)];
+                  property.defaultValue = property.value = [NSNumber numberWithUnsignedChar:ptpReadUnsignedInt(&buf)];
                   break;
                 case PTPDataTypeCodeUnicodeString:
-                  property.value = ptpReadString(&buf);
+                  property.defaultValue = property.value = [NSString stringWithCString:(char *)buf encoding:NSASCIIStringEncoding];
                   if (property.value == nil)
                     property.value = @"";
                   break;
               }
+              if (code == PTPPropertyCodeCanonImageFormat || code == PTPPropertyCodeCanonImageFormatCF || code == PTPPropertyCodeCanonImageFormatSD || code == PTPPropertyCodeCanonImageFormatExtHD) {
+                property.type = PTPDataTypeCodeUnicodeString;
+                property.defaultValue = property.value = ptpReadCanonImageFormat(&buf);
+              }
               if (property.type != PTPDataTypeCodeUndefined) {
                 info.properties[[NSNumber numberWithUnsignedShort:code]] = property;
-                [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description readOnly:property.readOnly];
+                [properties addObject:property];
               }
               NSLog(@"PTPEventCodeCanonPropValueChanged %@", property);
               break;
             }
             case PTPEventCodeCanonAvailListChanged: {
               unsigned int code = ptpReadUnsignedInt(&buf);
-              PTPProperty *property = [[PTPProperty alloc] initWithCode:code vendorExtension:PTPVendorExtensionCanon];
-
+              PTPProperty *property = info.properties[[NSNumber numberWithUnsignedShort:code]];
+              if (property == nil)
+                property = [[PTPProperty alloc] initWithCode:code vendorExtension:PTPVendorExtensionCanon];
+              unsigned int type = ptpReadUnsignedInt(&buf);
+              unsigned int count = ptpReadUnsignedInt(&buf);
+              if (count == 0 || count >= 0xFFFF || type != 3)
+                break;
+              NSMutableArray<NSString *> *values = [NSMutableArray array];
+              if (code == PTPPropertyCodeCanonImageFormat || code == PTPPropertyCodeCanonImageFormatCF || code == PTPPropertyCodeCanonImageFormatSD || code == PTPPropertyCodeCanonImageFormatExtHD) {
+                for (int i = 0; i < count; i++)
+                  [values addObject:ptpReadCanonImageFormat(&buf)];
+              } else {
+                for (int i = 0; i < count; i++)
+                  [values addObject:[NSString stringWithFormat:@"%d", ptpReadUnsignedInt(&buf)]];
+              }
+              property.supportedValues = values;
+              [properties addObject:property];
               NSLog(@"PTPEventCodeCanonAvailListChanged %@", property);
               break;
             }
@@ -2412,8 +2478,16 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
               NSLog(@"size %d type 0x%04x", size, type);
               break;
           }
-          
           buf = record + size;
+        }
+        for (PTPProperty *property in properties) {
+          if (property.supportedValues) {
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:property.supportedValues labels:property.supportedValues readOnly:property.readOnly];
+          } else if (property.type == PTPDataTypeCodeUnicodeString) {
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description readOnly:property.readOnly];
+          } else {
+            [(PTPDelegate *)self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:(NSNumber *)property.min max:(NSNumber *)property.max step:property.step readOnly:property.readOnly];
+          }
         }
         break;
       }
@@ -2532,7 +2606,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
-- (void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y {
+-(void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y {
 	PTPDeviceInfo *info = self.ptpDeviceInfo;
 	switch (info.vendorExtension) {
     case PTPVendorExtensionNikon: {
@@ -2611,7 +2685,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
-- (void)setFrameLeft:(int)left top:(int)top width:(int)width height:(int)height {
+-(void)setFrameLeft:(int)left top:(int)top width:(int)width height:(int)height {
   PTPDeviceInfo *info = self.ptpDeviceInfo;
   switch (info.vendorExtension) {
     case PTPVendorExtensionNikon: {
@@ -2661,28 +2735,28 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   ICDeviceBrowser* deviceBrowser;
 }
 
-- (void)deviceBrowser:(ICDeviceBrowser*)browser didAddDevice:(ICDevice*)camera moreComing:(BOOL)moreComing {
+-(void)deviceBrowser:(ICDeviceBrowser*)browser didAddDevice:(ICDevice*)camera moreComing:(BOOL)moreComing {
   camera.delegate = self;
   [self cameraAdded:(ICCameraDevice *)camera];
 }
 
-- (void)deviceBrowser:(ICDeviceBrowser*)browser didRemoveDevice:(ICDevice*)camera moreGoing:(BOOL)moreGoing {
+-(void)deviceBrowser:(ICDeviceBrowser*)browser didRemoveDevice:(ICDevice*)camera moreGoing:(BOOL)moreGoing {
   [self cameraRemoved:(ICCameraDevice *)camera];
 }
 
-- (void)device:(ICDevice*)camera didOpenSessionWithError:(NSError*)error {
+-(void)device:(ICDevice*)camera didOpenSessionWithError:(NSError*)error {
   [(ICCameraDevice *)camera sendPTPRequest:PTPOperationCodeGetDeviceInfo];
 }
 
-- (void)device:(ICDevice*)camera didCloseSessionWithError:(NSError*)error {
+-(void)device:(ICDevice*)camera didCloseSessionWithError:(NSError*)error {
   [self cameraDisconnected:(ICCameraDevice *)camera];
 }
 
-- (void)device:(ICDevice*)camera didEncounterError:(NSError*)error {
+-(void)device:(ICDevice*)camera didEncounterError:(NSError*)error {
   NSLog(@"Error '%@' on '%@'", error.localizedDescription, camera.name);
 }
 
-- (void)cameraDevice:(ICCameraDevice*)camera didAddItem:(ICCameraItem*)item {
+-(void)cameraDevice:(ICCameraDevice*)camera didAddItem:(ICCameraItem*)item {
   if (item.class == ICCameraFile.class) {
     ICCameraFile *file = (ICCameraFile *)item;
     if (file.wasAddedAfterContentCatalogCompleted) {
@@ -2692,7 +2766,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
-- (void)didDownloadFile:(ICCameraFile*)file error:(nullable NSError*)error options:(nullable NSDictionary<NSString*,id>*)options contextInfo:(nullable void*)contextInfo {
+-(void)didDownloadFile:(ICCameraFile*)file error:(nullable NSError*)error options:(nullable NSDictionary<NSString*,id>*)options contextInfo:(nullable void*)contextInfo {
   ICCameraDevice *camera = file.device;
   if (error == nil) {
     NSURL *folder = options[ICDownloadsDirectoryURL];
@@ -2709,7 +2783,6 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   [self cameraExposureFailed:camera message:[NSString stringWithFormat:@"requestDownloadFile failed (%@)", error.localizedDescription]];
 }
 
-
 -(void)didRemoveDevice:(ICDevice *)device {
 	NSTimer *timer = ((ICCameraDevice *)device).userData[PTP_LIVE_VIEW_TIMER];
 	[timer invalidate];
@@ -2717,7 +2790,7 @@ static NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 	[timer invalidate];
 }
 
-- (void)cameraDevice:(ICCameraDevice*)camera didReceivePTPEvent:(NSData*)eventData {
+-(void)cameraDevice:(ICCameraDevice*)camera didReceivePTPEvent:(NSData*)eventData {
   PTPEvent *event = [[PTPEvent alloc] initWithData:eventData vendorExtension:camera.ptpDeviceInfo.vendorExtension];
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     NSLog(@"Received %@", event);
