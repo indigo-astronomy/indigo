@@ -2039,6 +2039,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
       liveViewZoom = [NSString stringWithFormat:@"%d", zoom];
       liveViewX = x;
       liveViewY = y;
+      [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"1"];
       [self sendPTPRequest:PTPRequestCodeGetDevicePropValue param1:PTPPropertyCodeNikonLiveViewProhibitCondition];
       [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
 			break;
@@ -2053,6 +2054,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
       ptpLiveViewTimer = nil;
 			[self sendPTPRequest:PTPRequestCodeNikonEndLiveView];
       [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
+      [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"0"];
 			break;
     }
 	}
