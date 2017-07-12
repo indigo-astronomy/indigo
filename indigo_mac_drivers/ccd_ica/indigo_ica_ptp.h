@@ -300,6 +300,37 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
+extern char ptpReadChar(unsigned char** buf);
+extern void ptpWriteChar(unsigned char** buf, char value);
+extern unsigned char ptpReadUnsignedChar(unsigned char** buf);
+extern void ptpWriteUnsignedChar(unsigned char** buf, unsigned char value);
+extern short ptpReadShort(unsigned char** buf);
+extern void ptpWriteShort(unsigned char** buf, short value);
+extern unsigned short ptpReadUnsignedShort(unsigned char** buf);
+extern void ptpWriteUnsignedShort(unsigned char** buf, unsigned short value);
+extern int ptpReadInt(unsigned char** buf);
+extern void ptpWriteInt(unsigned char** buf, int value);
+extern unsigned int ptpReadUnsignedInt(unsigned char** buf);
+extern void ptpWriteUnsignedInt(unsigned char** buf, unsigned int value);
+extern long ptpReadLong(unsigned char** buf);
+extern void ptpWriteLong(unsigned char** buf, long value);
+extern unsigned long ptpReadUnsignedLong(unsigned char** buf);
+extern void ptpWriteUnsignedLong(unsigned char** buf, unsigned long value);
+extern NSString *ptpRead128(unsigned char** buf);
+extern NSArray<NSNumber *> *ptpReadCharArray(unsigned char** buf);
+extern NSArray<NSNumber *> *ptpReadUnsignedCharArray(unsigned char** buf);
+extern NSArray<NSNumber *> *ptpReadShortArray(unsigned char** buf);
+extern NSArray<NSNumber *> *ptpReadUnsignedShortArray(unsigned char** buf);
+extern NSArray<NSNumber *> *ptpReadIntArray(unsigned char** buf);
+extern NSArray<NSNumber *> *ptpReadUnsignedIntArray(unsigned char** buf);
+extern NSArray<NSNumber *> *ptpReadLongArray(unsigned char** buf);
+extern NSArray<NSNumber *> *ptpReadUnsignedLongArray(unsigned char** buf);
+extern NSString *ptpReadString(unsigned char** buf);
+extern unsigned int  ptpWriteString(unsigned char **buf, NSString *value);
+extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
+
+//------------------------------------------------------------------------------------------------------------------------------
+
 @interface PTPVendor : NSObject
 @property PTPVendorExtension vendorExtension;
 +(NSString *)vendorExtensionName:(PTPVendorExtension)vendorExtension;
@@ -388,6 +419,12 @@ typedef unsigned short PTPDataTypeCode;
 
 //------------------------------------------------------------------------------------------------------------------------------
 
+@interface NSObject(PTPExtensions)
+
+-(int)intValue;
+
+@end
+
 @protocol PTPDelegateProtocol;
 
 @interface PTPCamera: NSObject<ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate>
@@ -395,7 +432,6 @@ typedef unsigned short PTPDataTypeCode;
 @property (readonly) ICCameraDevice *icCamera;
 @property (readonly) NSObject<PTPDelegateProtocol> *delegate;
 @property (readonly) NSString *name;
-@property (readonly) PTPDeviceInfo *info;
 
 @property (readonly) Class requestClass;
 @property (readonly) Class responseClass;
@@ -403,9 +439,16 @@ typedef unsigned short PTPDataTypeCode;
 @property (readonly) Class propertyClass;
 @property (readonly) Class deviceInfoClass;
 
+@property PTPDeviceInfo *info;
 @property NSObject *userData;
 
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate;
+
+-(void)getLiveViewImage;
+-(void)checkForEvent;
+-(void)processEvent:(PTPEvent *)event;
+-(void)processPropertyDescription:(PTPProperty *)property;
+-(void)processRequest:(PTPRequest *)request Response:(PTPResponse *)response inData:(NSData*)data;
 
 -(void)requestOpenSession;
 -(void)requestCloseSession;
