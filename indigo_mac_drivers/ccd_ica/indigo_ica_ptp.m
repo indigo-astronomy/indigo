@@ -74,7 +74,6 @@
 #import "indigo_ica_ptp_nikon.h"
 #import "indigo_ica_ptp_canon.h"
 
-
 static char ptpReadChar(unsigned char** buf) {
   char value = *(SInt8*)(*buf);
   (*buf) += 1;
@@ -553,15 +552,15 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
     case PTPResponseCodeTransactionCancelled: return @"PTPResponseCodeTransactionCancelled";
     case PTPResponseCodeSpecificationOfDestinationUnsupported: return @"PTPResponseCodeSpecificationOfDestinationUnsupported";
     case PTPResponseCodeMTPUndefined: return @"PTPResponseCodeMTPUndefined";
-    case PTPResponseCodeMTPInvalid_ObjectPropCode: return @"PTPResponseCodeMTPInvalid_ObjectPropCode";
-    case PTPResponseCodeMTPInvalid_ObjectProp_Format: return @"PTPResponseCodeMTPInvalid_ObjectProp_Format";
-    case PTPResponseCodeMTPInvalid_ObjectProp_Value: return @"PTPResponseCodeMTPInvalid_ObjectProp_Value";
-    case PTPResponseCodeMTPInvalid_ObjectReference: return @"PTPResponseCodeMTPInvalid_ObjectReference";
-    case PTPResponseCodeMTPInvalid_Dataset: return @"PTPResponseCodeMTPInvalid_Dataset";
-    case PTPResponseCodeMTPSpecification_By_Group_Unsupported: return @"PTPResponseCodeMTPSpecification_By_Group_Unsupported";
-    case PTPResponseCodeMTPSpecification_By_Depth_Unsupported: return @"PTPResponseCodeMTPSpecification_By_Depth_Unsupported";
-    case PTPResponseCodeMTPObject_Too_Large: return @"PTPResponseCodeMTPObject_Too_Large";
-    case PTPResponseCodeMTPObjectProp_Not_Supported: return @"PTPResponseCodeMTPObjectProp_Not_Supported";
+    case PTPResponseCodeMTPInvalidObjectPropCode: return @"PTPResponseCodeMTPInvalidObjectPropCode";
+    case PTPResponseCodeMTPInvalidObjectProp_Format: return @"PTPResponseCodeMTPInvalidObjectProp_Format";
+    case PTPResponseCodeMTPInvalidObjectProp_Value: return @"PTPResponseCodeMTPInvalidObjectProp_Value";
+    case PTPResponseCodeMTPInvalidObjectReference: return @"PTPResponseCodeMTPInvalidObjectReference";
+    case PTPResponseCodeMTPInvalidDataset: return @"PTPResponseCodeMTPInvalidDataset";
+    case PTPResponseCodeMTPSpecificationByGroupUnsupported: return @"PTPResponseCodeMTPSpecificationByGroupUnsupported";
+    case PTPResponseCodeMTPSpecificationByDepthUnsupported: return @"PTPResponseCodeMTPSpecificationByDepthUnsupported";
+    case PTPResponseCodeMTPObjectTooLarge: return @"PTPResponseCodeMTPObjectTooLarge";
+    case PTPResponseCodeMTPObjectPropNotSupported: return @"PTPResponseCodeMTPObjectPropNotSupported";
   }
   return [NSString stringWithFormat:@"PTPResponseCode0x%04x", responseCode];
 }
@@ -701,7 +700,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 
 @implementation PTPProperty
 
-+ (NSString *)propertyCodeName:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension {
++ (NSString *)propertyCodeName:(PTPPropertyCode)propertyCode {
   switch (propertyCode) {
     case PTPPropertyCodeUndefined: return @"PTPPropertyCodeUndefined";
     case PTPPropertyCodeBatteryLevel: return @"PTPPropertyCodeBatteryLevel";
@@ -759,444 +758,6 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
     case PTPPropertyCodeMTPPlaybackContainerIndex: return @"PTPPropertyCodeMTPPlaybackContainerIndex";
     case PTPPropertyCodeMTPPlaybackPosition: return @"PTPPropertyCodeMTPPlaybackPosition";
   }
-  if (vendorExtension == PTPVendorExtensionNikon) {
-    switch (propertyCode) {
-      case PTPPropertyCodeNikonShootingBank: return @"PTPPropertyCodeNikonShootingBank";
-      case PTPPropertyCodeNikonShootingBankNameA: return @"PTPPropertyCodeNikonShootingBankNameA";
-      case PTPPropertyCodeNikonShootingBankNameB: return @"PTPPropertyCodeNikonShootingBankNameB";
-      case PTPPropertyCodeNikonShootingBankNameC: return @"PTPPropertyCodeNikonShootingBankNameC";
-      case PTPPropertyCodeNikonShootingBankNameD: return @"PTPPropertyCodeNikonShootingBankNameD";
-      case PTPPropertyCodeNikonResetBank0: return @"PTPPropertyCodeNikonResetBank0";
-      case PTPPropertyCodeNikonRawCompression: return @"PTPPropertyCodeNikonRawCompression";
-      case PTPPropertyCodeNikonWhiteBalanceAutoBias: return @"PTPPropertyCodeNikonWhiteBalanceAutoBias";
-      case PTPPropertyCodeNikonWhiteBalanceTungstenBias: return @"PTPPropertyCodeNikonWhiteBalanceTungstenBias";
-      case PTPPropertyCodeNikonWhiteBalanceFluorescentBias: return @"PTPPropertyCodeNikonWhiteBalanceFluorescentBias";
-      case PTPPropertyCodeNikonWhiteBalanceDaylightBias: return @"PTPPropertyCodeNikonWhiteBalanceDaylightBias";
-      case PTPPropertyCodeNikonWhiteBalanceFlashBias: return @"PTPPropertyCodeNikonWhiteBalanceFlashBias";
-      case PTPPropertyCodeNikonWhiteBalanceCloudyBias: return @"PTPPropertyCodeNikonWhiteBalanceCloudyBias";
-      case PTPPropertyCodeNikonWhiteBalanceShadeBias: return @"PTPPropertyCodeNikonWhiteBalanceShadeBias";
-      case PTPPropertyCodeNikonWhiteBalanceColorTemperature: return @"PTPPropertyCodeNikonWhiteBalanceColorTemperature";
-      case PTPPropertyCodeNikonWhiteBalancePresetNo: return @"PTPPropertyCodeNikonWhiteBalancePresetNo";
-      case PTPPropertyCodeNikonWhiteBalancePresetName0: return @"PTPPropertyCodeNikonWhiteBalancePresetName0";
-      case PTPPropertyCodeNikonWhiteBalancePresetName1: return @"PTPPropertyCodeNikonWhiteBalancePresetName1";
-      case PTPPropertyCodeNikonWhiteBalancePresetName2: return @"PTPPropertyCodeNikonWhiteBalancePresetName2";
-      case PTPPropertyCodeNikonWhiteBalancePresetName3: return @"PTPPropertyCodeNikonWhiteBalancePresetName3";
-      case PTPPropertyCodeNikonWhiteBalancePresetName4: return @"PTPPropertyCodeNikonWhiteBalancePresetName4";
-      case PTPPropertyCodeNikonWhiteBalancePresetVal0: return @"PTPPropertyCodeNikonWhiteBalancePresetVal0";
-      case PTPPropertyCodeNikonWhiteBalancePresetVal1: return @"PTPPropertyCodeNikonWhiteBalancePresetVal1";
-      case PTPPropertyCodeNikonWhiteBalancePresetVal2: return @"PTPPropertyCodeNikonWhiteBalancePresetVal2";
-      case PTPPropertyCodeNikonWhiteBalancePresetVal3: return @"PTPPropertyCodeNikonWhiteBalancePresetVal3";
-      case PTPPropertyCodeNikonWhiteBalancePresetVal4: return @"PTPPropertyCodeNikonWhiteBalancePresetVal4";
-      case PTPPropertyCodeNikonImageSharpening: return @"PTPPropertyCodeNikonImageSharpening";
-      case PTPPropertyCodeNikonToneCompensation: return @"PTPPropertyCodeNikonToneCompensation";
-      case PTPPropertyCodeNikonColorModel: return @"PTPPropertyCodeNikonColorModel";
-      case PTPPropertyCodeNikonHueAdjustment: return @"PTPPropertyCodeNikonHueAdjustment";
-      case PTPPropertyCodeNikonNonCPULensDataFocalLength: return @"PTPPropertyCodeNikonNonCPULensDataFocalLength";
-      case PTPPropertyCodeNikonNonCPULensDataMaximumAperture: return @"PTPPropertyCodeNikonNonCPULensDataMaximumAperture";
-      case PTPPropertyCodeNikonShootingMode: return @"PTPPropertyCodeNikonShootingMode";
-      case PTPPropertyCodeNikonJPEGCompressionPolicy: return @"PTPPropertyCodeNikonJPEGCompressionPolicy";
-      case PTPPropertyCodeNikonColorSpace: return @"PTPPropertyCodeNikonColorSpace";
-      case PTPPropertyCodeNikonAutoDXCrop: return @"PTPPropertyCodeNikonAutoDXCrop";
-      case PTPPropertyCodeNikonFlickerReduction: return @"PTPPropertyCodeNikonFlickerReduction";
-      case PTPPropertyCodeNikonRemoteMode: return @"PTPPropertyCodeNikonRemoteMode";
-      case PTPPropertyCodeNikonVideoMode: return @"PTPPropertyCodeNikonVideoMode";
-      case PTPPropertyCodeNikonEffectMode: return @"PTPPropertyCodeNikonEffectMode";
-      case PTPPropertyCodeNikon1Mode: return @"PTPPropertyCodeNikon1Mode";
-      case PTPPropertyCodeNikonCSMMenuBankSelect: return @"PTPPropertyCodeNikonCSMMenuBankSelect";
-      case PTPPropertyCodeNikonMenuBankNameA: return @"PTPPropertyCodeNikonMenuBankNameA";
-      case PTPPropertyCodeNikonMenuBankNameB: return @"PTPPropertyCodeNikonMenuBankNameB";
-      case PTPPropertyCodeNikonMenuBankNameC: return @"PTPPropertyCodeNikonMenuBankNameC";
-      case PTPPropertyCodeNikonMenuBankNameD: return @"PTPPropertyCodeNikonMenuBankNameD";
-      case PTPPropertyCodeNikonResetBank: return @"PTPPropertyCodeNikonResetBank";
-      case PTPPropertyCodeNikonAFCModePriority: return @"PTPPropertyCodeNikonAFCModePriority";
-      case PTPPropertyCodeNikonAFSModePriority: return @"PTPPropertyCodeNikonAFSModePriority";
-      case PTPPropertyCodeNikonGroupDynamicAF: return @"PTPPropertyCodeNikonGroupDynamicAF";
-      case PTPPropertyCodeNikonAFActivation: return @"PTPPropertyCodeNikonAFActivation";
-      case PTPPropertyCodeNikonFocusAreaIllumManualFocus: return @"PTPPropertyCodeNikonFocusAreaIllumManualFocus";
-      case PTPPropertyCodeNikonFocusAreaIllumContinuous: return @"PTPPropertyCodeNikonFocusAreaIllumContinuous";
-      case PTPPropertyCodeNikonFocusAreaIllumWhenSelected: return @"PTPPropertyCodeNikonFocusAreaIllumWhenSelected";
-      case PTPPropertyCodeNikonFocusAreaWrap: return @"PTPPropertyCodeNikonFocusAreaWrap";
-      case PTPPropertyCodeNikonVerticalAFON: return @"PTPPropertyCodeNikonVerticalAFON";
-      case PTPPropertyCodeNikonAFLockOn: return @"PTPPropertyCodeNikonAFLockOn";
-      case PTPPropertyCodeNikonFocusAreaZone: return @"PTPPropertyCodeNikonFocusAreaZone";
-      case PTPPropertyCodeNikonEnableCopyright: return @"PTPPropertyCodeNikonEnableCopyright";
-      case PTPPropertyCodeNikonISOAutoTime: return @"PTPPropertyCodeNikonISOAutoTime";
-      case PTPPropertyCodeNikonEVISOStep: return @"PTPPropertyCodeNikonEVISOStep";
-      case PTPPropertyCodeNikonEVStep: return @"PTPPropertyCodeNikonEVStep";
-      case PTPPropertyCodeNikonEVStepExposureComp: return @"PTPPropertyCodeNikonEVStepExposureComp";
-      case PTPPropertyCodeNikonExposureCompensation: return @"PTPPropertyCodeNikonExposureCompensation";
-      case PTPPropertyCodeNikonCenterWeightArea: return @"PTPPropertyCodeNikonCenterWeightArea";
-      case PTPPropertyCodeNikonExposureBaseMatrix: return @"PTPPropertyCodeNikonExposureBaseMatrix";
-      case PTPPropertyCodeNikonExposureBaseCenter: return @"PTPPropertyCodeNikonExposureBaseCenter";
-      case PTPPropertyCodeNikonExposureBaseSpot: return @"PTPPropertyCodeNikonExposureBaseSpot";
-      case PTPPropertyCodeNikonLiveViewAFArea: return @"PTPPropertyCodeNikonLiveViewAFArea";
-      case PTPPropertyCodeNikonAELockMode: return @"PTPPropertyCodeNikonAELockMode";
-      case PTPPropertyCodeNikonAELAFLMode: return @"PTPPropertyCodeNikonAELAFLMode";
-      case PTPPropertyCodeNikonLiveViewAFFocus: return @"PTPPropertyCodeNikonLiveViewAFFocus";
-      case PTPPropertyCodeNikonMeterOff: return @"PTPPropertyCodeNikonMeterOff";
-      case PTPPropertyCodeNikonSelfTimer: return @"PTPPropertyCodeNikonSelfTimer";
-      case PTPPropertyCodeNikonMonitorOff: return @"PTPPropertyCodeNikonMonitorOff";
-      case PTPPropertyCodeNikonISOSensitivity: return @"PTPPropertyCodeNikonISOSensitivity";
-      case PTPPropertyCodeNikonImgConfTime: return @"PTPPropertyCodeNikonImgConfTime";
-      case PTPPropertyCodeNikonAutoOffTimers: return @"PTPPropertyCodeNikonAutoOffTimers";
-      case PTPPropertyCodeNikonAngleLevel: return @"PTPPropertyCodeNikonAngleLevel";
-      case PTPPropertyCodeNikonShootingSpeed: return @"PTPPropertyCodeNikonShootingSpeed";
-      case PTPPropertyCodeNikonMaximumShots: return @"PTPPropertyCodeNikonMaximumShots";
-      case PTPPropertyCodeNikonExposureDelayMode: return @"PTPPropertyCodeNikonExposureDelayMode";
-      case PTPPropertyCodeNikonLongExposureNoiseReduction: return @"PTPPropertyCodeNikonLongExposureNoiseReduction";
-      case PTPPropertyCodeNikonFileNumberSequence: return @"PTPPropertyCodeNikonFileNumberSequence";
-      case PTPPropertyCodeNikonControlPanelFinderRearControl: return @"PTPPropertyCodeNikonControlPanelFinderRearControl";
-      case PTPPropertyCodeNikonControlPanelFinderViewfinder: return @"PTPPropertyCodeNikonControlPanelFinderViewfinder";
-      case PTPPropertyCodeNikonIllumination: return @"PTPPropertyCodeNikonIllumination";
-      case PTPPropertyCodeNikonNrHighISO: return @"PTPPropertyCodeNikonNrHighISO";
-      case PTPPropertyCodeNikonSHSETCHGUIDDISP: return @"PTPPropertyCodeNikonSHSETCHGUIDDISP";
-      case PTPPropertyCodeNikonArtistName: return @"PTPPropertyCodeNikonArtistName";
-      case PTPPropertyCodeNikonCopyrightInfo: return @"PTPPropertyCodeNikonCopyrightInfo";
-      case PTPPropertyCodeNikonFlashSyncSpeed: return @"PTPPropertyCodeNikonFlashSyncSpeed";
-      case PTPPropertyCodeNikonFlashShutterSpeed: return @"PTPPropertyCodeNikonFlashShutterSpeed";
-      case PTPPropertyCodeNikonAAFlashMode: return @"PTPPropertyCodeNikonAAFlashMode";
-      case PTPPropertyCodeNikonModelingFlash: return @"PTPPropertyCodeNikonModelingFlash";
-      case PTPPropertyCodeNikonBracketSet: return @"PTPPropertyCodeNikonBracketSet";
-      case PTPPropertyCodeNikonManualModeBracketing: return @"PTPPropertyCodeNikonManualModeBracketing";
-      case PTPPropertyCodeNikonBracketOrder: return @"PTPPropertyCodeNikonBracketOrder";
-      case PTPPropertyCodeNikonAutoBracketSelection: return @"PTPPropertyCodeNikonAutoBracketSelection";
-      case PTPPropertyCodeNikonBracketingSet: return @"PTPPropertyCodeNikonBracketingSet";
-      case PTPPropertyCodeNikonCenterButtonShootingMode: return @"PTPPropertyCodeNikonCenterButtonShootingMode";
-      case PTPPropertyCodeNikonCenterButtonPlaybackMode: return @"PTPPropertyCodeNikonCenterButtonPlaybackMode";
-      case PTPPropertyCodeNikonMultiselector: return @"PTPPropertyCodeNikonFultiselector";
-      case PTPPropertyCodeNikonPhotoInfoPlayback: return @"PTPPropertyCodeNikonPhotoInfoPlayback";
-      case PTPPropertyCodeNikonAssignFuncButton: return @"PTPPropertyCodeNikonAssignFuncButton";
-      case PTPPropertyCodeNikonCustomizeCommDials: return @"PTPPropertyCodeNikonCustomizeCommDials";
-      case PTPPropertyCodeNikonReverseCommandDial: return @"PTPPropertyCodeNikonReverseCommandDial";
-      case PTPPropertyCodeNikonApertureSetting: return @"PTPPropertyCodeNikonApertureSetting";
-      case PTPPropertyCodeNikonMenusAndPlayback: return @"PTPPropertyCodeNikonMenusAndPlayback";
-      case PTPPropertyCodeNikonButtonsAndDials: return @"PTPPropertyCodeNikonButtonsAndDials";
-      case PTPPropertyCodeNikonNoCFCard: return @"PTPPropertyCodeNikonNoCFCard";
-      case PTPPropertyCodeNikonCenterButtonZoomRatio: return @"PTPPropertyCodeNikonCenterButtonZoomRatio";
-      case PTPPropertyCodeNikonFunctionButton2: return @"PTPPropertyCodeNikonFunctionButton2";
-      case PTPPropertyCodeNikonAFAreaPoint: return @"PTPPropertyCodeNikonAFAreaPoint";
-      case PTPPropertyCodeNikonNormalAFOn: return @"PTPPropertyCodeNikonNormalAFOn";
-      case PTPPropertyCodeNikonCleanImageSensor: return @"PTPPropertyCodeNikonCleanImageSensor";
-      case PTPPropertyCodeNikonImageCommentString: return @"PTPPropertyCodeNikonImageCommentString";
-      case PTPPropertyCodeNikonImageCommentEnable: return @"PTPPropertyCodeNikonImageCommentEnable";
-      case PTPPropertyCodeNikonImageRotation: return @"PTPPropertyCodeNikonImageRotation";
-      case PTPPropertyCodeNikonManualSetLensNo: return @"PTPPropertyCodeNikonManualSetLensNo";
-      case PTPPropertyCodeNikonMovScreenSize: return @"PTPPropertyCodeNikonMovScreenSize";
-      case PTPPropertyCodeNikonMovVoice: return @"PTPPropertyCodeNikonMovVoice";
-      case PTPPropertyCodeNikonMovMicrophone: return @"PTPPropertyCodeNikonMovMicrophone";
-      case PTPPropertyCodeNikonMovFileSlot: return @"PTPPropertyCodeNikonMovFileSlot";
-      case PTPPropertyCodeNikonMovRecProhibitCondition: return @"PTPPropertyCodeNikonMovRecProhibitCondition";
-      case PTPPropertyCodeNikonManualMovieSetting: return @"PTPPropertyCodeNikonManualMovieSetting";
-      case PTPPropertyCodeNikonMovHiQuality: return @"PTPPropertyCodeNikonMovHiQuality";
-      case PTPPropertyCodeNikonMovMicSensitivity: return @"PTPPropertyCodeNikonMovMicSensitivity";
-      case PTPPropertyCodeNikonMovWindNoiceReduction: return @"PTPPropertyCodeNikonMovWindNoiceReduction";
-      case PTPPropertyCodeNikonLiveViewScreenDisplaySetting: return @"PTPPropertyCodeNikonLiveViewScreenDisplaySetting";
-      case PTPPropertyCodeNikonMonitorOffDelay: return @"PTPPropertyCodeNikonMonitorOffDelay";
-      case PTPPropertyCodeNikonBracketing: return @"PTPPropertyCodeNikonBracketing";
-      case PTPPropertyCodeNikonAutoExposureBracketStep: return @"PTPPropertyCodeNikonAutoExposureBracketStep";
-      case PTPPropertyCodeNikonAutoExposureBracketProgram: return @"PTPPropertyCodeNikonAutoExposureBracketProgram";
-      case PTPPropertyCodeNikonAutoExposureBracketCount: return @"PTPPropertyCodeNikonAutoExposureBracketCount";
-      case PTPPropertyCodeNikonWhiteBalanceBracketStep: return @"PTPPropertyCodeNikonWhiteBalanceBracketStep";
-      case PTPPropertyCodeNikonWhiteBalanceBracketProgram: return @"PTPPropertyCodeNikonWhiteBalanceBracketProgram";
-      case PTPPropertyCodeNikonLensID: return @"PTPPropertyCodeNikonLensID";
-      case PTPPropertyCodeNikonLensSort: return @"PTPPropertyCodeNikonLensSort";
-      case PTPPropertyCodeNikonLensType: return @"PTPPropertyCodeNikonLensType";
-      case PTPPropertyCodeNikonFocalLengthMin: return @"PTPPropertyCodeNikonFocalLengthMin";
-      case PTPPropertyCodeNikonFocalLengthMax: return @"PTPPropertyCodeNikonFocalLengthMax";
-      case PTPPropertyCodeNikonMaxApAtMinFocalLength: return @"PTPPropertyCodeNikonMaxApAtMinFocalLength";
-      case PTPPropertyCodeNikonMaxApAtMaxFocalLength: return @"PTPPropertyCodeNikonMaxApAtMaxFocalLength";
-      case PTPPropertyCodeNikonFinderISODisp: return @"PTPPropertyCodeNikonFinderISODisp";
-      case PTPPropertyCodeNikonAutoOffPhoto: return @"PTPPropertyCodeNikonAutoOffPhoto";
-      case PTPPropertyCodeNikonAutoOffMenu: return @"PTPPropertyCodeNikonAutoOffMenu";
-      case PTPPropertyCodeNikonAutoOffInfo: return @"PTPPropertyCodeNikonAutoOffInfo";
-      case PTPPropertyCodeNikonSelfTimerShootNum: return @"PTPPropertyCodeNikonSelfTimerShootNum";
-      case PTPPropertyCodeNikonVignetteCtrl: return @"PTPPropertyCodeNikonVignetteCtrl";
-      case PTPPropertyCodeNikonAutoDistortionControl: return @"PTPPropertyCodeNikonAutoDistortionControl";
-      case PTPPropertyCodeNikonSceneMode: return @"PTPPropertyCodeNikonSceneMode";
-      case PTPPropertyCodeNikonSceneMode2: return @"PTPPropertyCodeNikonSceneMode2";
-      case PTPPropertyCodeNikonSelfTimerInterval: return @"PTPPropertyCodeNikonSelfTimerInterval";
-      case PTPPropertyCodeNikonExposureTime: return @"PTPPropertyCodeNikonExposureTime";
-      case PTPPropertyCodeNikonACPower: return @"PTPPropertyCodeNikonACPower";
-      case PTPPropertyCodeNikonWarningStatus: return @"PTPPropertyCodeNikonWarningStatus";
-      case PTPPropertyCodeNikonRemainingShots: return @"PTPPropertyCodeNikonRemainingShots";
-      case PTPPropertyCodeNikonAFLockStatus: return @"PTPPropertyCodeNikonAFLockStatus";
-      case PTPPropertyCodeNikonAELockStatus: return @"PTPPropertyCodeNikonAELockStatus";
-      case PTPPropertyCodeNikonFVLockStatus: return @"PTPPropertyCodeNikonFVLockStatus";
-      case PTPPropertyCodeNikonAutofocusLCDTopMode2: return @"PTPPropertyCodeNikonAutofocusLCDTopMode2";
-      case PTPPropertyCodeNikonAutofocusSensor: return @"PTPPropertyCodeNikonAutofocusSensor";
-      case PTPPropertyCodeNikonFlexibleProgram: return @"PTPPropertyCodeNikonFlexibleProgram";
-      case PTPPropertyCodeNikonLightMeter: return @"PTPPropertyCodeNikonLightMeter";
-      case PTPPropertyCodeNikonSaveMedia: return @"PTPPropertyCodeNikonSaveMedia";
-      case PTPPropertyCodeNikonUSBSpeed: return @"PTPPropertyCodeNikonUSBSpeed";
-      case PTPPropertyCodeNikonCCDNumber: return @"PTPPropertyCodeNikonCCDNumber";
-      case PTPPropertyCodeNikonCameraInclination: return @"PTPPropertyCodeNikonCameraInclination";
-      case PTPPropertyCodeNikonGroupPtnType: return @"PTPPropertyCodeNikonGroupPtnType";
-      case PTPPropertyCodeNikonFNumberLock: return @"PTPPropertyCodeNikonFNumberLock";
-      case PTPPropertyCodeNikonExposureApertureLock: return @"PTPPropertyCodeNikonExposureApertureLock";
-      case PTPPropertyCodeNikonTVLockSetting: return @"PTPPropertyCodeNikonTVLockSetting";
-      case PTPPropertyCodeNikonAVLockSetting: return @"PTPPropertyCodeNikonAVLockSetting";
-      case PTPPropertyCodeNikonIllumSetting: return @"PTPPropertyCodeNikonIllumSetting";
-      case PTPPropertyCodeNikonFocusPointBright: return @"PTPPropertyCodeNikonFocusPointBright";
-      case PTPPropertyCodeNikonExternalFlashAttached: return @"PTPPropertyCodeNikonExternalFlashAttached";
-      case PTPPropertyCodeNikonExternalFlashStatus: return @"PTPPropertyCodeNikonExternalFlashStatus";
-      case PTPPropertyCodeNikonExternalFlashSort: return @"PTPPropertyCodeNikonExternalFlashSort";
-      case PTPPropertyCodeNikonExternalFlashMode: return @"PTPPropertyCodeNikonExternalFlashMode";
-      case PTPPropertyCodeNikonExternalFlashCompensation: return @"PTPPropertyCodeNikonExternalFlashCompensation";
-      case PTPPropertyCodeNikonNewExternalFlashMode: return @"PTPPropertyCodeNikonNewExternalFlashMode";
-      case PTPPropertyCodeNikonFlashExposureCompensation: return @"PTPPropertyCodeNikonFlashExposureCompensation";
-      case PTPPropertyCodeNikonHDRMode: return @"PTPPropertyCodeNikonHDRMode";
-      case PTPPropertyCodeNikonHDRHighDynamic: return @"PTPPropertyCodeNikonHDRHighDynamic";
-      case PTPPropertyCodeNikonHDRSmoothing: return @"PTPPropertyCodeNikonHDRSmoothing";
-      case PTPPropertyCodeNikonOptimizeImage: return @"PTPPropertyCodeNikonOptimizeImage";
-      case PTPPropertyCodeNikonSaturation: return @"PTPPropertyCodeNikonSaturation";
-      case PTPPropertyCodeNikonBWFillerEffect: return @"PTPPropertyCodeNikonBWFillerEffect";
-      case PTPPropertyCodeNikonBWSharpness: return @"PTPPropertyCodeNikonBWSharpness";
-      case PTPPropertyCodeNikonBWContrast: return @"PTPPropertyCodeNikonBWContrast";
-      case PTPPropertyCodeNikonBWSettingType: return @"PTPPropertyCodeNikonBWSettingType";
-      case PTPPropertyCodeNikonSlot2SaveMode: return @"PTPPropertyCodeNikonSlot2SaveMode";
-      case PTPPropertyCodeNikonRawBitMode: return @"PTPPropertyCodeNikonRawBitMode";
-      case PTPPropertyCodeNikonActiveDLighting: return @"PTPPropertyCodeNikonActiveDLighting";
-      case PTPPropertyCodeNikonFlourescentType: return @"PTPPropertyCodeNikonFlourescentType";
-      case PTPPropertyCodeNikonTuneColourTemperature: return @"PTPPropertyCodeNikonTuneColourTemperature";
-      case PTPPropertyCodeNikonTunePreset0: return @"PTPPropertyCodeNikonTunePreset0";
-      case PTPPropertyCodeNikonTunePreset1: return @"PTPPropertyCodeNikonTunePreset1";
-      case PTPPropertyCodeNikonTunePreset2: return @"PTPPropertyCodeNikonTunePreset2";
-      case PTPPropertyCodeNikonTunePreset3: return @"PTPPropertyCodeNikonTunePreset3";
-      case PTPPropertyCodeNikonTunePreset4: return @"PTPPropertyCodeNikonTunePreset4";
-      case PTPPropertyCodeNikonBeepOff: return @"PTPPropertyCodeNikonBeepOff";
-      case PTPPropertyCodeNikonAutofocusMode: return @"PTPPropertyCodeNikonAutofocusMode";
-      case PTPPropertyCodeNikonAFAssist: return @"PTPPropertyCodeNikonAFAssist";
-      case PTPPropertyCodeNikonPADVPMode: return @"PTPPropertyCodeNikonPADVPMode";
-      case PTPPropertyCodeNikonImageReview: return @"PTPPropertyCodeNikonImageReview";
-      case PTPPropertyCodeNikonAFAreaIllumination: return @"PTPPropertyCodeNikonAFAreaIllumination";
-      case PTPPropertyCodeNikonFlashMode: return @"PTPPropertyCodeNikonFlashMode";
-      case PTPPropertyCodeNikonFlashCommanderMode: return @"PTPPropertyCodeNikonFlashCommanderMode";
-      case PTPPropertyCodeNikonFlashSign: return @"PTPPropertyCodeNikonFlashSign";
-      case PTPPropertyCodeNikonISOAuto: return @"PTPPropertyCodeNikonISOAuto";
-      case PTPPropertyCodeNikonRemoteTimeout: return @"PTPPropertyCodeNikonRemoteTimeout";
-      case PTPPropertyCodeNikonGridDisplay: return @"PTPPropertyCodeNikonGridDisplay";
-      case PTPPropertyCodeNikonFlashModeManualPower: return @"PTPPropertyCodeNikonFlashModeManualPower";
-      case PTPPropertyCodeNikonFlashModeCommanderPower: return @"PTPPropertyCodeNikonFlashModeCommanderPower";
-      case PTPPropertyCodeNikonAutoFP: return @"PTPPropertyCodeNikonAutoFP";
-      case PTPPropertyCodeNikonDateImprintSetting: return @"PTPPropertyCodeNikonDateImprintSetting";
-      case PTPPropertyCodeNikonDateCounterSelect: return @"PTPPropertyCodeNikonDateCounterSelect";
-      case PTPPropertyCodeNikonDateCountData: return @"PTPPropertyCodeNikonDateCountData";
-      case PTPPropertyCodeNikonDateCountDisplaySetting: return @"PTPPropertyCodeNikonDateCountDisplaySetting";
-      case PTPPropertyCodeNikonRangeFinderSetting: return @"PTPPropertyCodeNikonRangeFinderSetting";
-      case PTPPropertyCodeNikonCSMMenu: return @"PTPPropertyCodeNikonCSMMenu";
-      case PTPPropertyCodeNikonWarningDisplay: return @"PTPPropertyCodeNikonWarningDisplay";
-      case PTPPropertyCodeNikonBatteryCellKind: return @"PTPPropertyCodeNikonBatteryCellKind";
-      case PTPPropertyCodeNikonISOAutoHiLimit: return @"PTPPropertyCodeNikonISOAutoHiLimit";
-      case PTPPropertyCodeNikonDynamicAFArea: return @"PTPPropertyCodeNikonDynamicAFArea";
-      case PTPPropertyCodeNikonContinuousSpeedHigh: return @"PTPPropertyCodeNikonContinuousSpeedHigh";
-      case PTPPropertyCodeNikonInfoDispSetting: return @"PTPPropertyCodeNikonInfoDispSetting";
-      case PTPPropertyCodeNikonPreviewButton: return @"PTPPropertyCodeNikonPreviewButton";
-      case PTPPropertyCodeNikonPreviewButton2: return @"PTPPropertyCodeNikonPreviewButton2";
-      case PTPPropertyCodeNikonAEAFLockButton2: return @"PTPPropertyCodeNikonAEAFLockButton2";
-      case PTPPropertyCodeNikonIndicatorDisp: return @"PTPPropertyCodeNikonIndicatorDisp";
-      case PTPPropertyCodeNikonCellKindPriority: return @"PTPPropertyCodeNikonCellKindPriority";
-      case PTPPropertyCodeNikonBracketingFramesAndSteps: return @"PTPPropertyCodeNikonBracketingFramesAndSteps";
-      case PTPPropertyCodeNikonLiveViewMode: return @"PTPPropertyCodeNikonLiveViewMode";
-      case PTPPropertyCodeNikonLiveViewDriveMode: return @"PTPPropertyCodeNikonLiveViewDriveMode";
-      case PTPPropertyCodeNikonLiveViewStatus: return @"PTPPropertyCodeNikonLiveViewStatus";
-      case PTPPropertyCodeNikonLiveViewImageZoomRatio: return @"PTPPropertyCodeNikonLiveViewImageZoomRatio";
-      case PTPPropertyCodeNikonLiveViewProhibitCondition: return @"PTPPropertyCodeNikonLiveViewProhibitCondition";
-      case PTPPropertyCodeNikonMovieShutterSpeed: return @"PTPPropertyCodeNikonMovieShutterSpeed";
-      case PTPPropertyCodeNikonMovieFNumber: return @"PTPPropertyCodeNikonMovieFNumber";
-      case PTPPropertyCodeNikonMovieISO: return @"PTPPropertyCodeNikonMovieISO";
-      case PTPPropertyCodeNikonLiveViewImageSize: return @"PTPPropertyCodeNikonLiveViewImageSize";
-      case PTPPropertyCodeNikonBlinkingStatus: return @"PTPPropertyCodeNikonBlinkingStatus";
-      case PTPPropertyCodeNikonExposureIndicateStatus: return @"PTPPropertyCodeNikonExposureIndicateStatus";
-      case PTPPropertyCodeNikonInfoDispErrStatus: return @"PTPPropertyCodeNikonInfoDispErrStatus";
-      case PTPPropertyCodeNikonExposureIndicateLightup: return @"PTPPropertyCodeNikonExposureIndicateLightup";
-      case PTPPropertyCodeNikonFlashOpen: return @"PTPPropertyCodeNikonFlashOpen";
-      case PTPPropertyCodeNikonFlashCharged: return @"PTPPropertyCodeNikonFlashCharged";
-      case PTPPropertyCodeNikonFlashMRepeatValue: return @"PTPPropertyCodeNikonFlashMRepeatValue";
-      case PTPPropertyCodeNikonFlashMRepeatCount: return @"PTPPropertyCodeNikonFlashMRepeatCount";
-      case PTPPropertyCodeNikonFlashMRepeatInterval: return @"PTPPropertyCodeNikonFlashMRepeatInterval";
-      case PTPPropertyCodeNikonFlashCommandChannel: return @"PTPPropertyCodeNikonFlashCommandChannel";
-      case PTPPropertyCodeNikonFlashCommandSelfMode: return @"PTPPropertyCodeNikonFlashCommandSelfMode";
-      case PTPPropertyCodeNikonFlashCommandSelfCompensation: return @"PTPPropertyCodeNikonFlashCommandSelfCompensation";
-      case PTPPropertyCodeNikonFlashCommandSelfValue: return @"PTPPropertyCodeNikonFlashCommandSelfValue";
-      case PTPPropertyCodeNikonFlashCommandAMode: return @"PTPPropertyCodeNikonFlashCommandAMode";
-      case PTPPropertyCodeNikonFlashCommandACompensation: return @"PTPPropertyCodeNikonFlashCommandACompensation";
-      case PTPPropertyCodeNikonFlashCommandAValue: return @"PTPPropertyCodeNikonFlashCommandAValue";
-      case PTPPropertyCodeNikonFlashCommandBMode: return @"PTPPropertyCodeNikonFlashCommandBMode";
-      case PTPPropertyCodeNikonFlashCommandBCompensation: return @"PTPPropertyCodeNikonFlashCommandBCompensation";
-      case PTPPropertyCodeNikonFlashCommandBValue: return @"PTPPropertyCodeNikonFlashCommandBValue";
-      case PTPPropertyCodeNikonApplicationMode: return @"PTPPropertyCodeNikonApplicationMode";
-      case PTPPropertyCodeNikonActiveSlot: return @"PTPPropertyCodeNikonActiveSlot";
-      case PTPPropertyCodeNikonActivePicCtrlItem: return @"PTPPropertyCodeNikonActivePicCtrlItem";
-      case PTPPropertyCodeNikonChangePicCtrlItem: return @"PTPPropertyCodeNikonChangePicCtrlItem";
-      case PTPPropertyCodeNikonMovieNrHighISO: return @"PTPPropertyCodeNikonMovieNrHighISO";
-    }
-  }
-  if (vendorExtension == PTPVendorExtensionCanon) {
-    switch (propertyCode) {
-      case PTPPropertyCodeCanonAperture: return @"PTPPropertyCodeCanonAperture";
-      case PTPPropertyCodeCanonShutterSpeed: return @"PTPPropertyCodeCanonShutterSpeed";
-      case PTPPropertyCodeCanonISOSpeed: return @"PTPPropertyCodeCanonISOSpeed";
-      case PTPPropertyCodeCanonExpCompensation: return @"PTPPropertyCodeCanonExpCompensation";
-      case PTPPropertyCodeCanonAutoExposureMode: return @"PTPPropertyCodeCanonAutoExposureMode";
-      case PTPPropertyCodeCanonDriveMode: return @"PTPPropertyCodeCanonDriveMode";
-      case PTPPropertyCodeCanonMeteringMode: return @"PTPPropertyCodeCanonMeteringMode";
-      case PTPPropertyCodeCanonFocusMode: return @"PTPPropertyCodeCanonFocusMode";
-      case PTPPropertyCodeCanonWhiteBalance: return @"PTPPropertyCodeCanonWhiteBalance";
-      case PTPPropertyCodeCanonColorTemperature: return @"PTPPropertyCodeCanonColorTemperature";
-      case PTPPropertyCodeCanonWhiteBalanceAdjustA: return @"PTPPropertyCodeCanonWhiteBalanceAdjustA";
-      case PTPPropertyCodeCanonWhiteBalanceAdjustB: return @"PTPPropertyCodeCanonWhiteBalanceAdjustB";
-      case PTPPropertyCodeCanonWhiteBalanceXA: return @"PTPPropertyCodeCanonWhiteBalanceXA";
-      case PTPPropertyCodeCanonWhiteBalanceXB: return @"PTPPropertyCodeCanonWhiteBalanceXB";
-      case PTPPropertyCodeCanonColorSpace: return @"PTPPropertyCodeCanonColorSpace";
-      case PTPPropertyCodeCanonPictureStyle: return @"PTPPropertyCodeCanonPictureStyle";
-      case PTPPropertyCodeCanonBatteryPower: return @"PTPPropertyCodeCanonBatteryPower";
-      case PTPPropertyCodeCanonBatterySelect: return @"PTPPropertyCodeCanonBatterySelect";
-      case PTPPropertyCodeCanonCameraTime: return @"PTPPropertyCodeCanonCameraTime";
-      case PTPPropertyCodeCanonAutoPowerOff: return @"PTPPropertyCodeCanonAutoPowerOff";
-      case PTPPropertyCodeCanonOwner: return @"PTPPropertyCodeCanonOwner";
-      case PTPPropertyCodeCanonModelID: return @"PTPPropertyCodeCanonModelID";
-      case PTPPropertyCodeCanonPTPExtensionVersion: return @"PTPPropertyCodeCanonPTPExtensionVersion";
-      case PTPPropertyCodeCanonDPOFVersion: return @"PTPPropertyCodeCanonDPOFVersion";
-      case PTPPropertyCodeCanonAvailableShots: return @"PTPPropertyCodeCanonAvailableShots";
-      case PTPPropertyCodeCanonCaptureDestination: return @"PTPPropertyCodeCanonCaptureDestination";
-      case PTPPropertyCodeCanonBracketMode: return @"PTPPropertyCodeCanonBracketMode";
-      case PTPPropertyCodeCanonCurrentStorage: return @"PTPPropertyCodeCanonCurrentStorage";
-      case PTPPropertyCodeCanonCurrentFolder: return @"PTPPropertyCodeCanonCurrentFolder";
-      case PTPPropertyCodeCanonImageFormat: return @"PTPPropertyCodeCanonImageFormat";
-      case PTPPropertyCodeCanonImageFormatCF: return @"PTPPropertyCodeCanonImageFormatCF";
-      case PTPPropertyCodeCanonImageFormatSD: return @"PTPPropertyCodeCanonImageFormatSD";
-      case PTPPropertyCodeCanonImageFormatExtHD: return @"PTPPropertyCodeCanonImageFormatExtHD";
-      case PTPPropertyCodeCanonCompressionS: return @"PTPPropertyCodeCanonCompressionS";
-      case PTPPropertyCodeCanonCompressionM1: return @"PTPPropertyCodeCanonCompressionM1";
-      case PTPPropertyCodeCanonCompressionM2: return @"PTPPropertyCodeCanonCompressionM2";
-      case PTPPropertyCodeCanonCompressionL: return @"PTPPropertyCodeCanonCompressionL";
-      case PTPPropertyCodeCanonAEModeDial: return @"PTPPropertyCodeCanonAEModeDial";
-      case PTPPropertyCodeCanonAEModeCustom: return @"PTPPropertyCodeCanonAEModeCustom";
-      case PTPPropertyCodeCanonMirrorUpSetting: return @"PTPPropertyCodeCanonMirrorUpSetting";
-      case PTPPropertyCodeCanonHighlightTonePriority: return @"PTPPropertyCodeCanonHighlightTonePriority";
-      case PTPPropertyCodeCanonAFSelectFocusArea: return @"PTPPropertyCodeCanonAFSelectFocusArea";
-      case PTPPropertyCodeCanonHDRSetting: return @"PTPPropertyCodeCanonHDRSetting";
-      case PTPPropertyCodeCanonPCWhiteBalance1: return @"PTPPropertyCodeCanonPCWhiteBalance1";
-      case PTPPropertyCodeCanonPCWhiteBalance2: return @"PTPPropertyCodeCanonPCWhiteBalance2";
-      case PTPPropertyCodeCanonPCWhiteBalance3: return @"PTPPropertyCodeCanonPCWhiteBalance3";
-      case PTPPropertyCodeCanonPCWhiteBalance4: return @"PTPPropertyCodeCanonPCWhiteBalance4";
-      case PTPPropertyCodeCanonPCWhiteBalance5: return @"PTPPropertyCodeCanonPCWhiteBalance5";
-      case PTPPropertyCodeCanonMWhiteBalance: return @"PTPPropertyCodeCanonMWhiteBalance";
-      case PTPPropertyCodeCanonMWhiteBalanceEx: return @"PTPPropertyCodeCanonMWhiteBalanceEx";
-      case PTPPropertyCodeCanonUnknownPropD14D: return @"PTPPropertyCodeCanonUnknownPropD14D";
-      case PTPPropertyCodeCanonPictureStyleStandard: return @"PTPPropertyCodeCanonPictureStyleStandard";
-      case PTPPropertyCodeCanonPictureStylePortrait: return @"PTPPropertyCodeCanonPictureStylePortrait";
-      case PTPPropertyCodeCanonPictureStyleLandscape: return @"PTPPropertyCodeCanonPictureStyleLandscape";
-      case PTPPropertyCodeCanonPictureStyleNeutral: return @"PTPPropertyCodeCanonPictureStyleNeutral";
-      case PTPPropertyCodeCanonPictureStyleFaithful: return @"PTPPropertyCodeCanonPictureStyleFaithful";
-      case PTPPropertyCodeCanonPictureStyleBlackWhite: return @"PTPPropertyCodeCanonPictureStyleBlackWhite";
-      case PTPPropertyCodeCanonPictureStyleAuto: return @"PTPPropertyCodeCanonPictureStyleAuto";
-      case PTPPropertyCodeCanonPictureStyleUserSet1: return @"PTPPropertyCodeCanonPictureStyleUserSet1";
-      case PTPPropertyCodeCanonPictureStyleUserSet2: return @"PTPPropertyCodeCanonPictureStyleUserSet2";
-      case PTPPropertyCodeCanonPictureStyleUserSet3: return @"PTPPropertyCodeCanonPictureStyleUserSet3";
-      case PTPPropertyCodeCanonPictureStyleParam1: return @"PTPPropertyCodeCanonPictureStyleParam1";
-      case PTPPropertyCodeCanonPictureStyleParam2: return @"PTPPropertyCodeCanonPictureStyleParam2";
-      case PTPPropertyCodeCanonPictureStyleParam3: return @"PTPPropertyCodeCanonPictureStyleParam3";
-      case PTPPropertyCodeCanonHighISOSettingNoiseReduction: return @"PTPPropertyCodeCanonHighISOSettingNoiseReduction";
-      case PTPPropertyCodeCanonMovieServoAF: return @"PTPPropertyCodeCanonMovieServoAF";
-      case PTPPropertyCodeCanonContinuousAFValid: return @"PTPPropertyCodeCanonContinuousAFValid";
-      case PTPPropertyCodeCanonAttenuator: return @"PTPPropertyCodeCanonAttenuator";
-      case PTPPropertyCodeCanonUTCTime: return @"PTPPropertyCodeCanonUTCTime";
-      case PTPPropertyCodeCanonTimezone: return @"PTPPropertyCodeCanonTimezone";
-      case PTPPropertyCodeCanonSummertime: return @"PTPPropertyCodeCanonSummertime";
-      case PTPPropertyCodeCanonFlavorLUTParams: return @"PTPPropertyCodeCanonFlavorLUTParams";
-      case PTPPropertyCodeCanonCustomFunc1: return @"PTPPropertyCodeCanonCustomFunc1";
-      case PTPPropertyCodeCanonCustomFunc2: return @"PTPPropertyCodeCanonCustomFunc2";
-      case PTPPropertyCodeCanonCustomFunc3: return @"PTPPropertyCodeCanonCustomFunc3";
-      case PTPPropertyCodeCanonCustomFunc4: return @"PTPPropertyCodeCanonCustomFunc4";
-      case PTPPropertyCodeCanonCustomFunc5: return @"PTPPropertyCodeCanonCustomFunc5";
-      case PTPPropertyCodeCanonCustomFunc6: return @"PTPPropertyCodeCanonCustomFunc6";
-      case PTPPropertyCodeCanonCustomFunc7: return @"PTPPropertyCodeCanonCustomFunc7";
-      case PTPPropertyCodeCanonCustomFunc8: return @"PTPPropertyCodeCanonCustomFunc8";
-      case PTPPropertyCodeCanonCustomFunc9: return @"PTPPropertyCodeCanonCustomFunc9";
-      case PTPPropertyCodeCanonCustomFunc10: return @"PTPPropertyCodeCanonCustomFunc10";
-      case PTPPropertyCodeCanonCustomFunc11: return @"PTPPropertyCodeCanonCustomFunc11";
-      case PTPPropertyCodeCanonCustomFunc12: return @"PTPPropertyCodeCanonCustomFunc12";
-      case PTPPropertyCodeCanonCustomFunc13: return @"PTPPropertyCodeCanonCustomFunc13";
-      case PTPPropertyCodeCanonCustomFunc14: return @"PTPPropertyCodeCanonCustomFunc14";
-      case PTPPropertyCodeCanonCustomFunc15: return @"PTPPropertyCodeCanonCustomFunc15";
-      case PTPPropertyCodeCanonCustomFunc16: return @"PTPPropertyCodeCanonCustomFunc16";
-      case PTPPropertyCodeCanonCustomFunc17: return @"PTPPropertyCodeCanonCustomFunc17";
-      case PTPPropertyCodeCanonCustomFunc18: return @"PTPPropertyCodeCanonCustomFunc18";
-      case PTPPropertyCodeCanonCustomFunc19: return @"PTPPropertyCodeCanonCustomFunc19";
-      case PTPPropertyCodeCanonInnerDevelop: return @"PTPPropertyCodeCanonInnerDevelop";
-      case PTPPropertyCodeCanonMultiAspect: return @"PTPPropertyCodeCanonMultiAspect";
-      case PTPPropertyCodeCanonMovieSoundRecord: return @"PTPPropertyCodeCanonMovieSoundRecord";
-      case PTPPropertyCodeCanonMovieRecordVolume: return @"PTPPropertyCodeCanonMovieRecordVolume";
-      case PTPPropertyCodeCanonWindCut: return @"PTPPropertyCodeCanonWindCut";
-      case PTPPropertyCodeCanonExtenderType: return @"PTPPropertyCodeCanonExtenderType";
-      case PTPPropertyCodeCanonOLCInfoVersion: return @"PTPPropertyCodeCanonOLCInfoVersion";
-      case PTPPropertyCodeCanonUnknownPropD19A: return @"PTPPropertyCodeCanonUnknownPropD19A";
-      case PTPPropertyCodeCanonUnknownPropD19C: return @"PTPPropertyCodeCanonUnknownPropD19C";
-      case PTPPropertyCodeCanonUnknownPropD19D: return @"PTPPropertyCodeCanonUnknownPropD19D";
-      case PTPPropertyCodeCanonCustomFuncEx: return @"PTPPropertyCodeCanonCustomFuncEx";
-      case PTPPropertyCodeCanonMyMenu: return @"PTPPropertyCodeCanonMyMenu";
-      case PTPPropertyCodeCanonMyMenuList: return @"PTPPropertyCodeCanonMyMenuList";
-      case PTPPropertyCodeCanonWftStatus: return @"PTPPropertyCodeCanonWftStatus";
-      case PTPPropertyCodeCanonWftInputTransmission: return @"PTPPropertyCodeCanonWftInputTransmission";
-      case PTPPropertyCodeCanonHDDirectoryStructure: return @"PTPPropertyCodeCanonHDDirectoryStructure";
-      case PTPPropertyCodeCanonBatteryInfo: return @"PTPPropertyCodeCanonBatteryInfo";
-      case PTPPropertyCodeCanonAdapterInfo: return @"PTPPropertyCodeCanonAdapterInfo";
-      case PTPPropertyCodeCanonLensStatus: return @"PTPPropertyCodeCanonLensStatus";
-      case PTPPropertyCodeCanonQuickReviewTime: return @"PTPPropertyCodeCanonQuickReviewTime";
-      case PTPPropertyCodeCanonCardExtension: return @"PTPPropertyCodeCanonCardExtension";
-      case PTPPropertyCodeCanonTempStatus: return @"PTPPropertyCodeCanonTempStatus";
-      case PTPPropertyCodeCanonShutterCounter: return @"PTPPropertyCodeCanonShutterCounter";
-      case PTPPropertyCodeCanonSpecialOption: return @"PTPPropertyCodeCanonSpecialOption";
-      case PTPPropertyCodeCanonPhotoStudioMode: return @"PTPPropertyCodeCanonPhotoStudioMode";
-      case PTPPropertyCodeCanonSerialNumber: return @"PTPPropertyCodeCanonSerialNumber";
-      case PTPPropertyCodeCanonEVFOutputDevice: return @"PTPPropertyCodeCanonEVFOutputDevice";
-      case PTPPropertyCodeCanonEVFMode: return @"PTPPropertyCodeCanonEVFMode";
-      case PTPPropertyCodeCanonDepthOfFieldPreview: return @"PTPPropertyCodeCanonDepthOfFieldPreview";
-      case PTPPropertyCodeCanonEVFSharpness: return @"PTPPropertyCodeCanonEVFSharpness";
-      case PTPPropertyCodeCanonEVFWBMode: return @"PTPPropertyCodeCanonEVFWBMode";
-      case PTPPropertyCodeCanonEVFClickWBCoeffs: return @"PTPPropertyCodeCanonEVFClickWBCoeffs";
-      case PTPPropertyCodeCanonEVFColorTemp: return @"PTPPropertyCodeCanonEVFColorTemp";
-      case PTPPropertyCodeCanonExposureSimMode: return @"PTPPropertyCodeCanonExposureSimMode";
-      case PTPPropertyCodeCanonEVFRecordStatus: return @"PTPPropertyCodeCanonEVFRecordStatus";
-      case PTPPropertyCodeCanonLvAfSystem: return @"PTPPropertyCodeCanonLvAfSystem";
-      case PTPPropertyCodeCanonMovSize: return @"PTPPropertyCodeCanonMovSize";
-      case PTPPropertyCodeCanonLvViewTypeSelect: return @"PTPPropertyCodeCanonLvViewTypeSelect";
-      case PTPPropertyCodeCanonMirrorDownStatus: return @"PTPPropertyCodeCanonMirrorDownStatus";
-      case PTPPropertyCodeCanonMovieParam: return @"PTPPropertyCodeCanonMovieParam";
-      case PTPPropertyCodeCanonMirrorLockupState: return @"PTPPropertyCodeCanonMirrorLockupState";
-      case PTPPropertyCodeCanonFlashChargingState: return @"PTPPropertyCodeCanonFlashChargingState";
-      case PTPPropertyCodeCanonAloMode: return @"PTPPropertyCodeCanonAloMode";
-      case PTPPropertyCodeCanonFixedMovie: return @"PTPPropertyCodeCanonFixedMovie";
-      case PTPPropertyCodeCanonOneShotRawOn: return @"PTPPropertyCodeCanonOneShotRawOn";
-      case PTPPropertyCodeCanonErrorForDisplay: return @"PTPPropertyCodeCanonErrorForDisplay";
-      case PTPPropertyCodeCanonAEModeMovie: return @"PTPPropertyCodeCanonAEModeMovie";
-      case PTPPropertyCodeCanonBuiltinStroboMode: return @"PTPPropertyCodeCanonBuiltinStroboMode";
-      case PTPPropertyCodeCanonStroboDispState: return @"PTPPropertyCodeCanonStroboDispState";
-      case PTPPropertyCodeCanonStroboETTL2Metering: return @"PTPPropertyCodeCanonStroboETTL2Metering";
-      case PTPPropertyCodeCanonContinousAFMode: return @"PTPPropertyCodeCanonContinousAFMode";
-      case PTPPropertyCodeCanonMovieParam2: return @"PTPPropertyCodeCanonMovieParam2";
-      case PTPPropertyCodeCanonStroboSettingExpComposition: return @"PTPPropertyCodeCanonStroboSettingExpComposition";
-      case PTPPropertyCodeCanonMovieParam3: return @"PTPPropertyCodeCanonMovieParam3";
-      case PTPPropertyCodeCanonLVMedicalRotate: return @"PTPPropertyCodeCanonLVMedicalRotate";
-      case PTPPropertyCodeCanonArtist: return @"PTPPropertyCodeCanonArtist";
-      case PTPPropertyCodeCanonCopyright: return @"PTPPropertyCodeCanonCopyright";
-      case PTPPropertyCodeCanonBracketValue: return @"PTPPropertyCodeCanonBracketValue";
-      case PTPPropertyCodeCanonFocusInfoEx: return @"PTPPropertyCodeCanonFocusInfoEx";
-      case PTPPropertyCodeCanonDepthOfField: return @"PTPPropertyCodeCanonDepthOfField";
-      case PTPPropertyCodeCanonBrightness: return @"PTPPropertyCodeCanonBrightness";
-      case PTPPropertyCodeCanonLensAdjustParams: return @"PTPPropertyCodeCanonLensAdjustParams";
-      case PTPPropertyCodeCanonEFComp: return @"PTPPropertyCodeCanonEFComp";
-      case PTPPropertyCodeCanonLensName: return @"PTPPropertyCodeCanonLensName";
-      case PTPPropertyCodeCanonAEB: return @"PTPPropertyCodeCanonAEB";
-      case PTPPropertyCodeCanonStroboSetting: return @"PTPPropertyCodeCanonStroboSetting";
-      case PTPPropertyCodeCanonStroboWirelessSetting: return @"PTPPropertyCodeCanonStroboWirelessSetting";
-      case PTPPropertyCodeCanonStroboFiring: return @"PTPPropertyCodeCanonStroboFiring";
-      case PTPPropertyCodeCanonLensID: return @"PTPPropertyCodeCanonLensID";
-      case PTPPropertyCodeCanonLCDBrightness: return @"PTPPropertyCodeCanonLCDBrightness";
-      case PTPPropertyCodeCanonCADarkBright: return @"PTPPropertyCodeCanonCADarkBright";
-    }
-  }
   return [NSString stringWithFormat:@"PTPPropertyCode0x%04x", propertyCode];
 }
 
@@ -1228,19 +789,19 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   return [NSString stringWithFormat:@"PTPDataTypeCode0x%04x", type];
 }
 
--(id)initWithCode:(PTPPropertyCode)propertyCode vendorExtension:(PTPVendorExtension)vendorExtension{
-  if ((self = [super initWithVendorExtension:vendorExtension])) {
+-(id)initWithCode:(PTPPropertyCode)propertyCode {
+  if ((self = [super init])) {
     _propertyCode = propertyCode;
     _type = PTPDataTypeCodeUndefined;
   }
   return self;
 }
--(id)initWithData:(NSData*)data  vendorExtension:(PTPVendorExtension)vendorExtension{
+-(id)initWithData:(NSData*)data {
   NSUInteger dataLength = [data length];
   if ((data == NULL) || (dataLength < 5))
     return NULL;
   unsigned char* buffer = (unsigned char*)[data bytes];
-  if ((self = [super initWithVendorExtension:vendorExtension])) {
+  if ((self = [super init])) {
     unsigned char* buf = buffer;
     _propertyCode = ptpReadUnsignedShort(&buf);
     _type = ptpReadUnsignedShort(&buf);
@@ -1273,7 +834,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(NSString *)propertyCodeName {
-  return [PTPProperty propertyCodeName:_propertyCode vendorExtension:self.vendorExtension];
+  return [PTPProperty propertyCodeName:_propertyCode];
 }
 
 -(NSString *)typeName {
@@ -1389,7 +950,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
       if (property)
         [s appendFormat:@"%@\n", property];
       else
-        [s appendFormat:@"%@\n", [PTPProperty propertyCodeName:code.intValue vendorExtension:self.vendorExtension]];
+        [s appendFormat:@"%@\n", [PTPProperty propertyCodeName:code.intValue]];
     }
   }
   return s;
@@ -1433,20 +994,24 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
   return self;
 }
 
--(PTPRequest *)allocRequest {
-  return [PTPRequest alloc];
+-(Class)requestClass {
+  return PTPRequest.class;
 }
 
--(PTPResponse *)allocResponse {
-  return [PTPResponse alloc];
+-(Class)responseClass {
+  return PTPResponse.class;
 }
 
--(PTPEvent *)allocEvent {
-  return [PTPEvent alloc];
+-(Class)eventClass {
+  return PTPEvent.class;
 }
 
--(PTPDeviceInfo *)allocDeviceInfo {
-  return [PTPDeviceInfo alloc];
+-(Class)propertyClass {
+  return PTPProperty.class;
+}
+
+-(Class)deviceInfoClass {
+  return PTPDeviceInfo.class;
 }
 
 -(void)didRemoveDevice:(ICDevice *)device {
@@ -1529,7 +1094,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
     }
     case PTPRequestCodeGetDeviceInfo: {
       if (ptpResponse.responseCode == PTPResponseCodeOK && data) {
-        _info = [[self allocDeviceInfo] initWithData:data];
+        _info = [[self.deviceInfoClass alloc] initWithData:data];
         if ([_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeInitiateCapture]]) {
           [_delegate cameraCanCapture:self];
         }
@@ -1550,7 +1115,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
       break;
     }
     case PTPRequestCodeGetDevicePropDesc: {
-      PTPProperty *property = [[PTPProperty alloc] initWithData:data vendorExtension:_info.vendorExtension];
+      PTPProperty *property = [[self.propertyClass alloc] initWithData:data];
       if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
         NSLog(@"Translated to %@", property);
       _info.properties[[NSNumber numberWithUnsignedShort:property.propertyCode]] = property;
@@ -2131,7 +1696,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
         for (int i = 0; i < count; i++) {
           PTPEventCode code = ptpReadUnsignedShort(&buf);
           unsigned int parameter1 = ptpReadUnsignedInt(&buf);
-          PTPEvent *event = [[self allocEvent] initWithCode:code parameter1:parameter1];
+          PTPEvent *event = [[self.eventClass alloc] initWithCode:code parameter1:parameter1];
           if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
             NSLog(@"Translated to %@", [event description]);
           [self processEvent:event];
@@ -2185,7 +1750,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
               unsigned int code = ptpReadUnsignedInt(&buf);
               PTPProperty *property = _info.properties[[NSNumber numberWithUnsignedShort:code]];
               if (property == nil)
-                property = [[PTPProperty alloc] initWithCode:code vendorExtension:PTPVendorExtensionCanon];
+                property = [[self.propertyClass alloc] initWithCode:code];
               switch (code) {
                 case PTPPropertyCodeCanonFocusMode:
                 case PTPPropertyCodeCanonBatteryPower:
@@ -2313,7 +1878,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
               unsigned int code = ptpReadUnsignedInt(&buf);
               PTPProperty *property = _info.properties[[NSNumber numberWithUnsignedShort:code]];
               if (property == nil)
-                property = [[PTPProperty alloc] initWithCode:code vendorExtension:PTPVendorExtensionCanon];
+                property = [[self.propertyClass alloc] initWithCode:code];
               unsigned int type = ptpReadUnsignedInt(&buf);
               unsigned int count = ptpReadUnsignedInt(&buf);
               if (count == 0 || count >= 0xFFFF || type != 3)
@@ -2540,14 +2105,14 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)sendPTPRequest:(PTPRequestCode)operationCode {
-  PTPRequest *request = [[self allocRequest] init];
+  PTPRequest *request = [[self.requestClass alloc] init];
   request.operationCode = operationCode;
   request.numberOfParameters = 0;
   [_icCamera requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 
 -(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 {
-  PTPRequest *request = [[self allocRequest] init];
+  PTPRequest *request = [[self.requestClass alloc] init];
   request.operationCode = operationCode;
   request.numberOfParameters = 1;
   request.parameter1 = parameter1;
@@ -2555,7 +2120,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2 {
-  PTPRequest *request = [[self allocRequest] init];
+  PTPRequest *request = [[self.requestClass alloc] init];
   request.operationCode = operationCode;
   request.numberOfParameters = 2;
   request.parameter1 = parameter1;
@@ -2564,7 +2129,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 withData:(NSData *)data {
-  PTPRequest *request = [[self allocRequest] init];
+  PTPRequest *request = [[self.requestClass alloc] init];
   request.operationCode = operationCode;
   request.numberOfParameters = 1;
   request.parameter1 = parameter1;
@@ -2594,7 +2159,6 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)didDownloadFile:(ICCameraFile*)file error:(nullable NSError*)error options:(nullable NSDictionary<NSString*,id>*)options contextInfo:(nullable void*)contextInfo {
-  ICCameraDevice *camera = file.device;
   if (error == nil) {
     NSURL *folder = options[ICDownloadsDirectoryURL];
     NSString *name = options[ICSavedFilename];
@@ -2607,11 +2171,11 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
       return;
     }
   }
-  [_delegate cameraExposureFailed:camera message:[NSString stringWithFormat:@"requestDownloadFile failed (%@)", error.localizedDescription]];
+  [_delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"requestDownloadFile failed (%@)", error.localizedDescription]];
 }
 
 -(void)cameraDevice:(ICCameraDevice*)camera didReceivePTPEvent:(NSData*)eventData {
-  PTPEvent *event = [[self allocEvent] initWithData:eventData];
+  PTPEvent *event = [[self.eventClass alloc] initWithData:eventData];
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
     NSLog(@"Received %@", event);
   switch (_info.vendorExtension) {

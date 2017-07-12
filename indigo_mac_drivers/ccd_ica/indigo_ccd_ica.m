@@ -32,8 +32,10 @@
 #include "indigo_ccd_driver.h"
 #include "indigo_focuser_driver.h"
 
-#include "indigo_ccd_ica.h"
-#include "indigo_ica_ptp.h"
+#import "indigo_ccd_ica.h"
+#import "indigo_ica_ptp.h"
+#import "indigo_ica_ptp_nikon.h"
+#import "indigo_ica_ptp_canon.h"
 
 static struct info {
 	const char *match;
@@ -496,7 +498,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	indigo_property *property;
 	sprintf(name, "%04x", code);
-	strncpy(label, [[PTPProperty propertyCodeName:code vendorExtension:camera.info.vendorExtension] cStringUsingEncoding:NSASCIIStringEncoding] + 15, INDIGO_NAME_SIZE);
+	strncpy(label, [[camera.propertyClass propertyCodeName:code] cStringUsingEncoding:NSASCIIStringEncoding] + 15, INDIGO_NAME_SIZE);
 	for (int i = 0; i < dslr_properties[i].code; i++) {
 		if (code == dslr_properties[i].code) {
 			strcpy(name, dslr_properties[i].name);
