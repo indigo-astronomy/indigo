@@ -169,30 +169,58 @@ static struct info {
 #define DSLR_LOCK_ITEM      PRIVATE_DATA->dslr_lock_property->items
 
 struct dslr_properties {
+  PTPVendorExtension extension;
 	PTPPropertyCode code;
 	char *name;
 	char *label;
 } dslr_properties[] = {
-	{ PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
-	{ PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
-	{ PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
-	{ PTPPropertyCodeImageSize, CCD_MODE_PROPERTY_NAME, "Image size" },
-	{ PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
-	{ PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
-	{ PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO" },
-  { PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
-  { PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering" },
-  { PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
-  { PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
-	{ PTPPropertyCodeFocalLength, DSLR_FOCAL_LENGTH_PROPERTY_NAME, "Focal length" },
-	{ PTPPropertyCodeStillCaptureMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
-  { PTPPropertyCodeFlashMode, DSLR_FLASH_MODE_PROPERTY_NAME, "Flash mode" },
-  { PTPPropertyCodeNikonEVStep, DSLR_COMPENSATION_STEP_PROPERTY_NAME, "Compensation step" },
-  { PTPPropertyCodeExposureBiasCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
-  { PTPPropertyCodeNikonFlashExposureCompensation, DSLR_FLASH_COMPENSATION_PROPERTY_NAME, "Flash compensation" },
-  { PTPPropertyCodeNikonExternalFlashMode, DSLR_EXT_FLASH_MODE_PROPERTY_NAME, "External flash mode" },
-  { PTPPropertyCodeNikonExternalFlashCompensation, DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME, "External flash compensation" },
-  { PTPPropertyCodeNikonActivePicCtrlItem, DSLR_PICTURE_STYLE_PROPERTY_NAME, "Picture style" },
+  
+  { 0, PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
+  { 0, PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
+  { 0, PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
+  { 0, PTPPropertyCodeImageSize, CCD_MODE_PROPERTY_NAME, "Image size" },
+  { 0, PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
+  { 0, PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
+  { 0, PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO" },
+  { 0, PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
+  { 0, PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering" },
+  { 0, PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
+  { 0, PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
+  { 0, PTPPropertyCodeFocalLength, DSLR_FOCAL_LENGTH_PROPERTY_NAME, "Focal length" },
+  { 0, PTPPropertyCodeStillCaptureMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
+  { 0, PTPPropertyCodeFlashMode, DSLR_FLASH_MODE_PROPERTY_NAME, "Flash mode" },
+  { 0, PTPPropertyCodeExposureBiasCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
+  
+	{ PTPVendorExtensionNikon, PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
+	{ PTPVendorExtensionNikon, PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
+	{ PTPVendorExtensionNikon, PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
+	{ PTPVendorExtensionNikon, PTPPropertyCodeImageSize, CCD_MODE_PROPERTY_NAME, "Image size" },
+	{ PTPVendorExtensionNikon, PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
+	{ PTPVendorExtensionNikon, PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
+	{ PTPVendorExtensionNikon, PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeNikonAutofocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
+	{ PTPVendorExtensionNikon, PTPPropertyCodeFocalLength, DSLR_FOCAL_LENGTH_PROPERTY_NAME, "Focal length" },
+	{ PTPVendorExtensionNikon, PTPPropertyCodeStillCaptureMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeFlashMode, DSLR_FLASH_MODE_PROPERTY_NAME, "Flash mode" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeNikonEVStep, DSLR_COMPENSATION_STEP_PROPERTY_NAME, "Compensation step" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeExposureBiasCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeNikonFlashExposureCompensation, DSLR_FLASH_COMPENSATION_PROPERTY_NAME, "Flash compensation" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeNikonExternalFlashMode, DSLR_EXT_FLASH_MODE_PROPERTY_NAME, "External flash mode" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeNikonExternalFlashCompensation, DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME, "External flash compensation" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeNikonActivePicCtrlItem, DSLR_PICTURE_STYLE_PROPERTY_NAME, "Picture style" },
+  
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonAutoExposureMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonAperture, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonShutterSpeed, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonImageFormat, CCD_MODE_PROPERTY_NAME, "Image size" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonISOSpeed, DSLR_ISO_PROPERTY_NAME, "ISO" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonExpCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
 	{ 0, NULL, NULL }
 };
 
@@ -337,14 +365,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
     return indigo_ccd_change_property(device, client, property);
 	}
+	// --------------------------------------------------------------------------------
+  PTPVendorExtension extension = camera.extension;
 	for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++) {
 		indigo_property *dslr_property = PRIVATE_DATA->dslr_properties[i];
 		if (indigo_property_match(dslr_property, property)) {
 			indigo_property_copy_values(dslr_property, property, false);
 			PTPPropertyCode code = 0;
 			for (int i = 0; dslr_properties[i].code; i++) {
-				if (!strcmp(dslr_properties[i].name, property->name)) {
+				if (dslr_properties[i].extension == extension && !strcmp(dslr_properties[i].name, property->name)) {
 					code = dslr_properties[i].code;
+          break;
 				}
 			}
 			if (!code)
@@ -499,11 +530,13 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_property *property;
 	sprintf(name, "%04x", code);
 	strncpy(label, [[camera.propertyClass propertyCodeName:code] cStringUsingEncoding:NSASCIIStringEncoding] + 15, INDIGO_NAME_SIZE);
+  PTPVendorExtension extension = camera.extension;
 	for (int i = 0; i < dslr_properties[i].code; i++) {
-		if (code == dslr_properties[i].code) {
+		if (dslr_properties[i].extension == extension && code == dslr_properties[i].code) {
 			strcpy(name, dslr_properties[i].name);
 			strcpy(label, dslr_properties[i].label);
 			group = "DSLR";
+      break;
 		}
 	}
 	for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++) {
@@ -596,9 +629,9 @@ static indigo_result focuser_detach(indigo_device *device) {
 		PRIVATE_DATA->dslr_properties[index] = property = indigo_resize_property(property, (int)values.count);
 		property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
 		int i = 0;
+    char name[INDIGO_NAME_SIZE];
+    char label[INDIGO_VALUE_SIZE];
 		for (NSString *key in values) {
-			char name[INDIGO_NAME_SIZE];
-			char label[INDIGO_VALUE_SIZE];
 			strncpy(name, [key cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
 			strncpy(label, [labels[i] cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_VALUE_SIZE);
 			indigo_init_switch_item(property->items + i, name, label, [key isEqual:value]);

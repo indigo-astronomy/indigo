@@ -423,6 +423,10 @@
   NSTimer *ptpLiveViewTimer;
 }
 
+-(PTPVendorExtension) extension {
+  return PTPVendorExtensionNikon;
+}
+
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate {
   self = [super initWithICCamera:icCamera delegate:delegate];
   if (self) {
@@ -480,80 +484,27 @@
   switch (property.propertyCode) {
     case PTPPropertyCodeExposureProgramMode: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority", @32784: @"Auto", @32785: @"Portrait", @32786: @"Landscape", @32787:@"Macro", @32788: @"Sport", @32789: @"Night portrait", @32790:@"Night landscape", @32791: @"Child", @32792: @"Scene", @32793: @"Effects" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeWhiteBalance: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Auto", @3: @"One-push Auto", @4: @"Daylight", @5: @"Fluorescent", @6: @"Incandescent", @7: @"Flash", @32784: @"Cloudy", @32785: @"Shade", @32786: @"Color Temperature", @32787: @"Preset" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeFocusMeteringMode: {
       NSDictionary *map = @{ @1: @"Center-spot", @2: @"Multi-spot", @32784: @"Single Area", @32785: @"Auto area", @32786: @"3D tracking", @32787: @"21 points", @32788: @"39 points" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeFlashMode: {
       NSDictionary *map = @{ @0: @"Undefined", @1: @"Automatic flash", @2: @"Flash off", @3: @"Fill flash", @4: @"Automatic Red-eye Reduction", @5: @"Red-eye fill flash", @6: @"External sync", @32784: @"Auto", @32785: @"Auto Slow Sync", @32786: @"Rear Curtain Sync + Slow Sync", @32787: @"Red-eye Reduction + Slow Sync" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
-      break;
-    }
-    case PTPPropertyCodeFocusMode: {
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeStillCaptureMode: {
       NSDictionary *map = @{ @1: @"Single shot", @2: @"Continuous", @3:@"Timelapse", @32784: @"Continuous low speed", @32785: @"Timer", @32786: @"Mirror up", @32787: @"Remote", @32788: @"Timer + Remote", @32789: @"Delayed remote", @32790: @"Quiet shutter release" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeNikonLiveViewStatus: {
@@ -570,45 +521,38 @@
     }
     case PTPPropertyCodeNikonExternalFlashMode:
     case PTPPropertyCodeNikonColorSpace: {
-      NSArray *values = @[ @"0", @"1" ];
-      NSArray *labels = @[ @"sRGB", @"Adobe RGB" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"sRGB", @1:@"Adobe RGB" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonLiveViewImageZoomRatio: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5" ];
-      NSArray *labels = @[ @"1x", @"2x", @"3x", @"4x", @"6x", @"8x" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"1x", @1:@"2x", @2:@"3x", @3:@"4x", @4:@"6x", @5:@"8x" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonVignetteCtrl: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3" ];
-      NSArray *labels = @[ @"High", @"Normal", @"Low", @"Off" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"High", @1:@"Normal", @2:@"Low", @3:@"Off" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonBlinkingStatus: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3" ];
-      NSArray *labels = @[ @"None", @"Shutter", @"Aperture", @"Shutter + Aperture" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"None", @1:@"Shutter", @2:@"Aperture", @3:@"Shutter + Aperture" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonCleanImageSensor: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3" ];
-      NSArray *labels = @[ @"At startup", @"At shutdown", @"At startup + shutdown", @"Off" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"At startup", @1:@"At shutdown", @2:@"At startup + shutdown", @3:@"Off" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonHDRMode: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5" ];
-      NSArray *labels = @[ @"Off", @"Low", @"Normal", @"High", @"Extra high", @"Auto" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"Off", @1:@"Low", @2:@"Normal", @3:@"High", @4:@"Extra high", @5:@"Auto" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonMovScreenSize: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5", @"6", @"7" ];
-      NSArray *labels = @[ @"1920x1080 50p", @"1920x1080 25p", @"1920x1080 24p", @"1280x720 50p", @"640x424 25p", @"1920x1080 25p", @"1920x1080 24p", @"1280x720 50p" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"1920x1080 50p", @1:@"1920x1080 25p", @2:@"1920x1080 24p", @3:@"1280x720 50p", @4:@"640x424 25p", @5:@"1920x1080 25p", @6:@"1920x1080 24p", @7:@"1280x720 50p" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonACPower:
@@ -631,15 +575,13 @@
     case PTPPropertyCodeNikonMovWindNoiceReduction:
     case PTPPropertyCodeNikonBracketing:
     case PTPPropertyCodeNikonNoCFCard:{
-      NSArray *values = @[ @"0", @"1" ];
-      NSArray *labels = @[ @"Off", @"On" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"Off", @1:@"On" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonEVStep: {
-      NSArray *values = @[ @"0", @"1" ];
-      NSArray *labels = @[ @"1/3", @"1/2" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"1/3", @1:@"1/2" };
+      [self mapValueInterval:property map:map];
       [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:PTPPropertyCodeExposureBiasCompensation];
       [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:PTPPropertyCodeNikonFlashExposureCompensation];
       [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:PTPPropertyCodeNikonExternalFlashCompensation];
@@ -662,9 +604,8 @@
       break;
     }
     case PTPPropertyCodeNikonCameraInclination: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3" ];
-      NSArray *labels = @[ @"Level", @"Grip is top", @"Grip is bottom", @"Up Down" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"Level", @1:@"Grip is top", @2:@"Grip is bottom", @3:@"Up Down" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonLensID: {
@@ -674,57 +615,48 @@
       break;
     }
     case PTPPropertyCodeNikonLiveViewImageSize: {
-      NSArray *values = @[ @"1", @"2" ];
-      NSArray *labels = @[ @"QVGA", @"VGA" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @1:@"QVGA", @2:@"VGA" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonRawBitMode: {
-      NSArray *values = @[ @"0", @"1" ];
-      NSArray *labels = @[ @"12 bit", @"14 bit" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"12 bit", @1:@"14 bit" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonSaveMedia: {
-      NSArray *values = @[ @"0", @"1", @"2" ];
-      NSArray *labels = @[ @"Card", @"SDRAM", @"Card + SDRAM" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"Card", @1:@"SDRAM", @2:@"Card + SDRAM" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonLiveViewAFArea: {
-      NSArray *values = @[ @"0", @"1", @"2" ];
-      NSArray *labels = @[ @"Face priority", @"Wide area", @"Normal area" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"Face priority", @1:@"Wide area", @2:@"Normal area" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonFlourescentType: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5" ];
-      NSArray *labels = @[ @"Sodium-vapor", @"Warm-white", @"White", @"Cool-white", @"Day white", @"Daylight", @"High temp. mercury-vapor" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"Sodium-vapor", @1:@"Warm-white", @2:@"White", @3:@"Cool-white", @4:@"Day white", @5:@"Daylight", @6:@"High temp. mercury-vapor" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonActiveDLighting: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5" ];
-      NSArray *labels = @[ @"High", @"Normal", @"Low", @"Off", @"Extra high", @"Auto" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"High", @1:@"Normal", @2:@"Low", @3:@"Off", @4:@"Extra high", @5:@"Auto" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonActivePicCtrlItem: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5", @"6", @"7", @"201", @"202", @"203", @"204", @"205", @"206", @"207", @"208", @"209" ];
-      NSArray *labels = @[ @"Undefined", @"Standard", @"Neutral", @"Vivid", @"Monochrome", @"Portrait", @"Landscape", @"Flat", @"Custom 1", @"Custom 2", @"Custom 3", @"Custom 4", @"Custom 5", @"Custom 6", @"Custom 7", @"Custom 8", @"Custom 9" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"Undefined", @1:@"Standard", @2:@"Neutral", @3:@"Vivid", @4:@"Monochrome", @5:@"Portrait", @6:@"Landscape", @7:@"Flat", @201:@"Custom 1", @202:@"Custom 2", @203:@"Custom 3", @204:@"Custom 4", @205:@"Custom 5", @206:@"Custom 6", @207:@"Custom 7", @208:@"Custom 8", @209:@"Custom 9" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonEffectMode: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5", @"6" ];
-      NSArray *labels = @[ @"Night Vision", @"Color Sketch", @"Miniature Effect", @"Selective Color", @"Silhouette", @"High Key", @"Low Key" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"Night Vision", @1:@"Color Sketch", @2:@"Miniature Effect", @3:@"Selective Color", @4:@"Silhouette", @5:@"High Key", @6:@"Low Key" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonSceneMode: {
-      NSArray *values = @[ @"0", @"1", @"2", @"3", @"4", @"5", @"6", @"7", @"8", @"9", @"10", @"11", @"12", @"13", @"14", @"15", @"16", @"17", @"18" ];
-      NSArray *labels = @[ @"NightLandscape", @"PartyIndoor", @"BeachSnow", @"Sunset", @"Duskdawn", @"Petportrait", @"Candlelight", @"Blossom", @"AutumnColors", @"Food", @"Silhouette", @"Highkey", @"Lowkey", @"Portrait", @"Landscape", @"Child", @"Sports", @"Closeup", @"NightPortrait" ];
-      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      NSDictionary *map = @{ @0:@"NightLandscape", @1:@"PartyIndoor", @2:@"BeachSnow", @3:@"Sunset", @4:@"Duskdawn", @5:@"Petportrait", @6:@"Candlelight", @7:@"Blossom", @8:@"AutumnColors", @9:@"Food", @10:@"Silhouette", @11:@"Highkey", @12:@"Lowkey", @13:@"Portrait", @14:@"Landscape", @15:@"Child", @16:@"Sports", @17:@"Closeup", @18:@"NightPortrait" };
+      [self mapValueInterval:property map:map];
       break;
     }
     case PTPPropertyCodeNikonLiveViewAFFocus: {
@@ -737,13 +669,18 @@
       }
       break;
     }
+    case PTPPropertyCodeFocusMode: {
+      NSDictionary *map = @{ @1: @"Manual", @2: @"Automatic", @3:@"Macro", @32784:@"AF-S", @32785:@"AF-C", @32786:@"AF-A", @32787:@"M" };
+      [self mapValueList:property map:map];
+      break;
+    }
     case PTPPropertyCodeNikonAutofocusMode: {
       if (property.value.description.intValue == 3) {
-        [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:@"3" values:@[@"3"] labels:@[@"M (fixed)"] readOnly:true];
+        [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"3" values:@[@"3"] labels:@[@"M (fixed)"] readOnly:true];
       } else if (property.max.intValue == 1) {
-        [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:property.value.description values:@[@"0", @"1"] labels:@[@"AF-S", @"AF-C"] readOnly:property.readOnly];
+        [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:@[@"0", @"1"] labels:@[@"AF-S", @"AF-C"] readOnly:property.readOnly];
       } else {
-        [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeFocusMode value:property.value.description values:@[@"0", @"1", @"2", @"4"] labels:@[@"AF-S", @"AF-C", @"AF-A", @"M"] readOnly:property.readOnly];
+        [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:@[@"0", @"1", @"2", @"4"] labels:@[@"AF-S", @"AF-C", @"AF-A", @"M"] readOnly:property.readOnly];
       }
       break;
     }
@@ -946,12 +883,6 @@
       [super processRequest:request Response:response inData:data];
     }
   }
-}
-
--(void)setProperty:(PTPPropertyCode)code value:(NSString *)value {
-  if (code == PTPPropertyCodeFocusMode)
-    code = PTPPropertyCodeNikonAutofocusMode;
-  [super setProperty:code value:value];
 }
 
 -(void)getLiveViewImage {

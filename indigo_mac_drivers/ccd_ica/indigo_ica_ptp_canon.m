@@ -419,6 +419,10 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 
 @implementation PTPCanonCamera
 
+-(PTPVendorExtension) extension {
+  return PTPVendorExtensionCanon;
+}
+
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate {
   self = [super initWithICCamera:icCamera delegate:delegate];
   if (self) {
@@ -573,11 +577,8 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
               case PTPPropertyCodeCanonEVFOutputDevice:
               case PTPPropertyCodeCanonAutoPowerOff:
               case PTPPropertyCodeCanonEVFRecordStatus:
-                property.type = PTPDataTypeCodeUInt16;
-                break;
               case PTPPropertyCodeCanonAutoExposureMode:
                 property.type = PTPDataTypeCodeUInt16;
-                property.supportedValues = @[];
                 break;
               case PTPPropertyCodeCanonWhiteBalanceAdjustA:
               case PTPPropertyCodeCanonWhiteBalanceAdjustB:
@@ -598,6 +599,24 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
               case PTPPropertyCodeCanonStroboFiring:
               case PTPPropertyCodeCanonAFSelectFocusArea:
               case PTPPropertyCodeCanonContinousAFMode:
+              case PTPPropertyCodeCanonColorTemperature:
+              case PTPPropertyCodeCanonWftStatus:
+              case PTPPropertyCodeCanonLensStatus:
+              case PTPPropertyCodeCanonCardExtension:
+              case PTPPropertyCodeCanonTempStatus:
+              case PTPPropertyCodeCanonPhotoStudioMode:
+              case PTPPropertyCodeCanonDepthOfFieldPreview:
+              case PTPPropertyCodeCanonEVFSharpness:
+              case PTPPropertyCodeCanonEVFWBMode:
+              case PTPPropertyCodeCanonEVFClickWBCoeffs:
+              case PTPPropertyCodeCanonEVFColorTemp:
+              case PTPPropertyCodeCanonExposureSimMode:
+              case PTPPropertyCodeCanonLvAfSystem:
+              case PTPPropertyCodeCanonMovSize:
+              case PTPPropertyCodeCanonDepthOfField:
+              case PTPPropertyCodeCanonLvViewTypeSelect:
+              case PTPPropertyCodeCanonAloMode:
+              case PTPPropertyCodeCanonBrightness:
                 property.type = PTPDataTypeCodeUInt32;
                 break;
               case PTPPropertyCodeCanonOwner:
@@ -635,7 +654,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
               self.info.properties[[NSNumber numberWithUnsignedShort:code]] = property;
               [properties addObject:property];
             }
-            NSLog(@"PTPEventCodeCanonPropValueChanged %@", property);
+            NSLog(@"PTPEventCodeCanonPropValueChanged %2d %@", size, property);
             break;
           }
           case PTPEventCodeCanonAvailListChanged: {
@@ -657,7 +676,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
             }
             property.supportedValues = values;
             [properties addObject:property];
-            NSLog(@"PTPEventCodeCanonAvailListChanged %@", property);
+            NSLog(@"PTPEventCodeCanonAvailListChanged %2d %@", size, property);
             break;
           }
           default:
@@ -670,92 +689,42 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
         switch (property.propertyCode) {
           case PTPPropertyCodeCanonAperture: {
             NSDictionary *map = @{ @0x08: @"f/1", @0x0B: @"f/1.1", @0x0C: @"f/1.2", @0x0D: @"f/1.2*", @0x10: @"f/1.4", @0x13: @"f/1.6", @0x14: @"f/1.8", @0x15: @"f/1.8*", @0x18: @"f/2", @0x1B: @"f/2.2", @0x1C: @"f/2.5", @0x1D: @"f/2.5*", @0x20: @"f/2.8", @0x23: @"f/3.2", @0x24: @"f/3.5", @0x25: @"f/3.5*", @0x28: @"f/4", @0x2B: @"f/4.5", @0x2C: @"f/4.5", @0x2D: @"f/5.0", @0x30: @"f/5.6", @0x33: @"f/6.3", @0x34: @"f/6.7", @0x35: @"f/7.1", @0x38: @"f/8", @0x3B: @"f/9", @0x3C: @"f/9.5", @0x3D: @"f/10", @0x40: @"f/11", @0x43: @"f/13*", @0x44: @"f/13", @0x45: @"f/14", @0x48: @"f/16", @0x4B: @"f/18", @0x4C: @"f/19", @0x4D: @"f/20", @0x50: @"f/22", @0x53: @"f/25", @0x54: @"f/27", @0x55: @"f/29", @0x58: @"f/32", @0x5B: @"f/36", @0x5C: @"f/38", @0x5D: @"f/40", @0x60: @"f/45", @0x63: @"f/51", @0x64: @"f/54", @0x65: @"f/57", @0x68: @"f/64", @0x6B: @"f/72", @0x6C: @"f/76", @0x6D: @"f/80", @0x70: @"f/91" };
-            NSMutableArray *values = [NSMutableArray array];
-            NSMutableArray *labels = [NSMutableArray array];
-            for (NSNumber *value in property.supportedValues) {
-              [values addObject:value.description];
-              NSString *label = map[value];
-              if (label)
-                [labels addObject:label];
-              else
-                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-            }
-            [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonShutterSpeed: {
             NSDictionary *map = @{ @0x0C: @"Bulb", @0x10: @"30s", @0x13: @"25s", @0x14: @"20s", @0x15: @"20*s", @0x18: @"15s", @0x1B: @"13s", @0x1C: @"10s", @0x1D: @"10*s", @0x20: @"8s", @0x23: @"6*s", @0x24: @"6s", @0x25: @"5s", @0x28: @"4s", @0x2B: @"3.2s", @0x2C: @"3s", @0x2D: @"2.5s", @0x30: @"2s", @0x33: @"1.6s", @0x34: @"15s", @0x35: @"1.3s", @0x38: @"1s", @0x3B: @"0.8s", @0x3C: @"0.7s", @0x3D: @"0.6s", @0x40: @"0.5s", @0x43: @"0.4s", @0x44: @"0.3s", @0x45: @"0.3*s", @0x48: @"1/4s", @0x4B: @"1/5s", @0x4C: @"1/6s", @0x4D: @"1/6*s", @0x50: @"1/8s", @0x53: @"1/10*s", @0x54: @"1/10s", @0x55: @"1/13s", @0x58: @"1/15s", @0x5B: @"1/20*s", @0x5C: @"1/20s", @0x5D: @"1/25s", @0x60: @"1/30s", @0x63: @"1/40s", @0x64: @"1/45s", @0x65: @"1/50s", @0x68: @"1/60s", @0x6B: @"1/80s", @0x6C: @"1/90s", @0x6D: @"1/100s", @0x70: @"1/125s", @0x73: @"1/160s", @0x74: @"1/180s", @0x75: @"1/200s", @0x78: @"1/250s", @0x7B: @"1/320s", @0x7C: @"1/350s", @0x7D: @"1/400s", @0x80: @"1/500s", @0x83: @"1/640s", @0x84: @"1/750s", @0x85: @"1/800s", @0x88: @"1/1000s", @0x8B: @"1/1250s", @0x8C: @"1/1500s", @0x8D: @"1/1600s", @0x90: @"1/2000s", @0x93: @"1/2500s", @0x94: @"1/3000s", @0x95: @"1/3200s", @0x98: @"1/4000s", @0x9B: @"1/5000s", @0x9C: @"1/6000s", @0x9D: @"1/6400s", @0xA0: @"1/8000s" };
-            NSMutableArray *values = [NSMutableArray array];
-            NSMutableArray *labels = [NSMutableArray array];
-            for (NSNumber *value in property.supportedValues) {
-              [values addObject:value.description];
-              NSString *label = map[value];
-              if (label)
-                [labels addObject:label];
-              else
-                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-            }
-            [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonISOSpeed: {
             NSDictionary *map = @{ @0x00: @"Auto", @0x40: @"50", @0x48: @"100", @0x4b: @"125", @0x4d: @"160", @0x50: @"200", @0x53: @"250", @0x55: @"320", @0x58: @"400", @0x5b: @"500", @0x5d: @"640", @0x60: @"800", @0x63: @"1000", @0x65: @"1250", @0x68: @"1600", @0x6b: @"2000", @0x6d: @"2500", @0x70: @"3200", @0x73: @"4000", @0x75: @"5000", @0x78: @"6400", @0x7b: @"8000", @0x7d: @"10000", @0x80: @"12800", @0x88: @"25600", @0x90: @"51200", @0x98: @"102400" };
-            NSMutableArray *values = [NSMutableArray array];
-            NSMutableArray *labels = [NSMutableArray array];
-            for (NSNumber *value in property.supportedValues) {
-              [values addObject:value.description];
-              NSString *label = map[value];
-              if (label)
-                [labels addObject:label];
-              else
-                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-            }
-            [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonExpCompensation: {
-            NSDictionary *map = @{ @0x18: @"+3", @0x15: @"+2 2/3", @0x14: @"+2 1/2", @0x13: @"+2 1/3", @0x10: @"+2", @0x0D: @"+1 2/3", @0x0C: @"+1 1/2", @0x0B: @"+1 1/3", @0x08: @"+1", @0x05: @"+2/3", @0x04: @"+1/2", @0x03: @"+1/3", @0x00: @"0", @0xFD: @"–1/3", @0xFC: @"–1/2", @0xFB: @"–2/3", @0xF8: @"–1", @0xF5: @"–1 1/3", @0xF4: @"–1 1/2", @0xF3: @"–1 2/3", @0xF0: @"–2", @0xED: @"–2 1/3", @0xEC: @"–2 1/2", @0xEB: @"–2 2/3", @0xE8: @"–3" };
-            NSMutableArray *values = [NSMutableArray array];
-            NSMutableArray *labels = [NSMutableArray array];
-            for (NSNumber *value in property.supportedValues) {
-              [values addObject:value.description];
-              NSString *label = map[value];
-              if (label)
-                [labels addObject:label];
-              else
-                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-            }
-            [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            NSDictionary *map = @{ @0x18: @"+3", @0x15: @"+2 2/3", @0x14: @"+2 1/2", @0x13: @"+2 1/3", @0x10: @"+2", @0x0D: @"+1 2/3", @0x0C: @"+1 1/2", @0x0B: @"+1 1/3", @0x08: @"+1", @0x05: @"+2/3", @0x04: @"+1/2", @0x03: @"+1/3", @0x00: @"0", @0xFD: @"-1/3", @0xFC: @"-1/2", @0xFB: @"-2/3", @0xF8: @"-1", @0xF5: @"-1 1/3", @0xF4: @"-1 1/2", @0xF3: @"-1 2/3", @0xF0: @"-2", @0xED: @"-2 1/3", @0xEC: @"-2 1/2", @0xEB: @"-2 2/3", @0xE8: @"-3" };
+            [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonMeteringMode: {
             NSDictionary *map = @{ @1: @"Spot", @3: @"Evaluative", @4: @"Partial", @5: @"Center-weighted" };
-            NSMutableArray *values = [NSMutableArray array];
-            NSMutableArray *labels = [NSMutableArray array];
-            for (NSNumber *value in property.supportedValues) {
-              [values addObject:value.description];
-              NSString *label = map[value];
-              if (label)
-                [labels addObject:label];
-              else
-                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-            }
-            [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            [self mapValueList:property map:map];
             break;
           }
-          case PTPPropertyCodeCanonDriveMode: {
+          case PTPPropertyCodeCanonAutoExposureMode: {
             NSDictionary *map = @{ @0: @"Program AE", @1: @"Shutter Priority AE", @2: @"Aperture Priority AE", @3: @"Manual Exposure", @4: @"Bulb", @5: @"Auto DEP AE", @6: @"DEP AE", @8: @"Lock", @9: @"Auto", @10: @"Night Scene Portrait", @11: @"Sports", @12: @"Portrait", @13: @"Landscape", @14: @"Close-Up", @15: @"Flash Off", @19: @"Creative Auto", @22: @"Scene Intelligent Auto" };
-            NSMutableArray *values = [NSMutableArray array];
-            NSMutableArray *labels = [NSMutableArray array];
-            for (NSNumber *value in property.supportedValues) {
-              [values addObject:value.description];
-              NSString *label = map[value];
-              if (label)
-                [labels addObject:label];
-              else
-                [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-            }
-            [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonWhiteBalance: {
+            NSDictionary *map = @{ @0: @"Auto", @1: @"Daylight", @2: @"Cloudy", @3: @"Tungsten", @4: @"Fluorescent", @5: @"Flash", @6: @"Manual", @9: @"Color temperature", @10: @"Custom white balance: PC-1", @11: @"Custom white balance: PC-2", @12: @"Custom white balance: PC-3", @15: @"Manual 2", @16: @"Manual 3", @18: @"Manual 4", @19: @"Manual 5", @20: @"Custom white balance: PC-4", @21: @"Custom white balance: PC-5" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonFocusMode: {
+            NSDictionary *map = @{ @0: @"One-Shot AF", @1: @"AI Servo AF", @2: @"AI Focus AF", @3: @"Manual" };
+            [self mapValueInterval:property map:map];
             break;
           }
           default: {

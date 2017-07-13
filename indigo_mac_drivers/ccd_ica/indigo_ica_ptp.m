@@ -936,6 +936,10 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   return _icCamera.name;
 }
 
+-(PTPVendorExtension) extension {
+  return 0;
+}
+
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate {
   self = [super init];
   if (self) {
@@ -1012,21 +1016,44 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
+-(void)mapValueList:(PTPProperty *)property map:(NSDictionary *)map {
+  NSMutableArray *values = [NSMutableArray array];
+  NSMutableArray *labels = [NSMutableArray array];
+  if (property.value) {
+    for (NSObject *value in property.supportedValues) {
+      [values addObject:value.description];
+      NSString *label = map[value];
+      if (label)
+        [labels addObject:label];
+      else
+        [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
+    }
+    [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+  } else {
+    [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:true];
+  }
+}
+
+-(void)mapValueInterval:(PTPProperty *)property map:(NSDictionary *)map {
+  NSMutableArray *values = [NSMutableArray array];
+  NSMutableArray *labels = [NSMutableArray array];
+  NSArray *keys = [[map allKeys] sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2) { int val1 = [obj1 intValue]; int val2 = [obj2 intValue]; if ( val1 < val2 ) return (NSComparisonResult)NSOrderedAscending; else if ( val1 > val2 ) return (NSComparisonResult)NSOrderedDescending; return (NSComparisonResult)NSOrderedSame; }];
+  for (NSObject *value in keys) {
+    [values addObject:value.description];
+    NSString *label = map[value];
+    if (label)
+      [labels addObject:label];
+    else
+      [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
+  }
+  [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+}
+
 -(void)processPropertyDescription:(PTPProperty *)property {
   switch (property.propertyCode) {
     case PTPPropertyCodeExposureProgramMode: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeFNumber: {
@@ -1083,32 +1110,12 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     }
     case PTPPropertyCodeCompressionSetting: {
       NSDictionary *map = @{ @0: @"JPEG Basic", @1: @"JPEG Norm", @2: @"JPEG Fine", @4: @"RAW", @5: @"RAW + JPEG Basic", @6: @"RAW + JPEG Norm", @7: @"RAW + JPEG Fine" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeWhiteBalance: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Auto", @3: @"One-push Auto", @4: @"Daylight", @5: @"Fluorescent", @6: @"Incandescent", @7: @"Flash" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeExposureIndex: {
@@ -1133,32 +1140,12 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     }
     case PTPPropertyCodeExposureMeteringMode: {
       NSDictionary *map = @{ @1: @"Average", @2: @"Center-Weighted Average", @3: @"Multi-spot", @4: @"Center-spot" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeFocusMeteringMode: {
       NSDictionary *map = @{ @1: @"Center-spot", @2: @"Multi-spot" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeFocalLength: {
@@ -1167,47 +1154,17 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     }
     case PTPPropertyCodeFlashMode: {
       NSDictionary *map = @{ @0: @"Undefined", @1: @"Automatic flash", @2: @"Flash off", @3: @"Fill flash", @4: @"Automatic Red-eye Reduction", @5: @"Red-eye fill flash", @6: @"External sync" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeFocusMode: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Automatic", @3:@"Macro" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeStillCaptureMode: {
       NSDictionary *map = @{ @1: @"Single shot", @2: @"Continuous", @3:@"Timelapse" };
-      NSMutableArray *values = [NSMutableArray array];
-      NSMutableArray *labels = [NSMutableArray array];
-      for (NSNumber *value in property.supportedValues) {
-        [values addObject:value.description];
-        NSString *label = map[value];
-        if (label)
-          [labels addObject:label];
-        else
-          [labels addObject:[NSString stringWithFormat:@"0x%04x", value.intValue]];
-      }
-      [_delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      [self mapValueList:property map:map];
       break;
     }
     default: {
