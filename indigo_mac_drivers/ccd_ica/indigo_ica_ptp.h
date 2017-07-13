@@ -432,6 +432,7 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 @property (readonly) ICCameraDevice *icCamera;
 @property (readonly) NSObject<PTPDelegateProtocol> *delegate;
 @property (readonly) NSString *name;
+@property (readonly) PTPVendorExtension extension;
 
 @property (readonly) Class requestClass;
 @property (readonly) Class responseClass;
@@ -449,6 +450,8 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)processEvent:(PTPEvent *)event;
 -(void)processPropertyDescription:(PTPProperty *)property;
 -(void)processRequest:(PTPRequest *)request Response:(PTPResponse *)response inData:(NSData*)data;
+-(void)mapValueList:(PTPProperty *)property map:(NSDictionary *)map;
+-(void)mapValueInterval:(PTPProperty *)property map:(NSDictionary *)map;
 
 -(void)requestOpenSession;
 -(void)requestCloseSession;
