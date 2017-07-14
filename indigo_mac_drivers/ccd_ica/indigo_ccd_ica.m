@@ -508,7 +508,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 -(void)cameraConnected:(PTPCamera*)camera {
   [camera requestEnableTethering];
   sleep(1);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
+	indigo_log("%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	if (device) {
 		for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
@@ -809,7 +809,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 -(void)cameraDisconnected:(PTPCamera*)camera {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
+	indigo_log("%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	if (device) {
     indigo_device *focuser = PRIVATE_DATA->focuser;

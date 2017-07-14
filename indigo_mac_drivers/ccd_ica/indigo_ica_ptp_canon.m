@@ -10,46 +10,20 @@
 
 #import "indigo_ica_ptp_canon.h"
 
-static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
-  NSMutableString *result;
+static long ptpReadCanonImageFormat(unsigned char** buf) {
+  long result;
   unsigned int count = ptpReadUnsignedInt(buf);
-  ptpReadUnsignedInt(buf);
-  ptpReadUnsignedInt(buf);
-  unsigned int quality = ptpReadUnsignedInt(buf);
-  unsigned int compression = ptpReadUnsignedInt(buf);
-  if (compression == 4)
-    result = [NSMutableString stringWithString:@"RAW"];
-  else if (quality == 0)
-    result = [NSMutableString stringWithFormat:@"Large %@JPEG",( compression == 2 ? @"" : @"fine ")];
-  else if (quality == 1)
-    result = [NSMutableString stringWithFormat:@"Medium %@JPEG",( compression == 2 ? @"" : @"fine ")];
-  else if (quality == 2)
-    result = [NSMutableString stringWithFormat:@"Small %@JPEG",( compression == 2 ? @"" : @"fine ")];
-  else if (quality == 14)
-    result = [NSMutableString stringWithFormat:@"S1 %@JPEG",( compression == 2 ? @"" : @"fine ")];
-  else if (quality == 15)
-    result = [NSMutableString stringWithFormat:@"S2 %@JPEG",( compression == 2 ? @"" : @"fine ")];
-  else if (quality == 16)
-    result = [NSMutableString stringWithFormat:@"S3 %@JPEG",( compression == 2 ? @"" : @"fine ")];
+  unsigned int size = ptpReadUnsignedInt(buf) & 0xFF;
+  unsigned int format = ptpReadUnsignedInt(buf) & 0xFF;
+  unsigned int quality = ptpReadUnsignedInt(buf) & 0xFF;
+  unsigned int compression = ptpReadUnsignedInt(buf) & 0xFF;
+  result = size << 24 | format << 16 | quality << 8 | compression;
   if (count == 2) {
-    ptpReadUnsignedInt(buf);
-    ptpReadUnsignedInt(buf);
+    size = ptpReadUnsignedInt(buf);
+    format = ptpReadUnsignedInt(buf);
     quality = ptpReadUnsignedInt(buf);
     compression = ptpReadUnsignedInt(buf);
-    if (compression == 4)
-      [result appendString:@" + RAW"];
-    else if (quality == 0)
-      [result appendFormat:@" + Large %@JPEG",( compression == 2 ? @"" : @"fine ")];
-    else if (quality == 1)
-      [result appendFormat:@" + Medium %@JPEG",( compression == 2 ? @"" : @"fine ")];
-    else if (quality == 2)
-      [result appendFormat:@" + Small %@JPEG",( compression == 2 ? @"" : @"fine ")];
-    else if (quality == 14)
-      [result appendFormat:@" + S1 %@JPEG",( compression == 2 ? @"" : @"fine ")];
-    else if (quality == 15)
-      [result appendFormat:@" + S2 %@JPEG",( compression == 2 ? @"" : @"fine ")];
-    else if (quality == 16)
-      [result appendFormat:@" + S3 %@JPEG",( compression == 2 ? @"" : @"fine ")];
+    result = result << 32 | size << 24 | format << 16 | quality << 8 | compression;
   }
   return result;
 }
@@ -626,6 +600,12 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
               case PTPPropertyCodeCanonLensName:
                 property.type = PTPDataTypeCodeUnicodeString;
                 break;
+              case PTPPropertyCodeCanonImageFormat:
+              case PTPPropertyCodeCanonImageFormatCF:
+              case PTPPropertyCodeCanonImageFormatSD:
+              case PTPPropertyCodeCanonImageFormatExtHD:
+                property.type = PTPDataTypeCodeUInt64; // packed image format
+                break;
             }
             switch (property.type) {
               case PTPDataTypeCodeUInt8:
@@ -640,21 +620,20 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
               case PTPDataTypeCodeUInt32:
                 property.defaultValue = property.value = [NSNumber numberWithUnsignedInt:ptpReadUnsignedInt(&buf)];
                 break;
+              case PTPDataTypeCodeUInt64: // packed image format
+                property.defaultValue = property.value = [NSNumber numberWithUnsignedLong:ptpReadCanonImageFormat(&buf)];
+                break;
               case PTPDataTypeCodeUnicodeString:
                 property.defaultValue = property.value = [NSString stringWithCString:(char *)buf encoding:NSASCIIStringEncoding];
                 if (property.value == nil)
                   property.value = @"";
                 break;
             }
-            if (code == PTPPropertyCodeCanonImageFormat || code == PTPPropertyCodeCanonImageFormatCF || code == PTPPropertyCodeCanonImageFormatSD || code == PTPPropertyCodeCanonImageFormatExtHD) {
-              property.type = PTPDataTypeCodeUnicodeString;
-              property.defaultValue = property.value = ptpReadCanonImageFormat(&buf);
-            }
             if (property.type != PTPDataTypeCodeUndefined) {
               self.info.properties[[NSNumber numberWithUnsignedShort:code]] = property;
               [properties addObject:property];
             }
-            NSLog(@"PTPEventCodeCanonPropValueChanged %2d %@", size, property);
+            NSLog(@"PTPEventCodeCanonPropValueChanged %@", property);
             break;
           }
           case PTPEventCodeCanonAvailListChanged: {
@@ -669,14 +648,14 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
             NSMutableArray *values = [NSMutableArray array];
             if (code == PTPPropertyCodeCanonImageFormat || code == PTPPropertyCodeCanonImageFormatCF || code == PTPPropertyCodeCanonImageFormatSD || code == PTPPropertyCodeCanonImageFormatExtHD) {
               for (int i = 0; i < count; i++)
-                [values addObject:ptpReadCanonImageFormat(&buf)];
+                [values addObject:[NSNumber numberWithUnsignedLong:ptpReadCanonImageFormat(&buf)]];
             } else {
               for (int i = 0; i < count; i++)
                 [values addObject:[NSNumber numberWithUnsignedInt:ptpReadUnsignedInt(&buf)]];
             }
             property.supportedValues = values;
             [properties addObject:property];
-            NSLog(@"PTPEventCodeCanonAvailListChanged %2d %@", size, property);
+            NSLog(@"PTPEventCodeCanonAvailListChanged %@", property);
             break;
           }
           default:
@@ -687,13 +666,34 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
       }
       for (PTPProperty *property in properties) {
         switch (property.propertyCode) {
+          case PTPPropertyCodeCanonWhiteBalanceAdjustA:
+          case PTPPropertyCodeCanonWhiteBalanceAdjustB: {
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
+            for (NSNumber *value in property.supportedValues) {
+              int i = value.intValue;
+              [values addObject:value.description];
+              [labels addObject:[NSString stringWithFormat:@"%d", i]];
+            }
+            if (property.value)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            else
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:true];
+            break;
+          }
+          case PTPPropertyCodeCanonModelID:
+          case PTPPropertyCodeCanonCurrentFolder:
+          case PTPPropertyCodeCanonCameraTime: {
+            [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description readOnly:property.readOnly];
+            break;
+          }
           case PTPPropertyCodeCanonAperture: {
-            NSDictionary *map = @{ @0x08: @"f/1", @0x0B: @"f/1.1", @0x0C: @"f/1.2", @0x0D: @"f/1.2*", @0x10: @"f/1.4", @0x13: @"f/1.6", @0x14: @"f/1.8", @0x15: @"f/1.8*", @0x18: @"f/2", @0x1B: @"f/2.2", @0x1C: @"f/2.5", @0x1D: @"f/2.5*", @0x20: @"f/2.8", @0x23: @"f/3.2", @0x24: @"f/3.5", @0x25: @"f/3.5*", @0x28: @"f/4", @0x2B: @"f/4.5", @0x2C: @"f/4.5", @0x2D: @"f/5.0", @0x30: @"f/5.6", @0x33: @"f/6.3", @0x34: @"f/6.7", @0x35: @"f/7.1", @0x38: @"f/8", @0x3B: @"f/9", @0x3C: @"f/9.5", @0x3D: @"f/10", @0x40: @"f/11", @0x43: @"f/13*", @0x44: @"f/13", @0x45: @"f/14", @0x48: @"f/16", @0x4B: @"f/18", @0x4C: @"f/19", @0x4D: @"f/20", @0x50: @"f/22", @0x53: @"f/25", @0x54: @"f/27", @0x55: @"f/29", @0x58: @"f/32", @0x5B: @"f/36", @0x5C: @"f/38", @0x5D: @"f/40", @0x60: @"f/45", @0x63: @"f/51", @0x64: @"f/54", @0x65: @"f/57", @0x68: @"f/64", @0x6B: @"f/72", @0x6C: @"f/76", @0x6D: @"f/80", @0x70: @"f/91" };
+            NSDictionary *map = @{ @0x08: @"f/1", @0x0B: @"f/1.1", @0x0C: @"f/1.2", @0x0D: @"f/1.2", @0x10: @"f/1.4", @0x13: @"f/1.6", @0x14: @"f/1.8", @0x15: @"f/1.8", @0x18: @"f/2", @0x1B: @"f/2.2", @0x1C: @"f/2.5", @0x1D: @"f/2.5", @0x20: @"f/2.8", @0x23: @"f/3.2", @0x24: @"f/3.5", @0x25: @"f/3.5", @0x28: @"f/4", @0x2B: @"f/4.5", @0x2C: @"f/4.5", @0x2D: @"f/5.0", @0x30: @"f/5.6", @0x33: @"f/6.3", @0x34: @"f/6.7", @0x35: @"f/7.1", @0x38: @"f/8", @0x3B: @"f/9", @0x3C: @"f/9.5", @0x3D: @"f/10", @0x40: @"f/11", @0x43: @"f/13", @0x44: @"f/13", @0x45: @"f/14", @0x48: @"f/16", @0x4B: @"f/18", @0x4C: @"f/19", @0x4D: @"f/20", @0x50: @"f/22", @0x53: @"f/25", @0x54: @"f/27", @0x55: @"f/29", @0x58: @"f/32", @0x5B: @"f/36", @0x5C: @"f/38", @0x5D: @"f/40", @0x60: @"f/45", @0x63: @"f/51", @0x64: @"f/54", @0x65: @"f/57", @0x68: @"f/64", @0x6B: @"f/72", @0x6C: @"f/76", @0x6D: @"f/80", @0x70: @"f/91" };
             [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonShutterSpeed: {
-            NSDictionary *map = @{ @0x0C: @"Bulb", @0x10: @"30s", @0x13: @"25s", @0x14: @"20s", @0x15: @"20*s", @0x18: @"15s", @0x1B: @"13s", @0x1C: @"10s", @0x1D: @"10*s", @0x20: @"8s", @0x23: @"6*s", @0x24: @"6s", @0x25: @"5s", @0x28: @"4s", @0x2B: @"3.2s", @0x2C: @"3s", @0x2D: @"2.5s", @0x30: @"2s", @0x33: @"1.6s", @0x34: @"15s", @0x35: @"1.3s", @0x38: @"1s", @0x3B: @"0.8s", @0x3C: @"0.7s", @0x3D: @"0.6s", @0x40: @"0.5s", @0x43: @"0.4s", @0x44: @"0.3s", @0x45: @"0.3*s", @0x48: @"1/4s", @0x4B: @"1/5s", @0x4C: @"1/6s", @0x4D: @"1/6*s", @0x50: @"1/8s", @0x53: @"1/10*s", @0x54: @"1/10s", @0x55: @"1/13s", @0x58: @"1/15s", @0x5B: @"1/20*s", @0x5C: @"1/20s", @0x5D: @"1/25s", @0x60: @"1/30s", @0x63: @"1/40s", @0x64: @"1/45s", @0x65: @"1/50s", @0x68: @"1/60s", @0x6B: @"1/80s", @0x6C: @"1/90s", @0x6D: @"1/100s", @0x70: @"1/125s", @0x73: @"1/160s", @0x74: @"1/180s", @0x75: @"1/200s", @0x78: @"1/250s", @0x7B: @"1/320s", @0x7C: @"1/350s", @0x7D: @"1/400s", @0x80: @"1/500s", @0x83: @"1/640s", @0x84: @"1/750s", @0x85: @"1/800s", @0x88: @"1/1000s", @0x8B: @"1/1250s", @0x8C: @"1/1500s", @0x8D: @"1/1600s", @0x90: @"1/2000s", @0x93: @"1/2500s", @0x94: @"1/3000s", @0x95: @"1/3200s", @0x98: @"1/4000s", @0x9B: @"1/5000s", @0x9C: @"1/6000s", @0x9D: @"1/6400s", @0xA0: @"1/8000s" };
+            NSDictionary *map = @{ @0x0C: @"Bulb", @0x10: @"30s", @0x13: @"25s", @0x14: @"20s", @0x15: @"20s", @0x18: @"15s", @0x1B: @"13s", @0x1C: @"10s", @0x1D: @"10s", @0x20: @"8s", @0x23: @"6s", @0x24: @"6s", @0x25: @"5s", @0x28: @"4s", @0x2B: @"3.2s", @0x2C: @"3s", @0x2D: @"2.5s", @0x30: @"2s", @0x33: @"1.6s", @0x34: @"15s", @0x35: @"1.3s", @0x38: @"1s", @0x3B: @"0.8s", @0x3C: @"0.7s", @0x3D: @"0.6s", @0x40: @"0.5s", @0x43: @"0.4s", @0x44: @"0.3s", @0x45: @"0.3s", @0x48: @"1/4s", @0x4B: @"1/5s", @0x4C: @"1/6s", @0x4D: @"1/6s", @0x50: @"1/8s", @0x53: @"1/10s", @0x54: @"1/10s", @0x55: @"1/13s", @0x58: @"1/15s", @0x5B: @"1/20s", @0x5C: @"1/20s", @0x5D: @"1/25s", @0x60: @"1/30s", @0x63: @"1/40s", @0x64: @"1/45s", @0x65: @"1/50s", @0x68: @"1/60s", @0x6B: @"1/80s", @0x6C: @"1/90s", @0x6D: @"1/100s", @0x70: @"1/125s", @0x73: @"1/160s", @0x74: @"1/180s", @0x75: @"1/200s", @0x78: @"1/250s", @0x7B: @"1/320s", @0x7C: @"1/350s", @0x7D: @"1/400s", @0x80: @"1/500s", @0x83: @"1/640s", @0x84: @"1/750s", @0x85: @"1/800s", @0x88: @"1/1000s", @0x8B: @"1/1250s", @0x8C: @"1/1500s", @0x8D: @"1/1600s", @0x90: @"1/2000s", @0x93: @"1/2500s", @0x94: @"1/3000s", @0x95: @"1/3200s", @0x98: @"1/4000s", @0x9B: @"1/5000s", @0x9C: @"1/6000s", @0x9D: @"1/6400s", @0xA0: @"1/8000s" };
             [self mapValueList:property map:map];
             break;
           }
@@ -717,14 +717,70 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
             [self mapValueInterval:property map:map];
             break;
           }
+          case PTPPropertyCodeCanonEVFWBMode:
           case PTPPropertyCodeCanonWhiteBalance: {
             NSDictionary *map = @{ @0: @"Auto", @1: @"Daylight", @2: @"Cloudy", @3: @"Tungsten", @4: @"Fluorescent", @5: @"Flash", @6: @"Manual", @9: @"Color temperature", @10: @"Custom white balance: PC-1", @11: @"Custom white balance: PC-2", @12: @"Custom white balance: PC-3", @15: @"Manual 2", @16: @"Manual 3", @18: @"Manual 4", @19: @"Manual 5", @20: @"Custom white balance: PC-4", @21: @"Custom white balance: PC-5" };
-            [self mapValueInterval:property map:map];
+            [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonFocusMode: {
             NSDictionary *map = @{ @0: @"One-Shot AF", @1: @"AI Servo AF", @2: @"AI Focus AF", @3: @"Manual" };
-            [self mapValueInterval:property map:map];
+            [self mapValueList:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonPictureStyle: {
+            NSDictionary *map = @{ @0x81: @"Standard", @0x82: @"Portrait", @0x83: @"Landscape", @0x84: @"Neutral", @0x85: @"Faithful", @0x86: @"Monochrome", @0x87:@"Auto", @0x88: @"Fine detail", @0x21: @"User 1", @0x22: @"User 2", @0x23: @"User 3", @0x41: @"PC 1", @0x41: @"PC 2", @0x41: @"PC 3" };
+            [self mapValueList:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonColorSpace: {
+            NSDictionary *map = @{ @1: @"sRGB", @2: @"Adobe" };
+            [self mapValueList:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonCaptureDestination: {
+            NSDictionary *map = @{ };
+            [self mapValueList:property map:map];
+          }
+          case PTPPropertyCodeCanonEVFOutputDevice: {
+            NSDictionary *map = @{ @1: @"TFT", @2: @"PC" };
+            [self mapValueList:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonAutoPowerOff:
+          case PTPPropertyCodeCanonEVFMode: {
+            NSDictionary *map = @{ @0: @"Disable", @1: @"Enable" };
+            [self mapValueList:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonDriveMode: {
+            NSDictionary *map = @{ @0x00: @"Single shot", @0x01: @"Continuos", @0x02: @"Video", @0x04: @"High speed continuous", @0x05: @"Low speed continuous", @0x06: @"Silent", @0x07: @"10s self timer + continuous", @0x10: @"10s self timer", @0x11: @"2s self timer", @0x12: @"14fps high speed", @0x13: @"Silent single shot", @0x14: @"Silent continuous", @0x15: @"Silent high speed continuous", @0x16: @"Silent low speed continuous"};
+            [self mapValueList:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonImageFormat:
+          case PTPPropertyCodeCanonImageFormatCF:
+          case PTPPropertyCodeCanonImageFormatSD:
+          case PTPPropertyCodeCanonImageFormatExtHD: {
+            NSDictionary *map = @{ @0x10010003:@"Large fine JPEG", @0x10010002:@"Large JPEG", @0x10010103:@"Medium fine JPEG", @0x10010102:@"Medium JPEG", @0x10010203:@"Small fine JPEG", @0x10010202:@"Small JPEG", @0x10010503:@"M1 fine JPEG", @0x10010502:@"M1 JPEG", @0x10010603:@"M2 fine JPEG", @0x10010602:@"M2 JPEG", @0x10010e03:@"S1 fine JPEG", @0x10010e02:@"S1 JPEG", @0x10010f03:@"S2 fine JPEG", @0x10010f02:@"S2 JPEG", @0x10011003:@"S3 fine JPEG", @0x10011002:@"S3 JPEG", @0x10060002:@"CRW", @0x10060004:@"RAW", @0x10060006:@"CR2" };
+            NSMutableArray *values = [NSMutableArray array];
+            NSMutableArray *labels = [NSMutableArray array];
+            for (NSNumber *value in property.supportedValues) {
+              long l = value.longValue;
+              long i1 = (l >> 32) & 0xFFFFFFFF;
+              long i2 = l & 0xFFFFFFFF;
+              NSMutableString *label = [NSMutableString string];
+              if (i1 != 0) {
+                [label appendFormat:@"%@ + ", map[[NSNumber numberWithInteger:i1]]];
+              }
+              [label appendString:map[[NSNumber numberWithInteger:i2]]];
+              [values addObject:value.description];
+              [labels addObject:label.description];
+            }
+            if (property.value)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+            else
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:true];
             break;
           }
           default: {
@@ -751,7 +807,66 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value {
-  // TBD
+  PTPProperty *property = self.info.properties[[NSNumber numberWithUnsignedShort:code]];
+  if (property) {
+    unsigned char *buffer = NULL;
+    unsigned int size = 0;
+    switch (property.type) {
+      case PTPDataTypeCodeSInt8:
+      case PTPDataTypeCodeUInt8: {
+        buffer = malloc(size = 12);
+        *(char *)(buffer + 8) = value.intValue;
+        break;
+      }
+      case PTPDataTypeCodeSInt16:
+      case PTPDataTypeCodeUInt16: {
+        buffer = malloc(size = 12);
+        *(short *)(buffer + 8) = value.intValue;
+        break;
+      }
+      case PTPDataTypeCodeSInt32:
+      case PTPDataTypeCodeUInt32: {
+        buffer = malloc(size = 12);
+        *(int *)(buffer + 8) = value.intValue;
+        break;
+      }
+      case PTPDataTypeCodeUInt64: { // packed image format
+        long l = (long)value.longLongValue;
+        long i1 = (l >> 32) & 0xFFFFFFFF;
+        long i2 = l & 0xFFFFFFFF;
+        int count = i1 == 0 ? 1 : 2;
+        buffer = malloc(size = 8 + 4 * (4 * count + 1));
+        unsigned char *buf = buffer + 8;
+        if (count == 2) {
+          ptpWriteUnsignedInt(&buf, count);
+          ptpWriteUnsignedInt(&buf, (i1 >> 24) & 0xFF);
+          ptpWriteUnsignedInt(&buf, (i1 >> 16) & 0xFF);
+          ptpWriteUnsignedInt(&buf, (i1 >> 8) & 0xFF);
+          ptpWriteUnsignedInt(&buf, i1 & 0xFF);
+        }
+        ptpWriteUnsignedInt(&buf, count);
+        ptpWriteUnsignedInt(&buf, (i2 >> 24) & 0xFF);
+        ptpWriteUnsignedInt(&buf, (i2 >> 16) & 0xFF);
+        ptpWriteUnsignedInt(&buf, (i2 >> 8) & 0xFF);
+        ptpWriteUnsignedInt(&buf, i2 & 0xFF);
+        break;
+      }
+      case PTPDataTypeCodeUnicodeString: {
+        const char *s = [value cStringUsingEncoding:NSASCIIStringEncoding];
+        if (s) {
+          buffer = malloc(size = 8 + 1 + (unsigned int)strlen(s));
+          strcpy((char *)buffer + 8, s);
+        }
+        break;
+      }
+    }
+    if (buffer) {
+      unsigned char *buf = buffer;
+      ptpWriteUnsignedInt(&buf, size);
+      ptpWriteUnsignedInt(&buf, property.propertyCode);
+      [self sendPTPRequest:PTPRequestCodeCanonSetDevicePropValueEx data:[NSData dataWithBytesNoCopy:buffer length:size freeWhenDone:YES]];
+    }
+  }
 }
 
 -(void)getLiveViewImage {
@@ -776,8 +891,7 @@ static NSString *ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)startCapture {
-  // TBD
-  [super startCapture];
+  [self sendPTPRequest:PTPRequestCodeCanonRemoteRelease];
 }
 
 -(void)stopCapture {
