@@ -1347,6 +1347,13 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
+-(void)sendPTPRequest:(PTPRequestCode)operationCode data:(NSData *)data {
+  PTPRequest *request = [[self.requestClass alloc] init];
+  request.operationCode = operationCode;
+  request.numberOfParameters = 0;
+  [_icCamera requestSendPTPCommand:request.commandBuffer outData:data sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
+}
+
 -(void)sendPTPRequest:(PTPRequestCode)operationCode {
   PTPRequest *request = [[self.requestClass alloc] init];
   request.operationCode = operationCode;
@@ -1368,6 +1375,16 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   request.numberOfParameters = 2;
   request.parameter1 = parameter1;
   request.parameter2 = parameter2;
+  [_icCamera requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
+}
+
+-(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2  param3:(unsigned int)parameter3 {
+  PTPRequest *request = [[self.requestClass alloc] init];
+  request.operationCode = operationCode;
+  request.numberOfParameters = 3;
+  request.parameter1 = parameter1;
+  request.parameter2 = parameter2;
+  request.parameter3 = parameter3;
   [_icCamera requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 

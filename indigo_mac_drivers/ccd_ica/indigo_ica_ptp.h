@@ -458,8 +458,10 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)requestEnableTethering;
 
 -(void)sendPTPRequest:(PTPRequestCode)operationCode;
+-(void)sendPTPRequest:(PTPRequestCode)operationCode data:(NSData *)data;
 -(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1;
 -(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
+-(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2  param3:(unsigned int)parameter3;
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 -(void)lock;
 -(void)unlock;
