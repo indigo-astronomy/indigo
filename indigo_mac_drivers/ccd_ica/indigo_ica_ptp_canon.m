@@ -842,7 +842,6 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
           unsigned int type = ptpReadUnsignedInt(&buf);
           if (type == 1) {
             image = [NSData dataWithBytes:buf length:length - 8];
-            [image writeToFile:@"/Users/polakovic/Pictures/preview.jpeg" atomically:YES];
             break;
           } else {
             buf += length;
