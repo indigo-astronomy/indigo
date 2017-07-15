@@ -100,11 +100,11 @@ enum PTPCanonOperationCodeEnum {
 };
 
 enum PTPCanonResponseCodeEnum {
-  PTPResponseCodeUnknownCommand = 0xA001,
-  PTPResponseCodeOperationRefused = 0xA005,
-  PTPResponseCodeLensCover = 0xA006,
-  PTPResponseCodeBatteryLow = 0xA101,
-  PTPResponseCodeNotReady = 0xA102
+  PTPResponseCodeCanonUnknownCommand = 0xA001,
+  PTPResponseCodeCanonOperationRefused = 0xA005,
+  PTPResponseCodeCanonLensCover = 0xA006,
+  PTPResponseCodeCanonBatteryLow = 0xA101,
+  PTPResponseCodeCanonNotReady = 0xA102
 };
 
 enum PTPCanonEventCodeEnum {

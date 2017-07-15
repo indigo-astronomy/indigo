@@ -420,7 +420,7 @@
 @implementation PTPNikonCamera {
   unsigned int liveViewX, liveViewY;
   NSString *liveViewZoom;
-  NSTimer *ptpLiveViewTimer;
+  NSTimer *ptpPreviewTimer;
 }
 
 -(PTPVendorExtension) extension {
@@ -436,7 +436,8 @@
 }
 
 -(void)didRemoveDevice:(ICDevice *)device {
-  [ptpLiveViewTimer invalidate];
+  [ptpPreviewTimer invalidate];
+  ptpPreviewTimer = nil;
   [super didRemoveDevice:device];
 }
 
@@ -508,14 +509,13 @@
       break;
     }
     case PTPPropertyCodeNikonLiveViewStatus: {
-      [self.delegate cameraCanStream:self];
       if (property.value.description.intValue) {
         [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:liveViewZoom];
         [self sendPTPRequest:PTPRequestCodeNikonChangeAfArea param1:liveViewX param2:liveViewX];
-        ptpLiveViewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getLiveViewImage) userInfo:nil repeats:true];
+        ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
       } else {
-        [ptpLiveViewTimer invalidate];
-        ptpLiveViewTimer = nil;
+        [ptpPreviewTimer invalidate];
+        ptpPreviewTimer = nil;
       }
       break;
     }
@@ -691,17 +691,21 @@
   }
 }
 
+-(void)processConnect {
+  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeInitiateCapture]])
+    [self.delegate cameraCanExposure:self];
+  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonMfDrive]])
+    [self.delegate cameraCanFocus:self];
+  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetLiveViewImg]])
+    [self.delegate cameraCanPreview:self];
+  [super processConnect];
+}
+
 -(void)processRequest:(PTPRequest *)request Response:(PTPResponse *)response inData:(NSData*)data {
   switch (request.operationCode) {
     case PTPRequestCodeGetDeviceInfo: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         self.info = [[self.deviceInfoClass alloc] initWithData:data];
-        if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeInitiateCapture]]) {
-          [self.delegate cameraCanCapture:self];
-        }
-        if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonMfDrive]]) {
-          [self.delegate cameraCanFocus:self];
-        }
         if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetVendorPropCodes]]) {
           [self sendPTPRequest:PTPRequestCodeNikonGetVendorPropCodes];
         } else {
@@ -759,9 +763,13 @@
                 [text appendString:@", Sequence error"];
               if (value & 0x00000001)
                 [text appendString:@", Recording media is CF/SD card"];
+              [ptpPreviewTimer invalidate];
+              ptpPreviewTimer = nil;
               [self.delegate cameraExposureFailed:self message:text];
             }
           } else {
+            [ptpPreviewTimer invalidate];
+            ptpPreviewTimer = nil;
             [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"LiveViewProhibiCondition failed (0x%04x = %@)", response.responseCode, response]];
           }
           break;
@@ -789,6 +797,8 @@
     case PTPRequestCodeNikonInitiateCaptureRecInMedia: {
       if (response.responseCode != PTPResponseCodeOK &&  response.responseCode != PTPResponseCodeDeviceBusy) {
         [self sendPTPRequest:PTPRequestCodeNikonTerminateCapture param1:0 param2:0];
+        [ptpPreviewTimer invalidate];
+        ptpPreviewTimer = nil;
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"InitiateCaptureRecInMedia failed (0x%04x = %@)", response.responseCode, response]];
       }
       break;
@@ -850,14 +860,17 @@
           int frameTop = CFSwapInt16BigToHost(ptpReadUnsignedShort(&buf)) - frameHeight / 2;
           [self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
         }
-        if (image)
+        if (image) {
           [self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
-        else
+        } else {
+          [ptpPreviewTimer invalidate];
+          ptpPreviewTimer = nil;
           [self.delegate cameraExposureFailed:self message:@"JPEG magic not found"];
+        }
       } else {
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No data received (0x%04x = %@)", response.responseCode, response]];
-        [ptpLiveViewTimer invalidate];
-        ptpLiveViewTimer = nil;
+        [ptpPreviewTimer invalidate];
+        ptpPreviewTimer = nil;
       }
       break;
     }
@@ -885,7 +898,7 @@
   }
 }
 
--(void)getLiveViewImage {
+-(void)getPreviewImage {
   [self sendPTPRequest:PTPRequestCodeNikonGetLiveViewImg];
 }
 
@@ -897,7 +910,7 @@
   [self sendPTPRequest:PTPRequestCodeNikonSetControlMode param1:0];
 }
 
--(void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y {
+-(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y {
   if (zoom < 2)
     zoom = 0;
   else if (zoom < 3)
@@ -918,21 +931,21 @@
   [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
 }
 
--(void)stopLiveView {
-  [ptpLiveViewTimer invalidate];
-  ptpLiveViewTimer = nil;
+-(void)stopPreview {
+  [ptpPreviewTimer invalidate];
+  ptpPreviewTimer = nil;
   [self sendPTPRequest:PTPRequestCodeNikonEndLiveView];
   [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
   [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"0"];
 }
 
--(void)startCapture {
+-(void)startExposure {
   if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonInitiateCaptureRecInMedia]]) {
     [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:-1 param2:0];
     [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
   }
   else
-    [super startCapture];
+    [super startExposure];
 }
 
 -(void)stopCapture {
