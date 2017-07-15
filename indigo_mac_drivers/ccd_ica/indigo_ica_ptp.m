@@ -453,7 +453,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(NSString*)description {
   NSMutableString* s = [NSMutableString stringWithFormat:@"%@", self.operationCodeName];
   if (self.numberOfParameters > 0)
-    [s appendFormat:@"[ 0x%08X", self.parameter1];
+    [s appendFormat:@"[0x%08X", self.parameter1];
   if (self.numberOfParameters > 1)
     [s appendFormat:@", 0x%08X", self.parameter2];
   if (self.numberOfParameters > 2)
@@ -557,7 +557,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(NSString*)description {
   NSMutableString* s = [NSMutableString stringWithFormat:@"%@", self.responseCodeName];
   if (self.numberOfParameters > 0)
-    [s appendFormat:@"[ 0x%08X", self.parameter1];
+    [s appendFormat:@"[0x%08X", self.parameter1];
   if (self.numberOfParameters > 1)
     [s appendFormat:@", 0x%08X", self.parameter2];
   if (self.numberOfParameters > 2)
@@ -641,7 +641,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(NSString*)description {
   NSMutableString* s = [NSMutableString stringWithFormat:@"%@", self.eventCodeName];
   if (self.numberOfParameters > 0)
-    [s appendFormat:@"[ 0x%08X", self.parameter1];
+    [s appendFormat:@"[0x%08X", self.parameter1];
   if (self.numberOfParameters > 1)
     [s appendFormat:@", 0x%08X", self.parameter2];
   if (self.numberOfParameters > 2)
@@ -993,7 +993,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)checkForEvent {
 }
 
--(void)getLiveViewImage {
+-(void)getPreviewImage {
 }
 
 -(void)processEvent:(PTPEvent *)event {
@@ -1187,12 +1187,16 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
+-(void)processConnect {
+  NSLog(@"Initialized %@\n", _info.debug);
+  [_delegate cameraConnected:self];
+}
+
 -(void)processRequest:(PTPRequest *)request Response:(PTPResponse *)response inData:(NSData*)data {
   switch (request.operationCode) {
     case PTPRequestCodeGetStorageIDs: {
       if (response.responseCode == PTPResponseCodeOK) {
-        NSLog(@"Initialized %@\n", _info.debug);
-        [_delegate cameraConnected:self];
+        [self processConnect];
         ptpEventTimer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(checkForEvent) userInfo:nil repeats:true];
       }
       break;
@@ -1205,7 +1209,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       if (response.responseCode == PTPResponseCodeOK && data) {
         _info = [[self.deviceInfoClass alloc] initWithData:data];
         if ([_info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeInitiateCapture]]) {
-          [_delegate cameraCanCapture:self];
+          [_delegate cameraCanExposure:self];
         }
         for (NSNumber *code in _info.propertiesSupported)
           [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:code.unsignedShortValue];
@@ -1229,9 +1233,13 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
       NSLog(@"Completed %@ with error %@", request, error);
   } else {
-    PTPResponse* response = [[PTPResponse alloc] initWithData:responseData];
-    if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
-      NSLog(@"Completed %@ with %@", request, response);
+    PTPResponse* response = [[self.responseClass alloc] initWithData:responseData];
+    if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+      if (data)
+        NSLog(@"Completed %@ with %@ and %lub", request, response, data.length);
+      else
+        NSLog(@"Completed %@ with %@", request, response);
+    }
     [self processRequest:request Response:response inData:data];
   }
 }
@@ -1322,13 +1330,13 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)unlock {
 }
 
--(void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y {
+-(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y {
 }
 
--(void)stopLiveView {
+-(void)stopPreview {
 }
 
--(void)startCapture {
+-(void)startExposure {
   [_icCamera requestTakePicture];
 }
 

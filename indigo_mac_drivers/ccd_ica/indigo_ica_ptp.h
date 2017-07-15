@@ -445,11 +445,12 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate;
 
--(void)getLiveViewImage;
+-(void)getPreviewImage;
 -(void)checkForEvent;
 -(void)processEvent:(PTPEvent *)event;
 -(void)processPropertyDescription:(PTPProperty *)property;
 -(void)processRequest:(PTPRequest *)request Response:(PTPResponse *)response inData:(NSData*)data;
+-(void)processConnect;
 -(void)mapValueList:(PTPProperty *)property map:(NSDictionary *)map;
 -(void)mapValueInterval:(PTPProperty *)property map:(NSDictionary *)map;
 
@@ -465,9 +466,9 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 -(void)lock;
 -(void)unlock;
--(void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y;
--(void)stopLiveView;
--(void)startCapture;
+-(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y;
+-(void)stopPreview;
+-(void)startExposure;
 -(void)stopCapture;
 -(void)focus:(int)steps;
 
@@ -486,9 +487,9 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly;
 -(void)cameraDisconnected:(PTPCamera *)camera;
 -(void)cameraRemoved:(PTPCamera *)camera;
--(void)cameraCanCapture:(PTPCamera *)camera;
+-(void)cameraCanExposure:(PTPCamera *)camera;
 -(void)cameraCanFocus:(PTPCamera *)camera;
--(void)cameraCanStream:(PTPCamera *)camera;
+-(void)cameraCanPreview:(PTPCamera *)camera;
 -(void)cameraFocusDone:(PTPCamera *)camera;
 -(void)cameraFocusFailed:(PTPCamera *)camera message:(NSString *)message;
 -(void)cameraFrame:(PTPCamera *)camera left:(int)left top:(int)top width:(int)width height:(int)height;

@@ -131,11 +131,11 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 
 + (NSString *)responseCodeName:(PTPResponseCode)responseCode {
   switch (responseCode) {
-    case PTPResponseCodeUnknownCommand: return @"PTPResponseCodeUnknownCommand";
-    case PTPResponseCodeOperationRefused: return @"PTPResponseCodeOperationRefused";
-    case PTPResponseCodeLensCover: return @"PTPResponseCodeLensCover";
-    case PTPResponseCodeBatteryLow: return @"PTPResponseCodeBatteryLow";
-    case PTPResponseCodeNotReady: return @"PTPResponseCodeNotReady";
+    case PTPResponseCodeCanonUnknownCommand: return @"PTPResponseCodeCanonUnknownCommand";
+    case PTPResponseCodeCanonOperationRefused: return @"PTPResponseCodeCanonOperationRefused";
+    case PTPResponseCodeCanonLensCover: return @"PTPResponseCodeCanonLensCover";
+    case PTPResponseCodeCanonBatteryLow: return @"PTPResponseCodeCanonBatteryLow";
+    case PTPResponseCodeCanonNotReady: return @"PTPResponseCodeCanonNotReady";
   }
   return [PTPResponse responseCodeName:responseCode];
 }
@@ -391,9 +391,12 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 
 @end
 
-@implementation PTPCanonCamera
+@implementation PTPCanonCamera {
+  NSTimer *ptpPreviewTimer;
+  BOOL startPreview;
+}
 
--(PTPVendorExtension) extension {
+-(PTPVendorExtension)extension {
   return PTPVendorExtensionCanon;
 }
 
@@ -403,6 +406,11 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
     
   }
   return self;
+}
+
+-(void)didRemoveDevice:(ICDevice *)device {
+  [ptpPreviewTimer invalidate];
+  [super didRemoveDevice:device];
 }
 
 -(Class)requestClass {
@@ -426,7 +434,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)checkForEvent {
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonGetEvent]]) {
+  if (ptpPreviewTimer == nil) {
     [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
   }
 }
@@ -441,13 +449,25 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   }
 }
 
+-(void)processConnect {
+  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonRemoteRelease]])
+    [self.delegate cameraCanExposure:self];
+  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonDriveLens]])
+    [self.delegate cameraCanFocus:self];
+  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonGetViewFinderData]])
+    [self.delegate cameraCanPreview:self];
+  [self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
+  [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"1"];
+  [super processConnect];
+}
+
 -(void)processRequest:(PTPRequest *)request Response:(PTPResponse *)response inData:(NSData*)data {
   switch (request.operationCode) {
     case PTPRequestCodeGetDeviceInfo: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         self.info = [[self.deviceInfoClass alloc] initWithData:data];
         if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeInitiateCapture]]) {
-          [self.delegate cameraCanCapture:self];
+          [self.delegate cameraCanExposure:self];
         }
         [self sendPTPRequest:PTPRequestCodeCanonGetDeviceInfoEx];
       }
@@ -475,7 +495,6 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
       break;
     }
     case PTPRequestCodeCanonGetEvent: {
-      //NSLog(@"%@", data);
       long length = data.length;
       unsigned char* buffer = (unsigned char*)[data bytes];
       unsigned char* buf = buffer;
@@ -743,14 +762,26 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
             [self mapValueList:property map:map];
           }
           case PTPPropertyCodeCanonEVFOutputDevice: {
+            [self.delegate cameraCanPreview:self];
             NSDictionary *map = @{ @1: @"TFT", @2: @"PC" };
             [self mapValueList:property map:map];
             break;
           }
-          case PTPPropertyCodeCanonAutoPowerOff:
+          case PTPPropertyCodeCanonAutoPowerOff: {
+            NSDictionary *map = @{ @0: @"Disable", @1: @"Enable" };
+            [self mapValueList:property map:map];
+            break;
+          }
           case PTPPropertyCodeCanonEVFMode: {
             NSDictionary *map = @{ @0: @"Disable", @1: @"Enable" };
             [self mapValueList:property map:map];
+            if (startPreview && property.value.intValue) {
+              startPreview = false;
+              ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
+            } else {
+              [ptpPreviewTimer invalidate];
+              ptpPreviewTimer = nil;
+            }
             break;
           }
           case PTPPropertyCodeCanonDriveMode: {
@@ -800,8 +831,45 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
       }
       break;
     }
+    case PTPRequestCodeCanonGetViewFinderData: {
+      if (response.responseCode == PTPResponseCodeOK) {
+        unsigned char *bytes = (unsigned char *)[data bytes];
+        unsigned char *buf = bytes;
+        unsigned long size = data.length;
+        NSData *image = nil;
+        while (buf - bytes < size) {
+          unsigned int length = ptpReadUnsignedInt(&buf);
+          unsigned int type = ptpReadUnsignedInt(&buf);
+          if (type == 1) {
+            image = [NSData dataWithBytes:buf length:length - 8];
+            [image writeToFile:@"/Users/polakovic/Pictures/preview.jpeg" atomically:YES];
+            break;
+          } else {
+            buf += length;
+            continue;
+          }
+        }
+        if (image)
+          [self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
+        else {
+          [ptpPreviewTimer invalidate];
+          ptpPreviewTimer = nil;
+          [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No preview data received"]];
+        }
+      } else if (response.responseCode == PTPResponseCodeCanonNotReady) {
+        usleep(2000);
+        [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
+        [self sendPTPRequest:PTPRequestCodeCanonGetViewFinderData param1:0x00100000];
+      } else {
+        [ptpPreviewTimer invalidate];
+        ptpPreviewTimer = nil;
+        [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"Preview failed (0x%04x = %@)", response.responseCode, response]];
+      }
+      break;
+    }
     default: {
       [super processRequest:request Response:response inData:data];
+      break;
     }
   }
 }
@@ -869,8 +937,9 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   }
 }
 
--(void)getLiveViewImage {
-  // TBD
+-(void)getPreviewImage {
+  [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
+  [self sendPTPRequest:PTPRequestCodeCanonGetViewFinderData param1:0x00100000];
 }
 
 -(void)lock {
@@ -881,16 +950,20 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   [self sendPTPRequest:PTPRequestCodeCanonResetUILock];
 }
 
--(void)startLiveViewZoom:(int)zoom x:(int)x y:(int)y {
-  // TBD
+-(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y {
+  startPreview = true;
+  [self setProperty:PTPPropertyCodeCanonEVFMode value:@"1"];
+  [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"2"];
 }
 
--(void)stopLiveView {
-  [super stopLiveView];
-  // TBD
+-(void)stopPreview {
+  [ptpPreviewTimer invalidate];
+  ptpPreviewTimer = nil;
+  [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"0"];
+  [self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
 }
 
--(void)startCapture {
+-(void)startExposure {
   [self sendPTPRequest:PTPRequestCodeCanonRemoteRelease];
 }
 

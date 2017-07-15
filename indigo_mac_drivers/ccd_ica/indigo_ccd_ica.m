@@ -329,7 +329,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		[camera startCapture];
+		[camera startExposure];
     if (PRIVATE_DATA->bulb)
       PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
     return indigo_ccd_change_property(device, client, property);
@@ -351,7 +351,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
       int zoom = zoomWidth < zoomHeight ? zoomWidth : zoomHeight;
       int x = CCD_FRAME_LEFT_ITEM->number.value + CCD_FRAME_WIDTH_ITEM->number.value / 2;
       int y = CCD_FRAME_TOP_ITEM->number.value + CCD_FRAME_HEIGHT_ITEM->number.value / 2;
-      [camera startLiveViewZoom:zoom x:x y:y];
+      [camera startPreviewZoom:zoom x:x y:y];
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -361,7 +361,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
       [camera stopCapture];
 		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
-			[camera stopLiveView];
+			[camera stopPreview];
 		}
     return indigo_ccd_change_property(device, client, property);
 	}
@@ -733,7 +733,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
 			CCD_STREAMING_COUNT_ITEM->number.value--;
 			if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
-				[camera stopLiveView];
+				[camera stopPreview];
 				CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
@@ -775,7 +775,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Failed to focus");
 }
 
--(void)cameraCanCapture:(PTPCamera *)camera {
+-(void)cameraCanExposure:(PTPCamera *)camera {
   indigo_device *device = [(NSValue *)camera.userData pointerValue];
   [camera requestEnableTethering];
   CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
@@ -802,10 +802,10 @@ static indigo_result focuser_detach(indigo_device *device) {
   indigo_async((void *)(void *)indigo_attach_device, focuser);
 }
 
--(void)cameraCanStream:(PTPCamera *)camera {
+-(void)cameraCanPreview:(PTPCamera *)camera {
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	CCD_STREAMING_PROPERTY->hidden = false;
-  CCD_FRAME_PROPERTY->perm = INDIGO_RW_PERM;
+  CCD_FRAME_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
 }
 
 -(void)cameraDisconnected:(PTPCamera*)camera {
