@@ -1340,7 +1340,13 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   [_icCamera requestTakePicture];
 }
 
--(void)stopCapture {
+-(void)stopExposure {
+}
+
+-(void)startAutofocus {
+}
+
+-(void)stopAutofocus {
 }
 
 -(void)focus:(int)steps {
