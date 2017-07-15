@@ -967,12 +967,26 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   [self sendPTPRequest:PTPRequestCodeCanonRemoteRelease];
 }
 
--(void)stopCapture {
+-(void)stopExposure {
   // TBD
 }
 
+-(void)startAutofocus {
+  [self sendPTPRequest:PTPRequestCodeCanonDoAf];
+}
+
+-(void)stopAutofocus {
+  [self sendPTPRequest:PTPRequestCodeCanonAfCancel];
+}
+
 -(void)focus:(int)steps {
-  // TBD
+  if (steps > 3)
+    steps = 3;
+  if (steps < -3)
+    steps = -3;
+  if (steps < 0)
+    steps = 0x8000 - steps;
+  [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:steps];
 }
 
 @end

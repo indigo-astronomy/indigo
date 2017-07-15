@@ -476,6 +476,15 @@
 #define DSLR_LOCK_ITEM_NAME        "LOCK"
 
 //----------------------------------------------------------------------
+/** DSLR_AF property name.
+ */
+#define DSLR_AF_PROPERTY_NAME		"DSLR_AF"
+
+/** DSLR_AF.AF property item name.
+ */
+#define DSLR_AF_ITEM_NAME        "AF"
+
+//----------------------------------------------------------------------
 /** GUIDER_GUIDE_DEC property name.
  */
 #define GUIDER_GUIDE_DEC_PROPERTY_NAME        "GUIDER_GUIDE_DEC"

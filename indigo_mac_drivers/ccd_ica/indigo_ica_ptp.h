@@ -469,7 +469,9 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y;
 -(void)stopPreview;
 -(void)startExposure;
--(void)stopCapture;
+-(void)stopExposure;
+-(void)startAutofocus;
+-(void)stopAutofocus;
 -(void)focus:(int)steps;
 
 @end
