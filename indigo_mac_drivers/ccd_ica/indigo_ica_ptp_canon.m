@@ -950,8 +950,16 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y {
+  if (zoom < 5)
+    zoom = 1;
+  else if (zoom < 10)
+    zoom = 5;
+  else
+    zoom = 10;
   startPreview = true;
   [self setProperty:PTPPropertyCodeCanonEVFMode value:@"1"];
+  [self sendPTPRequest:PTPRequestCodeCanonZoom param1:zoom];
+  [self sendPTPRequest:PTPRequestCodeCanonZoomPosition param1:x param2:y];
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"2"];
 }
 
@@ -959,7 +967,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   [ptpPreviewTimer invalidate];
   ptpPreviewTimer = nil;
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"0"];
-  [self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
+  //[self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
 }
 
 -(void)startExposure {
