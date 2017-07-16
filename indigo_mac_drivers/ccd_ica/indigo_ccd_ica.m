@@ -652,6 +652,20 @@ static indigo_result focuser_detach(indigo_device *device) {
 			}
 			break;
 		}
+    case PTPPropertyCodeCanonImageFormat: {
+      if (value.intValue == 0x10060002 || value.intValue == 0x10060004 || value.intValue ==  0x10060006) {
+        if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+          indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_RAW_ITEM, true);
+          indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
+        }
+      } else {
+        if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+          indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
+          indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
+        }
+      }
+      break;
+    }
 	}
 	property->hidden = false;
 	if (redefine) {

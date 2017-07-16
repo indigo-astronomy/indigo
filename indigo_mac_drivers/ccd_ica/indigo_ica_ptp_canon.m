@@ -860,6 +860,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
     case PTPRequestCodeCanonGetObject: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         [self.delegate cameraExposureDone:self data:data filename:addedFileName];
+        [self sendPTPRequest:PTPRequestCodeCanonDeleteObject param1:request.parameter1];
       } else {
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"Download failed (0x%04x = %@)", response.responseCode, response]];
       }
