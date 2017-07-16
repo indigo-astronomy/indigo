@@ -487,6 +487,7 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly;
 -(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly;
 -(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly;
+-(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code readOnly:(BOOL)readOnly;
 -(void)cameraDisconnected:(PTPCamera *)camera;
 -(void)cameraRemoved:(PTPCamera *)camera;
 -(void)cameraCanExposure:(PTPCamera *)camera;

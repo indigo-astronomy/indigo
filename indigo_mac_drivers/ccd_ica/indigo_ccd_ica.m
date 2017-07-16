@@ -569,6 +569,8 @@ static indigo_result focuser_detach(indigo_device *device) {
 			return i;
 		}
 	}
+  if (type == 0)
+    return -1;
 	if (PRIVATE_DATA->dslr_properties)
 		PRIVATE_DATA->dslr_properties = realloc(PRIVATE_DATA->dslr_properties, ++PRIVATE_DATA->dslr_properties_count * sizeof(indigo_property *));
 	else
@@ -613,6 +615,11 @@ static indigo_result focuser_detach(indigo_device *device) {
 		}
 	}
 	switch (code) {
+    case PTPPropertyCodeCanonShutterSpeed: {
+      if (property->perm == INDIGO_RW_PERM)
+        PRIVATE_DATA->bulb = value.intValue == 0x0C;
+      break;
+    }
 		case PTPPropertyCodeExposureTime: {
       if (property->perm == INDIGO_RW_PERM) {
         int intValue = value.intValue;
@@ -716,6 +723,19 @@ static indigo_result focuser_detach(indigo_device *device) {
     property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, property, NULL);
 	}
+}
+
+-(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code readOnly:(BOOL)readOnly {
+  indigo_device *device = [(NSValue *)camera.userData pointerValue];
+  int index = [self propertyIndex:camera code:code type:0];
+  if (index >= 0) {
+    indigo_property *property = PRIVATE_DATA->dslr_properties[index];
+    indigo_property_perm perm = (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM);
+    if (property->perm != perm) {
+      property->perm = perm;
+      indigo_update_property(device, property, NULL);
+    }
+  }
 }
 
 -(void)cameraFrame:(PTPCamera*)camera left:(int)left top:(int)top width:(int)width height:(int)height {
