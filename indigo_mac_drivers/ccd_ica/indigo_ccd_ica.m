@@ -796,9 +796,11 @@ static indigo_result focuser_detach(indigo_device *device) {
 	if ((CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value && is_jpeg) || (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value && (!is_jpeg || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE))) {
 		indigo_device *device = [(NSValue *)camera.userData pointerValue];
 		indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSASCIIStringEncoding]);
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
+  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+    CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+  }
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
 			CCD_STREAMING_COUNT_ITEM->number.value--;
