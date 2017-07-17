@@ -761,7 +761,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
           }
           case PTPPropertyCodeCanonEVFWBMode:
           case PTPPropertyCodeCanonWhiteBalance: {
-            NSDictionary *map = @{ @0: @"Auto", @1: @"Daylight", @2: @"Cloudy", @3: @"Tungsten", @4: @"Fluorescent", @5: @"Flash", @6: @"Manual", @9: @"Color temperature", @10: @"Custom white balance: PC-1", @11: @"Custom white balance: PC-2", @12: @"Custom white balance: PC-3", @15: @"Manual 2", @16: @"Manual 3", @18: @"Manual 4", @19: @"Manual 5", @20: @"Custom white balance: PC-4", @21: @"Custom white balance: PC-5" };
+            NSDictionary *map = @{ @0: @"Auto", @1: @"Daylight", @2: @"Cloudy", @3: @"Tungsten", @4: @"Fluorescent", @5: @"Flash", @6: @"Manual", @8: @"Shade", @9: @"Color temperature", @10: @"Custom white balance: PC-1", @11: @"Custom white balance: PC-2", @12: @"Custom white balance: PC-3", @15: @"Manual 2", @16: @"Manual 3", @18: @"Manual 4", @19: @"Manual 5", @20: @"Custom white balance: PC-4", @21: @"Custom white balance: PC-5" };
             property.readOnly = currentMode >= 8;
             [self mapValueList:property map:map];
             break;
