@@ -396,6 +396,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   BOOL startPreview;
   NSString *addedFileName;
   int currentMode;
+  int focusSteps;
 }
 
 -(PTPVendorExtension)extension {
@@ -840,6 +841,20 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
               [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:true];
             break;
           }
+          case PTPPropertyCodeCanonBatteryPower: {
+            int value = property.value.intValue;
+            if (value == 2)
+              [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@100 min:@0 max:@100 step:@25 readOnly:true];
+            else if (value == 1)
+              [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@50 min:@0 max:@100 step:@25 readOnly:true];
+            else
+              [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@25 min:@0 max:@100 step:@25 readOnly:true];
+            break;
+          }
+          case PTPPropertyCodeBatteryLevel: {
+            [self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:@0 max:@100 step:@25 readOnly:true];
+            break;
+          }
           default: {
             if (property.supportedValues) {
               NSMutableArray *values = [NSMutableArray array];
@@ -899,6 +914,25 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
         ptpPreviewTimer = nil;
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"Preview failed (0x%04x = %@)", response.responseCode, response]];
       }
+      break;
+    }
+    case PTPRequestCodeCanonDriveLens: {
+      if (response.responseCode == PTPResponseCodeOK) {
+        NSLog(@"  driveLen:%d", focusSteps);
+        if (focusSteps == 0) {
+          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+            [self.delegate cameraFocusDone:self];
+          });
+        } else if (focusSteps > 0) {
+          focusSteps--;
+          [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:1];
+        } else {
+          focusSteps++;
+          [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:0x8001];
+        }
+      }
+      else
+        [self.delegate cameraFocusFailed:self message:[NSString stringWithFormat:@"DriveLens failed (0x%04x = %@)", response.responseCode, response]];
       break;
     }
     default: {
@@ -1038,13 +1072,22 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)focus:(int)steps {
-  if (steps > 3)
-    steps = 3;
-  if (steps < -3)
-    steps = -3;
-  if (steps < 0)
-    steps = 0x8000 - steps;
-  [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:steps];
+  NSLog(@"> focus:%d", steps);
+  if (steps == 0) {
+    focusSteps = 0;
+  } else if (steps > 3) {
+    focusSteps = steps - 1;
+    [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:1];
+  } else if (steps < -3) {
+    focusSteps = steps + 1;
+    [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:0x8001];
+  } else {
+    if (steps < 0)
+      steps = 0x8000 - steps;
+    focusSteps = 0;
+    [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:steps];
+  }
+  NSLog(@"< focus:%d", steps);
 }
 
 @end
