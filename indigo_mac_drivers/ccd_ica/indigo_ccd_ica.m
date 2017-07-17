@@ -449,7 +449,6 @@ static indigo_result focuser_attach(indigo_device *device) {
   assert(PRIVATE_DATA != NULL);
   if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
     // --------------------------------------------------------------------------------
-    FOCUSER_ABORT_MOTION_PROPERTY->hidden = true;
     FOCUSER_POSITION_PROPERTY->hidden = true;
     FOCUSER_SPEED_PROPERTY->hidden = true;
     // --------------------------------------------------------------------------------
@@ -479,6 +478,19 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
+  } else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
+    indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
+    if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+      FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+      indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+      FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+    } else {
+      FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+    }
+    [camera focus:0];
+    FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+    indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
   }
   return indigo_focuser_change_property(device, client, property);
 }

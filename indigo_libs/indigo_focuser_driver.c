@@ -68,7 +68,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 			FOCUSER_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Relative move", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_STEPS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(FOCUSER_STEPS_ITEM, FOCUSER_STEPS_ITEM_NAME, "Relative move (steps/ms)", 0, 10000, 1, 0);
+			indigo_init_number_item(FOCUSER_STEPS_ITEM, FOCUSER_STEPS_ITEM_NAME, "Relative move (steps/ms)", 0, 65535, 1, 0);
 				// -------------------------------------------------------------------------------- FOCUSER_POSITION
 			FOCUSER_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Absolute position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_POSITION_PROPERTY == NULL)
