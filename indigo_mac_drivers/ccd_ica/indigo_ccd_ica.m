@@ -781,7 +781,7 @@ static indigo_result focuser_detach(indigo_device *device) {
   else if (PRIVATE_DATA->buffer_size < length)
     PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer, length);
   memcpy(PRIVATE_DATA->buffer, data.bytes, length);
-	if ((CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value && is_jpeg) || (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value && !is_jpeg)) {
+	if ((CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value && is_jpeg) || (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value && (!is_jpeg || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE))) {
 		indigo_device *device = [(NSValue *)camera.userData pointerValue];
 		indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSASCIIStringEncoding]);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
