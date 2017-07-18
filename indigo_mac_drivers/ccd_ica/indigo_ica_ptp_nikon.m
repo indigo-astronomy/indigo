@@ -511,7 +511,7 @@
     case PTPPropertyCodeNikonLiveViewStatus: {
       if (property.value.description.intValue) {
         [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:liveViewZoom];
-        [self sendPTPRequest:PTPRequestCodeNikonChangeAfArea param1:liveViewX param2:liveViewX];
+        [self sendPTPRequest:PTPRequestCodeNikonChangeAfArea param1:liveViewX param2:liveViewY];
         ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
       } else {
         [ptpPreviewTimer invalidate];
@@ -780,6 +780,7 @@
     case PTPRequestCodeNikonDeviceReady: {
       if (response.responseCode == PTPResponseCodeDeviceBusy) {
         usleep(100000);
+        [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
       }
       break;
     }
@@ -867,6 +868,10 @@
           ptpPreviewTimer = nil;
           [self.delegate cameraExposureFailed:self message:@"JPEG magic not found"];
         }
+      } else if (response.responseCode == PTPResponseCodeDeviceBusy) {
+        NSLog(@"PTPResponseCodeDeviceBusy");
+        usleep(100000);
+        [self getPreviewImage];
       } else {
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No data received (0x%04x = %@)", response.responseCode, response]];
         [ptpPreviewTimer invalidate];
