@@ -97,7 +97,7 @@ void ptpWriteUnsignedChar(unsigned char** buf, unsigned char value) {
 }
 
 short ptpReadShort(unsigned char** buf) {
-  SInt16 value = (SInt16)CFSwapInt16LittleToHost(*(UInt16*)(*buf));
+  short value = (short)CFSwapInt16LittleToHost(*(short*)(*buf));
   (*buf) += 2;
   return value;
 }
@@ -130,7 +130,7 @@ void ptpWriteInt(unsigned char** buf, int value) {
 }
 
 unsigned int ptpReadUnsignedInt(unsigned char** buf) {
-  int value = CFSwapInt32LittleToHost(*(int*)(*buf));
+  unsigned int value = CFSwapInt32LittleToHost(*(unsigned int*)(*buf));
   (*buf) += 4;
   return value;
 }

@@ -392,8 +392,8 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 @end
 
 @implementation PTPCanonCamera {
-  NSTimer *ptpPreviewTimer;
   BOOL startPreview;
+  BOOL doPreview;
   NSString *addedFileName;
   int currentMode;
   int focusSteps;
@@ -412,7 +412,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)didRemoveDevice:(ICDevice *)device {
-  [ptpPreviewTimer invalidate];
+  doPreview = false;
   [super didRemoveDevice:device];
 }
 
@@ -437,9 +437,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)checkForEvent {
-  if (ptpPreviewTimer == nil) {
-    [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
-  }
+  [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
 }
 
 -(void)processEvent:(PTPEvent *)event {
@@ -699,16 +697,14 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
           case PTPPropertyCodeCanonWhiteBalanceAdjustA:
           case PTPPropertyCodeCanonWhiteBalanceAdjustB: {
             NSMutableArray *values = [NSMutableArray array];
-            NSMutableArray *labels = [NSMutableArray array];
             for (NSNumber *value in property.supportedValues) {
               int i = value.intValue;
-              [values addObject:value.description];
-              [labels addObject:[NSString stringWithFormat:@"%d", i]];
+              [values addObject:[NSString stringWithFormat:@"%d", i]];
             }
             if (property.value)
-              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:values readOnly:property.readOnly];
             else
-              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:true];
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:values readOnly:true];
             break;
           }
           case PTPPropertyCodeCanonModelID:
@@ -804,10 +800,10 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
             [self mapValueList:property map:map];
             if (startPreview && property.value.intValue) {
               startPreview = false;
-              ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
+              doPreview = true;
+              [self getPreviewImage];
             } else {
-              [ptpPreviewTimer invalidate];
-              ptpPreviewTimer = nil;
+              doPreview = false;
             }
             break;
           }
@@ -898,20 +894,17 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
             continue;
           }
         }
-        if (image)
+        if (image) {
           [self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
-        else {
-          [ptpPreviewTimer invalidate];
-          ptpPreviewTimer = nil;
+          [self getPreviewImage];
+        } else {
+          doPreview = false;
           [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No preview data received"]];
         }
-      } else if (ptpPreviewTimer && response.responseCode == PTPResponseCodeCanonNotReady) {
-        usleep(2000);
-        [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
-        [self sendPTPRequest:PTPRequestCodeCanonGetViewFinderData param1:0x00100000];
+      } else if (doPreview && response.responseCode == PTPResponseCodeCanonNotReady) {
+        [self getPreviewImage];
       } else {
-        [ptpPreviewTimer invalidate];
-        ptpPreviewTimer = nil;
+        doPreview = false;
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"Preview failed (0x%04x = %@)", response.responseCode, response]];
       }
       break;
@@ -920,15 +913,19 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
       if (response.responseCode == PTPResponseCodeOK) {
         NSLog(@"  driveLen:%d", focusSteps);
         if (focusSteps == 0) {
-          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
             [self.delegate cameraFocusDone:self];
           });
         } else if (focusSteps > 0) {
           focusSteps--;
-          [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:1];
+          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
+            [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:1];
+          });
         } else {
           focusSteps++;
-          [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:0x8001];
+          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
+            [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:0x8001];
+          });
         }
       }
       else
@@ -1011,12 +1008,14 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)getPreviewImage {
-  [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
-  [self sendPTPRequest:PTPRequestCodeCanonGetViewFinderData param1:0x00100000];
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
+    [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
+    [self sendPTPRequest:PTPRequestCodeCanonGetViewFinderData param1:0x00100000];
+  });
 }
 
 -(void)requestCloseSession {
-  if (ptpPreviewTimer)
+  if (doPreview)
     [self stopPreview];
   [self sendPTPRequest:PTPRequestCodeCanonSetRemoteMode param1:0];
   [self sendPTPRequest:PTPRequestCodeCanonSetEventMode param1:0];
@@ -1039,15 +1038,14 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   else
     zoom = 10;
   startPreview = true;
+  [self sendPTPRequest:PTPRequestCodeCanonZoom param1:5];
+  //[self sendPTPRequest:PTPRequestCodeCanonZoomPosition param1:x param2:y];
   [self setProperty:PTPPropertyCodeCanonEVFMode value:@"1"];
-  [self sendPTPRequest:PTPRequestCodeCanonZoom param1:zoom];
-  [self sendPTPRequest:PTPRequestCodeCanonZoomPosition param1:x param2:y];
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"2"];
 }
 
 -(void)stopPreview {
-  [ptpPreviewTimer invalidate];
-  ptpPreviewTimer = nil;
+  doPreview = false;
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"0"];
   //[self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
 }
@@ -1085,22 +1083,15 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)focus:(int)steps {
-  NSLog(@"> focus:%d", steps);
   if (steps == 0) {
     focusSteps = 0;
-  } else if (steps > 3) {
+  } else if (steps > 0) {
     focusSteps = steps - 1;
     [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:1];
-  } else if (steps < -3) {
+  } else if (steps < 0) {
     focusSteps = steps + 1;
     [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:0x8001];
-  } else {
-    if (steps < 0)
-      steps = 0x8000 - steps;
-    focusSteps = 0;
-    [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:steps];
   }
-  NSLog(@"< focus:%d", steps);
 }
 
 @end

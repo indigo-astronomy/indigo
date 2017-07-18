@@ -254,6 +254,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info->width;
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info->height;
 			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info->pixel_size;
+      CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		} else {
 			CCD_INFO_PROPERTY->hidden = CCD_FRAME_PROPERTY->hidden = true;
 		}
@@ -366,6 +367,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
       int zoom = zoomWidth < zoomHeight ? zoomWidth : zoomHeight;
       int x = CCD_FRAME_LEFT_ITEM->number.value + CCD_FRAME_WIDTH_ITEM->number.value / 2;
       int y = CCD_FRAME_TOP_ITEM->number.value + CCD_FRAME_HEIGHT_ITEM->number.value / 2;
+//      NSLog(@"%d %d", (int)(CCD_INFO_WIDTH_ITEM->number.value), (int)(CCD_INFO_HEIGHT_ITEM->number.value));
+//      NSLog(@"%d %d %d %d %d", (int)(CCD_FRAME_LEFT_ITEM->number.value), (int)(CCD_FRAME_TOP_ITEM->number.value), (int)(CCD_FRAME_WIDTH_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value), zoom);
+//      NSLog(@"%d %d", x, y);
       [camera startPreviewZoom:zoom x:x y:y];
 		}
 		return INDIGO_OK;
