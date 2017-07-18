@@ -1010,6 +1010,14 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   [self sendPTPRequest:PTPRequestCodeCanonGetViewFinderData param1:0x00100000];
 }
 
+-(void)requestCloseSession {
+  if (ptpPreviewTimer)
+    [self stopPreview];
+  [self sendPTPRequest:PTPRequestCodeCanonSetRemoteMode param1:0];
+  [self sendPTPRequest:PTPRequestCodeCanonSetEventMode param1:0];
+  [super requestCloseSession];
+}
+
 -(void)lock {
   [self sendPTPRequest:PTPRequestCodeCanonSetUILock];
 }

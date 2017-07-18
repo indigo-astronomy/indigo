@@ -162,13 +162,11 @@ static struct info {
 	{ NULL, NULL, 0, 0, 0 }
 };
 
-#define DEVICE @"INDIGO_DEVICE"
-
 #define PRIVATE_DATA        ((ica_private_data *)device->private_data)
 #define DSLR_LOCK_PROPERTY  PRIVATE_DATA->dslr_lock_property
 #define DSLR_LOCK_ITEM      PRIVATE_DATA->dslr_lock_property->items
-#define DSLR_AF_PROPERTY  PRIVATE_DATA->dslr_af_property
-#define DSLR_AF_ITEM      PRIVATE_DATA->dslr_af_property->items
+#define DSLR_AF_PROPERTY    PRIVATE_DATA->dslr_af_property
+#define DSLR_AF_ITEM        PRIVATE_DATA->dslr_af_property->items
 
 struct dslr_properties {
   PTPVendorExtension extension;
@@ -214,6 +212,7 @@ struct dslr_properties {
   { PTPVendorExtensionNikon, PTPPropertyCodeNikonActivePicCtrlItem, DSLR_PICTURE_STYLE_PROPERTY_NAME, "Picture style" },
   
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonAutoExposureMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
+  { PTPVendorExtensionNikon, PTPPropertyCodeCanonDriveMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonAperture, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonShutterSpeed, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonImageFormat, CCD_MODE_PROPERTY_NAME, "Image size" },
@@ -223,6 +222,7 @@ struct dslr_properties {
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
   { PTPVendorExtensionCanon, PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonExpCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
+  
 	{ 0, 0, NULL, NULL }
 };
 
@@ -239,7 +239,6 @@ typedef struct {
   bool bulb;
   indigo_timer *exposure_timer;
 } ica_private_data;
-
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
@@ -376,10 +375,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
       indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
       [camera stopExposure];
 		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
 			[camera stopPreview];
     } else if (DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE) {
-      PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
       [camera stopAutofocus];
       DSLR_AF_PROPERTY->state = INDIGO_ALERT_STATE;
       indigo_update_property(device, DSLR_AF_PROPERTY, NULL);
@@ -609,7 +606,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 -(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSString *)value values:(NSArray<NSString *> *)values labels:(NSArray<NSString *> *)labels readOnly:(BOOL)readOnly {
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
- 
 	int index = [self propertyIndex:camera code:code type:INDIGO_SWITCH_VECTOR];
   indigo_property *property = PRIVATE_DATA->dslr_properties[index];
   bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
@@ -627,29 +623,29 @@ static indigo_result focuser_detach(indigo_device *device) {
 		}
 	}
 	switch (code) {
+    case PTPPropertyCodeExposureTime:
     case PTPPropertyCodeCanonShutterSpeed: {
-      if (property->perm == INDIGO_RW_PERM)
-        PRIVATE_DATA->bulb = value.intValue == 0x0C;
-      break;
-    }
-		case PTPPropertyCodeExposureTime: {
       if (property->perm == INDIGO_RW_PERM) {
         int intValue = value.intValue;
-        if (IS_CONNECTED)
-          indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-        if (intValue != 0x7FFFFFFF) {
-          CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.max = intValue / 10000.0;
-          PRIVATE_DATA->bulb = false;
-        } else {
+        if ((code == PTPPropertyCodeCanonShutterSpeed && intValue == 0x0C) || (code == PTPPropertyCodeExposureTime && intValue == 0x7FFFFFFF)) {
+          if (IS_CONNECTED && !PRIVATE_DATA->bulb)
+            indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
           CCD_EXPOSURE_ITEM->number.min = 0;
           CCD_EXPOSURE_ITEM->number.max = 10000;
+          if (IS_CONNECTED && !PRIVATE_DATA->bulb)
+            indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
           PRIVATE_DATA->bulb = true;
+        } else {
+          if (IS_CONNECTED && PRIVATE_DATA->bulb)
+            indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+          CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.max = 0;
+          if (IS_CONNECTED && PRIVATE_DATA->bulb)
+            indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+          PRIVATE_DATA->bulb = false;
         }
-        if (IS_CONNECTED)
-          indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
       }
-			break;
-		}
+      break;
+    }
 		case PTPPropertyCodeCompressionSetting: {
 			if (value.intValue >= 4 && value.intValue <= 8) {
 				if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
@@ -922,7 +918,6 @@ indigo_result indigo_ccd_ica(indigo_driver_action action, indigo_driver_info *in
   static PTPBrowser* browser;
   static PTPDelegate* delegate;
   
-	
 	SET_DRIVER_INFO(info, "ICA Camera", __FUNCTION__, DRIVER_VERSION, last_action);
 	
   if (delegate == NULL)
