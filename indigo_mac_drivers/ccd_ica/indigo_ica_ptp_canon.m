@@ -935,6 +935,11 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
         [self.delegate cameraFocusFailed:self message:[NSString stringWithFormat:@"DriveLens failed (0x%04x = %@)", response.responseCode, response]];
       break;
     }
+    case PTPRequestCodeCanonRemoteRelease: {
+      if (response.responseCode != PTPResponseCodeOK || response.parameter1 == 1)
+        [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"RemoteRelease failed (0x%04x = %@)", response.responseCode, response]];
+      break;
+    }
     default: {
       [super processRequest:request Response:response inData:data];
       break;
