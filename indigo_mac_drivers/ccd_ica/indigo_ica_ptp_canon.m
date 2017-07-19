@@ -1268,7 +1268,14 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 -(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
   PTPProperty *shutter = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeCanonShutterSpeed]];
   if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonRemoteReleaseOn]]) {
-    [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:1];
+    if (mirrorLockup) {
+      [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"1"];
+      [self setProperty:PTPPropertyCodeCanonDriveMode value:@"17"];
+    } else {
+      [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"0"];
+      [self setProperty:PTPPropertyCodeCanonDriveMode value:@"0"];
+    }
+    [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:(avoidAF ? 0 : 1)];
     if (shutter.value.intValue != 0x0C) {
       [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
     }
