@@ -1050,7 +1050,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   //[self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
 }
 
--(void)startExposure {
+-(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
   PTPProperty *shutter = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeCanonShutterSpeed]];
   if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonRemoteReleaseOn]]) {
     [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:1];

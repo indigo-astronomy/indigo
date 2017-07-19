@@ -476,6 +476,24 @@
 #define DSLR_LOCK_ITEM_NAME        "LOCK"
 
 //----------------------------------------------------------------------
+/** DSLR_MIRROR_LOCKUP property name.
+ */
+#define DSLR_MIRROR_LOCKUP_PROPERTY_NAME		"DSLR_MIRROR_LOCKUP"
+
+/** DSLR_LOCK.LOCK property item name.
+ */
+#define DSLR_MIRROR_LOCKUP_ITEM_NAME        "MIRROR_LOCKUP"
+
+//----------------------------------------------------------------------
+/** DSLR_AVOID_AF property name.
+ */
+#define DSLR_AVOID_AF_PROPERTY_NAME		"DSLR_AVOID_AF"
+
+/** DSLR_LOCK.LOCK property item name.
+ */
+#define DSLR_AVOID_AF_ITEM_NAME        "AVOID_AF"
+
+//----------------------------------------------------------------------
 /** DSLR_AF property name.
  */
 #define DSLR_AF_PROPERTY_NAME		"DSLR_AF"

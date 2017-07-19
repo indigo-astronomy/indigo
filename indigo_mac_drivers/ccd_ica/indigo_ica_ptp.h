@@ -468,7 +468,7 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)unlock;
 -(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y;
 -(void)stopPreview;
--(void)startExposure;
+-(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF;
 -(void)stopExposure;
 -(void)startAutofocus;
 -(void)stopAutofocus;

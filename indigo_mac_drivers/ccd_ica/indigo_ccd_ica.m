@@ -162,11 +162,15 @@ static struct info {
 	{ NULL, NULL, 0, 0, 0 }
 };
 
-#define PRIVATE_DATA        ((ica_private_data *)device->private_data)
-#define DSLR_LOCK_PROPERTY  PRIVATE_DATA->dslr_lock_property
-#define DSLR_LOCK_ITEM      PRIVATE_DATA->dslr_lock_property->items
-#define DSLR_AF_PROPERTY    PRIVATE_DATA->dslr_af_property
-#define DSLR_AF_ITEM        PRIVATE_DATA->dslr_af_property->items
+#define PRIVATE_DATA                  ((ica_private_data *)device->private_data)
+#define DSLR_LOCK_PROPERTY            PRIVATE_DATA->dslr_lock_property
+#define DSLR_LOCK_ITEM                PRIVATE_DATA->dslr_lock_property->items
+#define DSLR_MIRROR_LOCKUP_PROPERTY   PRIVATE_DATA->dslr_mirror_lockup_property
+#define DSLR_MIRROR_LOCKUP_ITEM       PRIVATE_DATA->dslr_mirror_lockup_property->items
+#define DSLR_AF_PROPERTY              PRIVATE_DATA->dslr_af_property
+#define DSLR_AF_ITEM                  PRIVATE_DATA->dslr_af_property->items
+#define DSLR_AVOID_AF_PROPERTY        PRIVATE_DATA->dslr_avoid_af_property
+#define DSLR_AVOID_AF_ITEM            PRIVATE_DATA->dslr_avoid_af_property->items
 
 struct dslr_properties {
   PTPVendorExtension extension;
@@ -231,7 +235,9 @@ typedef struct {
 	struct info *info;
   indigo_device *focuser;
   indigo_property *dslr_lock_property;
+  indigo_property *dslr_mirror_lockup_property;
   indigo_property *dslr_af_property;
+  indigo_property *dslr_avoid_af_property;
 	indigo_property **dslr_properties;
   int dslr_properties_count;
   void *buffer;
@@ -262,8 +268,12 @@ static indigo_result ccd_attach(indigo_device *device) {
     CCD_IMAGE_FORMAT_PROPERTY->perm = CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
     DSLR_LOCK_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_LOCK_PROPERTY_NAME, "DSLR", "Lock camera GUI", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
     indigo_init_switch_item(DSLR_LOCK_ITEM, DSLR_LOCK_ITEM_NAME, "Lock", false);
+    DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_MIRROR_LOCKUP_PROPERTY_NAME, "DSLR", "Use mirror lockup", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+    indigo_init_switch_item(DSLR_MIRROR_LOCKUP_ITEM, DSLR_MIRROR_LOCKUP_ITEM_NAME, "Mirror lockup", true);
     DSLR_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_AF_PROPERTY_NAME, "DSLR", "Autofocus", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
     indigo_init_switch_item(DSLR_AF_ITEM, DSLR_AF_ITEM_NAME, "Start autofocus", false);
+    DSLR_AVOID_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_AVOID_AF_PROPERTY_NAME, "DSLR", "Avoid AF", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+    indigo_init_switch_item(DSLR_AVOID_AF_ITEM, DSLR_AVOID_AF_ITEM_NAME, "Avoid AF before capture", true);
 		indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
 		// --------------------------------------------------------------------------------
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
@@ -281,8 +291,12 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 					indigo_define_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
       if (indigo_property_match(DSLR_LOCK_PROPERTY, property))
         indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
+      if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property))
+        indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
       if (indigo_property_match(DSLR_AF_PROPERTY, property))
         indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
+      if (indigo_property_match(DSLR_AVOID_AF_PROPERTY, property))
+        indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -305,7 +319,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			[camera requestOpenSession];
 		} else {
@@ -317,7 +330,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
   } else if (indigo_property_match(DSLR_LOCK_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_LOCK
     indigo_property_copy_values(DSLR_LOCK_PROPERTY, property, false);
-    PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
     DSLR_LOCK_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_LOCK_PROPERTY, NULL);
     if (DSLR_LOCK_ITEM->sw.value)
@@ -325,14 +337,27 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
     else
       [camera unlock];
     return INDIGO_OK;
+  } else if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property)) {
+      // -------------------------------------------------------------------------------- DSLR_MIRROR_LOCKUP
+    indigo_property_copy_values(DSLR_MIRROR_LOCKUP_PROPERTY, property, false);
+    DSLR_LOCK_PROPERTY->state = INDIGO_OK_STATE;
+    indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+    return INDIGO_OK;
   } else if (indigo_property_match(DSLR_AF_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_AF
     indigo_property_copy_values(DSLR_AF_PROPERTY, property, false);
     if (DSLR_AF_ITEM->sw.value) {
-      PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
       DSLR_AF_PROPERTY->state = INDIGO_BUSY_STATE;
       indigo_update_property(device, DSLR_AF_PROPERTY, NULL);
         [camera startAutofocus];
+    }
+    return INDIGO_OK;
+  } else if (indigo_property_match(DSLR_AVOID_AF_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- DSLR_AVOID_AF
+    indigo_property_copy_values(DSLR_AVOID_AF_PROPERTY, property, false);
+    if (DSLR_AF_ITEM->sw.value) {
+      DSLR_AF_PROPERTY->state = INDIGO_BUSY_STATE;
+      indigo_update_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
     }
     return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
@@ -340,12 +365,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		[camera startExposure];
+		[camera startExposureWithMirrorLockup:DSLR_MIRROR_LOCKUP_ITEM->sw.value avoidAF:DSLR_AVOID_AF_ITEM->sw.value];
     if (PRIVATE_DATA->bulb)
       PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
     return indigo_ccd_change_property(device, client, property);
@@ -357,7 +381,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
 			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
 			CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -440,7 +463,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
 		indigo_release_property(PRIVATE_DATA->dslr_properties[i]);
   indigo_release_property(DSLR_LOCK_PROPERTY);
+  indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
   indigo_release_property(DSLR_AF_PROPERTY);
+  indigo_release_property(DSLR_AVOID_AF_PROPERTY);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_ccd_detach(device);
 }
@@ -550,7 +575,9 @@ static indigo_result focuser_detach(indigo_device *device) {
 		for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
 			indigo_define_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
     indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
+    indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
+    indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
     if (DSLR_LOCK_ITEM->sw.value)
       [camera lock];
     else
@@ -893,7 +920,9 @@ static indigo_result focuser_detach(indigo_device *device) {
 		for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
 			indigo_delete_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
     indigo_delete_property(device, DSLR_LOCK_PROPERTY, NULL);
+    indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_AF_PROPERTY, NULL);
+    indigo_delete_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 	}
