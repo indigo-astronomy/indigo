@@ -352,6 +352,19 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
     case PTPPropertyCodeCanonLensID: return @"PTPPropertyCodeCanonLensID";
     case PTPPropertyCodeCanonLCDBrightness: return @"PTPPropertyCodeCanonLCDBrightness";
     case PTPPropertyCodeCanonCADarkBright: return @"PTPPropertyCodeCanonCADarkBright";
+
+    case PTPPropertyCodeCanonExExposureLevelIncrements: return @"PTPPropertyCodeCanonExExposureLevelIncrements";
+    case PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode: return @"PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode";
+    case PTPPropertyCodeCanonExLongExposureNoiseReduction: return @"PTPPropertyCodeCanonExLongExposureNoiseReduction";
+    case PTPPropertyCodeCanonExHighISONoiseReduction: return @"PTPPropertyCodeCanonExHighISONoiseReduction";
+    case PTPPropertyCodeCanonExAutoLightingOptimizer: return @"PTPPropertyCodeCanonExAutoLightingOptimizer";
+    case PTPPropertyCodeCanonExAFAssistBeamFiring: return @"PTPPropertyCodeCanonExAFAssistBeamFiring";
+    case PTPPropertyCodeCanonExAFDuringLiveView: return @"PTPPropertyCodeCanonExAFDuringLiveView";
+    case PTPPropertyCodeCanonExMirrorLockup: return @"PTPPropertyCodeCanonExMirrorLockup";
+    case PTPPropertyCodeCanonExShutterAELockButton: return @"PTPPropertyCodeCanonExShutterAELockButton";
+    case PTPPropertyCodeCanonExSetButtonWhenShooting: return @"PTPPropertyCodeCanonExSetButtonWhenShooting";
+    case PTPPropertyCodeCanonExLCDDisplayWhenPowerOn: return @"PTPPropertyCodeCanonExLCDDisplayWhenPowerOn";
+    case PTPPropertyCodeCanonExAddOriginalDecisionData: return @"PTPPropertyCodeCanonExAddOriginalDecisionData";
   }
   return [PTPProperty propertyCodeName:propertyCode];
 }
@@ -397,6 +410,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   NSString *addedFileName;
   int currentMode;
   int focusSteps;
+  unsigned int *customFuncEx;
 }
 
 -(PTPVendorExtension)extension {
@@ -540,6 +554,26 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
               case PTPPropertyCodeCanonEFComp:
               case PTPPropertyCodeCanonLensName:
               case PTPPropertyCodeCanonLensID:
+              case PTPPropertyCodeCanonCustomFunc1:
+              case PTPPropertyCodeCanonCustomFunc2:
+              case PTPPropertyCodeCanonCustomFunc3:
+              case PTPPropertyCodeCanonCustomFunc4:
+              case PTPPropertyCodeCanonCustomFunc5:
+              case PTPPropertyCodeCanonCustomFunc6:
+              case PTPPropertyCodeCanonCustomFunc7:
+              case PTPPropertyCodeCanonCustomFunc8:
+              case PTPPropertyCodeCanonCustomFunc9:
+              case PTPPropertyCodeCanonCustomFunc10:
+              case PTPPropertyCodeCanonCustomFunc11:
+              case PTPPropertyCodeCanonCustomFunc12:
+              case PTPPropertyCodeCanonCustomFunc13:
+              case PTPPropertyCodeCanonCustomFunc14:
+              case PTPPropertyCodeCanonCustomFunc15:
+              case PTPPropertyCodeCanonCustomFunc16:
+              case PTPPropertyCodeCanonCustomFunc17:
+              case PTPPropertyCodeCanonCustomFunc18:
+              case PTPPropertyCodeCanonCustomFunc19:
+              case PTPPropertyCodeCanonCustomFuncEx:
                 property.readOnly = true;
                 break;
               default:
@@ -618,14 +652,91 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
               case PTPPropertyCodeCanonLensName:
                 property.type = PTPDataTypeCodeUnicodeString;
                 break;
-              case PTPPropertyCodeCanonImageFormat:
-              case PTPPropertyCodeCanonImageFormatCF:
-              case PTPPropertyCodeCanonImageFormatSD:
-              case PTPPropertyCodeCanonImageFormatExtHD:
-                property.type = PTPDataTypeCodeUInt64; // packed image format
+              default:
+                property.type = PTPDataTypeCodeUndefined;
                 break;
             }
             switch (property.type) {
+              case PTPDataTypeCodeUndefined: {
+                switch (code) {
+                  case PTPPropertyCodeCanonCustomFunc1:
+                  case PTPPropertyCodeCanonCustomFunc2:
+                  case PTPPropertyCodeCanonCustomFunc3:
+                  case PTPPropertyCodeCanonCustomFunc4:
+                  case PTPPropertyCodeCanonCustomFunc5:
+                  case PTPPropertyCodeCanonCustomFunc6:
+                  case PTPPropertyCodeCanonCustomFunc7:
+                  case PTPPropertyCodeCanonCustomFunc8:
+                  case PTPPropertyCodeCanonCustomFunc9:
+                  case PTPPropertyCodeCanonCustomFunc10:
+                  case PTPPropertyCodeCanonCustomFunc11:
+                  case PTPPropertyCodeCanonCustomFunc12:
+                  case PTPPropertyCodeCanonCustomFunc13:
+                  case PTPPropertyCodeCanonCustomFunc14:
+                  case PTPPropertyCodeCanonCustomFunc15:
+                  case PTPPropertyCodeCanonCustomFunc16:
+                  case PTPPropertyCodeCanonCustomFunc17:
+                  case PTPPropertyCodeCanonCustomFunc18:
+                  case PTPPropertyCodeCanonCustomFunc19: {
+                    property.type = PTPDataTypeCodeUnicodeString;
+                    NSMutableString *string = [NSMutableString stringWithFormat:@"%02x", *buf++];
+                    while (buf - record < size) {
+                      [string appendFormat:@" %02x", *buf++];
+                    }
+                    property.defaultValue = NULL;
+                    property.value = string.description;
+                    break;
+                  }
+                  case PTPPropertyCodeCanonCustomFuncEx: {
+                    unsigned int fullSize = ptpReadUnsignedInt(&buf);
+                    if (customFuncEx == NULL) {
+                      customFuncEx = malloc(fullSize);
+                      *customFuncEx = fullSize;
+                    }
+                    else if (*customFuncEx != fullSize) {
+                      NSLog(@"Invalid customFuncEx size %d -> %d", *customFuncEx, fullSize);
+                      break;
+                    }
+                    memcpy(customFuncEx + 1, buf, fullSize - 4);
+                    int offset = 1;
+                    unsigned int groupCount = customFuncEx[offset++];
+                    for (int i = 0; i < groupCount; i++) {
+                      offset++; //unsigned int group = customFuncEx[offset++];
+                      offset++; //unsigned int groupSize = customFuncEx[offset++];
+                      unsigned int itemCount = customFuncEx[offset++];
+                      for (int j = 0; j < itemCount; j++) {
+                        unsigned int item = customFuncEx[offset++];
+                        unsigned int valueSize = customFuncEx[offset++];
+                        unsigned short itemCode = item | 0x8000;
+                        NSNumber *itemNumber = [NSNumber numberWithUnsignedShort:itemCode];
+                        PTPProperty *itemProperty = self.info.properties[itemNumber];
+                        if (itemProperty == nil)
+                          itemProperty = [[self.propertyClass alloc] initWithCode:itemCode];
+                        itemProperty.type = PTPDataTypeCodeUnicodeString;
+                        NSMutableString *value = [NSMutableString stringWithFormat:@"%u", customFuncEx[offset++]];
+                        for (int k = 1; k < valueSize; k++)
+                          [value appendFormat:@"%u", customFuncEx[offset++]];
+                        itemProperty.defaultValue = itemProperty.value = value.description;
+                        if (![self.info.propertiesSupported containsObject:itemNumber])
+                          [(NSMutableArray *)self.info.propertiesSupported addObject:itemNumber];
+                        self.info.properties[[NSNumber numberWithUnsignedShort:itemCode]] = itemProperty;
+                        [properties addObject:itemProperty];
+                        NSLog(@"PTPEventCodeCanonPropValueChanged %@", itemProperty);
+                      }
+                    }
+                    break;
+                  }
+                  case PTPPropertyCodeCanonImageFormat:
+                  case PTPPropertyCodeCanonImageFormatCF:
+                  case PTPPropertyCodeCanonImageFormatSD:
+                  case PTPPropertyCodeCanonImageFormatExtHD: {
+                    property.type = PTPDataTypeCodeUInt64;
+                    property.defaultValue = property.value = [NSNumber numberWithUnsignedLong:ptpReadCanonImageFormat(&buf)];
+                    break;
+                  }
+                }
+                break;
+              }
               case PTPDataTypeCodeUInt8:
                 property.defaultValue = property.value = [NSNumber numberWithUnsignedChar:ptpReadUnsignedChar(&buf)];
                 break;
@@ -637,9 +748,6 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
                 break;
               case PTPDataTypeCodeUInt32:
                 property.defaultValue = property.value = [NSNumber numberWithUnsignedInt:ptpReadUnsignedInt(&buf)];
-                break;
-              case PTPDataTypeCodeUInt64: // packed image format
-                property.defaultValue = property.value = [NSNumber numberWithUnsignedLong:ptpReadCanonImageFormat(&buf)];
                 break;
               case PTPDataTypeCodeUnicodeString:
                 property.defaultValue = property.value = [NSString stringWithCString:(char *)buf encoding:NSASCIIStringEncoding];
@@ -851,6 +959,66 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
             [self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSNumber *)property.value min:@0 max:@100 step:@25 readOnly:true];
             break;
           }
+          case PTPPropertyCodeCanonExExposureLevelIncrements: {
+            NSDictionary *map = @{ @0: @"1/3", @1: @"1/2" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode: {
+            NSDictionary *map = @{ @0: @"Auto", @1: @"1/200s" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExLongExposureNoiseReduction: {
+            NSDictionary *map = @{ @0: @"Off", @1: @"Auto", @2: @"On" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExHighISONoiseReduction: {
+            NSDictionary *map = @{ @0: @"Off", @1: @"On" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExAutoLightingOptimizer: {
+            NSDictionary *map = @{ @0: @"Enable", @1: @"Disable" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExAFAssistBeamFiring: {
+            NSDictionary *map = @{ @0: @"Enable", @1: @"Disable", @2: @"Only external flash emits" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExAFDuringLiveView: {
+            NSDictionary *map = @{ @0: @"Disable", @1: @"Quick mode", @2: @"Live mode" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExMirrorLockup: {
+            NSDictionary *map = @{ @0: @"Disable", @1: @"Enable" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExShutterAELockButton: {
+            NSDictionary *map = @{ @0: @"AF/AE Lock", @1: @"AE Lock/AF", @2: @"AF/AF lock, no AE lock", @3: @"AE/AF, no AE lock" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExSetButtonWhenShooting: {
+            NSDictionary *map = @{ @0: @"LCD monitor On/Off", @1: @"Change quality", @2: @"Flash exposure compensation", @3: @"Menu display", @4: @"Disable" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExLCDDisplayWhenPowerOn: {
+            NSDictionary *map = @{ @0: @"Display", @1: @"Retain power off status" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExAddOriginalDecisionData: {
+            NSDictionary *map = @{ @0: @"Off", @1: @"On" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
           default: {
             if (property.supportedValues) {
               NSMutableArray *values = [NSMutableArray array];
@@ -949,26 +1117,12 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   if (property) {
     unsigned char *buffer = NULL;
     unsigned int size = 0;
-    switch (property.type) {
-      case PTPDataTypeCodeSInt8:
-      case PTPDataTypeCodeUInt8: {
-        buffer = malloc(size = 12);
-        *(char *)(buffer + 8) = value.intValue;
-        break;
-      }
-      case PTPDataTypeCodeSInt16:
-      case PTPDataTypeCodeUInt16: {
-        buffer = malloc(size = 12);
-        *(short *)(buffer + 8) = value.intValue;
-        break;
-      }
-      case PTPDataTypeCodeSInt32:
-      case PTPDataTypeCodeUInt32: {
-        buffer = malloc(size = 12);
-        *(int *)(buffer + 8) = value.intValue;
-        break;
-      }
-      case PTPDataTypeCodeUInt64: { // packed image format
+    unsigned short propertyCode = property.propertyCode;
+    switch (propertyCode) {
+      case PTPPropertyCodeCanonImageFormat:
+      case PTPPropertyCodeCanonImageFormatCF:
+      case PTPPropertyCodeCanonImageFormatSD:
+      case PTPPropertyCodeCanonImageFormatExtHD: {
         long l = (long)value.longLongValue;
         long i1 = (l >> 32) & 0xFFFFFFFF;
         long i2 = l & 0xFFFFFFFF;
@@ -989,11 +1143,70 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
         ptpWriteUnsignedInt(&buf, i2 & 0xFF);
         break;
       }
-      case PTPDataTypeCodeUnicodeString: {
-        const char *s = [value cStringUsingEncoding:NSASCIIStringEncoding];
-        if (s) {
-          buffer = malloc(size = 8 + 1 + (unsigned int)strlen(s));
-          strcpy((char *)buffer + 8, s);
+      case PTPPropertyCodeCanonExExposureLevelIncrements:
+      case PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode:
+      case PTPPropertyCodeCanonExLongExposureNoiseReduction:
+      case PTPPropertyCodeCanonExHighISONoiseReduction:
+      case PTPPropertyCodeCanonExAutoLightingOptimizer:
+      case PTPPropertyCodeCanonExAFAssistBeamFiring:
+      case PTPPropertyCodeCanonExAFDuringLiveView:
+      case PTPPropertyCodeCanonExMirrorLockup:
+      case PTPPropertyCodeCanonExShutterAELockButton:
+      case PTPPropertyCodeCanonExSetButtonWhenShooting:
+      case PTPPropertyCodeCanonExLCDDisplayWhenPowerOn:
+      case PTPPropertyCodeCanonExAddOriginalDecisionData: {
+        int offset = 1;
+        unsigned int groupCount = customFuncEx[offset++];
+        for (int i = 0; i < groupCount; i++) {
+          offset++; //unsigned int group = customFuncEx[offset++];
+          offset++; //unsigned int groupSize = customFuncEx[offset++];
+          unsigned int itemCount = customFuncEx[offset++];
+          for (int j = 0; j < itemCount; j++) {
+            unsigned int item = customFuncEx[offset++];
+            unsigned int valueSize = customFuncEx[offset++];
+            unsigned short itemCode = item | 0x8000;
+            if (itemCode == propertyCode) {
+              NSArray *values = [value componentsSeparatedByString:@" "];
+              for (int k = 0; k < valueSize; k++)
+                customFuncEx[offset++] = [values[k] intValue];
+            } else {
+              offset += valueSize;
+            }
+          }
+        }
+        buffer = malloc(size = 8 + *customFuncEx);
+        memcpy(buffer + 8, customFuncEx, *customFuncEx);
+        propertyCode = PTPPropertyCodeCanonCustomFuncEx;
+        break;
+      }
+      default: {
+        switch (property.type) {
+          case PTPDataTypeCodeSInt8:
+          case PTPDataTypeCodeUInt8: {
+            buffer = malloc(size = 12);
+            *(char *)(buffer + 8) = value.intValue;
+            break;
+          }
+          case PTPDataTypeCodeSInt16:
+          case PTPDataTypeCodeUInt16: {
+            buffer = malloc(size = 12);
+            *(short *)(buffer + 8) = value.intValue;
+            break;
+          }
+          case PTPDataTypeCodeSInt32:
+          case PTPDataTypeCodeUInt32: {
+            buffer = malloc(size = 12);
+            *(int *)(buffer + 8) = value.intValue;
+            break;
+          }
+          case PTPDataTypeCodeUnicodeString: {
+            const char *s = [value cStringUsingEncoding:NSASCIIStringEncoding];
+            if (s) {
+              buffer = malloc(size = 8 + 1 + (unsigned int)strlen(s));
+              strcpy((char *)buffer + 8, s);
+            }
+            break;
+          }
         }
         break;
       }
@@ -1001,7 +1214,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
     if (buffer) {
       unsigned char *buf = buffer;
       ptpWriteUnsignedInt(&buf, size);
-      ptpWriteUnsignedInt(&buf, property.propertyCode);
+      ptpWriteUnsignedInt(&buf, propertyCode);
       [self sendPTPRequest:PTPRequestCodeCanonSetDevicePropValueEx data:[NSData dataWithBytesNoCopy:buffer length:size freeWhenDone:YES]];
     }
   }
@@ -1020,6 +1233,8 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   [self sendPTPRequest:PTPRequestCodeCanonSetRemoteMode param1:0];
   [self sendPTPRequest:PTPRequestCodeCanonSetEventMode param1:0];
   [super requestCloseSession];
+  free(customFuncEx);
+  customFuncEx = NULL;
 }
 
 -(void)lock {

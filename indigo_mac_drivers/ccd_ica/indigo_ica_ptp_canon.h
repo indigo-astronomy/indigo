@@ -298,7 +298,21 @@ enum PTPCanonPropertyCode {
   PTPPropertyCodeCanonStroboFiring = 0xD1dc,
   PTPPropertyCodeCanonLensID = 0xD1dd,
   PTPPropertyCodeCanonLCDBrightness = 0xD1de,
-  PTPPropertyCodeCanonCADarkBright = 0xD1df
+  PTPPropertyCodeCanonCADarkBright = 0xD1df,
+  
+  PTPPropertyCodeCanonExExposureLevelIncrements = 0x8101,
+  PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode = 0x810F,
+  PTPPropertyCodeCanonExLongExposureNoiseReduction = 0x8201,
+  PTPPropertyCodeCanonExHighISONoiseReduction = 0x8202,
+  PTPPropertyCodeCanonExAutoLightingOptimizer = 0x8204,
+  PTPPropertyCodeCanonExAFAssistBeamFiring = 0x850E,
+  PTPPropertyCodeCanonExAFDuringLiveView = 0x8511,
+  PTPPropertyCodeCanonExMirrorLockup = 0x860f,
+  PTPPropertyCodeCanonExShutterAELockButton = 0x8701,
+  PTPPropertyCodeCanonExSetButtonWhenShooting = 0x8704,
+  PTPPropertyCodeCanonExLCDDisplayWhenPowerOn = 0x8811,
+  PTPPropertyCodeCanonExAddOriginalDecisionData = 0x880F,
+  
 };
 
 
