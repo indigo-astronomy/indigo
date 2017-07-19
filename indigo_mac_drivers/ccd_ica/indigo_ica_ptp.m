@@ -1336,7 +1336,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)stopPreview {
 }
 
--(void)startExposure {
+-(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF{
   [_icCamera requestTakePicture];
 }
 

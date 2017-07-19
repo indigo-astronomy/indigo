@@ -944,13 +944,13 @@
   [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"0"];
 }
 
--(void)startExposure {
+-(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
   if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonInitiateCaptureRecInMedia]]) {
     [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:-1 param2:0];
     [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
   }
   else
-    [super startExposure];
+    [super startExposureWithMirrorLockup:mirrorLockup avoidAF:avoidAF];
 }
 
 -(void)stopExposure {
