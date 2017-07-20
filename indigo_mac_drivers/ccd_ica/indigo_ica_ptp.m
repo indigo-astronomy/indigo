@@ -271,7 +271,7 @@ NSString *ptpReadString(unsigned char** buf) {
     return result;
   }
   *buf = (*buf) + 1;
-  return nil;
+  return @"";
 }
 
 unsigned int ptpWriteString(unsigned char **buf, NSString *value) {
@@ -866,6 +866,9 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         _vendorExtensionVersion = 100;
         _vendorExtensionDesc = @"Canon & Microsoft PTP Extensions";
       }
+    } else if ([_manufacturer containsString:@"Sony"]) {
+      self.vendorExtension = PTPVendorExtensionSony;
+      _vendorExtensionDesc = @"Sony PTP Extensions";
     }
     if (buf - buffer >= dataLength)
       return self;
@@ -1051,6 +1054,12 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 
 -(void)processPropertyDescription:(PTPProperty *)property {
   switch (property.propertyCode) {
+    case PTPPropertyCodeBatteryLevel: {
+      if (property.supportedValues) {
+        property.supportedValues = nil;
+      }
+      break;
+    }
     case PTPPropertyCodeExposureProgramMode: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority" };
       [self mapValueList:property map:map];

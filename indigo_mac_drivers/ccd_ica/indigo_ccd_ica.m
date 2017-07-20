@@ -597,7 +597,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	indigo_property *property;
 	sprintf(name, "%04x", code);
-	strncpy(label, [[camera.propertyClass propertyCodeName:code] cStringUsingEncoding:NSASCIIStringEncoding] + 15, INDIGO_NAME_SIZE);
+	strncpy(label, [[camera.propertyClass propertyCodeName:code] cStringUsingEncoding:NSUTF8StringEncoding] + 15, INDIGO_NAME_SIZE);
   PTPVendorExtension extension = camera.extension;
 	for (int i = 0; i < dslr_properties[i].code; i++) {
 		if (dslr_properties[i].extension == extension && code == dslr_properties[i].code) {
@@ -649,7 +649,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		int index = 0;
 		for (NSString *key in values) {
 			char name[INDIGO_NAME_SIZE];
-			strncpy(name, [key cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
+			strncpy(name, [key cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_NAME_SIZE);
 			if (strcmp(property->items[index].name, name)) {
 				redefine = true;
 				break;
@@ -720,8 +720,8 @@ static indigo_result focuser_detach(indigo_device *device) {
     char name[INDIGO_NAME_SIZE];
     char label[INDIGO_VALUE_SIZE];
 		for (NSString *key in values) {
-			strncpy(name, [key cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_NAME_SIZE);
-			strncpy(label, [labels[i] cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_VALUE_SIZE);
+			strncpy(name, [key cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_NAME_SIZE);
+			strncpy(label, [labels[i] cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_VALUE_SIZE);
 			indigo_init_switch_item(property->items + i, name, label, [key isEqual:value]);
 			i++;
 		}
@@ -772,11 +772,11 @@ static indigo_result focuser_detach(indigo_device *device) {
 		if (IS_CONNECTED)
 			indigo_delete_property(device, property, NULL);
 		property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
-		strncpy(property->items[0].text.value, [value cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_VALUE_SIZE);
+		strncpy(property->items[0].text.value, [value cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_VALUE_SIZE);
 		if (IS_CONNECTED)
 			indigo_define_property(device, property, NULL);
 	} else {
-		strncpy(property->items[0].text.value, [value cStringUsingEncoding:NSASCIIStringEncoding], INDIGO_VALUE_SIZE);
+		strncpy(property->items[0].text.value, [value cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_VALUE_SIZE);
     property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, property, NULL);
 	}
@@ -826,7 +826,7 @@ static indigo_result focuser_detach(indigo_device *device) {
   memcpy(PRIVATE_DATA->buffer, data.bytes, length);
 	if ((CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value && is_jpeg) || (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value && (!is_jpeg || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE))) {
 		indigo_device *device = [(NSValue *)camera.userData pointerValue];
-		indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSASCIIStringEncoding]);
+		indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSUTF8StringEncoding]);
 	}
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -851,13 +851,13 @@ static indigo_result focuser_detach(indigo_device *device) {
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
     if (message)
-      indigo_update_property(device, CCD_EXPOSURE_PROPERTY, [message cStringUsingEncoding:NSASCIIStringEncoding]);
+      indigo_update_property(device, CCD_EXPOSURE_PROPERTY, [message cStringUsingEncoding:NSUTF8StringEncoding]);
     else
       indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Failed to exposure");
   } else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
     if (message)
-      indigo_update_property(device, CCD_STREAMING_PROPERTY, [message cStringUsingEncoding:NSASCIIStringEncoding]);
+      indigo_update_property(device, CCD_STREAMING_PROPERTY, [message cStringUsingEncoding:NSUTF8StringEncoding]);
     else
       indigo_update_property(device, CCD_STREAMING_PROPERTY, "Failed to exposure");
   }
@@ -873,7 +873,7 @@ static indigo_result focuser_detach(indigo_device *device) {
   indigo_device *device = ((ica_private_data *)((indigo_device *)[(NSValue *)camera.userData pointerValue])->private_data)->focuser;
   FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
   if (message)
-    indigo_update_property(device, FOCUSER_STEPS_PROPERTY, [message cStringUsingEncoding:NSASCIIStringEncoding]);
+    indigo_update_property(device, FOCUSER_STEPS_PROPERTY, [message cStringUsingEncoding:NSUTF8StringEncoding]);
   else
     indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Failed to focus");
 }

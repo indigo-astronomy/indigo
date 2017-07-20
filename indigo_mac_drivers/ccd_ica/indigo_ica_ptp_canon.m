@@ -750,7 +750,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
                 property.defaultValue = property.value = [NSNumber numberWithUnsignedInt:ptpReadUnsignedInt(&buf)];
                 break;
               case PTPDataTypeCodeUnicodeString:
-                property.defaultValue = property.value = [NSString stringWithCString:(char *)buf encoding:NSASCIIStringEncoding];
+                property.defaultValue = property.value = [NSString stringWithCString:(char *)buf encoding:NSUTF8StringEncoding];
                 if (property.value == nil)
                   property.value = @"";
                 break;
@@ -789,7 +789,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
           }
           case PTPEventCodeCanonObjectAddedEx: {
             unsigned int obj = ptpReadUnsignedInt(&buf);
-            addedFileName = [NSString stringWithCString:(char *)(buf + 0x1C) encoding:NSASCIIStringEncoding];
+            addedFileName = [NSString stringWithCString:(char *)(buf + 0x1C) encoding:NSUTF8StringEncoding];
             [self sendPTPRequest:PTPRequestCodeCanonGetObject param1:obj];
             break;
 
@@ -1200,7 +1200,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
             break;
           }
           case PTPDataTypeCodeUnicodeString: {
-            const char *s = [value cStringUsingEncoding:NSASCIIStringEncoding];
+            const char *s = [value cStringUsingEncoding:NSUTF8StringEncoding];
             if (s) {
               buffer = malloc(size = 8 + 1 + (unsigned int)strlen(s));
               strcpy((char *)buffer + 8, s);
