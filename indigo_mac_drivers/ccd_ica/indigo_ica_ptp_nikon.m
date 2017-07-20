@@ -706,6 +706,22 @@
     case PTPRequestCodeGetDeviceInfo: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         self.info = [[self.deviceInfoClass alloc] initWithData:data];
+        if ([self.info.model containsString:@"D3000"] || [self.info.model containsString:@"D3000"] || [self.info.model containsString:@"D3200"] || [self.info.model containsString:@"D3300"] || [self.info.model containsString:@"D3400"] || [self.info.model containsString:@"D3500"]) {
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetVendorPropCodes]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonCapture]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfDrive]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonSetControlMode]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonDeviceReady]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfCaptureSDRAM]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonDelImageSDRAM]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetPreviewImg]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonStartLiveView]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonEndLiveView]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetLiveViewImg]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonMfDrive]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonChangeAfArea]];
+          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfDriveCancel]];
+        }
         if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetVendorPropCodes]]) {
           [self sendPTPRequest:PTPRequestCodeNikonGetVendorPropCodes];
         } else {

@@ -73,6 +73,7 @@
 #import "indigo_ica_ptp.h"
 #import "indigo_ica_ptp_nikon.h"
 #import "indigo_ica_ptp_canon.h"
+#import "indigo_ica_ptp_sony.h"
 
 char ptpReadChar(unsigned char** buf) {
   char value = *(SInt8*)(*buf);
@@ -1508,6 +1509,8 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     camera = [[PTPNikonCamera alloc] initWithICCamera:(ICCameraDevice *)device delegate:_delegate];
   else if (device.usbVendorID == 0x04A9)
     camera = [[PTPCanonCamera alloc] initWithICCamera:(ICCameraDevice *)device delegate:_delegate];
+  else if (device.usbVendorID == 0x054c)
+    camera = [[PTPSonyCamera alloc] initWithICCamera:(ICCameraDevice *)device delegate:_delegate];
   else
     camera = [[PTPCamera alloc] initWithICCamera:(ICCameraDevice *)device delegate:_delegate];
   [cameras addObject:camera];
