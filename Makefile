@@ -774,10 +774,13 @@ indigo_mac_drivers/ccd_ica/indigo_ica_ptp_nikon.o:	indigo_mac_drivers/ccd_ica/in
 indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.o:	indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.m
 	$(CC) -c -o $@ $< $(MFLAGS)
 
-$(BUILD_DRIVERS)/indigo_ccd_ica.a: indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_nikon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.o
+indigo_mac_drivers/ccd_ica/indigo_ica_ptp_sony.o:	indigo_mac_drivers/ccd_ica/indigo_ica_ptp_sony.m
+	$(CC) -c -o $@ $< $(MFLAGS)
+
+$(BUILD_DRIVERS)/indigo_ccd_ica.a: indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_nikon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_sony.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_DRIVERS)/indigo_ccd_ica.dylib: indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_nikon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.o
+$(BUILD_DRIVERS)/indigo_ccd_ica.dylib: indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_nikon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_sony.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
