@@ -945,8 +945,11 @@
 }
 
 -(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
+  if ([self.info.propertiesSupported containsObject:[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonExposureDelayMode]]) {
+    [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(mirrorLockup ? @"1" : @"0")];
+  }
   if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonInitiateCaptureRecInMedia]]) {
-    [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:-1 param2:0];
+    [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:(avoidAF ? 0xFFFFFFFF : 0xFFFFFFFE) param2:0];
     [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
   }
   else

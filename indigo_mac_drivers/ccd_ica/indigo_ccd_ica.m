@@ -229,6 +229,7 @@ struct dslr_properties {
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
   { PTPVendorExtensionCanon, PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonExpCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
+  { PTPVendorExtensionCanon, PTPPropertyCodeCanonDriveMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Drive mode" },
   
 	{ 0, 0, NULL, NULL }
 };
@@ -346,14 +347,16 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
   } else if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property)) {
       // -------------------------------------------------------------------------------- DSLR_MIRROR_LOCKUP
     indigo_property_copy_values(DSLR_MIRROR_LOCKUP_PROPERTY, property, false);
-    DSLR_LOCK_PROPERTY->state = INDIGO_OK_STATE;
+    DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     return INDIGO_OK;
   } else if (indigo_property_match(DSLR_AF_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_AF
+    if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE)
+      return INDIGO_OK;
     indigo_property_copy_values(DSLR_AF_PROPERTY, property, false);
     if (DSLR_AF_ITEM->sw.value) {
-      DSLR_AF_PROPERTY->state = INDIGO_BUSY_STATE;
+      DSLR_AF_PROPERTY->state = INDIGO_OK_STATE;
       indigo_update_property(device, DSLR_AF_PROPERTY, NULL);
         [camera startAutofocus];
     }
@@ -361,12 +364,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
   } else if (indigo_property_match(DSLR_AVOID_AF_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_AVOID_AF
     indigo_property_copy_values(DSLR_AVOID_AF_PROPERTY, property, false);
-    DSLR_AF_PROPERTY->state = INDIGO_OK_STATE;
+    DSLR_AVOID_AF_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
     return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -379,7 +382,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
     return indigo_ccd_change_property(device, client, property);
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+    if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
@@ -817,17 +820,13 @@ static indigo_result focuser_detach(indigo_device *device) {
 	NSString *extension = [@"." stringByAppendingString:filename.pathExtension];
 	if ([extension isEqualToString:@".jpg"])
 		extension = @".jpeg";
-	bool is_jpeg = [extension isEqualToString:@".jpeg"];
   int length = (int)data.length;
   if (PRIVATE_DATA->buffer == NULL)
     PRIVATE_DATA->buffer = malloc(length);
   else if (PRIVATE_DATA->buffer_size < length)
     PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer, length);
   memcpy(PRIVATE_DATA->buffer, data.bytes, length);
-	if ((CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value && is_jpeg) || (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value && (!is_jpeg || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE))) {
-		indigo_device *device = [(NSValue *)camera.userData pointerValue];
-		indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSUTF8StringEncoding]);
-	}
+	indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSUTF8StringEncoding]);
   if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
     CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
