@@ -354,9 +354,11 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
     case PTPPropertyCodeCanonCADarkBright: return @"PTPPropertyCodeCanonCADarkBright";
 
     case PTPPropertyCodeCanonExExposureLevelIncrements: return @"PTPPropertyCodeCanonExExposureLevelIncrements";
+    case PTPPropertyCodeCanonExISOExpansion: return @"PTPPropertyCodeCanonExISOExpansion";
     case PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode: return @"PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode";
     case PTPPropertyCodeCanonExLongExposureNoiseReduction: return @"PTPPropertyCodeCanonExLongExposureNoiseReduction";
     case PTPPropertyCodeCanonExHighISONoiseReduction: return @"PTPPropertyCodeCanonExHighISONoiseReduction";
+    case PTPPropertyCodeCanonExHHighlightTonePriority: return @"PTPPropertyCodeCanonExHHighlightTonePriority";
     case PTPPropertyCodeCanonExAutoLightingOptimizer: return @"PTPPropertyCodeCanonExAutoLightingOptimizer";
     case PTPPropertyCodeCanonExAFAssistBeamFiring: return @"PTPPropertyCodeCanonExAFAssistBeamFiring";
     case PTPPropertyCodeCanonExAFDuringLiveView: return @"PTPPropertyCodeCanonExAFDuringLiveView";
@@ -471,7 +473,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
     [self.delegate cameraCanFocus:self];
   if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonGetViewFinderData]])
     [self.delegate cameraCanPreview:self];
-  [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"1"];
+  //[self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"1"];
   [super processConnect];
 }
 
@@ -574,6 +576,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
               case PTPPropertyCodeCanonCustomFunc18:
               case PTPPropertyCodeCanonCustomFunc19:
               case PTPPropertyCodeCanonCustomFuncEx:
+              case PTPPropertyCodeCanonAutoPowerOff:
                 property.readOnly = true;
                 break;
               default:
@@ -840,7 +843,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
             break;
           }
           case PTPPropertyCodeCanonExpCompensation: {
-            NSDictionary *map = @{ @0x18: @"+3", @0x15: @"+2 2/3", @0x14: @"+2 1/2", @0x13: @"+2 1/3", @0x10: @"+2", @0x0D: @"+1 2/3", @0x0C: @"+1 1/2", @0x0B: @"+1 1/3", @0x08: @"+1", @0x05: @"+2/3", @0x04: @"+1/2", @0x03: @"+1/3", @0x00: @"0", @0xFD: @"-1/3", @0xFC: @"-1/2", @0xFB: @"-2/3", @0xF8: @"-1", @0xF5: @"-1 1/3", @0xF4: @"-1 1/2", @0xF3: @"-1 2/3", @0xF0: @"-2", @0xED: @"-2 1/3", @0xEC: @"-2 1/2", @0xEB: @"-2 2/3", @0xE8: @"-3" };
+            NSDictionary *map = @{ @0x28: @"+5", @0x25: @"+4 2/3", @0x24: @"+4 1/2", @0x23: @"+4 1/3", @0x20: @"+4", @0x1D: @"+3 2/3", @0x1C: @"+3 1/2", @0x1B: @"+3 1/3", @0x18: @"+3", @0x15: @"+2 2/3", @0x14: @"+2 1/2", @0x13: @"+2 1/3", @0x10: @"+2", @0x0D: @"+1 2/3", @0x0C: @"+1 1/2", @0x0B: @"+1 1/3", @0x08: @"+1", @0x05: @"+2/3", @0x04: @"+1/2", @0x03: @"+1/3", @0x00: @"0", @0xFD: @"-1/3", @0xFC: @"-1/2", @0xFB: @"-2/3", @0xF8: @"-1", @0xF5: @"-1 1/3", @0xF4: @"-1 1/2", @0xF3: @"-1 2/3", @0xF0: @"-2", @0xED: @"-2 1/3", @0xEC: @"-2 1/2", @0xEB: @"-2 2/3", @0xE8: @"-3", @0xE5: @"-3 1/3", @0xE4: @"-3 1/2", @0xE3: @"-3 2/3", @0xE0: @"-4", @0xDD: @"-4 1/3", @0xDC: @"-4 1/2", @0xDB: @"-4 2/3", @0xD8: @"-5" };
             property.readOnly = currentMode >= 8 || currentMode == 3;
             [self mapValueList:property map:map];
             break;
@@ -895,11 +898,6 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
           case PTPPropertyCodeCanonEVFOutputDevice: {
             [self.delegate cameraCanPreview:self];
             NSDictionary *map = @{ @1: @"TFT", @2: @"PC" };
-            [self mapValueList:property map:map];
-            break;
-          }
-          case PTPPropertyCodeCanonAutoPowerOff: {
-            NSDictionary *map = @{ @0: @"Disable", @1: @"Enable" };
             [self mapValueList:property map:map];
             break;
           }
@@ -964,6 +962,11 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
             [self mapValueInterval:property map:map];
             break;
           }
+          case PTPPropertyCodeCanonExISOExpansion: {
+            NSDictionary *map = @{ @0: @"Off", @1: @"On" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
           case PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode: {
             NSDictionary *map = @{ @0: @"Auto", @1: @"1/200s" };
             [self mapValueInterval:property map:map];
@@ -976,6 +979,11 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
           }
           case PTPPropertyCodeCanonExHighISONoiseReduction: {
             NSDictionary *map = @{ @0: @"Off", @1: @"On" };
+            [self mapValueInterval:property map:map];
+            break;
+          }
+          case PTPPropertyCodeCanonExHHighlightTonePriority: {
+            NSDictionary *map = @{ @0: @"Enable", @1: @"Disable" };
             [self mapValueInterval:property map:map];
             break;
           }
@@ -1099,7 +1107,8 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
       else
         [self.delegate cameraFocusFailed:self message:[NSString stringWithFormat:@"DriveLens failed (0x%04x = %@)", response.responseCode, response]];
       break;
-    }
+    }      
+    case PTPRequestCodeCanonRemoteReleaseOn:
     case PTPRequestCodeCanonRemoteRelease: {
       if (response.responseCode != PTPResponseCodeOK || response.parameter1 == 1)
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"RemoteRelease failed (0x%04x = %@)", response.responseCode, response]];
@@ -1275,7 +1284,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
       [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"0"];
       [self setProperty:PTPPropertyCodeCanonDriveMode value:@"0"];
     }
-    [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:(avoidAF ? 0 : 1)];
+    [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:(avoidAF ? 1 : 0)];
     if (shutter.value.intValue != 0x0C) {
       [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
     }

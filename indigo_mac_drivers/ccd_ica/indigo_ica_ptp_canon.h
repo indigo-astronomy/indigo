@@ -301,9 +301,11 @@ enum PTPCanonPropertyCode {
   PTPPropertyCodeCanonCADarkBright = 0xD1df,
   
   PTPPropertyCodeCanonExExposureLevelIncrements = 0x8101,
+  PTPPropertyCodeCanonExISOExpansion = 0x8103,
   PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode = 0x810F,
   PTPPropertyCodeCanonExLongExposureNoiseReduction = 0x8201,
   PTPPropertyCodeCanonExHighISONoiseReduction = 0x8202,
+  PTPPropertyCodeCanonExHHighlightTonePriority = 0x8203,
   PTPPropertyCodeCanonExAutoLightingOptimizer = 0x8204,
   PTPPropertyCodeCanonExAFAssistBeamFiring = 0x850E,
   PTPPropertyCodeCanonExAFDuringLiveView = 0x8511,
