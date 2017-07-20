@@ -231,6 +231,22 @@ struct dslr_properties {
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonExpCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonDriveMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Drive mode" },
   
+  { PTPVendorExtensionSony, PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
+  { PTPVendorExtensionSony, PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
+  { PTPVendorExtensionSony, PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
+  { PTPVendorExtensionSony, PTPPropertyCodeImageSize, CCD_MODE_PROPERTY_NAME, "Image size" },
+  { PTPVendorExtensionSony, PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
+  { PTPVendorExtensionSony, PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
+  { PTPVendorExtensionSony, PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO" },
+  { PTPVendorExtensionSony, PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
+  { PTPVendorExtensionSony, PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering" },
+  { PTPVendorExtensionSony, PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
+  { PTPVendorExtensionSony, PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
+  { PTPVendorExtensionSony, PTPPropertyCodeFocalLength, DSLR_FOCAL_LENGTH_PROPERTY_NAME, "Focal length" },
+  { PTPVendorExtensionSony, PTPPropertyCodeStillCaptureMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
+  { PTPVendorExtensionSony, PTPPropertyCodeFlashMode, DSLR_FLASH_MODE_PROPERTY_NAME, "Flash mode" },
+  { PTPVendorExtensionSony, PTPPropertyCodeExposureBiasCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
+
 	{ 0, 0, NULL, NULL }
 };
 

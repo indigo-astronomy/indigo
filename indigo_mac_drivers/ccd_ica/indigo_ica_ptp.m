@@ -754,11 +754,12 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
   return self;
 }
+
 -(id)initWithData:(NSData*)data {
   NSUInteger dataLength = [data length];
   if ((data == NULL) || (dataLength < 5))
     return NULL;
-  unsigned char* buffer = (unsigned char*)[data bytes];
+  unsigned char* buffer = (unsigned char*)data.bytes;
   if ((self = [super init])) {
     unsigned char* buf = buffer;
     _propertyCode = ptpReadUnsignedShort(&buf);

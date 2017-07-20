@@ -10,6 +10,37 @@
 
 #import "indigo_ica_ptp_sony.h"
 
+static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
+  unsigned int code = ptpReadUnsignedShort(buf);
+  PTPSonyProperty *property = [[PTPSonyProperty alloc] initWithCode:code];
+  property.type = ptpReadUnsignedShort(buf);
+  property.readOnly = !ptpReadUnsignedChar(buf);
+  ptpReadUnsignedChar(buf);
+  property.defaultValue = ptpReadValue(property.type, buf);
+  property.value = ptpReadValue(property.type, buf);
+
+  int form = ptpReadUnsignedChar(buf);
+  switch (form) {
+    case 1: {
+      property.min = (NSNumber *)ptpReadValue(property.type, buf);
+      property.max = (NSNumber *)ptpReadValue(property.type, buf);
+      property.step = (NSNumber *)ptpReadValue(property.type, buf);
+      break;
+    }
+    case 2: {
+      int count = ptpReadUnsignedShort(buf);
+      NSMutableArray<NSObject*> *values = [NSMutableArray arrayWithCapacity:count];
+      for (int i = 0; i < count; i++)
+        [values addObject:ptpReadValue(property.type, buf)];
+      property.supportedValues = values;
+      break;
+    }
+  }
+  
+  return property;
+}
+
+
 @implementation PTPSonyRequest
 
 +(NSString *)operationCodeName:(PTPRequestCode)operationCode {
@@ -195,13 +226,13 @@
     case PTPRequestCodeGetDeviceInfo: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         self.info = [[self.deviceInfoClass alloc] initWithData:data];
+        for (NSNumber *code in self.info.propertiesSupported)
+          [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:code.unsignedShortValue];
         if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeSonyGetSDIOGetExtDeviceInfo]]) {
           [self sendPTPRequest:PTPRequestCodeSonySDIOConnect param1:1 param2:0 param3:0];
           [self sendPTPRequest:PTPRequestCodeSonySDIOConnect param1:2 param2:0 param3:0];
           [self sendPTPRequest:PTPRequestCodeSonyGetSDIOGetExtDeviceInfo param1:0xC8];
         } else {
-          for (NSNumber *code in self.info.propertiesSupported)
-            [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:code.unsignedShortValue];
           [self sendPTPRequest:PTPRequestCodeGetStorageIDs];
         }
       }
@@ -228,13 +259,30 @@
         }
       }
       [self sendPTPRequest:PTPRequestCodeSonySDIOConnect param1:3 param2:0 param3:0];
-      for (NSNumber *code in self.info.propertiesSupported)
-        [self sendPTPRequest:PTPRequestCodeSonyGetDevicePropDesc param1:code.unsignedShortValue];
-      [self sendPTPRequest:PTPRequestCodeGetStorageIDs];
+      [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
       break;
     }
     case PTPRequestCodeSonyGetDevicePropDesc: {
       NSLog(@"%@", data);
+      break;
+    }
+    case PTPRequestCodeSonyGetAllDevicePropData: {
+      NSLog(@"%@", data);
+      unsigned char* buffer = (unsigned char*)data.bytes;
+      unsigned char* buf = buffer;
+      unsigned int count = ptpReadUnsignedInt(&buf);
+      ptpReadUnsignedInt(&buf);
+      for (int i = 0; i < count; i++) {
+        PTPProperty *property = ptpReadSonyProperty(&buf);
+        self.info.properties[[NSNumber numberWithUnsignedShort:property.propertyCode]] = property;
+        [self processPropertyDescription:property];
+      }
+      [self sendPTPRequest:PTPRequestCodeGetStorageIDs];
+      break;
+    }
+    default: {
+      [super processRequest:request Response:response inData:data];
+      break;
     }
   }
 }
