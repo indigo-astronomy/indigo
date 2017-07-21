@@ -327,10 +327,8 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     case PTPDataTypeCodeUnicodeString:
       return ptpReadString(buf);
   }
-  
   return nil;
 }
-
 
 //---------------------------------------------------------------------------------------------------------- PTPVendor
 
@@ -1263,7 +1261,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char *buffer = malloc(sizeof (char));
         unsigned char *buf = buffer;
         ptpWriteChar(&buf, (char)value.longLongValue);
-        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (char)]];
+        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code data:[NSData dataWithBytes:buffer length:sizeof (char)]];
         free(buffer);
         break;
       }
@@ -1271,7 +1269,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char *buffer = malloc(sizeof (unsigned char));
         unsigned char *buf = buffer;
         ptpWriteUnsignedChar(&buf, (unsigned char)value.longLongValue);
-        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned char)]];
+        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code data:[NSData dataWithBytes:buffer length:sizeof (unsigned char)]];
         free(buffer);
         break;
       }
@@ -1279,7 +1277,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char *buffer = malloc(sizeof (short));
         unsigned char *buf = buffer;
         ptpWriteShort(&buf, (short)value.longLongValue);
-        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (short)]];
+        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code data:[NSData dataWithBytes:buffer length:sizeof (short)]];
         free(buffer);
         break;
       }
@@ -1287,7 +1285,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char *buffer = malloc(sizeof (unsigned short));
         unsigned char *buf = buffer;
         ptpWriteUnsignedShort(&buf, (unsigned short)value.longLongValue);
-        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
+        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code data:[NSData dataWithBytes:buffer length:sizeof (unsigned short)]];
         free(buffer);
         break;
       }
@@ -1295,7 +1293,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char *buffer = malloc(sizeof (int));
         unsigned char *buf = buffer;
         ptpWriteInt(&buf, (int)value.longLongValue);
-        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (int)]];
+        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code data:[NSData dataWithBytes:buffer length:sizeof (int)]];
         free(buffer);
         break;
       }
@@ -1303,7 +1301,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char *buffer = malloc(sizeof (unsigned int));
         unsigned char *buf = buffer;
         ptpWriteUnsignedInt(&buf, (unsigned int)value.longLongValue);
-        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned int)]];
+        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code data:[NSData dataWithBytes:buffer length:sizeof (unsigned int)]];
         free(buffer);
         break;
       }
@@ -1311,7 +1309,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char *buffer = malloc(sizeof (long));
         unsigned char *buf = buffer;
         ptpWriteLong(&buf, (long)value.longLongValue);
-        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (long)]];
+        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code data:[NSData dataWithBytes:buffer length:sizeof (long)]];
         free(buffer);
         break;
       }
@@ -1319,7 +1317,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char *buffer = malloc(sizeof (unsigned long));
         unsigned char *buf = buffer;
         ptpWriteUnsignedLong(&buf, (unsigned long)value.longLongValue);
-        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:sizeof (unsigned long)]];
+        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code data:[NSData dataWithBytes:buffer length:sizeof (unsigned long)]];
         free(buffer);
         break;
       }
@@ -1327,7 +1325,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         unsigned char *buffer = malloc(256);
         unsigned char *buf = buffer;
         int length = ptpWriteString(&buf, value);
-        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code withData:[NSData dataWithBytes:buffer length:length]];
+        [self sendPTPRequest:PTPRequestCodeSetDevicePropValue param1:code data:[NSData dataWithBytes:buffer length:length]];
         free(buffer);
         break;
       }
@@ -1413,7 +1411,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   [_icCamera requestSendPTPCommand:request.commandBuffer outData:nil sendCommandDelegate:self didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:(void *)CFBridgingRetain(request)];
 }
 
--(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 withData:(NSData *)data {
+-(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 data:(NSData *)data {
   PTPRequest *request = [[self.requestClass alloc] init];
   request.operationCode = operationCode;
   request.numberOfParameters = 1;
