@@ -448,7 +448,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value {
-  [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:value];
+  [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceA value:value];
 }
 
 -(void)getPreviewImage {
