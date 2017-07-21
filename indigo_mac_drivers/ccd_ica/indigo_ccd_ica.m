@@ -36,6 +36,7 @@
 #import "indigo_ica_ptp.h"
 #import "indigo_ica_ptp_nikon.h"
 #import "indigo_ica_ptp_canon.h"
+#import "indigo_ica_ptp_sony.h"
 
 static struct info {
 	const char *match;
@@ -233,11 +234,11 @@ struct dslr_properties {
   
   { PTPVendorExtensionSony, PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
   { PTPVendorExtensionSony, PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
-  { PTPVendorExtensionSony, PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
-  { PTPVendorExtensionSony, PTPPropertyCodeImageSize, CCD_MODE_PROPERTY_NAME, "Image size" },
+  { PTPVendorExtensionSony, PTPPropertyCodeSonyShutterSpeed, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
+  { PTPVendorExtensionSony, PTPPropertyCodeSonyImageSize, CCD_MODE_PROPERTY_NAME, "Image size" },
   { PTPVendorExtensionSony, PTPPropertyCodeCompressionSetting, DSLR_COMPRESSION_PROPERTY_NAME, "Compression" },
   { PTPVendorExtensionSony, PTPPropertyCodeWhiteBalance, DSLR_WHITE_BALANCE_PROPERTY_NAME, "White balance" },
-  { PTPVendorExtensionSony, PTPPropertyCodeExposureIndex, DSLR_ISO_PROPERTY_NAME, "ISO" },
+  { PTPVendorExtensionSony, PTPPropertyCodeSonyISO, DSLR_ISO_PROPERTY_NAME, "ISO" },
   { PTPVendorExtensionSony, PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
   { PTPVendorExtensionSony, PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering" },
   { PTPVendorExtensionSony, PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
