@@ -360,6 +360,14 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       }
       break;
     }
+    case PTPRequestCodeSonySetControlDeviceA: {
+      NSLog(@"PTPRequestCodeSonySetControlDeviceA: %@", data);
+      break;
+    }
+    case PTPRequestCodeSonySetControlDeviceB: {
+      NSLog(@"PTPRequestCodeSonySetControlDeviceB: %@", data);
+      break;
+    }
     default: {
       [super processRequest:request Response:response inData:data];
       break;
