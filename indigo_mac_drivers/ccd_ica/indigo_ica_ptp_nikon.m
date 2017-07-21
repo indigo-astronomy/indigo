@@ -465,6 +465,9 @@
 -(void)checkForEvent {
   if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonCheckEvent]]) {
     [self sendPTPRequest:PTPRequestCodeNikonCheckEvent];
+  } else {
+    for (NSNumber *code in self.info.propertiesSupported)
+      [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:code.unsignedShortValue];
   }
 }
 
@@ -555,8 +558,10 @@
       [self mapValueInterval:property map:map];
       break;
     }
-    case PTPPropertyCodeNikonACPower:
+    case PTPPropertyCodeNikonACPower: {
        [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:PTPPropertyCodeBatteryLevel];
+      break;
+    }
     case PTPPropertyCodeNikonEnableCopyright:
     case PTPPropertyCodeNikonAutoDistortionControl:
     case PTPPropertyCodeNikonAELockStatus:
@@ -671,6 +676,10 @@
     }
     case PTPPropertyCodeFocusMode: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Automatic", @3:@"Macro", @32784:@"AF-S", @32785:@"AF-C", @32786:@"AF-A", @32787:@"M" };
+      if (![self.info.propertiesSupported containsObject:[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonAutofocusMode]]) {
+        property.propertyCode = PTPPropertyCodeNikonAutofocusMode;
+        property.readOnly = true;
+      }
       [self mapValueList:property map:map];
       break;
     }
@@ -706,7 +715,8 @@
     case PTPRequestCodeGetDeviceInfo: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         self.info = [[self.deviceInfoClass alloc] initWithData:data];
-        if ([self.info.model containsString:@"D3000"] || [self.info.model containsString:@"D3000"] || [self.info.model containsString:@"D3200"] || [self.info.model containsString:@"D3300"] || [self.info.model containsString:@"D3400"] || [self.info.model containsString:@"D3500"]) {
+        /*
+        if ([self.info.model containsString:@"D3100"] || [self.info.model containsString:@"D3200"] || [self.info.model containsString:@"D3300"] || [self.info.model containsString:@"D3400"] || [self.info.model containsString:@"D3500"]) {
           [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetVendorPropCodes]];
           [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonCapture]];
           [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfDrive]];
@@ -722,6 +732,7 @@
           [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonChangeAfArea]];
           [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfDriveCancel]];
         }
+         */
         if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetVendorPropCodes]]) {
           [self sendPTPRequest:PTPRequestCodeNikonGetVendorPropCodes];
         } else {
@@ -801,12 +812,14 @@
       break;
     }
     case PTPRequestCodeNikonGetVendorPropCodes: {
-      unsigned char* buffer = (unsigned char*)[data bytes];
-      unsigned char* buf = buffer;
-      NSArray *codes = ptpReadUnsignedShortArray(&buf);
-      [(NSMutableArray *)self.info.propertiesSupported addObjectsFromArray:codes];
-      for (NSNumber *code in self.info.propertiesSupported) {
-        [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:code.unsignedShortValue];
+      if (response.responseCode == PTPResponseCodeOK && data) {
+        unsigned char* buffer = (unsigned char*)[data bytes];
+        unsigned char* buf = buffer;
+        NSArray *codes = ptpReadUnsignedShortArray(&buf);
+        [(NSMutableArray *)self.info.propertiesSupported addObjectsFromArray:codes];
+        for (NSNumber *code in self.info.propertiesSupported) {
+          [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:code.unsignedShortValue];
+        }
       }
       [self sendPTPRequest:PTPRequestCodeGetStorageIDs];
       break;

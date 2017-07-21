@@ -1054,12 +1054,6 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 
 -(void)processPropertyDescription:(PTPProperty *)property {
   switch (property.propertyCode) {
-    case PTPPropertyCodeBatteryLevel: {
-      if (property.supportedValues) {
-        property.supportedValues = nil;
-      }
-      break;
-    }
     case PTPPropertyCodeExposureProgramMode: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority" };
       [self mapValueList:property map:map];
@@ -1177,6 +1171,10 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       break;
     }
     default: {
+      if (property.propertyCode == PTPPropertyCodeBatteryLevel) {
+        if (property.supportedValues)
+          property.supportedValues = nil;
+      }
       if (property.supportedValues) {
         NSMutableArray *values = [NSMutableArray array];
         for (NSNumber *number in property.supportedValues)
