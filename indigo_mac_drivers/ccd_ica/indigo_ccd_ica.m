@@ -117,11 +117,12 @@ struct dslr_properties {
   { PTPVendorExtensionSony, PTPPropertyCodeExposureMeteringMode, DSLR_EXPOSURE_METERING_PROPERTY_NAME, "Exposure metering" },
   { PTPVendorExtensionSony, PTPPropertyCodeFocusMeteringMode, DSLR_FOCUS_METERING_PROPERTY_NAME, "Focus metering" },
   { PTPVendorExtensionSony, PTPPropertyCodeFocusMode, DSLR_FOCUS_MODE_PROPERTY_NAME, "Focus mode" },
-  { PTPVendorExtensionSony, PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
+  { PTPVendorExtensionSony, PTPPropertyCodeSonyBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
   { PTPVendorExtensionSony, PTPPropertyCodeFocalLength, DSLR_FOCAL_LENGTH_PROPERTY_NAME, "Focal length" },
   { PTPVendorExtensionSony, PTPPropertyCodeStillCaptureMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
   { PTPVendorExtensionSony, PTPPropertyCodeFlashMode, DSLR_FLASH_MODE_PROPERTY_NAME, "Flash mode" },
   { PTPVendorExtensionSony, PTPPropertyCodeExposureBiasCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
+  { PTPVendorExtensionSony, PTPPropertyCodeSonyDPCCompensation, DSLR_FLASH_COMPENSATION_PROPERTY_NAME, "Flash compensation" },
 
 	{ 0, 0, NULL, NULL }
 };

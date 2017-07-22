@@ -36,6 +36,7 @@ enum PTPSonyPropertyCode {
   PTPPropertyCodeSonyCCFilter = 0xD210,
   PTPPropertyCodeSonyAspectRatio = 0xD211,
   PTPPropertyCodeSonyExposeIndex = 0xD216,
+  PTPPropertyCodeSonyBatteryLevel = 0xD218,
   PTPPropertyCodeSonyPictureEffect = 0xD21B,
   PTPPropertyCodeSonyABFilter = 0xD21C,
   PTPPropertyCodeSonyISO = 0xD21E,

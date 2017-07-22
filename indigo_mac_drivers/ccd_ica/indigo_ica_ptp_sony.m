@@ -149,7 +149,8 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 @end
 
 @implementation PTPSonyCamera {
-  BOOL initialized;
+  unsigned int compression;
+  unsigned int format;
 }
 
 -(NSString *)name {
@@ -163,7 +164,6 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate {
   self = [super initWithICCamera:icCamera delegate:delegate];
   if (self) {
-    initialized = false;
   }
   return self;
 }
@@ -202,6 +202,12 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
       break;
     }
+    case PTPEventCodeSonyObjectAdded: {
+      [self setProperty:0xD2C2 operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+      [self setProperty:0xD2C1 operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+      [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:event.parameter1];
+      break;
+    }
     default: {
       [super processEvent:event];
       break;
@@ -211,9 +217,11 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 
 -(void)processPropertyDescription:(PTPProperty *)property {
   switch (property.propertyCode) {
+    case PTPPropertyCodeSonyDPCCompensation:
     case PTPPropertyCodeExposureBiasCompensation: {
-      NSDictionary *map = @{ @5000: @"+5", @4700: @"+4 2/3", @4500: @"+4 1/2", @4300: @"+4 1/3", @4000: @"+4", @3700: @"+3 2/3", @3500: @"+3 1/2", @3300: @"+3 1/3", @3000: @"+3", @2700: @"+2 2/3", @2500: @"+2 1/2", @2300: @"+2 1/3", @2000: @"+2", @1700: @"+1 2/3", @1500: @"+1 1/2", @1300: @"+1 1/3", @1000: @"+1", @700: @"+2/3", @500: @"+1/2", @300: @"+1/3", @0: @"0", @-300: @"-1/3", @-500: @"-1/2", @-700: @"-2/3", @-1000: @"-1", @-1300: @"-1 1/3", @-1500: @"-1 1/2", @-1700: @"-1 2/3", @-2000: @"-2", @-2300: @"-2 1/3", @-2500: @"-2 1/2", @-2700: @"-2 2/3", @-3000: @"-3", @-3300: @"-3 1/3", @-3500: @"-3 1/2", @-3700: @"-3 2/3", @-4000: @"-4", @-4300: @"-4 1/3", @-4500: @"-4 1/2", @-4700: @"-4 2/3", @-5000: @"-5" };
-      [self mapValueList:property map:map];
+      NSArray *values = @[ @"5000", @"4700", @"4500", @"4300", @"4000", @"3700", @"3500", @"3300", @"3000", @"2700", @"2500", @"2300", @"2000", @"1700", @"1500", @"1300", @"1000", @"700", @"500", @"300", @"0", @"-300", @"-500", @"-700", @"-1000", @"-1300", @"-1500", @"-1700", @"-2000", @"-2300", @"-2500", @"-2700", @"-3000", @"-3300", @"-3500", @"-3700", @"-4000", @"-4300", @"-4500", @"-4700", @"-5000", @"1", @"2" ];
+      NSArray *labels = @[ @"+5", @"+4 2/3", @"+4 1/2", @"+4 1/3", @"+4", @"+3 2/3", @"+3 1/2", @"+3 1/3", @"+3", @"+2 2/3", @"+2 1/2", @"+2 1/3", @"+2", @"+1 2/3", @"+1 1/2", @"+1 1/3", @"+1", @"+2/3", @"+1/2", @"+1/3", @"0", @"-1/3", @"-1/2", @"-2/3", @"-1", @"-1 1/3", @"-1 1/2", @"-1 2/3", @"-2", @"-2 1/3", @"-2 1/2", @"-2 2/3", @"-3", @"-3 1/3", @"-3 1/2", @"-3 2/3", @"-4", @"-4 1/3", @"-4 1/2", @"-4 2/3", @"-5", @"0x0001", @"0x0002" ];
+      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
     }
     case PTPPropertyCodeStillCaptureMode: {
@@ -227,6 +235,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPPropertyCodeCompressionSetting: {
+      compression = property.value.intValue;
       NSDictionary *map = @{ @2: @"Standard", @3: @"Fine", @16: @"RAW", @19: @"RAW + JPEG" };
       [self mapValueList:property map:map];
       break;
@@ -285,6 +294,11 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
     }
+    case PTPPropertyCodeFlashMode: {
+      NSDictionary *map = @{ @0: @"Undefined", @1: @"Automatic flash", @2: @"Flash off", @3: @"Fill flash", @4: @"Automatic Red-eye Reduction", @5: @"Red-eye fill flash", @6: @"External sync", @0x8032: @"Slow Sync", @0x8003: @"Reer Sync" };
+      [self mapValueList:property map:map];
+      break;
+    }
     default: {
       [super processPropertyDescription:property];
       break;
@@ -293,8 +307,9 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 -(void)processConnect {
+  if ([self propertyIsSupported:PTPPropertyCodeSonyStillImage])
+    [self.delegate cameraCanExposure:self];
   [super processConnect];
-  initialized = true;
 }
 
 -(void)processRequest:(PTPRequest *)request Response:(PTPResponse *)response inData:(NSData*)data {
@@ -315,7 +330,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPRequestCodeSonyGetSDIOGetExtDeviceInfo: {
-      NSLog(@"%@", data);
+      //NSLog(@"%@", data);
       unsigned short *codes = (unsigned short *)data.bytes;
       long count = data.length / 2;
       if (self.info.operationsSupported == nil)
@@ -324,7 +339,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
         self.info.eventsSupported = [NSMutableArray array];
       if (self.info.propertiesSupported == nil)
         self.info.propertiesSupported = [NSMutableArray array];
-      for (int i = 0; i < count; i++) {
+      for (int i = 1; i < count; i++) {
         unsigned short code = codes[i];
         if ((code & 0x7000) == 0x1000) {
           [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:code]];
@@ -366,6 +381,20 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
     }
     case PTPRequestCodeSonySetControlDeviceB: {
       NSLog(@"PTPRequestCodeSonySetControlDeviceB: %@", data);
+      break;
+    }
+    case PTPRequestCodeGetObjectInfo: {
+      NSLog(@"%@", data);
+      unsigned short *buf = (unsigned short *)data.bytes;
+      format = buf[2];
+      [self sendPTPRequest:PTPRequestCodeGetObject param1:request.parameter1];
+      break;
+    }
+    case PTPRequestCodeGetObject: {
+      if (format == 0x3801)
+        [self.delegate cameraExposureDone:self data:data filename:@"image.jpeg"];
+      else if (format == 0xb101)
+        [self.delegate cameraExposureDone:self data:data filename:@"image.arw"];
       break;
     }
     default: {
@@ -476,6 +505,9 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 -(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
+  [self setProperty:0xD2C1 operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+  [self setProperty:PTPPropertyCodeSonyStillImage operation:PTPRequestCodeSonySetControlDeviceB value:@"2"];
+  
 }
 
 -(void)stopExposure {
