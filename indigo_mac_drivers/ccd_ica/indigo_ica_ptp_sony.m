@@ -304,7 +304,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
         self.info = [[self.deviceInfoClass alloc] initWithData:data];
         for (NSNumber *code in self.info.propertiesSupported)
           [self sendPTPRequest:PTPRequestCodeGetDevicePropDesc param1:code.unsignedShortValue];
-        if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeSonyGetSDIOGetExtDeviceInfo]]) {
+        if ([self operationIsSupported:PTPRequestCodeSonyGetSDIOGetExtDeviceInfo]) {
           [self sendPTPRequest:PTPRequestCodeSonySDIOConnect param1:1 param2:0 param3:0];
           [self sendPTPRequest:PTPRequestCodeSonySDIOConnect param1:2 param2:0 param3:0];
           [self sendPTPRequest:PTPRequestCodeSonyGetSDIOGetExtDeviceInfo param1:0xC8];
