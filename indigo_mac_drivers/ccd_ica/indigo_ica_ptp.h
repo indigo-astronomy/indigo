@@ -442,9 +442,14 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 
 @property PTPDeviceInfo *info;
 @property NSObject *userData;
+@property int width;
+@property int height;
+@property float pixelSize;
 
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate;
 
+-(BOOL)operationIsSupported:(PTPRequestCode)code;
+-(BOOL)propertyIsSupported:(PTPPropertyCode)code;
 -(void)getPreviewImage;
 -(void)checkForEvent;
 -(void)processEvent:(PTPEvent *)event;
@@ -458,12 +463,12 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)requestCloseSession;
 -(void)requestEnableTethering;
 
--(void)sendPTPRequest:(PTPRequestCode)operationCode;
--(void)sendPTPRequest:(PTPRequestCode)operationCode data:(NSData *)data;
--(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1;
--(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 data:(NSData *)data;
--(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
--(void)sendPTPRequest:(PTPRequestCode)operationCode param1:(unsigned int)parameter1 param2:(unsigned int)parameter2  param3:(unsigned int)parameter3;
+-(void)sendPTPRequest:(PTPRequestCode)code;
+-(void)sendPTPRequest:(PTPRequestCode)code data:(NSData *)data;
+-(void)sendPTPRequest:(PTPRequestCode)code param1:(unsigned int)parameter1;
+-(void)sendPTPRequest:(PTPRequestCode)code param1:(unsigned int)parameter1 data:(NSData *)data;
+-(void)sendPTPRequest:(PTPRequestCode)code param1:(unsigned int)parameter1 param2:(unsigned int)parameter2;
+-(void)sendPTPRequest:(PTPRequestCode)code param1:(unsigned int)parameter1 param2:(unsigned int)parameter2  param3:(unsigned int)parameter3;
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 -(void)lock;
 -(void)unlock;

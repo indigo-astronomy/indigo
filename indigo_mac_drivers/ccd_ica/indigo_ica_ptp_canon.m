@@ -406,6 +406,77 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 
 @end
 
+static struct info {
+  const char *name;
+  int width, height;
+  float pixelSize;
+} info[] = {
+  { "Canon EOS REBEL XTI", 3888, 2592, 5.7  },
+  { "Canon EOS REBEL XT", 3456, 2304, 6.4  },
+  { "Canon EOS REBEL XSI", 4272, 2848, 5.19  },
+  { "Canon EOS REBEL XS", 3888, 2592, 5.7  },
+  { "Canon EOS REBEL T1I", 4752, 3168, 4.69  },
+  { "Canon EOS REBEL T2I", 5184, 3456, 4.3  },
+  { "Canon EOS REBEL T3I", 5184, 3456, 4.3  },
+  { "Canon EOS REBEL T3", 4272, 2848, 5.19  },
+  { "Canon EOS REBEL T4I", 5184, 3456, 4.3  },
+  { "Canon EOS REBEL T5I", 5184, 3456, 4.3  },
+  { "Canon EOS REBEL T5", 5184, 3456, 4.3  },
+  { "Canon EOS REBEL T6I", 6000, 4000, 3.71  },
+  { "Canon EOS REBEL T6S", 6000, 4000, 3.71  },
+  { "Canon EOS REBEL T6", 5184, 3456, 4.3  },
+  { "Canon EOS REBEL SL1", 5184, 3456, 4.3  },
+  { "Canon EOS Kiss X2", 4272, 2848, 5.19  },
+  { "Canon EOS Kiss X3", 4752, 3168, 4.69  },
+  { "Canon EOS Kiss X4", 5184, 3456, 4.3  },
+  { "Canon EOS Kiss X50", 4272, 2848, 5.19  },
+  { "Canon EOS Kiss X5", 5184, 3456, 4.3  },
+  { "Canon EOS Kiss X6I", 5184, 3456, 4.3  },
+  { "Canon EOS Kiss X7I", 5184, 3456, 4.3  },
+  { "Canon EOS Kiss X70", 5184, 3456, 4.3  },
+  { "Canon EOS Kiss X7", 5184, 3456, 4.3  },
+  { "Canon EOS Kiss X8I", 6000, 4000, 3.71  },
+  { "Canon EOS Kiss X80", 5184, 3456, 4.3  },
+  { "Canon EOS Kiss F", 3888, 2592, 5.7  },
+  { "Canon EOS 1000D", 3888, 2592, 5.7  },
+  { "Canon EOS 1100D", 4272, 2848, 5.19  },
+  { "Canon EOS 1200D", 5184, 3456, 4.3  },
+  { "Canon EOS 1300D", 5184, 3456, 4.3  },
+  { "Canon EOS 8000D", 6000, 4000, 3.71  },
+  { "Canon EOS 100D", 5184, 3456, 4.3  },
+  { "Canon EOS 350D", 3456, 2304, 6.4  },
+  { "Canon EOS 400D", 3888, 2592, 5.7  },
+  { "Canon EOS 450D", 4272, 2848, 5.19  },
+  { "Canon EOS 500D", 4752, 3168, 4.69  },
+  { "Canon EOS 550D", 5184, 3456, 4.3  },
+  { "Canon EOS 600D", 5184, 3456, 4.3  },
+  { "Canon EOS 650D", 5184, 3456, 4.3  },
+  { "Canon EOS 700D", 5184, 3456, 4.3  },
+  { "Canon EOS 750D", 6000, 4000, 3.71  },
+  { "Canon EOS 760D", 6000, 4000, 3.71  },
+  { "Canon EOS 20D", 3520, 2344, 6.4  },
+  { "Canon EOS 20DA", 3520, 2344, 6.4  },
+  { "Canon EOS 30D", 3520, 2344, 6.4  },
+  { "Canon EOS 40D", 3888, 2592, 5.7  },
+  { "Canon EOS 50D", 4752, 3168, 4.69  },
+  { "Canon EOS 60D", 5184, 3456, 4.3  },
+  { "Canon EOS 70D", 5472, 3648, 6.54  },
+  { "Canon EOS 80D", 6000, 4000, 3.71  },
+  { "Canon EOS 1DS MARK III", 5616, 3744, 6.41  },
+  { "Canon EOS 1D MARK III", 3888, 2592, 5.7  },
+  { "Canon EOS 1D MARK IV", 4896, 3264, 5.69  },
+  { "Canon EOS 1D X MARK II", 5472, 3648, 6.54  },
+  { "Canon EOS 1D X", 5472, 3648, 6.54  },
+  { "Canon EOS 1D C", 5184, 3456, 4.3  },
+  { "Canon EOS 5D MARK II", 5616, 3744, 6.41  },
+  { "Canon EOS 5DS", 8688, 5792, 4.14  },
+  { "Canon EOS 5D", 4368, 2912, 8.2  },
+  { "Canon EOS 6D", 5472, 3648, 6.54  },
+  { "Canon EOS 7D MARK II", 5472, 3648, 4.07  },
+  { "Canon EOS 7D", 5184, 3456, 4.3  },
+  { NULL, 0, 0, 0 }
+};
+
 @implementation PTPCanonCamera {
   BOOL startPreview;
   BOOL doPreview;
@@ -422,7 +493,13 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate {
   self = [super initWithICCamera:icCamera delegate:delegate];
   if (self) {
-    
+    const char *name = [super.name.uppercaseString cStringUsingEncoding:NSASCIIStringEncoding];
+    for (int i = 0; info[i].name; i++)
+      if (!strcmp(name, info[i].name)) {
+        self.width = info[i].width;
+        self.height = info[i].height;
+        self.pixelSize = info[i].pixelSize;
+      }
   }
   return self;
 }
@@ -467,11 +544,11 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)processConnect {
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonRemoteRelease]])
+  if ([self operationIsSupported:PTPRequestCodeCanonRemoteRelease])
     [self.delegate cameraCanExposure:self];
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonDriveLens]])
+  if ([self operationIsSupported:PTPRequestCodeCanonDriveLens])
     [self.delegate cameraCanFocus:self];
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonGetViewFinderData]])
+  if ([self operationIsSupported:PTPRequestCodeCanonGetViewFinderData])
     [self.delegate cameraCanPreview:self];
   //[self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"1"];
   [super processConnect];
@@ -482,7 +559,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
     case PTPRequestCodeGetDeviceInfo: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         self.info = [[self.deviceInfoClass alloc] initWithData:data];
-        if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeInitiateCapture]]) {
+        if ([self operationIsSupported:PTPRequestCodeInitiateCapture]) {
           [self.delegate cameraCanExposure:self];
         }
         [self sendPTPRequest:PTPRequestCodeCanonGetDeviceInfoEx];
@@ -1276,7 +1353,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 
 -(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
   PTPProperty *shutter = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeCanonShutterSpeed]];
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonRemoteReleaseOn]]) {
+  if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
     if (mirrorLockup) {
       [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"1"];
       [self setProperty:PTPPropertyCodeCanonDriveMode value:@"17"];
@@ -1298,7 +1375,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 }
 
 -(void)stopExposure {
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeCanonRemoteReleaseOn]]) {
+  if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
     [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
   } else {
     [self sendPTPRequest:PTPRequestCodeCanonBulbEnd];

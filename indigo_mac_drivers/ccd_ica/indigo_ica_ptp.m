@@ -950,6 +950,8 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     _icCamera = icCamera;
     _delegate = delegate;
     _userData = nil;
+    _width = _height = 0;
+    _pixelSize = 0;
     objectAdded = false;
   }
   return self;
@@ -994,6 +996,14 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)checkForEvent {
+}
+
+-(BOOL)operationIsSupported:(PTPRequestCode)code {
+  return [self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:code]];
+}
+
+-(BOOL)propertyIsSupported:(PTPPropertyCode)code {
+  return [self.info.propertiesSupported containsObject:[NSNumber numberWithUnsignedShort:code]];
 }
 
 -(void)getPreviewImage {

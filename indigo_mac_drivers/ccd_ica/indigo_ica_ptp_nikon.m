@@ -417,10 +417,75 @@
 }
 @end
 
+static struct info {
+  const char *name;
+  int width, height;
+  float pixelSize;
+} info[] = {
+  { "D1", 2000, 1312, 11.8 },
+  { "D1H", 2000, 1312, 11.8 },
+  { "D1X", 3008, 2000, 7.87 },
+  { "D100", 3008, 2000, 7.87 },
+  { "D2H", 2464, 1632, 9.45 },
+  { "D2HS", 2464, 1632, 9.45 },
+  { "D2X", 4288, 2848, 5.52 },
+  { "D2XS", 4288, 2848, 5.52 },
+  { "D200", 3872, 2592, 6.12 },
+  { "D3", 4256, 2832, 8.45 },
+  { "D3S", 4256, 2832, 8.45 },
+  { "D3X", 6048, 4032, 5.95 },
+  { "D300", 4288, 2848, 5.50 },
+  { "D300S", 4288, 2848, 5.50 },
+  { "D3000", 3872, 2592, 6.09 },
+  { "D3100", 4608, 3072, 4.94 },
+  { "D3200", 6016, 4000, 3.92 },
+  { "D3300", 6016, 4000, 3.92 },
+  { "D3400", 6000, 4000, 3.92 },
+  { "D3A", 4256, 2832, 8.45 },
+  { "D4", 4928, 3280, 7.30 },
+  { "D4S", 4928, 3280, 7.30 },
+  { "D40", 3008, 2000, 7.87 },
+  { "D40X", 3872, 2592, 6.09 },
+  { "D5", 5568, 3712, 6.40 },
+  { "D50", 3008, 2000, 7.87 },
+  { "D500", 5568, 3712, 4.23 },
+  { "D5000", 4288, 2848, 5.50 },
+  { "D5100", 4928, 3264, 4.78 },
+  { "D5200", 6000, 4000, 3.92 },
+  { "D5300", 6000, 4000, 3.92 },
+  { "D5500", 6000, 4000, 3.92 },
+  { "D5600", 6000, 4000, 3.92 },
+  { "D60", 3872, 2592, 6.09 },
+  { "D600", 6016, 4016, 5.95 },
+  { "D610", 6016, 4016, 5.95 },
+  { "D70", 3008, 2000, 7.87 },
+  { "D70S", 3008, 2000, 7.87 },
+  { "D700", 4256, 2832, 8.45 },
+  { "D7000", 4928, 3264, 4.78 },
+  { "D7100", 6000, 4000, 3.92 },
+  { "D7200", 6000, 4000, 3.92 },
+  { "D750", 6016, 4016, 3.92 },
+  { "D7500", 5568, 3712, 6.40 },
+  { "D80", 3872, 2592, 6.09 },
+  { "D800", 7360, 4912, 4.88 },
+  { "D800E", 7360, 4912, 4.88 },
+  { "D810", 7360, 4912, 4.88 },
+  { "D810A", 7360, 4912, 4.88 },
+  { "D90", 4288, 2848, 5.50 },
+  { "DF", 4928, 3264, 4.78 },
+  { NULL, 0, 0, 0 }
+};
+
 @implementation PTPNikonCamera {
   unsigned int liveViewX, liveViewY;
   NSString *liveViewZoom;
   NSTimer *ptpPreviewTimer;
+}
+
+-(NSString *)name {
+  if ([super.name.uppercaseString containsString:@"NIKON"])
+    return super.name;
+  return [NSString stringWithFormat:@"Nikon %@", super.name];
 }
 
 -(PTPVendorExtension) extension {
@@ -430,7 +495,13 @@
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate {
   self = [super initWithICCamera:icCamera delegate:delegate];
   if (self) {
-    
+    const char *name = [super.name.uppercaseString cStringUsingEncoding:NSASCIIStringEncoding];
+    for (int i = 0; info[i].name; i++)
+      if (!strcmp(name, info[i].name)) {
+        self.width = info[i].width;
+        self.height = info[i].height;
+        self.pixelSize = info[i].pixelSize;
+      }
   }
   return self;
 }
@@ -463,7 +534,7 @@
 }
 
 -(void)checkForEvent {
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonCheckEvent]]) {
+  if ([self operationIsSupported:PTPRequestCodeNikonCheckEvent]) {
     [self sendPTPRequest:PTPRequestCodeNikonCheckEvent];
   } else {
     for (NSNumber *code in self.info.propertiesSupported)
@@ -676,7 +747,7 @@
     }
     case PTPPropertyCodeFocusMode: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Automatic", @3:@"Macro", @32784:@"AF-S", @32785:@"AF-C", @32786:@"AF-A", @32787:@"M" };
-      if (![self.info.propertiesSupported containsObject:[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonAutofocusMode]]) {
+      if (![self propertyIsSupported:PTPPropertyCodeNikonAutofocusMode]) {
         property.propertyCode = PTPPropertyCodeNikonAutofocusMode;
         property.readOnly = true;
       }
@@ -701,11 +772,11 @@
 }
 
 -(void)processConnect {
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeInitiateCapture]])
+  if ([self operationIsSupported:PTPRequestCodeInitiateCapture])
     [self.delegate cameraCanExposure:self];
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonMfDrive]])
+  if ([self operationIsSupported:PTPRequestCodeNikonMfDrive])
     [self.delegate cameraCanFocus:self];
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetLiveViewImg]])
+  if ([self operationIsSupported:PTPRequestCodeNikonGetLiveViewImg])
     [self.delegate cameraCanPreview:self];
   [super processConnect];
 }
@@ -715,25 +786,7 @@
     case PTPRequestCodeGetDeviceInfo: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         self.info = [[self.deviceInfoClass alloc] initWithData:data];
-        /*
-        if ([self.info.model containsString:@"D3100"] || [self.info.model containsString:@"D3200"] || [self.info.model containsString:@"D3300"] || [self.info.model containsString:@"D3400"] || [self.info.model containsString:@"D3500"]) {
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetVendorPropCodes]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonCapture]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfDrive]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonSetControlMode]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonDeviceReady]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfCaptureSDRAM]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonDelImageSDRAM]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetPreviewImg]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonStartLiveView]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonEndLiveView]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetLiveViewImg]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonMfDrive]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonChangeAfArea]];
-          [(NSMutableArray *)self.info.operationsSupported addObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonAfDriveCancel]];
-        }
-         */
-        if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonGetVendorPropCodes]]) {
+        if ([self operationIsSupported:PTPRequestCodeNikonGetVendorPropCodes]) {
           [self sendPTPRequest:PTPRequestCodeNikonGetVendorPropCodes];
         } else {
           for (NSNumber *code in self.info.propertiesSupported)
@@ -974,10 +1027,10 @@
 }
 
 -(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
-  if ([self.info.propertiesSupported containsObject:[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonExposureDelayMode]]) {
+  if ([self propertyIsSupported:PTPPropertyCodeNikonExposureDelayMode]) {
     [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(mirrorLockup ? @"1" : @"0")];
   }
-  if ([self.info.operationsSupported containsObject:[NSNumber numberWithUnsignedShort:PTPRequestCodeNikonInitiateCaptureRecInMedia]]) {
+  if ([self operationIsSupported:PTPRequestCodeNikonInitiateCaptureRecInMedia]) {
     [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:(avoidAF ? 0xFFFFFFFF : 0xFFFFFFFE) param2:0];
     [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
   }

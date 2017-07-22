@@ -38,131 +38,6 @@
 #import "indigo_ica_ptp_canon.h"
 #import "indigo_ica_ptp_sony.h"
 
-static struct info {
-	const char *match;
-	const char *name;
-	int width, height;
-	float pixel_size;
-} info[] = {
-  { "D1", "Nikon D1", 2000, 1312, 11.8 },
-  { "D1H", "Nikon D1H", 2000, 1312, 11.8 },
-  { "D1X", "Nikon D1X", 3008, 2000, 7.87 },
-  { "D100", "Nikon D100", 3008, 2000, 7.87 },
-  { "D2H", "Nikon D2H", 2464, 1632, 9.45 },
-  { "D2HS", "Nikon D2Hs", 2464, 1632, 9.45 },
-  { "D2X", "Nikon D2X", 4288, 2848, 5.52 },
-  { "D2XS", "Nikon D2Xs", 4288, 2848, 5.52 },
-  { "D200", "Nikon D200", 3872, 2592, 6.12 },
-  { "D3", "Nikon D3", 4256, 2832, 8.45 },
-  { "D3S", "Nikon D3s", 4256, 2832, 8.45 },
-  { "D3X", "Nikon D3X", 6048, 4032, 5.95 },
-	{ "D300", "Nikon D300", 4288, 2848, 5.50 },
-	{ "D300S", "Nikon D300S", 4288, 2848, 5.50 },
-  { "D3000", "Nikon D3000", 3872, 2592, 6.09 },
-  { "D3100", "Nikon D3100", 4608, 3072, 4.94 },
-  { "D3200", "Nikon D3300", 6016, 4000, 3.92 },
-  { "D3300", "Nikon D3300", 6016, 4000, 3.92 },
-  { "D3400", "Nikon D3400", 6000, 4000, 3.92 },
-	{ "D3A", "Nikon D3A", 4256, 2832, 8.45 },
-	{ "D4", "Nikon D4", 4928, 3280, 7.30 },
-	{ "D4S", "Nikon D4S", 4928, 3280, 7.30 },
-  { "D40", "Nikon D40", 3008, 2000, 7.87 },
-  { "D40X", "Nikon D40X", 3872, 2592, 6.09 },
-	{ "D5", "Nikon D5", 5568, 3712, 6.40 },
-  { "D50", "Nikon D50", 3008, 2000, 7.87 },
-	{ "D500", "Nikon D500", 5568, 3712, 4.23 },
-	{ "D5000", "Nikon D5000", 4288, 2848, 5.50 },
-	{ "D5100", "Nikon D5100", 4928, 3264, 4.78 },
-	{ "D5200", "Nikon D5200", 6000, 4000, 3.92 },
-	{ "D5300", "Nikon D5300", 6000, 4000, 3.92 },
-	{ "D5500", "Nikon D5500", 6000, 4000, 3.92 },
-  { "D5600", "Nikon D5600", 6000, 4000, 3.92 },
-  { "D60", "Nikon D60", 3872, 2592, 6.09 },
-	{ "D600", "Nikon D600", 6016, 4016, 5.95 },
-	{ "D610", "Nikon D610", 6016, 4016, 5.95 },
-	{ "D70", "Nikon D70", 3008, 2000, 7.87 },
-	{ "D70s", "Nikon D70s", 3008, 2000, 7.87 },
-	{ "D700", "Nikon D700", 4256, 2832, 8.45 },
-	{ "D7000", "Nikon D7000", 4928, 3264, 4.78 },
-	{ "D7100", "Nikon D7100", 6000, 4000, 3.92 },
-	{ "D7200", "Nikon D7200", 6000, 4000, 3.92 },
-	{ "D750", "Nikon D750", 6016, 4016, 3.92 },
-  { "D7500", "Nikon D7500", 5568, 3712, 6.40 },
-  { "D80", "Nikon D80", 3872, 2592, 6.09 },
-	{ "D800", "Nikon D800", 7360, 4912, 4.88 },
-	{ "D800E", "Nikon D800E", 7360, 4912, 4.88 },
-	{ "D810", "Nikon D810", 7360, 4912, 4.88 },
-	{ "D810A", "Nikon D810A", 7360, 4912, 4.88 },
-	{ "D90", "Nikon D90", 4288, 2848, 5.50 },
-  { "DF", "Nikon Df", 4928, 3264, 4.78 },
-	
-	{ "Canon EOS REBEL XTI", "Canon Rebel XTI", 3888, 2592, 5.7 },
-	{ "Canon EOS REBEL XT", "Canon Rebel XT", 3456, 2304, 6.4 },
-	{ "Canon EOS REBEL XSI", "Canon Rebel XSI", 4272, 2848, 5.19 },
-	{ "Canon EOS REBEL XS", "Canon Rebel XS", 3888, 2592, 5.7 },
-	{ "Canon EOS REBEL T1I", "Canon Rebel T1I", 4752, 3168, 4.69 },
-	{ "Canon EOS REBEL T2I", "Canon Rebel T2I", 5184, 3456, 4.3 },
-	{ "Canon EOS REBEL T3I", "Canon Rebel T3I", 5184, 3456, 4.3 },
-	{ "Canon EOS REBEL T3", "Canon Rebel T3", 4272, 2848, 5.19 },
-	{ "Canon EOS REBEL T4I", "Canon Rebel T4I", 5184, 3456, 4.3 },
-	{ "Canon EOS REBEL T5I", "Canon Rebel T5I", 5184, 3456, 4.3 },
-	{ "Canon EOS REBEL T5", "Canon Rebel T5", 5184, 3456, 4.3 },
-	{ "Canon EOS REBEL T6I", "Canon Rebel T6I", 6000, 4000, 3.71 },
-	{ "Canon EOS REBEL T6S", "Canon Rebel T6S", 6000, 4000, 3.71 },
-	{ "Canon EOS REBEL T6", "Canon Rebel T6", 5184, 3456, 4.3 },
-	{ "Canon EOS REBEL SL1", "Canon Rebel SL1", 5184, 3456, 4.3 },
-	{ "Canon EOS Kiss X2", "Canon Kiss X2", 4272, 2848, 5.19 },
-	{ "Canon EOS Kiss X3", "Canon Kiss X3", 4752, 3168, 4.69 },
-	{ "Canon EOS Kiss X4", "Canon Kiss X4", 5184, 3456, 4.3 },
-	{ "Canon EOS Kiss X50", "Canon Kiss X50", 4272, 2848, 5.19 },
-	{ "Canon EOS Kiss X5", "Canon Kiss X5", 5184, 3456, 4.3 },
-	{ "Canon EOS Kiss X6I", "Canon Kiss X6I", 5184, 3456, 4.3 },
-	{ "Canon EOS Kiss X7I", "Canon Kiss X7I", 5184, 3456, 4.3 },
-	{ "Canon EOS Kiss X70", "Canon Kiss X70", 5184, 3456, 4.3 },
-	{ "Canon EOS Kiss X7", "Canon Kiss X7", 5184, 3456, 4.3 },
-	{ "Canon EOS Kiss X8I", "Canon Kiss X8I", 6000, 4000, 3.71 },
-	{ "Canon EOS Kiss X80", "Canon Kiss X80", 5184, 3456, 4.3 },
-	{ "Canon EOS Kiss F", "Canon Kiss F", 3888, 2592, 5.7 },
-	{ "Canon EOS 1000D", "Canon EOS 1000D", 3888, 2592, 5.7 },
-	{ "Canon EOS 1100D", "Canon EOS 1100D", 4272, 2848, 5.19 },
-	{ "Canon EOS 1200D", "Canon EOS 1200D", 5184, 3456, 4.3 },
-	{ "Canon EOS 1300D", "Canon EOS 1300D", 5184, 3456, 4.3 },
-	{ "Canon EOS 8000D", "Canon EOS 8000D", 6000, 4000, 3.71 },
-	{ "Canon EOS 100D", "Canon EOS 100D", 5184, 3456, 4.3 },
-	{ "Canon EOS 350D", "Canon EOS 350D", 3456, 2304, 6.4 },
-	{ "Canon EOS 400D", "Canon EOS 400D", 3888, 2592, 5.7 },
-	{ "Canon EOS 450D", "Canon EOS 450D", 4272, 2848, 5.19 },
-	{ "Canon EOS 500D", "Canon EOS 500D", 4752, 3168, 4.69 },
-	{ "Canon EOS 550D", "Canon EOS 550D", 5184, 3456, 4.3 },
-	{ "Canon EOS 600D", "Canon EOS 600D", 5184, 3456, 4.3 },
-	{ "Canon EOS 650D", "Canon EOS 650D", 5184, 3456, 4.3 },
-	{ "Canon EOS 700D", "Canon EOS 700D", 5184, 3456, 4.3 },
-	{ "Canon EOS 750D", "Canon EOS 750D", 6000, 4000, 3.71 },
-	{ "Canon EOS 760D", "Canon EOS 760D", 6000, 4000, 3.71 },
-	{ "Canon EOS 20D", "Canon EOS 20D", 3520, 2344, 6.4 },
-	{ "Canon EOS 20DA", "Canon EOS 20DA", 3520, 2344, 6.4 },
-	{ "Canon EOS 30D", "Canon EOS 30D", 3520, 2344, 6.4 },
-	{ "Canon EOS 40D", "Canon EOS 40D", 3888, 2592, 5.7 },
-	{ "Canon EOS 50D", "Canon EOS 50D", 4752, 3168, 4.69 },
-	{ "Canon EOS 60D", "Canon EOS 60D", 5184, 3456, 4.3 },
-	{ "Canon EOS 70D", "Canon EOS 70D", 5472, 3648, 6.54 },
-	{ "Canon EOS 80D", "Canon EOS 80D", 6000, 4000, 3.71 },
-	{ "Canon EOS 1DS MARK III", "Canon EOS 1DS", 5616, 3744, 6.41 },
-	{ "Canon EOS 1D MARK III", "Canon EOS 1D", 3888, 2592, 5.7 },
-	{ "Canon EOS 1D MARK IV", "Canon EOS 1D", 4896, 3264, 5.69 },
-	{ "Canon EOS 1D X MARK II", "Canon EOS 1D", 5472, 3648, 6.54 },
-	{ "Canon EOS 1D X", "Canon EOS 1D X", 5472, 3648, 6.54 },
-	{ "Canon EOS 1D C", "Canon EOS 1D C", 5184, 3456, 4.3 },
-	{ "Canon EOS 5D MARK II", "Canon EOS 5D", 5616, 3744, 6.41 },
-	{ "Canon EOS 5DS", "Canon EOS 5DS", 8688, 5792, 4.14 },
-	{ "Canon EOS 5D", "Canon EOS 5D", 4368, 2912, 8.2 },
-	{ "Canon EOS 6D", "Canon EOS 6D", 5472, 3648, 6.54 },
-	{ "Canon EOS 7D MARK II", "Canon EOS 7D", 5472, 3648, 4.07 },
-	{ "Canon EOS 7D", "Canon EOS 7D", 5184, 3456, 4.3 },
-	
-	{ NULL, NULL, 0, 0, 0 }
-};
-
 #define PRIVATE_DATA                    ((ica_private_data *)device->private_data)
 #define DSLR_LOCK_PROPERTY              (PRIVATE_DATA->dslr_lock_property)
 #define DSLR_LOCK_ITEM                  (PRIVATE_DATA->dslr_lock_property->items + 0)
@@ -253,7 +128,6 @@ struct dslr_properties {
 
 typedef struct {
 	void* camera;
-	struct info *info;
   indigo_device *focuser;
   indigo_property *dslr_lock_property;
   indigo_property *dslr_mirror_lockup_property;
@@ -274,13 +148,14 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
+  PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
-		if (PRIVATE_DATA->info) {
 			CCD_INFO_PROPERTY->hidden = false;
-			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info->width;
-			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info->height;
-			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info->pixel_size;
+    if (camera.width != 0 && camera.height != 0 && camera.pixelSize != 0) {
+      CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = camera.width;
+      CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = camera.height;
+      CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = camera.pixelSize;
       CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		} else {
 			CCD_INFO_PROPERTY->hidden = CCD_FRAME_PROPERTY->hidden = true;
@@ -578,13 +453,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
 	strcpy(device->name, [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
-	for (int i = 0; info[i].match; i++) {
-		if (!strcmp(info[i].match, device->name)) {
-			strcpy(device->name, info[i].name);
-			private_data->info = &info[i];
-			break;
-		}
-	}
 	device->private_data = private_data;
 	camera.userData = [NSValue valueWithPointer:device];
 	indigo_async((void *)(void *)indigo_attach_device, device);
