@@ -1164,7 +1164,6 @@ static struct info {
     }
     case PTPRequestCodeCanonDriveLens: {
       if (response.responseCode == PTPResponseCodeOK) {
-        NSLog(@"  driveLen:%d", focusSteps);
         if (focusSteps == 0) {
           dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
             [self.delegate cameraFocusDone:self];
