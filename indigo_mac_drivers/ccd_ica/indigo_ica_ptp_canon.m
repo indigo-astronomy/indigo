@@ -1190,6 +1190,9 @@ static struct info {
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"RemoteRelease failed (0x%04x = %@)", response.responseCode, response]];
       break;
     }
+    case PTPRequestCodeCanonZoom: {
+      break;
+    }
     default: {
       [super processRequest:request Response:response inData:data];
       break;
@@ -1338,7 +1341,7 @@ static struct info {
   else
     zoom = 10;
   startPreview = true;
-  [self sendPTPRequest:PTPRequestCodeCanonZoom param1:5];
+  //[self sendPTPRequest:PTPRequestCodeCanonZoom param1:1];
   //[self sendPTPRequest:PTPRequestCodeCanonZoomPosition param1:x param2:y];
   [self setProperty:PTPPropertyCodeCanonEVFMode value:@"1"];
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"2"];
