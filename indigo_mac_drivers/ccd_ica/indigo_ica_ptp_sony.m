@@ -151,6 +151,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 @implementation PTPSonyCamera {
   unsigned int compression;
   unsigned int format;
+  unsigned int imageCount;
 }
 
 -(NSString *)name {
@@ -203,6 +204,10 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPEventCodeSonyObjectAdded: {
+      if (compression == 19)
+        imageCount = 2;
+      else
+        imageCount = 1;
       [self setProperty:0xD2C2 operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
       [self setProperty:0xD2C1 operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
       [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:event.parameter1];
@@ -252,6 +257,23 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
     case PTPPropertyCodeFocusMode: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"AF-S", @3:@"Macro", @0x8004: @"AF-C", @0x8006: @"DMF" };
       [self mapValueList:property map:map];
+      break;
+    }
+    case PTPPropertyCodeSonyDRangeOptimize: {
+      NSDictionary *map = @{ @1:@"Off", @31:@"DRO Auto", @17:@"DRO Lv1", @18:@"DRO Lv2", @19:@"DRO Lv3", @20:@"DRO Lv4", @21:@"DRO Lv1", @32:@"Auto HDR", @33:@"Auto HDR 1.0EV", @34:@"Auto HDR 2.0EV", @35:@"Auto HDR 3.0EV", @36:@"Auto HDR 4.0EV", @37:@"Auto HDR 5.0EV", @38:@"Auto HDR 6.0EV" };
+      [self mapValueList:property map:map];
+      break;
+    }
+    case PTPPropertyCodeSonyCCFilter: {
+      NSArray *values = @[ @"135", @"134", @"133", @"132", @"131", @"130", @"129", @"128", @"127", @"126", @"125", @"124", @"123", @"122", @"121" ];
+      NSArray *labels = @[ @"G7", @"G6", @"G5", @"G4", @"G3", @"G2", @"G1", @"0", @"M1", @"M2", @"M3", @"M4", @"M5", @"M6", @"M7" ];
+      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      break;
+    }
+    case PTPPropertyCodeSonyABFilter: {
+      NSArray *values = @[ @"135", @"134", @"133", @"132", @"131", @"130", @"129", @"128", @"127", @"126", @"125", @"124", @"123", @"122", @"121" ];
+      NSArray *labels = @[ @"A7", @"A6", @"A5", @"A4", @"A3", @"A2", @"A1", @"0", @"B1", @"B2", @"B3", @"B4", @"B5", @"B6", @"B7" ];
+      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
     }
     case PTPPropertyCodeSonyImageSize: {
@@ -395,6 +417,8 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
         [self.delegate cameraExposureDone:self data:data filename:@"image.jpeg"];
       else if (format == 0xb101)
         [self.delegate cameraExposureDone:self data:data filename:@"image.arw"];
+      if (--imageCount > 0)
+        [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:request.parameter1];
       break;
     }
     default: {
