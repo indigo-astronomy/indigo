@@ -548,10 +548,11 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 	switch (code) {
     case PTPPropertyCodeExposureTime:
+    case PTPPropertyCodeSonyShutterSpeed:
     case PTPPropertyCodeCanonShutterSpeed: {
       if (property->perm == INDIGO_RW_PERM) {
         int intValue = value.intValue;
-        if ((code == PTPPropertyCodeCanonShutterSpeed && intValue == 0x0C) || (code == PTPPropertyCodeExposureTime && intValue == 0x7FFFFFFF)) {
+        if ((code == PTPPropertyCodeCanonShutterSpeed && intValue == 0x0C) || (code == PTPPropertyCodeSonyShutterSpeed && intValue == 0) || (code == PTPPropertyCodeExposureTime && intValue == 0x7FFFFFFF)) {
           if (IS_CONNECTED && !PRIVATE_DATA->bulb)
             indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
           CCD_EXPOSURE_ITEM->number.min = 0;
