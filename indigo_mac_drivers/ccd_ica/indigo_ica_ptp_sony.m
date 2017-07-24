@@ -104,10 +104,13 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
     case PTPPropertyCodeSonyColorTemp: return @"PTPPropertyCodeSonyColorTemp";
     case PTPPropertyCodeSonyCCFilter: return @"PTPPropertyCodeSonyCCFilter";
     case PTPPropertyCodeSonyAspectRatio: return @"PTPPropertyCodeSonyAspectRatio";
+    case PTPPropertyCodeSonyFocusStatus: return @"PTPPropertyCodeSonyFocusStatus";
     case PTPPropertyCodeSonyExposeIndex: return @"PTPPropertyCodeSonyExposeIndex";
     case PTPPropertyCodeSonyPictureEffect: return @"PTPPropertyCodeSonyPictureEffect";
     case PTPPropertyCodeSonyABFilter: return @"PTPPropertyCodeSonyABFilter";
     case PTPPropertyCodeSonyISO: return @"PTPPropertyCodeSonyISO";
+    case PTPPropertyCodeSonyAutofocus: return @"PTPPropertyCodeSonyAutofocus";
+    case PTPPropertyCodeSonyCapture: return @"PTPPropertyCodeSonyCapture";
     case PTPPropertyCodeSonyMovie: return @"PTPPropertyCodeSonyMovie";
     case PTPPropertyCodeSonyStillImage: return @"PTPPropertyCodeSonyStillImage";
   }
@@ -154,6 +157,8 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   unsigned int format;
   unsigned int imageCount;
   unsigned short mode;
+  bool waitForCapture;
+  unsigned int shutterSpeed;
 }
 
 -(NSString *)name {
@@ -210,8 +215,6 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
         imageCount = 2;
       else
         imageCount = 1;
-      [self setProperty:0xD2C2 operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
-      [self setProperty:0xD2C1 operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
       [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:event.parameter1];
       break;
     }
@@ -225,15 +228,19 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(void)processPropertyDescription:(PTPProperty *)property {
   switch (property.propertyCode) {
     case PTPPropertyCodeSonyDPCCompensation: {
-      NSArray *values = @[ @"5000", @"4700", @"4500", @"4300", @"4000", @"3700", @"3500", @"3300", @"3000", @"2700", @"2500", @"2300", @"2000", @"1700", @"1500", @"1300", @"1000", @"700", @"500", @"300", @"0", @"-300", @"-500", @"-700", @"-1000", @"-1300", @"-1500", @"-1700", @"-2000", @"-2300", @"-2500", @"-2700", @"-3000", @"-3300", @"-3500", @"-3700", @"-4000", @"-4300", @"-4500", @"-4700", @"-5000" ];
-      NSArray *labels = @[ @"+5", @"+4 2/3", @"+4 1/2", @"+4 1/3", @"+4", @"+3 2/3", @"+3 1/2", @"+3 1/3", @"+3", @"+2 2/3", @"+2 1/2", @"+2 1/3", @"+2", @"+1 2/3", @"+1 1/2", @"+1 1/3", @"+1", @"+2/3", @"+1/2", @"+1/3", @"0", @"-1/3", @"-1/2", @"-2/3", @"-1", @"-1 1/3", @"-1 1/2", @"-1 2/3", @"-2", @"-2 1/3", @"-2 1/2", @"-2 2/3", @"-3", @"-3 1/3", @"-3 1/2", @"-3 2/3", @"-4", @"-4 1/3", @"-4 1/2", @"-4 2/3", @"-5" ];
+//      NSArray *values = @[ @"3000", @"2700", @"2500", @"2300", @"2000", @"1700", @"1500", @"1300", @"1000", @"700", @"500", @"300", @"0", @"-300", @"-500", @"-700", @"-1000", @"-1300", @"-1500", @"-1700", @"-2000", @"-2300", @"-2500", @"-2700", @"-3000" ];
+//      NSArray *labels = @[ @"+3", @"+2 2/3", @"+2 1/2", @"+2 1/3", @"+2", @"+1 2/3", @"+1 1/2", @"+1 1/3", @"+1", @"+2/3", @"+1/2", @"+1/3", @"0", @"-1/3", @"-1/2", @"-2/3", @"-1", @"-1 1/3", @"-1 1/2", @"-1 2/3", @"-2", @"-2 1/3", @"-2 1/2", @"-2 2/3", @"-3" ];
+      NSArray *values = @[ @"3000", @"2700", @"2300", @"2000", @"1700", @"1300", @"1000", @"700", @"300", @"0", @"-300", @"-700", @"-1000", @"-1300", @"-1700", @"-2000", @"-2300", @"-2700", @"-3000" ];
+      NSArray *labels = @[ @"+3", @"+2 2/3", @"+2 1/3", @"+2", @"+1 2/3", @"+1 1/3", @"+1", @"+2/3", @"+1/3", @"0", @"-1/3", @"-2/3", @"-1", @"-1 1/3", @"-1 2/3", @"-2", @"-2 1/3", @"-2 2/3", @"-3" ];
       property.readOnly = mode != 2 && mode != 3 && mode != 4 && mode != 1 && mode != 32848 && mode != 32849 && mode != 32850 && mode != 32851;
       [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
     }
     case PTPPropertyCodeExposureBiasCompensation: {
-      NSArray *values = @[ @"5000", @"4700", @"4500", @"4300", @"4000", @"3700", @"3500", @"3300", @"3000", @"2700", @"2500", @"2300", @"2000", @"1700", @"1500", @"1300", @"1000", @"700", @"500", @"300", @"0", @"-300", @"-500", @"-700", @"-1000", @"-1300", @"-1500", @"-1700", @"-2000", @"-2300", @"-2500", @"-2700", @"-3000", @"-3300", @"-3500", @"-3700", @"-4000", @"-4300", @"-4500", @"-4700", @"-5000" ];
-      NSArray *labels = @[ @"+5", @"+4 2/3", @"+4 1/2", @"+4 1/3", @"+4", @"+3 2/3", @"+3 1/2", @"+3 1/3", @"+3", @"+2 2/3", @"+2 1/2", @"+2 1/3", @"+2", @"+1 2/3", @"+1 1/2", @"+1 1/3", @"+1", @"+2/3", @"+1/2", @"+1/3", @"0", @"-1/3", @"-1/2", @"-2/3", @"-1", @"-1 1/3", @"-1 1/2", @"-1 2/3", @"-2", @"-2 1/3", @"-2 1/2", @"-2 2/3", @"-3", @"-3 1/3", @"-3 1/2", @"-3 2/3", @"-4", @"-4 1/3", @"-4 1/2", @"-4 2/3", @"-5" ];
+//      NSArray *values = @[ @"5000", @"4700", @"4500", @"4300", @"4000", @"3700", @"3500", @"3300", @"3000", @"2700", @"2500", @"2300", @"2000", @"1700", @"1500", @"1300", @"1000", @"700", @"500", @"300", @"0", @"-300", @"-500", @"-700", @"-1000", @"-1300", @"-1500", @"-1700", @"-2000", @"-2300", @"-2500", @"-2700", @"-3000", @"-3300", @"-3500", @"-3700", @"-4000", @"-4300", @"-4500", @"-4700", @"-5000" ];
+//      NSArray *labels = @[ @"+5", @"+4 2/3", @"+4 1/2", @"+4 1/3", @"+4", @"+3 2/3", @"+3 1/2", @"+3 1/3", @"+3", @"+2 2/3", @"+2 1/2", @"+2 1/3", @"+2", @"+1 2/3", @"+1 1/2", @"+1 1/3", @"+1", @"+2/3", @"+1/2", @"+1/3", @"0", @"-1/3", @"-1/2", @"-2/3", @"-1", @"-1 1/3", @"-1 1/2", @"-1 2/3", @"-2", @"-2 1/3", @"-2 1/2", @"-2 2/3", @"-3", @"-3 1/3", @"-3 1/2", @"-3 2/3", @"-4", @"-4 1/3", @"-4 1/2", @"-4 2/3", @"-5" ];
+      NSArray *values = @[ @"5000", @"4700", @"4300", @"4000", @"3700", @"3300", @"3000", @"2700", @"2300", @"2000", @"1700", @"1300", @"1000", @"700", @"300", @"0", @"-300", @"-700", @"-1000", @"-1300", @"-1700", @"-2000", @"-2300", @"-2700", @"-3000", @"-3300", @"-3700", @"-4000", @"-4300", @"-4700", @"-5000" ];
+      NSArray *labels = @[ @"+5", @"+4 2/3", @"+4 1/3", @"+4", @"+3 2/3",@"+3 1/3", @"+3", @"+2 2/3", @"+2 1/3", @"+2", @"+1 2/3", @"+1 1/3", @"+1", @"+2/3", @"+1/3", @"0", @"-1/3", @"-2/3", @"-1", @"-1 1/3", @"-1 2/3", @"-2", @"-2 1/3", @"-2 2/3", @"-3", @"-3 1/3", @"-3 2/3", @"-4", @"-4 1/3", @"-4 2/3", @"-5" ];
       property.readOnly = mode != 2 && mode != 3 && mode != 4 && mode != 32848 && mode != 32849 && mode != 32850 && mode != 32851;
       [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
@@ -313,6 +320,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       NSArray *values = @[ @"69536", @"68736", @"68036", @"67536", @"67136", @"66786", @"66536", @"66336", @"66176", @"66036", @"65936", @"65856", @"65786", @"65736", @"65696", @"65661", @"65636", @"65616", @"65596", @"65586", @"65576", @"65566", @"65561", @"65556", @"65551", @"65549", @"65546", @"65544", @"65542", @"65541", @"65540", @"65539", @"262154", @"327690", @"393226", @"524298", @"655370", @"851978", @"1048586", @"1310730", @"1638410", @"2097162", @"2621450", @"3276810", @"3932170", @"5242890", @"6553610", @"8519690", @"9830410", @"13107210", @"16384010", @"19660810", @"0" ];
       NSArray *labels = @[ @"1/4000", @"1/3200", @"1/2500", @"1/2000", @"1/1600", @"1/1250", @"1/1000", @"1/800", @"1/600", @"1/500", @"1/400", @"1/320", @"1/250", @"1/200", @"1/160", @"1/125", @"1/100", @"1/80", @"1/60", @"1/50", @"1/40", @"1/30", @"1/25", @"1/20", @"1/15", @"1/13", @"1/10", @"1/8", @"1/6", @"1/5", @"1/4", @"1/3", @"0.4\"", @"0.5\"", @"0.6\"", @"0.8\"", @"1\"", @"1.3\"", @"1.6\"", @"2.0\"", @"2.5\"", @"3.2\"", @"4\"", @"5\"", @"6\"", @"8\"", @"10\"", @"13\"", @"15\"", @"20\"", @"25\"", @"30\"", @"Bulb" ];
       property.readOnly = mode != 4 && mode != 1 && mode != 32850 && mode != 32851;
+      shutterSpeed = property.value.intValue;
       [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
     }
@@ -325,6 +333,31 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
     case PTPPropertyCodeFlashMode: {
       NSDictionary *map = @{ @0: @"Undefined", @1: @"Automatic flash", @2: @"Flash off", @3: @"Fill flash", @4: @"Automatic Red-eye Reduction", @5: @"Red-eye fill flash", @6: @"External sync", @0x8032: @"Slow Sync", @0x8003: @"Reer Sync" };
       [self mapValueList:property map:map];
+      break;
+    }
+    case PTPPropertyCodeSonyFocusStatus: {
+      switch (property.value.intValue) {
+        case 2: {
+          if (waitForCapture) {
+            waitForCapture = false;
+            [self setProperty:PTPPropertyCodeSonyCapture operation:PTPRequestCodeSonySetControlDeviceB value:@"2"];
+            if (shutterSpeed) {
+              [self setProperty:PTPPropertyCodeSonyCapture operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+              [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+            }
+          } else {
+            [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+          }
+          break;
+        }
+        case 3: {
+          if (waitForCapture) {
+            waitForCapture = false;
+            [self.delegate cameraExposureFailed:self message:@"Failed to focus"];
+          }
+          [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+        }
+      }
       break;
     }
     default: {
@@ -584,12 +617,14 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 -(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
-  [self setProperty:0xD2C1 operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
-  [self setProperty:PTPPropertyCodeSonyStillImage operation:PTPRequestCodeSonySetControlDeviceB value:@"2"];
-  
+  waitForCapture = true;
+  [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"2"];
+    //[self setProperty:PTPPropertyCodeSonyCapture operation:PTPRequestCodeSonySetControlDeviceB value:@"2"];
 }
 
 -(void)stopExposure {
+  [self setProperty:PTPPropertyCodeSonyCapture operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+  [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
 }
 
 -(void)focus:(int)steps {
