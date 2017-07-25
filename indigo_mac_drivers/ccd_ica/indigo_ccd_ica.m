@@ -176,7 +176,7 @@ static indigo_result ccd_attach(indigo_device *device) {
     indigo_init_switch_item(DSLR_AVOID_AF_OFF_ITEM, DSLR_AVOID_AF_OFF_ITEM_NAME, "Off", false);
 		indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
 		// --------------------------------------------------------------------------------
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		indigo_log("%s attached", device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -366,7 +366,7 @@ static indigo_result ccd_detach(indigo_device *device) {
   indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
   indigo_release_property(DSLR_AF_PROPERTY);
   indigo_release_property(DSLR_AVOID_AF_PROPERTY);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	indigo_log("%s detached", device->name);
 	return indigo_ccd_detach(device);
 }
 
@@ -378,7 +378,7 @@ static indigo_result focuser_attach(indigo_device *device) {
     FOCUSER_POSITION_PROPERTY->hidden = true;
     FOCUSER_SPEED_PROPERTY->hidden = true;
     // --------------------------------------------------------------------------------
-    INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+    indigo_log("%s attached", device->name);
     return indigo_focuser_enumerate_properties(device, NULL, NULL);
   }
   return INDIGO_FAILED;
@@ -425,7 +425,7 @@ static indigo_result focuser_detach(indigo_device *device) {
   assert(device != NULL);
   if (CONNECTION_CONNECTED_ITEM->sw.value)
     indigo_device_disconnect(NULL, device->name);
-  INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+  indigo_log("%s detached", device->name);
   return indigo_focuser_detach(device);
 }
 
@@ -437,7 +437,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 @implementation PTPDelegate
 
 -(void)cameraAdded:(PTPCamera *)camera {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
+	indigo_log("%s added", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	static indigo_device ccd_template = {
 		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
@@ -462,7 +462,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 -(void)cameraConnected:(PTPCamera*)camera {
   [camera requestEnableTethering];
   sleep(1);
-	indigo_log("%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
+	indigo_log("%s connected", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	if (device) {
 		for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
@@ -810,7 +810,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 -(void)cameraDisconnected:(PTPCamera*)camera {
-	indigo_log("%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
+	indigo_log("%s disconnected", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	if (device) {
     indigo_device *focuser = PRIVATE_DATA->focuser;
@@ -831,7 +831,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 -(void)cameraRemoved:(PTPCamera *)camera {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
+	indigo_log("%s removed", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	if (device) {
 		indigo_detach_device(device);

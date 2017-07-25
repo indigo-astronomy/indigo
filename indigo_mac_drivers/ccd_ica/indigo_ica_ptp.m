@@ -1205,7 +1205,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)processConnect {
-  [self.delegate debug:[NSString stringWithFormat:@"Initialized %@\n", _info.debug]];
+  [self.delegate log:[NSString stringWithFormat:@"Initialized %@\n", _info.debug]];
   [_delegate cameraConnected:self];
 }
 
