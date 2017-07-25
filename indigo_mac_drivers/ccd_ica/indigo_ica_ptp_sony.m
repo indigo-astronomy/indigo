@@ -129,17 +129,14 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(NSString *)debug {
   NSMutableString *s = [NSMutableString stringWithFormat:@"%@ %@, PTP V%.2f + %@ V%.2f\n", self.model, self.version, self.standardVersion / 100.0, self.vendorExtensionDesc, self.vendorExtensionVersion / 100.0];
   if (self.operationsSupported.count > 0) {
-    [s appendFormat:@"\nOperations:\n"];
     for (NSNumber *code in self.operationsSupported)
       [s appendFormat:@"%@\n", [PTPSonyRequest operationCodeName:code.intValue]];
   }
   if (self.eventsSupported.count > 0) {
-    [s appendFormat:@"\nEvents:\n"];
     for (NSNumber *code in self.eventsSupported)
       [s appendFormat:@"%@\n", [PTPSonyEvent eventCodeName:code.intValue]];
   }
   if (self.propertiesSupported.count > 0) {
-    [s appendFormat:@"\nProperties:\n"];
     for (NSNumber *code in self.propertiesSupported) {
       PTPProperty *property = self.properties[code];
       if (property)
@@ -229,9 +226,6 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 -(void)processPropertyDescription:(PTPProperty *)property {
-  if (iteratedProperty == property.propertyCode) {
-    return;
-  }
   switch (property.propertyCode) {
     case PTPPropertyCodeSonyDPCCompensation: {
 //      NSArray *values = @[ @"3000", @"2700", @"2500", @"2300", @"2000", @"1700", @"1500", @"1300", @"1000", @"700", @"500", @"300", @"0", @"-300", @"-500", @"-700", @"-1000", @"-1300", @"-1500", @"-1700", @"-2000", @"-2300", @"-2500", @"-2700", @"-3000" ];
@@ -446,8 +440,10 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
           mode = property.value.intValue;
         self.info.properties[codeNumber] = property;
         [properties addObject:property];
-      for (PTPProperty *property in properties)
-        [self processPropertyDescription:property];
+      }
+      if (iteratedProperty == 0) {
+        for (PTPProperty *property in properties)
+          [self processPropertyDescription:property];
       }
       break;
     }

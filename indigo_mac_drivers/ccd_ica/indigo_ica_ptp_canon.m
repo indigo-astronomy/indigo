@@ -382,17 +382,14 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
 -(NSString *)debug {
   NSMutableString *s = [NSMutableString stringWithFormat:@"%@ %@, PTP V%.2f + %@ V%.2f\n", self.model, self.version, self.standardVersion / 100.0, self.vendorExtensionDesc, self.vendorExtensionVersion / 100.0];
   if (self.operationsSupported.count > 0) {
-    [s appendFormat:@"\nOperations:\n"];
     for (NSNumber *code in self.operationsSupported)
       [s appendFormat:@"%@\n", [PTPCanonRequest operationCodeName:code.intValue]];
   }
   if (self.eventsSupported.count > 0) {
-    [s appendFormat:@"\nEvents:\n"];
     for (NSNumber *code in self.eventsSupported)
       [s appendFormat:@"%@\n", [PTPCanonEvent eventCodeName:code.intValue]];
   }
   if (self.propertiesSupported.count > 0) {
-    [s appendFormat:@"\nProperties:\n"];
     for (NSNumber *code in self.propertiesSupported) {
       PTPProperty *property = self.properties[code];
       if (property)
