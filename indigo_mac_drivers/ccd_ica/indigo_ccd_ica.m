@@ -618,7 +618,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		if (IS_CONNECTED)
 			indigo_define_property(device, property, NULL);
 	} else {
-    bool update = false;
+    bool update = property->state == INDIGO_BUSY_STATE;
 		int i = 0;
     for (NSObject *object in values) {
       bool selected = [object isEqual:value];
@@ -654,7 +654,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		property->items[0].number.value = value.intValue;
 		if (IS_CONNECTED)
 			indigo_define_property(device, property, NULL);
-	} else if (property->items[0].number.value != value.intValue) {
+	} else if (property->items[0].number.value != value.intValue || property->state == INDIGO_BUSY_STATE) {
 		property->items[0].number.value = value.intValue;
     property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, property, NULL);
@@ -676,7 +676,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		strcpy(property->items[0].text.value,string);
 		if (IS_CONNECTED)
 			indigo_define_property(device, property, NULL);
-	} else if (strcmp(property->items[0].text.value, string)) {
+	} else if (strcmp(property->items[0].text.value, string) || property->state == INDIGO_BUSY_STATE) {
 		strcpy(property->items[0].text.value, string);
     property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, property, NULL);
@@ -845,11 +845,11 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 -(void)log:(NSString *)message {
-  INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", [message cStringUsingEncoding:NSUTF8StringEncoding]);
+  INDIGO_LOG(indigo_log([message cStringUsingEncoding:NSUTF8StringEncoding]));
 }
 
 -(void)debug:(NSString *)message {
-  INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [message cStringUsingEncoding:NSUTF8StringEncoding]);
+  INDIGO_DEBUG(indigo_debug([message cStringUsingEncoding:NSUTF8StringEncoding]));
 }
 
 @end
