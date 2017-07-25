@@ -545,7 +545,7 @@ static struct info {
 -(void)processEvent:(PTPEvent *)event {
   switch (event.eventCode) {
     case PTPEventCodeNikonObjectAddedInSDRAM: {
-      NSLog(@"Object added to SDRAM");
+      [self.delegate debug:[NSString stringWithFormat:@"Object added to SDRAM"]];
       break;
     }
     default: {
@@ -951,7 +951,7 @@ static struct info {
           [self.delegate cameraExposureFailed:self message:@"JPEG magic not found"];
         }
       } else if (response.responseCode == PTPResponseCodeDeviceBusy) {
-        NSLog(@"PTPResponseCodeDeviceBusy");
+        [self.delegate debug:[NSString stringWithFormat:@"PTPResponseCodeDeviceBusy"]];
         usleep(100000);
         [self getPreviewImage];
       } else {
@@ -969,8 +969,7 @@ static struct info {
         PTPEventCode code = ptpReadUnsignedShort(&buf);
         unsigned int parameter1 = ptpReadUnsignedInt(&buf);
         PTPEvent *event = [[self.eventClass alloc] initWithCode:code parameter1:parameter1];
-        if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
-          NSLog(@"Translated to %@", [event description]);
+        [self.delegate debug:[NSString stringWithFormat:@"Translated to %@", [event description]]];
         [self processEvent:event];
       }
       break;

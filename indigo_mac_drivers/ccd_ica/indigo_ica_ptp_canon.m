@@ -774,7 +774,7 @@ static struct info {
                       *customFuncEx = fullSize;
                     }
                     else if (*customFuncEx != fullSize) {
-                      NSLog(@"Invalid customFuncEx size %d -> %d", *customFuncEx, fullSize);
+                      [self.delegate debug:[NSString stringWithFormat:@"Invalid customFuncEx size %d -> %d", *customFuncEx, fullSize]];
                       break;
                     }
                     memcpy(customFuncEx + 1, buf, fullSize - 4);
@@ -801,7 +801,7 @@ static struct info {
                           [(NSMutableArray *)self.info.propertiesSupported addObject:itemNumber];
                         self.info.properties[[NSNumber numberWithUnsignedShort:itemCode]] = itemProperty;
                         [properties addObject:itemProperty];
-                        NSLog(@"PTPEventCodeCanonPropValueChanged %@", itemProperty);
+                        [self.delegate debug:[NSString stringWithFormat:@"PTPEventCodeCanonPropValueChanged %@", itemProperty]];
                       }
                     }
                     break;
@@ -842,7 +842,7 @@ static struct info {
             if (code == PTPPropertyCodeCanonAutoExposureMode) {
               currentMode = property.value.intValue;
             }
-            NSLog(@"PTPEventCodeCanonPropValueChanged %@", property);
+            [self.delegate debug:[NSString stringWithFormat:@"PTPEventCodeCanonPropValueChanged %@", property]];
             break;
           }
           case PTPEventCodeCanonAvailListChanged: {
@@ -864,7 +864,7 @@ static struct info {
             }
             property.supportedValues = values;
             [properties addObject:property];
-            NSLog(@"PTPEventCodeCanonAvailListChanged %@", property);
+            [self.delegate debug:[NSString stringWithFormat:@"PTPEventCodeCanonAvailListChanged %@", property]];
             break;
           }
           case PTPEventCodeCanonObjectAddedEx: {
@@ -875,7 +875,7 @@ static struct info {
 
           }
           default:
-            NSLog(@"%@ + %dbytes", [PTPCanonEvent eventCodeName:type], size);
+            [self.delegate debug:[NSString stringWithFormat:@"%@ + %dbytes", [PTPCanonEvent eventCodeName:type], size]];
             break;
         }
         buf = record + size;
