@@ -94,7 +94,7 @@ bool indigo_use_host_suffix = true;
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
 
-char indigo_last_message[1024];
+char indigo_last_message[128 * 1024];
 char indigo_log_name[255] = {0};
 
 static void log_message(const char *format, va_list args) {
