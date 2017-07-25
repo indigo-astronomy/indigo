@@ -559,11 +559,14 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   }
 }
 
+#define MAX_WAIT  10
+
 -(void)iterate:(PTPPropertyCode)code to:(NSString *)value withMap:(long *)map {
   iteratedProperty = code;
   PTPProperty *property = self.info.properties[[NSNumber numberWithUnsignedShort:code]];
   int current = property.value.intValue;
   int requested = value.intValue;
+  int wait;
   for (int i = 0; map[i] != -1; i++)
     if (current == map[i]) {
       current = i;
@@ -577,14 +580,31 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   if (current < requested)
     for (int i = current; i < requested; i++) {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
-      usleep(500000);
+      for (wait = 0; wait < MAX_WAIT; wait++) {
+        [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
+        usleep(200000);
+        property = self.info.properties[[NSNumber numberWithUnsignedShort:code]];
+        if (property.value.intValue == map[i + 1]) {
+          break;
+        }
+      }
+      if (wait == MAX_WAIT)
+        break;
     }
   else if (current > requested)
     for (int i = current; i > requested; i--) {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:@"-1"];
-      usleep(500000);
+      for (wait = 0; wait < MAX_WAIT; wait++) {
+        [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
+        usleep(200000);
+        property = self.info.properties[[NSNumber numberWithUnsignedShort:code]];
+        if (property.value.intValue == map[i - 1]) {
+          break;
+        }
+      }
+      if (wait == MAX_WAIT)
+        break;
     }
-  usleep(500000);
   iteratedProperty = 0;
   [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
 }

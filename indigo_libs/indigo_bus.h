@@ -275,11 +275,11 @@ typedef struct {
 
 /** Last diagnostic messages.
  */
-extern char indigo_last_message[1024];
+extern char indigo_last_message[];
 
 /** Name to be used in log (if not changed ot will be filled with executable name).
  */
-extern char indigo_log_name[255];
+extern char indigo_log_name[];
 
 /** If set, handler is used to print message instead of stderr/syslog output.
  */
