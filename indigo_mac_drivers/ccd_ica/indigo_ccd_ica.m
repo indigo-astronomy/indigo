@@ -553,19 +553,19 @@ static indigo_result focuser_detach(indigo_device *device) {
       if (property->perm == INDIGO_RW_PERM) {
         int intValue = value.intValue;
         if ((code == PTPPropertyCodeCanonShutterSpeed && intValue == 0x0C) || (code == PTPPropertyCodeSonyShutterSpeed && intValue == 0) || (code == PTPPropertyCodeExposureTime && intValue == 0x7FFFFFFF)) {
-          if (IS_CONNECTED && !PRIVATE_DATA->bulb)
+          if (IS_CONNECTED && CCD_EXPOSURE_ITEM->number.max == 0) {
             indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-          CCD_EXPOSURE_ITEM->number.min = 0;
-          CCD_EXPOSURE_ITEM->number.max = 10000;
-          if (IS_CONNECTED && !PRIVATE_DATA->bulb)
+            CCD_EXPOSURE_ITEM->number.min = 0;
+            CCD_EXPOSURE_ITEM->number.max = 10000;
             indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+          }
           PRIVATE_DATA->bulb = true;
         } else {
-          if (IS_CONNECTED && PRIVATE_DATA->bulb)
-            indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-          CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.max = 0;
-          if (IS_CONNECTED && PRIVATE_DATA->bulb)
+          if (IS_CONNECTED && CCD_EXPOSURE_ITEM->number.max != 0)
+            indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL); {
+            CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.max = 0;
             indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+          }
           PRIVATE_DATA->bulb = false;
         }
       }
@@ -618,11 +618,20 @@ static indigo_result focuser_detach(indigo_device *device) {
 		if (IS_CONNECTED)
 			indigo_define_property(device, property, NULL);
 	} else {
+    bool update = false;
 		int i = 0;
-		for (NSObject *object in values)
-			property->items[i++].sw.value = [object isEqual:value];
-		property->state = INDIGO_OK_STATE;
-		indigo_update_property(device, property, NULL);
+    for (NSObject *object in values) {
+      bool selected = [object isEqual:value];
+      if (property->items[i].sw.value != selected) {
+        property->items[i].sw.value = selected;
+        update = true;
+      }
+      i++;
+    }
+    if (update) {
+      property->state = INDIGO_OK_STATE;
+      indigo_update_property(device, property, NULL);
+    }
 	}
 }
 
@@ -645,7 +654,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		property->items[0].number.value = value.intValue;
 		if (IS_CONNECTED)
 			indigo_define_property(device, property, NULL);
-	} else {
+	} else if (property->items[0].number.value != value.intValue) {
 		property->items[0].number.value = value.intValue;
     property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, property, NULL);
@@ -657,16 +666,18 @@ static indigo_result focuser_detach(indigo_device *device) {
 	int index = [self propertyIndex:camera code:code type:INDIGO_TEXT_VECTOR];
 	indigo_property *property = PRIVATE_DATA->dslr_properties[index];
 	bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
+  char string[INDIGO_VALUE_SIZE];
+  strncpy(string, [value cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_VALUE_SIZE);
 	property->hidden = false;
 	if (redefine) {
 		if (IS_CONNECTED)
 			indigo_delete_property(device, property, NULL);
 		property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
-		strncpy(property->items[0].text.value, [value cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_VALUE_SIZE);
+		strcpy(property->items[0].text.value,string);
 		if (IS_CONNECTED)
 			indigo_define_property(device, property, NULL);
-	} else {
-		strncpy(property->items[0].text.value, [value cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_VALUE_SIZE);
+	} else if (strcmp(property->items[0].text.value, string)) {
+		strcpy(property->items[0].text.value, string);
     property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, property, NULL);
 	}
@@ -680,6 +691,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_property_perm perm = (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM);
     if (property->perm != perm) {
       property->perm = perm;
+      property->state = INDIGO_OK_STATE;
       indigo_update_property(device, property, NULL);
     }
   }
@@ -830,6 +842,14 @@ static indigo_result focuser_detach(indigo_device *device) {
 		free(PRIVATE_DATA);
 		free(device);
 	}
+}
+
+-(void)log:(NSString *)message {
+  INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", [message cStringUsingEncoding:NSUTF8StringEncoding]);
+}
+
+-(void)debug:(NSString *)message {
+  INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", [message cStringUsingEncoding:NSUTF8StringEncoding]);
 }
 
 @end

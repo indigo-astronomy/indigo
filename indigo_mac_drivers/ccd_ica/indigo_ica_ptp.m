@@ -1196,8 +1196,8 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
         [self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSString *)property.value.description readOnly:true];
       } else if (property.type == PTPDataTypeCodeUnicodeString) {
         [self.delegate cameraPropertyChanged:self code:property.propertyCode value:(NSString *)property.value.description readOnly:property.readOnly];
-      } else if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-        NSLog(@"Ignored %@", property);
+      } else {
+        [self.delegate debug:[NSString stringWithFormat:@"Ignored %@", property]];
       }
       break;
     }
@@ -1205,7 +1205,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)processConnect {
-  NSLog(@"Initialized %@\n", _info.debug);
+  [self.delegate debug:[NSString stringWithFormat:@"Initialized %@\n", _info.debug]];
   [_delegate cameraConnected:self];
 }
 
@@ -1236,8 +1236,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     }
     case PTPRequestCodeGetDevicePropDesc: {
       PTPProperty *property = [[self.propertyClass alloc] initWithData:data];
-      if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
-        NSLog(@"Translated to %@", property);
+      [self.delegate debug:[NSString stringWithFormat:@"Translated to %@", property]];
       _info.properties[[NSNumber numberWithUnsignedShort:property.propertyCode]] = property;
       [self processPropertyDescription:property];
     }
@@ -1247,15 +1246,14 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)didSendPTPCommand:(NSData*)command inData:(NSData*)data response:(NSData*)responseData error:(NSError*)error contextInfo:(void*)contextInfo {
   PTPRequest*  request  = (__bridge PTPRequest*)contextInfo;
   if (responseData == nil) {
-    if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
-      NSLog(@"Completed %@ with error %@", request, error);
+    [self.delegate debug:[NSString stringWithFormat:@"Completed %@ with error %@", request, error]];
   } else {
     PTPResponse* response = [[self.responseClass alloc] initWithData:responseData];
     if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
       if (data)
-        NSLog(@"Completed %@ with %@ and %lub", request, response, data.length);
+        [self.delegate debug:[NSString stringWithFormat:@"Completed %@ with %@ and %lub", request, response, data.length]];
       else
-        NSLog(@"Completed %@ with %@", request, response);
+        [self.delegate debug:[NSString stringWithFormat:@"Completed %@ with %@", request, response]];
     }
     [self processRequest:request Response:response inData:data];
   }
@@ -1436,7 +1434,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)device:(ICDevice*)camera didEncounterError:(NSError*)error {
-  NSLog(@"Error '%@' on '%@'", error.localizedDescription, camera.name);
+  [self.delegate log:[NSString stringWithFormat:@"Error '%@' on '%@'", error.localizedDescription, camera.name]];
 }
 
 -(void)cameraDevice:(ICCameraDevice*)camera didAddItem:(ICCameraItem*)item {
@@ -1468,7 +1466,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)cameraDevice:(ICCameraDevice*)camera didReceivePTPEvent:(NSData*)eventData {
   PTPEvent *event = [[self.eventClass alloc] initWithData:eventData];
   if (indigo_get_log_level() >= INDIGO_LOG_DEBUG)
-    NSLog(@"Received %@", event);
+    [self.delegate debug:[NSString stringWithFormat:@"Received %@", event]];
   switch (_info.vendorExtension) {
     case PTPVendorExtensionNikon: {
       break;

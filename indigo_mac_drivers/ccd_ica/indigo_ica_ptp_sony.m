@@ -159,6 +159,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   unsigned short mode;
   bool waitForCapture;
   unsigned int shutterSpeed;
+  unsigned int focusMode;
 }
 
 -(NSString *)name {
@@ -262,8 +263,10 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPPropertyCodeExposureMeteringMode: {
-      NSDictionary *map = @{ @1: @"Average", @4: @"Center-spot", @32770: @"Center" };
-      [self mapValueList:property map:map];
+      NSArray *values = @[ @"1", @"2", @"4" ];
+      NSArray *labels = @[ @"Multi", @"Center", @"Spot" ];
+      property.readOnly = false;
+      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
     }
     case PTPPropertyCodeFNumber: {
@@ -272,9 +275,11 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       return [super processPropertyDescription:property];
     }
     case PTPPropertyCodeFocusMode: {
-      NSDictionary *map = @{ @1: @"Manual", @2: @"AF-S", @3:@"Macro", @0x8004: @"AF-C", @0x8006: @"DMF" };
+      NSArray *values = @[ @"2", @"32772", @"32774", @"1" ];
+      NSArray *labels = @[ @"AF-S", @"AF-C", @"DMF", @"MF" ];
       property.readOnly = mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
-      [self mapValueList:property map:map];
+      focusMode = property.value.intValue;
+      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
     }
     case PTPPropertyCodeSonyDRangeOptimize: {
@@ -336,17 +341,21 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPPropertyCodeSonyFocusStatus: {
+      [super processPropertyDescription:property];
+      if (focusMode == 1)
+        break;
       switch (property.value.intValue) {
-        case 2: {
+        case 2:     // AFS
+        case 6: {   // AFC
           if (waitForCapture) {
             waitForCapture = false;
-            [self setProperty:PTPPropertyCodeSonyCapture operation:PTPRequestCodeSonySetControlDeviceB value:@"2"];
+            [self setProperty:PTPPropertyCodeSonyCapture value:@"2"];
             if (shutterSpeed) {
-              [self setProperty:PTPPropertyCodeSonyCapture operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
-              [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+              [self setProperty:PTPPropertyCodeSonyCapture value:@"1"];
+              [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
             }
           } else {
-            [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+            [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
           }
           break;
         }
@@ -355,7 +364,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
             waitForCapture = false;
             [self.delegate cameraExposureFailed:self message:@"Failed to focus"];
           }
-          [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+          [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
         }
       }
       break;
@@ -391,7 +400,6 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPRequestCodeSonyGetSDIOGetExtDeviceInfo: {
-      //NSLog(@"%@", data);
       unsigned short *codes = (unsigned short *)data.bytes;
       long count = data.length / 2;
       if (self.info.operationsSupported == nil)
@@ -593,6 +601,11 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       [self iterate:code to:value withMap:map];
       break;
     }
+    case PTPPropertyCodeSonyCapture:
+    case PTPPropertyCodeSonyAutofocus: {
+      [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:value];
+      break;
+    }
     default: {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceA value:value];
       break;
@@ -616,15 +629,31 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(void)stopPreview {
 }
 
+-(void)startAutofocus {
+  [self setProperty:PTPPropertyCodeSonyAutofocus value:@"2"];
+}
+
+-(void)stopAutofocus {
+  [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
+}
+
 -(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
   waitForCapture = true;
-  [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"2"];
-    //[self setProperty:PTPPropertyCodeSonyCapture operation:PTPRequestCodeSonySetControlDeviceB value:@"2"];
+  [self setProperty:PTPPropertyCodeSonyAutofocus value:@"2"];
+  if (focusMode == 1) {
+    [self setProperty:PTPPropertyCodeSonyCapture value:@"2"];
+    if (shutterSpeed) {
+      waitForCapture = false;
+      [self setProperty:PTPPropertyCodeSonyCapture value:@"1"];
+      [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
+    }
+  }
 }
 
 -(void)stopExposure {
-  [self setProperty:PTPPropertyCodeSonyCapture operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
-  [self setProperty:PTPPropertyCodeSonyAutofocus operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
+  waitForCapture = false;
+  [self setProperty:PTPPropertyCodeSonyCapture value:@"1"];
+  [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
 }
 
 -(void)focus:(int)steps {
