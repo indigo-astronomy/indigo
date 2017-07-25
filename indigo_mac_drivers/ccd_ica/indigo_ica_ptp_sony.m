@@ -160,6 +160,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   bool waitForCapture;
   unsigned int shutterSpeed;
   unsigned int focusMode;
+  PTPPropertyCode iteratedProperty;
 }
 
 -(NSString *)name {
@@ -208,7 +209,8 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(void)processEvent:(PTPEvent *)event {
   switch (event.eventCode) {
     case PTPEventCodeSonyPropertyChanged: {
-      [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
+      if (iteratedProperty == 0)
+        [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
       break;
     }
     case PTPEventCodeSonyObjectAdded: {
@@ -227,6 +229,9 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 -(void)processPropertyDescription:(PTPProperty *)property {
+  if (iteratedProperty == property.propertyCode) {
+    return;
+  }
   switch (property.propertyCode) {
     case PTPPropertyCodeSonyDPCCompensation: {
 //      NSArray *values = @[ @"3000", @"2700", @"2500", @"2300", @"2000", @"1700", @"1500", @"1300", @"1000", @"700", @"500", @"300", @"0", @"-300", @"-500", @"-700", @"-1000", @"-1300", @"-1500", @"-1700", @"-2000", @"-2300", @"-2500", @"-2700", @"-3000" ];
@@ -270,9 +275,11 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPPropertyCodeFNumber: {
-      property.supportedValues = @[ @350, @400, @450, @500, @560, @630, @710, @800, @900, @1000, @1100, @1300, @1400, @1600, @1800, @2000, @2200 ];
+      NSArray *values = @[ @"350", @"400", @"450", @"500", @"560", @"630", @"710", @"800", @"900", @"1000", @"1100", @"1300", @"1400", @"1600", @"1800", @"2000", @"2200" ];
+      NSArray *labels = @[ @"f/3.5", @"f/4", @"f/4.5", @"f/5", @"f/5.6", @"f/6.3", @"f/7.1", @"f/8", @"f/9", @"f/10", @"f/11", @"f/13", @"f/14", @"f/16", @"f/18", @"f/20", @"f/22" ];
       property.readOnly = mode != 3 && mode != 1 && mode != 32849 && mode != 32851;
-      return [super processPropertyDescription:property];
+      [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
+      break;
     }
     case PTPPropertyCodeFocusMode: {
       NSArray *values = @[ @"2", @"32772", @"32774", @"1" ];
@@ -553,6 +560,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 -(void)iterate:(PTPPropertyCode)code to:(NSString *)value withMap:(long *)map {
+  iteratedProperty = code;
   PTPProperty *property = self.info.properties[[NSNumber numberWithUnsignedShort:code]];
   int current = property.value.intValue;
   int requested = value.intValue;
@@ -569,13 +577,16 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   if (current < requested)
     for (int i = current; i < requested; i++) {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
-      usleep(200000);
+      usleep(500000);
     }
   else if (current > requested)
     for (int i = current; i > requested; i--) {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:@"-1"];
-      usleep(200000);
+      usleep(500000);
     }
+  usleep(500000);
+  iteratedProperty = 0;
+  [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
 }
 
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value {
@@ -597,7 +608,8 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
     }
     case PTPPropertyCodeSonyDPCCompensation:
     case PTPPropertyCodeExposureBiasCompensation: {
-      long map[] = { -5000, -4700, -4500, -4300, -4000, -3700, -3500, -3300, -3000, -2700, -2500, -2300, -2000, -1700, -1500, -1300, -1000, -700, -500, -300, 0, 300, 500, 700, 1000, 1300, 1500, 1700, 2000, 2300, 2500, 2700, 3000, 3300, 3500, 3700, 4000, 4300, 4500, 4700, 5000, -1 };
+        //      long map[] = { -5000, -4700, -4500, -4300, -4000, -3700, -3500, -3300, -3000, -2700, -2500, -2300, -2000, -1700, -1500, -1300, -1000, -700, -500, -300, 0, 300, 500, 700, 1000, 1300, 1500, 1700, 2000, 2300, 2500, 2700, 3000, 3300, 3500, 3700, 4000, 4300, 4500, 4700, 5000, -1 };
+      long map[] = { -5000, -4700, -4300, -4000, -3700, -3300, -3000, -2700, -2300, -2000, -1700, -1300, -1000, -700, -300, 0, 300, 700, 1000, 1300, 1700, 2000, 2300, 2700, 3000, 3300, 3700, 4000, 4300, 4700, 5000, -1 };
       [self iterate:code to:value withMap:map];
       break;
     }
