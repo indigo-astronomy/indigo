@@ -105,7 +105,7 @@ static bool camera_open(indigo_device *device) {
 		                            dsi_get_frame_height(PRIVATE_DATA->dsi) *
 		                            dsi_get_bytespp(PRIVATE_DATA->dsi) +
 		                            FITS_HEADER_SIZE;
-		PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
+		PRIVATE_DATA->buffer = (char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		if (PRIVATE_DATA->buffer == NULL) {
 			dsi_close_camera(PRIVATE_DATA->dsi);
 			PRIVATE_DATA->dsi = NULL;
