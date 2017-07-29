@@ -408,69 +408,69 @@ static struct info {
   int width, height;
   float pixelSize;
 } info[] = {
-  { "Canon EOS REBEL XTI", 3888, 2592, 5.7  },
-  { "Canon EOS REBEL XT", 3456, 2304, 6.4  },
-  { "Canon EOS REBEL XSI", 4272, 2848, 5.19  },
-  { "Canon EOS REBEL XS", 3888, 2592, 5.7  },
-  { "Canon EOS REBEL T1I", 4752, 3168, 4.69  },
-  { "Canon EOS REBEL T2I", 5184, 3456, 4.3  },
-  { "Canon EOS REBEL T3I", 5184, 3456, 4.3  },
-  { "Canon EOS REBEL T3", 4272, 2848, 5.19  },
-  { "Canon EOS REBEL T4I", 5184, 3456, 4.3  },
-  { "Canon EOS REBEL T5I", 5184, 3456, 4.3  },
-  { "Canon EOS REBEL T5", 5184, 3456, 4.3  },
-  { "Canon EOS REBEL T6I", 6000, 4000, 3.71  },
-  { "Canon EOS REBEL T6S", 6000, 4000, 3.71  },
-  { "Canon EOS REBEL T6", 5184, 3456, 4.3  },
-  { "Canon EOS REBEL SL1", 5184, 3456, 4.3  },
-  { "Canon EOS Kiss X2", 4272, 2848, 5.19  },
-  { "Canon EOS Kiss X3", 4752, 3168, 4.69  },
-  { "Canon EOS Kiss X4", 5184, 3456, 4.3  },
-  { "Canon EOS Kiss X50", 4272, 2848, 5.19  },
-  { "Canon EOS Kiss X5", 5184, 3456, 4.3  },
-  { "Canon EOS Kiss X6I", 5184, 3456, 4.3  },
-  { "Canon EOS Kiss X7I", 5184, 3456, 4.3  },
-  { "Canon EOS Kiss X70", 5184, 3456, 4.3  },
-  { "Canon EOS Kiss X7", 5184, 3456, 4.3  },
-  { "Canon EOS Kiss X8I", 6000, 4000, 3.71  },
-  { "Canon EOS Kiss X80", 5184, 3456, 4.3  },
-  { "Canon EOS Kiss F", 3888, 2592, 5.7  },
-  { "Canon EOS 1000D", 3888, 2592, 5.7  },
-  { "Canon EOS 1100D", 4272, 2848, 5.19  },
-  { "Canon EOS 1200D", 5184, 3456, 4.3  },
-  { "Canon EOS 1300D", 5184, 3456, 4.3  },
-  { "Canon EOS 8000D", 6000, 4000, 3.71  },
-  { "Canon EOS 100D", 5184, 3456, 4.3  },
-  { "Canon EOS 350D", 3456, 2304, 6.4  },
-  { "Canon EOS 400D", 3888, 2592, 5.7  },
-  { "Canon EOS 450D", 4272, 2848, 5.19  },
-  { "Canon EOS 500D", 4752, 3168, 4.69  },
-  { "Canon EOS 550D", 5184, 3456, 4.3  },
-  { "Canon EOS 600D", 5184, 3456, 4.3  },
-  { "Canon EOS 650D", 5184, 3456, 4.3  },
-  { "Canon EOS 700D", 5184, 3456, 4.3  },
-  { "Canon EOS 750D", 6000, 4000, 3.71  },
-  { "Canon EOS 760D", 6000, 4000, 3.71  },
-  { "Canon EOS 20D", 3520, 2344, 6.4  },
-  { "Canon EOS 20DA", 3520, 2344, 6.4  },
-  { "Canon EOS 30D", 3520, 2344, 6.4  },
-  { "Canon EOS 40D", 3888, 2592, 5.7  },
-  { "Canon EOS 50D", 4752, 3168, 4.69  },
-  { "Canon EOS 60D", 5184, 3456, 4.3  },
-  { "Canon EOS 70D", 5472, 3648, 6.54  },
-  { "Canon EOS 80D", 6000, 4000, 3.71  },
-  { "Canon EOS 1DS MARK III", 5616, 3744, 6.41  },
-  { "Canon EOS 1D MARK III", 3888, 2592, 5.7  },
-  { "Canon EOS 1D MARK IV", 4896, 3264, 5.69  },
-  { "Canon EOS 1D X MARK II", 5472, 3648, 6.54  },
-  { "Canon EOS 1D X", 5472, 3648, 6.54  },
-  { "Canon EOS 1D C", 5184, 3456, 4.3  },
-  { "Canon EOS 5D MARK II", 5616, 3744, 6.41  },
-  { "Canon EOS 5DS", 8688, 5792, 4.14  },
-  { "Canon EOS 5D", 4368, 2912, 8.2  },
-  { "Canon EOS 6D", 5472, 3648, 6.54  },
-  { "Canon EOS 7D MARK II", 5472, 3648, 4.07  },
-  { "Canon EOS 7D", 5184, 3456, 4.3  },
+  { "CANON EOS REBEL XTI", 3888, 2592, 5.7  },
+  { "CANON EOS REBEL XT", 3456, 2304, 6.4  },
+  { "CANON EOS REBEL XSI", 4272, 2848, 5.19  },
+  { "CANON EOS REBEL XS", 3888, 2592, 5.7  },
+  { "CANON EOS REBEL T1I", 4752, 3168, 4.69  },
+  { "CANON EOS REBEL T2I", 5184, 3456, 4.3  },
+  { "CANON EOS REBEL T3I", 5184, 3456, 4.3  },
+  { "CANON EOS REBEL T3", 4272, 2848, 5.19  },
+  { "CANON EOS REBEL T4I", 5184, 3456, 4.3  },
+  { "CANON EOS REBEL T5I", 5184, 3456, 4.3  },
+  { "CANON EOS REBEL T5", 5184, 3456, 4.3  },
+  { "CANON EOS REBEL T6I", 6000, 4000, 3.71  },
+  { "CANON EOS REBEL T6S", 6000, 4000, 3.71  },
+  { "CANON EOS REBEL T6", 5184, 3456, 4.3  },
+  { "CANON EOS REBEL SL1", 5184, 3456, 4.3  },
+  { "CANON EOS KISS X2", 4272, 2848, 5.19  },
+  { "CANON EOS KISS X3", 4752, 3168, 4.69  },
+  { "CANON EOS KISS X4", 5184, 3456, 4.3  },
+  { "CANON EOS KISS X50", 4272, 2848, 5.19  },
+  { "CANON EOS KISS X5", 5184, 3456, 4.3  },
+  { "CANON EOS KISS X6I", 5184, 3456, 4.3  },
+  { "CANON EOS KISS X7I", 5184, 3456, 4.3  },
+  { "CANON EOS KISS X70", 5184, 3456, 4.3  },
+  { "CANON EOS KISS X7", 5184, 3456, 4.3  },
+  { "CANON EOS KISS X8I", 6000, 4000, 3.71  },
+  { "CANON EOS KISS X80", 5184, 3456, 4.3  },
+  { "CANON EOS KISS F", 3888, 2592, 5.7  },
+  { "CANON EOS 1000D", 3888, 2592, 5.7  },
+  { "CANON EOS 1100D", 4272, 2848, 5.19  },
+  { "CANON EOS 1200D", 5184, 3456, 4.3  },
+  { "CANON EOS 1300D", 5184, 3456, 4.3  },
+  { "CANON EOS 8000D", 6000, 4000, 3.71  },
+  { "CANON EOS 100D", 5184, 3456, 4.3  },
+  { "CANON EOS 350D", 3456, 2304, 6.4  },
+  { "CANON EOS 400D", 3888, 2592, 5.7  },
+  { "CANON EOS 450D", 4272, 2848, 5.19  },
+  { "CANON EOS 500D", 4752, 3168, 4.69  },
+  { "CANON EOS 550D", 5184, 3456, 4.3  },
+  { "CANON EOS 600D", 5184, 3456, 4.3  },
+  { "CANON EOS 650D", 5184, 3456, 4.3  },
+  { "CANON EOS 700D", 5184, 3456, 4.3  },
+  { "CANON EOS 750D", 6000, 4000, 3.71  },
+  { "CANON EOS 760D", 6000, 4000, 3.71  },
+  { "CANON EOS 20D", 3520, 2344, 6.4  },
+  { "CANON EOS 20DA", 3520, 2344, 6.4  },
+  { "CANON EOS 30D", 3520, 2344, 6.4  },
+  { "CANON EOS 40D", 3888, 2592, 5.7  },
+  { "CANON EOS 50D", 4752, 3168, 4.69  },
+  { "CANON EOS 60D", 5184, 3456, 4.3  },
+  { "CANON EOS 70D", 5472, 3648, 6.54  },
+  { "CANON EOS 80D", 6000, 4000, 3.71  },
+  { "CANON EOS 1DS MARK III", 5616, 3744, 6.41  },
+  { "CANON EOS 1D MARK III", 3888, 2592, 5.7  },
+  { "CANON EOS 1D MARK IV", 4896, 3264, 5.69  },
+  { "CANON EOS 1D X MARK II", 5472, 3648, 6.54  },
+  { "CANON EOS 1D X", 5472, 3648, 6.54  },
+  { "CANON EOS 1D C", 5184, 3456, 4.3  },
+  { "CANON EOS 5D MARK II", 5616, 3744, 6.41  },
+  { "CANON EOS 5DS", 8688, 5792, 4.14  },
+  { "CANON EOS 5D", 4368, 2912, 8.2  },
+  { "CANON EOS 6D", 5472, 3648, 6.54  },
+  { "CANON EOS 7D MARK II", 5472, 3648, 4.07  },
+  { "CANON EOS 7D", 5184, 3456, 4.3  },
   { NULL, 0, 0, 0 }
 };
 
@@ -479,8 +479,11 @@ static struct info {
   BOOL doPreview;
   NSString *addedFileName;
   int currentMode;
+  int currentShutterSpeed;
   int focusSteps;
+  unsigned int previewWidth, previewHeight;
   unsigned int *customFuncEx;
+  unsigned int zoomLevel, zoomX, zoomY;
 }
 
 -(PTPVendorExtension)extension {
@@ -496,6 +499,7 @@ static struct info {
         self.width = info[i].width;
         self.height = info[i].height;
         self.pixelSize = info[i].pixelSize;
+        break;
       }
   }
   return self;
@@ -616,6 +620,7 @@ static struct info {
               case PTPPropertyCodeCanonHDDirectoryStructure:
               case PTPPropertyCodeCanonBatteryInfo:
               case PTPPropertyCodeCanonAdapterInfo:
+              case PTPPropertyCodeCanonAutoExposureMode:
               case PTPPropertyCodeCanonLensStatus:
               case PTPPropertyCodeCanonCardExtension:
               case PTPPropertyCodeCanonTempStatus:
@@ -901,31 +906,47 @@ static struct info {
           case PTPPropertyCodeCanonAperture: {
             NSDictionary *map = @{ @0x08: @"f/1", @0x0B: @"f/1.1", @0x0C: @"f/1.2", @0x0D: @"f/1.2", @0x10: @"f/1.4", @0x13: @"f/1.6", @0x14: @"f/1.8", @0x15: @"f/1.8", @0x18: @"f/2", @0x1B: @"f/2.2", @0x1C: @"f/2.5", @0x1D: @"f/2.5", @0x20: @"f/2.8", @0x23: @"f/3.2", @0x24: @"f/3.5", @0x25: @"f/3.5", @0x28: @"f/4", @0x2B: @"f/4.5", @0x2C: @"f/4.5", @0x2D: @"f/5.0", @0x30: @"f/5.6", @0x33: @"f/6.3", @0x34: @"f/6.7", @0x35: @"f/7.1", @0x38: @"f/8", @0x3B: @"f/9", @0x3C: @"f/9.5", @0x3D: @"f/10", @0x40: @"f/11", @0x43: @"f/13", @0x44: @"f/13", @0x45: @"f/14", @0x48: @"f/16", @0x4B: @"f/18", @0x4C: @"f/19", @0x4D: @"f/20", @0x50: @"f/22", @0x53: @"f/25", @0x54: @"f/27", @0x55: @"f/29", @0x58: @"f/32", @0x5B: @"f/36", @0x5C: @"f/38", @0x5D: @"f/40", @0x60: @"f/45", @0x63: @"f/51", @0x64: @"f/54", @0x65: @"f/57", @0x68: @"f/64", @0x6B: @"f/72", @0x6C: @"f/76", @0x6D: @"f/80", @0x70: @"f/91" };
             property.readOnly = currentMode != 2 && currentMode != 3;
-            [self mapValueList:property map:map];
+            if (property.readOnly)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
+            else
+              [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonShutterSpeed: {
             NSDictionary *map = @{ @0x0C: @"Bulb", @0x10: @"30s", @0x13: @"25s", @0x14: @"20s", @0x15: @"20s", @0x18: @"15s", @0x1B: @"13s", @0x1C: @"10s", @0x1D: @"10s", @0x20: @"8s", @0x23: @"6s", @0x24: @"6s", @0x25: @"5s", @0x28: @"4s", @0x2B: @"3.2s", @0x2C: @"3s", @0x2D: @"2.5s", @0x30: @"2s", @0x33: @"1.6s", @0x34: @"15s", @0x35: @"1.3s", @0x38: @"1s", @0x3B: @"0.8s", @0x3C: @"0.7s", @0x3D: @"0.6s", @0x40: @"0.5s", @0x43: @"0.4s", @0x44: @"0.3s", @0x45: @"0.3s", @0x48: @"1/4s", @0x4B: @"1/5s", @0x4C: @"1/6s", @0x4D: @"1/6s", @0x50: @"1/8s", @0x53: @"1/10s", @0x54: @"1/10s", @0x55: @"1/13s", @0x58: @"1/15s", @0x5B: @"1/20s", @0x5C: @"1/20s", @0x5D: @"1/25s", @0x60: @"1/30s", @0x63: @"1/40s", @0x64: @"1/45s", @0x65: @"1/50s", @0x68: @"1/60s", @0x6B: @"1/80s", @0x6C: @"1/90s", @0x6D: @"1/100s", @0x70: @"1/125s", @0x73: @"1/160s", @0x74: @"1/180s", @0x75: @"1/200s", @0x78: @"1/250s", @0x7B: @"1/320s", @0x7C: @"1/350s", @0x7D: @"1/400s", @0x80: @"1/500s", @0x83: @"1/640s", @0x84: @"1/750s", @0x85: @"1/800s", @0x88: @"1/1000s", @0x8B: @"1/1250s", @0x8C: @"1/1500s", @0x8D: @"1/1600s", @0x90: @"1/2000s", @0x93: @"1/2500s", @0x94: @"1/3000s", @0x95: @"1/3200s", @0x98: @"1/4000s", @0x9B: @"1/5000s", @0x9C: @"1/6000s", @0x9D: @"1/6400s", @0xA0: @"1/8000s" };
             property.readOnly = currentMode != 1 && currentMode != 3;
-            [self mapValueList:property map:map];
+            currentShutterSpeed = property.value.intValue;
+            if (property.readOnly)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
+            else
+              [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonISOSpeed: {
             NSDictionary *map = @{ @0x00: @"Auto", @0x40: @"50", @0x48: @"100", @0x4b: @"125", @0x4d: @"160", @0x50: @"200", @0x53: @"250", @0x55: @"320", @0x58: @"400", @0x5b: @"500", @0x5d: @"640", @0x60: @"800", @0x63: @"1000", @0x65: @"1250", @0x68: @"1600", @0x6b: @"2000", @0x6d: @"2500", @0x70: @"3200", @0x73: @"4000", @0x75: @"5000", @0x78: @"6400", @0x7b: @"8000", @0x7d: @"10000", @0x80: @"12800", @0x88: @"25600", @0x90: @"51200", @0x98: @"102400" };
             property.readOnly = currentMode >= 8;
-            [self mapValueList:property map:map];
+            if (property.readOnly)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
+            else
+              [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonExpCompensation: {
             NSDictionary *map = @{ @0x28: @"+5", @0x25: @"+4 2/3", @0x24: @"+4 1/2", @0x23: @"+4 1/3", @0x20: @"+4", @0x1D: @"+3 2/3", @0x1C: @"+3 1/2", @0x1B: @"+3 1/3", @0x18: @"+3", @0x15: @"+2 2/3", @0x14: @"+2 1/2", @0x13: @"+2 1/3", @0x10: @"+2", @0x0D: @"+1 2/3", @0x0C: @"+1 1/2", @0x0B: @"+1 1/3", @0x08: @"+1", @0x05: @"+2/3", @0x04: @"+1/2", @0x03: @"+1/3", @0x00: @"0", @0xFD: @"-1/3", @0xFC: @"-1/2", @0xFB: @"-2/3", @0xF8: @"-1", @0xF5: @"-1 1/3", @0xF4: @"-1 1/2", @0xF3: @"-1 2/3", @0xF0: @"-2", @0xED: @"-2 1/3", @0xEC: @"-2 1/2", @0xEB: @"-2 2/3", @0xE8: @"-3", @0xE5: @"-3 1/3", @0xE4: @"-3 1/2", @0xE3: @"-3 2/3", @0xE0: @"-4", @0xDD: @"-4 1/3", @0xDC: @"-4 1/2", @0xDB: @"-4 2/3", @0xD8: @"-5" };
             property.readOnly = currentMode >= 8 || currentMode == 3;
-            [self mapValueList:property map:map];
+            if (property.readOnly)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
+            else
+              [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonMeteringMode: {
             NSDictionary *map = @{ @1: @"Spot", @3: @"Evaluative", @4: @"Partial", @5: @"Center-weighted" };
             property.readOnly = currentMode >= 8;
-            [self mapValueList:property map:map];
+            if (property.readOnly)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
+            else
+              [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonAutoExposureMode: {
@@ -944,19 +965,28 @@ static struct info {
           case PTPPropertyCodeCanonWhiteBalance: {
             NSDictionary *map = @{ @0: @"Auto", @1: @"Daylight", @2: @"Cloudy", @3: @"Tungsten", @4: @"Fluorescent", @5: @"Flash", @6: @"Manual", @8: @"Shade", @9: @"Color temperature", @10: @"Custom white balance: PC-1", @11: @"Custom white balance: PC-2", @12: @"Custom white balance: PC-3", @15: @"Manual 2", @16: @"Manual 3", @18: @"Manual 4", @19: @"Manual 5", @20: @"Custom white balance: PC-4", @21: @"Custom white balance: PC-5" };
             property.readOnly = currentMode >= 8;
-            [self mapValueList:property map:map];
+            if (property.readOnly)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
+            else
+              [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonFocusMode: {
             NSDictionary *map = @{ @0: @"One-Shot AF", @1: @"AI Servo AF", @2: @"AI Focus AF", @3: @"Manual" };
             property.readOnly = currentMode >= 8;
-            [self mapValueList:property map:map];
+            if (property.readOnly)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
+            else
+              [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonPictureStyle: {
             NSDictionary *map = @{ @0x81: @"Standard", @0x82: @"Portrait", @0x83: @"Landscape", @0x84: @"Neutral", @0x85: @"Faithful", @0x86: @"Monochrome", @0x87:@"Auto", @0x88: @"Fine detail", @0x21: @"User 1", @0x22: @"User 2", @0x23: @"User 3", @0x41: @"PC 1", @0x41: @"PC 2", @0x41: @"PC 3" };
             property.readOnly = currentMode >= 8;
-            [self mapValueList:property map:map];
+            if (property.readOnly)
+              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
+            else
+              [self mapValueList:property map:map];
             break;
           }
           case PTPPropertyCodeCanonColorSpace: {
@@ -1308,6 +1338,9 @@ static struct info {
 -(void)getPreviewImage {
   dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
     [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
+    //[self sendPTPRequest:PTPRequestCodeCanonSetLiveAfFrame param1:100 param2:100];
+    [self sendPTPRequest:PTPRequestCodeCanonZoomPosition param1:zoomX param2:zoomY];
+    [self sendPTPRequest:PTPRequestCodeCanonZoom param1:zoomLevel];
     [self sendPTPRequest:PTPRequestCodeCanonGetViewFinderData param1:0x00100000];
   });
 }
@@ -1332,14 +1365,14 @@ static struct info {
 
 -(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y {
   if (zoom < 5)
-    zoom = 1;
-  else if (zoom < 10)
-    zoom = 5;
+    zoomLevel = 1;
   else
-    zoom = 10;
+    zoomLevel = 5;
+  zoomX = x - 256;
+  zoomY = y - 384;
+  
+  NSLog(@"%d %d %d", zoomLevel, zoomX, zoomY);
   startPreview = true;
-  //[self sendPTPRequest:PTPRequestCodeCanonZoom param1:1];
-  //[self sendPTPRequest:PTPRequestCodeCanonZoomPosition param1:x param2:y];
   [self setProperty:PTPPropertyCodeCanonEVFMode value:@"1"];
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"2"];
 }
@@ -1351,7 +1384,6 @@ static struct info {
 }
 
 -(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
-  PTPProperty *shutter = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeCanonShutterSpeed]];
   if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
     if (mirrorLockup) {
       [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"1"];
@@ -1361,11 +1393,11 @@ static struct info {
       [self setProperty:PTPPropertyCodeCanonDriveMode value:@"0"];
     }
     [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:(avoidAF ? 1 : 0)];
-    if (shutter.value.intValue != 0x0C) {
+    if (currentShutterSpeed != 0x0C && currentMode != 4) {
       [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
     }
   } else {
-    if (shutter.value.intValue == 0x0C) {
+    if (currentShutterSpeed == 0x0C || currentMode == 4) {
       [self sendPTPRequest:PTPRequestCodeCanonBulbStart];
     } else {
       [self sendPTPRequest:PTPRequestCodeCanonRemoteRelease];

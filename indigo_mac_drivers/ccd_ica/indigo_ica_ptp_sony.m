@@ -682,6 +682,11 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   waitForCapture = false;
   [self setProperty:PTPPropertyCodeSonyCapture value:@"1"];
   [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
+  if (compression == 19)
+    imageCount = 2;
+  else
+    imageCount = 1;
+  [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:0xFFFFC001];
 }
 
 -(void)focus:(int)steps {

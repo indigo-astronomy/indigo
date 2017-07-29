@@ -547,12 +547,17 @@ static indigo_result focuser_detach(indigo_device *device) {
 		}
 	}
 	switch (code) {
+    case PTPPropertyCodeCanonAutoExposureMode: {
+      if (camera.info.vendorExtension == PTPVendorExtensionCanon)
+        PRIVATE_DATA->bulb = value.intValue == 4;
+      break;
+    }
     case PTPPropertyCodeExposureTime:
     case PTPPropertyCodeSonyShutterSpeed:
     case PTPPropertyCodeCanonShutterSpeed: {
       if (property->perm == INDIGO_RW_PERM) {
         int intValue = value.intValue;
-        if ((code == PTPPropertyCodeCanonShutterSpeed && intValue == 0x0C) || (code == PTPPropertyCodeSonyShutterSpeed && intValue == 0) || (code == PTPPropertyCodeExposureTime && intValue == 0x7FFFFFFF)) {
+        if ((camera.info.vendorExtension == PTPVendorExtensionCanon && code == PTPPropertyCodeCanonShutterSpeed && intValue == 0x0C) || (camera.info.vendorExtension == PTPVendorExtensionSony && code == PTPPropertyCodeSonyShutterSpeed && intValue == 0) || (camera.info.vendorExtension == PTPVendorExtensionNikon && code == PTPPropertyCodeExposureTime && intValue == 0x7FFFFFFF)) {
           if (IS_CONNECTED && CCD_EXPOSURE_ITEM->number.max == 0) {
             indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
             CCD_EXPOSURE_ITEM->number.min = 0;
@@ -586,15 +591,17 @@ static indigo_result focuser_detach(indigo_device *device) {
 			break;
 		}
     case PTPPropertyCodeCanonImageFormat: {
-      if (value.intValue == 0x10060002 || value.intValue == 0x10060004 || value.intValue ==  0x10060006) {
-        if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
-          indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_RAW_ITEM, true);
-          indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
-        }
-      } else {
-        if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
-          indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
-          indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
+      if (camera.info.vendorExtension == PTPVendorExtensionCanon) {
+        if (value.intValue == 0x10060002 || value.intValue == 0x10060004 || value.intValue ==  0x10060006) {
+          if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
+            indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_RAW_ITEM, true);
+            indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
+          }
+        } else {
+          if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
+            indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
+            indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
+          }
         }
       }
       break;
