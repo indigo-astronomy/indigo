@@ -498,6 +498,7 @@ static struct info {
         self.width = info[i].width;
         self.height = info[i].height;
         self.pixelSize = info[i].pixelSize;
+        break;
       }
   }
   return self;
