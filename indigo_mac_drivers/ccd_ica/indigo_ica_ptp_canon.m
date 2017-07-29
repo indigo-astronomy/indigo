@@ -1337,10 +1337,11 @@ static struct info {
 
 -(void)getPreviewImage {
   dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
+    if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
+      [self sendPTPRequest:PTPRequestCodeCanonZoomPosition param1:zoomX param2:zoomY];
+      [self sendPTPRequest:PTPRequestCodeCanonZoom param1:zoomLevel];
+    }
     [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
-    //[self sendPTPRequest:PTPRequestCodeCanonSetLiveAfFrame param1:100 param2:100];
-    [self sendPTPRequest:PTPRequestCodeCanonZoomPosition param1:zoomX param2:zoomY];
-    [self sendPTPRequest:PTPRequestCodeCanonZoom param1:zoomLevel];
     [self sendPTPRequest:PTPRequestCodeCanonGetViewFinderData param1:0x00100000];
   });
 }
