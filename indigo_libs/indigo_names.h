@@ -506,6 +506,19 @@
 #define DSLR_AVOID_AF_OFF_ITEM_NAME        "OFF"
 
 //----------------------------------------------------------------------
+/** DSLR_ZOOM_PREVIEW property name.
+ */
+#define DSLR_ZOOM_PREVIEW_PROPERTY_NAME		"DSLR_ZOOM_PREVIEW"
+
+/** DSLR_ZOOM_PREVIEW.ON property item name.
+ */
+#define DSLR_ZOOM_PREVIEW_ON_ITEM_NAME        "ON"
+
+/** DSLR_ZOOM_PREVIEW.OFF property item name.
+ */
+#define DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME        "OFF"
+
+//----------------------------------------------------------------------
 /** DSLR_AF property name.
  */
 #define DSLR_AF_PROPERTY_NAME		"DSLR_AF"

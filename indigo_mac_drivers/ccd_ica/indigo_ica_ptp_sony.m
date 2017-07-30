@@ -653,7 +653,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(void)unlock {
 }
 
--(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y {
+-(void)startPreviewZoom:(BOOL)zoom {
 
 }
 

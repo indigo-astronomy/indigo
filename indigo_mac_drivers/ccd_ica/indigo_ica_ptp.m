@@ -1345,7 +1345,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)unlock {
 }
 
--(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y {
+-(void)startPreviewZoom:(BOOL)zoom {
 }
 
 -(void)stopPreview {

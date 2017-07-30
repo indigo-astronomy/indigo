@@ -483,7 +483,7 @@ static struct info {
   int focusSteps;
   unsigned int previewWidth, previewHeight;
   unsigned int *customFuncEx;
-  unsigned int zoomLevel, zoomX, zoomY;
+  unsigned int zoomLevel;
 }
 
 -(PTPVendorExtension)extension {
@@ -1003,18 +1003,21 @@ static struct info {
             [self.delegate cameraCanPreview:self];
             NSDictionary *map = @{ @1: @"TFT", @2: @"PC" };
             [self mapValueList:property map:map];
+            if (startPreview && property.value.intValue) {
+              startPreview = false;
+              doPreview = true;
+              if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
+                [self sendPTPRequest:PTPRequestCodeCanonZoom param1:zoomLevel];
+              }
+              [self getPreviewImage];
+            } else {
+              doPreview = false;
+            }
             break;
           }
           case PTPPropertyCodeCanonEVFMode: {
             NSDictionary *map = @{ @0: @"Disable", @1: @"Enable" };
             [self mapValueList:property map:map];
-            if (startPreview && property.value.intValue) {
-              startPreview = false;
-              doPreview = true;
-              [self getPreviewImage];
-            } else {
-              doPreview = false;
-            }
             break;
           }
           case PTPPropertyCodeCanonDriveMode: {
@@ -1206,9 +1209,9 @@ static struct info {
             [self sendPTPRequest:PTPRequestCodeCanonDriveLens param1:0x8001];
           });
         }
-      }
-      else
+      } else {
         [self.delegate cameraFocusFailed:self message:[NSString stringWithFormat:@"DriveLens failed (0x%04x = %@)", response.responseCode, response]];
+      }
       break;
     }      
     case PTPRequestCodeCanonRemoteReleaseOn:
@@ -1337,10 +1340,6 @@ static struct info {
 
 -(void)getPreviewImage {
   dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
-    if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
-      [self sendPTPRequest:PTPRequestCodeCanonZoomPosition param1:zoomX param2:zoomY];
-      [self sendPTPRequest:PTPRequestCodeCanonZoom param1:zoomLevel];
-    }
     [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
     [self sendPTPRequest:PTPRequestCodeCanonGetViewFinderData param1:0x00100000];
   });
@@ -1367,15 +1366,11 @@ static struct info {
   [self sendPTPRequest:PTPRequestCodeCanonResetUILock];
 }
 
--(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y {
-  if (zoom < 5)
-    zoomLevel = 1;
-  else
+-(void)startPreviewZoom:(BOOL)zoom {
+  if (zoom)
     zoomLevel = 5;
-  zoomX = x - 256;
-  zoomY = y - 384;
-  
-  NSLog(@"%d %d %d", zoomLevel, zoomX, zoomY);
+  else
+    zoomLevel = 1;  
   startPreview = true;
   [self setProperty:PTPPropertyCodeCanonEVFMode value:@"1"];
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"2"];

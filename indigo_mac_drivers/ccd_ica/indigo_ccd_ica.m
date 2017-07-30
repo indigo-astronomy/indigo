@@ -50,6 +50,9 @@
 #define DSLR_AVOID_AF_PROPERTY          (PRIVATE_DATA->dslr_avoid_af_property)
 #define DSLR_AVOID_AF_ON_ITEM           (PRIVATE_DATA->dslr_avoid_af_property->items + 0)
 #define DSLR_AVOID_AF_OFF_ITEM          (PRIVATE_DATA->dslr_avoid_af_property->items + 1)
+#define DSLR_ZOOM_PREVIEW_PROPERTY      (PRIVATE_DATA->dslr_zoom_preview_property)
+#define DSLR_ZOOM_PREVIEW_ON_ITEM       (PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
+#define DSLR_ZOOM_PREVIEW_OFF_ITEM      (PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
 
 struct dslr_properties {
   PTPVendorExtension extension;
@@ -134,6 +137,7 @@ typedef struct {
   indigo_property *dslr_mirror_lockup_property;
   indigo_property *dslr_af_property;
   indigo_property *dslr_avoid_af_property;
+  indigo_property *dslr_zoom_preview_property;
 	indigo_property **dslr_properties;
   int dslr_properties_count;
   void *buffer;
@@ -154,14 +158,14 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 			CCD_INFO_PROPERTY->hidden = false;
     if (camera.width != 0 && camera.height != 0 && camera.pixelSize != 0) {
-      CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = camera.width;
-      CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = camera.height;
-      CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = camera.pixelSize;
+      CCD_INFO_WIDTH_ITEM->number.value = camera.width;
+      CCD_INFO_HEIGHT_ITEM->number.value = camera.height;
+      CCD_INFO_PIXEL_SIZE_ITEM->number.value = camera.pixelSize;
       CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		} else {
-			CCD_INFO_PROPERTY->hidden = CCD_FRAME_PROPERTY->hidden = true;
+      CCD_INFO_PROPERTY->hidden = true;
 		}
-		CCD_MODE_PROPERTY->hidden = CCD_BIN_PROPERTY->hidden =  true;
+    CCD_FRAME_PROPERTY->hidden = CCD_MODE_PROPERTY->hidden = CCD_BIN_PROPERTY->hidden =  true;
     CCD_IMAGE_FORMAT_PROPERTY->perm = CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
     DSLR_LOCK_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_LOCK_PROPERTY_NAME, "DSLR", "Lock camera GUI", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_LOCK_ITEM, DSLR_LOCK_ITEM_NAME, "Lock", true);
@@ -174,7 +178,10 @@ static indigo_result ccd_attach(indigo_device *device) {
     DSLR_AVOID_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_AVOID_AF_PROPERTY_NAME, "DSLR", "Avoid AF", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_AVOID_AF_ON_ITEM, DSLR_AVOID_AF_ON_ITEM_NAME, "On", true);
     indigo_init_switch_item(DSLR_AVOID_AF_OFF_ITEM, DSLR_AVOID_AF_OFF_ITEM_NAME, "Off", false);
-		indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
+    DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_ZOOM_PREVIEW_PROPERTY_NAME, "DSLR", "Zoom preview", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    indigo_init_switch_item(DSLR_ZOOM_PREVIEW_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", false);
+    indigo_init_switch_item(DSLR_ZOOM_PREVIEW_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", true);
+    indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
 		// --------------------------------------------------------------------------------
 		indigo_log("%s attached", device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
@@ -197,6 +204,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
         indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
       if (indigo_property_match(DSLR_AVOID_AF_PROPERTY, property))
         indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
+      if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property))
+        indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -260,6 +269,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
     DSLR_AVOID_AF_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
     return INDIGO_OK;
+  } else if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- DSLR_ZOOM_PREVIEW
+    indigo_property_copy_values(DSLR_ZOOM_PREVIEW_PROPERTY, property, false);
+    DSLR_ZOOM_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
+    indigo_update_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+    return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -285,15 +300,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-      int zoomWidth = (int)(CCD_INFO_WIDTH_ITEM->number.value / CCD_FRAME_WIDTH_ITEM->number.value);
-      int zoomHeight = (int)(CCD_INFO_HEIGHT_ITEM->number.value / CCD_FRAME_HEIGHT_ITEM->number.value);
-      int zoom = zoomWidth < zoomHeight ? zoomWidth : zoomHeight;
-      int x = CCD_FRAME_LEFT_ITEM->number.value + CCD_FRAME_WIDTH_ITEM->number.value / 2;
-      int y = CCD_FRAME_TOP_ITEM->number.value + CCD_FRAME_HEIGHT_ITEM->number.value / 2;
-//      NSLog(@"%d %d", (int)(CCD_INFO_WIDTH_ITEM->number.value), (int)(CCD_INFO_HEIGHT_ITEM->number.value));
-//      NSLog(@"%d %d %d %d %d", (int)(CCD_FRAME_LEFT_ITEM->number.value), (int)(CCD_FRAME_TOP_ITEM->number.value), (int)(CCD_FRAME_WIDTH_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value), zoom);
-//      NSLog(@"%d %d", x, y);
-      [camera startPreviewZoom:zoom x:x y:y];
+      [camera startPreviewZoom:DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value];
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -366,6 +373,7 @@ static indigo_result ccd_detach(indigo_device *device) {
   indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
   indigo_release_property(DSLR_AF_PROPERTY);
   indigo_release_property(DSLR_AVOID_AF_PROPERTY);
+  indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_log("%s detached", device->name);
 	return indigo_ccd_detach(device);
 }
@@ -471,6 +479,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
     indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
+    indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
     if (DSLR_LOCK_ITEM->sw.value)
       [camera lock];
     else
@@ -831,7 +840,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_delete_property(device, DSLR_LOCK_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_AF_PROPERTY, NULL);
-    indigo_delete_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
+    indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 	}
