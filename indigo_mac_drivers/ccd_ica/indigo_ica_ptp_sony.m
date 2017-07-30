@@ -641,6 +641,9 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   }
 }
 
+-(void)requestEnableTethering {
+}
+
 -(void)getPreviewImage {
 }
 

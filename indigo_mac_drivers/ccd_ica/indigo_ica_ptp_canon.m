@@ -1346,6 +1346,9 @@ static struct info {
   });
 }
 
+-(void)requestEnableTethering {
+}
+
 -(void)requestCloseSession {
   if (doPreview)
     [self stopPreview];
