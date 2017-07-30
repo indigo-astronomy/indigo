@@ -474,7 +474,6 @@ static struct info {
 };
 
 @implementation PTPNikonCamera {
-  unsigned int liveViewX, liveViewY;
   NSString *liveViewZoom;
   NSTimer *ptpPreviewTimer;
 }
@@ -583,7 +582,6 @@ static struct info {
     case PTPPropertyCodeNikonLiveViewStatus: {
       if (property.value.description.intValue) {
         [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:liveViewZoom];
-        [self sendPTPRequest:PTPRequestCodeNikonChangeAfArea param1:liveViewX param2:liveViewY];
         ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
       } else {
         [ptpPreviewTimer invalidate];
@@ -994,22 +992,11 @@ static struct info {
   [self sendPTPRequest:PTPRequestCodeNikonSetControlMode param1:0];
 }
 
--(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y {
-  if (zoom < 2)
-    zoom = 0;
-  else if (zoom < 3)
-    zoom = 1;
-  else if (zoom < 4)
-    zoom = 2;
-  else if (zoom < 6)
-    zoom = 3;
-  else if (zoom < 8)
-    zoom = 4;
+-(void)startPreviewZoom:(BOOL)zoom {
+  if (zoom)
+    liveViewZoom = @"5";
   else
-    zoom = 5;
-  liveViewZoom = [NSString stringWithFormat:@"%d", zoom];
-  liveViewX = x;
-  liveViewY = y;
+    liveViewZoom = @"0";
   [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"1"];
   [self sendPTPRequest:PTPRequestCodeGetDevicePropValue param1:PTPPropertyCodeNikonLiveViewProhibitCondition];
   [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
@@ -1028,11 +1015,11 @@ static struct info {
     [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(mirrorLockup ? @"1" : @"0")];
   }
   if ([self operationIsSupported:PTPRequestCodeNikonInitiateCaptureRecInMedia]) {
-    [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:(avoidAF ? 0xFFFFFFFF : 0xFFFFFFFE) param2:0];
+    [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:0xFFFFFFFF param2:0];
     [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
-  }
-  else
+  } else {
     [super startExposureWithMirrorLockup:mirrorLockup avoidAF:avoidAF];
+  }
 }
 
 -(void)stopExposure {
@@ -1041,14 +1028,16 @@ static struct info {
 }
 
 -(void)focus:(int)steps {
-  PTPProperty *afMode = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonLiveViewAFFocus]];
-  if (afMode.value.intValue != 0) {
-    [self setProperty:PTPPropertyCodeNikonLiveViewAFFocus value:@"0"];
-  }
-  if (steps >= 0) {
-    [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:1 param2:steps];
-  } else {
-    [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:2 param2:-steps];
+  if (steps <= 100 || steps >= -100) {
+    PTPProperty *afMode = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonLiveViewAFFocus]];
+    if (afMode && afMode.value.intValue != 0) {
+      [self setProperty:PTPPropertyCodeNikonLiveViewAFFocus value:@"0"];
+    }
+    if (steps > 0) {
+      [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:1 param2:steps];
+    } else {
+      [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:2 param2:-steps];
+    }
   }
 }
 

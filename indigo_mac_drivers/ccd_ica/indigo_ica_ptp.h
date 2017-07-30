@@ -472,7 +472,7 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 -(void)lock;
 -(void)unlock;
--(void)startPreviewZoom:(int)zoom x:(int)x y:(int)y;
+-(void)startPreviewZoom:(BOOL)zoom;
 -(void)stopPreview;
 -(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF;
 -(void)stopExposure;
