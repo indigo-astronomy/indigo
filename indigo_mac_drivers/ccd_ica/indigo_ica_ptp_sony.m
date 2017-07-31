@@ -653,7 +653,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(void)unlock {
 }
 
--(void)startPreviewZoom:(BOOL)zoom {
+-(void)startPreview {
 
 }
 
@@ -668,7 +668,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
 }
 
--(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
+-(void)startExposure {
   waitForCapture = true;
   [self setProperty:PTPPropertyCodeSonyAutofocus value:@"2"];
   if (focusMode == 1) {

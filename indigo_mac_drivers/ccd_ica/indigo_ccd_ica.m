@@ -53,6 +53,9 @@
 #define DSLR_ZOOM_PREVIEW_PROPERTY      (PRIVATE_DATA->dslr_zoom_preview_property)
 #define DSLR_ZOOM_PREVIEW_ON_ITEM       (PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
 #define DSLR_ZOOM_PREVIEW_OFF_ITEM      (PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
+#define DSLR_DELETE_IMAGE_PROPERTY      (PRIVATE_DATA->dslr_delete_image_property)
+#define DSLR_DELETE_IMAGE_ON_ITEM       (PRIVATE_DATA->dslr_delete_image_property->items + 0)
+#define DSLR_DELETE_IMAGE_OFF_ITEM      (PRIVATE_DATA->dslr_delete_image_property->items + 1)
 
 struct dslr_properties {
   PTPVendorExtension extension;
@@ -138,6 +141,7 @@ typedef struct {
   indigo_property *dslr_af_property;
   indigo_property *dslr_avoid_af_property;
   indigo_property *dslr_zoom_preview_property;
+  indigo_property *dslr_delete_image_property;
 	indigo_property **dslr_properties;
   int dslr_properties_count;
   void *buffer;
@@ -181,6 +185,9 @@ static indigo_result ccd_attach(indigo_device *device) {
     DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_ZOOM_PREVIEW_PROPERTY_NAME, "DSLR", "Zoom preview", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_ZOOM_PREVIEW_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", false);
     indigo_init_switch_item(DSLR_ZOOM_PREVIEW_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", true);
+    DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_DELETE_IMAGE_PROPERTY_NAME, "DSLR", "Delete downloaded image", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    indigo_init_switch_item(DSLR_DELETE_IMAGE_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", true);
+    indigo_init_switch_item(DSLR_DELETE_IMAGE_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", false);
     indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
 		// --------------------------------------------------------------------------------
 		indigo_log("%s attached", device->name);
@@ -206,6 +213,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
         indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
       if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property))
         indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+      if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property))
+        indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -249,31 +258,30 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
   } else if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property)) {
       // -------------------------------------------------------------------------------- DSLR_MIRROR_LOCKUP
     indigo_property_copy_values(DSLR_MIRROR_LOCKUP_PROPERTY, property, false);
+    camera.useMirrorLockup = DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value;
     DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
-    return INDIGO_OK;
-  } else if (indigo_property_match(DSLR_AF_PROPERTY, property)) {
-    // -------------------------------------------------------------------------------- DSLR_AF
-    if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE)
-      return INDIGO_OK;
-    indigo_property_copy_values(DSLR_AF_PROPERTY, property, false);
-    if (DSLR_AF_ITEM->sw.value) {
-      DSLR_AF_PROPERTY->state = INDIGO_OK_STATE;
-      indigo_update_property(device, DSLR_AF_PROPERTY, NULL);
-        [camera startAutofocus];
-    }
     return INDIGO_OK;
   } else if (indigo_property_match(DSLR_AVOID_AF_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_AVOID_AF
     indigo_property_copy_values(DSLR_AVOID_AF_PROPERTY, property, false);
+    camera.avoidAF = DSLR_AVOID_AF_ON_ITEM->sw.value;
     DSLR_AVOID_AF_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
     return INDIGO_OK;
   } else if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_ZOOM_PREVIEW
     indigo_property_copy_values(DSLR_ZOOM_PREVIEW_PROPERTY, property, false);
+    camera.zoomPreview = DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value;
     DSLR_ZOOM_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+    return INDIGO_OK;
+  } else if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property)) {
+      // -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE_PROPERTY
+    indigo_property_copy_values(DSLR_DELETE_IMAGE_PROPERTY, property, false);
+    camera.deleteDownloadedImage = DSLR_DELETE_IMAGE_ON_ITEM->sw.value;
+    DSLR_DELETE_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+    indigo_update_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
     return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -284,7 +292,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		[camera startExposureWithMirrorLockup:DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value avoidAF:DSLR_AVOID_AF_ON_ITEM->sw.value];
+		[camera startExposure];
     if (PRIVATE_DATA->bulb)
       PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
     return indigo_ccd_change_property(device, client, property);
@@ -300,9 +308,20 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-      [camera startPreviewZoom:DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value];
+      [camera startPreview];
 		}
 		return INDIGO_OK;
+  } else if (indigo_property_match(DSLR_AF_PROPERTY, property)) {
+      // -------------------------------------------------------------------------------- DSLR_AF
+    if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE)
+      return INDIGO_OK;
+    indigo_property_copy_values(DSLR_AF_PROPERTY, property, false);
+    if (DSLR_AF_ITEM->sw.value) {
+      DSLR_AF_PROPERTY->state = INDIGO_OK_STATE;
+      indigo_update_property(device, DSLR_AF_PROPERTY, NULL);
+      [camera startAutofocus];
+    }
+    return INDIGO_OK;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ) {
@@ -374,6 +393,7 @@ static indigo_result ccd_detach(indigo_device *device) {
   indigo_release_property(DSLR_AF_PROPERTY);
   indigo_release_property(DSLR_AVOID_AF_PROPERTY);
   indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
+  indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
 	indigo_log("%s detached", device->name);
 	return indigo_ccd_detach(device);
 }
@@ -480,6 +500,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
     indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
     indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+    indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
     if (DSLR_LOCK_ITEM->sw.value)
       [camera lock];
     else
@@ -841,6 +862,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_AF_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+    indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
 	}

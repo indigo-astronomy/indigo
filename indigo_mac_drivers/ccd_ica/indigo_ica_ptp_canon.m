@@ -478,12 +478,12 @@ static struct info {
   BOOL startPreview;
   BOOL doPreview;
   NSString *addedFileName;
+  BOOL deleteImage;
   int currentMode;
   int currentShutterSpeed;
   int focusSteps;
-  unsigned int previewWidth, previewHeight;
   unsigned int *customFuncEx;
-  unsigned int zoomLevel;
+  unsigned int liveViewZoom;
 }
 
 -(PTPVendorExtension)extension {
@@ -1007,7 +1007,7 @@ static struct info {
               startPreview = false;
               doPreview = true;
               if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
-                [self sendPTPRequest:PTPRequestCodeCanonZoom param1:zoomLevel];
+                [self sendPTPRequest:PTPRequestCodeCanonZoom param1:liveViewZoom];
               }
               [self getPreviewImage];
             } else {
@@ -1154,7 +1154,8 @@ static struct info {
     case PTPRequestCodeCanonGetObject: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         [self.delegate cameraExposureDone:self data:data filename:addedFileName];
-        [self sendPTPRequest:PTPRequestCodeCanonDeleteObject param1:request.parameter1];
+        if (deleteImage)
+          [self sendPTPRequest:PTPRequestCodeCanonDeleteObject param1:request.parameter1];
       } else {
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"Download failed (0x%04x = %@)", response.responseCode, response]];
       }
@@ -1366,11 +1367,11 @@ static struct info {
   [self sendPTPRequest:PTPRequestCodeCanonResetUILock];
 }
 
--(void)startPreviewZoom:(BOOL)zoom {
-  if (zoom)
-    zoomLevel = 5;
+-(void)startPreview {
+  if (self.zoomPreview)
+    liveViewZoom = 5;
   else
-    zoomLevel = 1;  
+    liveViewZoom = 1;  
   startPreview = true;
   [self setProperty:PTPPropertyCodeCanonEVFMode value:@"1"];
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"2"];
@@ -1382,16 +1383,16 @@ static struct info {
   //[self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
 }
 
--(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
+-(void)startExposure {
   if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
-    if (mirrorLockup) {
+    if (self.useMirrorLockup) {
       [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"1"];
       [self setProperty:PTPPropertyCodeCanonDriveMode value:@"17"];
     } else {
       [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"0"];
       [self setProperty:PTPPropertyCodeCanonDriveMode value:@"0"];
     }
-    [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:(avoidAF ? 1 : 0)];
+    [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:(self.avoidAF ? 1 : 0)];
     if (currentShutterSpeed != 0x0C && currentMode != 4) {
       [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
     }

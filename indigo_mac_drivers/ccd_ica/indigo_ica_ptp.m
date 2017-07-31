@@ -1345,13 +1345,13 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)unlock {
 }
 
--(void)startPreviewZoom:(BOOL)zoom {
+-(void)startPreview {
 }
 
 -(void)stopPreview {
 }
 
--(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF{
+-(void)startExposure {
   [_icCamera requestTakePicture];
 }
 
@@ -1442,7 +1442,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     ICCameraFile *file = (ICCameraFile *)item;
     if (file.wasAddedAfterContentCatalogCompleted) {
       objectAdded = true;
-      [camera requestDownloadFile:file options:@{ ICDeleteAfterSuccessfulDownload: @TRUE, ICOverwrite: @TRUE, ICDownloadsDirectoryURL: [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:true] } downloadDelegate:self didDownloadSelector:@selector(didDownloadFile:error:options:contextInfo:) contextInfo:nil];
+      [camera requestDownloadFile:file options:@{ ICDeleteAfterSuccessfulDownload: self.deleteDownloadedImage ? @TRUE : @FALSE, ICOverwrite: @TRUE, ICDownloadsDirectoryURL: [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:true] } downloadDelegate:self didDownloadSelector:@selector(didDownloadFile:error:options:contextInfo:) contextInfo:nil];
     }
   }
 }

@@ -519,6 +519,19 @@
 #define DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME        "OFF"
 
 //----------------------------------------------------------------------
+/** DSLR_DELETE_IMAGE property name.
+ */
+#define DSLR_DELETE_IMAGE_PROPERTY_NAME		"DSLR_DELETE_IMAGE"
+
+/** DSLR_DELETE_IMAGE.ON property item name.
+ */
+#define DSLR_DELETE_IMAGE_ON_ITEM_NAME        "ON"
+
+/** DSLR_DELETE_IMAGE.OFF property item name.
+ */
+#define DSLR_DELETE_IMAGE_OFF_ITEM_NAME        "OFF"
+
+//----------------------------------------------------------------------
 /** DSLR_AF property name.
  */
 #define DSLR_AF_PROPERTY_NAME		"DSLR_AF"
