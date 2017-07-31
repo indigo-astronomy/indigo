@@ -992,8 +992,8 @@ static struct info {
   [self sendPTPRequest:PTPRequestCodeNikonSetControlMode param1:0];
 }
 
--(void)startPreviewZoom:(BOOL)zoom {
-  if (zoom)
+-(void)startPreview {
+  if (self.zoomPreview)
     liveViewZoom = @"5";
   else
     liveViewZoom = @"0";
@@ -1010,15 +1010,15 @@ static struct info {
   [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"0"];
 }
 
--(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF {
+-(void)startExposure {
   if ([self propertyIsSupported:PTPPropertyCodeNikonExposureDelayMode]) {
-    [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(mirrorLockup ? @"1" : @"0")];
+    [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(self.useMirrorLockup ? @"1" : @"0")];
   }
   if ([self operationIsSupported:PTPRequestCodeNikonInitiateCaptureRecInMedia]) {
     [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:0xFFFFFFFF param2:0];
     [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
   } else {
-    [super startExposureWithMirrorLockup:mirrorLockup avoidAF:avoidAF];
+    [super startExposure];
   }
 }
 

@@ -440,6 +440,11 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 @property (readonly) Class propertyClass;
 @property (readonly) Class deviceInfoClass;
 
+@property BOOL avoidAF;
+@property BOOL useMirrorLockup;
+@property BOOL deleteDownloadedImage;
+@property BOOL zoomPreview;
+
 @property PTPDeviceInfo *info;
 @property NSObject *userData;
 @property int width;
@@ -472,9 +477,9 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value;
 -(void)lock;
 -(void)unlock;
--(void)startPreviewZoom:(BOOL)zoom;
+-(void)startPreview;
 -(void)stopPreview;
--(void)startExposureWithMirrorLockup:(BOOL)mirrorLockup avoidAF:(BOOL)avoidAF;
+-(void)startExposure;
 -(void)stopExposure;
 -(void)startAutofocus;
 -(void)stopAutofocus;
