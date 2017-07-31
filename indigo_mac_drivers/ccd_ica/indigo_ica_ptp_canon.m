@@ -1005,9 +1005,6 @@ static struct info {
             if (startPreview && property.value.intValue) {
               startPreview = false;
               doPreview = true;
-              if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
-                [self sendPTPRequest:PTPRequestCodeCanonZoom param1:liveViewZoom];
-              }
               [self getPreviewImage];
             } else {
               doPreview = false;
@@ -1336,6 +1333,11 @@ static struct info {
       [self sendPTPRequest:PTPRequestCodeCanonSetDevicePropValueEx data:[NSData dataWithBytesNoCopy:buffer length:size freeWhenDone:YES]];
     }
   }
+}
+
+-(void)setZoomPreview:(BOOL)zoomPreview {
+  [self sendPTPRequest:PTPRequestCodeCanonZoom param1:liveViewZoom = (zoomPreview ? 5 : 1)];
+  [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
 }
 
 -(void)getPreviewImage {

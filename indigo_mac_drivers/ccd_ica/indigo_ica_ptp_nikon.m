@@ -581,7 +581,6 @@ static struct info {
     }
     case PTPPropertyCodeNikonLiveViewStatus: {
       if (property.value.description.intValue) {
-        [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:liveViewZoom];
         ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
       } else {
         [ptpPreviewTimer invalidate];
@@ -978,6 +977,10 @@ static struct info {
       [super processRequest:request Response:response inData:data];
     }
   }
+}
+
+-(void)setZoomPreview:(BOOL)zoomPreview {
+  [self setProperty:PTPPropertyCodeNikonLiveViewImageZoomRatio value:(liveViewZoom = zoomPreview ? @"5" : @"0")];
 }
 
 -(void)getPreviewImage {
