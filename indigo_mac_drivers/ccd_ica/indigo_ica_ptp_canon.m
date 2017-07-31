@@ -478,7 +478,6 @@ static struct info {
   BOOL startPreview;
   BOOL doPreview;
   NSString *addedFileName;
-  BOOL deleteImage;
   int currentMode;
   int currentShutterSpeed;
   int focusSteps;
@@ -1154,7 +1153,7 @@ static struct info {
     case PTPRequestCodeCanonGetObject: {
       if (response.responseCode == PTPResponseCodeOK && data) {
         [self.delegate cameraExposureDone:self data:data filename:addedFileName];
-        if (deleteImage)
+        if (self.deleteDownloadedImage)
           [self sendPTPRequest:PTPRequestCodeCanonDeleteObject param1:request.parameter1];
       } else {
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"Download failed (0x%04x = %@)", response.responseCode, response]];
