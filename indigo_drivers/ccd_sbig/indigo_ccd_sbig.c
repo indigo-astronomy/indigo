@@ -2167,7 +2167,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d cfwStatus = %d", cfwr.cfwModel, cfw_type[cfwr.cfwModel], cfwr.cfwPosition, cfwr.cfwResult2, cfwr.cfwStatus);
 				int slot = find_available_device_slot();
 				if (slot < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
 					sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 					pthread_mutex_unlock(&driver_mutex);
 					return false;
