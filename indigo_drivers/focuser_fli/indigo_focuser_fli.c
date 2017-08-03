@@ -535,7 +535,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			int slot = find_available_device_slot();
 			if (slot < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No available device slots available.");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
 				pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
