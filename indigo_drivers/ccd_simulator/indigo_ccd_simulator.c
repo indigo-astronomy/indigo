@@ -422,7 +422,7 @@ static void guider_timer_callback(indigo_device *device) {
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
-		PRIVATE_DATA->ra_offset += (GUIDER_GUIDE_EAST_ITEM->number.value - GUIDER_GUIDE_WEST_ITEM->number.value) / 100;
+		PRIVATE_DATA->ra_offset += (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 100;
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
