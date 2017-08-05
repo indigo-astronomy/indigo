@@ -46,7 +46,8 @@
 // gp_bits is used as boolean
 #define is_connected                     gp_bits
 
-#define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
+#define PRIVATE_DATA           
+#define SHUTTER_PROPERTY		PRIVATE_DATA->shutter_property
 
 static unsigned short background[] = {
 #include "indigo_ccd_simulator_image.h"
@@ -54,6 +55,7 @@ static unsigned short background[] = {
 
 typedef struct {
 	indigo_device *imager, *guider;
+	indigo_property *shutter_property;
 	int star_x[STARS], star_y[STARS], star_a[STARS];
 	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT + 2880];
 	double target_temperature, current_temperature;
@@ -320,10 +322,27 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_COOLER_POWER_ITEM->number.value = 0;
 		// --------------------------------------------------------------------------------
+		if (device == PRIVATE_DATA->imager) {
+			SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_SHUTTER_PROPERTY_NAME, "DSLR", "Shutter time", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(SHUTTER_PROPERTY->items, "BULB", "Bulb", true);
+		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
+}
+
+indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	indigo_result result = INDIGO_OK;
+	if ((result = indigo_ccd_enumerate_properties(device, client, property)) == INDIGO_OK) {
+		if (IS_CONNECTED) {
+			if (device == PRIVATE_DATA->imager) {
+				if (indigo_property_match(SHUTTER_PROPERTY, property))
+					indigo_define_property(device, SHUTTER_PROPERTY, NULL);
+			}
+		}
+	}
+	return result;
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -336,11 +355,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) { /* Do not double open device */
+				if (device == PRIVATE_DATA->imager) {
+					indigo_define_property(device, SHUTTER_PROPERTY, NULL);
+				}
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 				device->is_connected = true;
 			}
 		} else {
 			if (device->is_connected) {  /* Do not double close device */
+				if (device == PRIVATE_DATA->imager) {
+					indigo_delete_property(device, SHUTTER_PROPERTY, NULL);
+				}
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				device->is_connected = false;
 			}
@@ -406,6 +431,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+	if (device == PRIVATE_DATA->imager) {
+		indigo_release_property(SHUTTER_PROPERTY);
+	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_ccd_detach(device);
 }
@@ -692,7 +720,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 	static indigo_device imager_camera_template = {
 		CCD_SIMULATOR_IMAGER_CAMERA_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
-		indigo_ccd_enumerate_properties,
+		ccd_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
