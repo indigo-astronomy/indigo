@@ -46,7 +46,7 @@
 // gp_bits is used as boolean
 #define is_connected                     gp_bits
 
-#define PRIVATE_DATA           
+#define PRIVATE_DATA            	((simulator_private_data *)device->private_data)
 #define SHUTTER_PROPERTY		PRIVATE_DATA->shutter_property
 
 static unsigned short background[] = {
