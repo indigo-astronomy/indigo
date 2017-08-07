@@ -1038,7 +1038,7 @@ static struct info {
     }
     if (steps > 0) {
       [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:1 param2:steps];
-    } else {
+    } else if (steps < 0) {
       [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:2 param2:-steps];
     }
   }
