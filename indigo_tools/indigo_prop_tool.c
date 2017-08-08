@@ -509,7 +509,7 @@ int main(int argc, const char * argv[]) {
 	}
 
 	if (time_to_wait <= 0) {
-		fprintf(stderr, "Invalied invalid time to wait specified\n");
+		fprintf(stderr, "Invalid time to wait specified\n");
 		return 1;
 	}
 
