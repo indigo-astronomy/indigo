@@ -2392,8 +2392,6 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
-		last_action = action;
-
 #ifdef __linux__
 		sbig_command = SBIGUnivDrvCommand;
 #elif __APPLE__
@@ -2445,7 +2443,11 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
+		if (rc >= 0) {
+			last_action = action;
+			return INDIGO_OK;
+		}
+		return INDIGO_FAILED;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		last_action = action;
