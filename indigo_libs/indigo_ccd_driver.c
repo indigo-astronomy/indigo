@@ -193,6 +193,16 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			CCD_TEMPERATURE_PROPERTY->hidden = true;
 			indigo_init_number_item(CCD_TEMPERATURE_ITEM, CCD_TEMPERATURE_ITEM_NAME, "Temperature (C)", -50, 50, 1, 0);
+			// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
+			CCD_FITS_HEADERS_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_FITS_HEADERS_NAME, CCD_IMAGE_GROUP, "Custom FITS headers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 10);
+			if (CCD_FITS_HEADERS_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+				char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
+				sprintf(name, CCD_FITS_HEADER_ITEM_NAME, i + 1);
+				sprintf(label, "Header #%d", i + 1);
+				indigo_init_text_item(CCD_FITS_HEADERS_PROPERTY->items + i, name, label, "");
+			}
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -244,6 +254,8 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 				indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property))
 				indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+			if (indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property))
+			indigo_define_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -275,6 +287,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_COOLER_PROPERTY, NULL);
 			indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+			indigo_define_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
 		} else {
 			indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
@@ -295,6 +308,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_COOLER_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
@@ -309,6 +323,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, CCD_GAIN_PROPERTY);
 			indigo_save_property(device, NULL, CCD_FRAME_TYPE_PROPERTY);
 			indigo_save_property(device, NULL, CCD_IMAGE_FORMAT_PROPERTY);
+			indigo_save_property(device, NULL, CCD_FITS_HEADERS_PROPERTY);
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -459,6 +474,13 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
+		indigo_property_copy_values(CCD_FITS_HEADERS_PROPERTY, property, false);
+		CCD_FITS_HEADERS_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED)
+			indigo_update_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_device_change_property(device, client, property);
@@ -485,6 +507,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	indigo_release_property(CCD_TEMPERATURE_PROPERTY);
 	indigo_release_property(CCD_COOLER_PROPERTY);
 	indigo_release_property(CCD_COOLER_POWER_PROPERTY);
+	indigo_release_property(CCD_FITS_HEADERS_PROPERTY);
 	return indigo_device_detach(device);
 }
 
@@ -589,7 +612,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		header[t] = ' ';
 		if (keywords) {
-			while (keywords->type) {
+			while (keywords->type && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
 				switch (keywords->type) {
 					case INDIGO_FITS_NUMBER:
 						t = sprintf(header += 80, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
@@ -603,6 +626,13 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				}
 				header[t] = ' ';
 				keywords++;
+			}
+		}
+		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
+			if (*item->text.value && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
+				t = sprintf(header += 80, "%s", item->text.value);
+				header[t] = ' ';
 			}
 		}
 		t = sprintf(header += 80, "END");

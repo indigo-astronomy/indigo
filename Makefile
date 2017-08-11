@@ -235,7 +235,6 @@ $(BUILD_LIB)/libdc1394.a: indigo_drivers/ccd_iidc/externals/libdc1394/Makefile
 
 $(BUILD_LIB)/libnovas.a: externals/novas/novas.o externals/novas/eph_manager.o externals/novas/novascon.o externals/novas/nutation.o externals/novas/readeph0.o  externals/novas/solsys1.o  externals/novas/solsys3.o
 	$(AR) $(ARFLAGS) $@ $^
-	install externals/novas/
 	install externals/novas/JPLEPH.421 $(BUILD_LIB)
 
 #---------------------------------------------------------------------

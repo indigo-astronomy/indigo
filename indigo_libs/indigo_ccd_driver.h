@@ -289,6 +289,10 @@ extern "C" {
  */
 #define CCD_COOLER_POWER_ITEM             (CCD_COOLER_POWER_PROPERTY->items+0)
 
+/** CCD_FITS_HEADERS property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_FITS_HEADERS_PROPERTY         (CCD_CONTEXT->ccd_fits_headers)
+
 /** FITS header size, it should be added to image buffer size, raw data should start at this offset.
  */
 #define FITS_HEADER_SIZE  2880
@@ -333,6 +337,7 @@ typedef struct {
 	indigo_property *ccd_temperature_property;    ///< CCD_TEMPERATURE property pointer
 	indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
 	indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
+	indigo_property *ccd_fits_headers;						///< CCD_FITS_HEADERS property pointer
 } indigo_ccd_context;
 
 /** Suspend countdown.
