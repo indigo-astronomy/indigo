@@ -486,8 +486,10 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			char line[81];
 			if (eq) {
 				char *tmp = item->text.value;
-				while (tmp - item->text.value < 8 && (isalpha(*tmp) || isdigit(*tmp) || *tmp == '-' || *tmp == '_'))
-					tmp++;
+				while (tmp - item->text.value < 8 && (isalpha(*tmp) || isdigit(*tmp) || *tmp == '-' || *tmp == '_')) {
+					int c = toupper(*tmp);
+					*tmp++ = c;
+				}
 				*tmp = 0;
 				eq++;
 				while (eq - item->text.value < 80 && *eq == ' ')
