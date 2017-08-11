@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <string.h>
+#include <ctype.h>
 #include <errno.h>
 #include <time.h>
 #include <math.h>
@@ -477,6 +478,42 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
 		indigo_property_copy_values(CCD_FITS_HEADERS_PROPERTY, property, false);
+		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
+			if (*item->text.value == 0)
+				continue;
+			char *eq = strchr(item->text.value, '=');
+			char line[81];
+			if (eq) {
+				char *tmp = item->text.value;
+				while (tmp - item->text.value < 8 && (isalpha(*tmp) || isdigit(*tmp) || *tmp == '-' || *tmp == '_'))
+					tmp++;
+				*tmp = 0;
+				eq++;
+				while (eq - item->text.value < 80 && *eq == ' ')
+					eq++;
+				snprintf(line, 80, "%-8s= %s", item->text.value, eq);
+				strcpy(item->text.value, line);
+			} else if (!strncasecmp(item->text.value, "COMMENT ", 7)) {
+				char *tmp = item->text.value + 7;
+				while (tmp - item->text.value < 80 && *tmp == ' ')
+					tmp++;
+				snprintf(line, 80, "COMMENT  %s", tmp);
+				strcpy(item->text.value, line);
+			} else if (!strncasecmp(item->text.value, "HISTORY ", 7)) {
+				char *tmp = item->text.value + 7;
+				while (tmp - item->text.value < 80 && *tmp == ' ')
+					tmp++;
+				snprintf(line, 80, "HISTORY  %s", tmp);
+				strcpy(item->text.value, line);
+			} else if (IS_CONNECTED) {
+				CCD_FITS_HEADERS_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_FITS_HEADERS_PROPERTY, "Invalid header line format");
+				return INDIGO_OK;
+			} else {
+				*item->text.value = 0;
+			}
+		}
 		CCD_FITS_HEADERS_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
