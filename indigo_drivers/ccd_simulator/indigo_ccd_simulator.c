@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -46,18 +46,33 @@
 // gp_bits is used as boolean
 #define is_connected                     gp_bits
 
-#define PRIVATE_DATA            	((simulator_private_data *)device->private_data)
-#define SHUTTER_PROPERTY		PRIVATE_DATA->shutter_property
+#define PRIVATE_DATA								((simulator_private_data *)device->private_data)
+#define DSLR_PROGRAM_PROPERTY				PRIVATE_DATA->dslr_program_property
+#define DSLR_CAPTURE_MODE_PROPERTY	PRIVATE_DATA->dslr_capture_mode_property
+#define DSLR_APERTURE_PROPERTY			PRIVATE_DATA->dslr_aperture_property
+#define DSLR_SHUTTER_PROPERTY				PRIVATE_DATA->dslr_shutter_property
+#define DSLR_COMPRESSION_PROPERTY		PRIVATE_DATA->dslr_compression_property
+#define DSLR_ISO_PROPERTY						PRIVATE_DATA->dslr_iso_property
 
-static unsigned short background[] = {
-#include "indigo_ccd_simulator_image.h"
+static unsigned short raw_image[] = {
+#include "indigo_ccd_simulator_mono.h"
+};
+
+static unsigned char rgb_image[] = {
+#include "indigo_ccd_simulator_rgb.h"
 };
 
 typedef struct {
-	indigo_device *imager, *guider;
-	indigo_property *shutter_property;
+	indigo_device *imager, *guider, *dslr;
+	indigo_property *dslr_program_property;
+	indigo_property *dslr_capture_mode_property;
+	indigo_property *dslr_aperture_property;
+	indigo_property *dslr_shutter_property;
+	indigo_property *dslr_compression_property;
+	indigo_property *dslr_iso_property;
+
 	int star_x[STARS], star_y[STARS], star_a[STARS];
-	char image[FITS_HEADER_SIZE + 2 * WIDTH * HEIGHT + 2880];
+	char image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	double target_temperature, current_temperature;
 	int target_slot, current_slot;
 	int target_position, current_position;
@@ -149,81 +164,94 @@ static void exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		simulator_private_data *private_data = PRIVATE_DATA;
-		unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
-		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
-		int frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value / horizontal_bin;
-		int frame_top = (int)CCD_FRAME_TOP_ITEM->number.value / vertical_bin;
-		int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
-		int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
-		int size = frame_width * frame_height;
-		int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
-		int offset = (int)CCD_OFFSET_ITEM->number.value;
-		double gamma = CCD_GAMMA_ITEM->number.value;
-		bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
-
-		if (device == PRIVATE_DATA->imager && light_frame) {
-			for (int j = 0; j < frame_height; j++) {
-				int jj = (frame_top + j) * vertical_bin;
-				for (int i = 0; i < frame_width; i++) {
-					raw[j * frame_width + i] = background[jj * WIDTH + (frame_left + i) * horizontal_bin] + (rand() & 0x7F);
-				}
+		if (device == PRIVATE_DATA->dslr) {
+			unsigned char *raw = (unsigned char *)(private_data->image+FITS_HEADER_SIZE);
+			int size = WIDTH * HEIGHT * 3;
+			for (int i = 0; i < size; i++) {
+				int rgb = rgb_image[i];
+				if (rgb < 0xF0)
+					raw[i] = rgb  + (rand() & 0x0F);
+				else
+					raw[i] = rgb;
 			}
+			indigo_process_image(device, private_data->image, WIDTH, HEIGHT, false, NULL);
 		} else {
-			for (int i = 0; i < size; i++)
-				raw[i] = (rand() & 0x7F);
-		}
+			unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
+			int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+			int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+			int frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value / horizontal_bin;
+			int frame_top = (int)CCD_FRAME_TOP_ITEM->number.value / vertical_bin;
+			int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
+			int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
+			int size = frame_width * frame_height;
+			int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
+			int offset = (int)CCD_OFFSET_ITEM->number.value;
+			double gamma = CCD_GAMMA_ITEM->number.value;
+			bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
 
-		if (device == PRIVATE_DATA->guider || light_frame) {
-			double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
-			double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
-			for (int i = 0; i < STARS; i++) {
-				double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
-				if (center_x < 0)
-					center_x += WIDTH;
-				if (center_x >= WIDTH)
-					center_x -= WIDTH;
-				double center_y = (private_data->star_y[i] + y_offset) / vertical_bin;
-				if (center_y < 0)
-					center_y += HEIGHT;
-				if (center_y >= HEIGHT)
-					center_y -= HEIGHT;
-				center_x -= frame_left;
-				center_y -= frame_top;
-				int a = private_data->star_a[i];
-				int xMax = (int)round(center_x) + 4 / horizontal_bin;
-				int yMax = (int)round(center_y) + 4 / vertical_bin;
-				for (int y = yMax - 8 / vertical_bin; y <= yMax; y++) {
-					if (y < 0 || y >= frame_height)
-						continue;
-					int yw = y * frame_width;
-					double yy = center_y - y;
-					for (int x = xMax - 8 / horizontal_bin; x <= xMax; x++) {
-						if (x < 0 || x >= frame_width)
+			if (device == PRIVATE_DATA->imager && light_frame) {
+				for (int j = 0; j < frame_height; j++) {
+					int jj = (frame_top + j) * vertical_bin;
+					for (int i = 0; i < frame_width; i++) {
+						raw[j * frame_width + i] = raw_image[jj * WIDTH + (frame_left + i) * horizontal_bin] + (rand() & 0x7F);
+					}
+				}
+			} else {
+				for (int i = 0; i < size; i++)
+					raw[i] = (rand() & 0x7F);
+			}
+
+			if (device == PRIVATE_DATA->guider || light_frame) {
+				double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
+				double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
+				for (int i = 0; i < STARS; i++) {
+					double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
+					if (center_x < 0)
+						center_x += WIDTH;
+					if (center_x >= WIDTH)
+						center_x -= WIDTH;
+					double center_y = (private_data->star_y[i] + y_offset) / vertical_bin;
+					if (center_y < 0)
+						center_y += HEIGHT;
+					if (center_y >= HEIGHT)
+						center_y -= HEIGHT;
+					center_x -= frame_left;
+					center_y -= frame_top;
+					int a = private_data->star_a[i];
+					int xMax = (int)round(center_x) + 4 / horizontal_bin;
+					int yMax = (int)round(center_y) + 4 / vertical_bin;
+					for (int y = yMax - 8 / vertical_bin; y <= yMax; y++) {
+						if (y < 0 || y >= frame_height)
 							continue;
-						double xx = center_x - x;
-						double v = a * exp(-(xx * xx / 2.0 + yy * yy / 2.0));
-						raw[yw + x] += (unsigned short)v;
+						int yw = y * frame_width;
+						double yy = center_y - y;
+						for (int x = xMax - 8 / horizontal_bin; x <= xMax; x++) {
+							if (x < 0 || x >= frame_width)
+								continue;
+							double xx = center_x - x;
+							double v = a * exp(-(xx * xx / 2.0 + yy * yy / 2.0));
+							raw[yw + x] += (unsigned short)v;
+						}
 					}
 				}
 			}
+			for (int i = 0; i < size; i++) {
+				double value = raw[i] - offset;
+				if (value < 0)
+					value = 0;
+				value = gain * pow(value, gamma);
+				if (value > 65535)
+					value = 65535;
+				raw[i] = (unsigned short)value;
+			}
+			if (private_data->current_position != 0) {
+				unsigned short *tmp = malloc(2 * size);
+				gauss_blur(raw, tmp, frame_width, frame_height, private_data->current_position);
+				memcpy(raw, tmp, 2 * size);
+				free(tmp);
+			}
+			indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
 		}
-		for (int i = 0; i < size; i++) {
-			double value = raw[i] - offset;
-			if (value < 0)
-				value = 0;
-			value = gain * pow(value, gamma);
-			if (value > 65535)
-				value = 65535;
-			raw[i] = (unsigned short)value;
-		}
-		if (private_data->current_position != 0) {
-			unsigned short *tmp = malloc(2 * size);
-			gauss_blur(raw, tmp, frame_width, frame_height, private_data->current_position);
-			memcpy(raw, tmp, 2 * size);
-			free(tmp);
-		}
-		indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
@@ -281,51 +309,91 @@ static indigo_result ccd_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
 		SIMULATION_ENABLED_ITEM->sw.value = true;
 		SIMULATION_DISABLED_ITEM->sw.value = false;
-		// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
-		CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
-		CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = HEIGHT;
-		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.max = 4;
-		CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.max = 4;
-		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_MODE_PROPERTY->count = 3;
-		char name[32];
-		sprintf(name, "RAW %dx%d", WIDTH, HEIGHT);
-		indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-		sprintf(name, "RAW %dx%d", WIDTH/2, HEIGHT/2);
-		indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-		sprintf(name, "RAW %dx%d", WIDTH/4, HEIGHT/4);
-		indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
-		CCD_INFO_PIXEL_SIZE_ITEM->number.value = 5.2;
-		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 5.2;
-		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 5.2;
-		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
-		// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
-		CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- CCD_IMAGE
-		for (int i = 0; i < 10; i++) {
-			PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
-			PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-			PRIVATE_DATA->star_a[i] = 500 * (rand() % 100);       // and brightness
+		if (device == PRIVATE_DATA->dslr) {
+			DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "DSLR", "Program mode", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 0, "M", "Manual", true);
+			DSLR_CAPTURE_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_CAPTURE_MODE_PROPERTY_NAME, "DSLR", "Drive mode", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(DSLR_CAPTURE_MODE_PROPERTY->items + 0, "S", "Single frame", true);
+			DSLR_SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_SHUTTER_PROPERTY_NAME, "DSLR", "Shutter time", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
+			indigo_init_switch_item(DSLR_SHUTTER_PROPERTY->items + 0, "0.01", "1/100", true);
+			indigo_init_switch_item(DSLR_SHUTTER_PROPERTY->items + 1, "0.1", "1/10", false);
+			indigo_init_switch_item(DSLR_SHUTTER_PROPERTY->items + 2, "1", "1", false);
+			indigo_init_switch_item(DSLR_SHUTTER_PROPERTY->items + 3, "10", "10", false);
+			indigo_init_switch_item(DSLR_SHUTTER_PROPERTY->items + 4, "BULB", "Bulb", false);
+			DSLR_APERTURE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_APERTURE_PROPERTY_NAME, "DSLR", "Aperture", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
+			indigo_init_switch_item(DSLR_APERTURE_PROPERTY->items + 0, "14", "f/1.4", true);
+			indigo_init_switch_item(DSLR_APERTURE_PROPERTY->items + 1, "20", "f/2", false);
+			indigo_init_switch_item(DSLR_APERTURE_PROPERTY->items + 2, "28", "f/2.8", false);
+			indigo_init_switch_item(DSLR_APERTURE_PROPERTY->items + 3, "40", "f/4", false);
+			indigo_init_switch_item(DSLR_APERTURE_PROPERTY->items + 4, "56", "f/5.6", false);
+			CCD_MODE_PROPERTY->perm = INDIGO_RO_PERM;
+			CCD_MODE_PROPERTY->count = 1;
+			indigo_init_switch_item(CCD_MODE_PROPERTY->items + 0, "1024x768", "1024x768", true);
+			DSLR_COMPRESSION_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_COMPRESSION_PROPERTY_NAME, "DSLR", "Compression", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(DSLR_COMPRESSION_PROPERTY->items + 0, "JPEG", "JPEG", true);
+			DSLR_ISO_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_ISO_PROPERTY_NAME, "DSLR", "ISO", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+			indigo_init_switch_item(DSLR_ISO_PROPERTY->items + 0, "100", "100", true);
+			indigo_init_switch_item(DSLR_ISO_PROPERTY->items + 1, "200", "200", false);
+			indigo_init_switch_item(DSLR_ISO_PROPERTY->items + 2, "400", "400", false);
+			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = 1024;
+			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = 768;
+			CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.max = 1;
+			CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.max = 1;
+//			CCD_IMAGE_FORMAT_PROPERTY->perm = INDIGO_RO_PERM;
+//			CCD_IMAGE_FORMAT_FITS_ITEM->sw.value = false;
+//			CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value = true;
+			CCD_OFFSET_PROPERTY->hidden = true;
+			CCD_GAMMA_PROPERTY->hidden = true;
+			CCD_GAIN_PROPERTY->hidden = true;
+			CCD_FRAME_PROPERTY->hidden = true;
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 24;
+			CCD_BIN_PROPERTY->hidden = true;
+			CCD_COOLER_PROPERTY->hidden = true;
+			CCD_COOLER_POWER_PROPERTY->hidden = true;
+			CCD_TEMPERATURE_PROPERTY->hidden = true;
+		} else {
+			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
+			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
+			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = HEIGHT;
+			CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+			CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.max = 4;
+			CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.max = 4;
+			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+			CCD_MODE_PROPERTY->count = 3;
+			char name[32];
+			sprintf(name, "RAW %dx%d", WIDTH, HEIGHT);
+			indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+			sprintf(name, "RAW %dx%d", WIDTH/2, HEIGHT/2);
+			indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+			sprintf(name, "RAW %dx%d", WIDTH/4, HEIGHT/4);
+			indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = 5.2;
+			CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 5.2;
+			CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 5.2;
+			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+			// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
+			CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
+			// -------------------------------------------------------------------------------- CCD_IMAGE
+			for (int i = 0; i < 10; i++) {
+				PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
+				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
+				PRIVATE_DATA->star_a[i] = 500 * (rand() % 100);       // and brightness
+			}
+			for (int i = 10; i < STARS; i++) {
+				PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
+				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
+				PRIVATE_DATA->star_a[i] = 50 * (rand() % 30);       // and brightness
+			}
+			// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
+			CCD_COOLER_PROPERTY->hidden = false;
+			CCD_TEMPERATURE_PROPERTY->hidden = false;
+			CCD_COOLER_POWER_PROPERTY->hidden = false;
+			indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
+			PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
+			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+			CCD_COOLER_POWER_ITEM->number.value = 0;
 		}
-		for (int i = 10; i < STARS; i++) {
-			PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
-			PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-			PRIVATE_DATA->star_a[i] = 50 * (rand() % 30);       // and brightness
-		}
-		// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
-		CCD_COOLER_PROPERTY->hidden = false;
-		CCD_TEMPERATURE_PROPERTY->hidden = false;
-		CCD_COOLER_POWER_PROPERTY->hidden = false;
-		indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
-		PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
-		CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-		CCD_COOLER_POWER_ITEM->number.value = 0;
 		// --------------------------------------------------------------------------------
-		if (device == PRIVATE_DATA->imager) {
-			SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_SHUTTER_PROPERTY_NAME, "DSLR", "Shutter time", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-			indigo_init_switch_item(SHUTTER_PROPERTY->items, "BULB", "Bulb", true);
-		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -336,9 +404,19 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_ccd_enumerate_properties(device, client, property)) == INDIGO_OK) {
 		if (IS_CONNECTED) {
-			if (device == PRIVATE_DATA->imager) {
-				if (indigo_property_match(SHUTTER_PROPERTY, property))
-					indigo_define_property(device, SHUTTER_PROPERTY, NULL);
+			if (device == PRIVATE_DATA->dslr) {
+				if (indigo_property_match(DSLR_PROGRAM_PROPERTY, property))
+					indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+				if (indigo_property_match(DSLR_CAPTURE_MODE_PROPERTY, property))
+					indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
+				if (indigo_property_match(DSLR_APERTURE_PROPERTY, property))
+					indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
+				if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property))
+					indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+				if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property))
+					indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+				if (indigo_property_match(DSLR_ISO_PROPERTY, property))
+					indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 			}
 		}
 	}
@@ -355,16 +433,26 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) { /* Do not double open device */
-				if (device == PRIVATE_DATA->imager) {
-					indigo_define_property(device, SHUTTER_PROPERTY, NULL);
+				if (device == PRIVATE_DATA->dslr) {
+					indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+					indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
+					indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
+					indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+					indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+					indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 				}
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 				device->is_connected = true;
 			}
 		} else {
 			if (device->is_connected) {  /* Do not double close device */
-				if (device == PRIVATE_DATA->imager) {
-					indigo_delete_property(device, SHUTTER_PROPERTY, NULL);
+				if (device == PRIVATE_DATA->dslr) {
+					indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+					indigo_delete_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
+					indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
+					indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+					indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+					indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
 				}
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				device->is_connected = false;
@@ -377,7 +465,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
+		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback);
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
@@ -423,6 +511,25 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
+	} else if (indigo_property_match(DSLR_APERTURE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSLR_APERTURE
+		indigo_property_copy_values(DSLR_APERTURE_PROPERTY, property, false);
+		DSLR_APERTURE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DSLR_APERTURE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSLR_SHUTTER
+		indigo_property_copy_values(DSLR_SHUTTER_PROPERTY, property, false);
+		DSLR_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(DSLR_ISO_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DSLR_ISO
+		indigo_property_copy_values(DSLR_ISO_PROPERTY, property, false);
+		DSLR_ISO_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
 }
@@ -431,8 +538,13 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	if (device == PRIVATE_DATA->imager) {
-		indigo_release_property(SHUTTER_PROPERTY);
+	if (device == PRIVATE_DATA->dslr) {
+		indigo_release_property(DSLR_PROGRAM_PROPERTY);
+		indigo_release_property(DSLR_CAPTURE_MODE_PROPERTY);
+		indigo_release_property(DSLR_APERTURE_PROPERTY);
+		indigo_release_property(DSLR_SHUTTER_PROPERTY);
+		indigo_release_property(DSLR_COMPRESSION_PROPERTY);
+		indigo_release_property(DSLR_ISO_PROPERTY);
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_ccd_detach(device);
@@ -716,6 +828,8 @@ static indigo_device *imager_focuser = NULL;
 static indigo_device *guider_ccd = NULL;
 static indigo_device *guider_guider = NULL;
 
+static indigo_device *dslr = NULL;
+
 indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device imager_camera_template = {
 		CCD_SIMULATOR_IMAGER_CAMERA_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
@@ -756,6 +870,14 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		guider_change_property,
 		NULL,
 		guider_detach
+	};
+	static indigo_device dslr_template = {
+		CCD_SIMULATOR_DSLR_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		ccd_attach,
+		ccd_enumerate_properties,
+		ccd_change_property,
+		NULL,
+		ccd_detach
 	};
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -798,6 +920,13 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			memcpy(guider_guider, &guider_template, sizeof(indigo_device));
 			guider_guider->private_data = private_data;
 			indigo_attach_device(guider_guider);
+
+			dslr = malloc(sizeof(indigo_device));
+			assert(dslr != NULL);
+			memcpy(dslr, &dslr_template, sizeof(indigo_device));
+			dslr->private_data = private_data;
+			private_data->dslr = dslr;
+			indigo_attach_device(dslr);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
@@ -826,6 +955,11 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 				indigo_detach_device(guider_guider);
 				free(guider_guider);
 				guider_guider = NULL;
+			}
+			if (dslr != NULL) {
+				indigo_detach_device(dslr);
+				free(dslr);
+				dslr = NULL;
 			}
 			if (private_data != NULL) {
 				free(private_data);

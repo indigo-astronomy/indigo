@@ -342,6 +342,8 @@
 		599C9A481DA022C0008BBCC1 /* libindigo.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libindigo.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_main.c; sourceTree = "<group>"; };
 		599C9A6D1DA05063008BBCC1 /* BridgingHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
+		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
+		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59BFB3DB1E11845900064E9C /* iOptron Telescope RS-232 Command language.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "iOptron Telescope RS-232 Command language.pdf"; sourceTree = "<group>"; };
 		59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ica.h; sourceTree = "<group>"; };
 		59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ccd_ica.m; sourceTree = "<group>"; };
@@ -927,6 +929,8 @@
 				59D381AC1D95996100E87393 /* indigo_ccd_simulator.h */,
 				59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */,
 				599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */,
+				59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */,
+				59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */,
 			);
 			path = ccd_simulator;
 			sourceTree = "<group>";
