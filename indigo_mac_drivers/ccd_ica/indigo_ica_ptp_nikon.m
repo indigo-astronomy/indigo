@@ -476,6 +476,9 @@ static struct info {
 @implementation PTPNikonCamera {
   NSString *liveViewZoom;
   NSTimer *ptpPreviewTimer;
+  BOOL tempLiveView;
+  int focusSteps;
+  int focusMode;
 }
 
 -(NSString *)name {
@@ -581,7 +584,15 @@ static struct info {
     }
     case PTPPropertyCodeNikonLiveViewStatus: {
       if (property.value.description.intValue) {
-        ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
+        if (tempLiveView) {
+          if (focusSteps > 0) {
+            [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:1 param2:focusSteps];
+          } else if (focusSteps < 0) {
+            [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:2 param2:-focusSteps];
+          }
+        } else {
+          ptpPreviewTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(getPreviewImage) userInfo:nil repeats:true];
+        }
       } else {
         [ptpPreviewTimer invalidate];
         ptpPreviewTimer = nil;
@@ -745,8 +756,8 @@ static struct info {
       if (![self propertyIsSupported:PTPPropertyCodeNikonAutofocusMode]) {
         property.propertyCode = PTPPropertyCodeNikonAutofocusMode;
         property.readOnly = true;
+        [self mapValueList:property map:map];
       }
-      [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeNikonAutofocusMode: {
@@ -884,9 +895,15 @@ static struct info {
     case PTPRequestCodeNikonMfDrive: {
       if (response.responseCode == PTPResponseCodeOK) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+          if (tempLiveView) {
+            [self sendPTPRequest:PTPRequestCodeNikonEndLiveView];
+            [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
+            [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"0"];
+            if (focusMode != -1)
+              [self setProperty:PTPPropertyCodeNikonAutofocusMode value:[NSString stringWithFormat:@"%d", focusMode]];
+          }
           [self.delegate cameraFocusDone:self];
         });
-        
       }
       else
         [self.delegate cameraFocusFailed:self message:[NSString stringWithFormat:@"MfDrive failed (0x%04x = %@)", response.responseCode, response]];
@@ -996,21 +1013,30 @@ static struct info {
 }
 
 -(void)startPreview {
+  tempLiveView = false;
   if (self.zoomPreview)
     liveViewZoom = @"5";
   else
     liveViewZoom = @"0";
+  PTPProperty *afMode = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonAutofocusMode]];
+  if (afMode)
+    focusMode = afMode.value.intValue;
+  else
+    focusMode = -1;
   [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"1"];
   [self sendPTPRequest:PTPRequestCodeGetDevicePropValue param1:PTPPropertyCodeNikonLiveViewProhibitCondition];
   [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
 }
 
 -(void)stopPreview {
+  tempLiveView = true;
   [ptpPreviewTimer invalidate];
   ptpPreviewTimer = nil;
   [self sendPTPRequest:PTPRequestCodeNikonEndLiveView];
   [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
   [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"0"];
+  if (focusMode != -1)
+    [self setProperty:PTPPropertyCodeNikonAutofocusMode value:[NSString stringWithFormat:@"%d", focusMode]];
 }
 
 -(void)startExposure {
@@ -1031,15 +1057,28 @@ static struct info {
 }
 
 -(void)focus:(int)steps {
-  if (steps <= 100 || steps >= -100) {
-    PTPProperty *afMode = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonLiveViewAFFocus]];
-    if (afMode && afMode.value.intValue != 0) {
+  if ((steps <= 100 || steps >= -100) && steps != 0) {
+    PTPProperty *afModeLV = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonLiveViewAFFocus]];
+    if (afModeLV && afModeLV.value.intValue != 0) {
       [self setProperty:PTPPropertyCodeNikonLiveViewAFFocus value:@"0"];
     }
-    if (steps > 0) {
-      [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:1 param2:steps];
-    } else if (steps < 0) {
-      [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:2 param2:-steps];
+    if (ptpPreviewTimer == nil) {
+      tempLiveView = true;
+      focusSteps = steps;
+      PTPProperty *afMode = self.info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonAutofocusMode]];
+      if (afMode)
+        focusMode = afMode.value.intValue;
+      else
+        focusMode = -1;
+      [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"1"];
+      [self sendPTPRequest:PTPRequestCodeGetDevicePropValue param1:PTPPropertyCodeNikonLiveViewProhibitCondition];
+      [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
+    } else {
+      if (steps > 0) {
+        [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:1 param2:steps];
+      } else if (steps < 0) {
+        [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:2 param2:-steps];
+      }
     }
   }
 }

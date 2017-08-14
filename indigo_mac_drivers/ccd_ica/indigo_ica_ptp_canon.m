@@ -476,7 +476,8 @@ static struct info {
 
 @implementation PTPCanonCamera {
   BOOL startPreview;
-  BOOL doPreview;
+  BOOL tempLiveView;
+  BOOL inPreview;
   NSString *addedFileName;
   int currentMode;
   int currentShutterSpeed;
@@ -505,7 +506,7 @@ static struct info {
 }
 
 -(void)didRemoveDevice:(ICDevice *)device {
-  doPreview = false;
+  inPreview = false;
   [super didRemoveDevice:device];
 }
 
@@ -1004,10 +1005,12 @@ static struct info {
             [self mapValueList:property map:map];
             if (startPreview && property.value.intValue) {
               startPreview = false;
-              doPreview = true;
+              inPreview = true;
               [self getPreviewImage];
+            } else if (tempLiveView && property.value.intValue) {
+              inPreview = true;
             } else {
-              doPreview = false;
+              inPreview = false;
             }
             break;
           }
@@ -1178,13 +1181,13 @@ static struct info {
           [self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
           [self getPreviewImage];
         } else {
-          doPreview = false;
+          inPreview = false;
           [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No preview data received"]];
         }
-      } else if (doPreview && response.responseCode == PTPResponseCodeCanonNotReady) {
+      } else if (inPreview && response.responseCode == PTPResponseCodeCanonNotReady) {
         [self getPreviewImage];
       } else {
-        doPreview = false;
+        inPreview = false;
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"Preview failed (0x%04x = %@)", response.responseCode, response]];
       }
       break;
@@ -1192,6 +1195,10 @@ static struct info {
     case PTPRequestCodeCanonDriveLens: {
       if (response.responseCode == PTPResponseCodeOK) {
         if (focusSteps == 0) {
+          if (tempLiveView) {
+            tempLiveView = false;
+            [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"0"];
+          }
           dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
             [self.delegate cameraFocusDone:self];
           });
@@ -1351,7 +1358,7 @@ static struct info {
 }
 
 -(void)requestCloseSession {
-  if (doPreview)
+  if (inPreview)
     [self stopPreview];
   [self sendPTPRequest:PTPRequestCodeCanonSetRemoteMode param1:0];
   [self sendPTPRequest:PTPRequestCodeCanonSetEventMode param1:0];
@@ -1379,7 +1386,8 @@ static struct info {
 }
 
 -(void)stopPreview {
-  doPreview = false;
+  inPreview = false;
+  tempLiveView = false;
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"0"];
   //[self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
 }
@@ -1423,6 +1431,11 @@ static struct info {
 }
 
 -(void)focus:(int)steps {
+  if (steps != 0 && !inPreview) {
+    tempLiveView = true;
+    [self setProperty:PTPPropertyCodeCanonEVFMode value:@"1"];
+    [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"2"];
+  }
   if (steps == 0) {
     focusSteps = 0;
   } else if (steps > 0) {
