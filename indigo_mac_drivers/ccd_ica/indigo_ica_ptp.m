@@ -1365,15 +1365,6 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)focus:(int)steps {
-  PTPProperty *afMode = _info.properties[[NSNumber numberWithUnsignedShort:PTPPropertyCodeNikonLiveViewAFFocus]];
-  if (afMode.value.intValue != 0) {
-    [self setProperty:PTPPropertyCodeNikonLiveViewAFFocus value:@"0"];
-  }
-  if (steps >= 0) {
-    [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:1 param2:steps];
-  } else {
-    [self sendPTPRequest:PTPRequestCodeNikonMfDrive param1:2 param2:-steps];
-  }
 }
 
 -(void)sendPTPRequest:(PTPRequestCode)operationCode data:(NSData *)data {
