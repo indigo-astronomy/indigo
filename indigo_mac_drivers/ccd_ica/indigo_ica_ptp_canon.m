@@ -923,7 +923,7 @@ static struct info {
             break;
           }
           case PTPPropertyCodeCanonISOSpeed: {
-            NSDictionary *map = @{ @0x00: @"Auto", @0x40: @"50", @0x48: @"100", @0x4b: @"125", @0x4d: @"160", @0x50: @"200", @0x53: @"250", @0x55: @"320", @0x58: @"400", @0x5b: @"500", @0x5d: @"640", @0x60: @"800", @0x63: @"1000", @0x65: @"1250", @0x68: @"1600", @0x6b: @"2000", @0x6d: @"2500", @0x70: @"3200", @0x73: @"4000", @0x75: @"5000", @0x78: @"6400", @0x7b: @"8000", @0x7d: @"10000", @0x80: @"12800", @0x88: @"25600", @0x90: @"51200", @0x98: @"102400" };
+            NSDictionary *map = @{ @0x00: @"Auto", @0x40: @"50", @0x48: @"100", @0x4b: @"125", @0x4d: @"160", @0x50: @"200", @0x53: @"250", @0x55: @"320", @0x58: @"400", @0x5b: @"500", @0x5d: @"640", @0x60: @"800", @0x63: @"1000", @0x65: @"1250", @0x68: @"1600", @0x6b: @"2000", @0x6d: @"2500", @0x70: @"3200", @0x73: @"4000", @0x75: @"5000", @0x78: @"6400", @0x7b: @"8000", @0x7d: @"10000", @0x80: @"12800", @0x83: @"16000", @0x85: @"20000", @0x88: @"25600", @0x90: @"51200", @0x98: @"102400" };
             property.readOnly = currentMode >= 8;
             if (property.readOnly)
               [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
@@ -1027,8 +1027,8 @@ static struct info {
           case PTPPropertyCodeCanonImageFormat:
           case PTPPropertyCodeCanonImageFormatCF:
           case PTPPropertyCodeCanonImageFormatSD:
-          case PTPPropertyCodeCanonImageFormatExtHD: {
-            NSDictionary *map = @{ @0x10010003:@"Large fine JPEG", @0x10010002:@"Large JPEG", @0x10010103:@"Medium fine JPEG", @0x10010102:@"Medium JPEG", @0x10010203:@"Small fine JPEG", @0x10010202:@"Small JPEG", @0x10010503:@"M1 fine JPEG", @0x10010502:@"M1 JPEG", @0x10010603:@"M2 fine JPEG", @0x10010602:@"M2 JPEG", @0x10010e03:@"S1 fine JPEG", @0x10010e02:@"S1 JPEG", @0x10010f03:@"S2 fine JPEG", @0x10010f02:@"S2 JPEG", @0x10011003:@"S3 fine JPEG", @0x10011002:@"S3 JPEG", @0x10060002:@"CRW", @0x10060004:@"RAW", @0x10060006:@"CR2" };
+          case PTPPropertyCodeCanonImageFormatExtHD: { // size << 24 | format << 16 | quality << 8 | compression;
+            NSDictionary *map = @{ @0x10010003:@"Large fine JPEG", @0x10010002:@"Large JPEG", @0x10010103:@"Medium fine JPEG", @0x10010102:@"Medium JPEG", @0x10010203:@"Small fine JPEG", @0x10010202:@"Small JPEG", @0x10010503:@"M1 fine JPEG", @0x10010502:@"M1 JPEG", @0x10010603:@"M2 fine JPEG", @0x10010602:@"M2 JPEG", @0x10010e03:@"S1 fine JPEG", @0x10010e02:@"S1 JPEG", @0x10010f03:@"S2 fine JPEG", @0x10010f02:@"S2 JPEG", @0x10011003:@"S3 fine JPEG", @0x10011002:@"S3 JPEG", @0x10060002:@"CRW", @0x10060004:@"RAW", @0x10060104:@"MRAW", @0x10060204:@"SRAW", @0x10060006:@"CR2" };
             NSMutableArray *values = [NSMutableArray array];
             NSMutableArray *labels = [NSMutableArray array];
             for (NSNumber *value in property.supportedValues) {
@@ -1037,9 +1037,13 @@ static struct info {
               long i2 = l & 0xFFFFFFFF;
               NSMutableString *label = [NSMutableString string];
               if (i1 != 0) {
-                [label appendFormat:@"%@ + ", map[[NSNumber numberWithInteger:i1]]];
+                NSString *l1 = map[[NSNumber numberWithInteger:i1]];
+                if (l1)
+                  [label appendFormat:@"%@ + ", l1];
               }
-              [label appendString:map[[NSNumber numberWithInteger:i2]]];
+              NSString *l2 = map[[NSNumber numberWithInteger:i2]];
+              if (l2)
+                [label appendString:l2];
               [values addObject:value.description];
               [labels addObject:label.description];
             }
@@ -1184,7 +1188,7 @@ static struct info {
           inPreview = false;
           [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No preview data received"]];
         }
-      } else if (inPreview && response.responseCode == PTPResponseCodeCanonNotReady) {
+      } else if (response.responseCode == PTPResponseCodeCanonNotReady) {
         [self getPreviewImage];
       } else {
         inPreview = false;
