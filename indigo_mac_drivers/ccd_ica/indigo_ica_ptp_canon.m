@@ -1009,7 +1009,7 @@ static struct info {
               [self getPreviewImage];
             } else if (tempLiveView && property.value.intValue) {
               inPreview = true;
-            } else {
+            } else if (property.value.intValue == 0) {
               inPreview = false;
             }
             break;
@@ -1190,7 +1190,7 @@ static struct info {
           [self stopPreview];
           [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No preview data received"]];
         }
-      } else if (inPreview && response.responseCode == PTPResponseCodeCanonNotReady) {
+      } else if ((inPreview || startPreview || tempLiveView) && response.responseCode == PTPResponseCodeCanonNotReady) {
         [self getPreviewImage];
       } else {
         [self stopPreview];
