@@ -1173,11 +1173,13 @@ static struct info {
         while (buf - bytes < size) {
           unsigned int length = ptpReadUnsignedInt(&buf);
           unsigned int type = ptpReadUnsignedInt(&buf);
+          //[self.delegate debug:[NSString stringWithFormat:@"PTPRequestCodeCanonGetViewFinderData data contains %d type record, %db", type, length]];
           if (type == 1) {
             image = [NSData dataWithBytes:buf length:length - 8];
+            buf += length - 8;
             break;
           } else {
-            buf += length;
+            buf += length - 8;
             continue;
           }
         }
@@ -1185,13 +1187,13 @@ static struct info {
           [self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
           [self getPreviewImage];
         } else {
-          inPreview = false;
+          [self stopPreview];
           [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"No preview data received"]];
         }
-      } else if (response.responseCode == PTPResponseCodeCanonNotReady) {
+      } else if (inPreview && response.responseCode == PTPResponseCodeCanonNotReady) {
         [self getPreviewImage];
       } else {
-        inPreview = false;
+        [self stopPreview];
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"Preview failed (0x%04x = %@)", response.responseCode, response]];
       }
       break;
