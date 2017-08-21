@@ -131,7 +131,8 @@ static void *one_text_handler(parser_state state, char *name, char *value, indig
 	if (state == END_ARRAY)
 		return new_text_vector_handler;
 	if (state == END_STRUCT) {
-		property->count++;
+		if (property->count < INDIGO_MAX_ITEMS)
+			property->count++;
 	} else if (state == TEXT_VALUE && !strcmp(name, "name")) {
 		strncpy(property->items[property->count].name, value, INDIGO_NAME_SIZE);
 	} else if (state == TEXT_VALUE && !strcmp(name, "value")) {
@@ -164,7 +165,8 @@ static void *one_number_handler(parser_state state, char *name, char *value, ind
 	if (state == END_ARRAY)
 		return new_number_vector_handler;
 	if (state == END_STRUCT) {
-		property->count++;
+		if (property->count < INDIGO_MAX_ITEMS)
+			property->count++;
 	} else if (state == TEXT_VALUE && !strcmp(name, "name")) {
 		strncpy(property->items[property->count].name, value, INDIGO_NAME_SIZE);
 	} else if (state == NUMBER_VALUE && !strcmp(name, "value")) {
@@ -197,7 +199,8 @@ static void *one_switch_handler(parser_state state, char *name, char *value, ind
 	if (state == END_ARRAY)
 		return new_switch_vector_handler;
 	if (state == END_STRUCT) {
-		property->count++;
+		if (property->count < INDIGO_MAX_ITEMS)
+			property->count++;
 	} else if (state == TEXT_VALUE && !strcmp(name, "name")) {
 		strncpy(property->items[property->count].name, value, INDIGO_NAME_SIZE);
 	} else if (state == LOGICAL_VALUE && !strcmp(name, "value")) {
