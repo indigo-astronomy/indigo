@@ -287,7 +287,8 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 		} else {
 			close(input[1]);
 			close(output[0]);
-			subprocess->protocol_adapter = indigo_xml_client_adapter(subprocess->executable, "", input[0], output[1]);
+			char *slash = strrchr(subprocess->executable, '/');
+			subprocess->protocol_adapter = indigo_xml_client_adapter(slash ? slash + 1 : subprocess->executable, "", input[0], output[1]);
 			indigo_attach_device(subprocess->protocol_adapter);
 			indigo_xml_parse(subprocess->protocol_adapter, NULL);
 			indigo_detach_device(subprocess->protocol_adapter);

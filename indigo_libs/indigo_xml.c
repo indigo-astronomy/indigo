@@ -1174,7 +1174,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	context.client = client;
 	context.device = device;
 	if (device != NULL) {
-		context.count = INDIGO_MAX_ITEMS;
+		context.count = 32;
 		context.properties = malloc(context.count * sizeof(indigo_property *));
 		memset(context.properties, 0, context.count * sizeof(indigo_property *));
 	} else {
