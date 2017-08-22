@@ -45,7 +45,7 @@ extern "C" {
 
 /** Max number of item per property.
  */
-#define INDIGO_MAX_ITEMS      256
+#define INDIGO_MAX_ITEMS      128
 
 // forward definitions
 
