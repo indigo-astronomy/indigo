@@ -472,6 +472,10 @@ extern const char **indigo_main_argv;
  */
 extern bool indigo_use_syslog;
 
+/** Ignore messages from remote devices containing local service name to avoid loops.
+ */
+extern char indigo_local_service_name[INDIGO_NAME_SIZE];
+
 /** Do not add @ host:port suffix to remote devices - for case with single remote server and no local devices only.
  */
 extern bool indigo_use_host_suffix;
