@@ -832,7 +832,7 @@ static indigo_device *dslr = NULL;
 
 indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device imager_camera_template = {
-		CCD_SIMULATOR_IMAGER_CAMERA_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_IMAGER_CAMERA_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		ccd_enumerate_properties,
 		ccd_change_property,
@@ -840,7 +840,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		ccd_detach
 	};
 	static indigo_device imager_wheel_template = {
-		CCD_SIMULATOR_WHEEL_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_WHEEL_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
@@ -848,7 +848,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		wheel_detach
 	};
 	static indigo_device imager_focuser_template = {
-		CCD_SIMULATOR_FOCUSER_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_FOCUSER_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,
@@ -856,7 +856,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		focuser_detach
 	};
 	static indigo_device guider_camera_template = {
-		CCD_SIMULATOR_GUIDER_CAMERA_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_GUIDER_CAMERA_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
@@ -864,7 +864,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		CCD_SIMULATOR_GUIDER_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_GUIDER_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -872,7 +872,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		guider_detach
 	};
 	static indigo_device dslr_template = {
-		CCD_SIMULATOR_DSLR_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		CCD_SIMULATOR_DSLR_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		ccd_enumerate_properties,
 		ccd_change_property,

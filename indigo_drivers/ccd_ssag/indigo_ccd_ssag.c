@@ -477,7 +477,7 @@ static indigo_device *devices[MAX_DEVICES];
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device ccd_template = {
-		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
@@ -485,7 +485,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,

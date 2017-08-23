@@ -85,6 +85,8 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
+	if (!indigo_reshare_remote_devices && device->is_remote)
+		return INDIGO_OK;
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
 	pthread_mutex_lock(&json_mutex);
@@ -202,6 +204,8 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
+	if (!indigo_reshare_remote_devices && device->is_remote)
+		return INDIGO_OK;
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
 	pthread_mutex_lock(&json_mutex);
@@ -322,6 +326,8 @@ static indigo_result json_delete_property(indigo_client *client, struct indigo_d
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
+	if (!indigo_reshare_remote_devices && device->is_remote)
+		return INDIGO_OK;
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
 	pthread_mutex_lock(&json_mutex);
@@ -354,6 +360,8 @@ static indigo_result json_delete_property(indigo_client *client, struct indigo_d
 static indigo_result json_message_property(indigo_client *client, struct indigo_device *device, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
+	if (!indigo_reshare_remote_devices && device->is_remote)
+		return INDIGO_OK;
 	pthread_mutex_lock(&json_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
