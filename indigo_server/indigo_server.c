@@ -114,7 +114,6 @@ static indigo_property *restart_property;
 static indigo_property *log_level_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
-static char servicename[INDIGO_NAME_SIZE] = "";
 
 #define LOG_LEVEL_ERROR_ITEM        (log_level_property->items + 0)
 #define LOG_LEVEL_INFO_ITEM         (log_level_property->items + 1)
@@ -137,7 +136,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 static indigo_result detach(indigo_device *device);
 
 static indigo_device server_device = {
-	"Server", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	"Server", 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 	attach,
 	enumerate_properties,
 	change_property,
@@ -178,13 +177,13 @@ static void server_callback(int count) {
 		if (use_bonjour) {
 			/* UGLY but the only way to suppress compat mode warning messages on Linux */
 			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-			if (*servicename == 0) {
+			if (*indigo_local_service_name == 0) {
 				char hostname[INDIGO_NAME_SIZE];
 				gethostname(hostname, sizeof(hostname));
-				indigo_service_name(hostname, indigo_server_tcp_port, servicename);
+				indigo_service_name(hostname, indigo_server_tcp_port, indigo_local_service_name);
 			}
-			DNSServiceRegister(&sd_http, 0, 0, servicename, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
-			DNSServiceRegister(&sd_indigo, 0, 0, servicename, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+			DNSServiceRegister(&sd_http, 0, 0, indigo_local_service_name, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+			DNSServiceRegister(&sd_indigo, 0, 0, indigo_local_service_name, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 		}
 		server_startup = false;
 	} else {
@@ -400,7 +399,7 @@ static void server_main() {
 		} else if (!strcmp(server_argv[i], "-b-") || !strcmp(server_argv[i], "--disable-bonjour")) {
 			use_bonjour = false;
 		} else if (!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) {
-			strncpy(servicename, server_argv[i + 1], INDIGO_NAME_SIZE);
+			strncpy(indigo_local_service_name, server_argv[i + 1], INDIGO_NAME_SIZE);
 			i++;
 		} else if (!strcmp(server_argv[i], "-c-") || !strcmp(server_argv[i], "--disable-control-panel")) {
 			use_control_panel = false;
