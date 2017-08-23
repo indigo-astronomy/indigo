@@ -161,9 +161,9 @@ static indigo_result xml_client_parser_detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
-indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input, int ouput) {
+indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input, int output) {
 	static indigo_device device_template = {
-		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_LEGACY,
+		"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_LEGACY,
 		NULL,
 		xml_client_parser_enumerate_properties,
 		xml_client_parser_change_property,
@@ -174,10 +174,11 @@ indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input
 	assert(device != NULL);
 	memcpy(device, &device_template, sizeof(indigo_device));
 	sprintf(device->name, "@ %s", name);
+	device->is_remote = input == output; // is socket, otherwise is pipe
 	indigo_adapter_context *device_context = malloc(sizeof(indigo_adapter_context));
 	assert(device_context != NULL);
 	device_context->input = input;
-	device_context->output = ouput;
+	device_context->output = output;
 	strncpy(device_context->url_prefix, url_prefix, INDIGO_NAME_SIZE);
 	device->device_context = device_context;
 	return device;

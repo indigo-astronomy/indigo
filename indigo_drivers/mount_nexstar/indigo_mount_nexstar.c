@@ -953,7 +953,7 @@ static indigo_device *mount_guider = NULL;
 
 indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = {
-		MOUNT_NEXSTAR_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_NEXSTAR_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		mount_attach,
 		indigo_mount_enumerate_properties,
 		mount_change_property,
@@ -961,7 +961,7 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 		mount_detach
 	};
 	static indigo_device mount_guider_template = {
-		MOUNT_NEXSTAR_GUIDER_NAME, false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		MOUNT_NEXSTAR_GUIDER_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		nexstar_guider_enumerate_properties,
 		guider_change_property,

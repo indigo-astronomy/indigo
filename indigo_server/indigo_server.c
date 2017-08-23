@@ -136,7 +136,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 static indigo_result detach(indigo_device *device);
 
 static indigo_device server_device = {
-	"Server", 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	"Server", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 	attach,
 	enumerate_properties,
 	change_property,
@@ -389,6 +389,7 @@ static void server_main() {
 				*colon++ = 0;
 				port = atoi(colon);
 			}
+			indigo_reshare_remote_devices = true;
 			indigo_connect_server(NULL, host, port, NULL);
 			i++;
 		} else if ((!strcmp(server_argv[i], "-i") || !strcmp(server_argv[i], "--indi-driver")) && i < server_argc - 1) {

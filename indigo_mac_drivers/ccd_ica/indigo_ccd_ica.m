@@ -467,7 +467,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 -(void)cameraAdded:(PTPCamera *)camera {
 	indigo_log("%s added", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	static indigo_device ccd_template = {
-		"", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		ccd_enumerate_properties,
 		ccd_change_property,
@@ -823,7 +823,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 -(void)cameraCanFocus:(PTPCamera *)camera {
   indigo_device *device = [(NSValue *)camera.userData pointerValue];
   static indigo_device focuser_template = {
-    "", false, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+    "", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
     focuser_attach,
     indigo_focuser_enumerate_properties,
     focuser_change_property,

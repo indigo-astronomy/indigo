@@ -211,6 +211,7 @@ typedef struct {
  */
 typedef struct indigo_device {
 	char name[INDIGO_NAME_SIZE];        ///< device name
+	bool is_remote;											///< is remote device
 	uint16_t gp_bits;                   ///< general purpose bits for driver specific usage
 	void *device_context;               ///< any device specific data
 	void *private_data;                 ///< private data
@@ -475,6 +476,10 @@ extern bool indigo_use_syslog;
 /** Ignore messages from remote devices containing local service name to avoid loops.
  */
 extern char indigo_local_service_name[INDIGO_NAME_SIZE];
+
+/** Reshare remote devices. Set to true with care, can create loops.
+ */
+extern bool indigo_reshare_remote_devices;
 
 /** Do not add @ host:port suffix to remote devices - for case with single remote server and no local devices only.
  */
