@@ -577,17 +577,13 @@ static indigo_result focuser_detach(indigo_device *device) {
 		}
 	}
 	switch (code) {
-    case PTPPropertyCodeCanonAutoExposureMode: {
-      if (camera.info.vendorExtension == PTPVendorExtensionCanon)
-        PRIVATE_DATA->bulb = value.intValue == 4;
-      break;
-    }
     case PTPPropertyCodeExposureTime:
     case PTPPropertyCodeSonyShutterSpeed:
-    case PTPPropertyCodeCanonShutterSpeed: {
+    case PTPPropertyCodeCanonShutterSpeed:
+    case PTPPropertyCodeCanonAutoExposureMode: {
       if (property->perm == INDIGO_RW_PERM) {
         int intValue = value.intValue;
-        if ((camera.info.vendorExtension == PTPVendorExtensionCanon && code == PTPPropertyCodeCanonShutterSpeed && intValue == 0x0C) || (camera.info.vendorExtension == PTPVendorExtensionSony && code == PTPPropertyCodeSonyShutterSpeed && intValue == 0) || (camera.info.vendorExtension == PTPVendorExtensionNikon && code == PTPPropertyCodeExposureTime && intValue == 0x7FFFFFFF)) {
+        if ((camera.info.vendorExtension == PTPVendorExtensionCanon && code == PTPPropertyCodeCanonShutterSpeed && intValue == 0x0C) || (camera.info.vendorExtension == PTPVendorExtensionCanon && code == PTPPropertyCodeCanonAutoExposureMode && intValue == 4) || (camera.info.vendorExtension == PTPVendorExtensionSony && code == PTPPropertyCodeSonyShutterSpeed && intValue == 0) || (camera.info.vendorExtension == PTPVendorExtensionNikon && code == PTPPropertyCodeExposureTime && intValue == 0x7FFFFFFF)) {
           if (IS_CONNECTED && CCD_EXPOSURE_ITEM->number.max == 0) {
             indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
             CCD_EXPOSURE_ITEM->number.min = 0;
