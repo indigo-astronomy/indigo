@@ -579,8 +579,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	switch (code) {
     case PTPPropertyCodeExposureTime:
     case PTPPropertyCodeSonyShutterSpeed:
-    case PTPPropertyCodeCanonShutterSpeed:
-    case PTPPropertyCodeCanonAutoExposureMode: {
+    case PTPPropertyCodeCanonShutterSpeed: {
       if (property->perm == INDIGO_RW_PERM) {
         int intValue = value.intValue;
         if ((camera.info.vendorExtension == PTPVendorExtensionCanon && code == PTPPropertyCodeCanonShutterSpeed && intValue == 0x0C) || (camera.info.vendorExtension == PTPVendorExtensionCanon && code == PTPPropertyCodeCanonAutoExposureMode && intValue == 4) || (camera.info.vendorExtension == PTPVendorExtensionSony && code == PTPPropertyCodeSonyShutterSpeed && intValue == 0) || (camera.info.vendorExtension == PTPVendorExtensionNikon && code == PTPPropertyCodeExposureTime && intValue == 0x7FFFFFFF)) {
@@ -592,13 +591,33 @@ static indigo_result focuser_detach(indigo_device *device) {
           }
           PRIVATE_DATA->bulb = true;
         } else {
-          if (IS_CONNECTED && CCD_EXPOSURE_ITEM->number.max != 0)
-            indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL); {
+          if (IS_CONNECTED && CCD_EXPOSURE_ITEM->number.max != 0) {
+            indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
             CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.max = 0;
             indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
           }
           PRIVATE_DATA->bulb = false;
         }
+      }
+      break;
+    }
+    case PTPPropertyCodeCanonAutoExposureMode: {
+      int intValue = value.intValue;
+      if (camera.info.vendorExtension == PTPVendorExtensionCanon && intValue == 4) {
+        if (IS_CONNECTED && CCD_EXPOSURE_ITEM->number.max == 0) {
+          indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+          CCD_EXPOSURE_ITEM->number.min = 0;
+          CCD_EXPOSURE_ITEM->number.max = 10000;
+          indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+        }
+        PRIVATE_DATA->bulb = true;
+      } else {
+        if (IS_CONNECTED && CCD_EXPOSURE_ITEM->number.max != 0) {
+          indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+          CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.max = 0;
+          indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+        }
+        PRIVATE_DATA->bulb = false;
       }
       break;
     }

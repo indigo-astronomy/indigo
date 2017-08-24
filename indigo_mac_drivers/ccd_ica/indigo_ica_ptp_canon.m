@@ -552,6 +552,7 @@ static struct info {
   if ([self operationIsSupported:PTPRequestCodeCanonGetViewFinderData])
     [self.delegate cameraCanPreview:self];
   //[self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"1"];
+  [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"0"];
   [super processConnect];
 }
 
@@ -1421,7 +1422,7 @@ static struct info {
 }
 
 -(void)stopExposure {
-  if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
+  if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOff]) {
     [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
   } else {
     [self sendPTPRequest:PTPRequestCodeCanonBulbEnd];
