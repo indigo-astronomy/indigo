@@ -905,7 +905,7 @@ static struct info {
           }
           case PTPPropertyCodeCanonAperture: {
             NSDictionary *map = @{ @0x08: @"f/1", @0x0B: @"f/1.1", @0x0C: @"f/1.2", @0x0D: @"f/1.2", @0x10: @"f/1.4", @0x13: @"f/1.6", @0x14: @"f/1.8", @0x15: @"f/1.8", @0x18: @"f/2", @0x1B: @"f/2.2", @0x1C: @"f/2.5", @0x1D: @"f/2.5", @0x20: @"f/2.8", @0x23: @"f/3.2", @0x24: @"f/3.5", @0x25: @"f/3.5", @0x28: @"f/4", @0x2B: @"f/4.5", @0x2C: @"f/4.5", @0x2D: @"f/5.0", @0x30: @"f/5.6", @0x33: @"f/6.3", @0x34: @"f/6.7", @0x35: @"f/7.1", @0x38: @"f/8", @0x3B: @"f/9", @0x3C: @"f/9.5", @0x3D: @"f/10", @0x40: @"f/11", @0x43: @"f/13", @0x44: @"f/13", @0x45: @"f/14", @0x48: @"f/16", @0x4B: @"f/18", @0x4C: @"f/19", @0x4D: @"f/20", @0x50: @"f/22", @0x53: @"f/25", @0x54: @"f/27", @0x55: @"f/29", @0x58: @"f/32", @0x5B: @"f/36", @0x5C: @"f/38", @0x5D: @"f/40", @0x60: @"f/45", @0x63: @"f/51", @0x64: @"f/54", @0x65: @"f/57", @0x68: @"f/64", @0x6B: @"f/72", @0x6C: @"f/76", @0x6D: @"f/80", @0x70: @"f/91" };
-            property.readOnly = currentMode != 2 && currentMode != 3;
+            property.readOnly = currentMode != 2 && currentMode != 3 && currentMode != 4;
             if (property.readOnly)
               [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
             else
@@ -952,7 +952,7 @@ static struct info {
           case PTPPropertyCodeCanonAutoExposureMode: {
             NSDictionary *map = @{ @0: @"Program AE", @1: @"Shutter Priority AE", @2: @"Aperture Priority AE", @3: @"Manual Exposure", @4: @"Bulb", @5: @"Auto DEP AE", @6: @"DEP AE", @8: @"Lock", @9: @"Auto", @10: @"Night Scene Portrait", @11: @"Sports", @12: @"Portrait", @13: @"Landscape", @14: @"Close-Up", @15: @"Flash Off", @19: @"Creative Auto", @22: @"Scene Intelligent Auto" };
             [self mapValueInterval:property map:map];
-            [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeCanonAperture readOnly:currentMode != 2 && currentMode != 3];
+            [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeCanonAperture readOnly:currentMode != 2 && currentMode != 3 && currentMode != 4];
             [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeCanonShutterSpeed readOnly:currentMode != 1 && currentMode != 3];
             [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeCanonISOSpeed readOnly:currentMode >= 8];
             [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeCanonExpCompensation readOnly:currentMode >= 8 || currentMode == 3];
