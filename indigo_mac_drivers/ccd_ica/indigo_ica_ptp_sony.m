@@ -668,7 +668,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
 }
 
--(void)startExposure {
+-(double)startExposure {
   waitForCapture = true;
   [self setProperty:PTPPropertyCodeSonyAutofocus value:@"2"];
   if (focusMode == 1) {
@@ -679,6 +679,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
     }
   }
+  return 0;
 }
 
 -(void)stopExposure {

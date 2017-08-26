@@ -482,7 +482,7 @@ static struct info {
   int currentMode;
   int currentShutterSpeed;
   int focusSteps;
-  unsigned int *customFuncEx;
+  unsigned int *customFuncGroup[10];
   unsigned int liveViewZoom;
 }
 
@@ -687,6 +687,8 @@ static struct info {
               case PTPPropertyCodeCanonAutoPowerOff:
               case PTPPropertyCodeCanonEVFRecordStatus:
               case PTPPropertyCodeCanonAutoExposureMode:
+              case PTPPropertyCodeCanonMirrorUpSetting:
+              case PTPPropertyCodeCanonMirrorLockupState:
                 property.type = PTPDataTypeCodeUInt16;
                 break;
               case PTPPropertyCodeCanonWhiteBalanceAdjustA:
@@ -771,21 +773,32 @@ static struct info {
                     break;
                   }
                   case PTPPropertyCodeCanonCustomFuncEx: {
-                    unsigned int fullSize = ptpReadUnsignedInt(&buf);
-                    if (customFuncEx == NULL) {
-                      customFuncEx = malloc(fullSize);
-                      *customFuncEx = fullSize;
-                    }
-                    else if (*customFuncEx != fullSize) {
-                      [self.delegate debug:[NSString stringWithFormat:@"Invalid customFuncEx size %d -> %d", *customFuncEx, fullSize]];
-                      break;
-                    }
-                    memcpy(customFuncEx + 1, buf, fullSize - 4);
-                    int offset = 1;
+                    ptpReadUnsignedInt(&buf);
+                    unsigned int *customFuncEx = (unsigned int *)buf;
+                    int offset = 0;
                     unsigned int groupCount = customFuncEx[offset++];
                     for (int i = 0; i < groupCount; i++) {
-                      offset++; //unsigned int group = customFuncEx[offset++];
-                      offset++; //unsigned int groupSize = customFuncEx[offset++];
+                      unsigned int group = customFuncEx[offset++];
+                      unsigned int groupSize = customFuncEx[offset++];
+                      if (customFuncGroup[group]) {
+                        if (customFuncGroup[group][3] != groupSize) {
+                          customFuncGroup[group] = realloc(customFuncGroup[group], groupSize + 12);
+                          [self.delegate debug:[NSString stringWithFormat:@"customFuncEx - group %d buffer reallocated", group]];
+                        }
+                      } else {
+                        customFuncGroup[group] = malloc(groupSize + 12);
+                        customFuncGroup[group][0] = groupSize + 12; // total size
+                        customFuncGroup[group][1] = 1; // group count
+                        customFuncGroup[group][2] = group; // group
+                        customFuncGroup[group][3] = groupSize; // group size
+                        [self.delegate debug:[NSString stringWithFormat:@"customFuncEx - group %d buffer allocated", group]];
+                      }
+                      memcpy(customFuncGroup[group] + 4, customFuncEx + offset, groupSize - 4);
+                      NSMutableString *s = [NSMutableString stringWithFormat:@"0x%x", customFuncGroup[group][0]];
+                      for (int i = 1; i < groupSize / 4 + 3; i++) {
+                        [s appendFormat:@", 0x%x", customFuncGroup[group][i]];
+                      }
+                      [self.delegate debug:[NSString stringWithFormat:@"customFuncEx - group %d [%@]", group, s]];
                       unsigned int itemCount = customFuncEx[offset++];
                       for (int j = 0; j < itemCount; j++) {
                         unsigned int item = customFuncEx[offset++];
@@ -917,10 +930,14 @@ static struct info {
             NSDictionary *map = @{ @0x0C: @"Bulb", @0x10: @"30s", @0x13: @"25s", @0x14: @"20s", @0x15: @"20s", @0x18: @"15s", @0x1B: @"13s", @0x1C: @"10s", @0x1D: @"10s", @0x20: @"8s", @0x23: @"6s", @0x24: @"6s", @0x25: @"5s", @0x28: @"4s", @0x2B: @"3.2s", @0x2C: @"3s", @0x2D: @"2.5s", @0x30: @"2s", @0x33: @"1.6s", @0x34: @"15s", @0x35: @"1.3s", @0x38: @"1s", @0x3B: @"0.8s", @0x3C: @"0.7s", @0x3D: @"0.6s", @0x40: @"0.5s", @0x43: @"0.4s", @0x44: @"0.3s", @0x45: @"0.3s", @0x48: @"1/4s", @0x4B: @"1/5s", @0x4C: @"1/6s", @0x4D: @"1/6s", @0x50: @"1/8s", @0x53: @"1/10s", @0x54: @"1/10s", @0x55: @"1/13s", @0x58: @"1/15s", @0x5B: @"1/20s", @0x5C: @"1/20s", @0x5D: @"1/25s", @0x60: @"1/30s", @0x63: @"1/40s", @0x64: @"1/45s", @0x65: @"1/50s", @0x68: @"1/60s", @0x6B: @"1/80s", @0x6C: @"1/90s", @0x6D: @"1/100s", @0x70: @"1/125s", @0x73: @"1/160s", @0x74: @"1/180s", @0x75: @"1/200s", @0x78: @"1/250s", @0x7B: @"1/320s", @0x7C: @"1/350s", @0x7D: @"1/400s", @0x80: @"1/500s", @0x83: @"1/640s", @0x84: @"1/750s", @0x85: @"1/800s", @0x88: @"1/1000s", @0x8B: @"1/1250s", @0x8C: @"1/1500s", @0x8D: @"1/1600s", @0x90: @"1/2000s", @0x93: @"1/2500s", @0x94: @"1/3000s", @0x95: @"1/3200s", @0x98: @"1/4000s", @0x9B: @"1/5000s", @0x9C: @"1/6000s", @0x9D: @"1/6400s", @0xA0: @"1/8000s" };
             property.readOnly = currentMode != 1 && currentMode != 3;
             currentShutterSpeed = property.value.intValue;
-            if (property.readOnly)
-              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
-            else
+            if (property.readOnly) {
+              if (currentMode == 4)
+                [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Bulb" values:@[ @"Bulb" ] labels:@[ @"Bulb" ] readOnly:true];
+              else
+                [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
+            } else {
               [self mapValueList:property map:map];
+            }
             break;
           }
           case PTPPropertyCodeCanonISOSpeed: {
@@ -1055,13 +1072,23 @@ static struct info {
             break;
           }
           case PTPPropertyCodeCanonBatteryPower: {
-            int value = property.value.intValue;
-            if (value == 2)
-              [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@100 min:@0 max:@100 step:@25 readOnly:true];
-            else if (value == 1)
-              [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@50 min:@0 max:@100 step:@25 readOnly:true];
-            else
-              [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@25 min:@0 max:@100 step:@25 readOnly:true];
+            switch (property.value.intValue) {
+              case 1:
+                [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@50 min:@0 max:@100 step:@25 readOnly:true];
+                break;
+              case 2:
+                [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@100 min:@0 max:@100 step:@25 readOnly:true];
+                break;
+              case 4:
+                [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@75 min:@0 max:@100 step:@25 readOnly:true];
+                break;
+              case 5:
+                [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@25 min:@0 max:@100 step:@25 readOnly:true];
+                break;
+              default:
+                [self.delegate cameraPropertyChanged:self code:PTPPropertyCodeBatteryLevel value:@0 min:@0 max:@100 step:@25 readOnly:true];
+                break;
+            }
             break;
           }
           case PTPPropertyCodeBatteryLevel: {
@@ -1113,6 +1140,7 @@ static struct info {
             [self mapValueInterval:property map:map];
             break;
           }
+          case PTPPropertyCodeCanonMirrorUpSetting:
           case PTPPropertyCodeCanonExMirrorLockup: {
             NSDictionary *map = @{ @0: @"Disable", @1: @"Enable" };
             [self mapValueInterval:property map:map];
@@ -1272,69 +1300,59 @@ static struct info {
         ptpWriteUnsignedInt(&buf, i2 & 0xFF);
         break;
       }
-      case PTPPropertyCodeCanonExExposureLevelIncrements:
-      case PTPPropertyCodeCanonExFlasgSyncSpeedInAvMode:
-      case PTPPropertyCodeCanonExLongExposureNoiseReduction:
-      case PTPPropertyCodeCanonExHighISONoiseReduction:
-      case PTPPropertyCodeCanonExAutoLightingOptimizer:
-      case PTPPropertyCodeCanonExAFAssistBeamFiring:
-      case PTPPropertyCodeCanonExAFDuringLiveView:
-      case PTPPropertyCodeCanonExMirrorLockup:
-      case PTPPropertyCodeCanonExShutterAELockButton:
-      case PTPPropertyCodeCanonExSetButtonWhenShooting:
-      case PTPPropertyCodeCanonExLCDDisplayWhenPowerOn:
-      case PTPPropertyCodeCanonExAddOriginalDecisionData: {
-        int offset = 1;
-        unsigned int groupCount = customFuncEx[offset++];
-        for (int i = 0; i < groupCount; i++) {
-          offset++; //unsigned int group = customFuncEx[offset++];
-          offset++; //unsigned int groupSize = customFuncEx[offset++];
-          unsigned int itemCount = customFuncEx[offset++];
-          for (int j = 0; j < itemCount; j++) {
-            unsigned int item = customFuncEx[offset++];
-            unsigned int valueSize = customFuncEx[offset++];
-            unsigned short itemCode = item | 0x8000;
-            if (itemCode == propertyCode) {
-              NSArray *values = [value componentsSeparatedByString:@" "];
-              for (int k = 0; k < valueSize; k++)
-                customFuncEx[offset++] = [values[k] intValue];
-            } else {
-              offset += valueSize;
-            }
-          }
-        }
-        buffer = malloc(size = 8 + *customFuncEx);
-        memcpy(buffer + 8, customFuncEx, *customFuncEx);
-        propertyCode = PTPPropertyCodeCanonCustomFuncEx;
-        break;
-      }
       default: {
-        switch (property.type) {
-          case PTPDataTypeCodeSInt8:
-          case PTPDataTypeCodeUInt8: {
-            buffer = malloc(size = 12);
-            *(char *)(buffer + 8) = value.intValue;
-            break;
-          }
-          case PTPDataTypeCodeSInt16:
-          case PTPDataTypeCodeUInt16: {
-            buffer = malloc(size = 12);
-            *(short *)(buffer + 8) = value.intValue;
-            break;
-          }
-          case PTPDataTypeCodeSInt32:
-          case PTPDataTypeCodeUInt32: {
-            buffer = malloc(size = 12);
-            *(int *)(buffer + 8) = value.intValue;
-            break;
-          }
-          case PTPDataTypeCodeUnicodeString: {
-            const char *s = [value cStringUsingEncoding:NSUTF8StringEncoding];
-            if (s) {
-              buffer = malloc(size = 8 + 1 + (unsigned int)strlen(s));
-              strcpy((char *)buffer + 8, s);
+        if ((propertyCode & 0xF000) == 0x8000) {
+          for (int i = 0; buffer == NULL && i < 10; i++) {
+            unsigned int *customFuncEx = customFuncGroup[i];
+            if (customFuncEx) {
+              int offset = 4;
+              unsigned int itemCount = customFuncEx[offset++];
+              for (int j = 0; j < itemCount; j++) {
+                unsigned int item = customFuncEx[offset++];
+                unsigned int valueSize = customFuncEx[offset++];
+                unsigned short itemCode = item | 0x8000;
+                if (itemCode == propertyCode) {
+                  NSArray *values = [value componentsSeparatedByString:@" "];
+                  for (int k = 0; k < valueSize; k++)
+                    customFuncEx[offset++] = [values[k] intValue];
+                  buffer = malloc(size = customFuncEx[3] + 20);
+                  memcpy(buffer + 8, customFuncEx, size - 8);
+                  propertyCode = PTPPropertyCodeCanonCustomFuncEx;
+                  break;
+                } else {
+                  offset += valueSize;
+                }
+              }
             }
-            break;
+          }
+        } else {
+          switch (property.type) {
+            case PTPDataTypeCodeSInt8:
+            case PTPDataTypeCodeUInt8: {
+              buffer = malloc(size = 12);
+              *(char *)(buffer + 8) = value.intValue;
+              break;
+            }
+            case PTPDataTypeCodeSInt16:
+            case PTPDataTypeCodeUInt16: {
+              buffer = malloc(size = 12);
+              *(short *)(buffer + 8) = value.intValue;
+              break;
+            }
+            case PTPDataTypeCodeSInt32:
+            case PTPDataTypeCodeUInt32: {
+              buffer = malloc(size = 12);
+              *(int *)(buffer + 8) = value.intValue;
+              break;
+            }
+            case PTPDataTypeCodeUnicodeString: {
+              const char *s = [value cStringUsingEncoding:NSUTF8StringEncoding];
+              if (s) {
+                buffer = malloc(size = 8 + 1 + (unsigned int)strlen(s));
+                strcpy((char *)buffer + 8, s);
+              }
+              break;
+            }
           }
         }
         break;
@@ -1370,8 +1388,12 @@ static struct info {
   [self sendPTPRequest:PTPRequestCodeCanonSetRemoteMode param1:0];
   [self sendPTPRequest:PTPRequestCodeCanonSetEventMode param1:0];
   [super requestCloseSession];
-  free(customFuncEx);
-  customFuncEx = NULL;
+  for (int i = 0; i < 10; i++) {
+    if (customFuncGroup[i]) {
+      free(customFuncGroup[i]);
+      customFuncGroup[i] = NULL;
+    }
+  }
 }
 
 -(void)lock {
@@ -1399,13 +1421,21 @@ static struct info {
   //[self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
 }
 
--(void)startExposure {
+-(double)startExposure {
+  double delay = 0;
   if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
     if (self.useMirrorLockup) {
-      [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"1"];
+      if ([self propertyIsSupported:PTPPropertyCodeCanonMirrorUpSetting])
+        [self setProperty:PTPPropertyCodeCanonMirrorUpSetting value:@"1"];
+      else
+        [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"1"];
       [self setProperty:PTPPropertyCodeCanonDriveMode value:@"17"];
+      delay = 2.0;
     } else {
-      [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"0"];
+      if ([self propertyIsSupported:PTPPropertyCodeCanonMirrorUpSetting])
+        [self setProperty:PTPPropertyCodeCanonMirrorUpSetting value:@"0"];
+      else
+        [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"0"];
       [self setProperty:PTPPropertyCodeCanonDriveMode value:@"0"];
     }
     [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:(self.avoidAF ? 1 : 0)];
@@ -1419,6 +1449,7 @@ static struct info {
       [self sendPTPRequest:PTPRequestCodeCanonRemoteRelease];
     }
   }
+  return delay;
 }
 
 -(void)stopExposure {

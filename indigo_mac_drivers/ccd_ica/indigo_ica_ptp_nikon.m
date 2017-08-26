@@ -1039,9 +1039,11 @@ static struct info {
     [self setProperty:PTPPropertyCodeNikonAutofocusMode value:[NSString stringWithFormat:@"%d", focusMode]];
 }
 
--(void)startExposure {
+-(double)startExposure {
+  double delay = 0.0;
   if ([self propertyIsSupported:PTPPropertyCodeNikonExposureDelayMode]) {
     [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(self.useMirrorLockup ? @"1" : @"0")];
+    delay = 2.0;
   }
   if ([self operationIsSupported:PTPRequestCodeNikonInitiateCaptureRecInMedia]) {
     [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:0xFFFFFFFF param2:0];
@@ -1049,6 +1051,7 @@ static struct info {
   } else {
     [super startExposure];
   }
+  return delay;
 }
 
 -(void)stopExposure {
