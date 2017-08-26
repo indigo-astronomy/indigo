@@ -292,7 +292,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		[camera startExposure];
+		double delay = [camera startExposure];
+    if (delay > 0) {
+      CCD_EXPOSURE_ITEM->number.value += delay;
+      indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+    }
     if (PRIVATE_DATA->bulb)
       PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback);
     return indigo_ccd_change_property(device, client, property);

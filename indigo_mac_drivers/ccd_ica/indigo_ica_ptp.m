@@ -1351,8 +1351,9 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)stopPreview {
 }
 
--(void)startExposure {
+-(double)startExposure {
   [_icCamera requestTakePicture];
+  return 0.0;
 }
 
 -(void)stopExposure {
