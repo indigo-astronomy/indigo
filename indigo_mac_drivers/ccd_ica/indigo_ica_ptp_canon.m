@@ -657,6 +657,7 @@ static struct info {
               case PTPPropertyCodeCanonCustomFunc19:
               case PTPPropertyCodeCanonCustomFuncEx:
               case PTPPropertyCodeCanonAutoPowerOff:
+              case PTPPropertyCodeCanonDriveMode:
                 property.readOnly = true;
                 break;
               default:
