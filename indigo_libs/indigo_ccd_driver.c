@@ -323,7 +323,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, CCD_GAMMA_PROPERTY);
 			indigo_save_property(device, NULL, CCD_GAIN_PROPERTY);
 			indigo_save_property(device, NULL, CCD_FRAME_TYPE_PROPERTY);
-			indigo_save_property(device, NULL, CCD_IMAGE_FORMAT_PROPERTY);
 			indigo_save_property(device, NULL, CCD_FITS_HEADERS_PROPERTY);
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
