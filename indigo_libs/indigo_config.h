@@ -48,7 +48,11 @@
 
 /** Conditional compilation wrapper for TRACE log level (for wire protocol adapters)
  */
-#define INDIGO_TRACE_PROTOCOL(c)
+#define INDIGO_TRACE_PROTOCOL(c) c
+
+/** Conditional compilation wrapper for TRACE log level (for wire protocol parsers)
+ */
+#define INDIGO_TRACE_PARSER(c)
 
 /** Conditional compilation wrapper for DEBUG log level (for wire protocol adapters)
  */

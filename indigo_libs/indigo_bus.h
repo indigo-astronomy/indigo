@@ -239,6 +239,7 @@ typedef struct indigo_device {
  */
 typedef struct indigo_client {
 	char name[INDIGO_NAME_SIZE];															///< client name
+	bool is_remote;																						///< is remote client
 	void *client_context;																			///< any client specific data
 	indigo_result last_result;																///< result of last bus operation
 	indigo_version version;																		///< client version

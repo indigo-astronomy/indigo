@@ -195,7 +195,7 @@ static indigo_result json_define_property(indigo_client *client, struct indigo_d
 		ws_write(handle, output_buffer, size);
 	else
 		indigo_write(handle, output_buffer, size);
-	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", output_buffer));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -317,7 +317,7 @@ static indigo_result json_update_property(indigo_client *client, struct indigo_d
 		ws_write(handle, output_buffer, size);
 	else
 		indigo_write(handle, output_buffer, size);
-	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", output_buffer));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -352,7 +352,7 @@ static indigo_result json_delete_property(indigo_client *client, struct indigo_d
 		ws_write(handle, output_buffer, size);
 	else
 		indigo_write(handle, output_buffer, size);
-	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", output_buffer));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -373,7 +373,7 @@ static indigo_result json_message_property(indigo_client *client, struct indigo_
 		ws_write(handle, output_buffer, size);
 	else
 		indigo_write(handle, output_buffer, size);
-	INDIGO_TRACE_PROTOCOL(indigo_trace("sent: %s\n", output_buffer));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
 	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
@@ -388,7 +388,7 @@ static indigo_result json_detach(indigo_client *client) {
 
 indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket) {
 	static indigo_client client_template = {
-		"", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
+		"", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		NULL,
 		json_define_property,
 		json_update_property,
@@ -406,6 +406,7 @@ indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket)
 	client_context->output = ouput;
 	client_context->web_socket = web_socket;
 	client->client_context = client_context;
+	client->is_remote = input == ouput;
 	indigo_enable_blob_mode_record *record = malloc(sizeof(indigo_enable_blob_mode_record));
 	memset(record, 0, sizeof(indigo_enable_blob_mode_record));
 	record->mode = INDIGO_ENABLE_BLOB_URL;

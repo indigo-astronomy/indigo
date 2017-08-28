@@ -94,7 +94,7 @@ static indigo_result test_detach(indigo_client *client) {
 }
 
 static indigo_client test = {
-	"Test", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
+	"Test", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 	test_attach,
 	test_define_property,
 	test_update_property,

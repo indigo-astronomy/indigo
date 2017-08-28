@@ -41,6 +41,8 @@ static pthread_mutex_t xml_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_result xml_client_parser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
+	if (!indigo_reshare_remote_devices && client && client->is_remote)
+		return INDIGO_OK;
 	pthread_mutex_lock(&xml_mutex);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
 	assert(device_context != NULL);
@@ -77,6 +79,8 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 static indigo_result xml_client_parser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(property != NULL);
+	if (!indigo_reshare_remote_devices && client && client->is_remote)
+		return INDIGO_OK;
 	pthread_mutex_lock(&xml_mutex);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
 	assert(device_context != NULL);
@@ -126,6 +130,8 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 static indigo_result xml_client_parser_enable_blob(indigo_device *device, indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode) {
 	assert(device != NULL);
 	assert(property != NULL);
+	if (!indigo_reshare_remote_devices && client && client->is_remote)
+		return INDIGO_OK;
 	pthread_mutex_lock(&xml_mutex);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
 	assert(device_context != NULL);
