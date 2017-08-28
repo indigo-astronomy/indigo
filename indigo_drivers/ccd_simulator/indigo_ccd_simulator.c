@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include "indigo_driver_xml.h"
 
@@ -73,6 +74,7 @@ typedef struct {
 
 	int star_x[STARS], star_y[STARS], star_a[STARS];
 	char image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
+	pthread_mutex_t image_mutex;
 	double target_temperature, current_temperature;
 	int target_slot, current_slot;
 	int target_position, current_position;
@@ -160,6 +162,7 @@ static void gauss_blur(unsigned short *scl, unsigned short *tcl, int w, int h, d
 }
 
 static void exposure_timer_callback(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->image_mutex);
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -255,6 +258,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->image_mutex);
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
@@ -891,6 +895,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = malloc(sizeof(simulator_private_data));
+			pthread_mutex_init(&private_data->image_mutex, NULL);
 			assert(private_data != NULL);
 			memset(private_data, 0, sizeof(simulator_private_data));
 			imager_ccd = malloc(sizeof(indigo_device));
@@ -962,6 +967,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 				dslr = NULL;
 			}
 			if (private_data != NULL) {
+				pthread_mutex_destroy(&private_data->image_mutex);
 				free(private_data);
 				private_data = NULL;
 			}
