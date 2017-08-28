@@ -406,7 +406,7 @@ static indigo_result client_detach(indigo_client *client) {
 
 
 static indigo_client client = {
-	"indigo_prop_tool", NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
+	"indigo_prop_tool", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 	client_attach,
 	client_define_property,
 	client_update_property,

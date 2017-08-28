@@ -37,8 +37,8 @@
 #include "indigo_json.h"
 #include "indigo_io.h"
 
-//#undef INDIGO_TRACE_PROTOCOL
-//#define INDIGO_TRACE_PROTOCOL(c) c
+//#undef INDIGO_TRACE_PARSER
+//#define INDIGO_TRACE_PARSER(c) c
 //
 //#undef INDIGO_DEBUG_PROTOCOL
 //#define INDIGO_DEBUG_PROTOCOL(c) c
@@ -49,7 +49,7 @@ static long ws_read(int handle, char *buffer, long length) {
 	uint8_t header[14];
 	if (indigo_read(handle, (char *)header, 6) <= 0)
 		return -1;
-	INDIGO_TRACE_PROTOCOL(indigo_trace("ws_read -> %2x", header[0]));
+	INDIGO_TRACE_PARSER(indigo_trace("ws_read -> %2x", header[0]));
 	uint8_t *masking_key = header+2;
 	uint64_t payload_length = header[1] & 0x7F;
 	if (payload_length == 0x7E) {
@@ -116,7 +116,7 @@ static void *new_number_vector_handler(parser_state state, char *name, char *val
 static void *new_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message);
 
 static void *get_properties_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == NUMBER_VALUE && !strcmp(name, "version")) {
 		client->version = (int)atol(value);
 	} else if (state == END_STRUCT) {
@@ -127,7 +127,7 @@ static void *get_properties_handler(parser_state state, char *name, char *value,
 }
 
 static void *one_text_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_text_vector_handler;
 	if (state == END_STRUCT) {
@@ -142,7 +142,7 @@ static void *one_text_handler(parser_state state, char *name, char *value, indig
 }
 
 static void *new_text_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_text_handler;
@@ -161,7 +161,7 @@ static void *new_text_vector_handler(parser_state state, char *name, char *value
 }
 
 static void *one_number_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_number_vector_handler;
 	if (state == END_STRUCT) {
@@ -176,7 +176,7 @@ static void *one_number_handler(parser_state state, char *name, char *value, ind
 }
 
 static void *new_number_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_number_handler;
@@ -195,7 +195,7 @@ static void *new_number_vector_handler(parser_state state, char *name, char *val
 }
 
 static void *one_switch_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == END_ARRAY)
 		return new_switch_vector_handler;
 	if (state == END_STRUCT) {
@@ -210,7 +210,7 @@ static void *one_switch_handler(parser_state state, char *name, char *value, ind
 }
 
 static void *new_switch_vector_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_ARRAY && !strcmp(name, "items")) {
 		property->count = 0;
 		return one_switch_handler;
@@ -229,7 +229,7 @@ static void *new_switch_vector_handler(parser_state state, char *name, char *val
 }
 
 static void *top_level_handler(parser_state state, char *name, char *value, indigo_property *property, indigo_device *device, indigo_client *client, char *message) {
-	INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_STRUCT) {
 		memset(property, 0, PROPERTY_SIZE);
 		if (name != NULL) {
@@ -291,7 +291,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 			pointer = buffer;
 			buffer_end = buffer + count;
 			buffer[count] = 0;
-			INDIGO_TRACE_PROTOCOL(indigo_trace("received: %s", buffer));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
 		}
 		switch (state) {
 			case ERROR:
@@ -304,7 +304,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					value_pointer = value_buffer;
 					*value_pointer = 0;
 					state = BEGIN_STRUCT;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' IDLE -> BEGIN_STRUCT", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' IDLE -> BEGIN_STRUCT", c));
 					depth++;
 					handler = handler(BEGIN_STRUCT, NULL, NULL, property, device, client, message);
 				}
@@ -315,17 +315,17 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					q = c;
 					state = NAME;
 					name_pointer = name_buffer;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' BEGIN_STRUCT -> NAME", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' BEGIN_STRUCT -> NAME", c));
 				} else {
 					state = ERROR;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' BEGIN_STRUCT -> ERROR", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' BEGIN_STRUCT -> ERROR", c));
 				}
 				break;
 			case BEGIN_ARRAY:
 				if (isspace(c)) {
 				} else if (c == '{') {
 					state = BEGIN_STRUCT;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' BEGIN_ARRAY -> BEGIN_STRUCT", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' BEGIN_ARRAY -> BEGIN_STRUCT", c));
 					depth++;
 					handler = handler(BEGIN_STRUCT, NULL, NULL, property, device, client, message);
 				}
@@ -334,12 +334,12 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 				if (c == q) {
 					state = NAME1;
 					*name_pointer = 0;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME -> NAME1", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME -> NAME1", c));
 				} else if (name_pointer - name_buffer <INDIGO_NAME_SIZE) {
 					*name_pointer++ = c;
 				} else {
 					state = ERROR;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME -> ERROR", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME -> ERROR", c));
 				}
 				break;
 			case NAME1:
@@ -352,28 +352,28 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 				if (isspace(c)) {
 				} else if (c == '{') {
 					state = BEGIN_STRUCT;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> BEGIN_STRUCT", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME2 -> BEGIN_STRUCT", c));
 					handler = handler(BEGIN_STRUCT, name_buffer, NULL, property, device, client, message);
 					depth++;
 				} else if (c == '[') {
 					state = BEGIN_ARRAY;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> BEGIN_ARRAY", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME2 -> BEGIN_ARRAY", c));
 					handler = handler(BEGIN_ARRAY, name_buffer, NULL, property, device, client, message);
 				} else if (c == '"' || c == '\'') {
 					q = c;
 					state = TEXT_VALUE;
 					value_pointer = value_buffer;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> TEXT_VALUE", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME2 -> TEXT_VALUE", c));
 				} else if (isdigit(c) || c == '-') {
 					state = NUMBER_VALUE;
 					value_pointer = value_buffer;
 					*value_pointer++ = c;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> NUMBER_VALUE", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME2 -> NUMBER_VALUE", c));
 				} else if (isalpha(c)) {
 					state = LOGICAL_VALUE;
 					value_pointer = value_buffer;
 					*value_pointer++ = c;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> LOGICAL_VALUE", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME2 -> LOGICAL_VALUE", c));
 				}
 				break;
 			case TEXT_VALUE:
@@ -382,12 +382,12 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					pointer--;
 					*value_pointer = 0;
 					handler = handler(TEXT_VALUE, name_buffer, value_buffer, property, device, client, message);
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' TEXT_VALUE -> VALUE1", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' TEXT_VALUE -> VALUE1", c));
 				} else if (value_pointer - value_buffer <INDIGO_VALUE_SIZE) {
 					*value_pointer++ = c;
 				} else {
 					state = ERROR;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' TEXT_VALUE -> ERROR", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' TEXT_VALUE -> ERROR", c));
 				}
 				break;
 			case NUMBER_VALUE:
@@ -398,7 +398,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					pointer--;
 					*value_pointer = 0;
 					handler = handler(NUMBER_VALUE, name_buffer, value_buffer, property, device, client, message);
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NUMBER_VALUE -> VALUE1", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NUMBER_VALUE -> VALUE1", c));
 				}
 				break;
 			case LOGICAL_VALUE:
@@ -410,10 +410,10 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 						handler = handler(LOGICAL_VALUE, name_buffer, value_buffer, property, device, client, message);
 						state = VALUE1;
 						pointer--;
-						INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' LOGICAL_VALUE -> VALUE1", c));
+						INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' LOGICAL_VALUE -> VALUE1", c));
 					} else {
 						state = ERROR;
-						INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' LOGICAL_VALUE -> ERROR", c));
+						INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' LOGICAL_VALUE -> ERROR", c));
 					}
 				}
 				break;
@@ -421,20 +421,20 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 				if (isspace(c)) {
 				} else if (c == ',') {
 					state = VALUE2;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' VALUE1 -> VALUE2", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' VALUE1 -> VALUE2", c));
 				} else if (c == '}') {
 					handler = handler(END_STRUCT, NULL, NULL, property, device, client, message);
 					depth--;
 					if (depth == 0) {
 						state = IDLE;
-						INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' VALUE2 -> IDLE", c));
+						INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' VALUE2 -> IDLE", c));
 					}
 				} else if (c == ']') {
 					handler = handler(END_ARRAY, NULL, NULL, property, device, client, message);
 					depth--;
 					if (depth == 0) {
 						state = IDLE;
-						INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' VALUE2 -> IDLE", c));
+						INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' VALUE2 -> IDLE", c));
 					}
 				}
 				break;
@@ -444,15 +444,15 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 					q = c;
 					state = NAME;
 					name_pointer = name_buffer;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' VALUE2 -> NAME", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' VALUE2 -> NAME", c));
 				} else if (c == '{') {
 					state = BEGIN_STRUCT;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' NAME2 -> BEGIN_STRUCT", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME2 -> BEGIN_STRUCT", c));
 					handler = handler(BEGIN_STRUCT, NULL, NULL, property, device, client, message);
 					depth++;
 				} else {
 					state = ERROR;
-					INDIGO_TRACE_PROTOCOL(indigo_trace("JSON Parser: '%c' VALUE2 -> ERROR", c));
+					INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' VALUE2 -> ERROR", c));
 				}
 				break;
 			default:
