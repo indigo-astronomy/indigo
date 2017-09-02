@@ -694,7 +694,7 @@ static struct info {
                 break;
               case PTPPropertyCodeCanonWhiteBalanceAdjustA:
               case PTPPropertyCodeCanonWhiteBalanceAdjustB:
-                property.type = PTPDataTypeCodeSInt16;
+                property.type = PTPDataTypeCodeSInt32;
                 break;
               case PTPPropertyCodeCanonCameraTime:
               case PTPPropertyCodeCanonUTCTime:
@@ -846,6 +846,9 @@ static struct info {
               case PTPDataTypeCodeUInt32:
                 property.defaultValue = property.value = [NSNumber numberWithUnsignedInt:ptpReadUnsignedInt(&buf)];
                 break;
+              case PTPDataTypeCodeSInt32:
+                property.defaultValue = property.value = [NSNumber numberWithInt:ptpReadInt(&buf)];
+                break;
               case PTPDataTypeCodeUnicodeString:
                 property.defaultValue = property.value = [NSString stringWithCString:(char *)buf encoding:NSUTF8StringEncoding];
                 if (property.value == nil)
@@ -906,10 +909,7 @@ static struct info {
               int i = value.intValue;
               [values addObject:[NSString stringWithFormat:@"%d", i]];
             }
-            if (property.value)
-              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:values readOnly:property.readOnly];
-            else
-              [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:values readOnly:true];
+            [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:values readOnly:property.readOnly];
             break;
           }
           case PTPPropertyCodeCanonModelID:
