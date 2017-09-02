@@ -479,6 +479,7 @@ static struct info {
   BOOL tempLiveView;
   int focusSteps;
   int focusMode;
+  NSString *delayModeOn, *delayModeOff;
 }
 
 -(NSString *)name {
@@ -644,7 +645,6 @@ static struct info {
     case PTPPropertyCodeNikonAELockStatus:
     case PTPPropertyCodeNikonAFLockStatus:
     case PTPPropertyCodeNikonExternalFlashAttached:
-    case PTPPropertyCodeNikonAFCModePriority:
     case PTPPropertyCodeNikonISOAutoTime:
     case PTPPropertyCodeNikonMovHiQuality:
     case PTPPropertyCodeNikonImageRotation:
@@ -652,12 +652,57 @@ static struct info {
     case PTPPropertyCodeNikonManualMovieSetting:
     case PTPPropertyCodeNikonResetBank:
     case PTPPropertyCodeNikonResetBank0:
-    case PTPPropertyCodeNikonExposureDelayMode:
     case PTPPropertyCodeNikonLongExposureNoiseReduction:
     case PTPPropertyCodeNikonMovWindNoiceReduction:
     case PTPPropertyCodeNikonBracketing:
     case PTPPropertyCodeNikonNoCFCard:{
       NSDictionary *map = @{ @0:@"Off", @1:@"On" };
+      [self mapValueInterval:property map:map];
+      break;
+    }
+    case PTPPropertyCodeNikonExposureDelayMode: {
+      if (property.max && property.max.intValue == 1) {
+        NSDictionary *map = @{ @0:@"Off", @1:@"On" };
+        delayModeOff = @"0";
+        delayModeOn = @"1";
+        [self mapValueInterval:property map:map];
+      } else if (property.max && property.max.intValue == 3) {
+        NSDictionary *map = @{ @0:@"3s", @1:@"2s", @2:@"3s", @3:@"Off" };
+        delayModeOff = @"3";
+        delayModeOn = @"1";
+        [self mapValueInterval:property map:map];
+      } else {
+        [super processPropertyDescription:property];
+      }
+      break;
+    }
+    case PTPPropertyCodeNikonAFCModePriority: {
+      NSDictionary *map = @{ @0:@"Release", @1:@"Focus" };
+      [self mapValueInterval:property map:map];
+      break;
+    }
+    case PTPPropertyCodeNikonAFSModePriority: {
+      NSDictionary *map = @{ @1:@"Release", @0:@"Focus" };
+      [self mapValueInterval:property map:map];
+      break;
+    }
+    case PTPPropertyCodeNikonAFLockOn: {
+      NSDictionary *map = @{ @0:@"5 (long)", @1:@"4", @2:@"3 (normal)", @3:@"2", @4:@"1 (short)", @5:@"Off" };
+      [self mapValueInterval:property map:map];
+      break;
+    }
+    case PTPPropertyCodeNikonAFAreaPoint: {
+      NSDictionary *map = @{ @0:@"AF51", @1:@"AF11" };
+      [self mapValueInterval:property map:map];
+      break;
+    }
+    case PTPPropertyCodeNikonAFAssist: {
+      NSDictionary *map = @{ @0:@"On", @1:@"Off" };
+      [self mapValueInterval:property map:map];
+      break;
+    }
+    case PTPPropertyCodeNikonEVISOStep: {
+      NSDictionary *map = @{ @0:@"1/3", @1:@"1/2" };
       [self mapValueInterval:property map:map];
       break;
     }
@@ -1042,8 +1087,8 @@ static struct info {
 -(double)startExposure {
   double delay = 0.0;
   if ([self propertyIsSupported:PTPPropertyCodeNikonExposureDelayMode]) {
-    [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(self.useMirrorLockup ? @"1" : @"0")];
-    delay = 2.0;
+    [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(self.useMirrorLockup ? delayModeOn : delayModeOff)];
+    delay = self.useMirrorLockup ? 2.0 : 0.0;
   }
   if ([self operationIsSupported:PTPRequestCodeNikonInitiateCaptureRecInMedia]) {
     [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:0xFFFFFFFF param2:0];
