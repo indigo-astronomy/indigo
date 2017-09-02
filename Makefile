@@ -82,10 +82,10 @@ endif
 
 ifeq ($(OS_DETECTED),Darwin)
 	CC=clang
-	CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS
-	MFLAGS=$(DEBUG_BUILD) -fPIC -fno-common -O3 -fobjc-arc -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Wobjc-property-no-attribute
-	CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
-	LDFLAGS=-framework Cocoa -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -lobjc  -L$(BUILD_LIB) -lusb-1.0
+	CFLAGS=$(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS
+	MFLAGS=$(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -fno-common -O3 -fobjc-arc -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Wobjc-property-no-attribute
+	CXXFLAGS=$(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
+	LDFLAGS=-framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -lobjc  -L$(BUILD_LIB) -lusb-1.0
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi.a
 	SOEXT=dylib
 	AR=ar
@@ -192,7 +192,7 @@ externals/libusb/configure: externals/libusb/configure.ac
 	cd externals/libusb; autoreconf -fiv; cd ../..
 
 externals/libusb/Makefile: externals/libusb/configure
-	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) --with-pic; cd ../..
+	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)" --with-pic; cd ../..
 
 $(BUILD_LIB)/libusb-1.0.$(SOEXT): externals/libusb/Makefile
 	cd externals/libusb; make; make install; cd ../..
