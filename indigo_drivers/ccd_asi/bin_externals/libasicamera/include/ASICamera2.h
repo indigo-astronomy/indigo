@@ -134,7 +134,7 @@ typedef enum ASI_CONTROL_TYPE{ //Control type//
 	ASI_TEMPERATURE,// return 10*temperature
 	ASI_FLIP,
 	ASI_AUTO_MAX_GAIN,
-	ASI_AUTO_MAX_EXP,//second
+	ASI_AUTO_MAX_EXP,//micro second
 	ASI_AUTO_MAX_BRIGHTNESS,
 	ASI_HARDWARE_BIN,
 	ASI_HIGH_SPEED_MODE,
@@ -145,8 +145,6 @@ typedef enum ASI_CONTROL_TYPE{ //Control type//
 	ASI_FAN_ON,
 	ASI_PATTERN_ADJUST,
 	ASI_ANTI_DEW_HEATER,
-	ASI_AUTO_MAX_EXP_MS//micro second
-
 
 }ASI_CONTROL_TYPE;
 
