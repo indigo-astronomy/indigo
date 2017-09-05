@@ -655,6 +655,7 @@ static struct info {
     case PTPPropertyCodeNikonLongExposureNoiseReduction:
     case PTPPropertyCodeNikonMovWindNoiceReduction:
     case PTPPropertyCodeNikonBracketing:
+    case PTPPropertyCodeNikonFocusAreaWrap:
     case PTPPropertyCodeNikonNoCFCard:{
       NSDictionary *map = @{ @0:@"Off", @1:@"On" };
       [self mapValueInterval:property map:map];
@@ -1091,7 +1092,7 @@ static struct info {
     delay = self.useMirrorLockup ? 2.0 : 0.0;
   }
   if ([self operationIsSupported:PTPRequestCodeNikonInitiateCaptureRecInMedia]) {
-    [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1:0xFFFFFFFF param2:0];
+    [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1: self.avoidAF ? 0xFFFFFFFF : 0xFFFFFFFE param2:0];
     [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
   } else {
     [super startExposure];
