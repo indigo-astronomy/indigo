@@ -491,7 +491,6 @@ static void streaming_timer_callback(indigo_device *device) {
 		{ .type = INDIGO_FITS_NUMBER, .name = "YBAYROFF", {.number = 0 }, .comment = "Y offset of Bayer array" },
 		{ .type = (indigo_fits_keyword_type)0 }
 	};
-	int res = QHYCCD_ERROR;
 	PRIVATE_DATA->can_check_temperature = false;
 	if (qhy_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.value, (CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value), CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value, true)) {
 		while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
