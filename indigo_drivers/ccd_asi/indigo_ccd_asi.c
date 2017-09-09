@@ -404,7 +404,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	int timeout = 1000 * (CCD_STREAMING_EXPOSURE_ITEM->number.value * 2 + 500);
 	ASI_ERROR_CODE res;
-	PRIVATE_DATA->can_check_temperature = true;
+	PRIVATE_DATA->can_check_temperature = false;
 	if (asi_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIStartVideoCapture(id);
@@ -435,7 +435,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	} else {
 		res = ASI_ERROR_GENERAL_ERROR;
 	}
-	PRIVATE_DATA->can_check_temperature = false;
+	PRIVATE_DATA->can_check_temperature = true;
 	if (res)
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	else
