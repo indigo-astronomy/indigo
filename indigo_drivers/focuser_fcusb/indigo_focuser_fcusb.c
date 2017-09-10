@@ -68,6 +68,8 @@ static void focuser_timer_callback(indigo_device *device) {
 	libfcusb_stop(PRIVATE_DATA->device_context);
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
 static indigo_result focuser_attach(indigo_device *device) {
@@ -152,10 +154,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, FOCUSER_STEPS_ITEM->number.value / 1000, focuser_timer_callback);
+		} else {
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		}
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
