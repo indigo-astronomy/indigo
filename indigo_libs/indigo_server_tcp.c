@@ -238,7 +238,7 @@ void indigo_server_shutdown() {
 	}
 }
 
-void indigo_server_add_resource(char *path, unsigned char *data, unsigned length, char *content_type) {
+void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type) {
 	INDIGO_LOG(indigo_log("Resource %s (%d, %s) added", path, length, content_type));
 	struct resource *resource = malloc(sizeof(struct resource));
 	resource->path = path;
