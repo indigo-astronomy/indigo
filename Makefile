@@ -54,8 +54,8 @@ ifeq ($(OS_DETECTED),Darwin)
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
 	PACKAGE_TYPE=dmg
 	UINT=-Duint=unsigned
-	LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/$(BUILD_INCLUDE)/libusb-1.0"
-	LIBUSB_LIBS="-L$(INDIGO_ROOT)/$(BUILD_LIB) -lusb-1.0"
+	LIBUSB_CFLAGS=-I$(INDIGO_ROOT)/$(BUILD_INCLUDE)/libusb-1.0
+	LIBUSB_LIBS=-L$(INDIGO_ROOT)/$(BUILD_LIB) -lusb-1.0
 endif
 ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
@@ -222,7 +222,7 @@ indigo_drivers/ccd_iidc/externals/libdc1394/configure: indigo_drivers/ccd_iidc/e
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; autoreconf -fiv; cd ../../../..
 
 indigo_drivers/ccd_iidc/externals/libdc1394/Makefile: indigo_drivers/ccd_iidc/externals/libdc1394/configure
-	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)" $(LIBUSB_CFLAGS) $(LIBUSB_LIBS); cd ../../../..
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT) $(LIBUSB_CFLAGS) $(LIBUSB_LIBS)"; cd ../../../..
 
 $(BUILD_LIB)/libdc1394.a: indigo_drivers/ccd_iidc/externals/libdc1394/Makefile
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make install; cd ../../../..
@@ -848,10 +848,10 @@ $(BUILD_LIB)/libqsiapi.a: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile
 #---------------------------------------------------------------------
 
 $(BUILD_DRIVERS)/indigo_ccd_qsi.a: $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a indigo_drivers/ccd_qsi/indigo_ccd_qsi.o
-	$(AR) $(ARFLAGS) $@ $^
+	$(AR) $(ARFLAGS) $@ indigo_drivers/ccd_qsi/indigo_ccd_qsi.o
 
 $(BUILD_DRIVERS)/indigo_ccd_qsi: indigo_drivers/ccd_qsi/indigo_ccd_qsi_main.o $(BUILD_DRIVERS)/indigo_ccd_qsi.a  $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
+	$(CC) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
 $(BUILD_DRIVERS)/indigo_ccd_qsi.$(SOEXT): indigo_drivers/ccd_qsi/indigo_ccd_qsi.o $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
@@ -1042,3 +1042,4 @@ clean-all: clean
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; cd ../../../..
+	cd indigo_drivers/ccd_qsi/externals; rm -rf qsiapi-7.6.0; cd ../../..
