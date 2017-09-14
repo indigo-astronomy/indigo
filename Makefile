@@ -54,8 +54,8 @@ ifeq ($(OS_DETECTED),Darwin)
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
 	PACKAGE_TYPE=dmg
 	UINT=-Duint=unsigned
-	LIBUSB_CFLAGS=LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/$(BUILD_INCLUDE)/libusb-1.0"
-	LIBUSB_LIBS=LIBUSB_LIBS="-L$(INDIGO_ROOT)/$(BUILD_LIB) -lusb-1.0"
+	LIBUSB_CFLAGS="-I$(INDIGO_ROOT)/$(BUILD_INCLUDE)/libusb-1.0"
+	LIBUSB_LIBS="-L$(INDIGO_ROOT)/$(BUILD_LIB) -lusb-1.0"
 endif
 ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
@@ -707,7 +707,7 @@ $(BUILD_DRIVERS)/indigo_focuser_fli.$(SOEXT): indigo_drivers/focuser_fli/indigo_
 
 #---------------------------------------------------------------------
 #
-#       Build SBIG CCD driver
+# Build SBIG CCD driver
 #
 #---------------------------------------------------------------------
 
@@ -782,6 +782,79 @@ $(BUILD_DRIVERS)/indigo_ccd_ica.a: indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o i
 
 $(BUILD_DRIVERS)/indigo_ccd_ica.dylib: indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_nikon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_sony.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Install libftd2xx
+#
+#---------------------------------------------------------------------
+
+$(BUILD_LIB)/libftd2xx.a:
+	install -d $(BUILD_LIB)
+ifeq ($(OS_DETECTED),Darwin)
+	curl http://www.ftdichip.com/Drivers/D2XX/MacOSX/D2XX1.4.4.dmg >/tmp/D2XX1.4.4.dmg
+	hdiutil attach -noverify -noautoopen /tmp/D2XX1.4.4.dmg
+	cp /Volumes/release/D2XX/ftd2xx.h /Volumes/release/D2XX/WinTypes.h $(BUILD_INCLUDE)
+	cp /Volumes/release/D2XX/libftd2xx.a $(BUILD_LIB)
+	hdiutil detach /Volumes/release
+	rm -rf /tmp/D2XX1.4.4.dmg
+endif
+ifeq ($(OS_DETECTED),Linux)
+ifeq ($(ARCH_DETECTED),arm)
+	curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-arm-v6-hf-1.4.6.tgz >/tmp/libftd2xx-arm-v6-hf-1.4.6.tgz
+	tar xvfz /tmp/libftd2xx-arm-v6-hf-1.4.6.tgz -C /tmp
+	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
+	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
+	rm -rf /tmp/libftd2xx-arm-v6-hf-1.4.6.tgz /tmp/release
+endif
+ifeq ($(ARCH_DETECTED),x86)
+	curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-i386-1.4.6.tgz >/tmp/libftd2xx-i386-1.4.6.tgz
+	tar xvfz /tmp/libftd2xx-i386-1.4.6.tgz -C /tmp
+	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
+	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
+	rm -rf /tmp/libftd2xx-i386-1.4.6.tgz /tmp/release
+endif
+ifeq ($(ARCH_DETECTED),x86_64)
+	curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-x86_64-1.4.6.tgz >/tmp/libftd2xx-x86_64-1.4.6.tgz
+	tar xvfz /tmp/libftd2xx-x86_64-1.4.6.tgz -C /tmp
+	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
+	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
+	rm -rf /tmp/libftd2xx-x86_64-1.4.6.tgz /tmp/release
+endif
+endif
+
+#---------------------------------------------------------------------
+#
+#	Build libqsi
+#
+#---------------------------------------------------------------------
+
+indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/configure:
+	curl http://www.qsimaging.com/downloads/qsiapi-7.6.0.tar.gz >/tmp/qsiapi-7.6.0.tar.gz
+	install -d indigo_drivers/ccd_qsi/externals
+	tar xvfz /tmp/qsiapi-7.6.0.tar.gz -C indigo_drivers/ccd_qsi/externals
+	rm /tmp/qsiapi-7.6.0.tar.gz
+
+indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/configure
+	cd indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; cd ../../../..
+
+$(BUILD_LIB)/libqsiapi.a: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile
+	cd indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib; make; make install; cd ../../../../..
+
+#---------------------------------------------------------------------
+#
+#	Build QSI CCD driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_ccd_qsi.a: indigo_drivers/ccd_qsi/indigo_ccd_qsi.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_qsi: indigo_drivers/ccd_qsi/indigo_ccd_qsi_main.o $(BUILD_DRIVERS)/indigo_ccd_qsi.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
+
+$(BUILD_DRIVERS)/indigo_ccd_qsi.$(SOEXT): indigo_drivers/ccd_qsi/indigo_ccd_qsi.o $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
 #---------------------------------------------------------------------
 #
