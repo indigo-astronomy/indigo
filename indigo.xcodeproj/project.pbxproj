@@ -115,7 +115,7 @@
 		9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDBAE171E2D2099004FE70F /* indigo_timer.c */; };
 		9DDBAE1A1E2D2099004FE70F /* indigo_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDBAE181E2D2099004FE70F /* indigo_timer.h */; };
 		9DE2A1241DC3A325008E8375 /* indigo_server in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D97F8171D9A8A1900582EAF /* indigo_server */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		9DF7E64F1F6AA17900156652 /* indigo_ccd_qsi_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.c */; };
+		9DF7E64F1F6AA17900156652 /* indigo_ccd_qsi_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */; };
 		9DF7E6501F6AA17900156652 /* indigo_ccd_qsi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */; };
 		9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */; };
 /* End PBXBuildFile section */
@@ -520,7 +520,7 @@
 		9DBC34741DCB270200588DB9 /* libstdc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libstdc++.tbd"; path = "usr/lib/libstdc++.tbd"; sourceTree = SDKROOT; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9DDBAE181E2D2099004FE70F /* indigo_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_timer.h; sourceTree = "<group>"; };
-		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_qsi_main.c; sourceTree = "<group>"; };
+		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
 		9DF7E6521F6AA3FE00156652 /* QSI Linux API Reference Manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = "QSI Linux API Reference Manual.pdf"; path = "doc/QSI Linux API Reference Manual.pdf"; sourceTree = "<group>"; };
@@ -1272,7 +1272,7 @@
 			isa = PBXGroup;
 			children = (
 				595355A41F6AD71300478BEC /* qsiapi-7.6.0 */,
-				9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.c */,
+				9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */,
 				9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */,
 				9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */,
 			);
@@ -1609,7 +1609,7 @@
 				59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */,
 				5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */,
 				59C8E7C41DBBB05500AA3F0A /* indigo_ccd_asi.c in Sources */,
-				9DF7E64F1F6AA17900156652 /* indigo_ccd_qsi_main.c in Sources */,
+				9DF7E64F1F6AA17900156652 /* indigo_ccd_qsi_main.cpp in Sources */,
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
