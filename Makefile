@@ -847,10 +847,10 @@ $(BUILD_LIB)/libqsiapi.a: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile
 #
 #---------------------------------------------------------------------
 
-$(BUILD_DRIVERS)/indigo_ccd_qsi.a: indigo_drivers/ccd_qsi/indigo_ccd_qsi.o
+$(BUILD_DRIVERS)/indigo_ccd_qsi.a: $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a indigo_drivers/ccd_qsi/indigo_ccd_qsi.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_DRIVERS)/indigo_ccd_qsi: indigo_drivers/ccd_qsi/indigo_ccd_qsi_main.o $(BUILD_DRIVERS)/indigo_ccd_qsi.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a
+$(BUILD_DRIVERS)/indigo_ccd_qsi: indigo_drivers/ccd_qsi/indigo_ccd_qsi_main.o $(BUILD_DRIVERS)/indigo_ccd_qsi.a  $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo
 
 $(BUILD_DRIVERS)/indigo_ccd_qsi.$(SOEXT): indigo_drivers/ccd_qsi/indigo_ccd_qsi.o $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a
