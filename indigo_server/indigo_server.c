@@ -67,6 +67,7 @@
 #include "focuser_usbv3/indigo_focuser_usbv3.h"
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #include "ccd_dsi/indigo_ccd_dsi.h"
+#include "ccd_qsi/indigo_ccd_qsi.h"
 #ifdef INDIGO_MACOS
 #include "ccd_ica/indigo_ccd_ica.h"
 #endif
@@ -98,6 +99,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_usbv3,
 	indigo_ccd_sbig,
 	indigo_ccd_dsi,
+	indigo_ccd_qsi,
 #ifdef INDIGO_MACOS
 	indigo_ccd_ica,
 #endif
