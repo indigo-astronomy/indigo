@@ -713,6 +713,24 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		return INDIGO_OK;
 	}
 
+	if (ctrl_caps.ControlType == ASI_BRIGHTNESS) {
+		CCD_OFFSET_PROPERTY->hidden = false;
+		if(ctrl_caps.IsWritable)
+			CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
+		else
+			CCD_OFFSET_PROPERTY->perm = INDIGO_RO_PERM;
+
+		CCD_OFFSET_ITEM->number.min = ctrl_caps.MinValue;
+		CCD_OFFSET_ITEM->number.max = ctrl_caps.MaxValue;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = ASIGetControlValue(id, ASI_BRIGHTNESS, &value, &unused);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_BRIGHTNESS) = %d", id, res);
+		CCD_OFFSET_ITEM->number.value = value;
+		CCD_OFFSET_ITEM->number.step = 1;
+		return INDIGO_OK;
+	}
+
 	if (ctrl_caps.ControlType == ASI_TARGET_TEMP) {
 		CCD_TEMPERATURE_PROPERTY->hidden = false;
 		if(ctrl_caps.IsWritable)
