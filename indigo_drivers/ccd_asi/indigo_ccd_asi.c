@@ -941,12 +941,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
 		CCD_OFFSET_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
-		
+
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_BRIGHTNESS, (long)(CCD_OFFSET_ITEM->number.value), ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_BRIGHTNESS) = %d", PRIVATE_DATA->dev_id, res);
-		
+
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
