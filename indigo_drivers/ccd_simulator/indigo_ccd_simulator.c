@@ -515,19 +515,19 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
-	} else if (indigo_property_match(DSLR_APERTURE_PROPERTY, property)) {
+	} else if (DSLR_APERTURE_PROPERTY && indigo_property_match(DSLR_APERTURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_APERTURE
 		indigo_property_copy_values(DSLR_APERTURE_PROPERTY, property, false);
 		DSLR_APERTURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DSLR_APERTURE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property)) {
+	} else if (DSLR_SHUTTER_PROPERTY && indigo_property_match(DSLR_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_SHUTTER
 		indigo_property_copy_values(DSLR_SHUTTER_PROPERTY, property, false);
 		DSLR_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSLR_ISO_PROPERTY, property)) {
+	} else if (DSLR_ISO_PROPERTY && indigo_property_match(DSLR_ISO_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_ISO
 		indigo_property_copy_values(DSLR_ISO_PROPERTY, property, false);
 		DSLR_ISO_PROPERTY->state = INDIGO_OK_STATE;
