@@ -92,6 +92,28 @@ typedef struct {
 } asi_private_data;
 
 
+static int get_unity_gain(indigo_device *device) {
+	double e_per_adu = PRIVATE_DATA->info.ElecPerADU;
+
+	if (PRIVATE_DATA->is_asi120) {
+		if ((e_per_adu >= 1) && (e_per_adu < 2))
+			return (int)((e_per_adu - 1) * 16);
+		else if ((e_per_adu >= 2) && (e_per_adu < 4))
+			return (int)((e_per_adu - 2) / 2 * 16) + 16;
+		else if ((e_per_adu >= 4) && (e_per_adu < 8))
+			return (int)((e_per_adu - 4) / 4 * 16) + 32;
+		else if ((e_per_adu >= 8) && (e_per_adu < 16))
+			return (int)((e_per_adu - 8) / 8 * 16) + 48;
+		else if ((e_per_adu >= 16) && (e_per_adu < 32))
+			return (int)((e_per_adu - 16) / 16 * 16) + 64;
+		else if ((e_per_adu >= 32) && (e_per_adu < 64))
+			return (int)((e_per_adu - 32) / 32 * 20) + 80;
+	} else {
+		return (int)(200 * log10(e_per_adu));
+	}
+}
+
+
 static char *get_bayer_string(indigo_device *device) {
 	if (!PRIVATE_DATA->info.IsColorCam) return NULL;
 
@@ -833,9 +855,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					//int Offset_HighestDR, Offset_UnityGain, Gain_LowestRN, Offset_LowestRN;
-					//res = ASIGetGainOffset(id, &Offset_HighestDR, &Offset_UnityGain, &Gain_LowestRN, &Offset_LowestRN);
-					//INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetGainOffset(%d) = %d, Offset_HighestDR=%d,  Offset_UnityGain=%d, Gain_LowestRN=%d, Offset_LowestRN=%d", id, res, Offset_HighestDR, Offset_UnityGain,Gain_LowestRN, Offset_LowestRN);
+					// DEBUG ONLY to be REMOVED
+					// BEGIN
+					int Offset_HighestDR, Offset_UnityGain, Gain_LowestRN, Offset_LowestRN;
+					res = ASIGetGainOffset(id, &Offset_HighestDR, &Offset_UnityGain, &Gain_LowestRN, &Offset_LowestRN);
+					INDIGO_DRIVER_LOG(
+						DRIVER_NAME, "ASIGetGainOffset(%d) = %d, Offset_HighestDR=%d,  Offset_UnityGain=%d, Gain_LowestRN=%d, Offset_LowestRN=%d, ElecPerADU=%f, Unity_GAIN=%d",
+						id, res, Offset_HighestDR, Offset_UnityGain,Gain_LowestRN, Offset_LowestRN, PRIVATE_DATA->info.ElecPerADU, get_unity_gain(device)
+					);
+					// END
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
