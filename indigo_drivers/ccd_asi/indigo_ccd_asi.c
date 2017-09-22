@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -833,6 +833,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					//int Offset_HighestDR, Offset_UnityGain, Gain_LowestRN, Offset_LowestRN;
+					//res = ASIGetGainOffset(id, &Offset_HighestDR, &Offset_UnityGain, &Gain_LowestRN, &Offset_LowestRN);
+					//INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetGainOffset(%d) = %d, Offset_HighestDR=%d,  Offset_UnityGain=%d, Gain_LowestRN=%d, Offset_LowestRN=%d", id, res, Offset_HighestDR, Offset_UnityGain,Gain_LowestRN, Offset_LowestRN);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
