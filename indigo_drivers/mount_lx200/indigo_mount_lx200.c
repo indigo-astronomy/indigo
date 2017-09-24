@@ -430,7 +430,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						}
 					}
 				}
-			} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM) {
+			} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 				char command[128], response[128];
 				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
