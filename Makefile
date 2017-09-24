@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 56
+INDIGO_BUILD := 57
 INDIGO_ROOT := $(shell pwd)
 
 DEBUG_BUILD=-g
@@ -473,6 +473,21 @@ $(BUILD_DRIVERS)/indigo_mount_lx200: indigo_drivers/mount_lx200/indigo_mount_lx2
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
 $(BUILD_DRIVERS)/indigo_mount_lx200.$(SOEXT): indigo_drivers/mount_lx200/indigo_mount_lx200.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build mount temma driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_mount_temma.a: indigo_drivers/mount_temma/indigo_mount_temma.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_mount_temma: indigo_drivers/mount_temma/indigo_mount_temma_main.o $(BUILD_DRIVERS)/indigo_mount_temma.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_mount_temma.$(SOEXT): indigo_drivers/mount_temma/indigo_mount_temma.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------

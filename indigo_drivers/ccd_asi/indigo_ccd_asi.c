@@ -126,9 +126,8 @@ static int get_unity_gain(indigo_device *device) {
 			return (int)((e_per_adu - 16) / 16 * 16) + 64;
 		else if ((e_per_adu >= 32) && (e_per_adu < 64))
 			return (int)((e_per_adu - 32) / 32 * 20) + 80;
-	} else {
-		return (int)(200 * log10(e_per_adu));
 	}
+	return (int)(200 * log10(e_per_adu));
 }
 
 

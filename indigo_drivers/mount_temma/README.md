@@ -1,0 +1,22 @@
+# Takahashi Temma mount driver
+
+## Supported devices
+
+Any Temma protocol compatible mount connected over serial port.
+
+Single device is present on startup (no hot-plug support).
+
+## Supported platforms
+
+This driver is platform independent
+
+## License
+
+INDIGO Astronomy open-source license.
+
+## Use
+
+indigo_server indigo_mount_temma
+
+## Comments
+
