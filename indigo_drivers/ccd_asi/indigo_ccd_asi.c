@@ -63,6 +63,17 @@
 #define RAW16_NAME                 "RAW 16"
 #define Y8_NAME                    "Y 8"
 
+#define ASI_PRESETS_PROPERTY      (PRIVATE_DATA->asi_presets_property)
+
+#define ASI_HIGHEST_DR_ITEM       (ASI_PRESETS_PROPERTY->items+0)
+#define ASI_HIGHEST_DR_NAME       "ASI_HIGHEST_DR"
+
+#define ASI_UNITY_GAIN_ITEM       (ASI_PRESETS_PROPERTY->items+1)
+#define ASI_UNITY_GAIN_NAME       "ASI_UNITY_GAIN"
+
+#define ASI_LOWEST_RN_ITEM        (ASI_PRESETS_PROPERTY->items+2)
+#define ASI_LOWEST_RN_NAME        "ASI_LOWEST_RN"
+
 #define ASI_ADVANCED_PROPERTY      (PRIVATE_DATA->asi_advanced_property)
 
 // gp_bits is used as boolean
@@ -87,7 +98,14 @@ typedef struct {
 	long is_asi120;
 	bool can_check_temperature, has_temperature_sensor;
 	ASI_CAMERA_INFO info;
+	int gain_highest_dr;
+	int offset_highest_dr;
+	int gain_unity_gain;
+	int offset_unity_gain;
+	int gain_lowerst_rn;
+	int offset_lowest_rn;
 	indigo_property *pixel_format_property;
+	indigo_property *asi_presets_property;
 	indigo_property *asi_advanced_property;
 } asi_private_data;
 
@@ -190,6 +208,8 @@ static indigo_result asi_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
 			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+		if (indigo_property_match(ASI_PRESETS_PROPERTY, property))
+			indigo_define_property(device, ASI_PRESETS_PROPERTY, NULL);
 		if (indigo_property_match(ASI_ADVANCED_PROPERTY, property))
 			indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
 	}
@@ -633,6 +653,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		CCD_STREAMING_PROPERTY->hidden = false;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
+
+		// -------------------------------------------------------------------------------- ASI_PRESETS
+		ASI_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, "ASI_PRESETS", CCD_ADVANCED_GROUP, "Presets (gain, offset)", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+		if (ASI_PRESETS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
 		if (ASI_ADVANCED_PROPERTY == NULL)
@@ -834,7 +860,36 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					int res = ASIGetNumOfControls(id, &ctrl_count);
+					int res = ASIGetGainOffset(
+						id,
+						&PRIVATE_DATA->offset_highest_dr,
+						&PRIVATE_DATA->offset_unity_gain,
+						&PRIVATE_DATA->gain_lowerst_rn,
+						&PRIVATE_DATA->offset_lowest_rn
+					);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					if (res) {
+						INDIGO_DRIVER_LOG( DRIVER_NAME, "ASIGetGainOffset(%d) = %d", id, res);
+						return INDIGO_FAILED;
+					}
+
+					PRIVATE_DATA->gain_unity_gain = get_unity_gain(device);
+					PRIVATE_DATA->gain_highest_dr = 0;
+
+					char item_desc[100];
+					sprintf(item_desc, "Highest Dynamic Range (%d, %d)", PRIVATE_DATA->gain_highest_dr, PRIVATE_DATA->offset_highest_dr);
+					indigo_init_switch_item(ASI_HIGHEST_DR_ITEM, ASI_HIGHEST_DR_NAME, item_desc, false);
+
+					sprintf(item_desc, "Unity Gain (%d, %d)", PRIVATE_DATA->gain_unity_gain, PRIVATE_DATA->offset_unity_gain);
+					indigo_init_switch_item(ASI_UNITY_GAIN_ITEM, ASI_UNITY_GAIN_NAME, item_desc, false);
+
+					sprintf(item_desc, "Lowest Readout Noise (%d, %d)", PRIVATE_DATA->gain_lowerst_rn, PRIVATE_DATA->offset_lowest_rn);
+					indigo_init_switch_item(ASI_LOWEST_RN_ITEM, ASI_LOWEST_RN_NAME, item_desc, false);
+
+					indigo_define_property(device, ASI_PRESETS_PROPERTY, NULL);
+
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					res = ASIGetNumOfControls(id, &ctrl_count);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
@@ -855,15 +910,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					// DEBUG ONLY to be REMOVED
-					// BEGIN
-					int Offset_HighestDR, Offset_UnityGain, Gain_LowestRN, Offset_LowestRN;
-					res = ASIGetGainOffset(id, &Offset_HighestDR, &Offset_UnityGain, &Gain_LowestRN, &Offset_LowestRN);
-					INDIGO_DRIVER_LOG(
-						DRIVER_NAME, "ASIGetGainOffset(%d) = %d, Offset_HighestDR=%d,  Offset_UnityGain=%d, Gain_LowestRN=%d, Offset_LowestRN=%d, ElecPerADU=%f, Unity_GAIN=%d",
-						id, res, Offset_HighestDR, Offset_UnityGain,Gain_LowestRN, Offset_LowestRN, PRIVATE_DATA->info.ElecPerADU, get_unity_gain(device)
-					);
-					// END
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -874,6 +920,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				PRIVATE_DATA->can_check_temperature = false;
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+				indigo_delete_property(device, ASI_PRESETS_PROPERTY, NULL);
 				indigo_delete_property(device, ASI_ADVANCED_PROPERTY, NULL);
 				asi_close(device);
 				device->is_connected = false;
@@ -1113,6 +1160,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, PIXEL_FORMAT_PROPERTY);
+			indigo_save_property(device, NULL, ASI_PRESETS_PROPERTY);
 			indigo_save_property(device, NULL, ASI_ADVANCED_PROPERTY);
 		}
 	}
@@ -1127,6 +1175,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
+	indigo_release_property(ASI_PRESETS_PROPERTY);
 	indigo_release_property(ASI_ADVANCED_PROPERTY);
 
 	return indigo_ccd_detach(device);
