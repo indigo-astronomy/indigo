@@ -11,6 +11,7 @@
 		59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */ = {isa = PBXBuildFile; fileRef = 59019E0A1DE0AC7400CCB3ED /* indigo_client.h */; };
 		59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59019E0F1DE112A600CCB3ED /* ASICamera2.h */; };
 		59019E131DE112B700CCB3ED /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59019E111DE112B000CCB3ED /* libASICamera2.a */; };
+		590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */ = {isa = PBXBuildFile; fileRef = 590B59D11F78544000086FD2 /* indigo_mount_temma.c */; };
 		5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
 		5911F7B41F02E1400053F3CA /* libdsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7B01F02E1330053F3CA /* libdsi.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
@@ -268,6 +269,11 @@
 		590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi_main.c; sourceTree = "<group>"; };
 		590A86401DB80A04002F12FB /* indigo_ccd_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_asi.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		590A86411DB80A04002F12FB /* indigo_ccd_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_asi.h; sourceTree = "<group>"; };
+		590B59CF1F78543F00086FD2 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		590B59D01F78544000086FD2 /* indigo_mount_temma_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_temma_main.c; sourceTree = "<group>"; };
+		590B59D11F78544000086FD2 /* indigo_mount_temma.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_temma.c; sourceTree = "<group>"; };
+		590B59D21F78544000086FD2 /* indigo_mount_temma.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_temma.h; sourceTree = "<group>"; };
+		590B59D31F78544000086FD2 /* Temma.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Temma.pdf; sourceTree = "<group>"; };
 		5911F7AC1F02E1330053F3CA /* indigo_ccd_dsi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_dsi_main.c; sourceTree = "<group>"; };
 		5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_dsi.c; sourceTree = "<group>"; };
 		5911F7AE1F02E1330053F3CA /* indigo_ccd_dsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_dsi.h; sourceTree = "<group>"; };
@@ -633,6 +639,18 @@
 				59019E0D1DE1125900CCB3ED /* bin_externals */,
 			);
 			path = ccd_asi;
+			sourceTree = "<group>";
+		};
+		590B59CE1F7853F400086FD2 /* mount_temma */ = {
+			isa = PBXGroup;
+			children = (
+				590B59CF1F78543F00086FD2 /* README.md */,
+				590B59D01F78544000086FD2 /* indigo_mount_temma_main.c */,
+				590B59D11F78544000086FD2 /* indigo_mount_temma.c */,
+				590B59D21F78544000086FD2 /* indigo_mount_temma.h */,
+				590B59D31F78544000086FD2 /* Temma.pdf */,
+			);
+			path = mount_temma;
 			sourceTree = "<group>";
 		};
 		5911F7AB1F02E10B0053F3CA /* ccd_dsi */ = {
@@ -1060,6 +1078,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				590B59CE1F7853F400086FD2 /* mount_temma */,
 				9DF7E64B1F6AA0E600156652 /* ccd_qsi */,
 				5911F7AB1F02E10B0053F3CA /* ccd_dsi */,
 				593AD1001EF8396A00C059BC /* guider_asi */,
@@ -1606,6 +1625,7 @@
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
+				590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */,
 				59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */,
 				5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */,
 				59C8E7C41DBBB05500AA3F0A /* indigo_ccd_asi.c in Sources */,
