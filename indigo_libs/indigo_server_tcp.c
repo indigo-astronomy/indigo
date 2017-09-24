@@ -241,10 +241,10 @@ void indigo_server_shutdown() {
 void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type) {
 	INDIGO_LOG(indigo_log("Resource %s (%d, %s) added", path, length, content_type));
 	struct resource *resource = malloc(sizeof(struct resource));
-	resource->path = path;
+	resource->path = (char *)path;
 	resource->data = data;
 	resource->length = length;
-	resource->content_type = content_type;
+	resource->content_type = (char *)content_type;
 	resource->next = resources;
 	resources = resource;
 }
@@ -304,17 +304,17 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 
 /*
  Copyright (c) 2014 Malte Hildingsson, malte (at) afterwi.se
- 
+
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
  in the Software without restriction, including without limitation the rights
  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  copies of the Software, and to permit persons to whom the Software is
  furnished to do so, subject to the following conditions:
- 
+
  The above copyright notice and this permission notice shall be included in
  all copies or substantial portions of the Software.
- 
+
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
