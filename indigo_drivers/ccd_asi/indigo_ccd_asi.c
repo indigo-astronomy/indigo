@@ -130,6 +130,22 @@ static int get_unity_gain(indigo_device *device) {
 	return (int)(200 * log10(e_per_adu));
 }
 
+static void adjust_preset_switches(indigo_device *device) {
+	ASI_HIGHEST_DR_ITEM->sw.value = false;
+	ASI_UNITY_GAIN_ITEM->sw.value = false;
+	ASI_LOWEST_RN_ITEM->sw.value = false;
+
+	if (((int)CCD_GAIN_ITEM->number.value == PRIVATE_DATA->gain_highest_dr) &&
+	    ((int)CCD_OFFSET_ITEM->number.value == PRIVATE_DATA->offset_highest_dr)) {
+		ASI_HIGHEST_DR_ITEM->sw.value = true;
+	} else if (((int)CCD_GAIN_ITEM->number.value == PRIVATE_DATA->gain_unity_gain) &&
+	    ((int)CCD_OFFSET_ITEM->number.value == PRIVATE_DATA->offset_unity_gain)) {
+		ASI_UNITY_GAIN_ITEM->sw.value = true;
+	} else if (((int)CCD_GAIN_ITEM->number.value == PRIVATE_DATA->gain_lowerst_rn) &&
+	    ((int)CCD_OFFSET_ITEM->number.value == PRIVATE_DATA->offset_lowest_rn)) {
+		ASI_LOWEST_RN_ITEM->sw.value = true;
+	}
+}
 
 static char *get_bayer_string(indigo_device *device) {
 	if (!PRIVATE_DATA->info.IsColorCam) return NULL;
@@ -1023,9 +1039,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
-		ASI_HIGHEST_DR_ITEM->sw.value = false;
-		ASI_UNITY_GAIN_ITEM->sw.value = false;
-		ASI_LOWEST_RN_ITEM->sw.value = false;
+		adjust_preset_switches(device);
 
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
@@ -1043,9 +1057,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
-		ASI_HIGHEST_DR_ITEM->sw.value = false;
-		ASI_UNITY_GAIN_ITEM->sw.value = false;
-		ASI_LOWEST_RN_ITEM->sw.value = false;
+		adjust_preset_switches(device);
 
 		if (IS_CONNECTED) {
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
