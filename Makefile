@@ -235,6 +235,10 @@ $(BUILD_LIB)/libdc1394.a: indigo_drivers/ccd_iidc/externals/libdc1394/Makefile
 
 $(BUILD_LIB)/libnovas.a: externals/novas/novas.o externals/novas/eph_manager.o externals/novas/novascon.o externals/novas/nutation.o externals/novas/readeph0.o  externals/novas/solsys1.o  externals/novas/solsys3.o
 	$(AR) $(ARFLAGS) $@ $^
+	install externals/novas/novas.h $(BUILD_INCLUDE)
+	install externals/novas/novascon.h $(BUILD_INCLUDE)
+	install externals/novas/solarsystem.h $(BUILD_INCLUDE)
+	install externals/novas/nutation.h $(BUILD_INCLUDE)
 	install externals/novas/JPLEPH.421 $(BUILD_LIB)
 
 #---------------------------------------------------------------------
@@ -404,7 +408,7 @@ init:
 $(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c)))
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c))) $(BUILD_LIB)/libjpeg.a
+$(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard indigo_libs/*.c))) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libnovas.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 #---------------------------------------------------------------------
