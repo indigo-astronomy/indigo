@@ -1023,9 +1023,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAMMA, (long)(CCD_GAMMA_ITEM->number.value), ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAMMA) = %d", PRIVATE_DATA->dev_id, res);
-
-		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAMMA) = %d", PRIVATE_DATA->dev_id, res);
+			CCD_GAMMA_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1037,10 +1040,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_BRIGHTNESS, (long)(CCD_OFFSET_ITEM->number.value), ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_BRIGHTNESS) = %d", PRIVATE_DATA->dev_id, res);
-
-		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
-		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_BRIGHTNESS) = %d", PRIVATE_DATA->dev_id, res);
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			ASI_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+			ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		adjust_preset_switches(device);
 
 		if (IS_CONNECTED)
@@ -1055,10 +1062,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
-
-		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			ASI_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+			ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		adjust_preset_switches(device);
 
 		if (IS_CONNECTED) {
@@ -1089,19 +1100,23 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)gain, ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			ASI_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_BRIGHTNESS, (long)offset, ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_BRIGHTNESS) = %d", PRIVATE_DATA->dev_id, res);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_BRIGHTNESS) = %d", PRIVATE_DATA->dev_id, res);
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			ASI_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 
 		CCD_GAIN_ITEM->number.value = gain;
 		CCD_OFFSET_ITEM->number.value = offset;
-
-		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
-		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
 
 		if (IS_CONNECTED) {
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
