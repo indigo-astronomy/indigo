@@ -41,10 +41,8 @@
 
 #include "indigo_driver_xml.h"
 #include "indigo_io.h"
+#include "indigo_novas.h"
 #include "indigo_mount_temma.h"
-
-#define RA_MIN_DIF					0.1
-#define DEC_MIN_DIF					0.1
 
 #define PRIVATE_DATA        ((temma_private_data *)device->private_data)
 
@@ -54,6 +52,7 @@ typedef struct {
 	int device_count;
 	double currentRA;
 	double currentDec;
+	char pierSide;
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
 	//char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
@@ -63,7 +62,7 @@ typedef struct {
 	//indigo_property *alignment_mode_property;
 } temma_private_data;
 
-static bool temma_command(indigo_device *device, char *command, char *response, int max, int sleep);
+static bool temma_command(indigo_device *device, char *command, char *response, int max);
 
 static bool temma_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
@@ -77,25 +76,23 @@ static bool temma_open(indigo_device *device) {
 	}
 }
 
-static bool temma_command(indigo_device *device, char *command, char *response, int max, int sleep) {
+static bool temma_command(indigo_device *device, char *command, char *response, int max) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0)
-		usleep(sleep);
 	// read response
 	if (response != NULL) {
 		int index = 0;
-		int remains = max;
+		int remains = max - 1;
 		int timeout = 3;
 		while (remains > 0) {
 			fd_set readout;
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = timeout;
-			tv.tv_usec = 100000;
+			tv.tv_sec = 0;
+			tv.tv_usec = 300000;
 			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 			if (result <= 0)
@@ -123,24 +120,49 @@ static void temma_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
 
 static void temma_get_coords(indigo_device *device) {
-	char response[128];
-	if (temma_command(device, "E\r\n", response, 127, 0)) {
-		if (response[0] != 'E')
+	char buffer[128];
+	if (temma_command(device, "E\r\n", buffer, sizeof(buffer))) {
+		if (buffer[0] != 'E')
 			return;
 		int d, m, s;
-		sscanf(response + 1, "%02d%02d%02d", &d, &m, &s);
+		sscanf(buffer + 1, "%02d%02d%02d", &d, &m, &s);
 		PRIVATE_DATA->currentRA = d + m / 60.0 + s / 3600.0;
-		sscanf(response + 8, "%02d%02d%01d", &d, &m, &s);
-		if(response[7] == '-')
+		sscanf(buffer + 8, "%02d%02d%01d", &d, &m, &s);
+		if(buffer[7] == '-')
 			PRIVATE_DATA->currentDec = -(d + m / 60.0 + s / 600.0);
 		else
 			PRIVATE_DATA->currentDec = d + m / 60.0 + s / 600.0;
+		PRIVATE_DATA->pierSide = buffer[13];
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Coords %c %g %g", PRIVATE_DATA->pierSide, PRIVATE_DATA->currentRA, PRIVATE_DATA->currentDec);
 	}
+}
+
+static void temma_set_lst(indigo_device *device) {
+	char buffer[128];
+	double lst = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+	sprintf(buffer, "T%.2d%.2d%.2d\r\n", (int)lst, ((int)(lst * 60)) % 60, ((int)(lst * 3600)) % 60);
+	temma_command(device, buffer, NULL, 0);
+}
+
+static void temma_set_latitude(indigo_device *device) {
+	char buffer[128];
+	double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
+	double l = fabs(lat);
+	int d = (int)l;
+	l = (l - d) * 60;
+	int m = (int)l;
+	l = (l - m) * 6;
+	int s = (int)l;
+	if (lat > 0)
+		sprintf(buffer, "I+%.2d%.2d%.1d\r\n", d, m, s);
+	else
+		sprintf(buffer, "I-%.2d%.2d%.1d\r\n", d, m, s);
+	temma_command(device, buffer, NULL, 0);
 }
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -148,16 +170,13 @@ static void temma_get_coords(indigo_device *device) {
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
 		temma_get_coords(device);
-		double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - PRIVATE_DATA->currentRA);
-		double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - PRIVATE_DATA->currentDec);
-		if (diffRA <= RA_MIN_DIF && diffDec <= DEC_MIN_DIF)
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		if (PRIVATE_DATA->pierSide == 'F')
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		else
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
 	}
 }
@@ -204,10 +223,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				result = temma_open(device);
 			}
 			if (result) {
-				char response[128];
+				char buffer[128];
 				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
-				if (temma_command(device, "v\r\n", response, 127, 0))
-					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, response + 4, INDIGO_VALUE_SIZE);
+				if (temma_command(device, "v\r\n", buffer, sizeof(buffer)))
+					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, buffer + 4, INDIGO_VALUE_SIZE);
 				else
 					strcpy(PRIVATE_DATA->product, "unknown");
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", MOUNT_INFO_MODEL_ITEM->text.value);
@@ -241,7 +260,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
 		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-		// TBD
+		temma_set_latitude(device);
+		temma_set_lst(device);
+		temma_get_coords(device);
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
