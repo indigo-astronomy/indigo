@@ -130,6 +130,22 @@ static int get_unity_gain(indigo_device *device) {
 	return (int)(200 * log10(e_per_adu));
 }
 
+static void adjust_preset_switches(indigo_device *device) {
+	ASI_HIGHEST_DR_ITEM->sw.value = false;
+	ASI_UNITY_GAIN_ITEM->sw.value = false;
+	ASI_LOWEST_RN_ITEM->sw.value = false;
+
+	if (((int)CCD_GAIN_ITEM->number.value == PRIVATE_DATA->gain_highest_dr) &&
+	    ((int)CCD_OFFSET_ITEM->number.value == PRIVATE_DATA->offset_highest_dr)) {
+		ASI_HIGHEST_DR_ITEM->sw.value = true;
+	} else if (((int)CCD_GAIN_ITEM->number.value == PRIVATE_DATA->gain_unity_gain) &&
+	    ((int)CCD_OFFSET_ITEM->number.value == PRIVATE_DATA->offset_unity_gain)) {
+		ASI_UNITY_GAIN_ITEM->sw.value = true;
+	} else if (((int)CCD_GAIN_ITEM->number.value == PRIVATE_DATA->gain_lowerst_rn) &&
+	    ((int)CCD_OFFSET_ITEM->number.value == PRIVATE_DATA->offset_lowest_rn)) {
+		ASI_LOWEST_RN_ITEM->sw.value = true;
+	}
+}
 
 static char *get_bayer_string(indigo_device *device) {
 	if (!PRIVATE_DATA->info.IsColorCam) return NULL;
@@ -1022,8 +1038,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_BRIGHTNESS) = %d", PRIVATE_DATA->dev_id, res);
 
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		adjust_preset_switches(device);
+
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
+			indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- GAIN
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
@@ -1036,8 +1056,56 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
 
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED)
+		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		adjust_preset_switches(device);
+
+		if (IS_CONNECTED) {
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+			indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+		// ------------------------------------------------------------------------------- ASI_PRESETS
+	} else if (indigo_property_match(ASI_PRESETS_PROPERTY, property)) {
+		ASI_PRESETS_PROPERTY->state = INDIGO_IDLE_STATE;
+		indigo_property_copy_values(ASI_PRESETS_PROPERTY, property, false);
+		int gain = 0, offset = 0;
+		if (ASI_HIGHEST_DR_ITEM->sw.value) {
+			gain = PRIVATE_DATA->gain_highest_dr;
+			offset = PRIVATE_DATA->offset_highest_dr;
+		} else if (ASI_UNITY_GAIN_ITEM->sw.value) {
+			gain = PRIVATE_DATA->gain_unity_gain;
+			offset = PRIVATE_DATA->offset_unity_gain;
+		} else if (ASI_LOWEST_RN_ITEM->sw.value) {
+			gain = PRIVATE_DATA->gain_lowerst_rn;
+			offset = PRIVATE_DATA->offset_lowest_rn;
+		}
+
+		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)gain, ASI_FALSE);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
+
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_BRIGHTNESS, (long)offset, ASI_FALSE);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_BRIGHTNESS) = %d", PRIVATE_DATA->dev_id, res);
+
+		CCD_GAIN_ITEM->number.value = gain;
+		CCD_OFFSET_ITEM->number.value = offset;
+
+		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+
+		if (IS_CONNECTED) {
+			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
+			indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
