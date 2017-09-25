@@ -12,6 +12,7 @@
 		59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59019E0F1DE112A600CCB3ED /* ASICamera2.h */; };
 		59019E131DE112B700CCB3ED /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59019E111DE112B000CCB3ED /* libASICamera2.a */; };
 		590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */ = {isa = PBXBuildFile; fileRef = 590B59D11F78544000086FD2 /* indigo_mount_temma.c */; };
+		590B59D71F79A68100086FD2 /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 590B59D61F79A68000086FD2 /* libnovas.a */; };
 		5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
 		5911F7B41F02E1400053F3CA /* libdsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7B01F02E1330053F3CA /* libdsi.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
@@ -276,6 +277,7 @@
 		590B59D11F78544000086FD2 /* indigo_mount_temma.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_temma.c; sourceTree = "<group>"; };
 		590B59D21F78544000086FD2 /* indigo_mount_temma.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_temma.h; sourceTree = "<group>"; };
 		590B59D31F78544000086FD2 /* Temma.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Temma.pdf; sourceTree = "<group>"; };
+		590B59D61F79A68000086FD2 /* libnovas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnovas.a; path = build/lib/libnovas.a; sourceTree = "<group>"; };
 		5911F7AC1F02E1330053F3CA /* indigo_ccd_dsi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_dsi_main.c; sourceTree = "<group>"; };
 		5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_dsi.c; sourceTree = "<group>"; };
 		5911F7AE1F02E1330053F3CA /* indigo_ccd_dsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_dsi.h; sourceTree = "<group>"; };
@@ -598,6 +600,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				590B59D71F79A68100086FD2 /* libnovas.a in Frameworks */,
 				595355EE1F6B140300478BEC /* libftd2xx.a in Frameworks */,
 				595355EF1F6B140300478BEC /* libqsiapi.a in Frameworks */,
 				9DAC59CF1DC0A7B200AE410D /* libatik.a in Frameworks */,
@@ -1282,6 +1285,7 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				590B59D61F79A68000086FD2 /* libnovas.a */,
 				595355EC1F6B140300478BEC /* libftd2xx.a */,
 				595355ED1F6B140300478BEC /* libqsiapi.a */,
 				9DB9180B1DFEC19E00678721 /* libnexstar.a */,

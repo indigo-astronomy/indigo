@@ -478,7 +478,7 @@ static struct info {
   BOOL startPreview;
   BOOL tempLiveView;
   BOOL inPreview;
-  NSString *addedFileName;
+  NSMutableDictionary *addedFileName;
   int currentMode;
   int currentShutterSpeed;
   int focusSteps;
@@ -501,6 +501,7 @@ static struct info {
         self.pixelSize = info[i].pixelSize;
         break;
       }
+    addedFileName = [NSMutableDictionary dictionary];
   }
   return self;
 }
@@ -889,7 +890,9 @@ static struct info {
           }
           case PTPEventCodeCanonObjectAddedEx: {
             unsigned int obj = ptpReadUnsignedInt(&buf);
-            addedFileName = [NSString stringWithCString:(char *)(buf + 0x1C) encoding:NSUTF8StringEncoding];
+            NSNumber *key = [NSNumber numberWithUnsignedInt:obj];
+            NSString *value = [NSString stringWithCString:(char *)(buf + 0x1C) encoding:NSUTF8StringEncoding];
+            [addedFileName setObject:value forKey:key];
             [self sendPTPRequest:PTPRequestCodeCanonGetObject param1:obj];
             break;
 
@@ -1186,9 +1189,14 @@ static struct info {
     }
     case PTPRequestCodeCanonGetObject: {
       if (response.responseCode == PTPResponseCodeOK && data) {
-        [self.delegate cameraExposureDone:self data:data filename:addedFileName];
-        if (self.deleteDownloadedImage)
-          [self sendPTPRequest:PTPRequestCodeCanonDeleteObject param1:request.parameter1];
+        NSNumber *key = [NSNumber numberWithUnsignedInt:request.parameter1];
+        NSString *name = addedFileName[key];
+        [addedFileName removeObjectForKey:key];
+        if (name) {
+           [self.delegate cameraExposureDone:self data:data filename:name];
+          if (self.deleteDownloadedImage)
+            [self sendPTPRequest:PTPRequestCodeCanonDeleteObject param1:request.parameter1];
+        }
       } else {
         [self.delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"Download failed (0x%04x = %@)", response.responseCode, response]];
       }
@@ -1287,14 +1295,13 @@ static struct info {
         int count = i1 == 0 ? 1 : 2;
         buffer = malloc(size = 8 + 4 * (4 * count + 1));
         unsigned char *buf = buffer + 8;
+        ptpWriteUnsignedInt(&buf, count);
         if (count == 2) {
-          ptpWriteUnsignedInt(&buf, count);
           ptpWriteUnsignedInt(&buf, (i1 >> 24) & 0xFF);
           ptpWriteUnsignedInt(&buf, (i1 >> 16) & 0xFF);
           ptpWriteUnsignedInt(&buf, (i1 >> 8) & 0xFF);
           ptpWriteUnsignedInt(&buf, i1 & 0xFF);
         }
-        ptpWriteUnsignedInt(&buf, count);
         ptpWriteUnsignedInt(&buf, (i2 >> 24) & 0xFF);
         ptpWriteUnsignedInt(&buf, (i2 >> 16) & 0xFF);
         ptpWriteUnsignedInt(&buf, (i2 >> 8) & 0xFF);
