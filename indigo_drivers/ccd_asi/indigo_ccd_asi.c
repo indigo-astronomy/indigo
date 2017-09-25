@@ -875,7 +875,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					int res = ASIGetGainOffset(
+					int res = ASIGetNumOfControls(id, &ctrl_count);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					if (res) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
+						return INDIGO_NOT_FOUND;
+					}
+					ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
+					for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+						ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
+						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						init_camera_property(device, ctrl_caps);
+						adjust_preset_switches(device);
+					}
+					indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
+
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					res = ASIGetGainOffset(
 						id,
 						&PRIVATE_DATA->offset_highest_dr,
 						&PRIVATE_DATA->offset_unity_gain,
@@ -901,23 +918,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					sprintf(item_desc, "Lowest Readout Noise (%d, %d)", PRIVATE_DATA->gain_lowerst_rn, PRIVATE_DATA->offset_lowest_rn);
 					indigo_init_switch_item(ASI_LOWEST_RN_ITEM, ASI_LOWEST_RN_NAME, item_desc, false);
 
+					adjust_preset_switches(device);
 					indigo_define_property(device, ASI_PRESETS_PROPERTY, NULL);
-
-					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					res = ASIGetNumOfControls(id, &ctrl_count);
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetNumOfControls(%d) = %d", id, res);
-						return INDIGO_NOT_FOUND;
-					}
-					ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, 0);
-					for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
-						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-						ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
-						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-						init_camera_property(device, ctrl_caps);
-					}
-					indigo_define_property(device, ASI_ADVANCED_PROPERTY, NULL);
 
 					if (PRIVATE_DATA->has_temperature_sensor) {
 						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
