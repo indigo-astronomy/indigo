@@ -233,6 +233,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			if (DEVICE_CONTEXT->property_save_file_handle) {
 				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 				close(DEVICE_CONTEXT->property_save_file_handle);
+				DEVICE_CONTEXT->property_save_file_handle = 0;
 			} else {
 				CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
