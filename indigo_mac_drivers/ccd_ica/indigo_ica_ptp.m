@@ -953,6 +953,8 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     _width = _height = 0;
     _pixelSize = 0;
     objectAdded = false;
+    _imagesPerShot = 1;
+    _remainingCount = 0;
   }
   return self;
 }
@@ -1123,6 +1125,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     }
     case PTPPropertyCodeCompressionSetting: {
       NSDictionary *map = @{ @0: @"JPEG Basic", @1: @"JPEG Norm", @2: @"JPEG Fine", @4: @"RAW", @5: @"RAW + JPEG Basic", @6: @"RAW + JPEG Norm", @7: @"RAW + JPEG Fine" };
+      _imagesPerShot = (5 <= property.value.intValue && property.value.intValue <= 7) ? 2 : 1;
       [self mapValueList:property map:map];
       break;
     }
@@ -1352,6 +1355,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(double)startExposure {
+  _remainingCount = _imagesPerShot;
   [_icCamera requestTakePicture];
   return 0.0;
 }
@@ -1447,6 +1451,8 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       [_delegate cameraFrame:self left:0 top:0 width:-1 height:-1];
       NSURL *url = [NSURL URLWithString:name relativeToURL:folder];
       NSData *data = [NSData dataWithContentsOfURL:url];
+      if (_remainingCount > 0)
+        _remainingCount--;
       [_delegate cameraExposureDone:self data:data filename:name];
       [NSFileManager.defaultManager removeItemAtURL:url error:nil];
       return;
