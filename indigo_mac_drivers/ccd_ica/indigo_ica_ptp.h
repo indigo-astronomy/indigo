@@ -451,6 +451,9 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 @property int height;
 @property float pixelSize;
 
+@property int imagesPerShot;
+@property int remainingCount;
+
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate;
 
 -(BOOL)operationIsSupported:(PTPRequestCode)code;
