@@ -127,7 +127,8 @@ static int get_unity_gain(indigo_device *device) {
 		else if ((e_per_adu >= 32) && (e_per_adu < 64))
 			return (int)((e_per_adu - 32) / 32 * 20) + 80;
 	}
-	return (int)(200 * log10(e_per_adu));
+	if (e_per_adu != 0) return (int)(200 * log10(e_per_adu));
+	else return 0;
 }
 
 static void adjust_preset_switches(indigo_device *device) {
