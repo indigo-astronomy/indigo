@@ -1,6 +1,8 @@
 // Copyright (c) 2017 CloudMakers, s. r. o.
 // All rights reserved.
 //
+// Code is partially based on Temma driver created by Kok Chen.
+//
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 //
@@ -38,6 +40,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_io.h"
@@ -46,6 +49,21 @@
 
 #define PRIVATE_DATA        ((temma_private_data *)device->private_data)
 
+#define TEMMA_GET_VERSION						"v", true
+#define TEMMA_GET_POSITION					"E", true
+#define TEMMA_GET_GOTO_STATE				"s", true
+#define TEMMA_GET_CORRECTION_SPEED	"lg", true
+#define TEMMA_SET_VOLTAGE_12V				"v1", false
+#define TEMMA_SET_VOLTAGE_24V				"v2", false
+#define TEMMA_SET_STELLAR_RATE			"LL", false
+#define TEMMA_SET_SOLAR_RATE				"LK", false
+
+#define TEMMA_SLEW_EAST							"M", false
+#define TEMMA_SLEW_WEST							"M", false
+#define TEMMA_NORTH_EAST						"M", false
+#define TEMMA_SOUTH_EAST						"M", false
+#define TEMMA_SLEW_STOP							"M\u80", false
+
 typedef struct {
 	bool parked;
 	int handle;
@@ -53,6 +71,7 @@ typedef struct {
 	double currentRA;
 	double currentDec;
 	char pierSide;
+	bool isBusy;
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
 	//char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
@@ -62,11 +81,30 @@ typedef struct {
 	//indigo_property *alignment_mode_property;
 } temma_private_data;
 
-static bool temma_command(indigo_device *device, char *command, char *response, int max);
-
 static bool temma_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_open_serial(name);
+	
+	struct termios options;
+	memset(&options, 0, sizeof options);
+	if (tcgetattr(PRIVATE_DATA->handle, &options) != 0) {
+		close(PRIVATE_DATA->handle);
+		return false;
+	}
+	cfsetispeed(&options,B9600);
+	cfsetospeed(&options,B9600);
+	options.c_cflag |= ( CS8 | PARENB | CRTSCTS );
+	options.c_cflag &= ( ~PARODD & ~CSTOPB );
+	cfsetispeed( &options, B19200 ) ;
+	cfsetospeed( &options, B19200 ) ;
+	options.c_iflag = IGNBRK;
+	options.c_cc[VMIN] = 1;
+	options.c_cc[VTIME] = 5;
+	options.c_lflag = options.c_oflag = 0;
+	if (tcsetattr(PRIVATE_DATA->handle,TCSANOW, &options) != 0) {
+		close(PRIVATE_DATA->handle);
+		return false;
+	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
 		return true;
@@ -76,16 +114,18 @@ static bool temma_open(indigo_device *device) {
 	}
 }
 
-static bool temma_command(indigo_device *device, char *command, char *response, int max) {
+static bool temma_command(indigo_device *device, char *command, bool wait) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+	indigo_write(PRIVATE_DATA->handle, "\r\n", 2);
 	// read response
-	if (response != NULL) {
+	if (wait) {
+		char buffer[128];
+		int remains = sizeof(buffer) - 1;
 		int index = 0;
-		int remains = max - 1;
 		int timeout = 3;
 		while (remains > 0) {
 			fd_set readout;
@@ -99,7 +139,7 @@ static bool temma_command(indigo_device *device, char *command, char *response, 
 				break;
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
@@ -107,12 +147,41 @@ static bool temma_command(indigo_device *device, char *command, char *response, 
 				continue;
 			if (c == '\n')
 				break;
-			response[index++] = c;
+			buffer[index++] = c;
 		}
-		response[index] = 0;
+		buffer[index] = 0;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "command '%s' -> '%s'", command, buffer);
+		switch (buffer[0]) {
+			case 'E': {
+				int d, m, s;
+				sscanf(buffer + 1, "%02d%02d%02d", &d, &m, &s);
+				PRIVATE_DATA->currentRA = d + m / 60.0 + s / 3600.0;
+				sscanf(buffer + 8, "%02d%02d%01d", &d, &m, &s);
+				if(buffer[7] == '-')
+					PRIVATE_DATA->currentDec = -(d + m / 60.0 + s / 600.0);
+				else
+					PRIVATE_DATA->currentDec = d + m / 60.0 + s / 600.0;
+				PRIVATE_DATA->pierSide = buffer[13];
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Coords %c %g %g", PRIVATE_DATA->pierSide, PRIVATE_DATA->currentRA, PRIVATE_DATA->currentDec);
+				break;
+			}
+			case 'v': {
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
+				strncpy(MOUNT_INFO_MODEL_ITEM->text.value, buffer + 4, INDIGO_VALUE_SIZE);
+				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+				break;
+			}
+			case 's': {
+				PRIVATE_DATA->isBusy = buffer[0] == '1';
+				break;
+			}
+			default:
+				break;
+		}
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "command '%s'", command);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
 }
 
@@ -124,29 +193,11 @@ static void temma_close(indigo_device *device) {
 	}
 }
 
-static void temma_get_coords(indigo_device *device) {
-	char buffer[128];
-	if (temma_command(device, "E\r\n", buffer, sizeof(buffer))) {
-		if (buffer[0] != 'E')
-			return;
-		int d, m, s;
-		sscanf(buffer + 1, "%02d%02d%02d", &d, &m, &s);
-		PRIVATE_DATA->currentRA = d + m / 60.0 + s / 3600.0;
-		sscanf(buffer + 8, "%02d%02d%01d", &d, &m, &s);
-		if(buffer[7] == '-')
-			PRIVATE_DATA->currentDec = -(d + m / 60.0 + s / 600.0);
-		else
-			PRIVATE_DATA->currentDec = d + m / 60.0 + s / 600.0;
-		PRIVATE_DATA->pierSide = buffer[13];
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Coords %c %g %g", PRIVATE_DATA->pierSide, PRIVATE_DATA->currentRA, PRIVATE_DATA->currentDec);
-	}
-}
-
 static void temma_set_lst(indigo_device *device) {
 	char buffer[128];
 	double lst = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 	sprintf(buffer, "T%.2d%.2d%.2d\r\n", (int)lst, ((int)(lst * 60)) % 60, ((int)(lst * 3600)) % 60);
-	temma_command(device, buffer, NULL, 0);
+	temma_command(device, buffer, false);
 }
 
 static void temma_set_latitude(indigo_device *device) {
@@ -162,15 +213,16 @@ static void temma_set_latitude(indigo_device *device) {
 		sprintf(buffer, "I+%.2d%.2d%.1d\r\n", d, m, s);
 	else
 		sprintf(buffer, "I-%.2d%.2d%.1d\r\n", d, m, s);
-	temma_command(device, buffer, NULL, 0);
+	temma_command(device, buffer, false);
 }
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
-		temma_get_coords(device);
-		if (PRIVATE_DATA->pierSide == 'F')
+		temma_command(device, TEMMA_GET_POSITION);
+		temma_command(device, TEMMA_GET_GOTO_STATE);
+		if (PRIVATE_DATA->isBusy)
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		else
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -223,18 +275,27 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				result = temma_open(device);
 			}
 			if (result) {
-				char buffer[128];
-				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
-				if (temma_command(device, "v\r\n", buffer, sizeof(buffer)))
-					strncpy(MOUNT_INFO_MODEL_ITEM->text.value, buffer + 4, INDIGO_VALUE_SIZE);
-				else
-					strcpy(PRIVATE_DATA->product, "unknown");
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", MOUNT_INFO_MODEL_ITEM->text.value);
-				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-				temma_get_coords(device);
-				PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				int repeat = 5;
+				while (repeat-- > 0)
+					if ((result = temma_command(device, TEMMA_GET_VERSION)))
+						break;
+				if (result) {
+					temma_set_lst(device);
+					temma_set_latitude(device);
+					temma_command(device, TEMMA_SET_VOLTAGE_12V);
+					temma_command(device, TEMMA_GET_POSITION);
+					temma_command(device, TEMMA_GET_CORRECTION_SPEED);
+					temma_command(device, TEMMA_GET_GOTO_STATE);
+					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to get version, not temma mount?");
+					PRIVATE_DATA->device_count--;
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				}
 			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to open serial port");
 				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -262,7 +323,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		temma_set_latitude(device);
 		temma_set_lst(device);
-		temma_get_coords(device);
+		temma_command(device, TEMMA_GET_POSITION);
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -294,6 +355,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
+		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
+		if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
+			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			temma_command(device, TEMMA_SET_SOLAR_RATE);
+		} else if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
+			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			temma_command(device, TEMMA_SET_STELLAR_RATE);
+		} else {
+			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			temma_command(device, TEMMA_SET_STELLAR_RATE);
+			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+		}
+		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
 		if (PRIVATE_DATA->parked) {
@@ -301,7 +378,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mout is parked!");
 		} else {
 			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
-			// TBD
+			if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
+				
+			} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
+				
+			} else {
+				
+			}
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 		}
