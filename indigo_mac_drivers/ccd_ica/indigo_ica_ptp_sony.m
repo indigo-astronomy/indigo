@@ -150,9 +150,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 @end
 
 @implementation PTPSonyCamera {
-  unsigned int compression;
   unsigned int format;
-  unsigned int imageCount;
   unsigned short mode;
   bool waitForCapture;
   unsigned int shutterSpeed;
@@ -211,10 +209,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPEventCodeSonyObjectAdded: {
-      if (compression == 19)
-        imageCount = 2;
-      else
-        imageCount = 1;
+      self.remainingCount = self.imagesPerShot;
       [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:event.parameter1];
       break;
     }
@@ -256,7 +251,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPPropertyCodeCompressionSetting: {
-      compression = property.value.intValue;
+      self.imagesPerShot = property.value.intValue == 19 ? 2 : 1;
       NSDictionary *map = @{ @2: @"Standard", @3: @"Fine", @16: @"RAW", @19: @"RAW + JPEG" };
       [self mapValueList:property map:map];
       break;
@@ -460,11 +455,12 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPRequestCodeGetObject: {
+      self.remainingCount--;
       if (format == 0x3801)
         [self.delegate cameraExposureDone:self data:data filename:@"image.jpeg"];
       else if (format == 0xb101)
         [self.delegate cameraExposureDone:self data:data filename:@"image.arw"];
-      if (--imageCount > 0)
+      if (self.remainingCount > 0)
         [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:request.parameter1];
       break;
     }
@@ -686,10 +682,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   waitForCapture = false;
   [self setProperty:PTPPropertyCodeSonyCapture value:@"1"];
   [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
-  if (compression == 19)
-    imageCount = 2;
-  else
-    imageCount = 1;
+  self.remainingCount = self.imagesPerShot;
   [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:0xFFFFC001];
 }
 

@@ -893,6 +893,7 @@ static struct info {
             NSNumber *key = [NSNumber numberWithUnsignedInt:obj];
             NSString *value = [NSString stringWithCString:(char *)(buf + 0x1C) encoding:NSUTF8StringEncoding];
             [addedFileName setObject:value forKey:key];
+            self.remainingCount++;
             [self sendPTPRequest:PTPRequestCodeCanonGetObject param1:obj];
             break;
 
@@ -1192,8 +1193,9 @@ static struct info {
         NSNumber *key = [NSNumber numberWithUnsignedInt:request.parameter1];
         NSString *name = addedFileName[key];
         [addedFileName removeObjectForKey:key];
+        self.remainingCount--;
         if (name) {
-           [self.delegate cameraExposureDone:self data:data filename:name];
+          [self.delegate cameraExposureDone:self data:data filename:name];
           if (self.deleteDownloadedImage)
             [self sendPTPRequest:PTPRequestCodeCanonDeleteObject param1:request.parameter1];
         }
@@ -1222,6 +1224,7 @@ static struct info {
           }
         }
         if (image) {
+          self.remainingCount = 0;
           [self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
           [self getPreviewImage];
         } else {
@@ -1306,6 +1309,7 @@ static struct info {
         ptpWriteUnsignedInt(&buf, (i2 >> 16) & 0xFF);
         ptpWriteUnsignedInt(&buf, (i2 >> 8) & 0xFF);
         ptpWriteUnsignedInt(&buf, i2 & 0xFF);
+        self.imagesPerShot = count;
         break;
       }
       default: {
@@ -1413,6 +1417,7 @@ static struct info {
 }
 
 -(void)startPreview {
+  self.remainingCount = 0;
   if (self.zoomPreview)
     liveViewZoom = 5;
   else
@@ -1430,6 +1435,7 @@ static struct info {
 }
 
 -(double)startExposure {
+  self.remainingCount = 0;
   double delay = 0;
   if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
     if (self.useMirrorLockup) {

@@ -782,20 +782,22 @@ static indigo_result focuser_detach(indigo_device *device) {
     PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer, length);
   memcpy(PRIVATE_DATA->buffer, data.bytes, length);
 	indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSUTF8StringEncoding]);
-  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-    CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-    indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+  if (camera.remainingCount == 0) {
+    if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+      CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+      indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+    }
+    if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+      if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
+        CCD_STREAMING_COUNT_ITEM->number.value--;
+        if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
+          [camera stopPreview];
+          CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+        }
+        indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+      }
+    }
   }
-	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
-			CCD_STREAMING_COUNT_ITEM->number.value--;
-			if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
-				[camera stopPreview];
-				CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-			}
-			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-		}
-	}
 }
 
 -(void)cameraExposureFailed:(PTPCamera*)camera message:(NSString *)message {

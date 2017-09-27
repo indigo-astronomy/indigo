@@ -1002,6 +1002,7 @@ static struct info {
           [self.delegate cameraFrame:self left:frameLeft top:frameTop width:frameWidth height:frameHeight];
         }
         if (image) {
+          self.remainingCount = 0;
           [self.delegate cameraExposureDone:self data:image filename:@"preview.jpeg"];
         } else {
           [ptpPreviewTimer invalidate];
@@ -1059,6 +1060,7 @@ static struct info {
 }
 
 -(void)startPreview {
+  self.remainingCount = 0;
   tempLiveView = false;
   if (self.zoomPreview)
     liveViewZoom = @"5";
@@ -1087,6 +1089,7 @@ static struct info {
 
 -(double)startExposure {
   double delay = 0.0;
+  self.remainingCount = self.imagesPerShot;
   if ([self propertyIsSupported:PTPPropertyCodeNikonExposureDelayMode]) {
     [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(self.useMirrorLockup ? delayModeOn : delayModeOff)];
     delay = self.useMirrorLockup ? 2.0 : 0.0;
