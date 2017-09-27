@@ -671,7 +671,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
 
 		// -------------------------------------------------------------------------------- ASI_PRESETS
-		ASI_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, "ASI_PRESETS", CCD_ADVANCED_GROUP, "Presets (gain, offset)", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+		ASI_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, "ASI_PRESETS", CCD_ADVANCED_GROUP, "Presets (Gain, Offset)", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
 		if (ASI_PRESETS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -994,7 +994,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
-		//INDIGO_DRIVER_ERROR(DRIVER_NAME, "COOOLER = %d %d", CCD_COOLER_OFF_ITEM->sw.value, CCD_COOLER_ON_ITEM->sw.value));
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1272,7 +1271,6 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		//INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1630,7 +1628,7 @@ indigo_result indigo_ccd_asi(indigo_driver_action action, indigo_driver_info *in
 			last_action = action;
 			asi_id_count = ASIGetProductIDs(asi_products);
 			if (asi_id_count <= 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported IDs.");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported product IDs.");
 				return INDIGO_FAILED;
 			}
 			indigo_start_usb_event_handler();
