@@ -200,7 +200,7 @@ static void temma_close(indigo_device *device) {
 static void temma_set_lst(indigo_device *device) {
 	char buffer[128];
 	double lst = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-	sprintf(buffer, "T%.2d%.2d%.2d\r\n", (int)lst, ((int)(lst * 60)) % 60, ((int)(lst * 3600)) % 60);
+	sprintf(buffer, "T%.2d%.2d%.2d", (int)lst, ((int)(lst * 60)) % 60, ((int)(lst * 3600)) % 60);
 	temma_command(device, buffer, false);
 }
 
@@ -214,9 +214,9 @@ static void temma_set_latitude(indigo_device *device) {
 	l = (l - m) * 6;
 	int s = (int)l;
 	if (lat > 0)
-		sprintf(buffer, "I+%.2d%.2d%.1d\r\n", d, m, s);
+		sprintf(buffer, "I+%.2d%.2d%.1d", d, m, s);
 	else
-		sprintf(buffer, "I-%.2d%.2d%.1d\r\n", d, m, s);
+		sprintf(buffer, "I-%.2d%.2d%.1d", d, m, s);
 	temma_command(device, buffer, false);
 }
 
