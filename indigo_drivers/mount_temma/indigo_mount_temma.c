@@ -337,7 +337,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			int ra_m = (ra / 60) % 60;
 			int ra_s = ra % 60;
 			temma_set_lst(device);
-			sprintf(buffer, "P%02d%02d%02d%+90000", ra_h, ra_m, ra_s);
+			sprintf(buffer, "P%02d%02d%02d+90000", ra_h, ra_m, ra_s);
 			temma_command(device, buffer, true);
 		}
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
