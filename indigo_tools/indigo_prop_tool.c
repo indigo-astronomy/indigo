@@ -417,7 +417,8 @@ static indigo_client client = {
 
 
 static void print_help(const char *name) {
-	printf("usage: %s set [options] device.property.item=value[;item=value;..]\n", name);
+	printf("usage: %s [options] device.property.item=value[;item=value;..]\n", name);
+	printf("       %s set [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
 	printf("options:\n"
 	       "       -h  | --help\n"
@@ -515,7 +516,7 @@ int main(int argc, const char * argv[]) {
 
 	if (action_set) {
 		if (parse_set_property_string(prop_string, &change_request) < 0) {
-			perror("parse_property_string()");
+			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
 		//for (int i = 0; i< change_request.item_count; i++) {
@@ -524,7 +525,7 @@ int main(int argc, const char * argv[]) {
 		change_requested = true;
 	} else {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
-			perror("parse_property_string()");
+			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
 		//printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
