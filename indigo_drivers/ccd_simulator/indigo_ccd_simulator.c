@@ -204,7 +204,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					raw[i] = (rand() & 0x7F);
 			}
 
-			if (device == PRIVATE_DATA->guider || light_frame) {
+			if (device == PRIVATE_DATA->guider && light_frame) {
 				double x_offset = PRIVATE_DATA->ra_offset * COS - PRIVATE_DATA->dec_offset * SIN + rand() / (double)RAND_MAX/10 - 0.1;
 				double y_offset = PRIVATE_DATA->ra_offset * SIN + PRIVATE_DATA->dec_offset * COS + rand() / (double)RAND_MAX/10 - 0.1;
 				for (int i = 0; i < STARS; i++) {
