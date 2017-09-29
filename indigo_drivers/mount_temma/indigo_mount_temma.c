@@ -69,8 +69,8 @@
 #define TEMMA_SLEW_FAST_SOUTH				"MQ"
 #define TEMMA_SLEW_STOP							"MA"
 
-#define TEMMA_TRACKING_ON						"STN-ON"
-#define TEMMA_TRACKING_OFF					"STN-OFF"
+#define TEMMA_MOTOR_ON							"STN-OFF"
+#define TEMMA_MOTOR_OFF							"STN-ON"
 
 typedef struct {
 	bool parked;
@@ -79,7 +79,7 @@ typedef struct {
 	double currentRA;
 	double currentDec;
 	char pierSide;
-	bool isBusy;
+	bool isBusy, startTracking, stopTracking;
 	char slewCommand[3];
 	indigo_timer *slew_timer;
 	indigo_timer *position_timer;
@@ -232,10 +232,14 @@ static void position_timer_callback(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			if (MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value)
-				temma_command(device, TEMMA_TRACKING_ON, true);
-			else
-				temma_command(device, TEMMA_TRACKING_OFF, true);
+			if (PRIVATE_DATA->startTracking) {
+				temma_command(device, TEMMA_MOTOR_ON, true);
+				PRIVATE_DATA->startTracking = false;
+			}
+			if (PRIVATE_DATA->stopTracking) {
+				temma_command(device, TEMMA_MOTOR_OFF, true);
+				PRIVATE_DATA->stopTracking = false;
+			}
 		}
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
@@ -259,7 +263,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->hidden = true;
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = true;
-		MOUNT_TRACKING_PROPERTY->hidden = true;
 		MOUNT_PARK_PROPERTY->count = 1;
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
@@ -339,6 +342,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			temma_set_lst(device);
 			sprintf(buffer, "P%02d%02d%02d+90000", ra_h, ra_m, ra_s);
 			temma_command(device, buffer, true);
+			temma_command(device, TEMMA_MOTOR_OFF, true);
 		}
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -369,15 +373,25 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			int dec_d = dec / 600;
 			int dec_m = (dec / 10) % 60;
 			int dec_s = dec % 10;
+			temma_command(device, TEMMA_MOTOR_ON, true);
 			if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 				sprintf(buffer, "D%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
 				temma_set_lst(device);
 				temma_command(device, "Z", false);
+				temma_set_lst(device);
+				temma_command(device, buffer, true);
+				PRIVATE_DATA->startTracking = true;
+			} else if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+				sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
+				temma_set_lst(device);
+				temma_command(device, buffer, true);
+				PRIVATE_DATA->startTracking = true;
 			} else {
 				sprintf(buffer, "P%02d%02d%02d%+02d%02d%d", ra_h, ra_m, ra_s, dec_d, dec_m, dec_s);
+				temma_set_lst(device);
+				temma_command(device, buffer, true);
+				PRIVATE_DATA->stopTracking = true;
 			}
-			temma_set_lst(device);
-			temma_command(device, buffer, true);
 			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
@@ -416,7 +430,19 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			temma_command(device, TEMMA_SET_STELLAR_RATE, false);
 			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
 		}
+		temma_command(device, TEMMA_MOTOR_ON, true);
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_TRACKING
+		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
+		if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+			temma_command(device, TEMMA_MOTOR_ON, true);
+		} else {
+			temma_command(device, TEMMA_MOTOR_OFF, true);
+		}
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
