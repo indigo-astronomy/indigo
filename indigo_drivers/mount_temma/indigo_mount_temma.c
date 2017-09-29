@@ -69,8 +69,8 @@
 #define TEMMA_SLEW_FAST_SOUTH				"MQ"
 #define TEMMA_SLEW_STOP							"MA"
 
-#define TEMMA_TRACKING_ON						"STN-OFF"
-#define TEMMA_TRACKING_OFF					"STN-ON"
+#define TEMMA_TRACKING_ON						"STN-ON"
+#define TEMMA_TRACKING_OFF					"STN-OFF"
 
 typedef struct {
 	bool parked;
@@ -345,6 +345,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
 		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
+		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
+			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
 		temma_set_latitude(device);
 		temma_set_lst(device);
 		temma_command(device, TEMMA_GET_POSITION, true);
