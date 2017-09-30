@@ -48,7 +48,7 @@
 
 #define FLI_VENDOR_ID                   0x0f18
 
-#define PRIVATE_DATA        ((fli_private_data *)device->private_data)
+#define PRIVATE_DATA                    ((fli_private_data *)device->private_data)
 
 // gp_bits is used as boolean
 #define is_connected                    gp_bits

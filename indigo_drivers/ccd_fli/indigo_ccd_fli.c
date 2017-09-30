@@ -593,7 +593,7 @@ static bool handle_camera_mode_property(indigo_device *device, indigo_property *
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_ccd_fli:FLISetCameraMode(%d) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetCameraMode(%d) = %d", id, res);
 		FLI_CAMERA_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FLI_CAMERA_MODE_PROPERTY, "Can not set camera mode %d", mode);
 		return false;
