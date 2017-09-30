@@ -141,8 +141,11 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 			tv.tv_usec = 300000;
 			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0)
-				break;
+			if (result <= 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "select failed from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return false;
+			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
