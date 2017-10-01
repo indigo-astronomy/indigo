@@ -46,7 +46,7 @@
 2. ASI CCD driver __DONE__
 3. IIDC CCD driver (based on libdc1394) __DONE__
 4. MI CCD driver (based on MI SDK)
-5. QSI CCD driver (based on QSI SDK)
+5. QSI CCD driver (based on QSI SDK) __PARTIALLY_DONE__ (untested)
 6. FLI CCD driver (based on FLI SDK) __DONE__
 7. SBIG CCD driver (based on SBIG SDK) __DONE__
 8. Apogee CCD driver (based on Apogee SDK)
@@ -58,7 +58,7 @@
 #### DSLRs
 
 1. Linux DSLR driver (based on gPhoto)
-2. Mac DSLR driver (based on ICA)
+2. Mac DSLR driver (based on ICA) __DONE__
 3. Canon driver (based on Canon SDK)
 4. Nikon driver (based on Nikon SDK)
 5. Sony driver (based on WS API)
@@ -89,6 +89,7 @@
 3. LX200 protocol mount driver __DONE__
 4. EQMod mount driver
 5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft)
+6. Temma protocol mount driver __DONE__
 
 #### AO
 
