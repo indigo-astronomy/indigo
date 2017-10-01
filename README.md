@@ -46,6 +46,8 @@ This is the list of requirements taken into the consideration:
 22. QHY CCD driver (NOTE: Maybe unstable due to inherited instability in the QHY SDK)
 23. ZWO USB-ST4 port
 24. Meade DSI Camera driver
+25. Takahashi Temma mount driver
+26. ICA (ImageCapture API) driver for DSLRs (Mac only)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount

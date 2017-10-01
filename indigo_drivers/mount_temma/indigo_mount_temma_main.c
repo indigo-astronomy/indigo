@@ -1,6 +1,8 @@
 // Copyright (c) 2017 CloudMakers, s. r. o.
 // All rights reserved.
 //
+// Code is partially based on Temma driver created by Kok Chen.
+//
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 //
