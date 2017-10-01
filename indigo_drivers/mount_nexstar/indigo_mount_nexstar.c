@@ -56,7 +56,7 @@
 #define GUIDE_100_ITEM_NAME                "GUIDE_100"
 
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
-#define WARN_PARKING_PROGRESS_MSG          "Mount is parking is in progress, please wait until complete!"
+#define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
 
 // gp_bits is used as boolean
 #define is_connected                   gp_bits
@@ -336,7 +336,7 @@ static void mount_handle_utc(indigo_device *device) {
 static bool mount_set_utc_from_host(indigo_device *device) {
 	time_t utc_time = indigo_utc(NULL);
 	if (utc_time == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "can not get host UT");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get host UT");
 		return false;
 	}
 
