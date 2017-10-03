@@ -49,6 +49,16 @@
 
 #define PRIVATE_DATA        ((temma_private_data *)device->private_data)
 
+#define CCD_ADVANCED_GROUP         "Advanced"
+
+#define CORRECTION_SPEED_PROPERTY					(PRIVATE_DATA->correction_speed_property)
+#define CORRECTION_SPEED_RA_ITEM          (CORRECTION_SPEED_PROPERTY->items+0)
+#define CORRECTION_SPEED_DEC_ITEM         (CORRECTION_SPEED_PROPERTY->items+1)
+
+#define CORRECTION_SPEED_PROPERTY_NAME		"X_CORRECTION_SPEED"
+#define CORRECTION_SPEED_RA_ITEM_NAME     "RA"
+#define CORRECTION_SPEED_DEC_ITEM_NAME    "DEC"
+
 #define TEMMA_GET_VERSION						"v"
 #define TEMMA_GET_POSITION					"E"
 #define TEMMA_GET_GOTO_STATE				"s"
@@ -85,6 +95,7 @@ typedef struct {
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
 	char product[128];
+	indigo_property *correction_speed_property;
 } temma_private_data;
 
 static bool temma_open(indigo_device *device) {
@@ -184,6 +195,19 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 				PRIVATE_DATA->isBusy = buffer[0] == '1';
 				break;
 			}
+			case 'l': {
+				if (buffer[1] == 'a')
+					CORRECTION_SPEED_RA_ITEM->number.value = atoi(buffer + 3);
+				else if (buffer[1] == 'b')
+					CORRECTION_SPEED_DEC_ITEM->number.value = atoi(buffer + 3);
+				else if (buffer[1] == 'g') {
+					buffer[4] = 0;
+					CORRECTION_SPEED_RA_ITEM->number.value = atoi(buffer + 2);
+					buffer[7] = 0;
+					CORRECTION_SPEED_DEC_ITEM->number.value = atoi(buffer + 5);
+				}
+				break;
+			}
 			default:
 				break;
 		}
@@ -271,6 +295,11 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		CORRECTION_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, CORRECTION_SPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Correction speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+		if (CORRECTION_SPEED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(CORRECTION_SPEED_RA_ITEM, CORRECTION_SPEED_RA_ITEM_NAME, "RA speed (10% - 90%)", 10, 90, 1, 50);
+		indigo_init_number_item(CORRECTION_SPEED_DEC_ITEM, CORRECTION_SPEED_DEC_ITEM_NAME, "Dec speed (10% - 90%)", 10, 90, 1, 50);
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -280,7 +309,8 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		// TBD
+		if (indigo_property_match(CORRECTION_SPEED_PROPERTY, property))
+			indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -312,6 +342,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					temma_command(device, TEMMA_GET_CORRECTION_SPEED, true);
 					temma_command(device, TEMMA_GET_GOTO_STATE, true);
 					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+					indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to get version, not temma mount?");
@@ -331,6 +362,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (--PRIVATE_DATA->device_count == 0) {
 				temma_close(device);
 			}
+			indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
@@ -515,6 +547,24 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(CORRECTION_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CORRECTION_SPEED
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(CORRECTION_SPEED_PROPERTY, property, false);
+			char buffer[128];
+			sprintf(buffer, "LA%02d", (int)CORRECTION_SPEED_RA_ITEM->number.value);
+			temma_command(device, buffer, false);
+			sprintf(buffer, "LB%02d", (int)CORRECTION_SPEED_DEC_ITEM->number.value);
+			temma_command(device, buffer, false);
+			CORRECTION_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, CORRECTION_SPEED_PROPERTY);
+		}
 	}
 	return indigo_mount_change_property(device, client, property);
 }
@@ -523,6 +573,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+	indigo_release_property(CORRECTION_SPEED_PROPERTY);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_mount_detach(device);
 }
