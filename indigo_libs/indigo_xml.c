@@ -218,7 +218,7 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 				client->version = version;
 			}
 		} else if (!strncmp(name, "device",INDIGO_NAME_SIZE)) {
-			strcpy(property->device, value);
+			strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strncmp(name, "name",INDIGO_NAME_SIZE)) {
 			indigo_copy_property_name(client->version, property, value);;
 		}

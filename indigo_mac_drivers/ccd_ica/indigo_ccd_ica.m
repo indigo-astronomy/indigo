@@ -485,7 +485,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
-	strcpy(device->name, [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
+	strncpy(device->name, [camera.name cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_NAME_SIZE);
 	device->private_data = private_data;
 	camera.userData = [NSValue valueWithPointer:device];
 	indigo_async((void *)(void *)indigo_attach_device, device);
@@ -524,8 +524,8 @@ static indigo_result focuser_detach(indigo_device *device) {
   PTPVendorExtension extension = camera.extension;
 	for (int i = 0; i < dslr_properties[i].code; i++) {
 		if (dslr_properties[i].extension == extension && code == dslr_properties[i].code) {
-			strcpy(name, dslr_properties[i].name);
-			strcpy(label, dslr_properties[i].label);
+			strncpy(name, dslr_properties[i].name, INDIGO_NAME_SIZE);
+			strncpy(label, dslr_properties[i].label, INDIGO_VALUE_SIZE);
 			group = "DSLR";
       break;
 		}
@@ -729,11 +729,11 @@ static indigo_result focuser_detach(indigo_device *device) {
 		if (IS_CONNECTED)
 			indigo_delete_property(device, property, NULL);
 		property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
-		strcpy(property->items[0].text.value,string);
+		strncpy(property->items[0].text.value, string, INDIGO_VALUE_SIZE);
 		if (IS_CONNECTED)
 			indigo_define_property(device, property, NULL);
 	} else if (strcmp(property->items[0].text.value, string) || property->state == INDIGO_BUSY_STATE) {
-		strcpy(property->items[0].text.value, string);
+		strncpy(property->items[0].text.value, string, INDIGO_VALUE_SIZE);
     property->state = INDIGO_OK_STATE;
 		indigo_update_property(device, property, NULL);
 	}
@@ -854,7 +854,7 @@ static indigo_result focuser_detach(indigo_device *device) {
   indigo_device *focuser = malloc(sizeof(indigo_device));
   assert(focuser != NULL);
   memcpy(focuser, &focuser_template, sizeof(indigo_device));
-  strcpy(focuser->name, device->name);
+  strncpy(focuser->name, device->name, INDIGO_NAME_SIZE - 10);
   strcat(focuser->name, " (focuser)");
   focuser->private_data = PRIVATE_DATA;
 	PRIVATE_DATA->focuser = focuser;

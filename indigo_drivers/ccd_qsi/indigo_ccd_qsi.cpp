@@ -357,8 +357,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			QSICamera cam;
 			cam.get_AvailableCameras(camSerial, camDesc, count);
 			for (int i = 0; i < count; i++) {
-				strcpy(serial, camSerial[i].c_str());
-				strcpy(desc, camDesc[i].c_str());
+				strncpy(serial, camSerial[i].c_str(), INDIGO_NAME_SIZE);
+				strncpy(desc, camDesc[i].c_str(), INDIGO_NAME_SIZE);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "device[i]: desc = %s serial = %s", desc, serial);
 				bool found = false;
 				for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {
@@ -375,11 +375,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				qsi_private_data *private_data = (qsi_private_data *)malloc(sizeof(qsi_private_data));
 				assert(private_data != NULL);
 				memset(private_data, 0, sizeof(qsi_private_data));
-				strcpy(private_data->serial, serial);
+				strncpy(private_data->serial, serial, INDIGO_NAME_SIZE);
 				indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
 				assert(device != NULL);
 				memcpy(device, &ccd_template, sizeof(indigo_device));
-				strcpy(device->name, desc);
+				strncpy(device->name, desc, INDIGO_NAME_SIZE);
 				device->private_data = private_data;
 				for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {
 					if (devices[j] == NULL) {
@@ -404,7 +404,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			QSICamera cam;
 			cam.get_AvailableCameras(camSerial, camDesc, count);
 			for (int i = 0; i < count; i++) {
-				strcpy(serial, camSerial[i].c_str());
+				strncpy(serial, camSerial[i].c_str(), INDIGO_NAME_SIZE);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "device[i]: serial = %s", serial);
 				for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {
 					indigo_device *device = devices[j];

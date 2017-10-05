@@ -546,7 +546,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						indigo_device *device = malloc(sizeof(indigo_device));
 						assert(device != NULL);
 						memcpy(device, &ccd_template, sizeof(indigo_device));
-						strcpy(device->name, camera->model);
+						strncpy(device->name, camera->model, INDIGO_NAME_SIZE);
 						device->private_data = private_data;
 						for (int j = 0; j < MAX_DEVICES; j++) {
 							if (devices[j] == NULL) {

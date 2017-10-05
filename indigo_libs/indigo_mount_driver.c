@@ -467,9 +467,9 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 						snprintf(name, INDIGO_NAME_SIZE, "%d", j - 1);
 						MOUNT_CONTEXT->alignment_points[j - 1] = MOUNT_CONTEXT->alignment_points[j];
 						MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[j - 1] = MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[j];
-						strcpy(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[j - 1].name, name);
+						strncpy(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[j - 1].name, name, INDIGO_NAME_SIZE);
 						MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items[j - 1] = MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items[j];
-						strcpy(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items[j - 1].name, name);
+						strncpy(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items[j - 1].name, name, INDIGO_NAME_SIZE);
 					}
 					MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = --MOUNT_CONTEXT->alignment_point_count;
 				}

@@ -494,19 +494,19 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				while (eq - item->text.value < 80 && *eq == ' ')
 					eq++;
 				snprintf(line, 80, "%-8s= %s", item->text.value, eq);
-				strcpy(item->text.value, line);
+				strncpy(item->text.value, line, INDIGO_VALUE_SIZE);
 			} else if (!strncasecmp(item->text.value, "COMMENT ", 7)) {
 				char *tmp = item->text.value + 7;
 				while (tmp - item->text.value < 80 && *tmp == ' ')
 					tmp++;
 				snprintf(line, 80, "COMMENT  %s", tmp);
-				strcpy(item->text.value, line);
+				strncpy(item->text.value, line, INDIGO_VALUE_SIZE);
 			} else if (!strncasecmp(item->text.value, "HISTORY ", 7)) {
 				char *tmp = item->text.value + 7;
 				while (tmp - item->text.value < 80 && *tmp == ' ')
 					tmp++;
 				snprintf(line, 80, "HISTORY  %s", tmp);
-				strcpy(item->text.value, line);
+				strncpy(item->text.value, line, INDIGO_VALUE_SIZE);
 			} else if (IS_CONNECTED) {
 				CCD_FITS_HEADERS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_FITS_HEADERS_PROPERTY, "Invalid header line format");
@@ -851,7 +851,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			char file_name[INDIGO_VALUE_SIZE];
 			char *xxx = strstr(prefix, "XXX");
 			if (xxx == NULL) {
-				strcpy(file_name, dir);
+				strncpy(file_name, dir, INDIGO_VALUE_SIZE);
 				strcat(file_name, prefix);
 				strcat(file_name, suffix);
 			} else {
@@ -938,12 +938,12 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 			char file_name[INDIGO_VALUE_SIZE];
 			char *xxx = strstr(prefix, "XXX");
 			if (xxx == NULL) {
-				strcpy(file_name, dir);
+				strncpy(file_name, dir, INDIGO_VALUE_SIZE - strlen(prefix) - strlen(suffix));
 				strcat(file_name, prefix);
 				strcat(file_name, suffix);
 			} else {
 				char format[INDIGO_VALUE_SIZE];
-				strcpy(format, dir);
+				strncpy(format, dir, INDIGO_VALUE_SIZE);
 				strncat(format, prefix, xxx - prefix);
 				strcat(format, "%03d");
 				strcat(format, xxx+3);

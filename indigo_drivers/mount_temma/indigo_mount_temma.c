@@ -186,9 +186,9 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 				break;
 			}
 			case 'v': {
-				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
+				strncpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi", INDIGO_VALUE_SIZE);
 				strncpy(MOUNT_INFO_MODEL_ITEM->text.value, buffer + 4, INDIGO_VALUE_SIZE);
-				strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+				strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A", INDIGO_VALUE_SIZE);
 				break;
 			}
 			case 's': {

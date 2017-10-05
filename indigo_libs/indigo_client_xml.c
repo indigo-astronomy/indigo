@@ -49,7 +49,7 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
 	if (property != NULL && *property->device) {
-		strcpy(device_name, property->device);
+		strncpy(device_name, property->device, INDIGO_NAME_SIZE);
 		if (indigo_use_host_suffix) {
 			char *at = strrchr(device_name, '@');
 			if (at != NULL) {
@@ -86,7 +86,7 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
-	strcpy(device_name, property->device);
+	strncpy(device_name, property->device, INDIGO_NAME_SIZE);
 	if (indigo_use_host_suffix) {
 		char *at = strrchr(device_name, '@');
 		if (at != NULL) {
@@ -137,7 +137,7 @@ static indigo_result xml_client_parser_enable_blob(indigo_device *device, indigo
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
-	strcpy(device_name, property->device);
+	strncpy(device_name, property->device, INDIGO_NAME_SIZE);
 	if (indigo_use_host_suffix) {
 		char *at = strrchr(device_name, '@');
 		if (at != NULL) {
