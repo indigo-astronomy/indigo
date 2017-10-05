@@ -345,10 +345,13 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
         case 6: {   // AFC
           if (waitForCapture) {
             waitForCapture = false;
-            [self setProperty:PTPPropertyCodeSonyCapture value:@"2"];
             if (shutterSpeed) {
+              [self setProperty:PTPPropertyCodeSonyCapture value:@"2"];
               [self setProperty:PTPPropertyCodeSonyCapture value:@"1"];
               [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
+            } else {
+              [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
+              [self setProperty:PTPPropertyCodeSonyCapture value:@"2"];
             }
           } else {
             [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
@@ -626,6 +629,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPPropertyCodeSonyCapture:
+    case PTPPropertyCodeSonyStillImage:
     case PTPPropertyCodeSonyAutofocus: {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:value];
       break;
@@ -668,11 +672,14 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   waitForCapture = true;
   [self setProperty:PTPPropertyCodeSonyAutofocus value:@"2"];
   if (focusMode == 1) {
-    [self setProperty:PTPPropertyCodeSonyCapture value:@"2"];
     if (shutterSpeed) {
       waitForCapture = false;
+      [self setProperty:PTPPropertyCodeSonyCapture value:@"2"];
       [self setProperty:PTPPropertyCodeSonyCapture value:@"1"];
       [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
+    } else {
+      [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
+      [self setProperty:PTPPropertyCodeSonyCapture value:@"2"];
     }
   }
   return 0;
@@ -681,9 +688,9 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(void)stopExposure {
   waitForCapture = false;
   [self setProperty:PTPPropertyCodeSonyCapture value:@"1"];
-  [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
-  self.remainingCount = self.imagesPerShot;
-  [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:0xFFFFC001];
+//    [self setProperty:PTPPropertyCodeSonyAutofocus value:@"1"];
+//    self.remainingCount = self.imagesPerShot;
+//    [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:0xFFFFC001];
 }
 
 -(void)focus:(int)steps {
