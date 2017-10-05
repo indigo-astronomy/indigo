@@ -307,13 +307,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						char *sep = strchr(response, '|');
 						if (sep != NULL)
 							*sep = 0;
-						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, response);
+						strncpy(MOUNT_INFO_MODEL_ITEM->text.value, response, INDIGO_VALUE_SIZE);
 					} else {
-						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
+						strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
 					}
 					if (meade_command(device, ":GVN#", response, 127, 0)) {
 						INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware: %s", response);
-						strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+						strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
 					}
 					if (meade_command(device, ":GW#", response, 127, 0)) {
 						INDIGO_DRIVER_LOG(DRIVER_NAME, "status:   %s", response);

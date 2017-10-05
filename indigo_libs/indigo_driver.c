@@ -103,7 +103,7 @@ static void refresh_ports(indigo_device *device) {
 					int i = DEVICE_PORTS_PROPERTY->count++;
 					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
 					if (i == 0)
-						strcpy(DEVICE_PORT_ITEM->text.value, name);
+						strncpy(DEVICE_PORT_ITEM->text.value, name, INDIGO_VALUE_SIZE);
 				}
 				CFRelease(cfs);
 			}
@@ -121,7 +121,7 @@ static void refresh_ports(indigo_device *device) {
 			int i = DEVICE_PORTS_PROPERTY->count++;
 			indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
 			if (i == 0)
-				strcpy(DEVICE_PORT_ITEM->text.value, name);
+				strncpy(DEVICE_PORT_ITEM->text.value, name, INDIGO_VALUE_SIZE);
 		}
 	}
 	closedir(dir);
