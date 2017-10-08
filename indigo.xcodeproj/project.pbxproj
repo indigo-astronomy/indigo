@@ -285,6 +285,8 @@
 		5911F7B01F02E1330053F3CA /* libdsi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libdsi.c; sourceTree = "<group>"; };
 		5911F7B11F02E1330053F3CA /* libdsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libdsi.h; sourceTree = "<group>"; };
 		5911F7B21F02E1330053F3CA /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		591C3F4A1F8A883F002B5596 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = indigo_drivers/ccd_qsi/README.md; sourceTree = SOURCE_ROOT; };
+		591C3F4B1F8A8926002B5596 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = indigo_focuser_fli_main.c; path = focuser_fli/indigo_focuser_fli_main.c; sourceTree = "<group>"; };
 		591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_focuser_fli.c; path = focuser_fli/indigo_focuser_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = indigo_focuser_fli.h; path = focuser_fli/indigo_focuser_fli.h; sourceTree = "<group>"; };
@@ -752,6 +754,7 @@
 				593AD1041EF8399500C059BC /* indigo_guider_asi.h */,
 				593AD1011EF8399500C059BC /* indigo_guider_asi.c */,
 				593AD1031EF8399500C059BC /* indigo_guider_asi_main.c */,
+				591C3F4B1F8A8926002B5596 /* README.md */,
 			);
 			path = guider_asi;
 			sourceTree = "<group>";
@@ -1304,6 +1307,7 @@
 				9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */,
 				9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */,
 				9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */,
+				591C3F4A1F8A883F002B5596 /* README.md */,
 			);
 			path = ccd_qsi;
 			sourceTree = "<group>";

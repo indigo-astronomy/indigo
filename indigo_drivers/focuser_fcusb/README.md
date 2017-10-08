@@ -23,3 +23,7 @@ indigo_server indigo_focuser_fcusb
 ## Comments
 
 A non-standard switch property "Frequency" is provided by this driver. 
+
+## Status
+
+Driver is developed and tested with the physical hardware.

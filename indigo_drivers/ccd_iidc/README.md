@@ -20,3 +20,7 @@ INDIGO Astronomy open-source license (libdc1394 is released under LGPL).
 ## Use
 
 indigo_server indigo_ccd_iidc
+
+## Status
+
+Driver is developed and tested with Atik GP (USB) and PTGrey Flea2 (firewire) cameras.
