@@ -3,20 +3,16 @@
 https://www.atik-cameras.com
 
 ## Supported devices
-
 * Atik 3xx
 * Atik 4xx
 * Atik One
 * Atik TSxx
 * Atik FSxx
-
 * Atik LF
 * Artemis LF
-
 * Atik VSx
 * Atik T5
 * Atik Infinity
-
 * Atik Titan
 * Atik QSxx
 * Synoptics HS
