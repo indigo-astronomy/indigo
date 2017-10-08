@@ -4,7 +4,7 @@ https://www.atik-cameras.com
 
 ## Supported devices
 
-Atik EFW2
+* Atik EFW2
 
 This driver supports hot-plug (single device only).
 

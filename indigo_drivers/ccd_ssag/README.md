@@ -5,8 +5,8 @@ http://www.qhyccd.com/index.html
 
 ## Supported devices
 
-Orion StarShoot AutoGuider
-QHY5
+* Orion StarShoot AutoGuider
+* QHY5
 
 This driver supports hot-plug (multiple devices).
 
@@ -29,4 +29,4 @@ The following VID/PID combinations are recognised by this driver: 0x1856/0x0011 
 ## Status: Stable
 
 Driver is developed and tested with:
-QHY5
+* QHY5

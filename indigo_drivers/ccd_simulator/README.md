@@ -2,11 +2,11 @@
 
 ## Supported devices
 
-CCD Imager Simulator
-CCD Imager Simulator (wheel)
-CCD Imager Simulator (focuser)
-CCD Guider Simulator
-CCD Guider Simulator (guider)
+* CCD Imager Simulator
+* CCD Imager Simulator (wheel)
+* CCD Imager Simulator (focuser)
+* CCD Guider Simulator
+* CCD Guider Simulator (guider)
 
 All devices are present on startup.
 

@@ -24,5 +24,5 @@ indigo_server indigo_ccd_iidc
 ## Status: Stable
 
 Driver is developed and tested with:
-Atik GP (USB)
-PTGrey Flea2 (firewire)
+* Atik GP (USB)
+* PTGrey Flea2 (firewire)

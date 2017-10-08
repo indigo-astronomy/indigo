@@ -23,11 +23,11 @@ indigo_server indigo_ccd_qhy
 ## Status: Unstable
 
 Driver is developed and tested with:
-QHY 5
-QHY 5L-II
-QHY 6
-QHY 8 Pro
-QHY 5III 178
+* QHY 5
+* QHY 5L-II
+* QHY 6
+* QHY 8 Pro
+* QHY 5III 178
 
 ## NOTES
 ### Firmware path (MacOS only)

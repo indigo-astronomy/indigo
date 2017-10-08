@@ -4,22 +4,22 @@ https://www.atik-cameras.com
 
 ## Supported devices
 
-Atik 3xx
-Atik 4xx
-Atik One
-Atik TSxx
-Atik FSxx
+* Atik 3xx
+* Atik 4xx
+* Atik One
+* Atik TSxx
+* Atik FSxx
 
-Atik LF
-Artemis LF
+* Atik LF
+* Artemis LF
 
-Atik VSx
-Atik T5
-Atik Infinity
+* Atik VSx
+* Atik T5
+* Atik Infinity
 
-Atik Titan
-Atik QSxx
-Synoptics HS
+* Atik Titan
+* Atik QSxx
+* Synoptics HS
 
 This driver supports hot-plug (multiple devices).
 
@@ -38,8 +38,8 @@ indigo_server indigo_ccd_atik
 ## Status: Stable
 
 Driver is developed and tested with:
-Atik Titan
-Atik 383L+
-Atik One 9
-Atik VS 6
-Atik 11000
+* Atik Titan
+* Atik 383L+
+* Atik One 9
+* Atik VS 6
+* Atik 11000

@@ -21,8 +21,8 @@ indigo_server indigo_mount_nexstar
 ## Status: Stable
 
 Driver is developed and tested with:
-SkyWatcher AZ-EQ6 GT
-Celestron Advanced VX
+* SkyWatcher AZ-EQ6 GT
+* Celestron Advanced VX
 
 ## Comments
 

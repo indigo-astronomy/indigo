@@ -23,4 +23,4 @@ indigo_server indigo_wheel_asi
 ## Status: Stable
 
 Driver is developed and tested with:
-*ASI EFW
+* ASI EFW
