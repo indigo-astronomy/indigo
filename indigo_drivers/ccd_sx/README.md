@@ -26,6 +26,9 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_ccd_sx
 
-## Status
+## Status: Stable
 
-Driver is developed and tested with SX Loderstar and SX H694 cameras.
+Driver is developed and tested with:
+SX Loderstar
+SX Lodestar X2
+SX H694

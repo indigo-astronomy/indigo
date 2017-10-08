@@ -20,3 +20,7 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_wheel_asi
 
+## Status: Stable
+
+Driver is developed and tested with:
+ASI EFW

@@ -20,7 +20,12 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_ccd_dsi
 
+## Status: Stable
+
+Driver is developed and tested with:
+Meade DSI II Pro
+Meade DSI III Pro
+
 ## NOTES:
 DSI cameras are not supported by Meade any more. We provide this driver as they are still popular.
 The firmware has issues but we tried to make the driver as stable as possible bypassing the instabilities of the firmware.
-

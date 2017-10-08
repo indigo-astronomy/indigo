@@ -26,6 +26,7 @@ indigo_server indigo_ccd_ssag
 
 The following VID/PID combinations are recognised by this driver: 0x1856/0x0011 (SSAG), 0x1618/0x0901 (QHY5).
 
-## Status
+## Status: Stable
 
-Driver is developed and tested with QHY5 camera.
+Driver is developed and tested with:
+QHY5

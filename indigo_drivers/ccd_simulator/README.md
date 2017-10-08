@@ -25,3 +25,5 @@ indigo_server indigo_ccd_simulator
 or
 
 indigo_server -s
+
+## Status: Stable

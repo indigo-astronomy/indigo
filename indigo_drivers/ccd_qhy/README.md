@@ -20,6 +20,15 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_ccd_qhy
 
+## Status: Unstable
+
+Driver is developed and tested with:
+QHY 5
+QHY 5L-II
+QHY 6
+QHY 8 Pro
+QHY 5III 178
+
 ## NOTES
 ### Firmware path (MacOS only)
 On MacOS the firmware of the cameras is expected to be in "/usr/local/lib/qhy/firmware". If it is on other

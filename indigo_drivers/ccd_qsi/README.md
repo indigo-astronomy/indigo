@@ -20,9 +20,8 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_ccd_qsi
 
-## Status
+## Status: Under Development
 
 Driver is developed without access to the hardware
 
 ## NOTES:
-

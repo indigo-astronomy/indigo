@@ -20,6 +20,6 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_wheel_atik
 
-## Status
+## Status: Stable
 
 Driver is developed without access to the physical hardware.

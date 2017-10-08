@@ -22,3 +22,5 @@ indigo_server indigo_mount_simulator
 or
 
 indigo_server -s
+
+## Status: Stable
