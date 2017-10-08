@@ -22,10 +22,5 @@ indigo_server indigo_guider_asi
 
 ## Status: Stable
 
-Driver is developed and tested with:
-ASI224MC
-ASI120MM
-ASI120MC-S
-ASI1600MC-Cool
-ASI071MC-Cool
-ASI071MC Pro
+Driver is developped without the physical hardware and tested by ZWO with:
+* ZWO ASI USB-ST4 guider adapter
