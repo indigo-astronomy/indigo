@@ -25,4 +25,5 @@ indigo_server indigo_wheel_sx
 ## Status: Stable
 
 Driver is developed and tested with:
+
 *SX filter wheel
