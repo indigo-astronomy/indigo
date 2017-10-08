@@ -23,7 +23,7 @@ indigo_server indigo_wheel_fli
 ## Status: Stable
 
 Driver is developed and tested with:
-FLI CFW-4-5
+*FLI CFW-4-5
 
 ## NOTES
 ### Requires Kernel Driver (Linux only)
