@@ -22,4 +22,15 @@ indigo_server indigo_ccd_ica
 
 ## Status
 
-Driver is developed and tested with Nikon D70, D90, D3000, D5100, D5600 and D750, Canon 1000D, 600D, 6D, Somy A5000 and A7Rii cameras.
+Driver is developed and tested with:
+* Nikon D70
+* Nikon D90
+* Nikon D3000
+* Nikon D5100
+* Nikon D5600
+* Nikon D750
+* Canon 1000D
+* Canon 600D
+* Canon 6D
+* Sony A5000
+* Sony A7Rii

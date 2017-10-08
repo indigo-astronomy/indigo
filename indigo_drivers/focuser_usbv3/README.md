@@ -3,8 +3,7 @@
 http://www.usb-foc.us/page/homepage
 
 ## Supported devices
-
-USB_Focus v3
+* USB_Focus v3
 
 Single device is present on startup (no hot-plug support).
 

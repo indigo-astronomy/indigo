@@ -3,8 +3,8 @@
 http://www.store.shoestringastronomy.com/products_fc.htm
 
 ## Supported devices
-
-FCUSB, FCUSB2
+* FCUSB
+* FCUSB2
 
 This driver supports hot-plug (single device of each type).
 

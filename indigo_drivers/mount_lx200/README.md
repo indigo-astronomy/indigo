@@ -27,5 +27,5 @@ A non-standard switch property "Alignment mode" is provided by this driver.
 ## Status: Stable
 
 Driver is developed and tested with:
-Meade ETX-125
-EQMac
+* Meade ETX-125
+* EQMac
