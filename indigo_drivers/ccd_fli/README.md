@@ -20,6 +20,11 @@ INDIGO Astronomy open-source license (3rd party library is open source).
 
 indigo_server indigo_ccd_fli
 
+## Status: Stable
+
+Driver is developed and tested with:
+FLI PL9000
+
 ## NOTES
 ### Requires Kernel Driver (Linux only)
 This INDIGO driver requires Linux kernel driver to work. The kernel driver is available for download here:

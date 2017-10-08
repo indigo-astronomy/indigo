@@ -35,8 +35,11 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_ccd_atik
 
-## Status
+## Status: Stable
 
-Driver is developed and tested with Atik Titan, Atik 383L+, Atik One 9, Atik VS 6 and Atik 11000.
-
-
+Driver is developed and tested with:
+Atik Titan
+Atik 383L+
+Atik One 9
+Atik VS 6
+Atik 11000

@@ -20,6 +20,12 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_ccd_sbig
 
+## Status: Stable
+
+Driver is developed and tested with:
+SBIG ST-2000XCM
+SBIG Camera Simulator
+
 ## NOTES
 ### MacOS SDK distributed separately (MacOS only)
 

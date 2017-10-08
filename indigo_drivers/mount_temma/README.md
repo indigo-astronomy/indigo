@@ -18,5 +18,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_mount_temma
 
-## Comments
+## Status: Stable
 
+Driver is developed and tested with:
+Takahashi Temma EM-11
