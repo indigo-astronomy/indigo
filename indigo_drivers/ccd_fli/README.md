@@ -23,7 +23,7 @@ indigo_server indigo_ccd_fli
 ## Status: Stable
 
 Driver is developed and tested with:
-FLI PL9000
+* FLI PL9000
 
 ## NOTES
 ### Requires Kernel Driver (Linux only)

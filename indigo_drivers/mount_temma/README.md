@@ -21,4 +21,4 @@ indigo_server indigo_mount_temma
 ## Status: Stable
 
 Driver is developed and tested with:
-*Takahashi Temma EM-11
+* Takahashi Temma EM-11

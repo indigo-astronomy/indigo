@@ -23,9 +23,9 @@ indigo_server indigo_ccd_asi
 ## Status: Stable
 
 Driver is developed and tested with:
-ASI224MC
-ASI120MM
-ASI120MC-S
-ASI1600MC-Cool
-ASI071MC-Cool
-ASI071MC Pro
+* ASI224MC
+* ASI120MM
+* ASI120MC-S
+* ASI1600MC-Cool
+* ASI071MC-Cool
+* ASI071MC Pro

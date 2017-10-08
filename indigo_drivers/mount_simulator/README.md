@@ -2,8 +2,8 @@
 
 ## Supported devices
 
-Mount Simulator
-Mount Simulator (guider)
+* Mount Simulator
+* Mount Simulator (guider)
 
 All devices are present on startup.
 
