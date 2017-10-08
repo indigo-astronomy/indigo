@@ -23,7 +23,6 @@ indigo_server indigo_ccd_dsi
 ## Status: Stable
 
 Driver is developed and tested with:
-* Meade DSI
 * Meade DSI II Pro
 * Meade DSI III Pro
 

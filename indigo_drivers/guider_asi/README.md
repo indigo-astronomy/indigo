@@ -22,5 +22,5 @@ indigo_server indigo_guider_asi
 
 ## Status: Stable
 
-Driver is developped without the physical hardware and tested by ZWO with:
+Driver is developed without the physical hardware and tested by ZWO with:
 * ZWO ASI USB-ST4 guider adapter

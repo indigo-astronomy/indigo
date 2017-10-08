@@ -23,8 +23,8 @@ indigo_server indigo_focuser_fli
 ## Status: Stable
 
 Driver is developed and tested with:
-FLI PDF Focuser
-FLI Atlas Focuser
+* FLI PDF Focuser
+* FLI Atlas Focuser
 
 ## NOTES
 ### Requires Kernel Driver (Linux only)
