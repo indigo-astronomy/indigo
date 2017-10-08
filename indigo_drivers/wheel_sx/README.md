@@ -26,4 +26,4 @@ indigo_server indigo_wheel_sx
 
 Driver is developed and tested with:
 
-*SX filter wheel
+* SX filter wheel
