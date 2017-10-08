@@ -19,3 +19,7 @@ INDIGO Astronomy open-source license  (3rd party library is closed source).
 ## Use
 
 indigo_server indigo_focuser_usbv3
+
+## Status
+
+Driver is developed and tested with the physical hardware.

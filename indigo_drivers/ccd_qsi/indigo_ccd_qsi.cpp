@@ -88,7 +88,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			long width, height;
 			cam.get_NumX(&width);
 			cam.get_NumY(&height);
-			cam.get_ImageArray(PRIVATE_DATA->buffer);
+			cam.get_ImageArray(PRIVATE_DATA->buffer + FITS_HEADER_SIZE);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Image %ld x %ld", width, height);
 			indigo_process_image(device, PRIVATE_DATA->buffer, (int)width, (int)height, false, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -169,6 +169,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				cam.get_PixelSizeX(&pixelWidth);
 				cam.get_PixelSizeY(&pixelHeight);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Resolution %ld x %ld, pixel size  %g x %g", width, height, pixelWidth, pixelHeight);
+				PRIVATE_DATA->buffer = (unsigned short *)indigo_alloc_blob_buffer(2 * width * height + FITS_HEADER_SIZE);
+				assert(PRIVATE_DATA->buffer != NULL);
 				cam.get_CanSetCCDTemperature(&canSetTemp);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s set temperature", canSetTemp ? "Can" : "Can't");
 				cam.get_HasShutter(&hasShutter);
@@ -470,6 +472,8 @@ static void remove_all_devices() {
 		if (*device == NULL)
 			continue;
 		indigo_detach_device(*device);
+		if (((qsi_private_data *)(*device)->private_data)->buffer)
+			free(((qsi_private_data *)(*device)->private_data)->buffer);
 		free((*device)->private_data);
 		free(*device);
 		*device = NULL;
