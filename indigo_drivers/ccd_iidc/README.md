@@ -1,7 +1,6 @@
 # IIDC CCD driver
 
-https://damien.douxchamps.net/ieee1394/libdc1394/
-https://damien.douxchamps.net/ieee1394/cameras/
+https://damien.douxchamps.net/ieee1394
 
 ## Supported devices
 
