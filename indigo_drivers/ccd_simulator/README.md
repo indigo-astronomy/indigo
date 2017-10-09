@@ -7,6 +7,7 @@
 * CCD Imager Simulator (focuser)
 * CCD Guider Simulator
 * CCD Guider Simulator (guider)
+* DSLR Simulator
 
 All devices are present on startup.
 

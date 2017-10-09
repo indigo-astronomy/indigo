@@ -22,6 +22,7 @@ indigo_server indigo_mount_nexstar
 
 Driver is developed and tested with:
 * SkyWatcher AZ-EQ6 GT
+* SkyWatcher EQ6 Pro
 * Celestron Advanced VX
 
 ## Comments
