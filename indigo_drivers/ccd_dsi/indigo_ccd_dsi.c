@@ -59,8 +59,6 @@
 
 #define DSI_VENDOR_ID              0x156c
 
-#define MAX_MODES                  32
-
 #define PRIVATE_DATA               ((dsi_private_data *)device->private_data)
 
 // gp_bits is used as boolean
@@ -70,9 +68,6 @@
 #define INDIGO_DEBUG_DRIVER(c) c
 
 // -------------------------------------------------------------------------------- FLI USB interface implementation
-
-#define ms2s(s)      ((s) / 1000.0)
-#define s2ms(ms)     ((ms) * 1000)
 
 typedef struct {
 	char dev_sid[DSI_ID_LEN];
