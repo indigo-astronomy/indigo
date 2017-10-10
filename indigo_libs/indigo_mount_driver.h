@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Filter mount Driver base
+/** INDIGO Mount Driver base
  \file indigo_mount_driver.h
  */
 
@@ -382,4 +382,3 @@ extern indigo_result indigo_raw_to_translated(indigo_device *device, double raw_
 #endif
 
 #endif /* indigo_mount_h */
-
