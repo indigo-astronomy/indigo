@@ -742,6 +742,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->last_bpp = PIXEL_FORMAT_PROPERTY->items[0].sw.value ? 8 : 16;
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = 8;
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = 16;
+						res = SetQHYCCDBitsMode(PRIVATE_DATA->handle, PRIVATE_DATA->last_bpp);
+						if (res != QHYCCD_SUCCESS) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDBitsMode(%s) = %d", PRIVATE_DATA->dev_sid, res);
+						}
 					} else {
 						PIXEL_FORMAT_PROPERTY->hidden = true;
 					}
