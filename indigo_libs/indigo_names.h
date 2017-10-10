@@ -1046,4 +1046,52 @@
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
 
 
+//----------------------------------------------------------------------
+
+/** GPS_INFO property name.
+ */
+#define GPS_INFO_PROPERTY_NAME							"GPS_INFO"
+
+/** GPS_INFO.MODEL property item name.
+ */
+#define GPS_INFO_MODEL_ITEM_NAME						"MODEL"
+
+/** GPS_INFO.VENDOR property item name.
+ */
+#define GPS_INFO_VENDOR_ITEM_NAME						"VENDOR"
+
+/** GPS_INFO.FIRMWARE property item name.
+ */
+#define GPS_INFO_FIRMWARE_ITEM_NAME					"FIRMWARE_VERSION"
+
+//----------------------------------------------------------------------
+/** GPS_GEOGRAPHIC_COORDINATES property name.
+ */
+#define GPS_GEOGRAPHIC_COORDINATES_PROPERTY_NAME	"GPS_GEOGRAPHIC_COORDINATES"
+
+/** GPS_GEOGRAPHIC_COORDINATES.LATITUDE property item name.
+ */
+#define GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME	"LATITUDE"
+
+/** GPS_GEOGRAPHIC_COORDINATES.LONGITUDE property item name.
+ */
+#define GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME	"LONGITUDE"
+
+/** GPS_GEOGRAPHIC_COORDINATES.ELEVATION property item name.
+ */
+#define GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME	"ELEVATION"
+
+//----------------------------------------------------------------------
+/** GPS_UTC_TIME property name.
+ */
+#define GPS_UTC_TIME_PROPERTY_NAME						"GPS_UTC_TIME"
+
+/** GPS_UTC_TIME.UTC property item name.
+ */
+#define GPS_UTC_TIME_ITEM_NAME								"TIME"
+
+/** GPS_UTC_TIME.OFFSET property item name.
+ */
+#define GPS_UTC_OFFSET_ITEM_NAME							"OFFSET"
+
 #endif /* indigo_names_h */
