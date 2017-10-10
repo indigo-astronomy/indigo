@@ -61,12 +61,113 @@ static QSICamera cam;
 typedef struct {
 	char serial[INDIGO_NAME_SIZE];
 	bool available;
-	int count_open;
 	indigo_timer *exposure_timer, *temperature_timer;
 	long int buffer_size;
 	unsigned short *buffer;
 	bool can_check_temperature;
+	indigo_device *wheel;
+	int filter_count;
 } qsi_private_data;
+
+// -------------------------------------------------------------------------------- INDIGO wheel device implementation
+
+static void wheel_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	try {
+		short slot;
+		cam.get_Position(&slot);
+		if (slot == -1) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_set_timer(device, 0.5, wheel_timer_callback);
+		} else {
+			WHEEL_SLOT_ITEM->number.value = slot;
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+	} catch (std::runtime_error err) {
+		std::string text = err.what();
+		std::string last("");
+		cam.get_LastError(last);
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Get position failed  %s %s", text.c_str(), last.c_str());
+	}
+}
+
+static indigo_result wheel_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		return indigo_wheel_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+			// -------------------------------------------------------------------------------- CONNECTION
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			assert(PRIVATE_DATA->filter_count > 0);
+			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->filter_count;
+			try {
+				short slot;
+				cam.get_Position(&slot);
+				WHEEL_SLOT_ITEM->number.value = slot;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} catch (std::runtime_error err) {
+				std::string text = err.what();
+				std::string last("");
+				cam.get_LastError(last);
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CONNECTION_PROPERTY, "Connection failed  %s %s", text.c_str(), last.c_str());
+				return INDIGO_OK;
+			}
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
+			// -------------------------------------------------------------------------------- WHEEL_SLOT
+		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
+		try {
+			if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
+				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				short slot;
+				cam.get_Position(&slot);
+				if (WHEEL_SLOT_ITEM->number.value == slot) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+					cam.put_Position(slot);
+					indigo_set_timer(device, 0.5, wheel_timer_callback);
+				}
+			}
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			std::string last("");
+			cam.get_LastError(last);
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Set position failed  %s %s", text.c_str(), last.c_str());
+			return INDIGO_OK;
+		}
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		return INDIGO_OK;
+	}
+	return indigo_wheel_change_property(device, client, property);
+}
+
+static indigo_result wheel_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (CONNECTION_CONNECTED_ITEM->sw.value)
+		indigo_device_disconnect(NULL, device->name);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	return indigo_wheel_detach(device);
+}
+
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
@@ -130,7 +231,6 @@ static void ccd_temperature_callback(indigo_device *device) {
 	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->temperature_timer);
 }
 
-
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -157,7 +257,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				double pixelWidth, pixelHeight;
 				bool hasShutter, canSetTemp, hasFilterWheel, power2Binning;
 				short maxBinX, maxBinY;
-				int filterCount;
 				char name[32], label[128];
 				cam.put_SelectCamera(serial);
 				cam.put_IsMainCamera(true);
@@ -177,11 +276,28 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s shutter", hasShutter ? "Has" : "Hasn't");
 				cam.get_HasFilterWheel(&hasFilterWheel);
 				if (hasFilterWheel) {
-					cam.get_FilterCount(filterCount);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Has filter wheel with %ld positions", filterCount);
+					cam.get_FilterCount(PRIVATE_DATA->filter_count);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Has filter wheel with %ld positions", PRIVATE_DATA->filter_count);
+					static indigo_device wheel_template = {
+						"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+						wheel_attach,
+						indigo_wheel_enumerate_properties,
+						wheel_change_property,
+						NULL,
+						wheel_detach
+					};
+					indigo_device *wheel = (indigo_device *)malloc(sizeof(indigo_device));
+					assert(wheel != NULL);
+					memcpy(wheel, &wheel_template, sizeof(indigo_device));
+					strncpy(wheel->name, device->name, INDIGO_NAME_SIZE - 10);
+					strcat(wheel->name, " (wheel)");
+					wheel->private_data = PRIVATE_DATA;
+					PRIVATE_DATA->wheel = wheel;
+					indigo_async((void *(*)(void *))indigo_attach_device, wheel);
 				} else {
+					PRIVATE_DATA->filter_count = 0;
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hasn't filter wheel");
-					filterCount = 0;
+					PRIVATE_DATA->wheel = NULL;
 				}
 				cam.get_MaxBinX(&maxBinX);
 				cam.get_MaxBinY(&maxBinY);
@@ -233,6 +349,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 			try {
+				if (PRIVATE_DATA->wheel) {
+					wheel_detach(PRIVATE_DATA->wheel);
+					free(PRIVATE_DATA->wheel);
+					PRIVATE_DATA->wheel = NULL;
+				}
 				cam.put_Connected(false);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} catch (std::runtime_error err) {
