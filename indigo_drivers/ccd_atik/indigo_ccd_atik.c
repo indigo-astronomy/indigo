@@ -442,7 +442,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
-		return indigo_guider_enumerate_properties(device, NULL, NULL);
+		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
