@@ -1,7 +1,7 @@
 indigo.xcodeproj/project.xcworkspace/
 indigo.xcodeproj/xcuserdata/
 indigo_server/ctrl.data
-
+indigo_server/resource/*.data
 build/*
 
 **/*.orig
@@ -9,3 +9,5 @@ build/*
 **/.hg
 **/.hgignore
 **/*externals/**/*.a
+
+indigo_drivers/ccd_qsi/externals/
