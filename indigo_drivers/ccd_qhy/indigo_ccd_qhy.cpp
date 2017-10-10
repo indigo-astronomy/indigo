@@ -304,6 +304,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDBitsMode(%s) = %d", PRIVATE_DATA->dev_sid, res);
 			return false;
 		}
+		PRIVATE_DATA->last_bpp = requested_bpp;
 	}
 	
 	res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_EXPOSURE, (long)s2us(exposure));
