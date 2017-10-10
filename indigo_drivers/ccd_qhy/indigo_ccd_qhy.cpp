@@ -116,6 +116,7 @@ typedef struct {
 	bool has_shutter;
 	bool has_cooler;
 	bool cooler_on;
+	int last_bpp;
 
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
@@ -279,6 +280,32 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 	int res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
+	int requested_bpp = PIXEL_FORMAT_PROPERTY->items[0].sw.value ? 8 : 16;
+	if (PRIVATE_DATA->last_bpp != requested_bpp) {
+		CloseQHYCCD(PRIVATE_DATA->handle);
+		PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->dev_sid);
+		if (PRIVATE_DATA->handle == NULL) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "OpenQHYCCD('%s') = NULL", PRIVATE_DATA->dev_sid);
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+		res = SetQHYCCDStreamMode(PRIVATE_DATA->handle, 0);
+		if (res != QHYCCD_SUCCESS) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDStreamMode('%s') = %d", PRIVATE_DATA->dev_sid, res);
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+		InitQHYCCD(PRIVATE_DATA->handle);
+		res = SetQHYCCDBitsMode(PRIVATE_DATA->handle, requested_bpp);
+		if (res != QHYCCD_SUCCESS) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDBitsMode(%s) = %d", PRIVATE_DATA->dev_sid, res);
+			return false;
+		}
+	}
+	
 	res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_EXPOSURE, (long)s2us(exposure));
 	if (res != QHYCCD_SUCCESS) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -452,6 +479,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (qhy_read_pixels(device, false)) {
 			char *color_string = get_bayer_string(device);
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PIXEL_FORMAT_PROPERTY->items[0].sw.value ? 8 : 16;
 			if(color_string) {
 				/* NOTE: There is no need to take care about the offsets,
 				   the SDK takes care the image to be in the correct bayer pattern */
@@ -710,6 +738,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->last_bpp = PIXEL_FORMAT_PROPERTY->items[0].sw.value ? 8 : 16;
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = 8;
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = 16;
 					} else {
