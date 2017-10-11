@@ -707,9 +707,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->frame_width;
 					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->frame_height;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = PRIVATE_DATA->bpp;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = PRIVATE_DATA->bpp;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = PRIVATE_DATA->bpp;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = PRIVATE_DATA->bpp;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bpp;
 
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
@@ -732,20 +732,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 					}
 					// --------------------------------------------------------------------------------- PIXEL_FORMAT
-					int res = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_TRANSFERBIT);
-					if (res == QHYCCD_SUCCESS) {
-						indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 0, RAW8_NAME, RAW8_NAME, true);
-						indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 1, RAW16_NAME, RAW16_NAME, false);
+					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_8BITS) == QHYCCD_SUCCESS && IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_16BITS) == QHYCCD_SUCCESS) {
+						indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 0, RAW8_NAME, RAW8_NAME, PRIVATE_DATA->bpp == 8);
+						indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 1, RAW16_NAME, RAW16_NAME, PRIVATE_DATA->bpp == 16);
 						indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
-						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
-						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->last_bpp = PIXEL_FORMAT_PROPERTY->items[0].sw.value ? 8 : 16;
-						CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = 8;
-						CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = 16;
-						res = SetQHYCCDBitsMode(PRIVATE_DATA->handle, PRIVATE_DATA->last_bpp);
-						if (res != QHYCCD_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetQHYCCDBitsMode(%s) = %d", PRIVATE_DATA->dev_sid, res);
-						}
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = 8;
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = 16;
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->last_bpp = PRIVATE_DATA->bpp;
 					} else {
 						PIXEL_FORMAT_PROPERTY->hidden = true;
 					}
@@ -782,37 +775,22 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					// --------------------------------------------------------------------------------- MODE
 					int count = 0;
 					char name[32], label[64];
-					int min_bpp = 0, max_bpp = 0;
 					for (int bin = 1; bin <= max_bin; bin++) {
 						if (!bins_ok[bin-1]) continue;
 						if (bpp_supported(device, 8)) {
-							if (min_bpp > 8) {
-								min_bpp = 8;
-							}
-							if (max_bpp == 0) {
-								max_bpp = 8;
-							}
 							snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
 							snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
-							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1);
+							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1 && PIXEL_FORMAT_PROPERTY->items[0].sw.value);
 							count++;
 						}
 						if (bpp_supported(device, 16)) {
-							if (min_bpp == 0) {
-								min_bpp = 16;
-							}
-							if (max_bpp < 16) {
-								max_bpp = 16;
-							}
 							snprintf(name, 32, "%s %dx%d", RAW16_NAME, bin, bin);
 							snprintf(label, 64, "%s %dx%d", RAW16_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
-							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1 && count == 0);
+							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1  && PIXEL_FORMAT_PROPERTY->items[1].sw.value);
 							count++;
 						}
 					}
 					CCD_MODE_PROPERTY->count = count;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = min_bpp;
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = max_bpp;
 
 					// --------------------------------------------------------------------------------- GAIN
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CONTROL_GAIN) == QHYCCD_SUCCESS) {
