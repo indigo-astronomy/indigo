@@ -317,7 +317,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_MODE_PROPERTY->count = 0;
 				for (int bin = 1; bin <= maxBin; bin = power2Binning ? (bin * 2) : (bin + 1)) {
 					sprintf(label, "RAW 16 %dx%d", (int)(width / bin), (int)(height / bin));
-					sprintf(name, "BIN_%dx%d", (int)(width / bin), (int)(height / bin));
+					sprintf(name, "BIN_%dx%d", bin, bin);
 					indigo_init_switch_item(CCD_MODE_ITEM + (CCD_MODE_PROPERTY->count++), name, label, bin == 1);
 				}
 				CCD_BIN_PROPERTY->perm = CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
