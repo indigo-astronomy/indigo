@@ -283,6 +283,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 	int requested_bpp = PIXEL_FORMAT_PROPERTY->items[0].sw.value ? 8 : 16;
 	if (PRIVATE_DATA->last_bpp != requested_bpp) {
 		CloseQHYCCD(PRIVATE_DATA->handle);
+		usleep(500000);
 		PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->dev_sid);
 		if (PRIVATE_DATA->handle == NULL) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -408,6 +409,7 @@ static bool qhy_read_pixels(indigo_device *device, bool live) {
 static bool qhy_abort_exposure(indigo_device *device, bool live) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int err = live ? StopQHYCCDLive(PRIVATE_DATA->handle) : CancelQHYCCDExposingAndReadout(PRIVATE_DATA->handle);
+	usleep(500000);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (err !=  QHYCCD_SUCCESS) return false;
 	else return true;
