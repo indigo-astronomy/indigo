@@ -43,7 +43,7 @@
 
 #define REFRESH_SECONDS (0.5)
 
-#define PRIVATE_DATA        ((nexstar_private_data *)device->private_data)
+#define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
 
 #define COMMAND_GUIDE_RATE_PROPERTY     (PRIVATE_DATA->command_guide_rate_property)
@@ -61,100 +61,23 @@
 #define is_connected                   gp_bits
 
 typedef struct {
-	int dev_id;
-	bool parked;
-	bool park_in_progress;
-	char tty_name[INDIGO_VALUE_SIZE];
 	int count_open;
-	int slew_rate;
-	int st4_ra_rate, st4_dec_rate;
-	int vendor_id;
-	pthread_mutex_t serial_mutex;
-	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
-	int guide_rate;
-	indigo_property *command_guide_rate_property;
-} nexstar_private_data;
+	indigo_timer *gps_timer;
+} simulator_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO GPS device implementation
 
 static bool gps_open(indigo_device *device) {
 	if (device->is_connected) return false;
-
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	if (PRIVATE_DATA->count_open++ == 0) {
-		int dev_id; // = open_telescope(DEVICE_PORT_ITEM->text.value);
-		if (dev_id == -1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "open_telescope(%s) = %d", DEVICE_PORT_ITEM->text.value, dev_id);
-			PRIVATE_DATA->count_open--;
-			return false;
-		} else {
-			PRIVATE_DATA->dev_id = dev_id;
-		}
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	if (PRIVATE_DATA->count_open++ == 0) { }
 	return true;
 }
 
-
-
-
-
-static bool gps_set_location(indigo_device *device) {
-	int res;
-	double lon = GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-	if (lon > 180) lon -= 360.0;
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	res = tc_set_location(PRIVATE_DATA->dev_id, lon, GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = %d", PRIVATE_DATA->dev_id, res);
-		return false;
-	}
-	return true;
-}
-
-
-static void gps_handle_utc(indigo_device *device) {
-	time_t utc_time = indigo_isototime(GPS_UTC_ITEM->text.value);
-	if (utc_time == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
-		GPS_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, "Wrong date/time format!");
-		return;
-	}
-
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	/* set gps time to UTC */
-	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, 0, 0);
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res);
-		GPS_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, "Can not set gps date/time.");
-		return;
-	}
-
-	GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-	return;
-}
 
 static bool gps_set_utc_from_host(indigo_device *device) {
 	time_t utc_time = indigo_utc(NULL);
 	if (utc_time == -1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get host UT");
-		return false;
-	}
-
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	/* set gps time to UTC */
-	int res = tc_set_time(PRIVATE_DATA->dev_id, utc_time, 0, 0);
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res);
 		return false;
 	}
 	return true;
@@ -163,51 +86,14 @@ static bool gps_set_utc_from_host(indigo_device *device) {
 
 static void gps_close(indigo_device *device) {
 	if (!device->is_connected) return;
-
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
-		//close_telescope(PRIVATE_DATA->dev_id);
-		PRIVATE_DATA->dev_id = -1;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 }
 
 
-static void position_timer_callback(indigo_device *device) {
+static void gps_timer_callback(indigo_device *device) {
 	int res;
 	double ra, dec, lon, lat;
-	int dev_id = PRIVATE_DATA->dev_id;
-
-	if (dev_id < 0) return;
-
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	if (tc_goto_in_progress(dev_id)) {
-		GPS_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	} else {
-		GPS_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	}
-
-	res = tc_get_rade_p(dev_id, &ra, &dec);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_rade_p(%d) = %d", dev_id, res);
-	}
-
-	res = tc_get_location(dev_id, &lon, &lat);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_location(%d) = %d", dev_id, res);
-	}
-	if (lon < 0) lon += 360;
-
-	time_t ttime;
-	int tz, dst;
-	res = (int)tc_get_time(dev_id, &ttime, &tz, &dst);
-	if (res == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_time(%d) = %d", dev_id, res);
-		GPS_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 
 	GPS_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
 	GPS_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
@@ -220,7 +106,7 @@ static void position_timer_callback(indigo_device *device) {
 	indigo_timetoiso(ttime - 3600 * (tz + dst), GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 	indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
-	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->position_timer);
+	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->gps_timer);
 }
 
 
@@ -228,34 +114,17 @@ static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- GPS_ON_COORDINATES_SET
-		GPS_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
+		DEVICE_PORT_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
-		DEVICE_PORTS_PROPERTY->hidden = false;
+		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
-
-		GPS_LST_TIME_PROPERTY->hidden = true;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
-		GPS_PARK_PARKED_ITEM->sw.value = false;
-		GPS_PARK_UNPARKED_ITEM->sw.value = true;
-		//GPS_PARK_PROPERTY->hidden = true;
-		//GPS_UTC_TIME_PROPERTY->count = 1;
-		//GPS_UTC_TIME_PROPERTY->perm = INDIGO_RO_PERM;
-		GPS_SET_HOST_TIME_PROPERTY->hidden = false;
-
-		strncpy(GPS_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
-
-		GPS_TRACK_RATE_PROPERTY->hidden = true;
-
-		GPS_SLEW_RATE_PROPERTY->hidden = false;
 
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_gps_enumerate_properties(device, NULL, NULL);
@@ -284,7 +153,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 
 					device->is_connected = true;
 					/* start updates */
-					PRIVATE_DATA->ut_timer = indigo_set_timer(device, 0, ut_timer_callback);
+					PRIVATE_DATA->gps_timer = indigo_set_timer(device, 0, gps_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -347,7 +216,7 @@ static indigo_result gps_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static nexstar_private_data *private_data = NULL;
+static simulator_private_data *private_data = NULL;
 
 static indigo_device *gps = NULL;
 static indigo_device *gps_guider = NULL;
@@ -364,7 +233,7 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 	static indigo_device gps_guider_template = {
 		GPS_NEXSTAR_GUIDER_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
-		nexstar_guider_enumerate_properties,
+		simulator_guider_enumerate_properties,
 		guider_change_property,
 		NULL,
 		guider_detach
@@ -380,9 +249,9 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		private_data = malloc(sizeof(nexstar_private_data));
+		private_data = malloc(sizeof(simulator_private_data));
 		assert(private_data != NULL);
-		memset(private_data, 0, sizeof(nexstar_private_data));
+		memset(private_data, 0, sizeof(simulator_private_data));
 		private_data->dev_id = -1;
 		private_data->count_open = 0;
 		gps = malloc(sizeof(indigo_device));
@@ -390,11 +259,6 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 		memcpy(gps, &gps_template, sizeof(indigo_device));
 		gps->private_data = private_data;
 		indigo_attach_device(gps);
-		gps_guider = malloc(sizeof(indigo_device));
-		assert(gps_guider != NULL);
-		memcpy(gps_guider, &gps_guider_template, sizeof(indigo_device));
-		gps_guider->private_data = private_data;
-		indigo_attach_device(gps_guider);
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
@@ -403,11 +267,6 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 			indigo_detach_device(gps);
 			free(gps);
 			gps = NULL;
-		}
-		if (gps_guider != NULL) {
-			indigo_detach_device(gps_guider);
-			free(gps_guider);
-			gps_guider = NULL;
 		}
 		if (private_data != NULL) {
 			free(private_data);
