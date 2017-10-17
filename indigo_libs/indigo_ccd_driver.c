@@ -711,10 +711,13 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
 			free(raw);
 		}
-		int padding = 2880 - blobsize % 2880;
-		if (padding) {
-			memset(data + FITS_HEADER_SIZE + blobsize, 0, padding);
-			blobsize += padding;
+		int mod2880 = blobsize % 2880;
+		if (mod2880) {
+			int padding = 2880 - mod2880;
+			if (padding) {
+				memset(data + FITS_HEADER_SIZE + blobsize, 0, padding);
+				blobsize += padding;
+			}
 		}
 		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
