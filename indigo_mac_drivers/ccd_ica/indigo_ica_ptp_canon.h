@@ -133,6 +133,7 @@ enum PTPCanonEventCodeEnum {
   PTPEventCodeCanonAfResult = 0xC1A3,
   PTPEventCodeCanonCTGInfoCheckComplete = 0xC1A4,
   PTPEventCodeCanonOLCInfoChanged = 0xC1A5,
+  PTPEventCodeCanonObjectAddedEx2 = 0xC1A7,
   PTPEventCodeCanonRequestObjectTransferFTP = 0xC1F1
 };
 

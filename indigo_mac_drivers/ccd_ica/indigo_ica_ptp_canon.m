@@ -152,6 +152,7 @@ static long ptpReadCanonImageFormat(unsigned char** buf) {
   switch (eventCode) {
     case PTPEventCodeCanonRequestGetEvent: return @"PTPEventCodeCanonRequestGetEvent";
     case PTPEventCodeCanonObjectAddedEx: return @"PTPEventCodeCanonObjectAddedEx";
+    case PTPEventCodeCanonObjectAddedEx2: return @"PTPEventCodeCanonObjectAddedEx2";
     case PTPEventCodeCanonObjectRemoved: return @"PTPEventCodeCanonObjectRemoved";
     case PTPEventCodeCanonRequestGetObjectInfoEx: return @"PTPEventCodeCanonRequestGetObjectInfoEx";
     case PTPEventCodeCanonStorageStatusChanged: return @"PTPEventCodeCanonStorageStatusChanged";
@@ -892,11 +893,21 @@ static struct info {
             unsigned int obj = ptpReadUnsignedInt(&buf);
             NSNumber *key = [NSNumber numberWithUnsignedInt:obj];
             NSString *value = [NSString stringWithCString:(char *)(buf + 0x1C) encoding:NSUTF8StringEncoding];
+            [self.delegate debug:[NSString stringWithFormat:@"PTPEventCodeCanonObjectAddedEx '%@' = '%@'", key, value]];
             [addedFileName setObject:value forKey:key];
             self.remainingCount++;
             [self sendPTPRequest:PTPRequestCodeCanonGetObject param1:obj];
             break;
-
+          }
+          case PTPEventCodeCanonObjectAddedEx2: {
+            unsigned int obj = ptpReadUnsignedInt(&buf);
+            NSNumber *key = [NSNumber numberWithUnsignedInt:obj];
+            NSString *value = [NSString stringWithCString:(char *)(buf + 0x20) encoding:NSUTF8StringEncoding];
+            [self.delegate debug:[NSString stringWithFormat:@"PTPEventCodeCanonObjectAddedEx2 '%@' = '%@'", key, value]];
+            [addedFileName setObject:value forKey:key];
+            self.remainingCount++;
+            [self sendPTPRequest:PTPRequestCodeCanonGetObject param1:obj];
+            break;
           }
           default:
             [self.delegate debug:[NSString stringWithFormat:@"%@ + %dbytes", [PTPCanonEvent eventCodeName:type], size]];
