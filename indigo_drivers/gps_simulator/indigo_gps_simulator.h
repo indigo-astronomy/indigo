@@ -27,25 +27,22 @@
 #define mount_nexstar_h
 
 #include "indigo_driver.h"
-#include "indigo_mount_driver.h"
+#include "indigo_gps_driver.h"
 #include "indigo_guider_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MOUNT_NEXSTAR_NAME              "Mount Nexstar"
-#define MOUNT_NEXSTAR_GUIDER_NAME       "Mount Nexstar (guider)"
-
+#define GPS_SIMULATOR_NAME              "GPS Simulator"
 
 /** Create mount Nexstar device instance
  */
 
-extern indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* mount_nexstar_h */
-
