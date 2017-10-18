@@ -19,16 +19,15 @@
 // version history
 // 2.0 by Rumen G. Bogdanovski
 
-/** INDIGO mount nexstar driver
- \file indigo_mount_nexstar.h
+/** INDIGO GPS Simulator driver
+ \file indigo_gps_simulator.h
  */
 
-#ifndef mount_nexstar_h
-#define mount_nexstar_h
+#ifndef gps_simulator_h
+#define gps_simulalor_h
 
 #include "indigo_driver.h"
 #include "indigo_gps_driver.h"
-#include "indigo_guider_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,7 +35,7 @@ extern "C" {
 
 #define GPS_SIMULATOR_NAME              "GPS Simulator"
 
-/** Create mount Nexstar device instance
+/** Create GPS Simulator device instance
  */
 
 extern indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_info *info);
@@ -45,4 +44,4 @@ extern indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_dr
 }
 #endif
 
-#endif /* mount_nexstar_h */
+#endif /* gps_simulator_h */
