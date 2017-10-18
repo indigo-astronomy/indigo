@@ -140,6 +140,7 @@ DRIVERS=\
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))) \
+	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*)))
 
 DRIVER_LIBS=$(PLATFORM_DRIVER_LIBS)\
@@ -147,6 +148,7 @@ DRIVER_LIBS=$(PLATFORM_DRIVER_LIBS)\
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))) \
+	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*))))
 
 DRIVER_SOLIBS=$(PLATFORM_DRIVER_SOLIBS)\
@@ -154,6 +156,7 @@ DRIVER_SOLIBS=$(PLATFORM_DRIVER_SOLIBS)\
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/wheel_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))) \
+	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*))))
 
 SIMULATOR_LIBS=\
@@ -447,6 +450,21 @@ $(BUILD_DRIVERS)/indigo_mount_simulator: indigo_drivers/mount_simulator/indigo_m
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
 $(BUILD_DRIVERS)/indigo_mount_simulator.$(SOEXT): indigo_drivers/mount_simulator/indigo_mount_simulator.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build GPS simulator driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_gps_simulator.a: indigo_drivers/gps_simulator/indigo_gps_simulator.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_gps_simulator: indigo_drivers/gps_simulator/indigo_gps_simulator_main.o $(BUILD_DRIVERS)/indigo_gps_simulator.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_gps_simulator.$(SOEXT): indigo_drivers/gps_simulator/indigo_gps_simulator.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------

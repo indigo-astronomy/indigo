@@ -95,15 +95,13 @@ static void gps_timer_callback(indigo_device *device) {
 	int res;
 	double ra, dec, lon, lat;
 
-	GPS_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
-	GPS_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-	indigo_update_property(device, GPS_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-
-	GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
-	GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+	GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 22;
+	GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 33;
 	indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 
-	indigo_timetoiso(ttime - 3600 * (tz + dst), GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+	time_t ttime;
+
+	indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 	indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->gps_timer);
@@ -143,12 +141,11 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				if (gps_open(device)) {
-					int dev_id = PRIVATE_DATA->dev_id;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
 					/* initialize info prop */
 					strncpy(GPS_INFO_VENDOR_ITEM->text.value, "GPS Simulator", INDIGO_VALUE_SIZE);
-					strncpy(GPS_INFO_MODEL_ITEM->text.value, "SPS Simularor", INDIGO_VALUE_SIZE);
+					strncpy(GPS_INFO_MODEL_ITEM->text.value, "GPS Simularor", INDIGO_VALUE_SIZE);
 					snprintf(GPS_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", 0, 0);
 
 					device->is_connected = true;
@@ -158,10 +155,9 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				}
-			}
 		} else {
 			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->ut_timer);
+				indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
 				gps_close(device);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -172,33 +168,10 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
 			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
-		if (gps_set_location(device)) {
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GPS_SET_HOST_TIME_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GPS_SET_HOST_TIME_PROPERTY
-		indigo_property_copy_values(GPS_SET_HOST_TIME_PROPERTY, property, false);
-		if(GPS_SET_HOST_TIME_ITEM->sw.value) {
-			if(gps_set_utc_from_host(device)) {
-				GPS_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				GPS_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-		}
-		GPS_SET_HOST_TIME_ITEM->sw.value = false;
-		GPS_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GPS_SET_HOST_TIME_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(GPS_UTC_TIME_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GPS_UTC_TIME_PROPERTY
-		indigo_property_copy_values(GPS_UTC_TIME_PROPERTY, property, false);
-		gps_handle_utc(device);
-		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
 	}
 	return indigo_gps_change_property(device, client, property);
 }
@@ -208,7 +181,7 @@ static indigo_result gps_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+	indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
 
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
 	return indigo_gps_detach(device);
@@ -223,20 +196,12 @@ static indigo_device *gps_guider = NULL;
 
 indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device gps_template = {
-		GPS_NEXSTAR_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		GPS_SIMULATOR_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		gps_attach,
 		indigo_gps_enumerate_properties,
 		gps_change_property,
 		NULL,
 		gps_detach
-	};
-	static indigo_device gps_guider_template = {
-		GPS_NEXSTAR_GUIDER_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
-		guider_attach,
-		simulator_guider_enumerate_properties,
-		guider_change_property,
-		NULL,
-		guider_detach
 	};
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -252,7 +217,6 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 		private_data = malloc(sizeof(simulator_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(simulator_private_data));
-		private_data->dev_id = -1;
 		private_data->count_open = 0;
 		gps = malloc(sizeof(indigo_device));
 		assert(gps != NULL);
