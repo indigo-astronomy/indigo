@@ -387,6 +387,7 @@ endif
 init:
 	$(info -------------------- $(OS_DETECTED) build --------------------)
 	$(info drivers: $(notdir $(DRIVERS)))
+	git submodule update --init --recursive
 	git submodule foreach git pull origin master
 	install -d $(BUILD_ROOT)
 	install -d $(BUILD_BIN)
