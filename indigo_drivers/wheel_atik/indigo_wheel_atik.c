@@ -209,7 +209,6 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 		if (device)
 			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
-		hid_exit();
 		break;
 
 	case INDIGO_DRIVER_INFO:
