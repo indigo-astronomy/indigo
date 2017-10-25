@@ -48,6 +48,7 @@
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
+#include "gps_simulator/indigo_gps_simulator.h"
 #ifdef STATIC_DRIVERS
 #include "ccd_sx/indigo_ccd_sx.h"
 #include "wheel_sx/indigo_wheel_sx.h"
@@ -81,6 +82,7 @@
 driver_entry_point static_drivers[] = {
 	indigo_ccd_simulator,
 	indigo_mount_simulator,
+	indigo_gps_simulator,
 #ifdef STATIC_DRIVERS
 	indigo_ccd_sx,
 	indigo_wheel_sx,
@@ -109,7 +111,7 @@ driver_entry_point static_drivers[] = {
 	NULL
 };
 
-static int first_driver = 2;
+static int first_driver = 3; /* This should be equial to number of simulator drivers */
 static indigo_property *drivers_property;
 static indigo_property *servers_property;
 static indigo_property *load_property;
