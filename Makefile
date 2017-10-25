@@ -234,12 +234,12 @@ $(BUILD_LIB)/libdc1394.a: indigo_drivers/ccd_iidc/externals/libdc1394/Makefile
 #---------------------------------------------------------------------
 
 $(BUILD_LIB)/libnovas.a: externals/novas/novas.o externals/novas/eph_manager.o externals/novas/novascon.o externals/novas/nutation.o externals/novas/readeph0.o  externals/novas/solsys1.o  externals/novas/solsys3.o
-	$(AR) $(ARFLAGS) $@ $^
 	install externals/novas/novas.h $(BUILD_INCLUDE)
 	install externals/novas/novascon.h $(BUILD_INCLUDE)
 	install externals/novas/solarsystem.h $(BUILD_INCLUDE)
 	install externals/novas/nutation.h $(BUILD_INCLUDE)
 	install externals/novas/JPLEPH.421 $(BUILD_LIB)
+	$(AR) $(ARFLAGS) $@ $^
 
 #---------------------------------------------------------------------
 #
@@ -275,6 +275,7 @@ $(BUILD_LIB)/libatik.a: $(BUILD_INCLUDE)/libatik/libatik.h
 
 $(BUILD_LIB)/libqhy.a:
 	mkdir libqhy_scratch; cd libqhy_scratch; cmake -DCMAKE_INSTALL_PREFIX=../build/ -DSKIP_FIRMWARE_INSTALL=True ../indigo_drivers/ccd_qhy/bin_externals/qhyccd/; make install; cd ..; rm -rf libqhy_scratch
+	cp indigo_drivers/ccd_qhy/bin_externals/qhyccd/include/*.h $(BUILD_INCLUDE)
 
 #---------------------------------------------------------------------
 #
@@ -638,8 +639,6 @@ $(BUILD_DRIVERS)/indigo_guider_asi.$(SOEXT): indigo_drivers/guider_asi/indigo_gu
 #	Build QHY CCD driver (based on the official SDK)
 #
 #---------------------------------------------------------------------
-
-indigo_drivers/ccd_qhy/indigo_ccd_qhy.o: $(BUILD_LIB)/libqhy.a
 
 $(BUILD_DRIVERS)/indigo_ccd_qhy.a: indigo_drivers/ccd_qhy/indigo_ccd_qhy.o
 	$(AR) $(ARFLAGS) $@ $^
