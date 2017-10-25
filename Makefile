@@ -164,7 +164,7 @@ SIMULATOR_LIBS=\
 
 SO_LIBS= $(wildcard $(BUILD_LIB)/*.$(SOEXT))
 
-.PHONY: init clean macfixpath
+.PHONY: init submodule-init clean macfixpath
 
 #---------------------------------------------------------------------
 #
@@ -388,11 +388,18 @@ endif
 #
 #---------------------------------------------------------------------
 
-init:
-	$(info -------------------- $(OS_DETECTED) build --------------------)
-	$(info drivers: $(notdir $(DRIVERS)))
+SUBMODULES_FLAG=externals/SUBMODULES-UP-TO-DATE
+
+submodule-init:
+ifeq ("$(wildcard $(SUBMODULES_FLAG))","")
 	git submodule update --init --recursive
 	git submodule foreach git pull origin master
+	touch $(SUBMODULES_FLAG)
+endif
+
+init: submodule-init
+	$(info -------------------- $(OS_DETECTED) build --------------------)
+	$(info drivers: $(notdir $(DRIVERS)))
 	install -d $(BUILD_ROOT)
 	install -d $(BUILD_BIN)
 	install -d $(BUILD_LIB)
