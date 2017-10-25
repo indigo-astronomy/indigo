@@ -35,27 +35,16 @@
 #include <assert.h>
 
 #include "indigo_driver_xml.h"
-
 #include "indigo_gps_simulator.h"
 
-#define h2d(h) (h * 15.0)
-#define d2h(d) (d / 15.0)
+/* Sumulator uses coordinates of AO Belogradchik */
+#define SIM_LONGITUDE 22.675
+#define SIM_LATITUDE 43.625
+#define SIM_ELEVATION 650
 
-#define REFRESH_SECONDS (0.5)
+#define REFRESH_SECONDS (1.0)
 
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
-
-
-#define COMMAND_GUIDE_RATE_PROPERTY     (PRIVATE_DATA->command_guide_rate_property)
-#define GUIDE_50_ITEM                   (COMMAND_GUIDE_RATE_PROPERTY->items+0)
-#define GUIDE_100_ITEM                  (COMMAND_GUIDE_RATE_PROPERTY->items+1)
-
-#define COMMAND_GUIDE_RATE_PROPERTY_NAME   "COMMAND_GUIDE_RATE"
-#define GUIDE_50_ITEM_NAME                 "GUIDE_50"
-#define GUIDE_100_ITEM_NAME                "GUIDE_100"
-
-#define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
-#define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
 
 // gp_bits is used as boolean
 #define is_connected                   gp_bits
@@ -69,16 +58,8 @@ typedef struct {
 
 static bool gps_open(indigo_device *device) {
 	if (device->is_connected) return false;
-	if (PRIVATE_DATA->count_open++ == 0) { }
-	return true;
-}
-
-
-static bool gps_set_utc_from_host(indigo_device *device) {
-	time_t utc_time = indigo_utc(NULL);
-	if (utc_time == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get host UT");
-		return false;
+	if (PRIVATE_DATA->count_open++ == 0) {
+		srand(time(NULL));
 	}
 	return true;
 }
@@ -95,12 +76,12 @@ static void gps_timer_callback(indigo_device *device) {
 	int res;
 	double ra, dec, lon, lat;
 
-	GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 22;
-	GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 33;
+	GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX)*1000);
+	GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = SIM_LATITUDE + rand() / ((double)(RAND_MAX)*1000);
+	GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = (int)(SIM_ELEVATION + 0.5 + (double)(rand())/RAND_MAX);
 	indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 
-	time_t ttime;
-
+	time_t ttime = time(NULL);
 	indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 	indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
@@ -121,7 +102,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
-		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
+		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3; // we can not set elevation from the protocol
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
@@ -142,7 +123,6 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 			if (!device->is_connected) {
 				if (gps_open(device)) {
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
 					/* initialize info prop */
 					strncpy(GPS_INFO_VENDOR_ITEM->text.value, "GPS Simulator", INDIGO_VALUE_SIZE);
 					strncpy(GPS_INFO_MODEL_ITEM->text.value, "GPS Simularor", INDIGO_VALUE_SIZE);
@@ -155,23 +135,15 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				}
-		} else {
-			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
-				gps_close(device);
-				device->is_connected = false;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				if (device->is_connected) {
+					indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
+					gps_close(device);
+					device->is_connected = false;
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				}
 			}
 		}
-	} else if (indigo_property_match(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GPS_GEOGRAPTHIC_COORDINATES
-		indigo_property_copy_values(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-		if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
-			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
-			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		}
-		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-		return INDIGO_OK;
 	}
 	return indigo_gps_change_property(device, client, property);
 }

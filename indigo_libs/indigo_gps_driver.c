@@ -55,14 +55,14 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 			indigo_init_text_item(GPS_INFO_MODEL_ITEM, GPS_INFO_MODEL_ITEM_NAME, "Model", "Unkwnown");
 			indigo_init_text_item(GPS_INFO_FIRMWARE_ITEM, GPS_INFO_FIRMWARE_ITEM_NAME, "Firmware", "N/A");
 			// -------------------------------------------------------------------------------- GPS_GEOGRAPHIC_COORDINATES
-			GPS_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GPS_GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GPS_SITE_GROUP, "Location", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 3);
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GPS_GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GPS_SITE_GROUP, "Location", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
 			if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM, GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, "Latitude (-90 to +90° +N)", -90, 90, 0, 0);
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM, GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, "Longitude (0 to 360° +E)", -180, 360, 0, 0);
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM, GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, "Elevation (m)", 0, 8000, 0, 0);
 			// -------------------------------------------------------------------------------- GPS_UTC_TIME
-			GPS_UTC_TIME_PROPERTY = indigo_init_text_property(NULL, device->name, GPS_UTC_TIME_PROPERTY_NAME, GPS_SITE_GROUP, "UTC time", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+			GPS_UTC_TIME_PROPERTY = indigo_init_text_property(NULL, device->name, GPS_UTC_TIME_PROPERTY_NAME, GPS_SITE_GROUP, "UTC time", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
 			if (GPS_UTC_TIME_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			GPS_UTC_TIME_PROPERTY->hidden = true;
