@@ -104,6 +104,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3; // we can not set elevation from the protocol
 		GPS_UTC_TIME_PROPERTY->hidden = false;
+		GPS_UTC_TIME_PROPERTY->count = 1;
 
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
 		return indigo_gps_enumerate_properties(device, NULL, NULL);
