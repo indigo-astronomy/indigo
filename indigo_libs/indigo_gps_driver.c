@@ -54,6 +54,11 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 			indigo_init_text_item(GPS_INFO_VENDOR_ITEM, GPS_INFO_VENDOR_ITEM_NAME, "Vendor", "Unkwnown");
 			indigo_init_text_item(GPS_INFO_MODEL_ITEM, GPS_INFO_MODEL_ITEM_NAME, "Model", "Unkwnown");
 			indigo_init_text_item(GPS_INFO_FIRMWARE_ITEM, GPS_INFO_FIRMWARE_ITEM_NAME, "Firmware", "N/A");
+			// -------------------------------------------------------------------------------- GPS_HAVE_FIX
+			GPS_STATUS_PROPERTY = indigo_init_light_property(NULL, device->name, GPS_STATUS_PROPERTY_NAME, GPS_SITE_GROUP, "Status", INDIGO_IDLE_STATE, 1);
+			if (GPS_STATUS_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_light_item(GPS_STATUS_HAVE_VALID_FIX_ITEM, GPS_STATUS_HAVE_VALID_FIX_ITEM_NAME, "Postition Fix", INDIGO_IDLE_STATE);
 			// -------------------------------------------------------------------------------- GPS_GEOGRAPHIC_COORDINATES
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GPS_GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GPS_SITE_GROUP, "Location", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
 			if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)
@@ -87,6 +92,8 @@ indigo_result indigo_gps_enumerate_properties(indigo_device *device, indigo_clie
 				indigo_define_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			if (indigo_property_match(GPS_UTC_TIME_PROPERTY, property))
 				indigo_define_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+			if (indigo_property_match(GPS_STATUS_PROPERTY, property))
+				indigo_define_property(device, GPS_STATUS_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -102,10 +109,12 @@ indigo_result indigo_gps_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, GPS_INFO_PROPERTY, NULL);
 			indigo_define_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+			indigo_define_property(device, GPS_STATUS_PROPERTY, NULL);
 		} else {
 			indigo_delete_property(device, GPS_INFO_PROPERTY, NULL);
 			indigo_delete_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+			indigo_delete_property(device, GPS_STATUS_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GPS_GEOGRAPHIC_COORDINATES
@@ -129,5 +138,6 @@ indigo_result indigo_gps_detach(indigo_device *device) {
 	indigo_release_property(GPS_INFO_PROPERTY);
 	indigo_release_property(GPS_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_release_property(GPS_UTC_TIME_PROPERTY);
+	indigo_release_property(GPS_STATUS_PROPERTY);
 	return indigo_device_detach(device);
 }
