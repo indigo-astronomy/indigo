@@ -307,7 +307,7 @@ extern void indigo_trace_property(const char *message, indigo_property *property
 /** Start bus operation.
  Call has no effect, if bus is already started.
  */
-extern indigo_result indigo_start();
+extern indigo_result indigo_start(void);
 
 /** Set log level; see enum indigo_log_levels
 */
@@ -315,7 +315,7 @@ extern void indigo_set_log_level(indigo_log_levels level);
 
 /** Get log level; see enum indigo_log_levels
  */
-extern indigo_log_levels indigo_get_log_level();
+extern indigo_log_levels indigo_get_log_level(void);
 
 /** Attach device to bus.
  Return value of attach() callback function is assigned to last_result in device structure.
@@ -368,7 +368,7 @@ extern indigo_result indigo_enable_blob(indigo_client *client, indigo_property *
 /** Stop bus operation.
  Call has no effect if bus is already stopped.
  */
-extern indigo_result indigo_stop();
+extern indigo_result indigo_stop(void);
 
 /** Initialize text property.
  */
