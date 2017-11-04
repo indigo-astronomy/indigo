@@ -43,6 +43,7 @@
 #define SIM_ELEVATION 650
 
 #define REFRESH_SECONDS (1.0)
+#define TICKS_TO_FIX    10
 
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
@@ -51,6 +52,7 @@
 
 typedef struct {
 	int count_open;
+	int timer_ticks;
 	indigo_timer *gps_timer;
 } simulator_private_data;
 
@@ -60,6 +62,7 @@ static bool gps_open(indigo_device *device) {
 	if (device->is_connected) return false;
 	if (PRIVATE_DATA->count_open++ == 0) {
 		srand(time(NULL));
+		PRIVATE_DATA->timer_ticks = 0;
 	}
 	return true;
 }
@@ -68,6 +71,7 @@ static bool gps_open(indigo_device *device) {
 static void gps_close(indigo_device *device) {
 	if (!device->is_connected) return;
 	if (--PRIVATE_DATA->count_open == 0) {
+		PRIVATE_DATA->timer_ticks = 0;
 	}
 }
 
@@ -75,9 +79,8 @@ static void gps_close(indigo_device *device) {
 static void gps_timer_callback(indigo_device *device) {
 	int res;
 	double ra, dec, lon, lat;
-	static int called = 0;
 
-	if (called > 10) {
+	if (PRIVATE_DATA->timer_ticks >= TICKS_TO_FIX) {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX)*1000);
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = SIM_LATITUDE + rand() / ((double)(RAND_MAX)*1000);
 		GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = (int)(SIM_ELEVATION + 0.5 + (double)(rand())/RAND_MAX);
@@ -89,9 +92,11 @@ static void gps_timer_callback(indigo_device *device) {
 		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
-		GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_OK_STATE;
-		GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GPS_STATUS_PROPERTY, "Position fix is valid");
+		if (PRIVATE_DATA->timer_ticks == TICKS_TO_FIX) {
+			GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_OK_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, GPS_STATUS_PROPERTY, "Position fix is valid");
+		}
 	} else {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
@@ -104,12 +109,14 @@ static void gps_timer_callback(indigo_device *device) {
 		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
-		GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
-		GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, GPS_STATUS_PROPERTY, "No position fix");
+		if (PRIVATE_DATA->timer_ticks == 0) {
+			GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, GPS_STATUS_PROPERTY, "No position fix");
+		}
 	}
 
-	called++;
+	PRIVATE_DATA->timer_ticks++;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->gps_timer);
 }
 
@@ -118,14 +125,9 @@ static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_gps_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
-		// --------------------------------------------------------------------------------
-
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 4;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
@@ -153,8 +155,6 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 					strncpy(GPS_INFO_VENDOR_ITEM->text.value, "GPS Simulator", INDIGO_VALUE_SIZE);
 					strncpy(GPS_INFO_MODEL_ITEM->text.value, "GPS Simularor", INDIGO_VALUE_SIZE);
 					snprintf(GPS_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", 0, 0);
-					GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
-
 					device->is_connected = true;
 					/* start updates */
 					PRIVATE_DATA->gps_timer = indigo_set_timer(device, 0, gps_timer_callback);
