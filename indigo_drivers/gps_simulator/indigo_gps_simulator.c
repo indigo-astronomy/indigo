@@ -81,6 +81,7 @@ static void gps_timer_callback(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX)*1000);
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = SIM_LATITUDE + rand() / ((double)(RAND_MAX)*1000);
 		GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = (int)(SIM_ELEVATION + 0.5 + (double)(rand())/RAND_MAX);
+		GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM->number.value = (int)(5 + 0.5 + (double)(rand())/RAND_MAX);
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		time_t ttime = time(NULL);
@@ -95,6 +96,7 @@ static void gps_timer_callback(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
 		GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
+		GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM->number.value = 0;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		time_t ttime = 0;
@@ -125,7 +127,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
-		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3; // we can not set elevation from the protocol
+		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 4;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
 
