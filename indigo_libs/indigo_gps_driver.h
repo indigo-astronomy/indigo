@@ -62,6 +62,10 @@ extern "C" {
  */
 #define GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM		(GPS_GEOGRAPHIC_COORDINATES_PROPERTY->items+2)
 
+/** GPS_GEOGRAPHIC_COORDINATES.ACCURACY property item pointer.
+ */
+#define GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM		(GPS_GEOGRAPHIC_COORDINATES_PROPERTY->items+3)
+
 //---------------------------------------------
 /** GPS_INFO property pointer, property is optional, property change request should be fully handled by device driver.
  */
