@@ -258,7 +258,7 @@ extern indigo_result indigo_save_property(indigo_device*device, int *file_handle
 
 /** Start USB event handler thread.
  */
-extern void indigo_start_usb_event_handler();
+extern void indigo_start_usb_event_handler(void);
 
 /** Asynchronous execution in thread.
  */
