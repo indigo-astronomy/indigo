@@ -89,9 +89,19 @@ extern "C" {
  */
 #define GPS_UTC_ITEM																(GPS_UTC_TIME_PROPERTY->items+0)
 
-/** GPS_UTC_TIME.UTC property item pointer.
+/** GPS_UTC_TIME.OFFSET property item pointer.
  */
 #define GPS_UTC_OFFEST_ITEM													(GPS_UTC_TIME_PROPERTY->items+1)
+
+
+//---------------------------------------------
+/** GPS_STAUS property pointer, property is optional.
+ */
+#define GPS_STATUS_PROPERTY													(GPS_CONTEXT->gps_status_property)
+
+/** GPS_HAVE_VALID_FIX_ITEM. HAVE_FIX property item pointer.
+ */
+#define GPS_STATUS_HAVE_VALID_FIX_ITEM													(GPS_STATUS_PROPERTY->items+0)
 
 
 //------------------------------------------------
@@ -102,6 +112,7 @@ typedef struct {
 	indigo_property *gps_geographic_coordinates_property;	///< GPS_GEOGRAPHIC_COORDINATES property pointer
 	indigo_property *gps_info_property;                   ///< GPS_INFO property pointer
 	indigo_property *gps_utc_time_property;               ///< GPS_UTC_TIME property_pointe
+	indigo_property *gps_status_property;                 ///< GPS_STAUS property_pointe
 } indigo_gps_context;
 
 /** Attach callback function.

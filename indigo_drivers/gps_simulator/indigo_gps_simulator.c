@@ -75,16 +75,39 @@ static void gps_close(indigo_device *device) {
 static void gps_timer_callback(indigo_device *device) {
 	int res;
 	double ra, dec, lon, lat;
+	static int called = 0;
 
-	GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX)*1000);
-	GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = SIM_LATITUDE + rand() / ((double)(RAND_MAX)*1000);
-	GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = (int)(SIM_ELEVATION + 0.5 + (double)(rand())/RAND_MAX);
-	indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+	if (called > 10) {
+		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX)*1000);
+		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = SIM_LATITUDE + rand() / ((double)(RAND_MAX)*1000);
+		GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = (int)(SIM_ELEVATION + 0.5 + (double)(rand())/RAND_MAX);
+		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		time_t ttime = time(NULL);
+		GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
-	time_t ttime = time(NULL);
-	indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-	indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+		GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_OK_STATE;
+		GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GPS_STATUS_PROPERTY, "Position fix is valid");
+	} else {
+		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
+		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
+		GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
+		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		time_t ttime = 0;
+		GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
+		GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+		GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GPS_STATUS_PROPERTY, "No position fix");
+	}
+
+	called++;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->gps_timer);
 }
 
@@ -128,6 +151,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 					strncpy(GPS_INFO_VENDOR_ITEM->text.value, "GPS Simulator", INDIGO_VALUE_SIZE);
 					strncpy(GPS_INFO_MODEL_ITEM->text.value, "GPS Simularor", INDIGO_VALUE_SIZE);
 					snprintf(GPS_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", 0, 0);
+					GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
 
 					device->is_connected = true;
 					/* start updates */
@@ -136,13 +160,13 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				}
-			} else {
-				if (device->is_connected) {
-					indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
-					gps_close(device);
-					device->is_connected = false;
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				}
+			}
+		} else {
+			if (device->is_connected) {
+				indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
+				gps_close(device);
+				device->is_connected = false;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
 	}

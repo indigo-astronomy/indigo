@@ -1094,4 +1094,13 @@
  */
 #define GPS_UTC_OFFSET_ITEM_NAME							"OFFSET"
 
+//----------------------------------------------------------------------
+/** GPS_STATUS property name.
+ */
+#define GPS_STATUS_PROPERTY_NAME						"GPS_STATUS"
+
+/** GPS_STATUS.HAVE_VALID_FIX property item name.
+ */
+#define GPS_STATUS_HAVE_VALID_FIX_ITEM_NAME				"HAVE_VALID_FIX"
+
 #endif /* indigo_names_h */
