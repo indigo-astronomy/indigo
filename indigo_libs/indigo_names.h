@@ -1081,6 +1081,10 @@
  */
 #define GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME	"ELEVATION"
 
+/** GPS_GEOGRAPHIC_COORDINATES.ACCURACY property item name.
+ */
+#define GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME	"ACCURACY"
+
 //----------------------------------------------------------------------
 /** GPS_UTC_TIME property name.
  */
