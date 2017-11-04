@@ -191,7 +191,6 @@ static indigo_result gps_detach(indigo_device *device) {
 static simulator_private_data *private_data = NULL;
 
 static indigo_device *gps = NULL;
-static indigo_device *gps_guider = NULL;
 
 indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device gps_template = {
