@@ -1045,25 +1045,6 @@
  */
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
 
-
-//----------------------------------------------------------------------
-
-/** GPS_INFO property name.
- */
-#define GPS_INFO_PROPERTY_NAME							"GPS_INFO"
-
-/** GPS_INFO.MODEL property item name.
- */
-#define GPS_INFO_MODEL_ITEM_NAME						"MODEL"
-
-/** GPS_INFO.VENDOR property item name.
- */
-#define GPS_INFO_VENDOR_ITEM_NAME						"VENDOR"
-
-/** GPS_INFO.FIRMWARE property item name.
- */
-#define GPS_INFO_FIRMWARE_ITEM_NAME					"FIRMWARE_VERSION"
-
 //----------------------------------------------------------------------
 /** GPS_GEOGRAPHIC_COORDINATES property name.
  */

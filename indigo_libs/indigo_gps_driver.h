@@ -33,10 +33,6 @@
 extern "C" {
 #endif
 
-/** Main GPS group name string.
- */
-#define GPS_MAIN_GROUP															"GPS"
-
 /** Main site group name string.
  */
 #define GPS_SITE_GROUP															"Site"
@@ -67,24 +63,6 @@ extern "C" {
 #define GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM		(GPS_GEOGRAPHIC_COORDINATES_PROPERTY->items+3)
 
 //---------------------------------------------
-/** GPS_INFO property pointer, property is optional, property change request should be fully handled by device driver.
- */
-#define GPS_INFO_PROPERTY														(GPS_CONTEXT->gps_info_property)
-
-/** GPS_INFO.VENDOR property item pointer.
- */
-#define GPS_INFO_VENDOR_ITEM												(GPS_INFO_PROPERTY->items+0)
-
-/** GPS_INFO.MODEL property item pointer.
- */
-#define GPS_INFO_MODEL_ITEM													(GPS_INFO_PROPERTY->items+1)
-
-/** GPS_INFO.MODEL property item pointer.
- */
-#define GPS_INFO_FIRMWARE_ITEM											(GPS_INFO_PROPERTY->items+2)
-
-
-//---------------------------------------------
 /** GPS_UTC_TIME property pointer, property is optional, property change request should be fully handled by the device driver.
  */
 #define GPS_UTC_TIME_PROPERTY												(GPS_CONTEXT->gps_utc_time_property)
@@ -105,7 +83,7 @@ extern "C" {
 
 /** GPS_HAVE_VALID_FIX_ITEM. HAVE_FIX property item pointer.
  */
-#define GPS_STATUS_HAVE_VALID_FIX_ITEM													(GPS_STATUS_PROPERTY->items+0)
+#define GPS_STATUS_HAVE_VALID_FIX_ITEM										(GPS_STATUS_PROPERTY->items+0)
 
 
 //------------------------------------------------
@@ -114,7 +92,6 @@ extern "C" {
 typedef struct {
 	indigo_device_context device_context;										///< device context base
 	indigo_property *gps_geographic_coordinates_property;	///< GPS_GEOGRAPHIC_COORDINATES property pointer
-	indigo_property *gps_info_property;                   ///< GPS_INFO property pointer
 	indigo_property *gps_utc_time_property;               ///< GPS_UTC_TIME property_pointe
 	indigo_property *gps_status_property;                 ///< GPS_STAUS property_pointe
 } indigo_gps_context;

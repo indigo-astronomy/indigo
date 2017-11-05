@@ -18,6 +18,8 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_gps_simulator
 
-## Status: Under Development
+## Status: Stable
 
 ## Comments
+It shows the coordinates of Astronomical Observatory Belogradchik.
+It acquires fix 10s after connect.
