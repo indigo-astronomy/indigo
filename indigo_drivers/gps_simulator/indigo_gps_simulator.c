@@ -151,10 +151,6 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 			if (!device->is_connected) {
 				if (gps_open(device)) {
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					/* initialize info prop */
-					strncpy(GPS_INFO_VENDOR_ITEM->text.value, "GPS Simulator", INDIGO_VALUE_SIZE);
-					strncpy(GPS_INFO_MODEL_ITEM->text.value, "GPS Simularor", INDIGO_VALUE_SIZE);
-					snprintf(GPS_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", 0, 0);
 					device->is_connected = true;
 					/* start updates */
 					PRIVATE_DATA->gps_timer = indigo_set_timer(device, 0, gps_timer_callback);
