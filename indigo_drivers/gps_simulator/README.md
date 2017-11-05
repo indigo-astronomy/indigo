@@ -22,4 +22,4 @@ indigo_server indigo_gps_simulator
 
 ## Comments
 It shows the coordinates of Astronomical Observatory Belogradchik.
-It acquires fix 10s after connect.
+It acquires 2D fix 10s after connect and 3D fix in 20s.

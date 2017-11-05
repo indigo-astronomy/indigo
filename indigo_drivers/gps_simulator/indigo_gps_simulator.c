@@ -24,7 +24,7 @@
  \file indigo_gps_simulator.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"idnigo_gps_simulator"
 
 #include <stdlib.h>
@@ -43,7 +43,9 @@
 #define SIM_ELEVATION 650
 
 #define REFRESH_SECONDS (1.0)
-#define TICKS_TO_FIX    10
+#define TICKS_TO_2D_FIX    10
+#define TICKS_TO_3D_FIX    20
+
 
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
@@ -80,23 +82,30 @@ static void gps_timer_callback(indigo_device *device) {
 	int res;
 	double ra, dec, lon, lat;
 
-	if (PRIVATE_DATA->timer_ticks >= TICKS_TO_FIX) {
+	if (PRIVATE_DATA->timer_ticks >= TICKS_TO_2D_FIX) {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX)*1000);
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = SIM_LATITUDE + rand() / ((double)(RAND_MAX)*1000);
 		GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = (int)(SIM_ELEVATION + 0.5 + (double)(rand())/RAND_MAX);
 		GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM->number.value = (int)(5 + 0.5 + (double)(rand())/RAND_MAX);
-		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		time_t ttime = time(NULL);
-		GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
-		if (PRIVATE_DATA->timer_ticks == TICKS_TO_FIX) {
+		if (PRIVATE_DATA->timer_ticks == TICKS_TO_2D_FIX) {
+			GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, GPS_STATUS_PROPERTY, "2D Fix");
+		}
+
+		if (PRIVATE_DATA->timer_ticks == TICKS_TO_3D_FIX) {
 			GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_OK_STATE;
 			GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, GPS_STATUS_PROPERTY, "Position fix is valid");
+			indigo_update_property(device, GPS_STATUS_PROPERTY, "3D Fix, position is valid");
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
+
+		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 	} else {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
