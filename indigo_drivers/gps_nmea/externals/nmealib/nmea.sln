@@ -1,0 +1,90 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nmea", "src\nmea.vcproj", "{462522F4-3517-4507-A9C9-1D51DEBC4824}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "generate", "samples\generate\generate.vcproj", "{DE9B0EA5-9073-4055-8E81-2AF1C9230FA5}"
+	ProjectSection(ProjectDependencies) = postProject
+		{462522F4-3517-4507-A9C9-1D51DEBC4824} = {462522F4-3517-4507-A9C9-1D51DEBC4824}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "parse", "samples\parse\parse.vcproj", "{C2750C56-289A-47B9-8CCF-2E754D356D40}"
+	ProjectSection(ProjectDependencies) = postProject
+		{462522F4-3517-4507-A9C9-1D51DEBC4824} = {462522F4-3517-4507-A9C9-1D51DEBC4824}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "parse_file", "samples\parse_file\parse_file.vcproj", "{CBA61881-57F7-4798-9A54-DC25ED55A0CE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{462522F4-3517-4507-A9C9-1D51DEBC4824} = {462522F4-3517-4507-A9C9-1D51DEBC4824}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "generator", "samples\generator\generator.vcproj", "{3F30D9B1-0B70-4D56-9BF1-B813E2F9D9D6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{462522F4-3517-4507-A9C9-1D51DEBC4824} = {462522F4-3517-4507-A9C9-1D51DEBC4824}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{36908705-F3E6-4F39-BA17-562767076DCA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "math", "samples\math\math.vcproj", "{69B5B81E-351D-48E2-B883-AD1BB95301D4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Pocket PC 2003 (ARMV4) = Debug|Pocket PC 2003 (ARMV4)
+		Debug|Win32 = Debug|Win32
+		Release|Pocket PC 2003 (ARMV4) = Release|Pocket PC 2003 (ARMV4)
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{462522F4-3517-4507-A9C9-1D51DEBC4824}.Debug|Pocket PC 2003 (ARMV4).ActiveCfg = Debug|Pocket PC 2003 (ARMV4)
+		{462522F4-3517-4507-A9C9-1D51DEBC4824}.Debug|Pocket PC 2003 (ARMV4).Build.0 = Debug|Pocket PC 2003 (ARMV4)
+		{462522F4-3517-4507-A9C9-1D51DEBC4824}.Debug|Win32.ActiveCfg = Debug|Win32
+		{462522F4-3517-4507-A9C9-1D51DEBC4824}.Debug|Win32.Build.0 = Debug|Win32
+		{462522F4-3517-4507-A9C9-1D51DEBC4824}.Release|Pocket PC 2003 (ARMV4).ActiveCfg = Release|Pocket PC 2003 (ARMV4)
+		{462522F4-3517-4507-A9C9-1D51DEBC4824}.Release|Pocket PC 2003 (ARMV4).Build.0 = Release|Pocket PC 2003 (ARMV4)
+		{462522F4-3517-4507-A9C9-1D51DEBC4824}.Release|Win32.ActiveCfg = Release|Win32
+		{462522F4-3517-4507-A9C9-1D51DEBC4824}.Release|Win32.Build.0 = Release|Win32
+		{DE9B0EA5-9073-4055-8E81-2AF1C9230FA5}.Debug|Pocket PC 2003 (ARMV4).ActiveCfg = Debug|Pocket PC 2003 (ARMV4)
+		{DE9B0EA5-9073-4055-8E81-2AF1C9230FA5}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DE9B0EA5-9073-4055-8E81-2AF1C9230FA5}.Debug|Win32.Build.0 = Debug|Win32
+		{DE9B0EA5-9073-4055-8E81-2AF1C9230FA5}.Release|Pocket PC 2003 (ARMV4).ActiveCfg = Release|Pocket PC 2003 (ARMV4)
+		{DE9B0EA5-9073-4055-8E81-2AF1C9230FA5}.Release|Win32.ActiveCfg = Release|Win32
+		{DE9B0EA5-9073-4055-8E81-2AF1C9230FA5}.Release|Win32.Build.0 = Release|Win32
+		{C2750C56-289A-47B9-8CCF-2E754D356D40}.Debug|Pocket PC 2003 (ARMV4).ActiveCfg = Debug|Pocket PC 2003 (ARMV4)
+		{C2750C56-289A-47B9-8CCF-2E754D356D40}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C2750C56-289A-47B9-8CCF-2E754D356D40}.Debug|Win32.Build.0 = Debug|Win32
+		{C2750C56-289A-47B9-8CCF-2E754D356D40}.Release|Pocket PC 2003 (ARMV4).ActiveCfg = Release|Pocket PC 2003 (ARMV4)
+		{C2750C56-289A-47B9-8CCF-2E754D356D40}.Release|Win32.ActiveCfg = Release|Win32
+		{C2750C56-289A-47B9-8CCF-2E754D356D40}.Release|Win32.Build.0 = Release|Win32
+		{CBA61881-57F7-4798-9A54-DC25ED55A0CE}.Debug|Pocket PC 2003 (ARMV4).ActiveCfg = Debug|Pocket PC 2003 (ARMV4)
+		{CBA61881-57F7-4798-9A54-DC25ED55A0CE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{CBA61881-57F7-4798-9A54-DC25ED55A0CE}.Debug|Win32.Build.0 = Debug|Win32
+		{CBA61881-57F7-4798-9A54-DC25ED55A0CE}.Release|Pocket PC 2003 (ARMV4).ActiveCfg = Release|Pocket PC 2003 (ARMV4)
+		{CBA61881-57F7-4798-9A54-DC25ED55A0CE}.Release|Win32.ActiveCfg = Release|Win32
+		{CBA61881-57F7-4798-9A54-DC25ED55A0CE}.Release|Win32.Build.0 = Release|Win32
+		{3F30D9B1-0B70-4D56-9BF1-B813E2F9D9D6}.Debug|Pocket PC 2003 (ARMV4).ActiveCfg = Debug|Pocket PC 2003 (ARMV4)
+		{3F30D9B1-0B70-4D56-9BF1-B813E2F9D9D6}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3F30D9B1-0B70-4D56-9BF1-B813E2F9D9D6}.Debug|Win32.Build.0 = Debug|Win32
+		{3F30D9B1-0B70-4D56-9BF1-B813E2F9D9D6}.Release|Pocket PC 2003 (ARMV4).ActiveCfg = Release|Pocket PC 2003 (ARMV4)
+		{3F30D9B1-0B70-4D56-9BF1-B813E2F9D9D6}.Release|Win32.ActiveCfg = Release|Win32
+		{3F30D9B1-0B70-4D56-9BF1-B813E2F9D9D6}.Release|Win32.Build.0 = Release|Win32
+		{69B5B81E-351D-48E2-B883-AD1BB95301D4}.Debug|Pocket PC 2003 (ARMV4).ActiveCfg = Debug|Pocket PC 2003 (ARMV4)
+		{69B5B81E-351D-48E2-B883-AD1BB95301D4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{69B5B81E-351D-48E2-B883-AD1BB95301D4}.Debug|Win32.Build.0 = Debug|Win32
+		{69B5B81E-351D-48E2-B883-AD1BB95301D4}.Release|Pocket PC 2003 (ARMV4).ActiveCfg = Release|Pocket PC 2003 (ARMV4)
+		{69B5B81E-351D-48E2-B883-AD1BB95301D4}.Release|Win32.ActiveCfg = Release|Win32
+		{69B5B81E-351D-48E2-B883-AD1BB95301D4}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C2750C56-289A-47B9-8CCF-2E754D356D40} = {36908705-F3E6-4F39-BA17-562767076DCA}
+		{CBA61881-57F7-4798-9A54-DC25ED55A0CE} = {36908705-F3E6-4F39-BA17-562767076DCA}
+		{3F30D9B1-0B70-4D56-9BF1-B813E2F9D9D6} = {36908705-F3E6-4F39-BA17-562767076DCA}
+		{DE9B0EA5-9073-4055-8E81-2AF1C9230FA5} = {36908705-F3E6-4F39-BA17-562767076DCA}
+		{69B5B81E-351D-48E2-B883-AD1BB95301D4} = {36908705-F3E6-4F39-BA17-562767076DCA}
+	EndGlobalSection
+	GlobalSection(DPCodeReviewSolutionGUID) = preSolution
+		DPCodeReviewSolutionGUID = {00000000-0000-0000-0000-000000000000}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,137 @@
+/* Movable Type Ltd general stylesheet */
+
+body {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 75%;  /* adjust from default 16px (!) to 9pt (@ 96ppi) */
+    line-height: 1.6;
+
+    background: white;
+    color: #333333;
+
+    margin-top:   10px;
+    margin-right: 30px;
+    margin-bottom: 0px;
+    margin-left:   0px;
+}
+
+
+h1 {  /* always 'Movable Type' */
+    font: italic 4em Garamond, "Times New Roman", Times, serif;
+    margin-top:    0px;
+    margin-bottom: 0px;
+}
+
+h2 {  /* used for section / sub-head */
+    font: 2.5em Impact, Tahoma, Arial, Helvetica, sans-serif;
+    color: #333333;
+}
+
+h3 {  /* top-level 'content' header */
+    font-size: 1.5em;
+    color: black;
+}
+
+h4 {  /* second-level 'content' header (not currently used?) */
+    font-size: 1.2em;
+    font-style: italic;
+    color: black;
+}
+
+p {
+    margin-top:    0.8em;
+    margin-bottom: 0.8em;
+}
+
+table {
+    border-collapse: collapse;
+}
+table tr {
+    vertical-align: baseline;
+}
+table td {
+    padding-right: 0.4em;  /* give all tables some spacing between cells */
+}
+
+ul {
+    margin-top:   -0.5em;
+    margin-bottom: 0.5em;
+    margin-left:   3.2em;
+    margin-right:    0em; 
+    list-style-type: disc;
+    list-style-image: url(images/listbullet.gif);
+    list-style-position: outside;
+}
+
+img.right {
+    float: right;
+}
+img.floatRight {
+    float: right;
+}
+img.floatLeft {
+    float: left;
+}
+
+
+a {
+    color: #993300;  /* brick red */
+    background: white;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+a img {
+    border: 0;
+}
+
+small {
+    font-size: 66%;
+}
+
+a:visited {
+    font-weight: normal;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* over-ride 'a' spec when inside h2 */
+h2 a {
+    color: #333333;
+    font-weight: normal;
+}
+/* over-ride 'a:visited' spec when inside h2 */
+h2 a:visited {
+    color: #333333;
+}
+
+
+.margin {
+    margin-left: -150px;
+}
+
+tr.tableRule td {
+    border-top: 2px solid #CCCCCC;
+}
+
+
+/* scripts pages */
+
+pre {
+    font-family: "Lucida Console", "Courier New", Courier, monospace;
+    font-size: 0.8em;
+    line-height: 1.2;
+    margin-left: 1cm;
+    margin-top:0;
+}
+
+.note {
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.code {
+    font-family: "Lucida Console", "Courier New", Courier, monospace;
+    font-size: 0.9em;
+}
