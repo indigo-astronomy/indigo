@@ -478,6 +478,21 @@ $(BUILD_DRIVERS)/indigo_gps_simulator.$(SOEXT): indigo_drivers/gps_simulator/ind
 
 #---------------------------------------------------------------------
 #
+#	Build GPS NMEA driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_gps_nmea.a: indigo_drivers/gps_nmea/indigo_gps_nmea.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_gps_nmea: indigo_drivers/gps_nmea/indigo_gps_nmea_main.o $(BUILD_DRIVERS)/indigo_gps_nmea.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_gps_nmea.$(SOEXT): indigo_drivers/gps_nmea/indigo_gps_nmea.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build mount nexstar driver
 #
 #---------------------------------------------------------------------
