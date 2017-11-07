@@ -1,0 +1,3 @@
+doc: nmea.doxygen
+	doxygen $^
+
