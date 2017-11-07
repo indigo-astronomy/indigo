@@ -3,7 +3,7 @@ CC:=$(strip $(CC))
 
 TARGET = libnmea
 BIN:=lib/$(TARGET).a
-MODULES = generate generator parse parser tok context time info gmath sentence extended
+MODULES = generate generator parse parser tok context time info gmath sentence
 SAMPLES = generate generator parse parse_file math
  
 OBJ = $(MODULES:%=build/nmea_$(CC)/%.o) 
