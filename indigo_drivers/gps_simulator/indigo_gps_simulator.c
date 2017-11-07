@@ -142,7 +142,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
 
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
 		return indigo_gps_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -187,7 +187,7 @@ static indigo_result gps_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
 	return indigo_gps_detach(device);
 }
 
