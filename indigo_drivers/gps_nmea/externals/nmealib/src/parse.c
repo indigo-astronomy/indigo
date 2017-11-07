@@ -18,12 +18,12 @@
  * ptype = nmea_pack_type(
  *     (const char *)parser->buffer + nparsed + 1,
  *     parser->buff_use - nparsed - 1);
- * 
+ *
  * if(0 == (node = malloc(sizeof(nmeaParserNODE))))
  *     goto mem_fail;
- * 
+ *
  * node->pack = 0;
- * 
+ *
  * switch(ptype)
  * {
  * case GPGGA:
@@ -93,7 +93,7 @@ static int _nmea_parse_time(const char *buff, int buff_sz, nmeaTIME *res)
         break;
     }
 
-    return (success?0:-1);        
+    return (success?0:-1);
 }
 
 /**
@@ -398,7 +398,7 @@ int nmea_parse_VTG(const char *buff, int buff_sz, nmeaVTG *pack)
         pack->spn_n != 'N' ||
         pack->spk_k != 'K')
     {
-        nmea_error("VTG parse error (format error)!");
+        //nmea_error("VTG parse error (format error)!");
         return 0;
     }
 
