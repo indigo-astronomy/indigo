@@ -48,6 +48,8 @@ This is the list of requirements taken into the consideration:
 24. Meade DSI Camera driver
 25. Takahashi Temma mount driver
 26. ICA (ImageCapture API) driver for DSLRs (Mac only)
+27. GPS Simulator
+28. NMEA 0183 GPS driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
