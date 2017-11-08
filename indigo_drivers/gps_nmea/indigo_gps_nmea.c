@@ -151,31 +151,35 @@ static void gps_refresh_callback(indigo_device *device) {
 			);
 
 			if (PRIVATE_DATA->info.fix == NMEA_FIX_BAD) {
-				GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, GPS_STATUS_PROPERTY, "No Fix");
 				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 
 			if ( PRIVATE_DATA->info.fix == NMEA_FIX_2D) {
-				GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
+				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, GPS_STATUS_PROPERTY, "2D Fix");
 				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
 
 			if (PRIVATE_DATA->info.fix == NMEA_FIX_3D) {
-				GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_OK_STATE;
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
 				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, GPS_STATUS_PROPERTY, "3D Fix, position is valid");
 				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			}
 
 			indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+			indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 		}
 	}
 	nmea_parser_destroy(&PRIVATE_DATA->parser);

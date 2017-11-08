@@ -91,15 +91,19 @@ static void gps_timer_callback(indigo_device *device) {
 		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 
 		if (PRIVATE_DATA->timer_ticks == TICKS_TO_2D_FIX) {
-			GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
+			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
+			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, GPS_STATUS_PROPERTY, "2D Fix");
+			indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 		}
 
 		if (PRIVATE_DATA->timer_ticks == TICKS_TO_3D_FIX) {
-			GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_OK_STATE;
+			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
 			GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, GPS_STATUS_PROPERTY, "3D Fix, position is valid");
+			indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -119,9 +123,11 @@ static void gps_timer_callback(indigo_device *device) {
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
 		if (PRIVATE_DATA->timer_ticks == 0) {
-			GPS_STATUS_HAVE_VALID_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, GPS_STATUS_PROPERTY, "No position fix");
+			indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 		}
 	}
 

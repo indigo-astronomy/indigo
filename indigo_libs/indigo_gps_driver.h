@@ -81,9 +81,17 @@ extern "C" {
  */
 #define GPS_STATUS_PROPERTY													(GPS_CONTEXT->gps_status_property)
 
-/** GPS_HAVE_VALID_FIX_ITEM. HAVE_FIX property item pointer.
+/** GPS_NO_FIX_ITEM property item pointer.
  */
-#define GPS_STATUS_HAVE_VALID_FIX_ITEM										(GPS_STATUS_PROPERTY->items+0)
+#define GPS_STATUS_NO_FIX_ITEM												(GPS_STATUS_PROPERTY->items+0)
+
+/** GPS_2D_FIX_ITEM property item pointer.
+ */
+#define GPS_STATUS_2D_FIX_ITEM												(GPS_STATUS_PROPERTY->items+1)
+
+/** GPS_3D_FIX_ITEM property item pointer.
+ */
+#define GPS_STATUS_3D_FIX_ITEM												(GPS_STATUS_PROPERTY->items+2)
 
 
 //------------------------------------------------
