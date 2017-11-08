@@ -24,7 +24,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"idnigo_gps_nmea"
 
 #include <stdlib.h>
