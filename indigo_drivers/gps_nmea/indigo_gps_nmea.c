@@ -106,7 +106,7 @@ static void gps_close(indigo_device *device) {
 	if (--PRIVATE_DATA->count_open == 0) {
 		device->is_connected = false;
 		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		PRIVATE_DATA->handle = -1;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
@@ -134,9 +134,11 @@ static void gps_refresh_callback(indigo_device *device) {
 		if(prev_sec != PRIVATE_DATA->info.utc.sec) {
 			prev_sec = PRIVATE_DATA->info.utc.sec;
 
-			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = rad2deg*dpos.lon;
-			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = rad2deg*dpos.lat;
-			GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = PRIVATE_DATA->info.elv;
+			if (PRIVATE_DATA->info.fix != NMEA_FIX_BAD) {
+				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = rad2deg*dpos.lon;
+				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = rad2deg*dpos.lat;
+				GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = PRIVATE_DATA->info.elv;
+			}
 
 			sprintf(
 				GPS_UTC_ITEM->text.value,
@@ -165,7 +167,7 @@ static void gps_refresh_callback(indigo_device *device) {
 				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+				GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			}
 
 			if (PRIVATE_DATA->info.fix == NMEA_FIX_3D) {
@@ -221,6 +223,11 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 				if (gps_open(device)) {
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+
+					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
+					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
+					GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
+					sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
 					/* start updates */
 					PRIVATE_DATA->gps_timer = indigo_set_timer(device, 0, gps_refresh_callback);
 				} else {
@@ -281,6 +288,7 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(nmea_private_data));
 		private_data->count_open = 0;
+		private_data->handle = -1;
 		gps = malloc(sizeof(indigo_device));
 		assert(gps != NULL);
 		memcpy(gps, &gps_template, sizeof(indigo_device));
