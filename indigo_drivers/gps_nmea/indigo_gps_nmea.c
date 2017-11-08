@@ -114,7 +114,7 @@ static void gps_close(indigo_device *device) {
 
 
 static void gps_refresh_callback(indigo_device *device) {
-	int sec = -1, size;
+	int prev_sec = -1, prev_fix = 0, size;
 	char buff[100];
 	nmeaPOS dpos;
 
@@ -131,8 +131,8 @@ static void gps_refresh_callback(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
         nmea_info2pos(&PRIVATE_DATA->info, &dpos);
 
-		if(PRIVATE_DATA->info.utc.sec != sec) {
-			sec = PRIVATE_DATA->info.utc.sec;
+		if(prev_sec != PRIVATE_DATA->info.utc.sec) {
+			prev_sec = PRIVATE_DATA->info.utc.sec;
 
 			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = rad2deg*dpos.lon;
 			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = rad2deg*dpos.lat;
@@ -179,7 +179,10 @@ static void gps_refresh_callback(indigo_device *device) {
 
 			indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-			indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+			if (prev_fix != PRIVATE_DATA->info.fix) {
+				prev_fix = PRIVATE_DATA->info.fix;
+				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+			}
 		}
 	}
 	nmea_parser_destroy(&PRIVATE_DATA->parser);
