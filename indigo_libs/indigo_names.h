@@ -1084,8 +1084,16 @@
  */
 #define GPS_STATUS_PROPERTY_NAME						"GPS_STATUS"
 
-/** GPS_STATUS.HAVE_VALID_FIX property item name.
+/** GPS_STATUS.NO_FIX property item name.
  */
-#define GPS_STATUS_HAVE_VALID_FIX_ITEM_NAME				"HAVE_VALID_FIX"
+#define GPS_STATUS_NO_FIX_ITEM_NAME				"NO_FIX"
+
+/** GPS_STATUS.2D_FIX property item name.
+ */
+#define GPS_STATUS_2D_FIX_ITEM_NAME				"2D_FIX"
+
+/** GPS_STATUS.3D_FIX property item name.
+ */
+#define GPS_STATUS_3D_FIX_ITEM_NAME				"3D_FIX"
 
 #endif /* indigo_names_h */
