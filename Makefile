@@ -290,10 +290,13 @@ $(BUILD_INCLUDE)/asi_efw/EFW_filter.h: indigo_drivers/wheel_asi/bin_externals/li
 	install -d $(BUILD_INCLUDE)/asi_efw
 	cp indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h $(BUILD_INCLUDE)/asi_efw
 
-$(BUILD_LIB)/libEFWFilter.a: $(BUILD_INCLUDE)/asi_efw/EFW_filter.h
+$(BUILD_LIB)/libEFWFilter.a: $(LIBASIEFW) $(BUILD_INCLUDE)/asi_efw/EFW_filter.h
 	install -d $(BUILD_LIB)
-	cp $(LIBASIEFW) $(BUILD_LIB)
-
+	lipo $(LIBASIEFW) -thin i386 -output /tmp/32.a
+	lipo $(LIBASIEFW) -thin x86_64 -output /tmp/64.a
+	ar d /tmp/32.a hid_mac.o
+	ar d /tmp/64.a hid_mac.o
+	lipo /tmp/32.a /tmp/64.a -create -output $(BUILD_LIB)/libEFWFilter.a
 
 #---------------------------------------------------------------------
 #
