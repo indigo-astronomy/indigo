@@ -77,7 +77,7 @@ static bool gps_open(indigo_device *device) {
 			char *host = name + 8;
 			char *colon = strchr(host, ':');
 			if (colon == NULL) {
-				PRIVATE_DATA->handle = indigo_open_tcp(host, 4030);
+				PRIVATE_DATA->handle = indigo_open_tcp(host, 9999);
 			} else {
 				char host_name[INDIGO_NAME_SIZE];
 				strncpy(host_name, host, colon - host);
