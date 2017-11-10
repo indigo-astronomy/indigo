@@ -86,11 +86,11 @@ static bool gps_open(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle >= 0) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			return true;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 			return false;
 		}
@@ -107,7 +107,7 @@ static void gps_close(indigo_device *device) {
 		device->is_connected = false;
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = -1;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 }
