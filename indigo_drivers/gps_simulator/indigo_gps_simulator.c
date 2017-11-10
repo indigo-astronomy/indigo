@@ -215,7 +215,7 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "GPS Simulator", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, GPS_SIMULATOR_NAME, __FUNCTION__, DRIVER_VERSION, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
