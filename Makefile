@@ -292,12 +292,15 @@ $(BUILD_INCLUDE)/asi_efw/EFW_filter.h: indigo_drivers/wheel_asi/bin_externals/li
 
 $(BUILD_LIB)/libEFWFilter.a: $(LIBASIEFW) $(BUILD_INCLUDE)/asi_efw/EFW_filter.h
 	install -d $(BUILD_LIB)
+ifeq ($(OS_DETECTED),Darwin)
 	lipo $(LIBASIEFW) -thin i386 -output /tmp/32.a
 	lipo $(LIBASIEFW) -thin x86_64 -output /tmp/64.a
 	ar d /tmp/32.a hid_mac.o
 	ar d /tmp/64.a hid_mac.o
 	lipo /tmp/32.a /tmp/64.a -create -output $(BUILD_LIB)/libEFWFilter.a
-
+else
+	cp $(LIBASIEFW) $(BUILD_LIB)/libEFWFilter.a
+endif
 #---------------------------------------------------------------------
 #
 # Install libasicamera2
