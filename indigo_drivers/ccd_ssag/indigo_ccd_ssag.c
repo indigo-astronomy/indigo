@@ -327,7 +327,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_STREAMING_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -406,7 +406,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-		
+
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			if (indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer))
 				ssag_abort_exposure(device);
@@ -423,7 +423,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
 
@@ -433,7 +433,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -505,7 +505,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
 
