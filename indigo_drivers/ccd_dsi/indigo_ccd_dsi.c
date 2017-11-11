@@ -489,7 +489,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	return indigo_ccd_detach(device);
 }
@@ -613,7 +613,7 @@ static void process_plug_event() {
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
 	sprintf(device->name, "%s #%s", dev_name, sid);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	dsi_private_data *private_data = (dsi_private_data*)malloc(sizeof(dsi_private_data));
 	assert(private_data);
 	memset(private_data, 0, sizeof(dsi_private_data));

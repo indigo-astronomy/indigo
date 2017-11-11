@@ -1396,7 +1396,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	}
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	if (PRIMARY_CCD) {
 		indigo_release_property(SBIG_FREEZE_TEC_PROPERTY);
@@ -1592,7 +1592,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
 
@@ -1642,7 +1642,7 @@ static indigo_result eth_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_device_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1704,7 +1704,7 @@ static indigo_result eth_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_device_detach(device);
 }
 
@@ -1927,7 +1927,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
 
@@ -2087,7 +2087,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 
 	private_data->imager_abg_state = ABG_LOW7;
 	sprintf(device->name, "SBIG %s CCD #%s", cam_name, device_index_str);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	set_primary_ccd_flag(device);
 	strncpy(private_data->dev_name, cam_name, MAX_PATH);
 	device->private_data = private_data;
@@ -2105,7 +2105,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	assert(device != NULL);
 	memcpy(device, &guider_template, sizeof(indigo_device));
 	sprintf(device->name, "SBIG %s Guider Port #%s", cam_name, device_index_str);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	device->private_data = private_data;
 	indigo_async((void *)(void *)indigo_attach_device, device);
 	devices[slot]=device;
@@ -2127,7 +2127,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		assert(device != NULL);
 		memcpy(device, &ccd_template, sizeof(indigo_device));
 		sprintf(device->name, "SBIG %s Guider CCD #%s", cam_name, device_index_str);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
 		clear_primary_ccd_flag(device);
 		indigo_async((void *)(void *)indigo_attach_device, device);
@@ -2177,7 +2177,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 				assert(device != NULL);
 				memcpy(device, &wheel_template, sizeof(indigo_device));
 				sprintf(device->name, "SBIG %s #%s", cfw_type[cfwr.cfwModel], device_index_str);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				private_data->fw_device = cfwr.cfwModel;
 				private_data->fw_count = cfwr.cfwResult2;
 				device->private_data = private_data;

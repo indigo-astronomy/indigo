@@ -97,7 +97,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_wheel_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -164,7 +164,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
 
@@ -236,7 +236,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		PRIVATE_DATA->can_check_temperature = true;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%s) attached", device->name, PRIVATE_DATA->serial);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' (%s) attached", device->name, PRIVATE_DATA->serial);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -303,7 +303,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				cam.get_MaxBinY(&maxBinY);
 				cam.get_PowerOfTwoBinning(&power2Binning);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Max binning %d x %d %s", maxBinX, maxBinY, power2Binning ? ", power2Binning" : "");
-				
+
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = width;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = height;
 				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_SIZE_ITEM->number.value = pixelWidth;
@@ -312,7 +312,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = maxBinY;
 				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
-				
+
 				int maxBin = maxBinX > maxBinY ? maxBinY : maxBinX;
 				CCD_MODE_PROPERTY->count = 0;
 				for (int bin = 1; bin <= maxBin; bin = power2Binning ? (bin * 2) : (bin + 1)) {
@@ -454,7 +454,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%s) detached.", device->name, PRIVATE_DATA->serial);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' (%s) detached.", device->name, PRIVATE_DATA->serial);
 	return indigo_ccd_detach(device);
 }
 
