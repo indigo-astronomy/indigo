@@ -439,6 +439,8 @@ static void server_main() {
 	DNSServiceRefDeallocate(sd_http);
 #endif
 
+	indigo_detach_device(&server_device);
+	indigo_stop();
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
 			indigo_remove_driver(&indigo_available_drivers[i]);
@@ -452,8 +454,6 @@ static void server_main() {
 		if (indigo_available_subprocesses[i].thread_started)
 			indigo_kill_subprocess(&indigo_available_subprocesses[i]);
 	}
-	indigo_detach_device(&server_device);
-	indigo_stop();
 	exit(EXIT_SUCCESS);
 }
 
