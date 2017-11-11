@@ -1256,7 +1256,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
 	indigo_release_property(ASI_PRESETS_PROPERTY);
@@ -1380,7 +1380,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
 
@@ -1523,7 +1523,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				assert(device != NULL);
 				memcpy(device, &ccd_template, sizeof(indigo_device));
 				sprintf(device->name, "%s #%d", info.Name, id);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				asi_private_data *private_data = malloc(sizeof(asi_private_data));
 				assert(private_data);
 				memset(private_data, 0, sizeof(asi_private_data));
@@ -1544,7 +1544,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					assert(device != NULL);
 					memcpy(device, &guider_template, sizeof(indigo_device));
 					sprintf(device->name, "%s Guider #%d", info.Name, id);
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+					INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 					device->private_data = private_data;
 					indigo_async((void *)(void *)indigo_attach_device, device);
 					devices[slot]=device;

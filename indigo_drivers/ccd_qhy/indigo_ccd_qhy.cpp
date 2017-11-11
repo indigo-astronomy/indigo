@@ -307,7 +307,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 		}
 		PRIVATE_DATA->last_bpp = requested_bpp;
 	}
-	
+
 	res = SetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_EXPOSURE, (long)s2us(exposure));
 	if (res != QHYCCD_SUCCESS) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1171,7 +1171,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
 	indigo_release_property(QHY_ADVANCED_PROPERTY);
@@ -1252,7 +1252,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
 
@@ -1410,7 +1410,7 @@ static void process_plug_event() {
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
 	sprintf(device->name, "%s #%s", dev_name, dev_usbpath);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	qhy_private_data *private_data = (qhy_private_data*)malloc(sizeof(qhy_private_data));
 	assert(private_data);
 	memset(private_data, 0, sizeof(qhy_private_data));
@@ -1429,7 +1429,7 @@ static void process_plug_event() {
 		assert(device != NULL);
 		memcpy(device, &guider_template, sizeof(indigo_device));
 		sprintf(device->name, "%s Guider #%s", dev_name, dev_usbpath);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
 		indigo_async((void *(*)(void *))indigo_attach_device, device);
 		devices[slot]=device;

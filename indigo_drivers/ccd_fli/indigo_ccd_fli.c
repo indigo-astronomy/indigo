@@ -924,7 +924,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(FLI_NFLUSHES_PROPERTY);
 	indigo_release_property(FLI_RBI_FLUSH_ENABLE_PROPERTY);
@@ -1089,7 +1089,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			assert(device != NULL);
 			memcpy(device, &ccd_template, sizeof(indigo_device));
 			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached.", device->name , fli_file_names[idx]);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
 			fli_private_data *private_data = malloc(sizeof(fli_private_data));
 			assert(private_data);
 			memset(private_data, 0, sizeof(fli_private_data));
