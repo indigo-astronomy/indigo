@@ -242,7 +242,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		ALIGNMENT_MODE_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -331,7 +331,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 							MOUNT_TRACKING_ON_ITEM->sw.value = false;
 							MOUNT_TRACKING_OFF_ITEM->sw.value = true;
 						}
-						
+
 						indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 					}
 					if (meade_command(device, ":Gt#", response, 127, 0))
@@ -636,7 +636,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(ALIGNMENT_MODE_PROPERTY);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
 
@@ -646,7 +646,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -718,7 +718,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
 
@@ -746,14 +746,14 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 		NULL,
 		guider_detach
 	};
-	
+
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-	
+
 	SET_DRIVER_INFO(info, "LX200 Mount", __FUNCTION__, DRIVER_VERSION, last_action);
-	
+
 	if (action == last_action)
 		return INDIGO_OK;
-	
+
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -771,7 +771,7 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 			mount_guider->private_data = private_data;
 			indigo_attach_device(mount_guider);
 			break;
-			
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
 			if (mount != NULL) {
@@ -789,11 +789,10 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 				private_data = NULL;
 			}
 			break;
-			
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-	
+
 	return INDIGO_OK;
 }
-

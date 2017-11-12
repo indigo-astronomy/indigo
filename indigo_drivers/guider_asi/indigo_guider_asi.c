@@ -259,7 +259,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
 
@@ -389,7 +389,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				assert(device != NULL);
 				memcpy(device, &guider_template, sizeof(indigo_device));
 				sprintf(device->name, "ASI USB-St4 Guider #%d", id);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				asi_private_data *private_data = malloc(sizeof(asi_private_data));
 				assert(private_data);
 				memset(private_data, 0, sizeof(asi_private_data));
