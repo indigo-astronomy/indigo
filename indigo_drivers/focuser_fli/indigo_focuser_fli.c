@@ -394,7 +394,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	return indigo_focuser_detach(device);
 }
@@ -552,7 +552,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			assert(device != NULL);
 			memcpy(device, &focuser_template, sizeof(indigo_device));
 			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached.", device->name , fli_file_names[idx]);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
 			fli_private_data *private_data = malloc(sizeof(fli_private_data));
 			assert(private_data);
 			memset(private_data, 0, sizeof(fli_private_data));

@@ -166,7 +166,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(NULL, device->name);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
 
@@ -294,7 +294,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				assert(device != NULL);
 				memcpy(device, &wheel_template, sizeof(indigo_device));
 				sprintf(device->name, "%s #%d", info.Name, id);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' attached.", device->name);
+				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				asi_private_data *private_data = malloc(sizeof(asi_private_data));
 				assert(private_data != NULL);
 				memset(private_data, 0, sizeof(asi_private_data));

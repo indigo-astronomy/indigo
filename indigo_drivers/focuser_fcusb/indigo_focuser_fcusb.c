@@ -90,7 +90,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		strncpy(FOCUSER_SPEED_ITEM->label, "Power (0-255)", INDIGO_VALUE_SIZE);
 		strncpy(FOCUSER_SPEED_PROPERTY->label, "Power", INDIGO_VALUE_SIZE);
 		// --------------------------------------------------------------------------------
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -192,7 +192,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_FOCUSER_FREQUENCY_PROPERTY);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
 

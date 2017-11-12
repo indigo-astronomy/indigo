@@ -230,7 +230,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_MODE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -368,7 +368,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_FOCUSER_STEP_SIZE_PROPERTY);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
 
@@ -376,7 +376,7 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static usbv3_private_data *private_data = NULL;
 	static indigo_device *focuser = NULL;
-	
+
 	static indigo_device focuser_template = {
 		"USB_Focus v3", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
@@ -385,12 +385,12 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 		NULL,
 		focuser_detach
 	};
-	
+
 	SET_DRIVER_INFO(info, "USB_Focus v3 Focuser", __FUNCTION__, DRIVER_VERSION, last_action);
-	
+
 	if (action == last_action)
 		return INDIGO_OK;
-	
+
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -403,7 +403,7 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 			focuser->private_data = private_data;
 			indigo_attach_device(focuser);
 			break;
-			
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
 			if (focuser != NULL) {
@@ -416,10 +416,10 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 				private_data = NULL;
 			}
 			break;
-			
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-	
+
 	return INDIGO_OK;
 }
