@@ -512,7 +512,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -749,7 +749,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
 
@@ -830,7 +830,7 @@ static indigo_result guider_attach(indigo_device *device) {
 		indigo_init_switch_item(GUIDE_50_ITEM, GUIDE_50_ITEM_NAME, "50% sidereal", true);
 		indigo_init_switch_item(GUIDE_100_ITEM, GUIDE_100_ITEM_NAME, "100% sidereal", false);
 
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s attached.", device->name);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -942,7 +942,7 @@ static indigo_result guider_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 
 	indigo_release_property(COMMAND_GUIDE_RATE_PROPERTY);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s detached.", device->name);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
 
