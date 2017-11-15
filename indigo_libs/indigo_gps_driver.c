@@ -61,7 +61,7 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM, GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, "Latitude (-S / +N)", -90, 90, 0, 0);
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM, GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, "Longitude (-W / +E)", -180, 360, 0, 0);
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM, GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, "Elevation (m)", 0, 9000, 0, 0);
-			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM, GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME, "Postition accuracy (+/-m)", 0, 200, 0, 0);
+			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM, GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME, "Position accuracy (+/-m)", 0, 200, 0, 0);
 			// -------------------------------------------------------------------------------- GPS_UTC_TIME
 			GPS_UTC_TIME_PROPERTY = indigo_init_text_property(NULL, device->name, GPS_UTC_TIME_PROPERTY_NAME, GPS_SITE_GROUP, "UTC time", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
 			if (GPS_UTC_TIME_PROPERTY == NULL)
