@@ -74,8 +74,8 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 			if (GPS_ADVANCED_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			GPS_ADVANCED_PROPERTY->hidden = true;
-			indigo_init_switch_item(GPS_ADVANCED_ENABLED_ITEM, GPS_ADVANCED_ENABLED_ITEM_NAME, "Enable", true);
-			indigo_init_switch_item(GPS_ADVANCED_DISABLED_ITEM, GPS_ADVANCED_DISABLED_ITEM_NAME, "Disable", false);
+			indigo_init_switch_item(GPS_ADVANCED_ENABLED_ITEM, GPS_ADVANCED_ENABLED_ITEM_NAME, "Enable", false);
+			indigo_init_switch_item(GPS_ADVANCED_DISABLED_ITEM, GPS_ADVANCED_DISABLED_ITEM_NAME, "Disable", true);
 			// -------------------------------------------------------------------------------- GPS_ADVANCED_STATUS
 			GPS_ADVANCED_STATUS_PROPERTY = indigo_init_number_property(NULL, device->name, GPS_ADVANCED_STATUS_PROPERTY_MANE, GPS_ADVANCED_GROUP, "Advanced Status", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 5);
 			if (GPS_ADVANCED_STATUS_PROPERTY == NULL)
