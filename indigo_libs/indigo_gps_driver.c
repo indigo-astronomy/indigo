@@ -96,7 +96,9 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 indigo_result indigo_gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
+
 	indigo_result result = INDIGO_OK;
+	GPS_ADVANCED_STATUS_PROPERTY->hidden = GPS_ADVANCED_PROPERTY->hidden;
 	if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
 		if (IS_CONNECTED) {
 			if (indigo_property_match(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, property))

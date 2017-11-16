@@ -167,7 +167,6 @@ static indigo_result gps_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = true;
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		GPS_ADVANCED_PROPERTY->hidden = false;
-		GPS_ADVANCED_STATUS_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 4;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
