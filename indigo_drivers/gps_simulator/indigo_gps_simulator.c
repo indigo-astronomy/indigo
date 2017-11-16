@@ -90,6 +90,12 @@ static void gps_timer_callback(indigo_device *device) {
 		time_t ttime = time(NULL);
 		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 
+		GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(3 + 0.5 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = (int)(7 + 0.5 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = (2 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = (3 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = (3 + (double)(rand())/RAND_MAX);
+
 		if (PRIVATE_DATA->timer_ticks == TICKS_TO_2D_FIX) {
 			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
@@ -110,6 +116,7 @@ static void gps_timer_callback(indigo_device *device) {
 
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+		indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 	} else {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
@@ -120,7 +127,15 @@ static void gps_timer_callback(indigo_device *device) {
 		time_t ttime = 0;
 		GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+
+		GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(0 + 0.5 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = (int)(0 + 0.5 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = 0;
+		GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = 0;
+		GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = 0;
+
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+		indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 
 		if (PRIVATE_DATA->timer_ticks == 0) {
 			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
@@ -143,6 +158,8 @@ static indigo_result gps_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = true;
 		DEVICE_PORTS_PROPERTY->hidden = true;
+		GPS_ADVANCED_PROPERTY->hidden = false;
+		GPS_ADVANCED_STATUS_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 4;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
