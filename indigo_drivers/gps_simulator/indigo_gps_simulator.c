@@ -123,7 +123,9 @@ static void gps_timer_callback(indigo_device *device) {
 
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-		indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+		if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+		}
 	} else {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
@@ -143,8 +145,9 @@ static void gps_timer_callback(indigo_device *device) {
 		GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = 0;
 
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-		indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
-
+		if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+		}
 		if (PRIVATE_DATA->timer_ticks == 0) {
 			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
 			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
