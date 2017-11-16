@@ -24,7 +24,7 @@
  \file indigo_gps_simulator.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"idnigo_gps_simulator"
 
 #include <stdlib.h>
