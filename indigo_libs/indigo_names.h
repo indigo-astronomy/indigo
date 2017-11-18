@@ -1116,18 +1116,56 @@
 //----------------------------------------------------------------------
 /** GPS_STATUS property name.
  */
-#define GPS_STATUS_PROPERTY_NAME						"GPS_STATUS"
+#define GPS_STATUS_PROPERTY_NAME                "GPS_STATUS"
 
 /** GPS_STATUS.NO_FIX property item name.
  */
-#define GPS_STATUS_NO_FIX_ITEM_NAME				"NO_FIX"
+#define GPS_STATUS_NO_FIX_ITEM_NAME             "NO_FIX"
 
 /** GPS_STATUS.2D_FIX property item name.
  */
-#define GPS_STATUS_2D_FIX_ITEM_NAME				"2D_FIX"
+#define GPS_STATUS_2D_FIX_ITEM_NAME             "2D_FIX"
 
 /** GPS_STATUS.3D_FIX property item name.
  */
-#define GPS_STATUS_3D_FIX_ITEM_NAME				"3D_FIX"
+#define GPS_STATUS_3D_FIX_ITEM_NAME             "3D_FIX"
+
+//--------------------------------------------------------------------
+/** GPS_ADVANCED property name.
+ */
+#define GPS_ADVANCED_PROPERTY_NAME              "GPS_ADVANCED"
+
+/** GPS_ADVANCED.ENABLED property item name.
+ */
+#define GPS_ADVANCED_ENABLED_ITEM_NAME          "ENABLED"
+
+/** GPS_ADVANCED.DIABLED property item name.
+ */
+#define GPS_ADVANCED_DISABLED_ITEM_NAME         "DISABLED"
+
+//------------------------------------------------------------------
+/** GPS_ADVANCED_STATUS property name.
+ */
+#define GPS_ADVANCED_STATUS_PROPERTY_MANE              "GPS_ADVANCED_STATUS"
+
+/** GPS_ADVANCED_STATUS.SVS_IN_USE property item name.
+ */
+#define GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM_NAME       "SVS_IN_USE"
+
+/** GPS_ADVANCED_STATUS.SVS_IN_VIEW property item name.
+ */
+#define GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM_NAME      "SVS_IN_VIEW"
+
+/** GPS_ADVANCED_STATUS.PDOP property item name.
+ */
+#define GPS_ADVANCED_STATUS_PDOP_ITEM_NAME             "PDOP"
+
+/** GPS_ADVANCED_STATUS.HDOP property item name.
+ */
+#define GPS_ADVANCED_STATUS_HDOP_ITEM_NAME             "HDOP"
+
+/** GPS_ADVANCED_STATUS.VDOP property item name.
+ */
+#define GPS_ADVANCED_STATUS_VDOP_ITEM_NAME             "VDOP"
 
 #endif /* indigo_names_h */

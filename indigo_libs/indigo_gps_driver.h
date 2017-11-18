@@ -36,10 +36,11 @@ extern "C" {
 /** Main site group name string.
  */
 #define GPS_SITE_GROUP															"Site"
+#define GPS_ADVANCED_GROUP														"Advanced"
 
 /** Device context pointer.
  */
-#define GPS_CONTEXT																	((indigo_gps_context *)device->device_context)
+#define GPS_CONTEXT																((indigo_gps_context *)device->device_context)
 
 //-------------------------------------------
 /** GPS_GEOGRAPHIC_COORDINATES property pointer, property is mandatory, property change request should be fully handled by device driver.
@@ -94,14 +95,56 @@ extern "C" {
 #define GPS_STATUS_3D_FIX_ITEM												(GPS_STATUS_PROPERTY->items+2)
 
 
+//-------------------------------------------
+/** GPS_ADVANCED property pointer.
+ */
+#define GPS_ADVANCED_PROPERTY                    (GPS_CONTEXT->gps_advanced_property)
+
+/** GPS_ADVANCED.ENABLED property item pointer.
+ */
+#define GPS_ADVANCED_ENABLED_ITEM                (GPS_ADVANCED_PROPERTY->items+0)
+
+/** GPS_ADVANCED_DISABLED property item pointer.
+ */
+#define GPS_ADVANCED_DISABLED_ITEM               (GPS_ADVANCED_PROPERTY->items+1)
+
+
+//-------------------------------------------
+/** GPS_ADVANCED_STATUS property pointer.
+ */
+#define GPS_ADVANCED_STATUS_PROPERTY                    (GPS_CONTEXT->gps_advanced_status_property)
+
+/** GPS_ADVANCED_STATUS.SVS_IN_USE property item pointer.
+ */
+#define GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM             (GPS_ADVANCED_STATUS_PROPERTY->items+0)
+
+/** GPS_ADVANCED_STATUS.SVS_IN_VIEW property item pointer.
+ */
+#define GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM            (GPS_ADVANCED_STATUS_PROPERTY->items+1)
+
+/** GPS_ADVANCED_STATUS.PDOP property item pointer.
+ */
+#define GPS_ADVANCED_STATUS_PDOP_ITEM                   (GPS_ADVANCED_STATUS_PROPERTY->items+2)
+
+/** GPS_ADVANCED_STATUS.HDOP property item pointer.
+ */
+#define GPS_ADVANCED_STATUS_HDOP_ITEM                   (GPS_ADVANCED_STATUS_PROPERTY->items+3)
+
+/** GPS_ADVANCED_STATUS.VDOP property item pointer.
+ */
+#define GPS_ADVANCED_STATUS_VDOP_ITEM                   (GPS_ADVANCED_STATUS_PROPERTY->items+4)
+
+
 //------------------------------------------------
 /** Mount device context structure.
  */
 typedef struct {
-	indigo_device_context device_context;										///< device context base
+	indigo_device_context device_context;                   ///< device context base
 	indigo_property *gps_geographic_coordinates_property;	///< GPS_GEOGRAPHIC_COORDINATES property pointer
-	indigo_property *gps_utc_time_property;               ///< GPS_UTC_TIME property_pointe
-	indigo_property *gps_status_property;                 ///< GPS_STAUS property_pointe
+	indigo_property *gps_utc_time_property;                 ///< GPS_UTC_TIME property_pointe
+	indigo_property *gps_status_property;                   ///< GPS_STAUS property_pointe
+	indigo_property *gps_advanced_property;                 ///< GPS_ADVANCED property_pointe
+	indigo_property *gps_advanced_status_property;          ///< GPS_ADVANCED_STAUS property_pointe
 } indigo_gps_context;
 
 /** Attach callback function.

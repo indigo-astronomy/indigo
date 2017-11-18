@@ -24,7 +24,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"idnigo_gps_nmea"
 
 #include <stdlib.h>
@@ -140,6 +140,12 @@ static void gps_refresh_callback(indigo_device *device) {
 				GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = PRIVATE_DATA->info.elv;
 			}
 
+			GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = PRIVATE_DATA->info.satinfo.inuse;
+			GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = PRIVATE_DATA->info.satinfo.inview;
+			GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = PRIVATE_DATA->info.PDOP;
+			GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = PRIVATE_DATA->info.HDOP;
+			GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = PRIVATE_DATA->info.VDOP;
+
 			sprintf(
 				GPS_UTC_ITEM->text.value,
 				"%04d-%02d-%02dT%02d:%02d:%02d.%02d",
@@ -181,6 +187,9 @@ static void gps_refresh_callback(indigo_device *device) {
 
 			indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+			if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+				indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+			}
 			if (prev_fix != PRIVATE_DATA->info.fix) {
 				prev_fix = PRIVATE_DATA->info.fix;
 				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
@@ -199,6 +208,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		GPS_ADVANCED_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
