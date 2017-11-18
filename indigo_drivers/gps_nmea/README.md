@@ -18,7 +18,11 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_gps_nmea
 
-## Status: Under Development
+## Status: Stable
+
+Driver is developed and tested with:
+* Several U-Blox GPS modules (RS232)
+* G-Mouse GPS receiver (USB)
 
 ## Comments
 Use URL in form gps://host:port to connect to the GPS over network (default port is 9999).

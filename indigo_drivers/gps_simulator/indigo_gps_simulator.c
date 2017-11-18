@@ -24,7 +24,7 @@
  \file indigo_gps_simulator.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"idnigo_gps_simulator"
 
 #include <stdlib.h>
@@ -38,11 +38,17 @@
 #include "indigo_gps_simulator.h"
 
 /* Sumulator uses coordinates of AO Belogradchik */
-#define SIM_LONGITUDE 22.675
-#define SIM_LATITUDE 43.625
-#define SIM_ELEVATION 650
+#define SIM_LONGITUDE      22.675
+#define SIM_LATITUDE       43.625
+#define SIM_ELEVATION      650
 
-#define REFRESH_SECONDS (1.0)
+#define SIM_SV_IN_USE      3
+#define SIM_SV_IN_VIEW     7
+#define SIM_PDOP           2
+#define SIM_HDOP           3
+#define SIM_VDOP           3
+
+#define REFRESH_SECONDS    (1.0)
 #define TICKS_TO_2D_FIX    10
 #define TICKS_TO_3D_FIX    20
 
@@ -90,6 +96,13 @@ static void gps_timer_callback(indigo_device *device) {
 		time_t ttime = time(NULL);
 		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 
+		/* Simulate SVs used / visible and DOP values */
+		GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(SIM_SV_IN_USE + 0.5 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = (int)(SIM_SV_IN_VIEW + 0.5 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = (SIM_PDOP + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = (SIM_HDOP + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = (SIM_VDOP + (double)(rand())/RAND_MAX);
+
 		if (PRIVATE_DATA->timer_ticks == TICKS_TO_2D_FIX) {
 			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
@@ -110,6 +123,9 @@ static void gps_timer_callback(indigo_device *device) {
 
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+		if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+		}
 	} else {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
@@ -120,8 +136,18 @@ static void gps_timer_callback(indigo_device *device) {
 		time_t ttime = 0;
 		GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_timetoiso(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 
+		/* Simulate 0 or 1 SVs used / visible if there is no fix */
+		GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(0.5 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = (int)(0.5 + (double)(rand())/RAND_MAX);
+		GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = 0;
+		GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = 0;
+		GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = 0;
+
+		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+		if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+		}
 		if (PRIVATE_DATA->timer_ticks == 0) {
 			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
 			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -143,6 +169,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = true;
 		DEVICE_PORTS_PROPERTY->hidden = true;
+		GPS_ADVANCED_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 4;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
