@@ -401,6 +401,7 @@ static void server_main() {
 		} else if ((!strcmp(server_argv[i], "-i") || !strcmp(server_argv[i], "--indi-driver")) && i < server_argc - 1) {
 			char executable[INDIGO_NAME_SIZE];
 			strncpy(executable, server_argv[i + 1], INDIGO_NAME_SIZE);
+			indigo_reshare_remote_devices = true;
 			indigo_start_subprocess(executable, NULL);
 			i++;
 		} else if (!strcmp(server_argv[i], "-b-") || !strcmp(server_argv[i], "--disable-bonjour")) {
