@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 62
+INDIGO_BUILD := 63
 INDIGO_ROOT := $(shell pwd)
 
 DEBUG_BUILD=-g
