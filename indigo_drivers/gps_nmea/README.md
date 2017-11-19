@@ -2,7 +2,7 @@
 
 ## Supported devices
 
-All NMEA 0183 GPS devices connected over USB, serial port @ 9600bps or network.
+All NMEA 0183 GPS devices connected over USB, serial port @ 9600bps, bluetooth or network.
 
 Single device is present on startup (no hot-plug support).
 
@@ -23,6 +23,7 @@ indigo_server indigo_gps_nmea
 Driver is developed and tested with:
 * Several U-Blox GPS modules (RS232)
 * G-Mouse GPS receiver (USB)
+* Nokia LD-3W (bluetooth)
 
 ## Comments
 Use URL in form gps://host:port to connect to the GPS over network (default port is 9999).
