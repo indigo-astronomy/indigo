@@ -169,7 +169,7 @@ extern "C" {
 //----------------------------------------------
 /** MOUNT_MOTION_NS property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
-#define MOUNT_MOTION_DEC_PROPERTY											(MOUNT_CONTEXT->MOUNT_MOTION_DEC_property)
+#define MOUNT_MOTION_DEC_PROPERTY											(MOUNT_CONTEXT->mount_motion_dec_property)
 
 /** MOUNT_MOTION_NS.NORTH property item pointer.
  */
@@ -182,7 +182,7 @@ extern "C" {
 //----------------------------------------------
 /** MOUNT_MOTION_WE property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
-#define MOUNT_MOTION_RA_PROPERTY											(MOUNT_CONTEXT->MOUNT_MOTION_RA_property)
+#define MOUNT_MOTION_RA_PROPERTY											(MOUNT_CONTEXT->mount_motion_ra_property)
 
 /** MOUNT_MOTION_WE.WEST property item pointer.
  */
@@ -253,13 +253,13 @@ extern "C" {
  */
 #define MOUNT_HORIZONTAL_COORDINATES_PROPERTY					(MOUNT_CONTEXT->mount_horizontal_coordinates_property)
 
-/** MOUNT_HORIZONTAL_COORDINATES.ALT property item pointer.
- */
-#define MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+0)
-
 /** MOUNT_HORIZONTAL_COORDINATES.AZ property item pointer.
  */
-#define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+1)
+#define MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+0)
+	
+/** MOUNT_HORIZONTAL_COORDINATES.ALT property item pointer.
+ */
+#define MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+1)
 
 //------------------------------------------------
 /** MOUNT_ABORT_MOTION property pointer, property is mandatory, property change request should be fully handled by focuser driver
@@ -346,8 +346,8 @@ typedef struct {
 	indigo_property *mount_equatorial_coordinates_property;	///< MOUNT_EQUATORIAL_COORDINATES property pointer
 	indigo_property *mount_horizontal_coordinates_property;	///< MOUNT_HORIZONTAL_COORDINATES property pointer
 	indigo_property *mount_abort_motion_property;						///< MOUNT_ABORT_MOTION property pointer
-	indigo_property *MOUNT_MOTION_DEC_property;							///< MOUNT_MOTION_NS property pointer
-	indigo_property *MOUNT_MOTION_RA_property;							///< MOUNT_MOTION_WE property pointer
+	indigo_property *mount_motion_dec_property;							///< MOUNT_MOTION_NS property pointer
+	indigo_property *mount_motion_ra_property;							///< MOUNT_MOTION_WE property pointer
 	indigo_property *mount_alignment_mode_property;					///< MOUNT_ALIGNMENT_MODE property pointer
 	indigo_property *mount_raw_coordinates_property;				///< MOUNT_RAW_COORDINATES property pointer
 	indigo_property *mount_alignment_select_points_property;///< MOUNT_ALIGNMENT_SELECT_POINTS property pointer
@@ -377,6 +377,11 @@ extern indigo_result indigo_translated_to_raw(indigo_device *device, double ra, 
 
 extern indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec);
 
+/** Translate coordinates from native.
+ */
+	
+extern void indigo_update_coordinates(indigo_device *device, const char *message);
+	
 #ifdef __cplusplus
 }
 #endif
