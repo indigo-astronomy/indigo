@@ -36,5 +36,12 @@ double indigo_lst(double longitude) {
 	double gst;
 	sidereal_time(ut1_now, 0.0, DELTA_T, 0, 0, 0, &gst);
 	return gst + longitude/15.0;
-
 }
+
+void indigo_eq2hor(double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az) {
+	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
+	on_surface position = { latitude, longitude, elevation, 0.0, 0.0 };
+	equ2hor(ut1_now, DELTA_T, 1, 0.0, 0.0, &position, ra, dec, 1, alt, az, &ra, &dec);
+	*alt = 90-*alt;
+}
+

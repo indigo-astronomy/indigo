@@ -109,7 +109,7 @@ static void mount_handle_coordinates(indigo_device *device) {
 	} else if (aligned == 0) {
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is not aligned, please align it first.");
+		indigo_update_coordinates(device, "Mount is not aligned, please align it first.");
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Mount is not aligned, please align it first.");
 		return;
 	}
@@ -132,7 +132,7 @@ static void mount_handle_coordinates(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+	indigo_update_coordinates(device, NULL);
 }
 
 
@@ -372,8 +372,7 @@ static bool mount_cancel_slew(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-
+	indigo_update_coordinates(device, NULL);
 	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted.");
@@ -466,8 +465,7 @@ static void position_timer_callback(indigo_device *device) {
 
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-
+	indigo_update_coordinates(device, NULL);
 	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
 	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
@@ -683,7 +681,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		if(PRIVATE_DATA->parked) {
-			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, WARN_PARKED_MSG);
+			indigo_update_coordinates(device, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
