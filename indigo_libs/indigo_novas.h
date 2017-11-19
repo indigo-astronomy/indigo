@@ -29,5 +29,6 @@
 #include <stdio.h>
 
 extern double indigo_lst(double longitude);
+extern void indigo_eq2hor(double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az);
 
 #endif /* indigo_novas_h */

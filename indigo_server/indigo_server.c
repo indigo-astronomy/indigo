@@ -49,6 +49,7 @@
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
 #include "gps_simulator/indigo_gps_simulator.h"
+#include "dome_simulator/indigo_dome_simulator.h"
 #ifdef STATIC_DRIVERS
 #include "ccd_sx/indigo_ccd_sx.h"
 #include "wheel_sx/indigo_wheel_sx.h"
@@ -85,6 +86,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_simulator,
 	indigo_mount_simulator,
 	indigo_gps_simulator,
+	indigo_dome_simulator,
 #ifdef STATIC_DRIVERS
 	indigo_ccd_sx,
 	indigo_wheel_sx,
