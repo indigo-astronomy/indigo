@@ -69,6 +69,8 @@
 		59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D707681DC527B800DEF566 /* indigo_mount_driver.h */; };
 		59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */; };
 		59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */; };
+		59DD69C91FC1CF8D00AEF0DF /* indigo_gps_nmea.c in Sources */ = {isa = PBXBuildFile; fileRef = 59DD69C51FC1CF8D00AEF0DF /* indigo_gps_nmea.c */; };
+		59DD69CA1FC1CF8D00AEF0DF /* indigo_gps_nmea.h in Headers */ = {isa = PBXBuildFile; fileRef = 59DD69C61FC1CF8D00AEF0DF /* indigo_gps_nmea.h */; };
 		59E38B531F1577A000187839 /* indigo_ica_ptp_canon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59E38B4F1F1577A000187839 /* indigo_ica_ptp_canon.h */; };
 		59E38B541F1577A000187839 /* indigo_ica_ptp_canon.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E38B501F1577A000187839 /* indigo_ica_ptp_canon.m */; };
 		59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */; };
@@ -468,6 +470,10 @@
 		59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator_main.c; sourceTree = "<group>"; };
 		59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator.c; sourceTree = "<group>"; };
 		59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_simulator.h; sourceTree = "<group>"; };
+		59DD69C51FC1CF8D00AEF0DF /* indigo_gps_nmea.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_nmea.c; sourceTree = "<group>"; };
+		59DD69C61FC1CF8D00AEF0DF /* indigo_gps_nmea.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_gps_nmea.h; sourceTree = "<group>"; };
+		59DD69C71FC1CF8D00AEF0DF /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59DD69C81FC1CF8D00AEF0DF /* indigo_gps_nmea_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_nmea_main.c; sourceTree = "<group>"; };
 		59E38B4F1F1577A000187839 /* indigo_ica_ptp_canon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_canon.h; sourceTree = "<group>"; };
 		59E38B501F1577A000187839 /* indigo_ica_ptp_canon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_canon.m; sourceTree = "<group>"; };
 		59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_nikon.h; sourceTree = "<group>"; };
@@ -1119,6 +1125,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				59DD69C41FC1CF5B00AEF0DF /* gps_nmea */,
 				59CBD47A1FAF6C65000DAFDB /* gps_simulator */,
 				590B59CE1F7853F400086FD2 /* mount_temma */,
 				9DF7E64B1F6AA0E600156652 /* ccd_qsi */,
@@ -1168,6 +1175,17 @@
 				59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */,
 			);
 			path = mount_simulator;
+			sourceTree = "<group>";
+		};
+		59DD69C41FC1CF5B00AEF0DF /* gps_nmea */ = {
+			isa = PBXGroup;
+			children = (
+				59DD69C71FC1CF8D00AEF0DF /* README.md */,
+				59DD69C61FC1CF8D00AEF0DF /* indigo_gps_nmea.h */,
+				59DD69C51FC1CF8D00AEF0DF /* indigo_gps_nmea.c */,
+				59DD69C81FC1CF8D00AEF0DF /* indigo_gps_nmea_main.c */,
+			);
+			path = gps_nmea;
 			sourceTree = "<group>";
 		};
 		59F4EC6F1E941CF400CC7772 /* ccd_sbig */ = {
@@ -1364,6 +1382,7 @@
 				59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */,
 				9D976FDC1DD0C69D00782B32 /* dc1394.h in Headers */,
 				59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */,
+				59DD69CA1FC1CF8D00AEF0DF /* indigo_gps_nmea.h in Headers */,
 				9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */,
 				9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */,
 				593CFE451DFC8A12003B63D4 /* indigo_wheel_atik.h in Headers */,
@@ -1672,6 +1691,7 @@
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
+				59DD69C91FC1CF8D00AEF0DF /* indigo_gps_nmea.c in Sources */,
 				590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */,
 				59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */,
 				5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */,
