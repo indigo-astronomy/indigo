@@ -141,6 +141,7 @@ DRIVERS=\
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*))) \
+	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/dome_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*)))
 
 DRIVER_LIBS=$(PLATFORM_DRIVER_LIBS)\
@@ -149,6 +150,7 @@ DRIVER_LIBS=$(PLATFORM_DRIVER_LIBS)\
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*)))) \
+	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/dome_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*))))
 
 DRIVER_SOLIBS=$(PLATFORM_DRIVER_SOLIBS)\
@@ -157,6 +159,7 @@ DRIVER_SOLIBS=$(PLATFORM_DRIVER_SOLIBS)\
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/focuser_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*)))) \
+	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/dome_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*))))
 
 SIMULATOR_LIBS=\
@@ -497,6 +500,21 @@ $(BUILD_DRIVERS)/indigo_gps_simulator: indigo_drivers/gps_simulator/indigo_gps_s
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
 $(BUILD_DRIVERS)/indigo_gps_simulator.$(SOEXT): indigo_drivers/gps_simulator/indigo_gps_simulator.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build Dome simulator driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_dome_simulator.a: indigo_drivers/dome_simulator/indigo_dome_simulator.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_dome_simulator: indigo_drivers/dome_simulator/indigo_dome_simulator_main.o $(BUILD_DRIVERS)/indigo_dome_simulator.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_dome_simulator.$(SOEXT): indigo_drivers/dome_simulator/indigo_dome_simulator.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------

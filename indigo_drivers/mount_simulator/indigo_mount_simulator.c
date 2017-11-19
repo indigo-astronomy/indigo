@@ -71,7 +71,7 @@ static void slew_timer_callback(indigo_device *device) {
 		indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->slew_timer);
 	}
 	indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+	indigo_update_coordinates(device, NULL);
 	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 }
 
@@ -143,11 +143,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 				MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+				indigo_update_coordinates(device, NULL);
 			} else {
 				indigo_mount_change_property(device, client, property);
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+				indigo_update_coordinates(device, NULL);
 			}
 		} else if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 			double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
@@ -165,7 +165,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 		if (indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+			indigo_update_coordinates(device, NULL);
 		}
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");

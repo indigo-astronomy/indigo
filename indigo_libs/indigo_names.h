@@ -1168,4 +1168,97 @@
  */
 #define GPS_ADVANCED_STATUS_VDOP_ITEM_NAME             "VDOP"
 
+//----------------------------------------------------------------------
+/** DOME_SPEED property name.
+ */
+#define DOME_SPEED_PROPERTY_NAME						"DOME_SPEED"
+
+/** DOME_SPEED.SPEED property item name.
+ */
+#define DOME_SPEED_ITEM_NAME							"SPEED"
+
+//----------------------------------------------------------------------
+
+/** DOME_ROTATION property name.
+ */
+#define DOME_ROTATION_PROPERTY_NAME						"DOME_ROTATION"
+
+/** DOME_ROTATION.CLOCKWISE property item name.
+ */
+#define DOME_ROTATION_CLOCKWISE_ITEM_NAME				"CLOCKWISE"
+
+/** DOME_ROTATION.COUNTERCLOCKWISE property item name.
+ */
+#define DOME_ROTATION_COUNTERCLOCKWISE_ITEM_NAME		"COUNTERCLOCKWISE"
+
+//----------------------------------------------------------------------
+/** DOME_DIRECTION property name.
+ */
+#define DOME_DIRECTION_PROPERTY_NAME					"DOME_DIRECTION"
+
+/** DOME_DIRECTION.MOVE_CLOCKWISE property item name.
+ */
+#define DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME			"MOVE_CLOCKWISE"
+
+/** DOME_DIRECTION.MOVE_COUNTERCLOCKWISE property item name.
+ */
+#define DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM_NAME	"MOVE_COUNTERCLOCKWISE"
+
+//----------------------------------------------------------------------
+/** DOME_STEPS property name.
+ */
+#define DOME_STEPS_PROPERTY_NAME						"DOME_STEPS"
+
+/** DOME_STEPS.STEPS property item name.
+ */
+#define DOME_STEPS_ITEM_NAME							"STEPS"
+
+//----------------------------------------------------------------------
+/** DOME_HORIZONTAL_COORDINATES property name.
+ */
+#define DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME						"DOME_HORIZONTAL_COORDINATES"
+
+/** DOME_HORIZONTAL_COORDINATES.AZ property item name.
+ */
+#define DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME							"AZ"
+
+/** DOME_HORIZONTAL_COORDINATES.ALT property item name.
+ */
+#define DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME							"ALT"
+
+//----------------------------------------------------------------------
+/** DOME_ABORT_MOTION property name.
+ */
+#define DOME_ABORT_MOTION_PROPERTY_NAME					"DOME_ABORT_MOTION"
+
+/** DOME_ABORT_MOTION.ABORT_MOTION property item name.
+ */
+#define DOME_ABORT_MOTION_ITEM_NAME						"ABORT_MOTION"
+
+//----------------------------------------------------------------------
+/** DOME_SHUTTER property name.
+ */
+#define DOME_SHUTTER_PROPERTY_NAME					"DOME_SHUTTER"
+
+/** DOME_SHUTTER.OPEN property item name.
+ */
+#define DOME_SHUTTER_OPENED_ITEM_NAME						"OPENED"
+
+/** DOME_SHUTTER.CLOSE property item name.
+ */
+#define DOME_SHUTTER_CLOSED_ITEM_NAME						"CLOSED"
+
+//----------------------------------------------------------------------
+/** DOME_PARK property name.
+ */
+#define DOME_PARK_PROPERTY_NAME								"MOUNT_PARK"
+
+/** DOME_PARK.PARKED property item name.
+ */
+#define DOME_PARK_PARKED_ITEM_NAME							"PARKED"
+
+/** DOME_PARK.UNPARKED property item name.
+ */
+#define DOME_PARK_UNPARKED_ITEM_NAME						"UNPARKED"
+
 #endif /* indigo_names_h */
