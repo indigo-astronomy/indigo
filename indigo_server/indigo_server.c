@@ -106,7 +106,8 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_usbv3,
 	indigo_ccd_sbig,
 	indigo_ccd_dsi,
-	indigo_ccd_qsi,
+/* Removed temporary as it is not stable and hangs servers on shutdown */
+/*	indigo_ccd_qsi,  */
 	indigo_gps_nmea,
 #ifdef INDIGO_MACOS
 	indigo_ccd_ica,
