@@ -71,6 +71,7 @@
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #include "ccd_dsi/indigo_ccd_dsi.h"
 #include "ccd_qsi/indigo_ccd_qsi.h"
+#include "gps_nmea/indigo_gps_nmea.h"
 #ifdef INDIGO_MACOS
 #include "ccd_ica/indigo_ccd_ica.h"
 #endif
@@ -106,6 +107,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_sbig,
 	indigo_ccd_dsi,
 	indigo_ccd_qsi,
+	indigo_gps_nmea,
 #ifdef INDIGO_MACOS
 	indigo_ccd_ica,
 #endif
@@ -113,7 +115,7 @@ driver_entry_point static_drivers[] = {
 	NULL
 };
 
-static int first_driver = 3; /* This should be equial to number of simulator drivers */
+static int first_driver = 4; /* This should be equial to number of simulator drivers */
 static indigo_property *drivers_property;
 static indigo_property *servers_property;
 static indigo_property *load_property;
