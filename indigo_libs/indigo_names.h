@@ -1251,7 +1251,7 @@
 //----------------------------------------------------------------------
 /** DOME_PARK property name.
  */
-#define DOME_PARK_PROPERTY_NAME								"MOUNT_PARK"
+#define DOME_PARK_PROPERTY_NAME								"DOME_PARK"
 
 /** DOME_PARK.PARKED property item name.
  */
@@ -1260,5 +1260,35 @@
 /** DOME_PARK.UNPARKED property item name.
  */
 #define DOME_PARK_UNPARKED_ITEM_NAME						"UNPARKED"
+
+//----------------------------------------------------------------------
+/** DOME_MEASUREMENT property name
+ */
+#define DOME_MEASUREMENT_PROPERTY_NAME					"DOME_MEASUREMENT"
+
+/** DOME_MEASUREMENT.RADIUS property item name.
+ */
+#define DOME_RADIUS_ITEM_NAME										"RADIUS"
+
+/** DOME_MEASUREMENT.SHUTTER_WIDTH property item name.
+ */
+#define DOME_SHUTTER_WIDTH_ITEM_NAME						"SHUTTER_WIDTH"
+
+/** DOME_MEASUREMENT.NORTH_DISPLACEMENT property item name.
+ */
+#define DOME_NORTH_DISPLACEMENT_ITEM_NAME				"NORTH_DISPLACEMENT"
+
+/** DOME_MEASUREMENT.EAST_DISPLACEMENT property item name.
+ */
+#define DOME_EAST_DISPLACEMENT_ITEM_NAME				"EAST_DISPLACEMENT"
+
+/** DOME_MEASUREMENT.UP_DISPLACEMENT property item name.
+ */
+#define DOME_UP_DISPLACEMENT_ITEM_NAME					"UP_DISPLACEMENT"
+
+/** DOME_MEASUREMENT.OTA_OFFSET property item name.
+ */
+#define DOME_OTA_OFFSET_ITEM_NAME								"OTA_OFFSET"
+
 
 #endif /* indigo_names_h */
