@@ -117,31 +117,31 @@ extern "C" {
 //----------------------------------------------
 /** DOME_MEASUREMENT property pointer, property is mandatory
  */
-#define DOME_MEASUREMENT_PROPERTY										(DOME_CONTEXT->dome_measurement_property)
+#define DOME_DIMENSION_PROPERTY										(DOME_CONTEXT->dome_measurement_property)
 	
 /** DOME_MEASUREMENT.RADIUS property item pointer.
  */
-#define DOME_RADIUS_ITEM														(DOME_MEASUREMENT_PROPERTY->items+0)
+#define DOME_RADIUS_ITEM														(DOME_DIMENSION_PROPERTY->items+0)
 
 /** DOME_MEASUREMENT.SHUTTER_WIDTH property item pointer.
  */
-#define DOME_SHUTTER_WIDTH_ITEM											(DOME_MEASUREMENT_PROPERTY->items+1)
+#define DOME_SHUTTER_WIDTH_ITEM											(DOME_DIMENSION_PROPERTY->items+1)
 	
 /** DOME_MEASUREMENT.NORTH_DISPLACEMENT property item pointer.
  */
-#define DOME_NORTH_DISPLACEMENT_ITEM								(DOME_MEASUREMENT_PROPERTY->items+2)
+#define DOME_NORTH_DISPLACEMENT_ITEM								(DOME_DIMENSION_PROPERTY->items+2)
 	
 /** DOME_MEASUREMENT.EAST_DISPLACEMENT property item pointer.
  */
-#define DOME_EAST_DISPLACEMENT_ITEM									(DOME_MEASUREMENT_PROPERTY->items+3)
+#define DOME_EAST_DISPLACEMENT_ITEM									(DOME_DIMENSION_PROPERTY->items+3)
 	
 /** DOME_MEASUREMENT.UP_DISPLACEMENT property item pointer.
  */
-#define DOME_UP_DISPLACEMENT_ITEM										(DOME_MEASUREMENT_PROPERTY->items+4)
+#define DOME_UP_DISPLACEMENT_ITEM										(DOME_DIMENSION_PROPERTY->items+4)
 	
 /** DOME_MEASUREMENT.OTA_OFFSET property item pointer.
  */
-#define DOME_OTA_OFFSET_ITEM												(DOME_MEASUREMENT_PROPERTY->items+5)
+#define DOME_OTA_OFFSET_ITEM												(DOME_DIMENSION_PROPERTY->items+5)
 	
 /** Dome device context structure.
  */

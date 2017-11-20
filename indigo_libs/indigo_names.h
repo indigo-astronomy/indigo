@@ -1262,9 +1262,9 @@
 #define DOME_PARK_UNPARKED_ITEM_NAME						"UNPARKED"
 
 //----------------------------------------------------------------------
-/** DOME_MEASUREMENT property name
+/** DOME_DIMENSION property name
  */
-#define DOME_MEASUREMENT_PROPERTY_NAME					"DOME_MEASUREMENT"
+#define DOME_DIMENSION_PROPERTY_NAME					"DOME_DIMENSION"
 
 /** DOME_MEASUREMENT.RADIUS property item name.
  */

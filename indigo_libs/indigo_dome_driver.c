@@ -86,8 +86,8 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 			indigo_init_switch_item(DOME_PARK_PARKED_ITEM, DOME_PARK_PARKED_ITEM_NAME, "Dome parked", true);
 			indigo_init_switch_item(DOME_PARK_UNPARKED_ITEM, DOME_PARK_UNPARKED_ITEM_NAME, "Dome unparked", false);
 			// -------------------------------------------------------------------------------- DOME_MEASUREMENT
-			DOME_MEASUREMENT_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_MEASUREMENT_PROPERTY_NAME, DOME_MAIN_GROUP, "Measurement", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 6);
-			if (DOME_MEASUREMENT_PROPERTY == NULL)
+			DOME_DIMENSION_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_DIMENSION_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome dimension", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 6);
+			if (DOME_DIMENSION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(DOME_RADIUS_ITEM, DOME_RADIUS_ITEM_NAME, "Dome radius (m)", 0, 50, 0, 0);
 			indigo_init_number_item(DOME_SHUTTER_WIDTH_ITEM, DOME_SHUTTER_WIDTH_ITEM_NAME, "Dome shutter width (m)", 0, 50, 0, 0);
@@ -122,8 +122,8 @@ indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_cli
 				indigo_define_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			if (indigo_property_match(DOME_PARK_PROPERTY, property))
 				indigo_define_property(device, DOME_PARK_PROPERTY, NULL);
-			if (indigo_property_match(DOME_MEASUREMENT_PROPERTY, property))
-				indigo_define_property(device, DOME_MEASUREMENT_PROPERTY, NULL);
+			if (indigo_property_match(DOME_DIMENSION_PROPERTY, property))
+				indigo_define_property(device, DOME_DIMENSION_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -143,7 +143,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			indigo_define_property(device, DOME_PARK_PROPERTY, NULL);
-			indigo_define_property(device, DOME_MEASUREMENT_PROPERTY, NULL);
+			indigo_define_property(device, DOME_DIMENSION_PROPERTY, NULL);
 		} else {
 			indigo_delete_property(device, DOME_SPEED_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_DIRECTION_PROPERTY, NULL);
@@ -152,7 +152,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_delete_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_PARK_PROPERTY, NULL);
-			indigo_delete_property(device, DOME_MEASUREMENT_PROPERTY, NULL);
+			indigo_delete_property(device, DOME_DIMENSION_PROPERTY, NULL);
 		}
 		// -------------------------------------------------------------------------------- DOME_SPEED
 	} else if (indigo_property_match(DOME_SPEED_PROPERTY, property)) {
@@ -167,10 +167,10 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_MEASUREMENT
-	} else if (indigo_property_match(DOME_MEASUREMENT_PROPERTY, property)) {
-		indigo_property_copy_values(DOME_MEASUREMENT_PROPERTY, property, false);
-		DOME_MEASUREMENT_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_MEASUREMENT_PROPERTY, NULL);
+	} else if (indigo_property_match(DOME_DIMENSION_PROPERTY, property)) {
+		indigo_property_copy_values(DOME_DIMENSION_PROPERTY, property, false);
+		DOME_DIMENSION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_DIMENSION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
@@ -191,7 +191,7 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 	indigo_release_property(DOME_ABORT_MOTION_PROPERTY);
 	indigo_release_property(DOME_SHUTTER_PROPERTY);
 	indigo_release_property(DOME_PARK_PROPERTY);
-	indigo_release_property(DOME_MEASUREMENT_PROPERTY);
+	indigo_release_property(DOME_DIMENSION_PROPERTY);
 	return indigo_device_detach(device);
 }
 
