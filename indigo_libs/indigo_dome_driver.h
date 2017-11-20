@@ -114,18 +114,47 @@ extern "C" {
  */
 #define DOME_PARK_UNPARKED_ITEM											(DOME_PARK_PROPERTY->items+1)
 
+//----------------------------------------------
+/** DOME_MEASUREMENT property pointer, property is mandatory
+ */
+#define DOME_MEASUREMENT_PROPERTY										(DOME_CONTEXT->dome_measurement_property)
+	
+/** DOME_MEASUREMENT.RADIUS property item pointer.
+ */
+#define DOME_RADIUS_ITEM														(DOME_MEASUREMENT_PROPERTY->items+0)
 
+/** DOME_MEASUREMENT.SHUTTER_WIDTH property item pointer.
+ */
+#define DOME_SHUTTER_WIDTH_ITEM											(DOME_MEASUREMENT_PROPERTY->items+1)
+	
+/** DOME_MEASUREMENT.NORTH_DISPLACEMENT property item pointer.
+ */
+#define DOME_NORTH_DISPLACEMENT_ITEM								(DOME_MEASUREMENT_PROPERTY->items+2)
+	
+/** DOME_MEASUREMENT.EAST_DISPLACEMENT property item pointer.
+ */
+#define DOME_EAST_DISPLACEMENT_ITEM									(DOME_MEASUREMENT_PROPERTY->items+3)
+	
+/** DOME_MEASUREMENT.UP_DISPLACEMENT property item pointer.
+ */
+#define DOME_UP_DISPLACEMENT_ITEM										(DOME_MEASUREMENT_PROPERTY->items+4)
+	
+/** DOME_MEASUREMENT.OTA_OFFSET property item pointer.
+ */
+#define DOME_OTA_OFFSET_ITEM												(DOME_MEASUREMENT_PROPERTY->items+5)
+	
 /** Dome device context structure.
  */
 typedef struct {
-	indigo_device_context device_context;				///< device context base
-	indigo_property *dome_speed_property;				///< DOME_SPEED property pointer
+	indigo_device_context device_context;					///< device context base
+	indigo_property *dome_speed_property;					///< DOME_SPEED property pointer
 	indigo_property *dome_direction_property;			///< DOME_DIRECTION property pointer
-	indigo_property *dome_steps_property;				///< DOME_STEPS property pointer
+	indigo_property *dome_steps_property;					///< DOME_STEPS property pointer
 	indigo_property *dome_position_property;			///< DOME_POSITION property pointer
-	indigo_property *dome_abort_motion_property;		///< DOME_ABORT_MOTION property pointer
+	indigo_property *dome_abort_motion_property;	///< DOME_ABORT_MOTION property pointer
 	indigo_property *dome_shutter_property;				///< DOME_SHUTTER_PROPERTY pointer
-	indigo_property *dome_park_property;										///< DOME_PARK property pointer
+	indigo_property *dome_park_property;					///< DOME_PARK property pointer
+	indigo_property *dome_measurement_property;		///< DOME_PARK property pointer
 } indigo_dome_context;
 
 /** Attach callback function.
