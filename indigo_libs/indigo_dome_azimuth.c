@@ -40,7 +40,7 @@ static double map24(double hour) {
 		int n = (int)(hour / 24.0);
 		hour24 = hour - (double)n * 24.0;
 		return hour24;
-   	} else {
+	} else {
 		return hour;
 	}
 }
@@ -53,8 +53,9 @@ static double map360(double angle) {
 	} else if (angle >= 360.0) {
 		int n = (int)(angle / 360.0);
 		return (angle - (double)n * 360.0);
-   	} else
+	} else {
 		return angle;
+	}
 }
 
 
@@ -62,7 +63,7 @@ static void equatorial_to_horizontal(double ha, double dec, double site_latitude
 	double phi = site_latitude*M_PI/180.0;
 
 	ha = ha * M_PI / 12.0;
- 	dec = dec * M_PI / 180.0;
+	dec = dec * M_PI / 180.0;
 	*altitude = asin(sin(phi)*sin(dec) + cos(phi)*cos(dec)*cos(ha));
 	*altitude = *altitude * 180.0 / M_PI;
 	*azimuth = atan2(-cos(dec)*sin(ha), sin(dec)*cos(phi) - sin(phi)*cos(dec)*cos(ha));
@@ -140,7 +141,7 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 	double telaz2, telalt2;
 
 	if (site_latitude >= 0) {
-  		telaz2 = telaz * M_PI / 180.0;
+		telaz2 = telaz * M_PI / 180.0;
 		telalt2 = telalt * M_PI / 180.0;
 	} else {
 		telaz2 = telaz - 180.0;
@@ -173,7 +174,7 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 	double zeta = atan2(x, y);
 	if ((zeta > -2 * M_PI) && (zeta < 2 * M_PI)) {
 		if (site_latitude > 0) {
-    			zeta = (180.0 / M_PI) * zeta;
+			zeta = (180.0 / M_PI) * zeta;
 			zeta = map360(zeta);
 		} else {
 			zeta = (180.0 / M_PI) * zeta;
@@ -181,7 +182,7 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 			zeta = map360(zeta);
 		}
 	} else {
-  		zeta = telaz;
+		zeta = telaz;
 	}
 	return zeta;
 }
