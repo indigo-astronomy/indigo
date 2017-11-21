@@ -28,6 +28,7 @@
 
 #include "indigo_bus.h"
 #include "indigo_driver.h"
+#include "indigo_dome_azimuth.h"
 
 #ifdef __cplusplus
 extern "C" {
