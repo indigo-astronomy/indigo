@@ -39,7 +39,8 @@ extern double indigo_dome_solve_azimuth (
 	double dome_radius,
 	double mount_dec_height,
 	double mount_dec_length,
-	double mount_dec_offset
+	double mount_dec_offset_NS,
+	double mount_dec_offset_EW
 );
 
 #ifdef __cplusplus
