@@ -72,7 +72,7 @@ static void equatorial_to_horizontal(double ha, double dec, double site_latitude
 }
 
 
-double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, double dome_radius, double mount_dec_height, double mount_dec_length, double mount_dec_offset) {
+double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, double dome_radius, double mount_dec_height, double mount_dec_length, double mount_dec_offset_NS, double mount_dec_offset_EW) {
 	ha = map24(ha);
 
 	/* Map an hourangle in hours to  -12 <= ha0 < +12 */
@@ -128,8 +128,8 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 	}
 
 	/* Find the dome coordinates of the OTA reference point for a German equatorial */
-	x0 = mount_dec_length * sin(phi);
-	y0 = -mount_dec_length * cos(phi) * sin(theta) + mount_dec_offset;;
+	x0 = mount_dec_length * sin(phi) + mount_dec_offset_EW;
+	y0 = -mount_dec_length * cos(phi) * sin(theta) + mount_dec_offset_NS;
 	z0 = mount_dec_length * cos(phi) * cos(theta) + mount_dec_height;
 
 	/*
