@@ -91,10 +91,10 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			indigo_init_number_item(DOME_RADIUS_ITEM, DOME_RADIUS_ITEM_NAME, "Dome radius (m)", 0, 50, 0, 0);
 			indigo_init_number_item(DOME_SHUTTER_WIDTH_ITEM, DOME_SHUTTER_WIDTH_ITEM_NAME, "Dome shutter width (m)", 0, 50, 0, 0);
-			indigo_init_number_item(DOME_NORTH_DISPLACEMENT_ITEM, DOME_NORTH_DISPLACEMENT_ITEM_NAME, "Displacement to the north of the mount center (m)", 0, 30, 0, 0);
-			indigo_init_number_item(DOME_EAST_DISPLACEMENT_ITEM, DOME_EAST_DISPLACEMENT_ITEM_NAME, "Displacement to the east of the mount center (m)", 0, 30, 0, 0);
-			indigo_init_number_item(DOME_UP_DISPLACEMENT_ITEM, DOME_UP_DISPLACEMENT_ITEM_NAME, "Up displacement of the mount center (m)", 0, 10, 0, 0);
-			indigo_init_number_item(DOME_OTA_OFFSET_ITEM, DOME_OTA_OFFSET_ITEM_NAME, "Distance from the optical axis to the mount center (m)", 0, 10, 0, 0);
+			indigo_init_number_item(DOME_NORTH_DISPLACEMENT_ITEM, DOME_NORTH_DISPLACEMENT_ITEM_NAME, "Mount Pivot Offset N/S (m, +N/-S)", -30, 30, 0, 0);
+			indigo_init_number_item(DOME_EAST_DISPLACEMENT_ITEM, DOME_EAST_DISPLACEMENT_ITEM_NAME, "Mount Pivot Offset E/W (m, +E/-W)", -30, 30, 0, 0);
+			indigo_init_number_item(DOME_UP_DISPLACEMENT_ITEM, DOME_UP_DISPLACEMENT_ITEM_NAME, "Mount Pivot Vertical Offset (m)", -10, 10, 0, 0);
+			indigo_init_number_item(DOME_OTA_OFFSET_ITEM, DOME_OTA_OFFSET_ITEM_NAME, "Optical axis offset from the RA axis (m)", 0, 10, 0, 0);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -199,4 +199,3 @@ indigo_result indigo_update_dome_coordinates(indigo_device *device, const char *
 	// TODO fix coordinates
 	return indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, message);
 }
-
