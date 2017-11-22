@@ -75,6 +75,7 @@
 #ifdef INDIGO_MACOS
 #include "ccd_ica/indigo_ccd_ica.h"
 #endif
+#include "agent_snoop/indigo_agent_snoop.h"
 #endif
 
 #define MDNS_INDIGO_TYPE    "_indigo._tcp"
@@ -112,6 +113,7 @@ driver_entry_point static_drivers[] = {
 #ifdef INDIGO_MACOS
 	indigo_ccd_ica,
 #endif
+	indigo_agent_snoop,
 #endif
 	NULL
 };

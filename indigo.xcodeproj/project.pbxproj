@@ -20,6 +20,11 @@
 		593AD10A1EF839F200C059BC /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 593AD1081EF839EF00C059BC /* libUSB2ST4Conv.a */; };
 		593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */ = {isa = PBXBuildFile; fileRef = 593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */; };
 		593CFE451DFC8A12003B63D4 /* indigo_wheel_atik.h in Headers */ = {isa = PBXBuildFile; fileRef = 593CFE421DFC8A12003B63D4 /* indigo_wheel_atik.h */; };
+		595AA1CD1FC5ED8A00350E7B /* indigo_agent_snoop.c in Sources */ = {isa = PBXBuildFile; fileRef = 595AA1CA1FC5ED8A00350E7B /* indigo_agent_snoop.c */; };
+		595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */ = {isa = PBXBuildFile; fileRef = 595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */; };
+		595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */ = {isa = PBXBuildFile; fileRef = 595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */; };
+		595AA1D21FC5EEFE00350E7B /* indigo_agent.c in Sources */ = {isa = PBXBuildFile; fileRef = 595AA1D01FC5EEFE00350E7B /* indigo_agent.c */; };
+		595AA1D41FC5F26600350E7B /* libnmea.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 595AA1D31FC5F26600350E7B /* libnmea.a */; };
 		5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5981C8DE1DC291AF00C7705F /* libfcusb.a */; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
 		5992F7B71E1EC8EF0035242E /* libfli.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5992F7B61E1EC8EF0035242E /* libfli.a */; };
@@ -387,6 +392,12 @@
 		595355D61F6AD79100478BEC /* VidPid.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VidPid.cpp; path = lib/VidPid.cpp; sourceTree = "<group>"; };
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
 		595355ED1F6B140300478BEC /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libqsiapi.a; path = build/lib/libqsiapi.a; sourceTree = "<group>"; };
+		595AA1CA1FC5ED8A00350E7B /* indigo_agent_snoop.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_snoop.c; sourceTree = "<group>"; };
+		595AA1CB1FC5ED8A00350E7B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_snoop.h; sourceTree = "<group>"; };
+		595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent.h; sourceTree = "<group>"; };
+		595AA1D01FC5EEFE00350E7B /* indigo_agent.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent.c; sourceTree = "<group>"; };
+		595AA1D31FC5F26600350E7B /* libnmea.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnmea.a; path = indigo_drivers/gps_nmea/externals/nmealib/lib/libnmea.a; sourceTree = SOURCE_ROOT; };
 		5981C8DC1DC291A500C7705F /* libfcusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libfcusb.h; path = include/libfcusb/libfcusb.h; sourceTree = "<group>"; };
 		5981C8DE1DC291AF00C7705F /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfcusb.a; path = lib/macOS/libfcusb.a; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
@@ -592,6 +603,7 @@
 			files = (
 				9DB9180C1DFEC19E00678721 /* libnexstar.a in Frameworks */,
 				59F654731EE4755F007B8C93 /* libqhy.a in Frameworks */,
+				595AA1D41FC5F26600350E7B /* libnmea.a in Frameworks */,
 				5992F7B71E1EC8EF0035242E /* libfli.a in Frameworks */,
 				593AD10A1EF839F200C059BC /* libUSB2ST4Conv.a in Frameworks */,
 				599A63D51DF3670100ABC827 /* libjpeg.a in Frameworks */,
@@ -891,6 +903,16 @@
 			path = "externals/qsiapi-7.6.0";
 			sourceTree = "<group>";
 		};
+		595AA1C91FC5ED2900350E7B /* agent_snoop */ = {
+			isa = PBXGroup;
+			children = (
+				595AA1CB1FC5ED8A00350E7B /* README.md */,
+				595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */,
+				595AA1CA1FC5ED8A00350E7B /* indigo_agent_snoop.c */,
+			);
+			path = agent_snoop;
+			sourceTree = "<group>";
+		};
 		5981C8D51DC14DB900C7705F /* focuser_fcusb */ = {
 			isa = PBXGroup;
 			children = (
@@ -1045,6 +1067,7 @@
 			children = (
 				9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */,
 				9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */,
+				595AA1D31FC5F26600350E7B /* libnmea.a */,
 			);
 			path = externals;
 			sourceTree = "<group>";
@@ -1113,6 +1136,8 @@
 				59CBD4781FAF6C19000DAFDB /* indigo_gps_driver.c */,
 				59DD69CD1FC1D30300AEF0DF /* indigo_dome_driver.h */,
 				59DD69CC1FC1D30300AEF0DF /* indigo_dome_driver.c */,
+				595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */,
+				595AA1D01FC5EEFE00350E7B /* indigo_agent.c */,
 				59019E0A1DE0AC7400CCB3ED /* indigo_client.h */,
 				59019E091DE0AC7400CCB3ED /* indigo_client.c */,
 				9DDBAE181E2D2099004FE70F /* indigo_timer.h */,
@@ -1139,6 +1164,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				595AA1C91FC5ED2900350E7B /* agent_snoop */,
 				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
 				59DD69C41FC1CF5B00AEF0DF /* gps_nmea */,
 				59CBD47A1FAF6C65000DAFDB /* gps_simulator */,
@@ -1400,6 +1426,7 @@
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
 				59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */,
 				9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */,
+				595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */,
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
 				9DBC346B1DCB26AC00588DB9 /* EFW_filter.h in Headers */,
 				59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */,
@@ -1409,6 +1436,7 @@
 				599A63A81DE8BD1700ABC827 /* indigo_json.h in Headers */,
 				59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */,
 				9D976FDC1DD0C69D00782B32 /* dc1394.h in Headers */,
+				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
 				59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */,
 				59DD69CA1FC1CF8D00AEF0DF /* indigo_gps_nmea.h in Headers */,
 				9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */,
@@ -1748,12 +1776,14 @@
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,
 				59E38B541F1577A000187839 /* indigo_ica_ptp_canon.m in Sources */,
 				9D9EA6B61DBFA30600E11841 /* indigo_wheel_driver.c in Sources */,
+				595AA1CD1FC5ED8A00350E7B /* indigo_agent_snoop.c in Sources */,
 				9D9EA6B41DBFA30600E11841 /* indigo_guider_driver.c in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */,
 				59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */,
 				599A63A71DE8BD1700ABC827 /* indigo_json.c in Sources */,
 				599C9A531DA022E3008BBCC1 /* indigo_server_tcp.c in Sources */,
+				595AA1D21FC5EEFE00350E7B /* indigo_agent.c in Sources */,
 				9DB9180A1DFEA71C00678721 /* indigo_mount_nexstar.c in Sources */,
 				5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */,
 				9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */,
@@ -2073,6 +2103,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/mac",
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac",
+					"$(PROJECT_DIR)/indigo_drivers/gps_nmea/externals/nmealib/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -2087,6 +2118,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/mac",
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac",
+					"$(PROJECT_DIR)/indigo_drivers/gps_nmea/externals/nmealib/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
