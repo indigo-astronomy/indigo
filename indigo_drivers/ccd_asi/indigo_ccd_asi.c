@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -691,6 +691,8 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	ASI_ERROR_CODE res;
 	int id = PRIVATE_DATA->dev_id;
 
+	if (!IS_CONNECTED) return INDIGO_OK;
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	res = ASIGetNumOfControls(id, &ctrl_count);
@@ -1012,6 +1014,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- GAMMA
 	} else if (indigo_property_match(CCD_GAMMA_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		CCD_GAMMA_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(CCD_GAMMA_PROPERTY, property, false);
 
@@ -1024,11 +1027,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		if (IS_CONNECTED)
-			indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
+		indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- OFFSET
 	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		CCD_OFFSET_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 
@@ -1045,12 +1048,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		adjust_preset_switches(device);
 
-		if (IS_CONNECTED)
-			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
-			indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
+		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
+		indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- GAIN
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		CCD_GAIN_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 
@@ -1067,13 +1070,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		adjust_preset_switches(device);
 
-		if (IS_CONNECTED) {
-			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
-			indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
-		}
+		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- ASI_PRESETS
 	} else if (indigo_property_match(ASI_PRESETS_PROPERTY, property)) {
+		if (!IS_CONNECTED) return INDIGO_OK;
 		ASI_PRESETS_PROPERTY->state = INDIGO_IDLE_STATE;
 		indigo_property_copy_values(ASI_PRESETS_PROPERTY, property, false);
 		int gain = 0, offset = 0;
@@ -1113,11 +1115,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_GAIN_ITEM->number.value = gain;
 		CCD_OFFSET_ITEM->number.value = offset;
 
-		if (IS_CONNECTED) {
-			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
-			indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
-			indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
-		}
+		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
+		indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
