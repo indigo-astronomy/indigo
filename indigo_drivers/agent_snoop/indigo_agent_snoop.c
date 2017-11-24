@@ -57,7 +57,13 @@ typedef struct {
 } agent_private_data;
 
 static rule *add_rule(indigo_client *client, const char *source_device, const char *source_property, const char *target_device, const char *target_property, bool is_active) {
+	assert(client != NULL);
+	assert(source_device != NULL);
+	assert(source_property != NULL);
+	assert(target_device != NULL);
+	assert(target_property != NULL);
 	rule *result = malloc(sizeof(rule));
+	assert(result != NULL);
 	strncpy(result->source_device_name, source_device, INDIGO_NAME_SIZE);
 	strncpy(result->source_property_name, source_property, INDIGO_NAME_SIZE);
 	result->source_device = NULL;
@@ -73,15 +79,19 @@ static rule *add_rule(indigo_client *client, const char *source_device, const ch
 }
 
 static indigo_result forward_property(indigo_client *client, rule *r) {
+	assert(client != NULL);
+	assert(r != NULL);
+	assert(r->source_device != NULL);
+	assert(r->source_property != NULL);
+	assert(r->target_device != NULL);
+	assert(r->target_property != NULL);
 	int size = sizeof(indigo_property) + r->source_property->count * sizeof(indigo_item);
 	indigo_property *property = malloc(size);
+	assert(property != NULL);
 	memcpy(property, r->source_property, size);
-	strcpy(property->device, r->target_device_name);
-	strcpy(property->name, r->target_property_name);
-	int ll = indigo_get_log_level();
-	indigo_set_log_level(INDIGO_LOG_TRACE);
-	indigo_trace_property("forward", property, false, true);
-	indigo_set_log_level(ll);
+	strncpy(property->device, r->target_device_name, INDIGO_NAME_SIZE);
+	strncpy(property->name, r->target_property_name, INDIGO_NAME_SIZE);
+	indigo_trace_property("Property set by rule", property, false, true);
 	indigo_result result = r->target_device->last_result = r->target_device->change_property(r->target_device, client, property);
 	free(property);
 	return result;
@@ -127,25 +137,20 @@ static indigo_result agent_client_attach(indigo_client *client) {
 
 static indigo_result agent_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
 	rule *r = CLIENT_PRIVATE_DATA->rules;
-	bool rule_complete = false;
 	while (r) {
 		if (!strcmp(r->source_device_name, property->device) && !strcmp(r->source_property_name, property->name)) {
 			r->source_device = device;
 			r->source_property = property;
-			if (r->target_property)
-				rule_complete = true;
 			break;
 		} else if (!strcmp(r->target_device_name, property->device) && !strcmp(r->target_property_name, property->name)) {
 			r->target_device = device;
 			r->target_property = property;
-			if (r->source_property)
-				rule_complete = true;
 			break;
 		} else {
 			r = r->next;
 		}
 	}
-	if (rule_complete && r->is_active) {
+	if (r && r->source_property && r->target_property && r->is_active) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Rule '%s'.%s > '%s'.%s is active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 		forward_property(client, r);
 	}
@@ -157,7 +162,7 @@ static indigo_result agent_update_property(struct indigo_client *client, struct 
 	while (r) {
 		if (r->source_property == property) {
 			if (r->is_active) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Rule '%s'.%s > '%s'.%s used", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
+				INDIGO_DRIVER_TRACE(DRIVER_NAME, "Rule '%s'.%s > '%s'.%s used", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 				return forward_property(client, r);
 			}
 			break;
@@ -170,26 +175,22 @@ static indigo_result agent_update_property(struct indigo_client *client, struct 
 
 indigo_result agent_delete_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
 	rule *r = CLIENT_PRIVATE_DATA->rules;
-	bool rule_incomplete = false;
 	while (r) {
 		if (!strcmp(r->source_device_name, property->device) && !strcmp(r->source_property_name, property->name)) {
 			r->source_device = NULL;
 			r->source_property = NULL;
 			if (r->target_property)
-				rule_incomplete = true;
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Rule '%s'.%s > '%s'.%s isn't active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 			break;
 		} else if (!strcmp(r->target_device_name, property->device) && !strcmp(r->target_property_name, property->name)) {
 			r->target_device = NULL;
 			r->target_property = NULL;
 			if (r->source_property)
-				rule_incomplete = true;
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Rule '%s'.%s > '%s'.%s isn't active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 			break;
 		} else {
 			r = r->next;
 		}
-	}
-	if (rule_incomplete && r->is_active) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Rule '%s'.%s > '%s'.%s isn't active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 	}
 	return INDIGO_OK;
 }
