@@ -94,6 +94,7 @@ static indigo_result forward_property(indigo_client *client, rule *r) {
 	strncpy(property->name, r->target_property_name, INDIGO_NAME_SIZE);
 	indigo_trace_property("Property set by rule", property, false, true);
 	indigo_result result = r->target_device->last_result = r->target_device->change_property(r->target_device, client, property);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Forward: '%s'.%s > '%s'.%s", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 	free(property);
 	return result;
 }
@@ -162,8 +163,8 @@ static indigo_result agent_update_property(struct indigo_client *client, struct 
 	rule *r = CLIENT_PRIVATE_DATA->rules;
 	while (r) {
 		if (r->source_property == property) {
-			if (r->is_active) {
-				INDIGO_DRIVER_TRACE(DRIVER_NAME, "Rule '%s'.%s > '%s'.%s used", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
+			if (r->target_property && r->is_active) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Rule '%s'.%s > '%s'.%s used", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 				return forward_property(client, r);
 			}
 			break;
