@@ -83,8 +83,9 @@ static indigo_result forward_property(indigo_client *client, rule *r) {
 	assert(r != NULL);
 	assert(r->source_device != NULL);
 	assert(r->source_property != NULL);
-	assert(r->target_device != NULL);
-	assert(r->target_property != NULL);
+	//assert(r->target_device != NULL);
+	// assert(r->target_property != NULL);
+	if ((r->target_device == NULL) || (r->target_property == NULL)) return INDIGO_FAILED;
 	int size = sizeof(indigo_property) + r->source_property->count * sizeof(indigo_item);
 	indigo_property *property = malloc(size);
 	assert(property != NULL);
@@ -222,7 +223,7 @@ indigo_result indigo_agent_snoop(indigo_driver_action action, indigo_driver_info
 		NULL,
 		agent_device_detach
 	};
-	
+
 	static indigo_client agent_client_template = {
 		SNOOP_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		agent_client_attach,
@@ -232,7 +233,7 @@ indigo_result indigo_agent_snoop(indigo_driver_action action, indigo_driver_info
 		NULL,
 		agent_client_detach
 	};
-	
+
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "Snoop agent", __FUNCTION__, DRIVER_VERSION, last_action);
@@ -251,7 +252,7 @@ indigo_result indigo_agent_snoop(indigo_driver_action action, indigo_driver_info
 			memcpy(agent_device, &agent_device_template, sizeof(indigo_device));
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
-			
+
 			agent_client = malloc(sizeof(indigo_client));
 			assert(agent_client != NULL);
 			memcpy(agent_client, &agent_client_template, sizeof(indigo_client));
