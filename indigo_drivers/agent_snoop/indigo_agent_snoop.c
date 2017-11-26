@@ -83,9 +83,8 @@ static indigo_result forward_property(indigo_client *client, rule *r) {
 	assert(r != NULL);
 	assert(r->source_device != NULL);
 	assert(r->source_property != NULL);
-	//assert(r->target_device != NULL);
-	// assert(r->target_property != NULL);
-	if ((r->target_device == NULL) || (r->target_property == NULL)) return INDIGO_FAILED;
+	assert(r->target_device != NULL);
+	assert(r->target_property != NULL);
 	int size = sizeof(indigo_property) + r->source_property->count * sizeof(indigo_item);
 	indigo_property *property = malloc(size);
 	assert(property != NULL);
@@ -133,7 +132,8 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 static indigo_result agent_client_attach(indigo_client *client) {
 	// Example only
-	add_rule(client, "Mount Simulator", "MOUNT_HORIZONTAL_COORDINATES", "Dome Simulator", "DOME_HORIZONTAL_COORDINATES", true);
+	add_rule(client, "Mount Simulator", "MOUNT_EQUATORIAL_COORDINATES", "Dome Simulator", "DOME_EQUATORIAL_COORDINATES", true);
+	add_rule(client, "Mount Simulator", "GEOGRAPHIC_COORDINATES", "Dome Simulator", "GEOGRAPHIC_COORDINATES", true);
 	return INDIGO_OK;
 }
 

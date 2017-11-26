@@ -42,7 +42,7 @@ extern "C" {
  */
 #define DOME_CONTEXT                					((indigo_dome_context *)device->device_context)
 
-/** DOME_SPEED property pointer, property is mandatory, property change request should be fully handled by indigo_dome_change_property
+/** DOME_SPEED property pointer, property is optional, property change request should be fully handled by indigo_dome_change_property
  */
 #define DOME_SPEED_PROPERTY								(DOME_CONTEXT->dome_speed_property)
 
@@ -50,7 +50,7 @@ extern "C" {
  */
 #define DOME_SPEED_ITEM									(DOME_SPEED_PROPERTY->items+0)
 
-/** DOME_DIRECTION property pointer, property is mandatory, property change request should be fully handled by indigo_dome_change_property.
+/** DOME_DIRECTION property pointer, property is optional, property change request should be fully handled by indigo_dome_change_property.
  */
 #define DOME_DIRECTION_PROPERTY							(DOME_CONTEXT->dome_direction_property)
 
@@ -62,7 +62,7 @@ extern "C" {
  */
 #define DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM		(DOME_DIRECTION_PROPERTY->items+1)
 
-/** DOME_STEPS property pointer, property is mandatory, property change request should be fully handled by dome driver
+/** DOME_STEPS property pointer, property is optional, property change request should be fully handled by dome driver
  */
 #define DOME_STEPS_PROPERTY								(DOME_CONTEXT->dome_steps_property)
 
@@ -70,9 +70,21 @@ extern "C" {
  */
 #define DOME_STEPS_ITEM									(DOME_STEPS_PROPERTY->items+0)
 
-/** DOME_HORIZONTAL_COORDINATES property pointer, property is mandatory, property change request should be fully handled by dome driver
+/** DOME_EQUATORIAL_COORDINATES property pointer, property is optional, property change request should be fully handled by device driver.
+*/
+#define DOME_EQUATORIAL_COORDINATES_PROPERTY					(DOME_CONTEXT->dome_equatorial_coordinates_property)
+	
+/** DOME_EQUATORIAL_COORDINATES.RA property item pointer.
  */
-#define DOME_HORIZONTAL_COORDINATES_PROPERTY			(DOME_CONTEXT->dome_position_property)
+#define DOME_EQUATORIAL_COORDINATES_RA_ITEM					(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+0)
+	
+/** DOME_EQUATORIAL_COORDINATES.DEC property item pointer.
+ */
+#define DOME_EQUATORIAL_COORDINATES_DEC_ITEM					(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+1)
+
+/** DOME_HORIZONTAL_COORDINATES property pointer, property is optional, property change request should be fully handled by dome driver
+ */
+#define DOME_HORIZONTAL_COORDINATES_PROPERTY			(DOME_CONTEXT->dome_horizontal_coordinates_property)
 
 /** DOME_HORIZONTAL_COORDINATES.AZ property item pointer.
  */
@@ -82,7 +94,7 @@ extern "C" {
  */
 #define DOME_HORIZONTAL_COORDINATES_ALT_ITEM								(DOME_HORIZONTAL_COORDINATES_PROPERTY->items+1)
 
-/** DOME_ABORT_MOTION property pointer, property is mandatory, property change request should be fully handled by dome driver
+/** DOME_ABORT_MOTION property pointer, property is optional, property change request should be fully handled by dome driver
  */
 #define DOME_ABORT_MOTION_PROPERTY						(DOME_CONTEXT->dome_abort_motion_property)
 
@@ -102,8 +114,7 @@ extern "C" {
  */
 #define DOME_SHUTTER_CLOSED_ITEM							(DOME_SHUTTER_PROPERTY->items+1)
 
-//----------------------------------------------
-/** DOME_PARK property pointer, property is mandatory, property change request should be fully handled by device driver.
+/** DOME_PARK property pointer, property is optional, property change request should be fully handled by device driver.
  */
 #define DOME_PARK_PROPERTY														(DOME_CONTEXT->dome_park_property)
 
@@ -116,7 +127,7 @@ extern "C" {
 #define DOME_PARK_UNPARKED_ITEM											(DOME_PARK_PROPERTY->items+1)
 
 //----------------------------------------------
-/** DOME_MEASUREMENT property pointer, property is mandatory
+/** DOME_MEASUREMENT property pointer, property is optional
  */
 #define DOME_DIMENSION_PROPERTY										(DOME_CONTEXT->dome_measurement_property)
 
@@ -144,18 +155,37 @@ extern "C" {
  */
 #define DOME_OTA_OFFSET_ITEM												(DOME_DIMENSION_PROPERTY->items+5)
 
+/** DOME_GEOGRAPHIC_COORDINATES property pointer, property is optional.
+ */
+#define DOME_GEOGRAPHIC_COORDINATES_PROPERTY					(DOME_CONTEXT->dome_geographic_coordinates_property)
+	
+/** DOME_GEOGRAPHIC_COORDINATES.LATITUDE property item pointer.
+ */
+#define DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM		(DOME_GEOGRAPHIC_COORDINATES_PROPERTY->items+0)
+	
+/** DOME_GEOGRAPHIC_COORDINATES.LONGITUDE property item pointer.
+ */
+#define DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM		(DOME_GEOGRAPHIC_COORDINATES_PROPERTY->items+1)
+	
+/** DOME_GEOGRAPHIC_COORDINATES.ELEVATION property item pointer.
+ */
+#define DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM		(DOME_GEOGRAPHIC_COORDINATES_PROPERTY->items+2)
+
+	
 /** Dome device context structure.
  */
 typedef struct {
-	indigo_device_context device_context;					///< device context base
-	indigo_property *dome_speed_property;					///< DOME_SPEED property pointer
-	indigo_property *dome_direction_property;			///< DOME_DIRECTION property pointer
-	indigo_property *dome_steps_property;					///< DOME_STEPS property pointer
-	indigo_property *dome_position_property;			///< DOME_POSITION property pointer
-	indigo_property *dome_abort_motion_property;	///< DOME_ABORT_MOTION property pointer
-	indigo_property *dome_shutter_property;				///< DOME_SHUTTER_PROPERTY pointer
-	indigo_property *dome_park_property;					///< DOME_PARK property pointer
-	indigo_property *dome_measurement_property;		///< DOME_PARK property pointer
+	indigo_device_context device_context;										///< device context base
+	indigo_property *dome_speed_property;										///< DOME_SPEED property pointer
+	indigo_property *dome_direction_property;								///< DOME_DIRECTION property pointer
+	indigo_property *dome_steps_property;										///< DOME_STEPS property pointer
+	indigo_property *dome_equatorial_coordinates_property; 	///< DOME_EQUATORIAL_COORDINATES property pointer
+	indigo_property *dome_horizontal_coordinates_property;	///< DOME_HORIZONTAL_COORDINATES property pointer
+	indigo_property *dome_abort_motion_property;						///< DOME_ABORT_MOTION property pointer
+	indigo_property *dome_shutter_property;									///< DOME_SHUTTER_PROPERTY pointer
+	indigo_property *dome_park_property;										///< DOME_PARK property pointer
+	indigo_property *dome_measurement_property;							///< DOME_PARK property pointer
+	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
 } indigo_dome_context;
 
 /** Attach callback function.
@@ -172,7 +202,7 @@ extern indigo_result indigo_dome_change_property(indigo_device *device, indigo_c
 extern indigo_result indigo_dome_detach(indigo_device *device);
 /** Update dome coordinates.
  */
-extern indigo_result indigo_update_dome_coordinates(indigo_device *device, const char *message);
+extern indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, double dec, double *alt, double *az);
 
 #ifdef __cplusplus
 }
