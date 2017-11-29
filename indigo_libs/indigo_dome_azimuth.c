@@ -30,7 +30,7 @@
 #include <stdio.h>
 
 
-static double map24(double hour) {
+double map24(double hour) {
 	double hour24;
 	if (hour < 0.0) {
 		int n = (int)(hour / 24.0) - 1;
