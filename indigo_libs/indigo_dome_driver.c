@@ -227,8 +227,20 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 
 indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, double dec, double *alt, double *az) {
 	if (!DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-		// TBD by Rumen
 		indigo_eq2hor(DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, ra, dec, alt, az);
+		double lst = indigo_lst(DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+		double ha = map24(lst - ra);
+		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = indigo_dome_solve_azimuth (
+			ha,
+			dec,
+			DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value,
+			DOME_RADIUS_ITEM->number.value,
+			DOME_UP_DISPLACEMENT_ITEM->number.value,
+			DOME_OTA_OFFSET_ITEM->number.value,
+			DOME_NORTH_DISPLACEMENT_ITEM->number.value,
+			DOME_EAST_DISPLACEMENT_ITEM->number.value
+		);
+		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;

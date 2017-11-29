@@ -32,6 +32,8 @@
  extern "C" {
  #endif
 
+extern double map24(double hour);
+
 extern double indigo_dome_solve_azimuth (
 	double ha,
 	double dec,
