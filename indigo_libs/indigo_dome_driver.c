@@ -98,10 +98,10 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			indigo_init_number_item(DOME_RADIUS_ITEM, DOME_RADIUS_ITEM_NAME, "Dome radius (m)", 0, 50, 0, 0);
 			indigo_init_number_item(DOME_SHUTTER_WIDTH_ITEM, DOME_SHUTTER_WIDTH_ITEM_NAME, "Dome shutter width (m)", 0, 50, 0, 0);
-			indigo_init_number_item(DOME_NORTH_DISPLACEMENT_ITEM, DOME_NORTH_DISPLACEMENT_ITEM_NAME, "Mount Pivot Offset N/S (m, +N/-S)", -30, 30, 0, 0);
-			indigo_init_number_item(DOME_EAST_DISPLACEMENT_ITEM, DOME_EAST_DISPLACEMENT_ITEM_NAME, "Mount Pivot Offset E/W (m, +E/-W)", -30, 30, 0, 0);
-			indigo_init_number_item(DOME_UP_DISPLACEMENT_ITEM, DOME_UP_DISPLACEMENT_ITEM_NAME, "Mount Pivot Vertical Offset (m)", -10, 10, 0, 0);
-			indigo_init_number_item(DOME_OTA_OFFSET_ITEM, DOME_OTA_OFFSET_ITEM_NAME, "Optical axis offset from the RA axis (m)", 0, 10, 0, 0);
+			indigo_init_number_item(DOME_MOUNT_PIVOT_OFFSET_NS_ITEM, DOME_MOUNT_PIVOT_OFFSET_NS_ITEM_NAME, "Mount Pivot Offset N/S (m, +N/-S)", -30, 30, 0, 0);
+			indigo_init_number_item(DOME_MOUNT_PIVOT_OFFSET_EW_ITEM, DOME_MOUNT_PIVOT_OFFSET_EW_ITEM_NAME, "Mount Pivot Offset E/W (m, +E/-W)", -30, 30, 0, 0);
+			indigo_init_number_item(DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM, DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM_NAME, "Mount Pivot Vertical Offset (m)", -10, 10, 0, 0);
+			indigo_init_number_item(DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM, DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM_NAME, "Optical axis offset from the RA axis (m)", 0, 10, 0, 0);
 			// -------------------------------------------------------------------------------- DOME_GEOGRAPHIC_COORDINATES
 			DOME_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_GEOGRAPHIC_COORDINATES_PROPERTY_NAME, DOME_MAIN_GROUP, "Location", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 3);
 			if (DOME_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)
@@ -235,10 +235,10 @@ indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, doub
 			dec,
 			DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value,
 			DOME_RADIUS_ITEM->number.value,
-			DOME_UP_DISPLACEMENT_ITEM->number.value,
-			DOME_OTA_OFFSET_ITEM->number.value,
-			DOME_NORTH_DISPLACEMENT_ITEM->number.value,
-			DOME_EAST_DISPLACEMENT_ITEM->number.value
+			DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM->number.value,
+			DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM->number.value,
+			DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.value,
+			DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.value
 		);
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
