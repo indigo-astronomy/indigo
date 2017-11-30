@@ -73,11 +73,11 @@ extern "C" {
 /** DOME_EQUATORIAL_COORDINATES property pointer, property is optional, property change request should be fully handled by device driver.
 */
 #define DOME_EQUATORIAL_COORDINATES_PROPERTY					(DOME_CONTEXT->dome_equatorial_coordinates_property)
-	
+
 /** DOME_EQUATORIAL_COORDINATES.RA property item pointer.
  */
 #define DOME_EQUATORIAL_COORDINATES_RA_ITEM					(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+0)
-	
+
 /** DOME_EQUATORIAL_COORDINATES.DEC property item pointer.
  */
 #define DOME_EQUATORIAL_COORDINATES_DEC_ITEM					(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+1)
@@ -127,51 +127,51 @@ extern "C" {
 #define DOME_PARK_UNPARKED_ITEM											(DOME_PARK_PROPERTY->items+1)
 
 //----------------------------------------------
-/** DOME_MEASUREMENT property pointer, property is optional
+/** DOME_DIMENSION property pointer, property is optional
  */
 #define DOME_DIMENSION_PROPERTY										(DOME_CONTEXT->dome_measurement_property)
 
-/** DOME_MEASUREMENT.RADIUS property item pointer.
+/** DOME_DIMENSION.RADIUS property item pointer.
  */
 #define DOME_RADIUS_ITEM														(DOME_DIMENSION_PROPERTY->items+0)
 
-/** DOME_MEASUREMENT.SHUTTER_WIDTH property item pointer.
+/** DOME_DIMENSION.SHUTTER_WIDTH property item pointer.
  */
 #define DOME_SHUTTER_WIDTH_ITEM											(DOME_DIMENSION_PROPERTY->items+1)
 
-/** DOME_MEASUREMENT.NORTH_DISPLACEMENT property item pointer.
+/** DOME_DIMENSION.MOUNT_PIVOT_OFFSET_NS property item pointer.
  */
-#define DOME_NORTH_DISPLACEMENT_ITEM								(DOME_DIMENSION_PROPERTY->items+2)
+#define DOME_MOUNT_PIVOT_OFFSET_NS_ITEM								(DOME_DIMENSION_PROPERTY->items+2)
 
-/** DOME_MEASUREMENT.EAST_DISPLACEMENT property item pointer.
+/** DOME_DIMENSION.MOUNT_PIVOT_OFFSET_EW property item pointer.
  */
-#define DOME_EAST_DISPLACEMENT_ITEM									(DOME_DIMENSION_PROPERTY->items+3)
+#define DOME_MOUNT_PIVOT_OFFSET_EW_ITEM									(DOME_DIMENSION_PROPERTY->items+3)
 
-/** DOME_MEASUREMENT.UP_DISPLACEMENT property item pointer.
+/** DOME_DIMENSION.MOUNT_PIVOT_VERTICAL_OFFSET property item pointer.
  */
-#define DOME_UP_DISPLACEMENT_ITEM										(DOME_DIMENSION_PROPERTY->items+4)
+#define DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM										(DOME_DIMENSION_PROPERTY->items+4)
 
-/** DOME_MEASUREMENT.OTA_OFFSET property item pointer.
+/** DOME_DIMENSION.MOUNT_PIVOT_OTA_OFFSET property item pointer.
  */
-#define DOME_OTA_OFFSET_ITEM												(DOME_DIMENSION_PROPERTY->items+5)
+#define DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM												(DOME_DIMENSION_PROPERTY->items+5)
 
 /** DOME_GEOGRAPHIC_COORDINATES property pointer, property is optional.
  */
 #define DOME_GEOGRAPHIC_COORDINATES_PROPERTY					(DOME_CONTEXT->dome_geographic_coordinates_property)
-	
+
 /** DOME_GEOGRAPHIC_COORDINATES.LATITUDE property item pointer.
  */
 #define DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM		(DOME_GEOGRAPHIC_COORDINATES_PROPERTY->items+0)
-	
+
 /** DOME_GEOGRAPHIC_COORDINATES.LONGITUDE property item pointer.
  */
 #define DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM		(DOME_GEOGRAPHIC_COORDINATES_PROPERTY->items+1)
-	
+
 /** DOME_GEOGRAPHIC_COORDINATES.ELEVATION property item pointer.
  */
 #define DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM		(DOME_GEOGRAPHIC_COORDINATES_PROPERTY->items+2)
 
-	
+
 /** Dome device context structure.
  */
 typedef struct {
