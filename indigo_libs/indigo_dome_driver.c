@@ -200,8 +200,14 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_GEOGRAPHIC_COORDINATES
 	} else if (indigo_property_match(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		indigo_property_copy_values(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-		DOME_DIMENSION_PROPERTY->state = INDIGO_OK_STATE;
+		DOME_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- DOME_SYNC
+	} else if (indigo_property_match(DOME_SYNC_PROPERTY, property)) {
+		indigo_property_copy_values(DOME_SYNC_PROPERTY, property, false);
+		DOME_SYNC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_SYNC_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_DIMENSION
 	} else if (indigo_property_match(DOME_DIMENSION_PROPERTY, property)) {
