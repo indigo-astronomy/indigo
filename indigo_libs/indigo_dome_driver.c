@@ -220,6 +220,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, DOME_SPEED_PROPERTY);
 			indigo_save_property(device, NULL, DOME_DIRECTION_PROPERTY);
+			indigo_save_property(device, NULL, DOME_SYNC_PROPERTY);
 		}
 	}
 	return indigo_device_change_property(device, client, property);
