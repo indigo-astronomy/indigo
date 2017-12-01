@@ -94,6 +94,14 @@ extern "C" {
  */
 #define DOME_HORIZONTAL_COORDINATES_ALT_ITEM								(DOME_HORIZONTAL_COORDINATES_PROPERTY->items+1)
 
+/** DOME_SYNC property pointer, property is optional, property change request should be fully handled by dome driver
+ */
+#define DOME_SYNC_PROPERTY			(DOME_CONTEXT->dome_sync_property)
+
+/** DOME_SYNC.THRESHOLD property item pointer.
+ */
+#define DOME_SYNC_THRESHOLD_ITEM								(DOME_SYNC_PROPERTY->items+0)
+
 /** DOME_ABORT_MOTION property pointer, property is optional, property change request should be fully handled by dome driver
  */
 #define DOME_ABORT_MOTION_PROPERTY						(DOME_CONTEXT->dome_abort_motion_property)
@@ -181,6 +189,7 @@ typedef struct {
 	indigo_property *dome_steps_property;										///< DOME_STEPS property pointer
 	indigo_property *dome_equatorial_coordinates_property; 	///< DOME_EQUATORIAL_COORDINATES property pointer
 	indigo_property *dome_horizontal_coordinates_property;	///< DOME_HORIZONTAL_COORDINATES property pointer
+	indigo_property *dome_sync_property;					///< DOME_SYNC property pointer
 	indigo_property *dome_abort_motion_property;						///< DOME_ABORT_MOTION property pointer
 	indigo_property *dome_shutter_property;									///< DOME_SHUTTER_PROPERTY pointer
 	indigo_property *dome_park_property;										///< DOME_PARK property pointer
