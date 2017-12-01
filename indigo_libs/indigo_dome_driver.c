@@ -69,12 +69,17 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 			indigo_init_number_item(DOME_EQUATORIAL_COORDINATES_RA_ITEM, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
 			indigo_init_number_item(DOME_EQUATORIAL_COORDINATES_DEC_ITEM, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, "Declination (-180 to 180°)", -180, 180, 0, 90);
 			// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
-			DOME_HORIZONTAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_MAIN_GROUP, "Absolute position", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
+			DOME_HORIZONTAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_MAIN_GROUP, "Absolute position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (DOME_HORIZONTAL_COORDINATES_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(DOME_HORIZONTAL_COORDINATES_AZ_ITEM, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, "Azimuth (0 to 360°)", 0, 360, 0, 0);
 			indigo_init_number_item(DOME_HORIZONTAL_COORDINATES_ALT_ITEM, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME, "Altitude (0 to 90°)", 0, 90, 0, 0);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->count = 1;
+			// -------------------------------------------------------------------------------- DOME_SYNC
+			DOME_SYNC_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_SYNC_PROPERTY_NAME, DOME_MAIN_GROUP, "Synchronize with mount", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			if (DOME_SYNC_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(DOME_SYNC_THRESHOLD_ITEM, DOME_SYNC_THRESHOLD_ITEM_NAME, "Sync threshold (0 to 20°)", 0, 20, 0, 0);
 			// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 			DOME_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_MAIN_GROUP, "Abort motion", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			if (DOME_ABORT_MOTION_PROPERTY == NULL)
@@ -132,6 +137,8 @@ indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_cli
 				indigo_define_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property))
 				indigo_define_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			if (indigo_property_match(DOME_SYNC_PROPERTY, property))
+				indigo_define_property(device, DOME_SYNC_PROPERTY, NULL);
 			if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property))
 				indigo_define_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			if (indigo_property_match(DOME_SHUTTER_PROPERTY, property))
@@ -159,6 +166,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_define_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			indigo_define_property(device, DOME_SYNC_PROPERTY, NULL);
 			indigo_define_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			indigo_define_property(device, DOME_PARK_PROPERTY, NULL);
@@ -170,6 +178,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_delete_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			indigo_delete_property(device, DOME_SYNC_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_PARK_PROPERTY, NULL);
@@ -217,6 +226,7 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 	indigo_release_property(DOME_STEPS_PROPERTY);
 	indigo_release_property(DOME_EQUATORIAL_COORDINATES_PROPERTY);
 	indigo_release_property(DOME_HORIZONTAL_COORDINATES_PROPERTY);
+	indigo_release_property(DOME_SYNC_PROPERTY);
 	indigo_release_property(DOME_ABORT_MOTION_PROPERTY);
 	indigo_release_property(DOME_SHUTTER_PROPERTY);
 	indigo_release_property(DOME_PARK_PROPERTY);
