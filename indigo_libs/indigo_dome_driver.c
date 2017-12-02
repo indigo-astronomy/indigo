@@ -47,7 +47,7 @@ static void sync_timer_callback(indigo_device *device) {
 	INDIGO_DRIVER_ERROR("indigo_dome_driver", "SYNC");
 	//DOME_EQUATORIAL_COORDINATES_PROPERTY->state=INDIGO_BUSY_STATE;
 	//DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value += 0.01;
-	indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, msg);
+	device->change_property(device, NULL, DOME_EQUATORIAL_COORDINATES_PROPERTY);
 	indigo_reschedule_timer(device, SYNC_INTERAL, &DOME_CONTEXT->sync_timer);
 }
 
