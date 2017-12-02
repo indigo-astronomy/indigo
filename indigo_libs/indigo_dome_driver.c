@@ -37,16 +37,9 @@
 #include "indigo_dome_driver.h"
 #include "indigo_novas.h"
 
-#define SYNC_INTERAL 2.0  /* in seconds */
+#define SYNC_INTERAL 5.0  /* in seconds */
 
 static void sync_timer_callback(indigo_device *device) {
-	static int count = 0;
-	count++;
-	char msg[100];
-	sprintf(msg, "Timer updated property %d", count);
-	INDIGO_DRIVER_ERROR("indigo_dome_driver", "SYNC");
-	//DOME_EQUATORIAL_COORDINATES_PROPERTY->state=INDIGO_BUSY_STATE;
-	//DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value += 0.01;
 	device->change_property(device, NULL, DOME_EQUATORIAL_COORDINATES_PROPERTY);
 	indigo_reschedule_timer(device, SYNC_INTERAL, &DOME_CONTEXT->sync_timer);
 }
@@ -115,8 +108,8 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 			DOME_DIMENSION_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_DIMENSION_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome dimension", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 6);
 			if (DOME_DIMENSION_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(DOME_RADIUS_ITEM, DOME_RADIUS_ITEM_NAME, "Dome radius (m)", 0, 50, 0, 0);
-			indigo_init_number_item(DOME_SHUTTER_WIDTH_ITEM, DOME_SHUTTER_WIDTH_ITEM_NAME, "Dome shutter width (m)", 0, 50, 0, 0);
+			indigo_init_number_item(DOME_RADIUS_ITEM, DOME_RADIUS_ITEM_NAME, "Dome radius (m)", 0.1, 50, 0, 0.1);
+			indigo_init_number_item(DOME_SHUTTER_WIDTH_ITEM, DOME_SHUTTER_WIDTH_ITEM_NAME, "Dome shutter width (m)", 0.1, 50, 0, 0.1);
 			indigo_init_number_item(DOME_MOUNT_PIVOT_OFFSET_NS_ITEM, DOME_MOUNT_PIVOT_OFFSET_NS_ITEM_NAME, "Mount Pivot Offset N/S (m, +N/-S)", -30, 30, 0, 0);
 			indigo_init_number_item(DOME_MOUNT_PIVOT_OFFSET_EW_ITEM, DOME_MOUNT_PIVOT_OFFSET_EW_ITEM_NAME, "Mount Pivot Offset E/W (m, +E/-W)", -30, 30, 0, 0);
 			indigo_init_number_item(DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM, DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM_NAME, "Mount Pivot Vertical Offset (m)", -10, 10, 0, 0);
@@ -263,7 +256,6 @@ indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, doub
 		//indigo_eq2hor(DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, ra, dec, alt, az);
 		double lst = indigo_lst(DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = map24(lst - ra);
-		INDIGO_DRIVER_ERROR("dome_driver","ha = %f, lst = %f", ha, lst);
 		*az = indigo_dome_solve_azimuth (
 			ha,
 			dec,
@@ -274,7 +266,7 @@ indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, doub
 			DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.value,
 			DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.value
 		);
-		//indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		INDIGO_DRIVER_ERROR("dome_driver","ha = %f, lst = %f, dec = %f,  az = %f", ha, lst, dec,  *az);
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
