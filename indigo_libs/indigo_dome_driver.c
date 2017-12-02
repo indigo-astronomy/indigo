@@ -260,11 +260,11 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 
 indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, double dec, double *alt, double *az) {
 	if (!DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-		indigo_eq2hor(DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, ra, dec, alt, az);
+		//indigo_eq2hor(DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, ra, dec, alt, az);
 		double lst = indigo_lst(DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = map24(lst - ra);
 		INDIGO_DRIVER_ERROR("dome_driver","ha = %f, lst = %f", ha, lst);
-		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = indigo_dome_solve_azimuth (
+		*az = indigo_dome_solve_azimuth (
 			ha,
 			dec,
 			DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value,
@@ -274,7 +274,7 @@ indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, doub
 			DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.value,
 			DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.value
 		);
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		//indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
