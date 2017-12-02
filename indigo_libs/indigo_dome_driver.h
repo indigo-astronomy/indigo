@@ -195,6 +195,7 @@ typedef struct {
 	indigo_property *dome_park_property;										///< DOME_PARK property pointer
 	indigo_property *dome_measurement_property;							///< DOME_PARK property pointer
 	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
+	indigo_timer *sync_timer;
 } indigo_dome_context;
 
 /** Attach callback function.

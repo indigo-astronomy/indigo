@@ -37,6 +37,20 @@
 #include "indigo_dome_driver.h"
 #include "indigo_novas.h"
 
+#define SYNC_INTERAL 2.0  /* in seconds */
+
+static void sync_timer_callback(indigo_device *device) {
+	static int count = 0;
+	count++;
+	char msg[100];
+	sprintf(msg, "Timer updated property %d", count);
+	INDIGO_DRIVER_ERROR("indigo_dome_driver", "SYNC");
+	//DOME_EQUATORIAL_COORDINATES_PROPERTY->state=INDIGO_BUSY_STATE;
+	//DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value += 0.01;
+	indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, msg);
+	indigo_reschedule_timer(device, SYNC_INTERAL, &DOME_CONTEXT->sync_timer);
+}
+
 indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
@@ -172,7 +186,9 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_PARK_PROPERTY, NULL);
 			indigo_define_property(device, DOME_DIMENSION_PROPERTY, NULL);
 			indigo_define_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+			DOME_CONTEXT->sync_timer = indigo_set_timer(device, SYNC_INTERAL, sync_timer_callback);
 		} else {
+			indigo_cancel_timer(device, &DOME_CONTEXT->sync_timer);
 			indigo_delete_property(device, DOME_SPEED_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_DIRECTION_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_STEPS_PROPERTY, NULL);
@@ -247,6 +263,7 @@ indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, doub
 		indigo_eq2hor(DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, ra, dec, alt, az);
 		double lst = indigo_lst(DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = map24(lst - ra);
+		INDIGO_DRIVER_ERROR("dome_driver","ha = %f, lst = %f", ha, lst);
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = indigo_dome_solve_azimuth (
 			ha,
 			dec,
