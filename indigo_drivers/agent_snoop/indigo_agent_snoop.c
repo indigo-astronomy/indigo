@@ -105,7 +105,7 @@ static void sync_rules(indigo_device *device) {
 	char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 	while (r) {
 		snprintf(name, INDIGO_NAME_SIZE, "RULE_%d", index);
-		snprintf(label, INDIGO_VALUE_SIZE, "#%d %s.%s > %s.%s", index, r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
+		snprintf(label, INDIGO_VALUE_SIZE, "%s.%s > %s.%s", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 		indigo_init_light_item(SNOOP_RULES_PROPERTY->items + index, name, label, r->state);
 		index++;
 		r = r->next;

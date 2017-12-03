@@ -179,6 +179,14 @@ extern "C" {
  */
 #define DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM		(DOME_GEOGRAPHIC_COORDINATES_PROPERTY->items+2)
 
+/** SNOOP_DEVICES property pointer, property is optional.
+ */
+#define SNOOP_DEVICES_PROPERTY					(DOME_CONTEXT->snoop_devices_property)
+	
+/** SNOOP_DEVICES_PROPERTY.MOUNT property item pointer.
+ */
+#define SNOOP_MOUNT_ITEM		(SNOOP_DEVICES_PROPERTY->items+0)
+
 
 /** Dome device context structure.
  */
@@ -195,6 +203,7 @@ typedef struct {
 	indigo_property *dome_park_property;										///< DOME_PARK property pointer
 	indigo_property *dome_measurement_property;							///< DOME_PARK property pointer
 	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
+	indigo_property *snoop_devices_property;								///< SNOOP_DEVICES property pointer
 	indigo_timer *sync_timer;
 } indigo_dome_context;
 
