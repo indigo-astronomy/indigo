@@ -60,6 +60,14 @@ extern indigo_result indigo_agent_change_property(indigo_device *device, indigo_
  */
 extern indigo_result indigo_agent_detach(indigo_device *device);
 
+/** Add snoop rule.
+ */
+indigo_result indigo_add_snoop_rule(indigo_property *target, const char *source_device, const char *source_property);
+
+/** Remove snoop rule.
+ */
+indigo_result indigo_remove_snoop_rule(indigo_property *target, const char *source_device, const char *source_property);
+	
 #ifdef __cplusplus
 }
 #endif

@@ -133,6 +133,36 @@
 #define GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME	"ACCURACY"
 
 //----------------------------------------------------------------------
+/** SNOOP_DEVICES property name.
+ */
+#define SNOOP_DEVICES_PROPERTY_NAME	"SNOOP_DEVICES"
+
+/** SNOOP_DEVICES.MOUNT property item name.
+ */
+#define SNOOP_MOUNT_ITEM_NAME				"MOUNT"
+
+/** SNOOP_DEVICES.GPS property item name.
+ */
+#define SNOOP_GPS_ITEM_NAME					"GPS"
+
+/** SNOOP_DEVICES.CCD property item name.
+ */
+#define SNOOP_CCD_ITEM_NAME					"CCD"
+
+/** SNOOP_DEVICES.DOME property item name.
+ */
+#define SNOOP_DOME_ITEM_NAME					"DOME"
+
+/** SNOOP_DEVICES.WHEEL property item name.
+ */
+#define SNOOP_WHEEL_ITEM_NAME					"WHEEL"
+
+/** SNOOP_DEVICES.FOCUSER property item name.
+ */
+#define SNOOP_FOCUSER_ITEM_NAME					"FOCUSER"
+
+
+//----------------------------------------------------------------------
 /** UTC_TIME property name.
  */
 #define UTC_TIME_PROPERTY_NAME						"UTC_TIME"
