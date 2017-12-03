@@ -105,7 +105,7 @@ static void sync_rules(indigo_device *device) {
 	char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 	while (r) {
 		snprintf(name, INDIGO_NAME_SIZE, "RULE_%d", index);
-		snprintf(label, INDIGO_VALUE_SIZE, "%s.%s > %s.%s", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
+		snprintf(label, INDIGO_VALUE_SIZE, "#%d %s.%s > %s.%s", index, r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 		indigo_init_light_item(SNOOP_RULES_PROPERTY->items + index, name, label, r->state);
 		index++;
 		r = r->next;
@@ -145,6 +145,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (client == DEVICE_PRIVATE_DATA->client)
+		return INDIGO_OK;
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_agent_enumerate_properties(device, client, property)) == INDIGO_OK) {
 		if (indigo_property_match(SNOOP_ADD_RULE_PROPERTY, property))
@@ -161,6 +163,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
+	if (client == DEVICE_PRIVATE_DATA->client)
+		return INDIGO_OK;
 	if (indigo_property_match(SNOOP_ADD_RULE_PROPERTY, property)) {
 		indigo_property_copy_values(SNOOP_ADD_RULE_PROPERTY, property, false);
 		rule *r = DEVICE_PRIVATE_DATA->rules;
@@ -190,7 +194,15 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		DEVICE_PRIVATE_DATA->rules = r;
 		SNOOP_RULES_PROPERTY = indigo_resize_property(SNOOP_RULES_PROPERTY, SNOOP_RULES_PROPERTY->count + 1);
 		sync_rules(device);
+		SNOOP_ADD_RULE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, SNOOP_ADD_RULE_PROPERTY, NULL);
+		indigo_property INDIGO_ALL_PROPERTIES;
+		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
+		INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
+		strcpy(INDIGO_ALL_PROPERTIES.device, r->source_device_name);
+		indigo_enumerate_properties(DEVICE_PRIVATE_DATA->client, &INDIGO_ALL_PROPERTIES);
+		strcpy(INDIGO_ALL_PROPERTIES.device, r->target_device_name);
+		indigo_enumerate_properties(DEVICE_PRIVATE_DATA->client, &INDIGO_ALL_PROPERTIES);
 	} else if (indigo_property_match(SNOOP_REMOVE_RULE_PROPERTY, property)) {
 		indigo_property_copy_values(SNOOP_REMOVE_RULE_PROPERTY, property, false);
 		rule *r = DEVICE_PRIVATE_DATA->rules;
@@ -236,31 +248,40 @@ static indigo_result agent_client_attach(indigo_client *client) {
 }
 
 static indigo_result agent_define_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+	if (device == CLIENT_PRIVATE_DATA->device)
+		return INDIGO_OK;
 	rule *r = CLIENT_PRIVATE_DATA->rules;
-	int index = CLIENT_PRIVATE_DATA->rules_property->count - 1;
+	int index = 0;
 	while (r) {
 		bool changed = false;
 		if (!strcmp(r->source_device_name, property->device) && !strcmp(r->source_property_name, property->name)) {
-			changed = true;
+			changed = r->source_device == NULL;
 			r->source_device = device;
 			r->source_property = property;
 		} else if (!strcmp(r->target_device_name, property->device) && !strcmp(r->target_property_name, property->name)) {
-			changed = true;
+			changed = r->target_device == NULL;
 			r->target_device = device;
 			r->target_property = property;
 		}
-		if (changed && r->source_property && r->target_property) {
-			CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_OK_STATE;
-			indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, "Rule '%s'.%s > '%s'.%s is active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
-			forward_property(device, client, r);
+		if (changed) {
+			if (r->source_property && r->target_property) {
+				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_OK_STATE;
+				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, "Rule '%s'.%s > '%s'.%s is active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
+				forward_property(device, client, r);
+			} else {
+				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_BUSY_STATE;
+				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, NULL);
+			}
 		}
 		r = r->next;
-		index--;
+		index++;
 	}
 	return INDIGO_OK;
 }
 
 static indigo_result agent_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+	if (device == CLIENT_PRIVATE_DATA->device)
+		return INDIGO_OK;
 	rule *r = CLIENT_PRIVATE_DATA->rules;
 	while (r) {
 		if (r->source_property == property) {
@@ -277,27 +298,34 @@ static indigo_result agent_update_property(struct indigo_client *client, struct 
 }
 
 indigo_result agent_delete_property(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
+	if (device == CLIENT_PRIVATE_DATA->device)
+		return INDIGO_OK;
 	rule *r = CLIENT_PRIVATE_DATA->rules;
-	int index = CLIENT_PRIVATE_DATA->rules_property->count - 1;
+	int index = 0;
 	while (r) {
 		if (!strcmp(r->source_device_name, property->device) && !strcmp(r->source_property_name, property->name)) {
 			r->source_device = NULL;
 			r->source_property = NULL;
 			if (r->target_property) {
-				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_IDLE_STATE;
+				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_BUSY_STATE;
 				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, "Rule '%s'.%s > '%s'.%s isn't active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
-
+			} else {
+				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_IDLE_STATE;
+				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, NULL);
 			}
 		} else if (!strcmp(r->target_device_name, property->device) && !strcmp(r->target_property_name, property->name)) {
 			r->target_device = NULL;
 			r->target_property = NULL;
 			if (r->source_property) {
-				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_IDLE_STATE;
+				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_BUSY_STATE;
 				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, "Rule '%s'.%s > '%s'.%s isn't active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
+			} else {
+				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_IDLE_STATE;
+				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, NULL);
 			}
 		}
 		r = r->next;
-		index--;
+		index++;
 	}
 	return INDIGO_OK;
 }
