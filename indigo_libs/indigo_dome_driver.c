@@ -37,7 +37,7 @@
 #include "indigo_dome_driver.h"
 #include "indigo_novas.h"
 
-#define SYNC_INTERAL 5.0  /* in seconds */
+#define SYNC_INTERAL 30.0  /* in seconds */
 
 static void sync_timer_callback(indigo_device *device) {
 	device->change_property(device, NULL, DOME_EQUATORIAL_COORDINATES_PROPERTY);
@@ -253,10 +253,13 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 
 indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, double dec, double *alt, double *az) {
 	if (!DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
+		double threshold = DOME_SYNC_THRESHOLD_ITEM->number.value;
+		static double az_prev = 0;
+		double az_now;
 		//indigo_eq2hor(DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, ra, dec, alt, az);
 		double lst = indigo_lst(DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = map24(lst - ra);
-		*az = indigo_dome_solve_azimuth (
+		az_now = indigo_dome_solve_azimuth (
 			ha,
 			dec,
 			DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value,
@@ -266,7 +269,17 @@ indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, doub
 			DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.value,
 			DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.value
 		);
-		INDIGO_DRIVER_ERROR("dome_driver","ha = %f, lst = %f, dec = %f,  az = %f", ha, lst, dec,  *az);
+		double diff = az_prev - az_now;
+		if (fabs(diff) >= threshold) {
+			INDIGO_DRIVER_ERROR("dome_driver", "UPDATE AZ %f %f", fabs(diff), threshold);
+			*az = az_now;
+			az_prev = az_now;
+		} else {
+			INDIGO_DRIVER_ERROR("dome_driver", "NO UPDATE AZ %f %f", fabs(diff), threshold);
+			*az = az_prev;
+		}
+		*az = round(*az * 10) / 10;
+		INDIGO_DRIVER_ERROR("dome_driver","ha = %f, lst = %f, dec = %f, az = %.2f, az_now = %.3f, az_prev = %.3f ", ha, lst, dec, *az, az_now, az_prev);
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
