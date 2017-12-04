@@ -35,8 +35,8 @@
 #include <sys/stat.h>
 
 #include "indigo_dome_driver.h"
+#include "indigo_agent.h"
 #include "indigo_novas.h"
-#include "indigo_agent_snoop.h"
 
 #define SYNC_INTERAL 30.0  /* in seconds */
 
