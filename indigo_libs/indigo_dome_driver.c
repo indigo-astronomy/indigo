@@ -274,9 +274,12 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, double dec, double *alt, double *az) {
 	if (!DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
 		double threshold = DOME_SYNC_THRESHOLD_ITEM->number.value;
+		if (threshold == 0) {
+			/* Do not symchronize dome */
+			return INDIGO_OK;
+		}
 		static double az_prev = 0;
 		double az_now;
-		//indigo_eq2hor(DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, ra, dec, alt, az);
 		double lst = indigo_lst(DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = map24(lst - ra);
 		az_now = indigo_dome_solve_azimuth (
@@ -291,15 +294,15 @@ indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, doub
 		);
 		double diff = az_prev - az_now;
 		if (fabs(diff) >= threshold) {
-			INDIGO_DRIVER_ERROR("dome_driver", "UPDATE AZ %f %f", fabs(diff), threshold);
+			INDIGO_DRIVER_TRACE("dome_driver", "Update dome Az diff = %f, threshold = %f", fabs(diff), threshold);
 			*az = az_now;
 			az_prev = az_now;
 		} else {
-			INDIGO_DRIVER_ERROR("dome_driver", "NO UPDATE AZ %f %f", fabs(diff), threshold);
+			INDIGO_DRIVER_TRACE("dome_driver", "No dome Az update needed diff = %f, threshold = %f", fabs(diff), threshold);
 			*az = az_prev;
 		}
 		*az = round(*az * 10) / 10;
-		INDIGO_DRIVER_ERROR("dome_driver","ha = %f, lst = %f, dec = %f, az = %.2f, az_now = %.3f, az_prev = %.3f ", ha, lst, dec, *az, az_now, az_prev);
+		INDIGO_DRIVER_TRACE("dome_driver","ha = %f, lst = %f, dec = %f, az = %.2f, az_now = %.3f, az_prev = %.3f ", ha, lst, dec, *az, az_now, az_prev);
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
