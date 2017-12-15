@@ -69,6 +69,7 @@ ifeq ($(OS_DETECTED),Linux)
 		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/$(ARCH_DETECTED)/libASICamera2.a
 		LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/$(ARCH_DETECTED)/libUSB2ST4Conv.a
 	endif
+	LIBRAW_1394=$(shell pkg-config --libs libraw1394)
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	INSTALL_PREFIX=/usr/local
 	PACKAGE_TYPE=deb
@@ -757,10 +758,10 @@ $(BUILD_DRIVERS)/indigo_ccd_iidc.a: indigo_drivers/ccd_iidc/indigo_ccd_iidc.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_ccd_iidc: indigo_drivers/ccd_iidc/indigo_ccd_iidc_main.o $(BUILD_DRIVERS)/indigo_ccd_iidc.a $(BUILD_LIB)/libdc1394.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBRAW_1394) -lindigo
 
 $(BUILD_DRIVERS)/indigo_ccd_iidc.$(SOEXT): indigo_drivers/ccd_iidc/indigo_ccd_iidc.o $(BUILD_LIB)/libdc1394.a
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(LIBRAW_1394) -lindigo
 
 #---------------------------------------------------------------------
 #
@@ -997,7 +998,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 
 $(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS) $(BUILD_LIB)/libindigo.a $(EXTERNALS) ctrlpanel
-	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS) $(PLATFORM_DRIVER_LIBS) $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) -lstdc++
+	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS) $(PLATFORM_DRIVER_LIBS) $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) $(LIBRAW_1394) -lstdc++
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
