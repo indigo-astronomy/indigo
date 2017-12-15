@@ -69,7 +69,11 @@ It is advised to remove libraw1394-dev
 
 #### Fedora
 
-TBD - see ubuntu and install the corresponding packages.
+`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel`
+
+It is advised to remove libraw1394-devel
+
+`dnf remove libraw1394-devel`
 
 #### macOS
 
