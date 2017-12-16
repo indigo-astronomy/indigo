@@ -256,7 +256,7 @@ $(BUILD_LIB)/libnovas.a: externals/novas/novas.o externals/novas/eph_manager.o e
 #
 #---------------------------------------------------------------------
 
-externals/libjpeg/Makefile: indigo_drivers/ccd_iidc/externals/libdc1394/configure
+externals/libjpeg/Makefile: externals/libjpeg/configure
 	cd externals/libjpeg; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)"; cd ../..
 
 $(BUILD_LIB)/libjpeg.a: externals/libjpeg/Makefile
