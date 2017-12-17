@@ -135,7 +135,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		double alt, az;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EQUATORIAL_COORDINATES_PROPERTY updated.");
 		if (indigo_fix_dome_coordinates(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &alt, &az) == INDIGO_OK) {
 			PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
 			int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
@@ -237,7 +236,7 @@ indigo_result indigo_dome_simulator(indigo_driver_action action, indigo_driver_i
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Dome Simulator", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, DOME_SIMULATOR_NAME, __FUNCTION__, DRIVER_VERSION, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
