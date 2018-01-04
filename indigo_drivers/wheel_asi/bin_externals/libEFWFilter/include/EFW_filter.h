@@ -5,7 +5,7 @@ any question feel free contact us:yang.zhou@zwoptical.com
 here is the suggested procedure.
 
 --> EFWGetNum
---> EFWGetID for each camera
+--> EFWGetID for each filter wheel
 
 --> EFWGetProperty
 --> EFWOpen
