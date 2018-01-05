@@ -94,6 +94,15 @@
 #define CONFIG_DEFAULT_ITEM_NAME							"DEFAULT"
 
 //----------------------------------------------------------------------
+/** PROFILE property name.
+ */
+#define PROFILE_PROPERTY_NAME									"PROFILE"
+
+/** PROFILE.PROFILE_X property item name.
+ */
+#define PROFILE_ITEM_NAME											"PROFILE_%d"
+
+//----------------------------------------------------------------------
 /** DEVICE_PORT property name.
  */
 #define DEVICE_PORT_PROPERTY_NAME							"DEVICE_PORT"

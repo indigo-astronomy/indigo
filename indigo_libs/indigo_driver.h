@@ -131,8 +131,22 @@ extern "C" {
 
 /** CONFIG.DEFAULT property item pointer.
  */
+	
 #define CONFIG_DEFAULT_ITEM           (CONFIG_PROPERTY->items+2)
 
+/** Number of profiles
+ */
+	
+#define PROFILE_COUNT									5
+	
+/** PROFILE property pointer, property is mandatory.
+ */
+#define PROFILE_PROPERTY               (DEVICE_CONTEXT->profile_property)
+
+/** PROFILE.PROFILE_0 property item pointer.
+ */
+#define PROFILE_ITEM              		(PROFILE_PROPERTY->items+0)
+	
 /** DEVICE_PORT property pointer, property is optional, property change request is handled by indigo_device_change_property.
  */
 #define DEVICE_PORT_PROPERTY					(DEVICE_CONTEXT->device_port_property)
@@ -197,6 +211,7 @@ typedef struct {
 	indigo_property *info_property;           ///< INFO property pointer
 	indigo_property *simulation_property;     ///< SIMULATION property pointer
 	indigo_property *congfiguration_property; ///< CONFIGURATION property pointer
+	indigo_property *profile_property; 				///< PROFILE property pointer
 	indigo_property *device_port_property;		///< DEVICE_PORT property pointer
 	indigo_property *device_ports_property;		///< DEVICE_PORTS property pointer
 } indigo_device_context;
@@ -249,7 +264,7 @@ extern indigo_result indigo_device_detach(indigo_device *device);
 /** Open config file.
  */
 
-extern int indigo_open_config_file(char *device_name, int mode, const char *suffix);
+extern int indigo_open_config_file(char *device_name, int profile, int mode, const char *suffix);
 
 /** Load properties.
  */
