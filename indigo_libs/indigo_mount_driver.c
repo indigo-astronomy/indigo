@@ -332,7 +332,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_save_property(device, NULL, MOUNT_TRACKING_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_GUIDE_RATE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_ALIGNMENT_MODE_PROPERTY);
-			int handle = indigo_open_config_file(device->name, O_WRONLY | O_CREAT | O_TRUNC, ".alignment");
+			int handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".alignment");
 			if (handle > 0) {
 				int count = MOUNT_CONTEXT->alignment_point_count;
 				indigo_printf(handle, "%d\n", count);
@@ -343,7 +343,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 				close(handle);
 			}
 		} else if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
-			int handle = indigo_open_config_file(device->name, O_RDONLY, ".alignment");
+			int handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".alignment");
 			if (handle > 0) {
 				int count;
 				char buffer[1024], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];

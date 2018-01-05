@@ -48,6 +48,7 @@ indigo_result indigo_agent_attach(indigo_device *device, unsigned version) {
 		if (indigo_device_attach(device, version, 0) == INDIGO_OK) {
 			CONNECTION_PROPERTY->hidden = true;
 			CONFIG_PROPERTY->hidden = true;
+			PROFILE_PROPERTY->hidden = true;
 			return INDIGO_OK;
 		}
 	}
