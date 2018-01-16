@@ -479,6 +479,7 @@ static struct info {
   BOOL startPreview;
   BOOL tempLiveView;
   BOOL inPreview;
+  BOOL doImageDownload;
   NSMutableDictionary *addedFileName;
   int currentMode;
   int currentShutterSpeed;
@@ -891,22 +892,30 @@ static struct info {
           }
           case PTPEventCodeCanonObjectAddedEx: {
             unsigned int obj = ptpReadUnsignedInt(&buf);
-            NSNumber *key = [NSNumber numberWithUnsignedInt:obj];
-            NSString *value = [NSString stringWithCString:(char *)(buf + 0x1C) encoding:NSUTF8StringEncoding];
-            [self.delegate debug:[NSString stringWithFormat:@"PTPEventCodeCanonObjectAddedEx '%@' = '%@'", key, value]];
-            [addedFileName setObject:value forKey:key];
-            self.remainingCount++;
-            [self sendPTPRequest:PTPRequestCodeCanonGetObject param1:obj];
+            if (self->doImageDownload) {
+              NSNumber *key = [NSNumber numberWithUnsignedInt:obj];
+              NSString *value = [NSString stringWithCString:(char *)(buf + 0x1C) encoding:NSUTF8StringEncoding];
+              [self.delegate debug:[NSString stringWithFormat:@"PTPEventCodeCanonObjectAddedEx '%@' = '%@'", key, value]];
+              [addedFileName setObject:value forKey:key];
+              self.remainingCount++;
+              [self sendPTPRequest:PTPRequestCodeCanonGetObject param1:obj];
+            } else if (self.deleteDownloadedImage) {
+                [self sendPTPRequest:PTPRequestCodeCanonDeleteObject param1:obj];
+            }
             break;
           }
           case PTPEventCodeCanonObjectAddedEx2: {
             unsigned int obj = ptpReadUnsignedInt(&buf);
-            NSNumber *key = [NSNumber numberWithUnsignedInt:obj];
-            NSString *value = [NSString stringWithCString:(char *)(buf + 0x20) encoding:NSUTF8StringEncoding];
-            [self.delegate debug:[NSString stringWithFormat:@"PTPEventCodeCanonObjectAddedEx2 '%@' = '%@'", key, value]];
-            [addedFileName setObject:value forKey:key];
-            self.remainingCount++;
-            [self sendPTPRequest:PTPRequestCodeCanonGetObject param1:obj];
+            if (self->doImageDownload) {
+              NSNumber *key = [NSNumber numberWithUnsignedInt:obj];
+              NSString *value = [NSString stringWithCString:(char *)(buf + 0x20) encoding:NSUTF8StringEncoding];
+              [self.delegate debug:[NSString stringWithFormat:@"PTPEventCodeCanonObjectAddedEx2 '%@' = '%@'", key, value]];
+              [addedFileName setObject:value forKey:key];
+              self.remainingCount++;
+              [self sendPTPRequest:PTPRequestCodeCanonGetObject param1:obj];
+            } else if (self.deleteDownloadedImage) {
+              [self sendPTPRequest:PTPRequestCodeCanonDeleteObject param1:obj];
+            }
             break;
           }
           default:
@@ -1432,7 +1441,7 @@ static struct info {
   if (self.zoomPreview)
     liveViewZoom = 5;
   else
-    liveViewZoom = 1;  
+    liveViewZoom = 1;
   startPreview = true;
   [self setProperty:PTPPropertyCodeCanonEVFMode value:@"1"];
   [self setProperty:PTPPropertyCodeCanonEVFOutputDevice value:@"2"];
@@ -1445,8 +1454,21 @@ static struct info {
   //[self setProperty:PTPPropertyCodeCanonEVFMode value:@"0"];
 }
 
+-(void)startBurst {
+  self.remainingCount = 0;
+  self->doImageDownload = true;
+  [self setProperty:PTPPropertyCodeCanonDriveMode value:@"1"];
+  [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:(self.avoidAF ? 1 : 0)];
+}
+
+-(void)stopBurst {
+  self->doImageDownload = false;
+  [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
+}
+
 -(double)startExposure {
   self.remainingCount = 0;
+  self->doImageDownload = true;
   double delay = 0;
   if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOn]) {
     if (self.useMirrorLockup) {
@@ -1478,6 +1500,7 @@ static struct info {
 }
 
 -(void)stopExposure {
+  self->doImageDownload = false;
   if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOff]) {
     [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
   } else {

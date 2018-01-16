@@ -588,6 +588,19 @@
 #define DSLR_AVOID_AF_OFF_ITEM_NAME        "OFF"
 
 //----------------------------------------------------------------------
+/** DSLR_STREAMING_MODE property name.
+ */
+#define DSLR_STREAMING_MODE_PROPERTY_NAME   "DSLR_STREAMING_MODE"
+
+/** DSLR_STREAMING_MODE.LIVE_VIEW property item name.
+ */
+#define DSLR_STREAMING_LIVE_VIEW_ITEM_NAME   "LIVE_VIEW"
+
+/** DSLR_STREAMING_MODE.BURST_MODE property item name.
+ */
+#define DSLR_STREAMING_BURST_MODE_ITEM_NAME  "BURST_MODE"
+
+//----------------------------------------------------------------------
 /** DSLR_ZOOM_PREVIEW property name.
  */
 #define DSLR_ZOOM_PREVIEW_PROPERTY_NAME		"DSLR_ZOOM_PREVIEW"
