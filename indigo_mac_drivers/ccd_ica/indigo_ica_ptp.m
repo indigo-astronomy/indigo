@@ -1354,6 +1354,12 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 -(void)stopPreview {
 }
 
+-(void)startBurst {
+}
+
+-(void)stopBurst {
+}
+
 -(double)startExposure {
   _remainingCount = _imagesPerShot;
   [_icCamera requestTakePicture];

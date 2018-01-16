@@ -482,6 +482,8 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)unlock;
 -(void)startPreview;
 -(void)stopPreview;
+-(void)startBurst;
+-(void)stopBurst;
 -(double)startExposure;
 -(void)stopExposure;
 -(void)startAutofocus;

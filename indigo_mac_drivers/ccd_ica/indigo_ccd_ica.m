@@ -50,6 +50,9 @@
 #define DSLR_AVOID_AF_PROPERTY          (PRIVATE_DATA->dslr_avoid_af_property)
 #define DSLR_AVOID_AF_ON_ITEM           (PRIVATE_DATA->dslr_avoid_af_property->items + 0)
 #define DSLR_AVOID_AF_OFF_ITEM          (PRIVATE_DATA->dslr_avoid_af_property->items + 1)
+#define DSLR_STREAMING_MODE_PROPERTY    (PRIVATE_DATA->dslr_streaming_mode_property)
+#define DSLR_STREAMING_LIVE_VIEW_ITEM   (PRIVATE_DATA->dslr_streaming_mode_property->items + 0)
+#define DSLR_STREAMING_BURST_MODE_ITEM  (PRIVATE_DATA->dslr_streaming_mode_property->items + 1)
 #define DSLR_ZOOM_PREVIEW_PROPERTY      (PRIVATE_DATA->dslr_zoom_preview_property)
 #define DSLR_ZOOM_PREVIEW_ON_ITEM       (PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
 #define DSLR_ZOOM_PREVIEW_OFF_ITEM      (PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
@@ -140,6 +143,7 @@ typedef struct {
   indigo_property *dslr_mirror_lockup_property;
   indigo_property *dslr_af_property;
   indigo_property *dslr_avoid_af_property;
+  indigo_property *dslr_streaming_mode_property;
   indigo_property *dslr_zoom_preview_property;
   indigo_property *dslr_delete_image_property;
 	indigo_property **dslr_properties;
@@ -147,6 +151,8 @@ typedef struct {
   void *buffer;
   int buffer_size;
   bool bulb;
+  bool useLiveView;
+  bool useBurstMode;
   indigo_timer *exposure_timer;
 } ica_private_data;
 
@@ -182,6 +188,9 @@ static indigo_result ccd_attach(indigo_device *device) {
     DSLR_AVOID_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_AVOID_AF_PROPERTY_NAME, "DSLR", "Avoid AF", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_AVOID_AF_ON_ITEM, DSLR_AVOID_AF_ON_ITEM_NAME, "On", true);
     indigo_init_switch_item(DSLR_AVOID_AF_OFF_ITEM, DSLR_AVOID_AF_OFF_ITEM_NAME, "Off", false);
+    DSLR_STREAMING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_STREAMING_MODE_PROPERTY_NAME, "DSLR", "Preview mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    indigo_init_switch_item(DSLR_STREAMING_LIVE_VIEW_ITEM, DSLR_STREAMING_LIVE_VIEW_ITEM_NAME, "LiveView", true);
+    indigo_init_switch_item(DSLR_STREAMING_BURST_MODE_ITEM, DSLR_STREAMING_BURST_MODE_ITEM_NAME, "Burst mode", false);
     DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_ZOOM_PREVIEW_PROPERTY_NAME, "DSLR", "Zoom preview", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_ZOOM_PREVIEW_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", false);
     indigo_init_switch_item(DSLR_ZOOM_PREVIEW_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", true);
@@ -211,6 +220,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
         indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
       if (indigo_property_match(DSLR_AVOID_AF_PROPERTY, property))
         indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
+      if (indigo_property_match(DSLR_STREAMING_MODE_PROPERTY, property))
+        indigo_define_property(device, DSLR_STREAMING_MODE_PROPERTY, NULL);
       if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property))
         indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
       if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property))
@@ -269,6 +280,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
     DSLR_AVOID_AF_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
     return INDIGO_OK;
+  } else if (indigo_property_match(DSLR_STREAMING_MODE_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- DSLR_STREAMING_MODE
+    indigo_property_copy_values(DSLR_STREAMING_MODE_PROPERTY, property, false);
+    PRIVATE_DATA->useLiveView = DSLR_STREAMING_LIVE_VIEW_ITEM->sw.value;
+    PRIVATE_DATA->useBurstMode = DSLR_STREAMING_BURST_MODE_ITEM->sw.value;
+    DSLR_STREAMING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+    indigo_update_property(device, DSLR_STREAMING_MODE_PROPERTY, NULL);
+    return INDIGO_OK;
   } else if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_ZOOM_PREVIEW
     indigo_property_copy_values(DSLR_ZOOM_PREVIEW_PROPERTY, property, false);
@@ -312,7 +331,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-      [camera startPreview];
+      if (PRIVATE_DATA->useLiveView)
+        [camera startPreview];
+      else if (PRIVATE_DATA->useBurstMode)
+        [camera startBurst];
 		}
 		return INDIGO_OK;
   } else if (indigo_property_match(DSLR_AF_PROPERTY, property)) {
@@ -332,7 +354,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
       indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
       [camera stopExposure];
 		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			[camera stopPreview];
+      if (PRIVATE_DATA->useLiveView)
+        [camera stopPreview];
+      else if (PRIVATE_DATA->useBurstMode)
+        [camera stopBurst];
     } else if (DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE) {
       [camera stopAutofocus];
       DSLR_AF_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -396,6 +421,7 @@ static indigo_result ccd_detach(indigo_device *device) {
   indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
   indigo_release_property(DSLR_AF_PROPERTY);
   indigo_release_property(DSLR_AVOID_AF_PROPERTY);
+  indigo_release_property(DSLR_STREAMING_MODE_PROPERTY);
   indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
   indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
 	indigo_log("%s detached", device->name);
@@ -503,6 +529,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
     indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
+    indigo_define_property(device, DSLR_STREAMING_MODE_PROPERTY, NULL);
     indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
     indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
     if (DSLR_LOCK_ITEM->sw.value)
@@ -770,34 +797,38 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 -(void)cameraExposureDone:(PTPCamera*)camera data:(NSData *)data filename:(NSString *)filename {
-	indigo_device *device = [(NSValue *)camera.userData pointerValue];
-	filename = filename.lowercaseString;
-	NSString *extension = [@"." stringByAppendingString:filename.pathExtension];
-	if ([extension isEqualToString:@".jpg"])
-		extension = @".jpeg";
+  NSLog(@"in");
+  indigo_device *device = [(NSValue *)camera.userData pointerValue];
+  filename = filename.lowercaseString;
+  NSString *extension = [@"." stringByAppendingString:filename.pathExtension];
+  if ([extension isEqualToString:@".jpg"])
+    extension = @".jpeg";
   int length = (int)data.length;
   if (PRIVATE_DATA->buffer == NULL)
     PRIVATE_DATA->buffer = malloc(length);
   else if (PRIVATE_DATA->buffer_size < length)
     PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer, length);
   memcpy(PRIVATE_DATA->buffer, data.bytes, length);
-	indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSUTF8StringEncoding]);
-  if (camera.remainingCount == 0) {
-    if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+  indigo_process_dslr_image(device, PRIVATE_DATA->buffer, length, [extension cStringUsingEncoding:NSUTF8StringEncoding]);
+  if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+    if (camera.remainingCount == 0) {
       CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
       indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
     }
-    if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-      if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
-        CCD_STREAMING_COUNT_ITEM->number.value--;
-        if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
+  } else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+    if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
+      CCD_STREAMING_COUNT_ITEM->number.value--;
+      if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
+        if (PRIVATE_DATA->useLiveView)
           [camera stopPreview];
-          CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-        }
-        indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+        else if (PRIVATE_DATA->useBurstMode)
+          [camera stopBurst];
+        CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
       }
+      indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
     }
   }
+  NSLog(@"out %d", (int)CCD_STREAMING_COUNT_ITEM->number.value);
 }
 
 -(void)cameraExposureFailed:(PTPCamera*)camera message:(NSString *)message {
@@ -882,6 +913,7 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_delete_property(device, DSLR_LOCK_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_AF_PROPERTY, NULL);
+    indigo_delete_property(device, DSLR_STREAMING_MODE_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
     indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
