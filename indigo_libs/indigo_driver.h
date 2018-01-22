@@ -131,14 +131,14 @@ extern "C" {
 
 /** CONFIG.DEFAULT property item pointer.
  */
-	
+
 #define CONFIG_DEFAULT_ITEM           (CONFIG_PROPERTY->items+2)
 
 /** Number of profiles
  */
-	
+
 #define PROFILE_COUNT									5
-	
+
 /** PROFILE property pointer, property is mandatory.
  */
 #define PROFILE_PROPERTY               (DEVICE_CONTEXT->profile_property)
@@ -146,7 +146,7 @@ extern "C" {
 /** PROFILE.PROFILE_0 property item pointer.
  */
 #define PROFILE_ITEM              		(PROFILE_PROPERTY->items+0)
-	
+
 /** DEVICE_PORT property pointer, property is optional, property change request is handled by indigo_device_change_property.
  */
 #define DEVICE_PORT_PROPERTY					(DEVICE_CONTEXT->device_port_property)
@@ -239,6 +239,16 @@ typedef struct {
 		dinfo->status = dstatus;\
 	}\
 }
+
+typedef int indigo_glock;
+
+/** Try to aquire global lock
+*/
+extern indigo_glock indigo_try_global_lock(char *lock_file);
+
+/** Globally unlock
+*/
+extern int indigo_global_unlock(indigo_glock lock);
 
 /** Device is connected.
  */
