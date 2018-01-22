@@ -67,6 +67,41 @@
 #include "indigo_names.h"
 #include "indigo_io.h"
 
+indigo_glock indigo_try_global_lock(char *lock_file) {
+	char tmp_lock_file[255] = "/tmp/";
+	strncat(tmp_lock_file, lock_file, 250);
+	int fd = open(tmp_lock_file, O_CREAT | O_WRONLY, 0600);
+	if (fd == -1) {
+		return -1;
+	}
+
+    static struct flock lock;
+	lock.l_type = F_WRLCK;
+	lock.l_start = 0;
+	lock.l_whence = SEEK_SET;
+	lock.l_len = 0;
+	lock.l_pid = getpid();
+
+	int ret = fcntl(fd, F_SETLK, &lock);
+	if (ret == -1) {
+		int local_errno = errno;
+		close(fd);
+		fd = -1;
+		errno = local_errno;
+	}
+
+	return fd;
+}
+
+
+int indigo_global_unlock(indigo_glock lock) {
+	if (lock != -1) {
+		return close(lock);
+	}
+	return -1;
+}
+
+
 #if defined(INDIGO_LINUX)
 static bool is_serial(char *path) {
 	int fd;
