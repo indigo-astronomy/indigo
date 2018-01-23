@@ -565,6 +565,8 @@ static void hotunplug(void *param) {
 	}
 }
 
+#ifndef INDIGO_MACOS
+
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	struct libusb_device_descriptor descriptor;
 	pthread_mutex_lock(&device_mutex);
@@ -587,6 +589,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	return 0;
 };
 
+#endif
+
 static void remove_all_devices() {
 	for (int i = 0; i < QSICamera::MAXCAMERAS; i++) {
 		indigo_device **device = &devices[i];
@@ -601,7 +605,11 @@ static void remove_all_devices() {
 	}
 }
 
+#ifndef INDIGO_MACOS
+
 static libusb_hotplug_callback_handle callback_handle;
+
+#endif
 
 indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -620,15 +628,23 @@ indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *in
 			cam.get_DriverInfo(info);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "QSIAPI version: %s", info.c_str());
 			last_action = action;
+#ifdef INDIGO_MACOS
+			indigo_async((void *(*)(void *))hotplug, NULL);
+			return INDIGO_OK;
+#else
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, QSI_VENDOR_ID, QSI_PRODUCT_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
+#endif
 		}
 		case INDIGO_DRIVER_SHUTDOWN: {
 			last_action = action;
+#ifdef INDIGO_MACOS
+#else
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+#endif
 			remove_all_devices();
 			break;
 		}
