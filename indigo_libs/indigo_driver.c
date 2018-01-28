@@ -68,7 +68,7 @@
 #include "indigo_io.h"
 
 indigo_result indigo_try_global_lock(indigo_device *device) {
-	char tmp_lock_file[255] = "/tmp/";
+	char tmp_lock_file[255] = "/tmp/indigo_lock_";
 	if (device->lock > 0) return INDIGO_FAILED;
 	strncat(tmp_lock_file, device->name, 250);
 	int fd = open(tmp_lock_file, O_CREAT | O_WRONLY, 0600);
@@ -100,7 +100,7 @@ indigo_result indigo_global_unlock(indigo_device *device) {
 	if (device->lock > 0) {
 		close(device->lock);
 		device->lock = -1;
-		char tmp_lock_file[255] = "/tmp/";
+		char tmp_lock_file[255] = "/tmp/indigo_lock_";
 		strncat(tmp_lock_file, device->name, 250);
 		unlink(tmp_lock_file);
 		return INDIGO_OK;
