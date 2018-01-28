@@ -232,7 +232,7 @@ static indigo_device *gps = NULL;
 
 indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device gps_template = {
-		GPS_SIMULATOR_NAME, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		GPS_SIMULATOR_NAME, 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		gps_attach,
 		indigo_gps_enumerate_properties,
 		gps_change_property,

@@ -279,7 +279,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					cam.get_FilterCount(PRIVATE_DATA->filter_count);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Has filter wheel with %ld positions", PRIVATE_DATA->filter_count);
 					static indigo_device wheel_template = {
-						"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+						"", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 						wheel_attach,
 						indigo_wheel_enumerate_properties,
 						wheel_change_property,
@@ -466,7 +466,7 @@ static indigo_device *devices[QSICamera::MAXCAMERAS];
 
 static void hotplug(void *param) {
 	static indigo_device ccd_template = {
-		"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,

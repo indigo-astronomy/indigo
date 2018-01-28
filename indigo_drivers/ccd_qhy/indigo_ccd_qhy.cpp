@@ -267,7 +267,7 @@ static bool qhy_open(indigo_device *device) {
 		);
 
 		if (PRIVATE_DATA->buffer == NULL) {
-			PRIVATE_DATA->buffer_size = PRIVATE_DATA->frame_height * PRIVATE_DATA->frame_width * 2 + FITS_HEADER_SIZE;
+			PRIVATE_DATA->buffer_size = /* PRIVATE_DATA->frame_height * PRIVATE_DATA->frame_width * 2 */ 64 * 1024 * 1024 + FITS_HEADER_SIZE;
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
 	}
@@ -1362,7 +1362,7 @@ static int find_unplugged_device_slot() {
 
 static void process_plug_event() {
 	static indigo_device ccd_template = {
-		"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		qhy_enumerate_properties,
 		ccd_change_property,
@@ -1370,7 +1370,7 @@ static void process_plug_event() {
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
