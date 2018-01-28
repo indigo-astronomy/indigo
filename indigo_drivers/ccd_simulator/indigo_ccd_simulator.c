@@ -437,6 +437,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) { /* Do not double open device */
+				if (indigo_try_global_lock(device) != INDIGO_OK) return INDIGO_FAILED;
 				if (device == PRIVATE_DATA->dslr) {
 					indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
 					indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
@@ -450,6 +451,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (device->is_connected) {  /* Do not double close device */
+				indigo_global_unlock(device);
 				if (device == PRIVATE_DATA->dslr) {
 					indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
 					indigo_delete_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
@@ -540,8 +542,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
+		indigo_global_unlock(device);
+	}
 	if (device == PRIVATE_DATA->dslr) {
 		indigo_release_property(DSLR_PROGRAM_PROPERTY);
 		indigo_release_property(DSLR_CAPTURE_MODE_PROPERTY);
