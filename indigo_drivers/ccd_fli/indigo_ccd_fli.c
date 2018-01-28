@@ -1054,7 +1054,7 @@ static int find_unplugged_device(char *fname) {
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 
 	static indigo_device ccd_template = {
-		"", false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		fli_enumerate_properties,
 		ccd_change_property,
