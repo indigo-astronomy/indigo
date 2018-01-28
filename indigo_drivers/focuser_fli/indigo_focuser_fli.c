@@ -518,7 +518,7 @@ static int find_unplugged_device(char *fname) {
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 
 	static indigo_device focuser_template = {
-		"", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,

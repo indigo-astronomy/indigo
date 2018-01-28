@@ -1979,7 +1979,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	GetCCDInfoResults0 gcir0;
 
 	static indigo_device ccd_template = {
-		"", 0, false, 0x00, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", -1, false, 0x00, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		sbig_enumerate_properties,
 		ccd_change_property,
@@ -1988,7 +1988,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	};
 
 	static indigo_device guider_template = {
-		"", 0, false, 0x00, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", -1, false, 0x00, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
@@ -1997,7 +1997,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	};
 
 	static indigo_device wheel_template = {
-		"", 0, false, 0x00, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", -1, false, 0x00, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
@@ -2373,7 +2373,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	static indigo_device sbig_eth_template = {
-		"SBIG Ethernet Device", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"SBIG Ethernet Device", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		eth_attach,
 		indigo_device_enumerate_properties,
 		eth_change_property,

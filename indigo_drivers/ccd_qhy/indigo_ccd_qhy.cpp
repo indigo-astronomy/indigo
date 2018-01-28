@@ -1362,7 +1362,7 @@ static int find_unplugged_device_slot() {
 
 static void process_plug_event() {
 	static indigo_device ccd_template = {
-		"", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		qhy_enumerate_properties,
 		ccd_change_property,
@@ -1370,7 +1370,7 @@ static void process_plug_event() {
 		ccd_detach
 	};
 	static indigo_device guider_template = {
-		"", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
