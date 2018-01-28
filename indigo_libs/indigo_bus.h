@@ -237,6 +237,22 @@ typedef struct indigo_device {
 	indigo_result (*detach)(indigo_device *device);
 } indigo_device;
 
+#define INDIGO_DEVICE_INITIALIZER(name_str, attach_cb, enumerate_properties_cb, change_property_cb, enable_blob_cb, detach_cb) (indigo_device) { \
+	.name = name_str, \
+	.lock = -1, \
+	.is_remote = false, \
+	.gp_bits = 0, \
+	.device_context = NULL, \
+	.private_data = NULL, \
+	.last_result = INDIGO_OK, \
+	.version = INDIGO_VERSION_LEGACY, \
+	.attach = attach_cb, \
+	.enumerate_properties = enumerate_properties_cb, \
+	.change_property = change_property_cb, \
+	.enable_blob = enable_blob_cb, \
+	.detach = detach_cb \
+}
+
 /** Client structure definition
  */
 typedef struct indigo_client {

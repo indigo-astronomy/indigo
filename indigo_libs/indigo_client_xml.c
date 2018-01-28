@@ -168,14 +168,13 @@ static indigo_result xml_client_parser_detach(indigo_device *device) {
 }
 
 indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, int input, int output) {
-	static indigo_device device_template = {
-		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_LEGACY,
-		NULL,
+	static indigo_device device_template = INDIGO_DEVICE_INITIALIZER(
+		"", NULL,
 		xml_client_parser_enumerate_properties,
 		xml_client_parser_change_property,
 		xml_client_parser_enable_blob,
 		xml_client_parser_detach
-	};
+	);
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &device_template, sizeof(indigo_device));
