@@ -578,7 +578,7 @@ static int find_unplugged_device_slot() {
 
 static void process_plug_event() {
 	static indigo_device ccd_template = {
-		"", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,

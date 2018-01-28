@@ -378,7 +378,7 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 	static indigo_device *focuser = NULL;
 
 	static indigo_device focuser_template = {
-		"USB_Focus v3", 0, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+		"USB_Focus v3", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
 		focuser_attach,
 		focuser_enumerate_properties,
 		focuser_change_property,
