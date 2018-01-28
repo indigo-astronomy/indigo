@@ -348,14 +348,14 @@ static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
 
 indigo_result indigo_agent_snoop(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_device agent_device_template = {
-		SNOOP_AGENT_NAME, -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device agent_device_template = INDIGO_DEVICE_INITIALIZER(
+		SNOOP_AGENT_NAME,
 		agent_device_attach,
 		agent_enumerate_properties,
 		agent_change_property,
 		NULL,
 		agent_device_detach
-	};
+	);
 
 	static indigo_client agent_client_template = {
 		SNOOP_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,

@@ -142,14 +142,14 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_device *device = NULL;
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	static indigo_device wheel_template = {
-		"ATIK Filter Wheel", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
+		"ATIK Filter Wheel",
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
 		NULL,
 		wheel_detach
-	};
+	);
 
 	pthread_mutex_lock(&device_mutex);
 	switch (event) {

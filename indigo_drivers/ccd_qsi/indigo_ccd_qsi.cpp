@@ -278,14 +278,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (hasFilterWheel) {
 					cam.get_FilterCount(PRIVATE_DATA->filter_count);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Has filter wheel with %ld positions", PRIVATE_DATA->filter_count);
-					static indigo_device wheel_template = {
-						"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+					static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
+						"",
 						wheel_attach,
 						indigo_wheel_enumerate_properties,
 						wheel_change_property,
 						NULL,
 						wheel_detach
-					};
+					);
 					indigo_device *wheel = (indigo_device *)malloc(sizeof(indigo_device));
 					assert(wheel != NULL);
 					memcpy(wheel, &wheel_template, sizeof(indigo_device));
@@ -465,14 +465,14 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_device *devices[QSICamera::MAXCAMERAS];
 
 static void hotplug(void *param) {
-	static indigo_device ccd_template = {
-		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
-	};
+	);
 	std::string camSerial[QSICamera::MAXCAMERAS];
 	std::string camDesc[QSICamera::MAXCAMERAS];
 	char serial[INDIGO_NAME_SIZE];

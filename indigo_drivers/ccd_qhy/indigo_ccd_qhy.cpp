@@ -1361,22 +1361,22 @@ static int find_unplugged_device_slot() {
 
 
 static void process_plug_event() {
-	static indigo_device ccd_template = {
-		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		ccd_attach,
 		qhy_enumerate_properties,
 		ccd_change_property,
-    NULL,
+		NULL,
 		ccd_detach
-	};
-	static indigo_device guider_template = {
-		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	);
+	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
-    NULL,
+		NULL,
 		guider_detach
-	};
+	);
 
 	int slot = find_available_device_slot();
 	if (slot < 0) {

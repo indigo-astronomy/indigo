@@ -577,14 +577,14 @@ static int find_unplugged_device_slot() {
 
 
 static void process_plug_event() {
-	static indigo_device ccd_template = {
-		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		ccd_attach,
 		indigo_ccd_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
-	};
+	);
 
 	int slot = find_available_device_slot();
 	if (slot < 0) {
