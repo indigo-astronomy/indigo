@@ -67,9 +67,10 @@
 #include "indigo_names.h"
 #include "indigo_io.h"
 
-indigo_glock indigo_try_global_lock(char *lock_file) {
+indigo_result indigo_try_global_lock(indigo_device *device) {
 	char tmp_lock_file[255] = "/tmp/";
-	strncat(tmp_lock_file, lock_file, 250);
+	if (device->lock > 0) return INDIGO_FAILED;
+	strncat(tmp_lock_file, device->name, 250);
 	int fd = open(tmp_lock_file, O_CREAT | O_WRONLY, 0600);
 	if (fd == -1) {
 		return -1;
@@ -89,16 +90,22 @@ indigo_glock indigo_try_global_lock(char *lock_file) {
 		fd = -1;
 		errno = local_errno;
 	}
-
-	return fd;
+	device->lock = fd;
+	if (fd > 0) return INDIGO_OK;
+	return INDIGO_LOCK_ERROR;
 }
 
 
-int indigo_global_unlock(indigo_glock lock) {
-	if (lock != -1) {
-		return close(lock);
+indigo_result indigo_global_unlock(indigo_device *device) {
+	if (device->lock > 0) {
+		close(device->lock);
+		device->lock = -1;
+		char tmp_lock_file[255] = "/tmp/";
+		strncat(tmp_lock_file, device->name, 250);
+		unlink(tmp_lock_file);
+		return INDIGO_OK;
 	}
-	return -1;
+	return INDIGO_FAILED;
 }
 
 

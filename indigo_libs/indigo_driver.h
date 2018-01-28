@@ -240,15 +240,14 @@ typedef struct {
 	}\
 }
 
-typedef int indigo_glock;
 
 /** Try to aquire global lock
 */
-extern indigo_glock indigo_try_global_lock(char *lock_file);
+extern indigo_result indigo_try_global_lock(indigo_device *device);
 
 /** Globally unlock
 */
-extern int indigo_global_unlock(indigo_glock lock);
+extern indigo_result indigo_global_unlock(indigo_device *device);
 
 /** Device is connected.
  */
