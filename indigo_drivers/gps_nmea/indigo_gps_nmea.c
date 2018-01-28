@@ -275,14 +275,14 @@ static nmea_private_data *private_data = NULL;
 static indigo_device *gps = NULL;
 
 indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_device gps_template = {
-		GPS_NMEA_NAME, -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(
+		GPS_NMEA_NAME,
 		gps_attach,
 		indigo_gps_enumerate_properties,
 		gps_change_property,
 		NULL,
 		gps_detach
-	};
+	);
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 

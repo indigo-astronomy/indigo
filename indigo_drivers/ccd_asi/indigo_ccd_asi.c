@@ -1467,22 +1467,22 @@ static int find_unplugged_device_id() {
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	ASI_CAMERA_INFO info;
 
-	static indigo_device ccd_template = {
-		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		ccd_attach,
 		asi_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
-	};
-	static indigo_device guider_template = {
-		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	);
+	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
 		NULL,
 		guider_detach
-	};
+	);
 
 	struct libusb_device_descriptor descriptor;
 

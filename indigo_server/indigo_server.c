@@ -148,14 +148,14 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 static indigo_result detach(indigo_device *device);
 
-static indigo_device server_device = {
-	"Server", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+static indigo_device server_device = INDIGO_DEVICE_INITIALIZER(
+	"Server",
 	attach,
 	enumerate_properties,
 	change_property,
 	NULL,
 	detach
-};
+);
 
 static unsigned char ctrl[] = {
 #include "ctrl.data"

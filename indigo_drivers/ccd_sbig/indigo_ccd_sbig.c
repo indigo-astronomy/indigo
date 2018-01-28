@@ -1978,32 +1978,32 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	GetCCDInfoParams gcp;
 	GetCCDInfoResults0 gcir0;
 
-	static indigo_device ccd_template = {
-		"", -1, false, 0x00, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		ccd_attach,
 		sbig_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
-	};
+	);
 
-	static indigo_device guider_template = {
-		"", -1, false, 0x00, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
 		NULL,
 		guider_detach
-	};
+	);
 
-	static indigo_device wheel_template = {
-		"", -1, false, 0x00, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
 		NULL,
 		wheel_detach
-	};
+	);
 
 	pthread_mutex_lock(&driver_mutex);
 	short res = set_sbig_handle(global_handle);
@@ -2372,14 +2372,14 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	static indigo_device sbig_eth_template = {
-		"SBIG Ethernet Device", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device sbig_eth_template = INDIGO_DEVICE_INITIALIZER(
+		"SBIG Ethernet Device",
 		eth_attach,
 		indigo_device_enumerate_properties,
 		eth_change_property,
 		NULL,
 		eth_detach
-	};
+	);
 
 	SET_DRIVER_INFO(info, "SBIG Camera", __FUNCTION__, DRIVER_VERSION, last_action);
 

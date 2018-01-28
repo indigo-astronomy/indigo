@@ -151,7 +151,7 @@ typedef enum {
 
 /** Property item definition.
  */
-typedef struct {
+typedef struct {/* there is no .name =  because of g++ C99 bug affectinf string initialier */
 	char name[INDIGO_NAME_SIZE];        ///< property wide unique item name
 	char label[INDIGO_VALUE_SIZE];      ///< item description in human readable form
 	union {
@@ -162,7 +162,7 @@ typedef struct {
 		} text;
 		/** Number property item specific fields.
 		 */
-		struct {
+		struct {/* there is no .name =  because of g++ C99 bug affectinf string initialier */
 			char format[INDIGO_VALUE_SIZE]; ///< item format (for number properties)
 			double min;                     ///< item min value (for number properties)
 			double max;                     ///< item max value (for number properties)
@@ -238,19 +238,19 @@ typedef struct indigo_device {
 } indigo_device;
 
 #define INDIGO_DEVICE_INITIALIZER(name_str, attach_cb, enumerate_properties_cb, change_property_cb, enable_blob_cb, detach_cb) (indigo_device) { \
-	.name = name_str, \
-	.lock = -1, \
-	.is_remote = false, \
-	.gp_bits = 0, \
-	.device_context = NULL, \
-	.private_data = NULL, \
-	.last_result = INDIGO_OK, \
-	.version = INDIGO_VERSION_LEGACY, \
-	.attach = attach_cb, \
-	.enumerate_properties = enumerate_properties_cb, \
-	.change_property = change_property_cb, \
-	.enable_blob = enable_blob_cb, \
-	.detach = detach_cb \
+	name_str, \
+	-1, \
+	false, \
+	0, \
+	NULL, \
+	NULL, \
+	INDIGO_OK, \
+	INDIGO_VERSION_LEGACY, \
+	attach_cb, \
+	enumerate_properties_cb, \
+	change_property_cb, \
+	enable_blob_cb, \
+	detach_cb \
 }
 
 /** Client structure definition

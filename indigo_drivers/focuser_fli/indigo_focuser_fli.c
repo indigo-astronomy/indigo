@@ -517,14 +517,14 @@ static int find_unplugged_device(char *fname) {
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 
-	static indigo_device focuser_template = {
-		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		focuser_attach,
 		indigo_focuser_enumerate_properties,
 		focuser_change_property,
 		NULL,
 		focuser_detach
-	};
+	);
 
 	struct libusb_device_descriptor descriptor;
 	pthread_mutex_lock(&device_mutex);

@@ -225,14 +225,14 @@ static simulator_private_data *private_data = NULL;
 static indigo_device *dome = NULL;
 
 indigo_result indigo_dome_simulator(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_device dome_template = {
-		DOME_SIMULATOR_NAME, -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device dome_template = INDIGO_DEVICE_INITIALIZER(
+		DOME_SIMULATOR_NAME,
 		dome_attach,
 		indigo_dome_enumerate_properties,
 		dome_change_property,
 		NULL,
 		dome_detach
-	};
+	);
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
