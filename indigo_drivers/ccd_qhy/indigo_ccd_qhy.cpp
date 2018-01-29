@@ -281,7 +281,7 @@ static bool qhy_setup_exposure(indigo_device *device, double exposure, int frame
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	int requested_bpp = PIXEL_FORMAT_PROPERTY->items[0].sw.value ? 8 : 16;
-	if (PRIVATE_DATA->last_bpp != requested_bpp) {
+	if (PRIVATE_DATA->handle && PRIVATE_DATA->last_bpp != requested_bpp) {
 		CloseQHYCCD(PRIVATE_DATA->handle);
 		usleep(500000);
 		PRIVATE_DATA->handle = OpenQHYCCD(PRIVATE_DATA->dev_sid);
@@ -734,13 +734,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 					}
 					// --------------------------------------------------------------------------------- PIXEL_FORMAT
+          indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 0, RAW8_NAME, RAW8_NAME, PRIVATE_DATA->bpp == 8);
+          indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 1, RAW16_NAME, RAW16_NAME, PRIVATE_DATA->bpp == 16);
+          indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+          CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = 8;
+          CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = 16;
+          CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->last_bpp = PRIVATE_DATA->bpp;
 					if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_8BITS) == QHYCCD_SUCCESS && IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_16BITS) == QHYCCD_SUCCESS) {
-						indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 0, RAW8_NAME, RAW8_NAME, PRIVATE_DATA->bpp == 8);
-						indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + 1, RAW16_NAME, RAW16_NAME, PRIVATE_DATA->bpp == 16);
-						indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = 8;
-						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_INFO_BITS_PER_PIXEL_ITEM->number.max = 16;
-						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->last_bpp = PRIVATE_DATA->bpp;
 					} else {
 						PIXEL_FORMAT_PROPERTY->hidden = true;
 					}
@@ -1378,9 +1378,11 @@ static void process_plug_event() {
 		guider_detach
 	);
 
+	pthread_mutex_lock(&device_mutex);
 	int slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
 
@@ -1388,6 +1390,7 @@ static void process_plug_event() {
 	bool found = find_plugged_device_sid(sid);
 	if (!found) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No plugged device found.");
+		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
 
@@ -1400,6 +1403,7 @@ static void process_plug_event() {
 	handle = OpenQHYCCD(sid);
 	if(handle == NULL) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
+		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
 	int check_st4 = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
@@ -1423,6 +1427,7 @@ static void process_plug_event() {
 		slot = find_available_device_slot();
 		if (slot < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
 		device = (indigo_device*)malloc(sizeof(indigo_device));
@@ -1434,6 +1439,7 @@ static void process_plug_event() {
 		indigo_async((void *(*)(void *))indigo_attach_device, device);
 		devices[slot]=device;
 	}
+	pthread_mutex_unlock(&device_mutex);
 }
 
 
@@ -1441,9 +1447,11 @@ static void process_unplug_event() {
 	int slot;
 	bool removed = false;
 	qhy_private_data *private_data = NULL;
+	pthread_mutex_lock(&device_mutex);
 	while ((slot = find_unplugged_device_slot()) != NOT_FOUND) {
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
+			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
 		indigo_detach_device(*device);
@@ -1464,28 +1472,25 @@ static void process_unplug_event() {
 	if (!removed) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No QHY Camera unplugged!");
 	}
+	pthread_mutex_unlock(&device_mutex);
 }
 
 
 #ifdef __APPLE__
 void *plug_thread_func(void *sid) {
-	pthread_mutex_lock(&device_mutex);
 	char firmware_base_dir[1024] = "/usr/local/lib/qhy";
 	if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
 		strncpy(firmware_base_dir, getenv("INDIGO_FIRMWARE_BASE"), 1024);
 	}
 	OSXInitQHYCCDFirmware(firmware_base_dir);
 	process_plug_event();
-	pthread_mutex_unlock(&device_mutex);
 	pthread_exit(NULL);
 	return NULL;
 }
 
 
 void *unplug_thread_func(void *sid) {
-	pthread_mutex_lock(&device_mutex);
 	process_unplug_event();
-	pthread_mutex_unlock(&device_mutex);
 	pthread_exit(NULL);
 	return NULL;
 }
@@ -1495,14 +1500,12 @@ void *unplug_thread_func(void *sid) {
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	struct libusb_device_descriptor descriptor;
 
-	pthread_mutex_lock(&device_mutex);
 	libusb_get_device_descriptor(dev, &descriptor);
 	if ((descriptor.idVendor != QHY_VENDOR_ID1) &&
 		(descriptor.idVendor != QHY_VENDOR_ID2) &&
 		(descriptor.idVendor != QHY_VENDOR_ID3) &&
 		(descriptor.idVendor != QHY_VENDOR_ID4) &&
 		(descriptor.idVendor != QHY_VENDOR_ID5)) {
-		pthread_mutex_unlock(&device_mutex);
 		return 0;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hotplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
@@ -1538,7 +1541,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "***");
 	return 0;
 };
 
