@@ -24,7 +24,7 @@
  \file indigo_gps_simulator.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"idnigo_gps_simulator"
 
 #include <stdlib.h>
@@ -59,7 +59,6 @@
 #define is_connected                   gp_bits
 
 typedef struct {
-	int count_open;
 	int timer_ticks;
 	indigo_timer *gps_timer;
 } simulator_private_data;
@@ -68,19 +67,17 @@ typedef struct {
 
 static bool gps_open(indigo_device *device) {
 	if (device->is_connected) return false;
-	if (PRIVATE_DATA->count_open++ == 0) {
-		srand(time(NULL));
-		PRIVATE_DATA->timer_ticks = 0;
-	}
+	if (indigo_try_global_lock(device) != INDIGO_OK) return false;
+	srand(time(NULL));
+	PRIVATE_DATA->timer_ticks = 0;
 	return true;
 }
 
 
 static void gps_close(indigo_device *device) {
 	if (!device->is_connected) return;
-	if (--PRIVATE_DATA->count_open == 0) {
-		PRIVATE_DATA->timer_ticks = 0;
-	}
+	indigo_global_unlock(device);
+	PRIVATE_DATA->timer_ticks = 0;
 }
 
 
@@ -219,6 +216,7 @@ static indigo_result gps_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_cancel_timer(device, &PRIVATE_DATA->gps_timer);
+	indigo_global_unlock(device);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_gps_detach(device);
@@ -253,7 +251,6 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 		private_data = malloc(sizeof(simulator_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(simulator_private_data));
-		private_data->count_open = 0;
 		gps = malloc(sizeof(indigo_device));
 		assert(gps != NULL);
 		memcpy(gps, &gps_template, sizeof(indigo_device));
