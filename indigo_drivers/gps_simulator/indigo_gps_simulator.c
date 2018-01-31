@@ -67,7 +67,11 @@ typedef struct {
 
 static bool gps_open(indigo_device *device) {
 	if (device->is_connected) return false;
-	if (indigo_try_global_lock(device) != INDIGO_OK) return false;
+	if (indigo_try_global_lock(device) != INDIGO_OK) {
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
+		return INDIGO_OK;
+	}
 	srand(time(NULL));
 	PRIVATE_DATA->timer_ticks = 0;
 	return true;
