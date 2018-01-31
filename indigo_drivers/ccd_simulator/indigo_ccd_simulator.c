@@ -437,7 +437,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) { /* Do not double open device */
-				if (indigo_try_global_lock(device) != INDIGO_OK) return INDIGO_FAILED;
+				if (indigo_try_global_lock(device) != INDIGO_OK) {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
+					return INDIGO_OK;
+				}
 				if (device == PRIVATE_DATA->dslr) {
 					indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
 					indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);

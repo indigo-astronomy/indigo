@@ -68,6 +68,9 @@
 #include "indigo_io.h"
 
 indigo_result indigo_try_global_lock(indigo_device *device) {
+#if defined(INDIGO_MACOS)
+	return INDIGO_OK;
+#else
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
 	if (device->lock > 0) return INDIGO_FAILED;
 	strncat(tmp_lock_file, device->name, 250);
@@ -93,10 +96,14 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 	device->lock = fd;
 	if (fd > 0) return INDIGO_OK;
 	return INDIGO_LOCK_ERROR;
+#endif
 }
 
 
 indigo_result indigo_global_unlock(indigo_device *device) {
+#if defined(INDIGO_MACOS)
+	return INDIGO_OK;
+#else
 	if (device->lock > 0) {
 		close(device->lock);
 		device->lock = -1;
@@ -106,6 +113,7 @@ indigo_result indigo_global_unlock(indigo_device *device) {
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
+#endif
 }
 
 
