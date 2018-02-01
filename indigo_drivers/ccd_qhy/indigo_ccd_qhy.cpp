@@ -651,7 +651,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_STREAMING_PROPERTY->hidden = true;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
 		// --------------------------------------------------------------------------------- PIXEL_FORMAT
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
