@@ -255,6 +255,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_MODE_PROPERTY->count = 0;
 		CCD_INFO_WIDTH_ITEM->number.value = 0;
 		CCD_INFO_HEIGHT_ITEM->number.value = 0;
+		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 4;
+		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 4;
+		CCD_INFO_PIXEL_SIZE_ITEM->number.value = 4;
+		CCD_INFO_WIDTH_ITEM->number.value = 0;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 0;
 		iidc_mode_data *mode_data = PRIVATE_DATA->mode_data;
 		for (int i = 0; i < modes.num; i++) {

@@ -231,7 +231,11 @@ indigo_drivers/ccd_iidc/externals/libdc1394/configure: indigo_drivers/ccd_iidc/e
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; autoreconf -fiv; cd ../../../..
 
 indigo_drivers/ccd_iidc/externals/libdc1394/Makefile: indigo_drivers/ccd_iidc/externals/libdc1394/configure
-	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT) $(LIBUSB_CFLAGS) $(LIBUSB_LIBS)"; cd ../../../..
+ifeq ($(OS_DETECTED),Darwin)
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)" LIBUSB_CFLAGS="$(LIBUSB_CFLAGS)" LIBUSB_LIBS="$(LIBUSB_LIBS)"; cd ../../../..
+else
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)"; cd ../../../..
+endif
 
 $(BUILD_LIB)/libdc1394.a: indigo_drivers/ccd_iidc/externals/libdc1394/Makefile
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make install; cd ../../../..
