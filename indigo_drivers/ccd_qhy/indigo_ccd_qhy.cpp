@@ -1541,7 +1541,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "***");
 	return 0;
 };
 
