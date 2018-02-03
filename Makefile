@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 64
+INDIGO_BUILD := 65
 INDIGO_ROOT := $(shell pwd)
 
 DEBUG_BUILD=-g
@@ -1163,3 +1163,17 @@ clean-all: clean
 	cd indigo_drivers/gps_nmea/externals/nmealib; make clean; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; cd ../../../..
 	cd indigo_drivers/ccd_qsi/externals; rm -rf qsiapi-7.6.0; cd ../../..
+
+#---------------------------------------------------------------------
+#
+#	Remote build on debian32.local, debian64.local and raspi.local
+#
+#---------------------------------------------------------------------
+
+remote:
+	ssh debian32.local "cd indigo; git pull; make; sudo make package"
+	scp debian32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb .
+	ssh debian64.local "cd indigo; git pull; make; sudo make package"
+	scp debian64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb .
+	ssh raspi.local "cd indigo; git pull; make; sudo make package"
+	scp raspi.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
