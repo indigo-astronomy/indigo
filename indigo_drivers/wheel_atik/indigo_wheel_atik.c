@@ -186,6 +186,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static libusb_hotplug_callback_handle callback_handle;
 
 indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info *info) {
+	atik_log = indigo_debug;
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "Atik Filter Wheel", __FUNCTION__, DRIVER_VERSION, last_action);
