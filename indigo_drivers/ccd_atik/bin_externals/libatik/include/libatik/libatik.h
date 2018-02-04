@@ -112,6 +112,7 @@ extern bool libatik_wheel_set(hid_device *handle, int slot);
 
 extern bool libatik_debug_level;
 extern bool libatik_use_syslog;
+extern void (*atik_log)(const char *format, ...);
 
 extern const char *libatik_version;
 extern const char *libatik_os;
