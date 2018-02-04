@@ -178,11 +178,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		wheel_detach
 	);
 
-	pthread_mutex_lock(&device_mutex);
+	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			if (device != NULL) {
-				pthread_mutex_unlock(&device_mutex);
+				//pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
 			device = malloc(sizeof(indigo_device));
@@ -197,7 +197,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 			if (device == NULL) {
-				pthread_mutex_unlock(&device_mutex);
+				//pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
 			indigo_detach_device(device);
@@ -206,7 +206,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			device = NULL;
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 

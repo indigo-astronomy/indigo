@@ -498,7 +498,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		NULL,
 		ccd_detach
 	);
-	pthread_mutex_lock(&device_mutex);
+	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			dc1394camera_list_t *list;
@@ -605,7 +605,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 }
 

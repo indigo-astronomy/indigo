@@ -569,7 +569,7 @@ static void hotunplug(void *param) {
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	struct libusb_device_descriptor descriptor;
-	pthread_mutex_lock(&device_mutex);
+	//pthread_mutex_lock(&device_mutex);
 	libusb_get_device_descriptor(dev, &descriptor);
 	if (descriptor.idVendor == QSI_VENDOR_ID && descriptor.idProduct == QSI_PRODUCT_ID) {
 		switch (event) {
@@ -585,7 +585,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 

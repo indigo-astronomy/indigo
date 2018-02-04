@@ -358,7 +358,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	struct libusb_device_descriptor descriptor;
 
-	pthread_mutex_lock(&device_mutex);
+	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
@@ -368,14 +368,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				int slot = find_available_device_slot();
 				if (slot < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-					pthread_mutex_unlock(&device_mutex);
+					//pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 
 				int id = find_plugged_device_id();
 				if (id == NO_DEVICE) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
-					pthread_mutex_unlock(&device_mutex);
+					//pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 
@@ -383,7 +383,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				int index = find_index_by_device_id(id);
 				if (index < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
-					pthread_mutex_unlock(&device_mutex);
+					//pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 				assert(device != NULL);
@@ -433,7 +433,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 
