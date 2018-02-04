@@ -678,10 +678,10 @@ void *unplug_thread_func(void *sid) {
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	struct libusb_device_descriptor descriptor;
 
-	pthread_mutex_lock(&device_mutex);
+	//pthread_mutex_lock(&device_mutex);
 	libusb_get_device_descriptor(dev, &descriptor);
 	if (descriptor.idVendor != DSI_VENDOR_ID) {
-		pthread_mutex_unlock(&device_mutex);
+		//pthread_mutex_unlock(&device_mutex);
 		return 0;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hotplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
@@ -717,7 +717,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 

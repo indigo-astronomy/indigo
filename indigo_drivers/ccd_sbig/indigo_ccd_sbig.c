@@ -2269,7 +2269,7 @@ static int find_unplugged_device(char *dev_name) {
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	short res;
-	pthread_mutex_lock(&hotplug_mutex);
+	//pthread_mutex_lock(&hotplug_mutex);
 
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
@@ -2278,7 +2278,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			int usb_id = find_plugged_device(cam_name);
 			if (usb_id < 0) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SBIG Camera plugged.");
-				pthread_mutex_unlock(&hotplug_mutex);
+				//pthread_mutex_unlock(&hotplug_mutex);
 				return 0;
 			}
 
@@ -2296,7 +2296,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				while (slot >= 0) {
 					indigo_device **device = &devices[slot];
 					if (*device == NULL) {
-						pthread_mutex_unlock(&hotplug_mutex);
+						//pthread_mutex_unlock(&hotplug_mutex);
 						return 0;
 					}
 					indigo_detach_device(*device);
@@ -2321,7 +2321,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 		}
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	//pthread_mutex_unlock(&hotplug_mutex);
 	return 0;
 };
 

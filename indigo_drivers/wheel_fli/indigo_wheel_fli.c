@@ -358,7 +358,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	struct libusb_device_descriptor descriptor;
 
-	pthread_mutex_lock(&device_mutex);
+	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
@@ -367,7 +367,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			int slot = find_available_device_slot();
 			if (slot < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-				pthread_mutex_unlock(&device_mutex);
+				//pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
 
@@ -375,7 +375,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			int idx = find_plugged_device(file_name);
 			if (idx < 0) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI FW plugged.");
-				pthread_mutex_unlock(&device_mutex);
+				//pthread_mutex_unlock(&device_mutex);
 				return 0;
 			}
 
@@ -405,7 +405,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				if (slot < 0) continue;
 				indigo_device **device = &devices[slot];
 				if (*device == NULL) {
-					pthread_mutex_unlock(&device_mutex);
+					//pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 				indigo_detach_device(*device);
@@ -420,7 +420,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 

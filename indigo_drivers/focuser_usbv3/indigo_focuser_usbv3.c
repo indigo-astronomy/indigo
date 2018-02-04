@@ -217,8 +217,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = 4;
-		FOCUSER_SPEED_ITEM->number.min = 2;
-		FOCUSER_SPEED_ITEM->number.max = 9;
+		FOCUSER_SPEED_ITEM->number.min = 1;
+		FOCUSER_SPEED_ITEM->number.max = 8;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		FOCUSER_STEPS_ITEM->number.min = 1;
 		FOCUSER_STEPS_ITEM->number.max = 65535;
@@ -282,7 +282,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		if (IS_CONNECTED) {
-			usbv3_command(device, "SMO00%d", (int)(FOCUSER_SPEED_ITEM->number.value));
+			usbv3_command(device, "SMO00%d", 10 - (int)(FOCUSER_SPEED_ITEM->number.value));
 		}
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
