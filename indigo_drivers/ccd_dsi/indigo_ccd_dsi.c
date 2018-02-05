@@ -648,7 +648,6 @@ static void process_unplug_event() {
 	}
 
 	if (private_data) {
-		dsi_close_camera(private_data->dsi);
 		free(private_data);
 		private_data = NULL;
 	}
