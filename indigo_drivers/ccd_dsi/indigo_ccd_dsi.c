@@ -24,7 +24,7 @@
  \file indigo_ccd_dsi.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME		"indigo_ccd_dsi"
 
 #include <stdlib.h>
@@ -163,7 +163,9 @@ static bool camera_read_pixels(indigo_device *device) {
 static bool camera_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
+	indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 	dsi_abort_exposure(PRIVATE_DATA->dsi);
+	dsi_reset_camera(PRIVATE_DATA->dsi);
 	PRIVATE_DATA->can_check_temperature = true;
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
