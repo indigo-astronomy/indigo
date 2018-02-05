@@ -143,6 +143,7 @@ static bool camera_start_exposure(indigo_device *device, double exposure, bool d
 
 static bool camera_read_pixels(indigo_device *device) {
 	long res;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	dsi_set_image_little_endian(PRIVATE_DATA->dsi, 0);
 	while ((res = dsi_read_image(PRIVATE_DATA->dsi, (unsigned char*)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), O_NONBLOCK)) != 0) {
 		if (res == EWOULDBLOCK) {
@@ -153,9 +154,11 @@ static bool camera_read_pixels(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure Failed! dsi_read_image(%s) = %d", PRIVATE_DATA->dev_sid, res);
 			dsi_abort_exposure(PRIVATE_DATA->dsi);
 			dsi_reset_camera(PRIVATE_DATA->dsi);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			return false;
 		}
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
