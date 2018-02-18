@@ -217,6 +217,7 @@ typedef struct indigo_device {
 	uint16_t gp_bits;                   ///< general purpose bits for driver specific usage
 	void *device_context;               ///< any device specific data
 	void *private_data;                 ///< private data
+	indigo_device *master_device;       ///< if the device provides many logical devices, this must point to one of the locical devices, otherwise is safe to be NULL
 	indigo_result last_result;          ///< result of last bus operation
 	indigo_version version;             ///< device version
 
@@ -242,6 +243,7 @@ typedef struct indigo_device {
 	-1, \
 	false, \
 	0, \
+	NULL, \
 	NULL, \
 	NULL, \
 	INDIGO_OK, \
