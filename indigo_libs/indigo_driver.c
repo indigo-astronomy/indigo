@@ -72,8 +72,13 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 	return INDIGO_OK;
 #else
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	if (device->lock > 0) return INDIGO_FAILED;
-	strncat(tmp_lock_file, device->name, 250);
+	if (device->master_device) {
+		if (device->master_device->lock > 0) return INDIGO_FAILED;
+		strncat(tmp_lock_file, device->master_device->name, 250);
+	} else {
+		if (device->lock > 0) return INDIGO_FAILED;
+		strncat(tmp_lock_file, device->name, 250);
+	}
 	int fd = open(tmp_lock_file, O_CREAT | O_WRONLY, 0600);
 	if (fd == -1) {
 		return -1;
@@ -93,7 +98,8 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 		fd = -1;
 		errno = local_errno;
 	}
-	device->lock = fd;
+	if (device->master_device) device->master_device->lock = fd;
+	else device->lock = fd;
 	if (fd > 0) return INDIGO_OK;
 	return INDIGO_LOCK_ERROR;
 #endif
@@ -104,15 +110,20 @@ indigo_result indigo_global_unlock(indigo_device *device) {
 #if defined(INDIGO_MACOS)
 	return INDIGO_OK;
 #else
-	if (device->lock > 0) {
+	char tmp_lock_file[255] = "/tmp/indigo_lock_";
+	if (device->master_device) {
+		if (device->master_device->lock <= 0) return INDIGO_FAILED;
+		close(device->master_device->lock);
+		device->master_device->lock = -1;
+		strncat(tmp_lock_file, device->master_device->name, 250);
+	} else {
+		if (device->lock <= 0) return INDIGO_FAILED;
 		close(device->lock);
 		device->lock = -1;
-		char tmp_lock_file[255] = "/tmp/indigo_lock_";
 		strncat(tmp_lock_file, device->name, 250);
-		unlink(tmp_lock_file);
-		return INDIGO_OK;
 	}
-	return INDIGO_FAILED;
+	unlink(tmp_lock_file);
+	return INDIGO_OK;
 #endif
 }
 
