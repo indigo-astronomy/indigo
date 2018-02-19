@@ -66,7 +66,7 @@ struct dslr_properties {
 	char *name;
 	char *label;
 } dslr_properties[] = {
-  
+
   { 0, PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
   { 0, PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
   { 0, PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
@@ -82,7 +82,7 @@ struct dslr_properties {
   { 0, PTPPropertyCodeStillCaptureMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
   { 0, PTPPropertyCodeFlashMode, DSLR_FLASH_MODE_PROPERTY_NAME, "Flash mode" },
   { 0, PTPPropertyCodeExposureBiasCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
-  
+
 	{ PTPVendorExtensionNikon, PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
 	{ PTPVendorExtensionNikon, PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
 	{ PTPVendorExtensionNikon, PTPPropertyCodeExposureTime, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
@@ -102,7 +102,7 @@ struct dslr_properties {
   { PTPVendorExtensionNikon, PTPPropertyCodeNikonExternalFlashMode, DSLR_EXT_FLASH_MODE_PROPERTY_NAME, "External flash mode" },
   { PTPVendorExtensionNikon, PTPPropertyCodeNikonExternalFlashCompensation, DSLR_EXT_FLASH_COMPENSATION_PROPERTY_NAME, "External flash compensation" },
   { PTPVendorExtensionNikon, PTPPropertyCodeNikonActivePicCtrlItem, DSLR_PICTURE_STYLE_PROPERTY_NAME, "Picture style" },
-  
+
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonAutoExposureMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
   { PTPVendorExtensionNikon, PTPPropertyCodeCanonDriveMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Capture mode" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonAperture, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
@@ -115,7 +115,7 @@ struct dslr_properties {
   { PTPVendorExtensionCanon, PTPPropertyCodeBatteryLevel, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "Battery level" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonExpCompensation, DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME, "Exposure compensation" },
   { PTPVendorExtensionCanon, PTPPropertyCodeCanonDriveMode, DSLR_CAPTURE_MODE_PROPERTY_NAME, "Drive mode" },
-  
+
   { PTPVendorExtensionSony, PTPPropertyCodeExposureProgramMode, DSLR_PROGRAM_PROPERTY_NAME, "Exposure program" },
   { PTPVendorExtensionSony, PTPPropertyCodeFNumber, DSLR_APERTURE_PROPERTY_NAME, "Aperture" },
   { PTPVendorExtensionSony, PTPPropertyCodeSonyShutterSpeed, DSLR_SHUTTER_PROPERTY_NAME, "Shutter" },
@@ -496,14 +496,14 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 -(void)cameraAdded:(PTPCamera *)camera {
 	indigo_log("%s added", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
-	static indigo_device ccd_template = {
-		"", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
+		"",
 		ccd_attach,
 		ccd_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
-	};
+	);
 	ica_private_data *private_data = malloc(sizeof(ica_private_data));
 	assert(private_data);
 	memset(private_data, 0, sizeof(ica_private_data));
@@ -874,14 +874,14 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 -(void)cameraCanFocus:(PTPCamera *)camera {
   indigo_device *device = [(NSValue *)camera.userData pointerValue];
-  static indigo_device focuser_template = {
-    "", -1, false, 0, NULL, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT,
+  static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
+    "",
     focuser_attach,
     indigo_focuser_enumerate_properties,
     focuser_change_property,
     NULL,
     focuser_detach
-  };
+  );
   indigo_device *focuser = malloc(sizeof(indigo_device));
   assert(focuser != NULL);
   memcpy(focuser, &focuser_template, sizeof(indigo_device));
@@ -951,17 +951,17 @@ indigo_result indigo_ccd_ica(indigo_driver_action action, indigo_driver_info *in
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
   static PTPBrowser* browser;
   static PTPDelegate* delegate;
-  
+
 	SET_DRIVER_INFO(info, "ICA Camera", __FUNCTION__, DRIVER_VERSION, last_action);
-	
+
   if (delegate == NULL)
     delegate = [[PTPDelegate alloc] init];
 	if (browser == NULL)
     browser = [[PTPBrowser alloc] initWithDelegate:delegate];
-	
+
 	if (action == last_action)
 		return INDIGO_OK;
-	
+
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -974,6 +974,6 @@ indigo_result indigo_ccd_ica(indigo_driver_action action, indigo_driver_info *in
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-	
+
 	return INDIGO_OK;
 }
