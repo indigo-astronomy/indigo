@@ -242,6 +242,7 @@ static bool asi_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		if (indigo_try_global_lock(device) != INDIGO_OK) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			PRIVATE_DATA->count_open--;
 			return false;
