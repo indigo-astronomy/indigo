@@ -24,7 +24,7 @@
  \file indigo_ccd_dsi.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME		"indigo_ccd_dsi"
 
 #include <stdlib.h>
@@ -87,6 +87,12 @@ static bool camera_open(indigo_device *device) {
 	if (device->is_connected) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	if (indigo_try_global_lock(device) != INDIGO_OK) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+		return false;
+	}
 
 	PRIVATE_DATA->dsi = dsi_open_camera(PRIVATE_DATA->dev_sid);
 	if (PRIVATE_DATA->dsi == NULL) {
@@ -181,6 +187,7 @@ static void camera_close(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	dsi_close_camera(PRIVATE_DATA->dsi);
+	indigo_global_unlock(device);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->buffer != NULL) {
 		free(PRIVATE_DATA->buffer);
@@ -331,8 +338,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
 					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
 
-					//sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
-					//sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
 					sprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "%s", dsi_get_serial_number(PRIVATE_DATA->dsi));
 					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", dsi_get_model_name(PRIVATE_DATA->dsi));
 
@@ -409,9 +414,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
-					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					return INDIGO_FAILED;
 				}
 			}
 		} else {
@@ -421,6 +423,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				camera_close(device);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+
 			}
 		}
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
@@ -493,6 +496,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	indigo_global_unlock(device);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
