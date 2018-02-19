@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -241,6 +241,11 @@ static bool asi_open(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
+		if (indigo_try_global_lock(device) != INDIGO_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
 		res = ASIOpenCamera(id);
 		if (res) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -406,6 +411,7 @@ static void asi_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		ASICloseCamera(PRIVATE_DATA->dev_id);
+		indigo_global_unlock(device);
 		if (PRIVATE_DATA->buffer != NULL) {
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
@@ -1251,6 +1257,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
+	if (device == device->master_device)
+		indigo_global_unlock(device);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
@@ -1508,6 +1517,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				}
 
 				indigo_device *device = malloc(sizeof(indigo_device));
+				indigo_device *master_device = device;
 				int index = find_index_by_device_id(id);
 				if (index < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
@@ -1517,6 +1527,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				ASIGetCameraProperty(&info, index);
 				assert(device != NULL);
 				memcpy(device, &ccd_template, sizeof(indigo_device));
+				device->master_device = master_device;
 				sprintf(device->name, "%s #%d", info.Name, id);
 				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				asi_private_data *private_data = malloc(sizeof(asi_private_data));
@@ -1538,6 +1549,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					device = malloc(sizeof(indigo_device));
 					assert(device != NULL);
 					memcpy(device, &guider_template, sizeof(indigo_device));
+					device->master_device = master_device;
 					sprintf(device->name, "%s Guider #%d", info.Name, id);
 					INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 					device->private_data = private_data;
