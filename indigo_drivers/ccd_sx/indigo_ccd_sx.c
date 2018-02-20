@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -695,7 +695,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (PRIVATE_DATA->device_count++ == 0) {
 					CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					result = sx_open(device);
+					if (indigo_try_global_lock(device) != INDIGO_OK) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+						result = false;
+					} else {
+						result = sx_open(device);
+					}
 				}
 				if (result) {
 					CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->ccd_width;
@@ -730,6 +735,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperture_timer);
 				if (--PRIVATE_DATA->device_count == 0) {
 					sx_close(device);
+					indigo_global_unlock(device);
 				}
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -800,6 +806,10 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	if (device == device->master_device)
+		indigo_global_unlock(device);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
@@ -848,7 +858,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				if (PRIVATE_DATA->device_count++ == 0) {
 					CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					result = sx_open(device);
+					if (indigo_try_global_lock(device) != INDIGO_OK) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+						result = false;
+					} else {
+						result = sx_open(device);
+					}
 				}
 				if (result) {
 					assert(PRIVATE_DATA->extra_caps & CAPS_STAR2K);
@@ -865,6 +880,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			if (device->is_connected) {
 				if (--PRIVATE_DATA->device_count == 0) {
 					sx_close(device);
+					indigo_global_unlock(device);
 				}
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -919,6 +935,10 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	if (device == device->master_device)
+		indigo_global_unlock(device);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
@@ -1006,8 +1026,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				private_data->dev = dev;
 				libusb_ref_device(dev);
 				indigo_device *device = malloc(sizeof(indigo_device));
+				indigo_device *master_device = device;
 				assert(device != NULL);
 				memcpy(device, &ccd_template, sizeof(indigo_device));
+				device->master_device = master_device;
 				strncpy(device->name, SX_PRODUCTS[i].name, INDIGO_NAME_SIZE);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
@@ -1019,6 +1041,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				device = malloc(sizeof(indigo_device));
 				assert(device != NULL);
 				memcpy(device, &guider_template, sizeof(indigo_device));
+				device->master_device = master_device;
 				strncpy(device->name, SX_PRODUCTS[i].name, INDIGO_NAME_SIZE - 10);
 				strcat(device->name, " (guider)");
 				device->private_data = private_data;
