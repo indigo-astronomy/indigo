@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -163,6 +163,12 @@ static bool fli_open(indigo_device *device) {
 	if (device->is_connected) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	if (indigo_try_global_lock(device) != INDIGO_OK) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+		return false;
+	}
 
 	long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 	id = PRIVATE_DATA->dev_id;
@@ -400,6 +406,7 @@ static void fli_close(indigo_device *device) {
 	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
+	indigo_global_unlock(device);
 	if (PRIVATE_DATA->buffer != NULL) {
 		free(PRIVATE_DATA->buffer);
 		PRIVATE_DATA->buffer = NULL;
@@ -923,6 +930,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	indigo_global_unlock(device);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
