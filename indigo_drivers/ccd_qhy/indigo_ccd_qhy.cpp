@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_qhy"
 
 #include <stdlib.h>
@@ -190,6 +190,13 @@ static bool qhy_open(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
+		if (indigo_try_global_lock(device) != INDIGO_OK) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			PRIVATE_DATA->count_open--;
+			return false;
+		}
+
 		/* UGLY KLUDGE !!!
 		   QHY5LII segfaults at second open-close cycle after&PRIVATE_DATA->total_frame_width,
 			&PRIVATE_DATA->total_frame_height, scan
@@ -462,6 +469,7 @@ static void qhy_close(indigo_device *device) {
 			CloseQHYCCD(PRIVATE_DATA->handle);
 			PRIVATE_DATA->handle = NULL;
 		}
+		indigo_global_unlock(device);
 		if (PRIVATE_DATA->buffer != NULL) {
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
@@ -1171,6 +1179,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
+	if (device == device->master_device)
+		indigo_global_unlock(device);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
@@ -1252,6 +1263,10 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	if (device == device->master_device)
+		indigo_global_unlock(device);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
@@ -1411,8 +1426,10 @@ static void process_plug_event() {
 	CloseQHYCCD(handle);
 
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
+	indigo_device *master_device = device;
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
+	device->master_device = master_device;
 	sprintf(device->name, "%s #%s", dev_name, dev_usbpath);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	qhy_private_data *private_data = (qhy_private_data*)malloc(sizeof(qhy_private_data));
@@ -1433,6 +1450,7 @@ static void process_plug_event() {
 		device = (indigo_device*)malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &guider_template, sizeof(indigo_device));
+		device->master_device = master_device;
 		sprintf(device->name, "%s Guider #%s", dev_name, dev_usbpath);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
