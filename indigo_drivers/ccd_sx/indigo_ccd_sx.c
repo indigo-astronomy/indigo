@@ -726,6 +726,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
+					PRIVATE_DATA->device_count--;
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				}
