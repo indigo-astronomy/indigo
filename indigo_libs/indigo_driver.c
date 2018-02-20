@@ -68,7 +68,7 @@
 #include "indigo_io.h"
 
 indigo_result indigo_try_global_lock(indigo_device *device) {
-#if defined(INDIGO_MACOS)
+#if defined(INDIGO_MACOS_SANDBOXED)
 	return INDIGO_OK;
 #else
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
@@ -107,7 +107,7 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 
 
 indigo_result indigo_global_unlock(indigo_device *device) {
-#if defined(INDIGO_MACOS)
+#if defined(INDIGO_MACOS_SANDBOXED)
 	return INDIGO_OK;
 #else
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
