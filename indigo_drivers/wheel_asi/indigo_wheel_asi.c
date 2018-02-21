@@ -113,27 +113,27 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					return INDIGO_FAILED;
-				}
-
-				EFWGetID(index, &(PRIVATE_DATA->dev_id));
-				int res = EFWOpen(PRIVATE_DATA->dev_id);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				if (!res) {
-					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					EFWGetProperty(PRIVATE_DATA->dev_id, &info);
-					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
-					EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					PRIVATE_DATA->target_slot++;
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					device->is_connected = true;
-					PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWOpen(%d) = %d", index, res);
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					return INDIGO_FAILED;
+					EFWGetID(index, &(PRIVATE_DATA->dev_id));
+					int res = EFWOpen(PRIVATE_DATA->dev_id);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					if (!res) {
+						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+						EFWGetProperty(PRIVATE_DATA->dev_id, &info);
+						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
+						EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						PRIVATE_DATA->target_slot++;
+						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+						device->is_connected = true;
+						PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWOpen(%d) = %d", index, res);
+						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+					}
 				}
 			}
 		} else {
@@ -147,8 +147,6 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
-
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
