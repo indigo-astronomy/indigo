@@ -23,7 +23,7 @@
  \file indigo_wheel_asi.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_wheel_asi"
 
 #include <stdlib.h>
@@ -107,6 +107,15 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+				if (indigo_try_global_lock(device) != INDIGO_OK) {
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					return INDIGO_FAILED;
+				}
+
 				EFWGetID(index, &(PRIVATE_DATA->dev_id));
 				int res = EFWOpen(PRIVATE_DATA->dev_id);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -132,6 +141,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				EFWClose(PRIVATE_DATA->dev_id);
 				EFWGetID(index, &(PRIVATE_DATA->dev_id));
+				indigo_global_unlock(device);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -166,6 +176,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_device_disconnect(NULL, device->name);
+	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
