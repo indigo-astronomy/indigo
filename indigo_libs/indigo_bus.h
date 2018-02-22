@@ -506,6 +506,10 @@ extern bool indigo_reshare_remote_devices;
  */
 extern bool indigo_use_host_suffix;
 
+/** Is sandboxed environment (macOS only).
+ */
+extern bool indigo_is_sandboxed;
+	
 #ifdef __cplusplus
 }
 #endif

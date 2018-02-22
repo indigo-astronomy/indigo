@@ -92,6 +92,7 @@ void (*indigo_log_message_handler)(const char *message) = NULL;
 char indigo_local_service_name[INDIGO_NAME_SIZE] = "";
 bool indigo_reshare_remote_devices = false;
 bool indigo_use_host_suffix = true;
+bool indigo_is_sandboxed = false;
 
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
