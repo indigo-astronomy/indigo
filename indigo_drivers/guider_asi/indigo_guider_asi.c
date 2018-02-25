@@ -24,7 +24,7 @@
  \file indigo_guider_asi.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_guider_asi"
 
 #include <stdlib.h>
@@ -78,6 +78,11 @@ static bool asi_open(indigo_device *device) {
 	if (device->is_connected) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (indigo_try_global_lock(device) != INDIGO_OK) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+		return false;
+	}
 	res = USB2ST4Open(id);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -96,6 +101,7 @@ static void asi_close(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	USB2ST4Close(PRIVATE_DATA->dev_id);
+	indigo_global_unlock(device);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
@@ -259,6 +265,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
