@@ -66,7 +66,8 @@ static int find_index_by_device_id(int id);
 
 static void wheel_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
+	int res = EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_slot, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	PRIVATE_DATA->current_slot++;
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
@@ -117,12 +118,14 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				} else {
 					EFWGetID(index, &(PRIVATE_DATA->dev_id));
 					int res = EFWOpen(PRIVATE_DATA->dev_id);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (!res) {
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 						EFWGetProperty(PRIVATE_DATA->dev_id, &info);
 						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
-						EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+						res = EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot, res);
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 						PRIVATE_DATA->target_slot++;
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -139,8 +142,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		} else {
 			if (device->is_connected) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				EFWClose(PRIVATE_DATA->dev_id);
-				EFWGetID(index, &(PRIVATE_DATA->dev_id));
+				int res = EFWClose(PRIVATE_DATA->dev_id);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+				res = EFWGetID(index, &(PRIVATE_DATA->dev_id));
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
 				indigo_global_unlock(device);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				device->is_connected = false;
@@ -159,7 +164,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
+			int res = EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWSetPosition(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1, res);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
 		}
@@ -197,9 +203,11 @@ static bool connected_ids[EFW_ID_MAX];
 
 static int find_index_by_device_id(int id) {
 	int count = EFWGetNum();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
 	int cur_id;
-	for(int index = 0; index < count; index++) {
-		EFWGetID(index,&cur_id);
+	for (int index = 0; index < count; index++) {
+		int res = EFWGetID(index, &cur_id);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, cur_id, res);
 		if (cur_id == id) return index;
 	}
 	return -1;
@@ -208,10 +216,11 @@ static int find_index_by_device_id(int id) {
 
 static int find_plugged_device_id() {
 	int i, id = NO_DEVICE, new_id = NO_DEVICE;
-
 	int count = EFWGetNum();
-	for(i = 0; i < count; i++) {
-		EFWGetID(i, &id);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
+	for (i = 0; i < count; i++) {
+		int res = EFWGetID(i, &id);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
 		if(!connected_ids[id]) {
 			new_id = id;
 			connected_ids[id] = true;
@@ -246,8 +255,10 @@ static int find_unplugged_device_id() {
 	int i, id = -1;
 
 	int count = EFWGetNum();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
 	for(i = 0; i < count; i++) {
-		EFWGetID(i, &id);
+		int res = EFWGetID(i, &id);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", i, id, res);
 		dev_tmp[id] = true;
 	}
 
@@ -277,29 +288,39 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 	struct libusb_device_descriptor descriptor;
 
-	pthread_mutex_lock(&device_mutex);
+	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
+			libusb_get_device_descriptor(dev, &descriptor);
 			for (int i = 0; i < efw_id_count; i++) {
-				if (descriptor.idVendor != ASI_VENDOR_ID || efw_products[i] != descriptor.idProduct) continue;
+				if (descriptor.idVendor != ASI_VENDOR_ID || efw_products[i] != descriptor.idProduct) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI EFW device plugged (maybe ASI Camera)!");
+					continue;
+				}
 
 				int slot = find_available_device_slot();
 				if (slot < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-					pthread_mutex_unlock(&device_mutex);
+					//pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 
 				int id = find_plugged_device_id();
 				if (id == NO_DEVICE) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
-					pthread_mutex_unlock(&device_mutex);
+					//pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
-
+				while (true) {
+					int res = EFWGetProperty(id, &info);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d, -> { %d, '%s', %d }) = %d", index, info.ID, info.Name, info.slotNum, res);
+					if (res == EFW_SUCCESS)
+						break;
+					if (res != EFW_ERROR_MOVING)
+						return 0;
+					sleep(1);
+				}
 				indigo_device *device = malloc(sizeof(indigo_device));
-				EFWGetProperty(id, &info);
 				assert(device != NULL);
 				memcpy(device, &wheel_template, sizeof(indigo_device));
 				sprintf(device->name, "%s #%d", info.Name, id);
@@ -322,7 +343,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				if (slot < 0) continue;
 				indigo_device **device = &devices[slot];
 				if (*device == NULL) {
-					pthread_mutex_unlock(&device_mutex);
+					//pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
 				indigo_detach_device(*device);
@@ -333,11 +354,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				removed = true;
 			}
 			if (!removed) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "No ASI EFW device unplugged (maybe ASI Camera)!");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI EFW device unplugged (maybe ASI Camera)!");
 			}
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 
@@ -371,7 +392,10 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
+		for(int i = 0; i < EFW_ID_MAX; i++)
+			connected_ids[i] = false;
 		efw_id_count = EFWGetProductIDs(efw_products);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProductIDs(-> [ %d, %d, ... ]) = %d", efw_products[0], efw_products[1], efw_id_count);
 		if (efw_id_count <= 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported IDs.");
 			return INDIGO_FAILED;
