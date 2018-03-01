@@ -215,11 +215,11 @@ static int find_index_by_device_id(int id) {
 
 
 static int find_plugged_device_id() {
-	int i, id = NO_DEVICE, new_id = NO_DEVICE;
+	int id = NO_DEVICE, new_id = NO_DEVICE;
 	int count = EFWGetNum();
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
-	for (i = 0; i < count; i++) {
-		int res = EFWGetID(i, &id);
+	for (int index = 0; index < count; index++) {
+		int res = EFWGetID(index, &id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
 		if(!connected_ids[id]) {
 			new_id = id;
@@ -252,20 +252,20 @@ static int find_device_slot(int id) {
 
 static int find_unplugged_device_id() {
 	bool dev_tmp[EFW_ID_MAX] = {false};
-	int i, id = -1;
+	int id = -1;
 
 	int count = EFWGetNum();
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
-	for(i = 0; i < count; i++) {
-		int res = EFWGetID(i, &id);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", i, id, res);
+	for (int index = 0; index < count; index++) {
+		int res = EFWGetID(index, &id);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
 		dev_tmp[id] = true;
 	}
 
 	id = -1;
-	for(i = 0; i < EFW_ID_MAX; i++) {
-		if(connected_ids[i] && !dev_tmp[i]){
-			id = i;
+	for(int index = 0; index < EFW_ID_MAX; index++) {
+		if(connected_ids[index] && !dev_tmp[index]){
+			id = index;
 			connected_ids[id] = false;
 			break;
 		}
@@ -364,9 +364,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 
 static void remove_all_devices() {
-	int i;
-	for(i = 0; i < MAX_DEVICES; i++) {
-		indigo_device **device = &devices[i];
+	for (int index = 0; index < MAX_DEVICES; index++) {
+		indigo_device **device = &devices[index];
 		if (*device == NULL)
 			continue;
 		indigo_detach_device(*device);
@@ -374,8 +373,8 @@ static void remove_all_devices() {
 		free(*device);
 		*device = NULL;
 	}
-	for(i = 0; i < EFW_ID_MAX; i++)
-		connected_ids[i] = false;
+	for (int index = 0; index < EFW_ID_MAX; index++)
+		connected_ids[index] = false;
 }
 
 
@@ -392,8 +391,8 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		for(int i = 0; i < EFW_ID_MAX; i++)
-			connected_ids[i] = false;
+		for(int index = 0; index < EFW_ID_MAX; index++)
+			connected_ids[index] = false;
 		efw_id_count = EFWGetProductIDs(efw_products);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProductIDs(-> [ %d, %d, ... ]) = %d", efw_products[0], efw_products[1], efw_id_count);
 		if (efw_id_count <= 0) {
