@@ -208,7 +208,7 @@ static int find_index_by_device_id(int id) {
 	for (int index = 0; index < count; index++) {
 		int res = EFWGetID(index, &cur_id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, cur_id, res);
-		if (cur_id == id) return index;
+		if (res == EFW_SUCCESS && cur_id == id) return index;
 	}
 	return -1;
 }
@@ -221,7 +221,7 @@ static int find_plugged_device_id() {
 	for (int index = 0; index < count; index++) {
 		int res = EFWGetID(index, &id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
-		if(!connected_ids[id]) {
+		if (res == EFW_SUCCESS && !connected_ids[id]) {
 			new_id = id;
 			connected_ids[id] = true;
 			break;
@@ -251,7 +251,7 @@ static int find_device_slot(int id) {
 
 
 static int find_unplugged_device_id() {
-	bool dev_tmp[EFW_ID_MAX] = {false};
+	bool dev_tmp[EFW_ID_MAX] = { false };
 	int id = -1;
 
 	int count = EFWGetNum();
@@ -259,12 +259,13 @@ static int find_unplugged_device_id() {
 	for (int index = 0; index < count; index++) {
 		int res = EFWGetID(index, &id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
-		dev_tmp[id] = true;
+		if (res == EFW_SUCCESS)
+			dev_tmp[id] = true;
 	}
 
 	id = -1;
-	for(int index = 0; index < EFW_ID_MAX; index++) {
-		if(connected_ids[index] && !dev_tmp[index]){
+	for (int index = 0; index < EFW_ID_MAX; index++) {
+		if (connected_ids[index] && !dev_tmp[index]) {
 			id = index;
 			connected_ids[id] = false;
 			break;
@@ -313,7 +314,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				}
 				while (true) {
 					int res = EFWGetProperty(id, &info);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d, -> { %d, '%s', %d }) = %d", index, info.ID, info.Name, info.slotNum, res);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d, -> { %d, '%s', %d }) = %d", id, info.ID, info.Name, info.slotNum, res);
 					if (res == EFW_SUCCESS)
 						break;
 					if (res != EFW_ERROR_MOVING)
