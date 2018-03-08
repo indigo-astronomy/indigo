@@ -1,14 +1,16 @@
 # ANDOR CCD driver
+http://www.andor.com
 
 ## Supported devices
 ANDOR USB CCD Cameras
 
-All devices should be connected on startup.
+This driver does not support hot-plug due to Andor SDK limitation.
+All devices should be connected on driver startup.
 
 ## Supported platforms
 
-This driver is Linux/Intel specific. The user must provide his own copy of Andor SDK.
-Andor SDK is not free. Please see http://www.andor.com
+This driver is Linux/Intel (32-bit and 64-bit) specific. The user must provide his own copy of Andor SDK.
+Andor SDK is not free. Please see http://www.andor.com/scientific-software/software-development-kit
 
 ## License
 
