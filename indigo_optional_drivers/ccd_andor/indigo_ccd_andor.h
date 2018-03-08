@@ -28,9 +28,6 @@
 
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
-#include "indigo_guider_driver.h"
-#include "indigo_wheel_driver.h"
-#include "indigo_focuser_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
