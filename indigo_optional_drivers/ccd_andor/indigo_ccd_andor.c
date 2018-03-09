@@ -389,7 +389,12 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 
-			at_32 res = Initialize("/usr/local/etc/andor");
+			const char default_path[] = "/usr/local/etc/andor";
+			char *andor_path = getenv("ANDOR_SDK_PATH");
+			if (andor_path == NULL) andor_path = (char *)default_path;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ANDOR_SDK_PATH = %s", andor_path);
+
+			at_32 res = Initialize(andor_path);
 			if(res != DRV_SUCCESS) {
 				switch (res) {
 				case DRV_ERROR_NOCAMERA:
