@@ -16,7 +16,7 @@ OS_DETECTED := $(shell uname -s)
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
 	CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -I$(ROOT)/indigo_libs -I$(ROOT)/indigo_drivers -I $(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -L $(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
+	LDFLAGS=-lm -L $(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	AR=ar
 	ARFLAGS=-rv
@@ -37,10 +37,10 @@ $(BUILD_DRIVERS)/$(DRIVER_NAME).a: $(DRIVER_NAME).o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/$(DRIVER_NAME): $(DRIVER_NAME)_main.o $(BUILD_DRIVERS)/$(DRIVER_NAME).a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -landor
 
 $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT): $(DRIVER_NAME).o
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -landor
 
 clean:
 	rm $(BUILD_DRIVERS)/$(DRIVER_NAME).a $(BUILD_DRIVERS)/$(DRIVER_NAME) $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT) $(DRIVER_NAME)_main.o $(DRIVER_NAME).o

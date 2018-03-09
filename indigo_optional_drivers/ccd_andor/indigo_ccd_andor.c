@@ -388,6 +388,44 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+
+			at_32 res = Initialize("/usr/local/etc/andor");
+			if(res != DRV_SUCCESS) {
+				switch (res) {
+				case DRV_ERROR_NOCAMERA:
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: No camera found.");
+					break;
+				case DRV_USBERROR:
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to detect USB device or not USB2.0");
+					break;
+				case DRV_ERROR_PAGELOCK:
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to acquire lock on requested memory.");
+					break;
+				case DRV_INIERROR:
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load DETECTOR.INI.");
+					break;
+				case DRV_VXDNOTINSTALLED:
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: VxD not loaded.");
+					break;
+				case DRV_COFERROR:
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load *.COF");
+					break;
+				case DRV_FLEXERROR:
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load *.RBF");
+					break;
+				case DRV_ERROR_FILELOAD:
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load “*.COF” or “*.RBF” files.");
+					break;
+				default:
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialisation error: %d", res);
+				}
+				break;
+			}
+
+			at_32 camera_num;
+			GetAvailableCameras(&camera_num);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d cameras detected.", camera_num);
+
 			private_data = malloc(sizeof(andor_private_data));
 			pthread_mutex_init(&private_data->image_mutex, NULL);
 			assert(private_data != NULL);

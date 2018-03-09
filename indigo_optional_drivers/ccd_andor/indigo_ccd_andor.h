@@ -28,6 +28,7 @@
 
 #include "indigo_driver.h"
 #include "indigo_ccd_driver.h"
+#include "atmcdLXd.h"
 
 #ifdef __cplusplus
 extern "C" {
