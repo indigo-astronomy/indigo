@@ -55,7 +55,7 @@
 #define DSLR_ISO_PROPERTY						PRIVATE_DATA->dslr_iso_property
 
 typedef struct {
-	at_32 handle;
+	long handle;
 	int index;
 	indigo_property *dslr_program_property;
 	indigo_property *dslr_capture_mode_property;
@@ -71,6 +71,15 @@ typedef struct {
 	indigo_timer *exposure_timer, *temperature_timer;
 	double ra_offset, dec_offset;
 } andor_private_data;
+
+static bool use_camera(indigo_device *device) {
+	at_32 res = SetCurrentCamera(PRIVATE_DATA->handle);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCurrentCamera(%d) error: Invalid camera handle.", PRIVATE_DATA->handle);
+		return false;
+	}
+	return true;
+}
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 static void exposure_timer_callback(indigo_device *device) {
@@ -372,6 +381,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 		ccd_detach
 	);
 
+	at_32 res;
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, CCD_ANDOR_CAMERA_NAME, __FUNCTION__, DRIVER_VERSION, last_action);
@@ -388,7 +398,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 			if (andor_path == NULL) andor_path = (char *)default_path;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ANDOR_SDK_PATH = %s", andor_path);
 
-			at_32 res = Initialize(andor_path);
+			res = Initialize(andor_path);
 			if(res != DRV_SUCCESS) {
 				switch (res) {
 				case DRV_ERROR_NOCAMERA:
@@ -422,13 +432,11 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 				break;
 			}
 
-			GetAvailableCameras(&device_num);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d cameras detected.", device_num);
-			for (int i = 0; i < device_num; i++) {
-				at_32 handle;
-				GetCameraHandle(i, &handle);
-				SetCurrentCamera(handle);
+			res = GetAvailableCameras(&device_num);
+			if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAvailableCameras() error: %d", res);
+			else INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d cameras detected.", device_num);
 
+			for (int i = 0; i < device_num; i++) {
 				andor_private_data *private_data = malloc(sizeof(andor_private_data));
 				pthread_mutex_init(&private_data->image_mutex, NULL);
 				assert(private_data != NULL);
@@ -436,9 +444,22 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 				indigo_device *device = malloc(sizeof(indigo_device));
 				assert(device != NULL);
 				memcpy(device, &imager_camera_template, sizeof(indigo_device));
+
+				at_32 handle;
+				res = GetCameraHandle(i, &handle);
+				if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraHandle() error: %d", res);
+
+				res = SetCurrentCamera(handle);
+				if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCurrentCamera() error: %d", res);
+
 				char head_name[255];
-				GetHeadModel(head_name);
-				snprintf(device->name, sizeof(device->name), "Andor %s #%d", head_name, i);
+				res = GetHeadModel(head_name);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() error: %d", res);
+					head_name[0] = '\0';
+				}
+				snprintf(device->name, sizeof(device->name), "Andor%s #%d", head_name, i);
+
 				private_data->index = i;
 				private_data->handle = handle;
 				device->private_data = private_data;
