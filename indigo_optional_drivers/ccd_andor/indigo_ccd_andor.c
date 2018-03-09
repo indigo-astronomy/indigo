@@ -34,7 +34,6 @@
 #include <pthread.h>
 
 #include "indigo_driver_xml.h"
-
 #include "indigo_ccd_andor.h"
 
 #define WIDTH               1600
@@ -56,7 +55,8 @@
 #define DSLR_ISO_PROPERTY						PRIVATE_DATA->dslr_iso_property
 
 typedef struct {
-	indigo_device *imager, *guider, *dslr;
+	at_32 handle;
+	int index;
 	indigo_property *dslr_program_property;
 	indigo_property *dslr_capture_mode_property;
 	indigo_property *dslr_aperture_property;
@@ -68,9 +68,7 @@ typedef struct {
 	char image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	pthread_mutex_t image_mutex;
 	double target_temperature, current_temperature;
-	int target_slot, current_slot;
-	int target_position, current_position;
-	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
+	indigo_timer *exposure_timer, *temperature_timer;
 	double ra_offset, dec_offset;
 } andor_private_data;
 
@@ -95,7 +93,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		double gamma = CCD_GAMMA_ITEM->number.value;
 		bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
 
-		if (device == PRIVATE_DATA->imager && light_frame) {
+		if (light_frame) {
 		}
 		indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -209,20 +207,18 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_ccd_enumerate_properties(device, client, property)) == INDIGO_OK) {
 		if (IS_CONNECTED) {
-			if (device == PRIVATE_DATA->dslr) {
-				if (indigo_property_match(DSLR_PROGRAM_PROPERTY, property))
-					indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-				if (indigo_property_match(DSLR_CAPTURE_MODE_PROPERTY, property))
-					indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
-				if (indigo_property_match(DSLR_APERTURE_PROPERTY, property))
-					indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
-				if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property))
-					indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-				if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property))
-					indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
-				if (indigo_property_match(DSLR_ISO_PROPERTY, property))
-					indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
-			}
+			if (indigo_property_match(DSLR_PROGRAM_PROPERTY, property))
+				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+			if (indigo_property_match(DSLR_CAPTURE_MODE_PROPERTY, property))
+				indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
+			if (indigo_property_match(DSLR_APERTURE_PROPERTY, property))
+				indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
+			if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property))
+				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+			if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property))
+				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+			if (indigo_property_match(DSLR_ISO_PROPERTY, property))
+				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -243,28 +239,27 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
 					return INDIGO_OK;
 				}
-				if (device == PRIVATE_DATA->dslr) {
-					indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
-					indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
-				}
+				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
+
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 				device->is_connected = true;
 			}
 		} else {
 			if (device->is_connected) {  /* Do not double close device */
 				indigo_global_unlock(device);
-				if (device == PRIVATE_DATA->dslr) {
-					indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
-					indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
-				}
+
+				indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
+
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				device->is_connected = false;
 			}
@@ -349,9 +344,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
-		indigo_global_unlock(device);
-	}
-	if (device == PRIVATE_DATA->dslr) {
+
 		indigo_release_property(DSLR_PROGRAM_PROPERTY);
 		indigo_release_property(DSLR_CAPTURE_MODE_PROPERTY);
 		indigo_release_property(DSLR_APERTURE_PROPERTY);
@@ -365,8 +358,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static andor_private_data *private_data = NULL;
-static indigo_device *imager_ccd = NULL;
+#define MAX_DEVICES 8
+static indigo_device *devices[MAX_DEVICES] = {NULL};
+at_32 device_num = 0;
 
 indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device imager_camera_template = INDIGO_DEVICE_INITIALIZER(
@@ -424,36 +418,50 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 				default:
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialisation error: %d", res);
 				}
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No camera connected or ANDOR_SDK_PATH is not valid.");
 				break;
 			}
 
-			at_32 camera_num;
-			GetAvailableCameras(&camera_num);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d cameras detected.", camera_num);
+			GetAvailableCameras(&device_num);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d cameras detected.", device_num);
+			for (int i = 0; i < device_num; i++) {
+				at_32 handle;
+				GetCameraHandle(i, &handle);
+				SetCurrentCamera(handle);
 
-			private_data = malloc(sizeof(andor_private_data));
-			pthread_mutex_init(&private_data->image_mutex, NULL);
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(andor_private_data));
-			imager_ccd = malloc(sizeof(indigo_device));
-			assert(imager_ccd != NULL);
-			memcpy(imager_ccd, &imager_camera_template, sizeof(indigo_device));
-			imager_ccd->private_data = private_data;
-			private_data->imager = imager_ccd;
-			indigo_attach_device(imager_ccd);
+				andor_private_data *private_data = malloc(sizeof(andor_private_data));
+				pthread_mutex_init(&private_data->image_mutex, NULL);
+				assert(private_data != NULL);
+				memset(private_data, 0, sizeof(andor_private_data));
+				indigo_device *device = malloc(sizeof(indigo_device));
+				assert(device != NULL);
+				memcpy(device, &imager_camera_template, sizeof(indigo_device));
+				char head_name[255];
+				GetHeadModel(head_name);
+				snprintf(device->name, sizeof(device->name), "Andor %s #%d", head_name, i);
+				private_data->index = i;
+				private_data->handle = handle;
+				device->private_data = private_data;
+				indigo_attach_device(device);
+				devices[i] = device;
+			}
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
-			if (imager_ccd != NULL) {
-				indigo_detach_device(imager_ccd);
-				free(imager_ccd);
-				imager_ccd = NULL;
-			}
-			if (private_data != NULL) {
-				pthread_mutex_destroy(&private_data->image_mutex);
-				free(private_data);
-				private_data = NULL;
+			ShutDown();
+			for (int i = 0; i < device_num; i++) {
+				if (devices[i] != NULL) {
+					andor_private_data *private_data = devices[i]->private_data;
+					indigo_detach_device(devices[i]);
+					free(devices[i]);
+					devices[i] = NULL;
+
+					if (private_data != NULL) {
+						pthread_mutex_destroy(&private_data->image_mutex);
+						free(private_data);
+					}
+				}
 			}
 			break;
 
