@@ -48,21 +48,11 @@
 
 #define PRIVATE_DATA								((andor_private_data *)device->private_data)
 #define DSLR_PROGRAM_PROPERTY				PRIVATE_DATA->dslr_program_property
-#define DSLR_CAPTURE_MODE_PROPERTY	PRIVATE_DATA->dslr_capture_mode_property
-#define DSLR_APERTURE_PROPERTY			PRIVATE_DATA->dslr_aperture_property
-#define DSLR_SHUTTER_PROPERTY				PRIVATE_DATA->dslr_shutter_property
-#define DSLR_COMPRESSION_PROPERTY		PRIVATE_DATA->dslr_compression_property
-#define DSLR_ISO_PROPERTY						PRIVATE_DATA->dslr_iso_property
 
 typedef struct {
 	long handle;
 	int index;
 	indigo_property *dslr_program_property;
-	indigo_property *dslr_capture_mode_property;
-	indigo_property *dslr_aperture_property;
-	indigo_property *dslr_shutter_property;
-	indigo_property *dslr_compression_property;
-	indigo_property *dslr_iso_property;
 
 	int star_x[STARS], star_y[STARS], star_a[STARS];
 	char image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
@@ -164,6 +154,14 @@ static indigo_result ccd_attach(indigo_device *device) {
 		SIMULATION_ENABLED_ITEM->sw.value = true;
 		SIMULATION_DISABLED_ITEM->sw.value = false;
 
+		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "DSLR", "Program mode", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 0, "M", "Manual", true);
+
+		CCD_MODE_PROPERTY->perm = INDIGO_RO_PERM;
+		CCD_MODE_PROPERTY->count = 1;
+		indigo_init_switch_item(CCD_MODE_PROPERTY->items + 0, "1600x1200", "1600x1200", true);
+
+
 			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = HEIGHT;
@@ -218,16 +216,6 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 		if (IS_CONNECTED) {
 			if (indigo_property_match(DSLR_PROGRAM_PROPERTY, property))
 				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_CAPTURE_MODE_PROPERTY, property))
-				indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_APERTURE_PROPERTY, property))
-				indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property))
-				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property))
-				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_ISO_PROPERTY, property))
-				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -249,11 +237,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					return INDIGO_OK;
 				}
 				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-				indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
-				indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
-				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
-				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 				device->is_connected = true;
@@ -263,11 +246,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_global_unlock(device);
 
 				indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-				indigo_delete_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
-				indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
-				indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
-				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
 
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				device->is_connected = false;
@@ -326,25 +304,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
-	} else if (DSLR_APERTURE_PROPERTY && indigo_property_match(DSLR_APERTURE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DSLR_APERTURE
-		indigo_property_copy_values(DSLR_APERTURE_PROPERTY, property, false);
-		DSLR_APERTURE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DSLR_APERTURE_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (DSLR_SHUTTER_PROPERTY && indigo_property_match(DSLR_SHUTTER_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DSLR_SHUTTER
-		indigo_property_copy_values(DSLR_SHUTTER_PROPERTY, property, false);
-		DSLR_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (DSLR_ISO_PROPERTY && indigo_property_match(DSLR_ISO_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DSLR_ISO
-		indigo_property_copy_values(DSLR_ISO_PROPERTY, property, false);
-		DSLR_ISO_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
-		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
 }
@@ -355,11 +314,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 
 		indigo_release_property(DSLR_PROGRAM_PROPERTY);
-		indigo_release_property(DSLR_CAPTURE_MODE_PROPERTY);
-		indigo_release_property(DSLR_APERTURE_PROPERTY);
-		indigo_release_property(DSLR_SHUTTER_PROPERTY);
-		indigo_release_property(DSLR_COMPRESSION_PROPERTY);
-		indigo_release_property(DSLR_ISO_PROPERTY);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
