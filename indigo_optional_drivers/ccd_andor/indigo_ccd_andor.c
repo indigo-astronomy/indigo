@@ -54,8 +54,6 @@ typedef struct {
 	int index;
 	indigo_property *dslr_program_property;
 
-	int star_x[STARS], star_y[STARS], star_a[STARS];
-	char image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	unsigned char *buffer;
 	long buffer_size;
 	pthread_mutex_t usb_mutex;
@@ -112,7 +110,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	}
 
 	//Setup Image dimensions
-	res = SetImage(bin_x, bin_y, offset_x+1, frame_width, offset_y+1, frame_height);
+	res = SetImage(bin_x, bin_y, offset_x+1, offset_x+frame_width, offset_y+1, offset_y+frame_height);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetImage(%d, %d, %d, %d, %d, %d) = %d", bin_x, bin_y, offset_x, frame_width, offset_y, frame_height, res);
 		return false;
@@ -322,11 +320,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 
 			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
-			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
-			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = HEIGHT;
 			CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-			CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.max = 4;
-			CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.max = 4;
 			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 			CCD_MODE_PROPERTY->count = 3;
 			char name[32];
@@ -336,23 +330,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 			indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
 			sprintf(name, "RAW %dx%d", WIDTH/4, HEIGHT/4);
 			indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
-			CCD_INFO_PIXEL_SIZE_ITEM->number.value = 5.2;
-			CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 5.2;
-			CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 5.2;
-			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+
 			// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
 			CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 			// -------------------------------------------------------------------------------- CCD_IMAGE
-			for (int i = 0; i < 10; i++) {
-				PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
-				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-				PRIVATE_DATA->star_a[i] = 500 * (rand() % 100);       // and brightness
-			}
-			for (int i = 10; i < STARS; i++) {
-				PRIVATE_DATA->star_x[i] = rand() % WIDTH; // generate some star positions
-				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-				PRIVATE_DATA->star_a[i] = 50 * (rand() % 30);       // and brightness
-			}
 			// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
 			CCD_COOLER_PROPERTY->hidden = false;
 			CCD_TEMPERATURE_PROPERTY->hidden = false;
@@ -425,12 +406,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
 
 				int max_bin;
+				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 				// 4 is Image mode, 0 is horizontal binning
 				GetMaximumBinning (4, 0, &max_bin);
 				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+				CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
+
 				// 4 is Image mode, 1 is vertical binning
 				GetMaximumBinning (4, 1, &max_bin);
 				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
+				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+				CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
+
+				// Should be obtained
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 				device->is_connected = true;
