@@ -154,7 +154,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		SIMULATION_ENABLED_ITEM->sw.value = true;
 		SIMULATION_DISABLED_ITEM->sw.value = false;
 
-		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "DSLR", "Program mode", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "Advanced", "Program mode", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 0, "M", "Manual", true);
 
 		CCD_MODE_PROPERTY->perm = INDIGO_RO_PERM;
@@ -233,10 +233,41 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (!device->is_connected) { /* Do not double open device */
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
 					indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
 					return INDIGO_OK;
 				}
+
 				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+
+				if(use_camera(device) == false) {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
+					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+					indigo_global_unlock(device);
+					return INDIGO_OK;
+				}
+
+				int width, height;
+				GetDetector(&width, &height);
+				CCD_INFO_WIDTH_ITEM->number.value = width;
+				CCD_INFO_HEIGHT_ITEM->number.value = height;
+				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
+				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
+
+				float x_size, y_size;
+				GetPixelSize(&x_size, &y_size);
+				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = x_size;
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = y_size;
+				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
+
+				int max_bin;
+				// 4 is Image mode, 0 is horizontal binning
+				GetMaximumBinning (4, 0, &max_bin);
+				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+				// 4 is Image mode, 1 is vertical binning
+				GetMaximumBinning (4, 1, &max_bin);
+				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
 
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 				device->is_connected = true;
@@ -244,9 +275,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			if (device->is_connected) {  /* Do not double close device */
 				indigo_global_unlock(device);
-
 				indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				device->is_connected = false;
 			}
