@@ -58,7 +58,7 @@ typedef struct {
 	char image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	unsigned char *buffer;
 	long buffer_size;
-	pthread_mutex_t image_mutex;
+	pthread_mutex_t usb_mutex;
 	bool no_check_temperature;
 	double target_temperature, current_temperature;
 	indigo_timer *exposure_timer, *temperature_timer;
@@ -112,15 +112,80 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	}
 
 	//Setup Image dimensions
-	res = SetImage(bin_x, bin_y, offset_x, frame_width, offset_y, frame_height);
+	res = SetImage(bin_x, bin_y, offset_x+1, frame_width, offset_y+1, frame_height);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetImage(%d, %d, %d, %d, %d, %d) = %d", bin_x, bin_y, offset_x, frame_width, offset_y, frame_height, res);
+		return false;
+	}
+
+	res = StartAcquisition();
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "StartAcquisition() = %d", res);
 		return false;
 	}
 
 	return true;
 }
 
+static bool andor_read_pixels(indigo_device *device) {
+	long timeleft = 0;
+	long res, dev_status;
+	long wait_cycles = 4000;
+
+	if (!use_camera(device)) return false;
+	/*
+	do {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = FLIGetExposureStatus(id, &timeleft);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (timeleft) usleep(timeleft);
+	} while (timeleft*1000);
+
+	do {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		FLIGetDeviceStatus(id, &dev_status);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if((dev_status != FLI_CAMERA_STATUS_UNKNOWN) && ((dev_status & FLI_CAMERA_DATA_READY) != 0)) {
+			break;
+		}
+		usleep(10000);
+		wait_cycles--;
+	} while (wait_cycles);
+
+	if (wait_cycles == 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure Failed! id=%d", id);
+		return false;
+	}
+
+	*/
+
+	//Loop until acquisition finished
+	int status;
+	GetStatus(&status);
+	while(status==DRV_ACQUIRING) GetStatus(&status);
+
+	uint16_t *image = (uint16_t *)PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
+	long num_pixels = (int)(CCD_FRAME_WIDTH_ITEM->number.value) *
+	                  (int)(CCD_FRAME_HEIGHT_ITEM->number.value);
+
+	res = GetAcquiredData16(image, num_pixels);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAcquiredData16() = %d", res);
+		return false;
+	}
+	/*
+	for (int i = 0; i < num_pixels; i++) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = FLIGrabRow(id, image + (i * row_size), width);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) {
+			if (success) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGrabRow(%d) = %d at row %d.", id, res, i);
+			success = false;
+		}
+	}
+	*/
+	return true;
+}
 
 static void exposure_timer_callback(indigo_device *device) {
 	unsigned char *frame_buffer;
@@ -132,7 +197,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		// read_pixels(device))
-		if (true) {
+		if (andor_read_pixels(device)) {
 			frame_buffer = PRIVATE_DATA->buffer;
 
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -399,16 +464,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
-		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int v = CCD_BIN_VERTICAL_ITEM->number.value;
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
-		if (!(CCD_BIN_HORIZONTAL_ITEM->number.value == 1 || CCD_BIN_HORIZONTAL_ITEM->number.value == 2 || CCD_BIN_HORIZONTAL_ITEM->number.value == 4) || CCD_BIN_HORIZONTAL_ITEM->number.value != CCD_BIN_VERTICAL_ITEM->number.value) {
-			CCD_BIN_HORIZONTAL_ITEM->number.value = h;
-			CCD_BIN_VERTICAL_ITEM->number.value = v;
-			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-			return INDIGO_OK;
-		}
+		indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
@@ -524,7 +582,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 
 			for (int i = 0; i < device_num; i++) {
 				andor_private_data *private_data = malloc(sizeof(andor_private_data));
-				pthread_mutex_init(&private_data->image_mutex, NULL);
+				pthread_mutex_init(&private_data->usb_mutex, NULL);
 				assert(private_data != NULL);
 				memset(private_data, 0, sizeof(andor_private_data));
 				indigo_device *device = malloc(sizeof(indigo_device));
@@ -565,7 +623,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 					devices[i] = NULL;
 
 					if (private_data != NULL) {
-						pthread_mutex_destroy(&private_data->image_mutex);
+						pthread_mutex_destroy(&private_data->usb_mutex);
 						free(private_data);
 					}
 				}
