@@ -46,7 +46,7 @@
 // gp_bits is used as boolean
 #define is_connected                     gp_bits
 
-#define PRIVATE_DATA								((andor_private_data *)device->private_data)
+#define PRIVATE_DATA						((andor_private_data *)device->private_data)
 #define DSLR_PROGRAM_PROPERTY				PRIVATE_DATA->dslr_program_property
 
 typedef struct {
@@ -56,7 +56,10 @@ typedef struct {
 
 	int star_x[STARS], star_y[STARS], star_a[STARS];
 	char image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
+	unsigned char *buffer;
+	long buffer_size;
 	pthread_mutex_t image_mutex;
+	bool no_check_temperature;
 	double target_temperature, current_temperature;
 	indigo_timer *exposure_timer, *temperature_timer;
 	double ra_offset, dec_offset;
@@ -65,41 +68,133 @@ typedef struct {
 static bool use_camera(indigo_device *device) {
 	at_32 res = SetCurrentCamera(PRIVATE_DATA->handle);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCurrentCamera(%d) error: Invalid camera handle.", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCurrentCamera(%d): Invalid camera handle.", PRIVATE_DATA->handle);
 		return false;
 	}
 	return true;
 }
 
-// -------------------------------------------------------------------------------- INDIGO CCD device implementation
+static bool andor_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
+	unsigned int res;
+
+	if (!use_camera(device)) return false;
+
+	//Set Read Mode to --Image--
+	res = SetReadMode(4);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetReadMode(4) = %d", res);
+		return false;
+	}
+
+	//Set Acquisition mode to --Single scan--
+	SetAcquisitionMode(1);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetAcquisitionMode(1) = %d", res);
+		return false;
+	}
+
+	//Set initial exposure time
+	SetExposureTime(exposure);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetExposureTime(%f) = %d", exposure, res);
+		return false;
+	}
+
+	//Initialize Shutter
+	if(dark) {
+		res = SetShutter(1,2,50,50);
+	} else {
+		res = SetShutter(1,0,50,50);
+	}
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetShutter() = %d", res);
+		return false;
+	}
+
+	//Setup Image dimensions
+	res = SetImage(bin_x, bin_y, offset_x, frame_width, offset_y, frame_height);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetImage(%d, %d, %d, %d, %d, %d) = %d", bin_x, bin_y, offset_x, frame_width, offset_y, frame_height, res);
+		return false;
+	}
+
+	return true;
+}
+
+
 static void exposure_timer_callback(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->image_mutex);
+	unsigned char *frame_buffer;
+
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
+	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		andor_private_data *private_data = PRIVATE_DATA;
+		// read_pixels(device))
+		if (true) {
+			frame_buffer = PRIVATE_DATA->buffer;
 
-		unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
-		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
-		int frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value / horizontal_bin;
-		int frame_top = (int)CCD_FRAME_TOP_ITEM->number.value / vertical_bin;
-		int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value / horizontal_bin;
-		int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / vertical_bin;
-		int size = frame_width * frame_height;
-		int gain = (int)(CCD_GAIN_ITEM->number.value / 100);
-		int offset = (int)CCD_OFFSET_ITEM->number.value;
-		double gamma = CCD_GAMMA_ITEM->number.value;
-		bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
-
-		if (light_frame) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_process_image(device, frame_buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value),
+			                    (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+		} else {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
-		indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->image_mutex);
+	PRIVATE_DATA ->no_check_temperature = false;
 }
+
+// callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
+static void clear_reg_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		PRIVATE_DATA->no_check_temperature = true;
+		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 4, exposure_timer_callback);
+	} else {
+		PRIVATE_DATA->exposure_timer = NULL;
+	}
+}
+
+static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
+	long ok;
+
+	ok = andor_start_exposure(device,
+	                         CCD_EXPOSURE_ITEM->number.target,
+	                         CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
+	                         CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
+	                         CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
+	                         CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value
+	);
+
+	if (ok) {
+		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		} else {
+			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		}
+
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		if (CCD_EXPOSURE_ITEM->number.target > 4) {
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
+		} else {
+			PRIVATE_DATA->no_check_temperature = true;
+			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback);
+		}
+	} else {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed.");
+	}
+	return false;
+}
+
+// -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void ccd_temperature_callback(indigo_device *device) {
 	double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -254,6 +349,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_INFO_HEIGHT_ITEM->number.value = height;
 				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
 				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
+				if (PRIVATE_DATA->buffer == NULL) {
+					PRIVATE_DATA->buffer_size = width * height * 4 + FITS_HEADER_SIZE;
+					PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
+				}
 
 				float x_size, y_size;
 				GetPixelSize(&x_size, &y_size);
@@ -277,6 +376,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_global_unlock(device);
 				indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				if (PRIVATE_DATA->buffer != NULL) {
+					free(PRIVATE_DATA->buffer);
+					PRIVATE_DATA->buffer = NULL;
+				}
 				device->is_connected = false;
 			}
 		}
@@ -285,9 +388,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback);
+		if (IS_CONNECTED) {
+			handle_exposure_property(device, property);
+		}
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
