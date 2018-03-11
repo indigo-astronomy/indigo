@@ -165,8 +165,8 @@ static bool andor_read_pixels(indigo_device *device) {
 	while(status==DRV_ACQUIRING) GetStatus(&status);
 
 	uint16_t *image = (uint16_t *)PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
-	long num_pixels = (int)(CCD_FRAME_WIDTH_ITEM->number.value) *
-	                  (int)(CCD_FRAME_HEIGHT_ITEM->number.value);
+	long num_pixels = (long)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value) *
+	                  (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value);
 
 	res = GetAcquiredData16(image, num_pixels);
 	if (res != DRV_SUCCESS) {
@@ -196,7 +196,6 @@ static void exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		// read_pixels(device))
 		if (andor_read_pixels(device)) {
 			frame_buffer = PRIVATE_DATA->buffer;
 
@@ -462,11 +461,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 		}
-	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_BIN
-		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
-		indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
