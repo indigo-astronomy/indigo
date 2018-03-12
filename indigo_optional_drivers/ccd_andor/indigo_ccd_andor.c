@@ -581,12 +581,9 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 			last_action = action;
 			for (int i = 0; i < device_num; i++) {
 				if (devices[i] != NULL) {
-					andor_private_data *private_data = devices[i]->private_data;
-
-					res = SetCurrentCamera(private_data->handle);
-					if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCurrentCamera() error: %d", res);
+					use_camera(devices[i]);
 					ShutDown();
-
+					andor_private_data *private_data = devices[i]->private_data;
 					indigo_detach_device(devices[i]);
 					free(devices[i]);
 					devices[i] = NULL;
