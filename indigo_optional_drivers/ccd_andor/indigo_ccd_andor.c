@@ -75,12 +75,16 @@ static bool use_camera(indigo_device *device) {
 static bool andor_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
 	unsigned int res;
 
-	if (!use_camera(device)) return false;
-
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (!use_camera(device)) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
 	//Set Read Mode to --Image--
 	res = SetReadMode(4);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetReadMode(4) = %d", res);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 
@@ -88,6 +92,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	SetAcquisitionMode(1);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetAcquisitionMode(1) = %d", res);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 
@@ -95,6 +100,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	SetExposureTime(exposure);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetExposureTime(%f) = %d", exposure, res);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 
@@ -106,6 +112,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	}
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetShutter() = %d", res);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 
@@ -113,14 +120,17 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	res = SetImage(bin_x, bin_y, offset_x+1, offset_x+frame_width, offset_y+1, offset_y+frame_height);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetImage(%d, %d, %d, %d, %d, %d) = %d", bin_x, bin_y, offset_x+1, offset_x+frame_width, offset_y+1, offset_y+frame_height, res);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 
 	res = StartAcquisition();
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "StartAcquisition() = %d", res);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 	return true;
 }
@@ -129,7 +139,11 @@ static bool andor_read_pixels(indigo_device *device) {
 	long res;
 	long wait_cycles = 4000;
 
-	if (!use_camera(device)) return false;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (!use_camera(device)) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
 
 	/* Wait until acquisition finished */
 	int status;
@@ -142,6 +156,7 @@ static bool andor_read_pixels(indigo_device *device) {
 
 	if (wait_cycles == 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure Failed!");
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 
@@ -154,15 +169,18 @@ static bool andor_read_pixels(indigo_device *device) {
 		res = GetAcquiredData((uint32_t *)image, num_pixels);
 		if (res != DRV_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAcquiredData() = %d", res);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			return false;
 		}
 	} else {
 		res = GetAcquiredData16((uint16_t *)image, num_pixels);
 		if (res != DRV_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAcquiredData16() = %d", res);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			return false;
 		}
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
@@ -241,7 +259,10 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 static bool andor_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-	if (!use_camera(device)) return false;
+	if (!use_camera(device)) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
 	long ret = AbortAcquisition();
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -374,11 +395,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
 
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				if(use_camera(device) == false) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 					indigo_global_unlock(device);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					return INDIGO_OK;
 				}
 
@@ -416,6 +439,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				// Should be obtained
 				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
 				device->is_connected = true;
 			}
@@ -536,6 +560,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 				memcpy(device, &imager_camera_template, sizeof(indigo_device));
 
 				at_32 handle;
+				pthread_mutex_lock(&private_data->usb_mutex);
 				res = GetCameraHandle(i, &handle);
 				if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraHandle() error: %d", res);
 
@@ -583,7 +608,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 					head_name[0] = '\0';
 				}
 				snprintf(device->name, sizeof(device->name), "Andor%s #%d", head_name, i);
-
+				pthread_mutex_unlock(&private_data->usb_mutex);
 				private_data->index = i;
 				private_data->handle = handle;
 				device->private_data = private_data;
@@ -596,9 +621,11 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 			last_action = action;
 			for (int i = 0; i < device_num; i++) {
 				if (devices[i] != NULL) {
+					andor_private_data *private_data = devices[i]->private_data;
+					pthread_mutex_lock(&private_data->usb_mutex);
 					use_camera(devices[i]);
 					ShutDown();
-					andor_private_data *private_data = devices[i]->private_data;
+					pthread_mutex_unlock(&private_data->usb_mutex);
 					indigo_detach_device(devices[i]);
 					free(devices[i]);
 					devices[i] = NULL;
