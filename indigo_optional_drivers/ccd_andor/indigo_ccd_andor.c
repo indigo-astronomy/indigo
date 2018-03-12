@@ -507,43 +507,9 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 			if (andor_path == NULL) andor_path = (char *)default_path;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ANDOR_SDK_PATH = %s", andor_path);
 
-			res = Initialize(andor_path);
-			if(res != DRV_SUCCESS) {
-				switch (res) {
-				case DRV_ERROR_NOCAMERA:
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: No camera found.");
-					break;
-				case DRV_USBERROR:
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to detect USB device or not USB2.0");
-					break;
-				case DRV_ERROR_PAGELOCK:
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to acquire lock on requested memory.");
-					break;
-				case DRV_INIERROR:
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load DETECTOR.INI.");
-					break;
-				case DRV_VXDNOTINSTALLED:
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: VxD not loaded.");
-					break;
-				case DRV_COFERROR:
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load *.COF");
-					break;
-				case DRV_FLEXERROR:
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load *.RBF");
-					break;
-				case DRV_ERROR_FILELOAD:
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load “*.COF” or “*.RBF” files.");
-					break;
-				default:
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialisation error: %d", res);
-				}
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No camera connected or ANDOR_SDK_PATH is not valid.");
-				break;
-			}
-
 			res = GetAvailableCameras(&device_num);
 			if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAvailableCameras() error: %d", res);
-			else INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d cameras detected.", device_num);
+			else INDIGO_DRIVER_LOG(DRIVER_NAME, "%d camera detected.", device_num);
 
 			for (int i = 0; i < device_num; i++) {
 				andor_private_data *private_data = malloc(sizeof(andor_private_data));
@@ -560,6 +526,40 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 
 				res = SetCurrentCamera(handle);
 				if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCurrentCamera() error: %d", res);
+
+				res = Initialize(andor_path);
+				if(res != DRV_SUCCESS) {
+					switch (res) {
+					case DRV_ERROR_NOCAMERA:
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: No camera found.");
+						break;
+					case DRV_USBERROR:
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to detect USB device or not USB2.0");
+						break;
+					case DRV_ERROR_PAGELOCK:
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to acquire lock on requested memory.");
+						break;
+					case DRV_INIERROR:
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load DETECTOR.INI.");
+						break;
+					case DRV_VXDNOTINSTALLED:
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: VxD not loaded.");
+						break;
+					case DRV_COFERROR:
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load *.COF");
+						break;
+					case DRV_FLEXERROR:
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load *.RBF");
+						break;
+					case DRV_ERROR_FILELOAD:
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load “*.COF” or “*.RBF” files.");
+						break;
+					default:
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialisation error: %d", res);
+					}
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR_SDK_PATH may not be not valid.");
+					break;
+				}
 
 				char head_name[255];
 				res = GetHeadModel(head_name);
@@ -579,10 +579,14 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
-			ShutDown();
 			for (int i = 0; i < device_num; i++) {
 				if (devices[i] != NULL) {
 					andor_private_data *private_data = devices[i]->private_data;
+
+					res = SetCurrentCamera(private_data->handle);
+					if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCurrentCamera() error: %d", res);
+					ShutDown();
+
 					indigo_detach_device(devices[i]);
 					free(devices[i]);
 					devices[i] = NULL;
