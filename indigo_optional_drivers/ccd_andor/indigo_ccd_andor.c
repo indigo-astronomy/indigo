@@ -56,12 +56,88 @@ typedef struct {
 
 	unsigned char *buffer;
 	long buffer_size;
+	AndorCapabilities caps;
 	pthread_mutex_t usb_mutex;
 	bool no_check_temperature;
 	double target_temperature, current_temperature;
 	indigo_timer *exposure_timer, *temperature_timer;
 	double ra_offset, dec_offset;
 } andor_private_data;
+
+
+static void get_camera_type(unsigned long type, char *name,  size_t size){
+	switch (type) {
+	case AC_CAMERATYPE_PDA:
+		strncpy(name,"Andor PDA", size);
+		return;
+	case AC_CAMERATYPE_IXON:
+		strncpy(name,"Andor iXon", size);
+		return;
+	case AC_CAMERATYPE_ICCD:
+		strncpy(name,"Andor iCCD", size);
+		return;
+	case AC_CAMERATYPE_EMCCD:
+		strncpy(name,"Andor EMCCD", size);
+		return;
+	case AC_CAMERATYPE_CCD:
+		strncpy(name,"Andor PDA", size);
+		return;
+	case AC_CAMERATYPE_ISTAR:
+		strncpy(name,"Andor iStar", size);
+		return;
+	case AC_CAMERATYPE_VIDEO:
+		strncpy(name,"Non Andor", size);
+		return;
+	case AC_CAMERATYPE_IDUS:
+		strncpy(name,"Andor iDus", size);
+		return;
+	case AC_CAMERATYPE_NEWTON:
+		strncpy(name,"Andor Newton", size);
+		return;
+	case AC_CAMERATYPE_SURCAM:
+		strncpy(name,"Andor Surcam", size);
+		return;
+	case AC_CAMERATYPE_USBICCD:
+		strncpy(name,"Andor USB iCCD", size);
+		return;
+	case AC_CAMERATYPE_LUCA:
+		strncpy(name,"Andor Luca", size);
+		return;
+	case AC_CAMERATYPE_IKON:
+		strncpy(name,"Andor iKon", size);
+		return;
+	case AC_CAMERATYPE_INGAAS:
+		strncpy(name,"Andor InGaAs", size);
+		return;
+	case AC_CAMERATYPE_IVAC:
+		strncpy(name,"Andor iVac", size);
+		return;
+	case AC_CAMERATYPE_CLARA:
+		strncpy(name,"Andor Clara", size);
+		return;
+	case AC_CAMERATYPE_USBISTAR:
+		strncpy(name,"Andor USB iStar", size);
+		return;
+	case AC_CAMERATYPE_IXONULTRA:
+		strncpy(name,"Andor iXon Ultra", size);
+		return;
+	case AC_CAMERATYPE_IVAC_CCD:
+		strncpy(name,"Andor iVac CCD", size);
+		return;
+	case AC_CAMERATYPE_IKONXL:
+		strncpy(name,"Andor iKon XL", size);
+		return;
+	case AC_CAMERATYPE_ISTAR_SCMOS:
+		strncpy(name,"Andor iStar sCMOS", size);
+		return;
+	case AC_CAMERATYPE_IKONLR:
+		strncpy(name,"Andor iKon LR", size);
+		return;
+	default:
+		strncpy(name,"Andor", size);
+		return;
+	}
+}
 
 static bool use_camera(indigo_device *device) {
 	at_32 res = SetCurrentCamera(PRIVATE_DATA->handle);
@@ -326,6 +402,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		SIMULATION_ENABLED_ITEM->sw.value = true;
 		SIMULATION_DISABLED_ITEM->sw.value = false;
 
+		INFO_PROPERTY->count = 7;
+
 		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "Advanced", "Program mode", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 0, "M", "Manual", true);
 
@@ -404,6 +482,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					return INDIGO_OK;
 				}
+
+				int res = GetHeadModel(INFO_DEVICE_MODEL_ITEM->text.value);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() error: %d", res);
+					INFO_DEVICE_MODEL_ITEM->text.value[0] = '\0';
+				}
+				unsigned int fw_ver, fw_build, dummy;
+				GetHardwareVersion(&dummy, &dummy, &dummy, &dummy, &fw_ver, &fw_build);
+				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%d-%d", fw_ver, fw_build);
+
+				int serial_num;
+				GetCameraSerialNumber(&serial_num);
+				snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE, "CCD-%d", serial_num);
+
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 
 				int width, height;
 				GetDetector(&width, &height);
@@ -601,14 +694,14 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 					break;
 				}
 
-				char head_name[255];
-				res = GetHeadModel(head_name);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() error: %d", res);
-					head_name[0] = '\0';
-				}
-				snprintf(device->name, sizeof(device->name), "Andor%s #%d", head_name, i);
+				private_data->caps.ulSize = sizeof(AndorCapabilities);
+				GetCapabilities(&private_data->caps);
+
 				pthread_mutex_unlock(&private_data->usb_mutex);
+
+				char camera_type[32];
+				get_camera_type(private_data->caps.ulCameraType, camera_type, sizeof(camera_type));
+				snprintf(device->name, sizeof(device->name), "%s #%d", camera_type, i);
 				private_data->index = i;
 				private_data->handle = handle;
 				device->private_data = private_data;
