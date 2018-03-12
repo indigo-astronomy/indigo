@@ -237,6 +237,19 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	return false;
 }
 
+
+static bool andor_abort_exposure(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	if (!use_camera(device)) return false;
+	long ret = AbortAcquisition();
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if ((ret == DRV_SUCCESS) || (ret == DRV_IDLE)) return true;
+	else return false;
+}
+
+
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void ccd_temperature_callback(indigo_device *device) {
@@ -428,10 +441,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-		if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
+			andor_abort_exposure(device);
 		}
+		PRIVATE_DATA->no_check_temperature = false;
+		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
