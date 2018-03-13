@@ -641,7 +641,10 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 
 			res = GetAvailableCameras(&device_num);
 			if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAvailableCameras() error: %d", res);
-			else INDIGO_DRIVER_LOG(DRIVER_NAME, "%d camera detected.", device_num);
+			else {
+				if (device_num > 0) INDIGO_DRIVER_LOG(DRIVER_NAME, "Detected %d Andor camera(s). Initializing...", device_num);
+				else INDIGO_DRIVER_LOG(DRIVER_NAME, "No Andor cameras detected");
+			}
 
 			for (int i = 0; i < device_num; i++) {
 				andor_private_data *private_data = malloc(sizeof(andor_private_data));
