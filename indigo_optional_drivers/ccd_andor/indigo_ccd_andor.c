@@ -38,7 +38,7 @@
 
 #define WIDTH               1600
 #define HEIGHT              1200
-#define TEMP_UPDATE         5.0
+#define TEMP_UPDATE         2.0
 #define STARS               100
 #define SIN									0.8414709848078965
 #define COS									0.5403023058681398
@@ -48,6 +48,9 @@
 
 #define PRIVATE_DATA						((andor_private_data *)device->private_data)
 #define DSLR_PROGRAM_PROPERTY				PRIVATE_DATA->dslr_program_property
+
+#define CAP_GET_TEMPERATURE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
+#define CAP_SET_TEMPERATURE (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE)
 
 typedef struct {
 	long handle;
@@ -59,7 +62,7 @@ typedef struct {
 	AndorCapabilities caps;
 	pthread_mutex_t usb_mutex;
 	bool no_check_temperature;
-	double target_temperature, current_temperature;
+	float target_temperature, current_temperature, cooler_power;
 	indigo_timer *exposure_timer, *temperature_timer;
 	double ra_offset, dec_offset;
 } andor_private_data;
@@ -348,49 +351,29 @@ static bool andor_abort_exposure(indigo_device *device) {
 
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
-
 static void ccd_temperature_callback(indigo_device *device) {
-	double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-	if (diff > 0) {
-		if (diff > 5) {
-			if (CCD_COOLER_ON_ITEM->sw.value && CCD_COOLER_POWER_ITEM->number.value != 100) {
-				CCD_COOLER_POWER_ITEM->number.value = 100;
-				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-			}
-		} else {
-			if (CCD_COOLER_ON_ITEM->sw.value && CCD_COOLER_POWER_ITEM->number.value != 50) {
-				CCD_COOLER_POWER_ITEM->number.value = 50;
-				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-			}
-		}
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-		CCD_TEMPERATURE_ITEM->number.value = --(PRIVATE_DATA->current_temperature);
-		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-	} else if (diff < 0) {
-		if (CCD_COOLER_POWER_ITEM->number.value > 0) {
-			CCD_COOLER_POWER_ITEM->number.value = 0;
-			indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-		}
-		CCD_TEMPERATURE_PROPERTY->state = CCD_COOLER_ON_ITEM->sw.value ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-		CCD_TEMPERATURE_ITEM->number.value = ++(PRIVATE_DATA->current_temperature);
-		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-	} else {
-		if (CCD_COOLER_ON_ITEM->sw.value) {
-			if (CCD_COOLER_POWER_ITEM->number.value != 20) {
-				CCD_COOLER_POWER_ITEM->number.value = 20;
-				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-			}
-		} else {
-			if (CCD_COOLER_POWER_ITEM->number.value != 0) {
-				CCD_COOLER_POWER_ITEM->number.value = 0;
-				indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-			}
-		}
-		CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (!use_camera(device)) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return;
+	}
+	if (!PRIVATE_DATA->no_check_temperature && CAP_GET_TEMPERATURE) {
+		long res = GetTemperatureF(&PRIVATE_DATA->current_temperature);
+
+		if (CCD_COOLER_ON_ITEM->sw.value)
+			CCD_TEMPERATURE_PROPERTY->state = (res != DRV_TEMP_STABILIZED) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+		else
+			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+
+		CCD_TEMPERATURE_ITEM->number.value = round(PRIVATE_DATA->current_temperature * 10) / 10.;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	}
-	indigo_reschedule_timer(device, TEMP_UPDATE, &PRIVATE_DATA->temperature_timer);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
 }
+
 
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -411,31 +394,22 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_MODE_PROPERTY->count = 1;
 		indigo_init_switch_item(CCD_MODE_PROPERTY->items + 0, "1600x1200", "1600x1200", true);
 
+		// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
+		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+		CCD_MODE_PROPERTY->count = 3;
+		char name[32];
+		sprintf(name, "RAW %dx%d", WIDTH, HEIGHT);
+		indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+		sprintf(name, "RAW %dx%d", WIDTH/2, HEIGHT/2);
+		indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+		sprintf(name, "RAW %dx%d", WIDTH/4, HEIGHT/4);
+		indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
 
-			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
-			CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-			CCD_MODE_PROPERTY->count = 3;
-			char name[32];
-			sprintf(name, "RAW %dx%d", WIDTH, HEIGHT);
-			indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-			sprintf(name, "RAW %dx%d", WIDTH/2, HEIGHT/2);
-			indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-			sprintf(name, "RAW %dx%d", WIDTH/4, HEIGHT/4);
-			indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
-
-			// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
-			CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
-			// -------------------------------------------------------------------------------- CCD_IMAGE
-			// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
-			CCD_COOLER_PROPERTY->hidden = false;
-			CCD_TEMPERATURE_PROPERTY->hidden = false;
-			CCD_COOLER_POWER_PROPERTY->hidden = false;
-			indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
-			PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-			CCD_COOLER_POWER_ITEM->number.value = 0;
-
+		// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
+		CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- CCD_IMAGE
+		// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -529,6 +503,23 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
 				CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
 
+				if (CAP_GET_TEMPERATURE) {
+					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 0;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+				}
+				if (CAP_SET_TEMPERATURE) {
+					CCD_COOLER_PROPERTY->hidden = false;
+					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
+					int temp_min, temp_max;
+					GetTemperatureRange(&temp_min, &temp_max);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d %d", temp_min, temp_max);
+					CCD_TEMPERATURE_ITEM->number.max = (double)temp_max;
+					CCD_TEMPERATURE_ITEM->number.min = (double)temp_min;
+					PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = (double)temp_max;
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+				}
+
 				// Should be obtained
 				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 
@@ -567,28 +558,46 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
-		if (CCD_COOLER_ON_ITEM->sw.value) {
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
-		} else {
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-			CCD_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-			CCD_COOLER_POWER_ITEM->number.value = 0;
-			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
+		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			if (!use_camera(device)) {
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				return INDIGO_OK;
+			}
+			if (CCD_COOLER_ON_ITEM->sw.value) {
+				CoolerON();
+				SetTemperature((int)PRIVATE_DATA->target_temperature);
+				CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+			} else {
+				CoolerOFF();
+				CCD_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+			}
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		}
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
-		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-		indigo_delete_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-		indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
-		PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
-		CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
-		CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
+		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
+			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			if (!use_camera(device)) {
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				return INDIGO_OK;
+			}
+			long res = SetTemperature((int)PRIVATE_DATA->target_temperature);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
+		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
