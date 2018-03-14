@@ -50,7 +50,9 @@
 #define DSLR_PROGRAM_PROPERTY				PRIVATE_DATA->dslr_program_property
 
 #define CAP_GET_TEMPERATURE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
+#define CAP_GET_TEMPERATURE_RANGE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE)
 #define CAP_SET_TEMPERATURE (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE)
+#define CAP_GET_TEMPERATURE_DURING_ACQUISITION (PRIVATE_DATA->caps.ulFeatures & AC_FEATURES_TEMPERATUREDURINGACQUISITION)
 
 typedef struct {
 	long handle;
@@ -301,6 +303,8 @@ static void clear_reg_timer_callback(indigo_device *device) {
 static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
 	long ok;
 
+	if (!CAP_GET_TEMPERATURE_DURING_ACQUISITION) PRIVATE_DATA->no_check_temperature = true;
+
 	ok = andor_start_exposure(device,
 	                         CCD_EXPOSURE_ITEM->number.target,
 	                         CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
@@ -492,13 +496,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				int max_bin;
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 				// 4 is Image mode, 0 is horizontal binning
-				GetMaximumBinning (4, 0, &max_bin);
+				GetMaximumBinning(4, 0, &max_bin);
 				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
 				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
 				CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
 
 				// 4 is Image mode, 1 is vertical binning
-				GetMaximumBinning (4, 1, &max_bin);
+				GetMaximumBinning(4, 1, &max_bin);
 				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
 				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
 				CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
@@ -511,8 +515,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (CAP_SET_TEMPERATURE) {
 					CCD_COOLER_PROPERTY->hidden = false;
 					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
-					int temp_min, temp_max;
-					GetTemperatureRange(&temp_min, &temp_max);
+					int temp_min = -100, temp_max = 20;
+					if (CAP_GET_TEMPERATURE_RANGE) GetTemperatureRange(&temp_min, &temp_max);
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d %d", temp_min, temp_max);
 					CCD_TEMPERATURE_ITEM->number.max = (double)temp_max;
 					CCD_TEMPERATURE_ITEM->number.min = (double)temp_min;
@@ -564,17 +568,28 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				return INDIGO_OK;
 			}
+			long res;
 			if (CCD_COOLER_ON_ITEM->sw.value) {
-				CoolerON();
-				SetTemperature((int)PRIVATE_DATA->target_temperature);
-				CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-				PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+				res = CoolerON();
+				if(res == DRV_SUCCESS) {
+					SetTemperature((int)PRIVATE_DATA->target_temperature);
+					CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+					CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+				} else {
+					CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CoolerON() error: %d", res);
+				}
 			} else {
-				CoolerOFF();
-				CCD_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-				PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+				res = CoolerOFF();
+				if(res == DRV_SUCCESS) {
+					CCD_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+					CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+				} else {
+					CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CoolerOFF() error: %d", res);
+				}
 			}
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
@@ -593,6 +608,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				return INDIGO_OK;
 			}
 			long res = SetTemperature((int)PRIVATE_DATA->target_temperature);
+			if(res == DRV_SUCCESS) {
+				CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			} else {
+				CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetTemperature() error: %d", res);
+			}
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
