@@ -28,6 +28,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 #include "indigo_config.h"
 
