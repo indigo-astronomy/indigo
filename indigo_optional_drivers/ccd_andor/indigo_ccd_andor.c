@@ -36,12 +36,7 @@
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_andor.h"
 
-#define WIDTH               1600
-#define HEIGHT              1200
 #define TEMP_UPDATE         2.0
-#define STARS               100
-#define SIN									0.8414709848078965
-#define COS									0.5403023058681398
 
 // gp_bits is used as boolean
 #define is_connected                     gp_bits
