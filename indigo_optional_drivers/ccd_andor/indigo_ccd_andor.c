@@ -653,7 +653,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					return INDIGO_OK;
 				}
 				uint32_t res = SetADChannel(i);
-				if (res == DRV_SUCCESS) {
+				if (res != DRV_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetADChannel(%d) error: %d", i, PRIVATE_DATA->bit_depths[i]);
 					CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
