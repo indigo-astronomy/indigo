@@ -61,11 +61,13 @@ typedef struct {
 
 	unsigned char *buffer;
 	long buffer_size;
+	int adc_channels;
+	int bit_depths[10];
 	AndorCapabilities caps;
 	bool no_check_temperature;
 	float target_temperature, current_temperature, cooler_power;
 	indigo_timer *exposure_timer, *temperature_timer;
-	double ra_offset, dec_offset;
+	//double ra_offset, dec_offset;
 } andor_private_data;
 
 /* To avoid exposure failue when many cameras are present global mutex is required */
@@ -384,12 +386,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY->hidden = false;
-		SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
-		SIMULATION_ENABLED_ITEM->sw.value = true;
-		SIMULATION_DISABLED_ITEM->sw.value = false;
-
 		INFO_PROPERTY->count = 7;
 
 		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "Advanced", "Program mode", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
@@ -518,15 +514,30 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
 					int temp_min = -100, temp_max = 20;
 					if (CAP_GET_TEMPERATURE_RANGE) GetTemperatureRange(&temp_min, &temp_max);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d %d", temp_min, temp_max);
 					CCD_TEMPERATURE_ITEM->number.max = (double)temp_max;
 					CCD_TEMPERATURE_ITEM->number.min = (double)temp_min;
 					PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = (double)temp_max;
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 				}
 
-				// Should be obtained
-				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+				/* Find available BPPs and use max */
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 0;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 128;
+				int max_bpp_channel = 0;
+				GetNumberADChannels(&PRIVATE_DATA->adc_channels);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC Channels: %d", PRIVATE_DATA->adc_channels);
+				for (int i = 0; i < PRIVATE_DATA->adc_channels; i++) {
+					GetBitDepth(i, &PRIVATE_DATA->bit_depths[i]);
+					if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min >= PRIVATE_DATA->bit_depths[i]) {
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = PRIVATE_DATA->bit_depths[i];
+					}
+					if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max <= PRIVATE_DATA->bit_depths[i]) {
+						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bit_depths[i];
+						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = PRIVATE_DATA->bit_depths[i];
+						max_bpp_channel = i;
+					}
+				}
+				SetADChannel(max_bpp_channel);
 
 				pthread_mutex_unlock(&driver_mutex);
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
@@ -621,6 +632,38 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target temperature %g", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
+		// ------------------------------------------------------------------------------- CCD_FRAME
+		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
+		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value <= 8.0) {
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8.0;
+		} else if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value <= 16.0) {
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16.0;
+		} else {
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 32.0;
+		}
+
+		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+
+		for (int i = 0; i < PRIVATE_DATA->adc_channels; i++) {
+			if(PRIVATE_DATA->bit_depths[i] == CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value) {
+				pthread_mutex_lock(&driver_mutex);
+				if (!use_camera(device)) {
+					pthread_mutex_unlock(&driver_mutex);
+					return INDIGO_OK;
+				}
+				uint32_t res = SetADChannel(i);
+				if (res == DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetADChannel(%d) error: %d", i, PRIVATE_DATA->bit_depths[i]);
+					CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bit depth: %d (Channel %d)", PRIVATE_DATA->bit_depths[i], i);
+				}
+				pthread_mutex_unlock(&driver_mutex);
+				break;
+			}
+		}
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
