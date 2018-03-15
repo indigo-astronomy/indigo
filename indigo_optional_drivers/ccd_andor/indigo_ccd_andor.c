@@ -386,31 +386,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		INFO_PROPERTY->count = 7;
-
 		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "Advanced", "Program mode", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 0, "M", "Manual", true);
-
-		CCD_MODE_PROPERTY->perm = INDIGO_RO_PERM;
-		CCD_MODE_PROPERTY->count = 1;
-		indigo_init_switch_item(CCD_MODE_PROPERTY->items + 0, "1600x1200", "1600x1200", true);
-
-		// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
-		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-		CCD_MODE_PROPERTY->count = 3;
-		char name[32];
-		sprintf(name, "RAW %dx%d", WIDTH, HEIGHT);
-		indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-		sprintf(name, "RAW %dx%d", WIDTH/2, HEIGHT/2);
-		indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-		sprintf(name, "RAW %dx%d", WIDTH/4, HEIGHT/4);
-		indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
-
-		// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
-		CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- CCD_IMAGE
-		// -------------------------------------------------------------------------------- CCD_COOLER, CCD_TEMPERATURE, CCD_COOLER_POWER
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -458,6 +435,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					return INDIGO_OK;
 				}
 
+				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+				INFO_PROPERTY->count = 7;
 				int res = GetHeadModel(INFO_DEVICE_MODEL_ITEM->text.value);
 				if (res!= DRV_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() error: %d", res);
@@ -538,6 +517,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					}
 				}
 				SetADChannel(max_bpp_channel);
+
+				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_MODE_PROPERTY->count = 4;
+				char name[32];
+				sprintf(name, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value, (int)CCD_INFO_HEIGHT_ITEM->number.value);
+				indigo_init_switch_item(CCD_MODE_ITEM+0, "BIN_1x1", name, true);
+				sprintf(name, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value/2, (int)CCD_INFO_HEIGHT_ITEM->number.value/2);
+				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+				sprintf(name, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value/4, (int)CCD_INFO_HEIGHT_ITEM->number.value/4);
+				indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
+				sprintf(name, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value/8, (int)CCD_INFO_HEIGHT_ITEM->number.value/8);
+				indigo_init_switch_item(CCD_MODE_ITEM+3, "BIN_8x8", name, false);
 
 				pthread_mutex_unlock(&driver_mutex);
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
