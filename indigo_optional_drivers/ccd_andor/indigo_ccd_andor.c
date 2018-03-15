@@ -713,6 +713,10 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 			if (andor_path == NULL) andor_path = (char *)default_path;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ANDOR_SDK_PATH = %s", andor_path);
 
+			char sdk_version[255];
+			GetVersionInfo(AT_SDKVersion, sdk_version, sizeof(sdk_version));
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Andor SDK v.%s", sdk_version);
+
 			res = GetAvailableCameras(&device_num);
 			if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAvailableCameras() error: %d", res);
 			else {
