@@ -388,6 +388,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "Advanced", "Program mode", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 0, "M", "Manual", true);
+		INFO_PROPERTY->count = 7;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -436,7 +437,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-				INFO_PROPERTY->count = 7;
 				int res = GetHeadModel(INFO_DEVICE_MODEL_ITEM->text.value);
 				if (res!= DRV_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() error: %d", res);
