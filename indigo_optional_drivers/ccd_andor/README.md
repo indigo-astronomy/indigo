@@ -18,7 +18,9 @@ INDIGO Astronomy open-source license.
 
 ## Build
 This driver is not built by the main indigo Makefile.
-one should install Andor SDK and then do:
+one should install Andor SDK and then in the indigo source directory do:
+
+make
 
 cd indigo_optionl_drivers/ccd_andor
 
