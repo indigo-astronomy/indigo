@@ -39,20 +39,27 @@
 #define TEMP_UPDATE         2.0
 
 // gp_bits is used as boolean
-#define is_connected                     gp_bits
+#define is_connected                    gp_bits
 
-#define PRIVATE_DATA						((andor_private_data *)device->private_data)
-#define DSLR_PROGRAM_PROPERTY				PRIVATE_DATA->dslr_program_property
+#define VSSPEED_PROPERTY_NAME           "ANDOR_VSSPEED"
+
+#define PRIVATE_DATA                    ((andor_private_data *)device->private_data)
+#define VSSPEED_PROPERTY                PRIVATE_DATA->vsspeed_property
 
 #define CAP_GET_TEMPERATURE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
 #define CAP_GET_TEMPERATURE_RANGE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE)
-#define CAP_SET_TEMPERATURE (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE)
 #define CAP_GET_TEMPERATURE_DURING_ACQUISITION (PRIVATE_DATA->caps.ulFeatures & AC_FEATURES_TEMPERATUREDURINGACQUISITION)
+#define CAP_SET_TEMPERATURE (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE)
+#define CAP_SET_VREADOUT (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VREADOUT)
+#define CAP_SET_VSAMPLITUDE (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VSAMPLITUDE)
+#define CAP_SET_HREADOUT (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HREADOUT)
+
+
 
 typedef struct {
 	long handle;
 	int index;
-	indigo_property *dslr_program_property;
+	indigo_property *vsspeed_property;
 
 	unsigned char *buffer;
 	long buffer_size;
@@ -381,8 +388,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "Aquisition", "CCD Setup", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-		indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 0, "M", "Manual", true);
+		if(CAP_SET_VREADOUT) {
+			VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, "Aquisition", "Vertical Shift Speed (usec)", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(VSSPEED_PROPERTY->items + 0, "M", "Manual", true);
+		}
 		INFO_PROPERTY->count = 7;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -395,8 +404,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_ccd_enumerate_properties(device, client, property)) == INDIGO_OK) {
 		if (IS_CONNECTED) {
-			if (indigo_property_match(DSLR_PROGRAM_PROPERTY, property))
-				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+			if (indigo_property_match(VSSPEED_PROPERTY, property))
+				indigo_define_property(device, VSSPEED_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -419,10 +428,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					return INDIGO_OK;
 				}
 
-				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+				if (CAP_SET_VREADOUT) {
+					indigo_define_property(device, VSSPEED_PROPERTY, NULL);
+				}
 
 				pthread_mutex_lock(&driver_mutex);
-				if(use_camera(device) == false) {
+				if (use_camera(device) == false) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -532,7 +543,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			if (device->is_connected) {  /* Do not double close device */
 				indigo_global_unlock(device);
-				indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+				if (CAP_SET_VREADOUT) {
+					indigo_delete_property(device, VSSPEED_PROPERTY, NULL);
+				}
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				if (PRIVATE_DATA->buffer != NULL) {
 					free(PRIVATE_DATA->buffer);
@@ -659,8 +672,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
-
-		indigo_release_property(DSLR_PROGRAM_PROPERTY);
+		if (CAP_SET_VREADOUT) {
+			indigo_release_property(VSSPEED_PROPERTY);
+		}
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
