@@ -104,15 +104,15 @@
 #define fli_connect unix_fli_connect
 #define fli_disconnect unix_fli_disconnect
 #define fli_list unix_fli_list
+#define _USE_PTHREAD_LOCK_
 #else
-#define fli_connect mac_fli_connect 
+#define fli_connect mac_fli_connect
 #define fli_disconnect mac_fli_disconnect
 #define fli_list mac_fli_list
-#endif
-
 #define unix_fli_lock mac_fli_lock
 #define unix_fli_unlock	mac_fli_unlock
 #define unix_fli_trylock mac_fli_trylock
+#endif
 
 #else
 #error "Unknown system"
