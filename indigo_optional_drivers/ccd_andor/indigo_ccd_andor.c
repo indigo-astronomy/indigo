@@ -42,9 +42,11 @@
 #define is_connected                    gp_bits
 
 #define VSSPEED_PROPERTY_NAME           "ANDOR_VSSPEED"
+#define VSAMPLITUDE_PROPERTY_NAME       "ANDOR_VSAMPLITUDE"
 
 #define PRIVATE_DATA                    ((andor_private_data *)device->private_data)
 #define VSSPEED_PROPERTY                PRIVATE_DATA->vsspeed_property
+#define VSAMPLITUDE_PROPERTY            PRIVATE_DATA->vsamplitude_property
 
 #define CAP_GET_TEMPERATURE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
 #define CAP_GET_TEMPERATURE_RANGE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE)
@@ -60,6 +62,7 @@ typedef struct {
 	long handle;
 	int index;
 	indigo_property *vsspeed_property;
+	indigo_property *vsamplitude_property;
 
 	unsigned char *buffer;
 	long buffer_size;
@@ -392,6 +395,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 			VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, "Aquisition", "Vertical Shift Speed (usec)", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			indigo_init_switch_item(VSSPEED_PROPERTY->items + 0, "M", "Manual", true);
 		}
+		if(CAP_SET_VSAMPLITUDE) {
+			VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Speed Amplitude", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "M", "Manual", true);
+		}
 		INFO_PROPERTY->count = 7;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -406,6 +413,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 		if (IS_CONNECTED) {
 			if (indigo_property_match(VSSPEED_PROPERTY, property))
 				indigo_define_property(device, VSSPEED_PROPERTY, NULL);
+			if (indigo_property_match(VSAMPLITUDE_PROPERTY, property))
+				indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -430,6 +439,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				if (CAP_SET_VREADOUT) {
 					indigo_define_property(device, VSSPEED_PROPERTY, NULL);
+				}
+				if (CAP_SET_VSAMPLITUDE) {
+					indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
 				}
 
 				pthread_mutex_lock(&driver_mutex);
@@ -545,6 +557,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_global_unlock(device);
 				if (CAP_SET_VREADOUT) {
 					indigo_delete_property(device, VSSPEED_PROPERTY, NULL);
+				}
+				if (CAP_SET_VSAMPLITUDE) {
+					indigo_delete_property(device, VSAMPLITUDE_PROPERTY, NULL);
 				}
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				if (PRIVATE_DATA->buffer != NULL) {
@@ -674,6 +689,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 		if (CAP_SET_VREADOUT) {
 			indigo_release_property(VSSPEED_PROPERTY);
+		}
+		if (CAP_SET_VSAMPLITUDE) {
+			indigo_release_property(VSAMPLITUDE_PROPERTY);
 		}
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
