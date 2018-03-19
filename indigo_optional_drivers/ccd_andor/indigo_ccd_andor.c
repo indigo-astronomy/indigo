@@ -467,9 +467,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 
 				if(CAP_SET_VSAMPLITUDE) {
-					VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+					VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
+					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 1, "AMPLITUDE_1", "+1", false);
+					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 2, "AMPLITUDE_2", "+2", false);
+					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 3, "AMPLITUDE_3", "+3", false);
+					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 4, "AMPLITUDE_4", "+4", false);
 					indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
+					res = SetVSAmplitude(0); /* 0 is Normal */
+					if (res != DRV_SUCCESS) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
+					}
 				}
 
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
@@ -719,6 +727,33 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, VSSPEED_PROPERTY, NULL);
+	} else if (indigo_property_match(VSAMPLITUDE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- VSAMPLITUDE
+		indigo_property_copy_values(VSAMPLITUDE_PROPERTY, property, false);
+		pthread_mutex_lock(&driver_mutex);
+		if (!use_camera(device)) {
+			pthread_mutex_unlock(&driver_mutex);
+			return INDIGO_OK;
+		}
+		for(int i = 0; i < VSAMPLITUDE_PROPERTY->count; i++) {
+			if(VSAMPLITUDE_PROPERTY->items[i].sw.value) {
+				uint32_t res = SetVSAmplitude(i);
+				if (res != DRV_SUCCESS) {
+					if (res == DRV_P1INVALID) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude(%d): Amplitude Not Supported", i);
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude(%d) error: %d", i, res);
+					}
+					VSAMPLITUDE_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "VS Amplitude set to %d", i);
+					VSAMPLITUDE_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				break;
+			}
+		}
+		pthread_mutex_unlock(&driver_mutex);
+		indigo_update_property(device, VSAMPLITUDE_PROPERTY, NULL);
 	}
 	// --------------------------------------------------------------------------------
 	return indigo_ccd_change_property(device, client, property);
