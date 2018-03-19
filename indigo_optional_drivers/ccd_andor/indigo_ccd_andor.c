@@ -36,6 +36,23 @@
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_andor.h"
 
+/* Make it work with older SDK */
+#ifdef AC_CAMERATYPE_ISTAR_SCMOS
+	#define NEW_SDK
+#else
+	#define AC_CAMERATYPE_ISTAR_SCMOS  30
+	#define AC_CAMERATYPE_IKONLR       31
+#endif
+
+// #define NO_SETHIGHCAPACITY
+#ifdef NO_SETHIGHCAPACITY
+static unsigned int SetHighCapacity(int state) {
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHighCapacity() call is not Supported by this version of the SDK.");
+	return DRV_SUCCESS;
+}
+#endif
+
+
 #define TEMP_UPDATE         2.0
 
 // gp_bits is used as boolean
@@ -195,15 +212,16 @@ static void init_vsspeed_property(indigo_device *device) {
 }
 
 
-// Why is this broken????
-static void init_vsamplitude_property_broken(indigo_device *device) {
+#ifdef NEW_SDK  /* SDK is new */
+
+static void init_vsamplitude_property(indigo_device *device) {
 	int res, option_num;
 	res = GetNumberVSAmplitudes(&option_num);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() error: %d", res);
 		option_num = 0;
 	}
-	VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
 	for (int i = 0; i < option_num; i++) {
 		char amplitude[INDIGO_NAME_SIZE];
 		char item[INDIGO_NAME_SIZE];
@@ -218,11 +236,12 @@ static void init_vsamplitude_property_broken(indigo_device *device) {
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
 	}
-	indigo_define_property(device, VSSPEED_PROPERTY, NULL);
+	indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
 }
 
+#else /* SDK is old */
 
-static void init_vsamplitude_property(indigo_device *device) {
+static void init_vsamplitude_property_s(indigo_device *device) {
 	int res, option_num;
 	res = GetNumberVSAmplitudes(&option_num);
 	if (res != DRV_SUCCESS) {
@@ -242,6 +261,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 	}
 }
 
+#endif /* NEW_SDK */
 
 static void init_highcapacity_property(indigo_device *device) {
 	int res;
