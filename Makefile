@@ -393,15 +393,15 @@ $(BUILD_LIB)/libnmea.a: $(BUILD_INCLUDE)/nmea/nmea.h
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libfli/libfli.h: indigo_drivers/ccd_fli/externals/libfli-1.104/libfli.h
+$(BUILD_INCLUDE)/libfli/libfli.h: indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223/libfli.h
 	install -d $(BUILD_INCLUDE)
 	install -d $(BUILD_INCLUDE)/libfli
-	cp indigo_drivers/ccd_fli/externals/libfli-1.104/libfli.h $(BUILD_INCLUDE)/libfli
+	cp indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223/libfli.h $(BUILD_INCLUDE)/libfli
 
 $(BUILD_LIB)/libfli.a: $(BUILD_INCLUDE)/libfli/libfli.h
-	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; make; cd ../../../..
+	cd indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223; make clean; make; cd ../../../..
 	install -d $(BUILD_LIB)
-	cp indigo_drivers/ccd_fli/externals/libfli-1.104/libfli.a $(BUILD_LIB)
+	cp indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223/libfli.a $(BUILD_LIB)
 
 
 #---------------------------------------------------------------------
@@ -1161,7 +1161,7 @@ clean-all: clean
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/gps_nmea/externals/nmealib; make clean; cd ../../../..
-	cd indigo_drivers/ccd_fli/externals/libfli-1.104; make clean; cd ../../../..
+	cd indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223; make clean; cd ../../../..
 	cd indigo_drivers/ccd_qsi/externals; rm -rf qsiapi-7.6.0; cd ../../..
 
 #---------------------------------------------------------------------

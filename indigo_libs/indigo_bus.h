@@ -28,6 +28,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 #include "indigo_config.h"
 
@@ -307,6 +308,10 @@ extern char indigo_log_name[];
  */
 extern void (*indigo_log_message_handler)(const char *message);
 
+/** Print diagnostic messages.
+ */
+extern void indigo_log_message(const char *format, va_list args);
+	
 /** Print diagnostic messages on trace level, wrap calls to INDIGO_TRACE() macro.
  */
 extern void indigo_trace(const char *format, ...);

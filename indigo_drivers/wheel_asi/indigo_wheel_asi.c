@@ -200,22 +200,29 @@ static int efw_id_count = 0;
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static bool connected_ids[EFW_ID_MAX];
 
+static pthread_mutex_t sdk_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int find_index_by_device_id(int id) {
+	pthread_mutex_lock(&sdk_mutex);
 	int count = EFWGetNum();
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
 	int cur_id;
 	for (int index = 0; index < count; index++) {
 		int res = EFWGetID(index, &cur_id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, cur_id, res);
-		if (res == EFW_SUCCESS && cur_id == id) return index;
+		if (res == EFW_SUCCESS && cur_id == id) {
+			pthread_mutex_unlock(&sdk_mutex);
+			return index;
+		}
 	}
+	pthread_mutex_unlock(&sdk_mutex);
 	return -1;
 }
 
 
 static int find_plugged_device_id() {
 	int id = NO_DEVICE, new_id = NO_DEVICE;
+	pthread_mutex_lock(&sdk_mutex);
 	int count = EFWGetNum();
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
 	for (int index = 0; index < count; index++) {
@@ -227,7 +234,7 @@ static int find_plugged_device_id() {
 			break;
 		}
 	}
-
+	pthread_mutex_unlock(&sdk_mutex);
 	return new_id;
 }
 
@@ -253,7 +260,7 @@ static int find_device_slot(int id) {
 static int find_unplugged_device_id() {
 	bool dev_tmp[EFW_ID_MAX] = { false };
 	int id = -1;
-
+	pthread_mutex_lock(&sdk_mutex);
 	int count = EFWGetNum();
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
 	for (int index = 0; index < count; index++) {
@@ -262,7 +269,6 @@ static int find_unplugged_device_id() {
 		if (res == EFW_SUCCESS)
 			dev_tmp[id] = true;
 	}
-
 	id = -1;
 	for (int index = 0; index < EFW_ID_MAX; index++) {
 		if (connected_ids[index] && !dev_tmp[index]) {
@@ -271,6 +277,7 @@ static int find_unplugged_device_id() {
 			break;
 		}
 	}
+	pthread_mutex_unlock(&sdk_mutex);
 	return id;
 }
 

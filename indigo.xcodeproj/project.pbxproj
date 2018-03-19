@@ -406,7 +406,7 @@
 		5992F7B11E1EC8A20035242E /* indigo_ccd_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_fli_main.c; sourceTree = "<group>"; };
 		5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		5992F7B31E1EC8A20035242E /* indigo_ccd_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_fli.h; sourceTree = "<group>"; };
-		5992F7B61E1EC8EF0035242E /* libfli.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfli.a; path = "externals/libfli-1.104/libfli.a"; sourceTree = "<group>"; };
+		5992F7B61E1EC8EF0035242E /* libfli.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfli.a; path = "externals/libfli-1.999.1-180223/libfli.a"; sourceTree = "<group>"; };
 		5992F7B81E1EC9030035242E /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = libfli.h; path = "externals/libfli-1.104/libfli.h"; sourceTree = "<group>"; };
 		5992F7BA1E1EC9390035242E /* indigo_wheel_fli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_fli.h; sourceTree = "<group>"; };
 		5992F7BB1E1EC9580035242E /* indigo_wheel_fli_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_fli_main.c; sourceTree = "<group>"; };
