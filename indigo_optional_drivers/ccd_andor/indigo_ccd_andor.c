@@ -43,10 +43,12 @@
 
 #define VSSPEED_PROPERTY_NAME           "ANDOR_VSSPEED"
 #define VSAMPLITUDE_PROPERTY_NAME       "ANDOR_VSAMPLITUDE"
+#define HIGHCAPACITY_PROPERTY_NAME      "ANDOR_HIGHCAPACITY"
 
 #define PRIVATE_DATA                    ((andor_private_data *)device->private_data)
 #define VSSPEED_PROPERTY                PRIVATE_DATA->vsspeed_property
 #define VSAMPLITUDE_PROPERTY            PRIVATE_DATA->vsamplitude_property
+#define HIGHCAPACITY_PROPERTY           PRIVATE_DATA->highcapacity_property
 
 #define CAP_GET_TEMPERATURE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
 #define CAP_GET_TEMPERATURE_RANGE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE)
@@ -55,6 +57,8 @@
 #define CAP_SET_VREADOUT (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VREADOUT)
 #define CAP_SET_VSAMPLITUDE (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VSAMPLITUDE)
 #define CAP_SET_HREADOUT (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HREADOUT)
+#define CAP_SET_HIGHCAPACITY (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY)
+
 
 
 typedef struct {
@@ -62,6 +66,7 @@ typedef struct {
 	int index;
 	indigo_property *vsspeed_property;
 	indigo_property *vsamplitude_property;
+	indigo_property *highcapacity_property;
 
 	unsigned char *buffer;
 	long buffer_size;
@@ -71,7 +76,6 @@ typedef struct {
 	bool no_check_temperature;
 	float target_temperature, current_temperature, cooler_power;
 	indigo_timer *exposure_timer, *temperature_timer;
-	//double ra_offset, dec_offset;
 } andor_private_data;
 
 /* To avoid exposure failue when many cameras are present global mutex is required */
@@ -235,6 +239,20 @@ static void init_vsamplitude_property(indigo_device *device) {
 	res = SetVSAmplitude(0); /* 0 is Normal */
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
+	}
+}
+
+
+static void init_highcapacity_property(indigo_device *device) {
+	int res;
+	HIGHCAPACITY_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGHCAPACITY_PROPERTY_NAME, "Aquisition", "Capacity / Sensitivity", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	indigo_init_switch_item(HIGHCAPACITY_PROPERTY->items + 0, "HIGHT_SENSITIVITY", "High Sensitivity", true);
+	indigo_init_switch_item(HIGHCAPACITY_PROPERTY->items + 1, "HIGHT_CAPACITY", "High Capacity", false);
+
+	indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
+	res = SetHighCapacity(0); /* 0 is High Sensitivity */
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHighCapacity() error: %d", res);
 	}
 }
 
@@ -489,6 +507,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 				indigo_define_property(device, VSSPEED_PROPERTY, NULL);
 			if (indigo_property_match(VSAMPLITUDE_PROPERTY, property))
 				indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
+			if (indigo_property_match(HIGHCAPACITY_PROPERTY, property))
+				indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -529,6 +549,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				if(CAP_SET_VSAMPLITUDE) {
 					init_vsamplitude_property(device);
+				}
+
+				if(CAP_SET_HIGHCAPACITY) {
+					init_highcapacity_property(device);
 				}
 
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
@@ -637,6 +661,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				if (CAP_SET_VSAMPLITUDE) {
 					indigo_delete_property(device, VSAMPLITUDE_PROPERTY, NULL);
+				}
+				if (CAP_SET_HIGHCAPACITY) {
+					indigo_delete_property(device, HIGHCAPACITY_PROPERTY, NULL);
 				}
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				if (PRIVATE_DATA->buffer != NULL) {
@@ -805,11 +832,35 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, VSAMPLITUDE_PROPERTY, NULL);
+	} else if (indigo_property_match(HIGHCAPACITY_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- HIGHCAPACITY
+		indigo_property_copy_values(HIGHCAPACITY_PROPERTY, property, false);
+		pthread_mutex_lock(&driver_mutex);
+		if (!use_camera(device)) {
+			pthread_mutex_unlock(&driver_mutex);
+			return INDIGO_OK;
+		}
+		for(int i = 0; i < HIGHCAPACITY_PROPERTY->count; i++) {
+			if(HIGHCAPACITY_PROPERTY->items[i].sw.value) {
+				uint32_t res = SetHighCapacity(i);
+				if (res != DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHighCapacity(%d) error: %d", i, res);
+					HIGHCAPACITY_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "High Sensitivity/Capacity (0/1): %d", i);
+					HIGHCAPACITY_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				break;
+			}
+		}
+		pthread_mutex_unlock(&driver_mutex);
+		indigo_update_property(device, HIGHCAPACITY_PROPERTY, NULL);
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, VSSPEED_PROPERTY);
 			indigo_save_property(device, NULL, VSAMPLITUDE_PROPERTY);
+			indigo_save_property(device, NULL, HIGHCAPACITY_PROPERTY);
 		}
 	}
 	// --------------------------------------------------------------------------------
@@ -825,6 +876,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 		}
 		if (CAP_SET_VSAMPLITUDE) {
 			indigo_release_property(VSAMPLITUDE_PROPERTY);
+		}
+		if (CAP_SET_HIGHCAPACITY) {
+			indigo_release_property(HIGHCAPACITY_PROPERTY);
 		}
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
