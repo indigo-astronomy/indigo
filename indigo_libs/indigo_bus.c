@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 #include <time.h>
 #include <assert.h>
 #include <pthread.h>
@@ -100,7 +99,7 @@ int indigo_main_argc = 0;
 char indigo_last_message[128 * 1024];
 char indigo_log_name[255] = {0};
 
-static void log_message(const char *format, va_list args) {
+void indigo_log_message(const char *format, va_list args) {
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
 	vsnprintf(indigo_last_message, sizeof(indigo_last_message), format, args);
@@ -164,7 +163,7 @@ static void log_message(const char *format, va_list args) {
 void indigo_error(const char *format, ...) {
 	va_list argList;
 	va_start(argList, format);
-	log_message(format, argList);
+	indigo_log_message(format, argList);
 	va_end(argList);
 }
 
@@ -172,7 +171,7 @@ void indigo_log(const char *format, ...) {
 	if (indigo_log_level >= INDIGO_LOG_INFO) {
 		va_list argList;
 		va_start(argList, format);
-		log_message(format, argList);
+		indigo_log_message(format, argList);
 		va_end(argList);
 	}
 }
@@ -181,7 +180,7 @@ void indigo_trace(const char *format, ...) {
 	if (indigo_log_level >= INDIGO_LOG_TRACE) {
 		va_list argList;
 		va_start(argList, format);
-		log_message(format, argList);
+		indigo_log_message(format, argList);
 		va_end(argList);
 	}
 }
@@ -190,7 +189,7 @@ void indigo_debug(const char *format, ...) {
 	if (indigo_log_level >= INDIGO_LOG_DEBUG) {
 		va_list argList;
 		va_start(argList, format);
-		log_message(format, argList);
+		indigo_log_message(format, argList);
 		va_end(argList);
 	}
 }

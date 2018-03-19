@@ -23,7 +23,7 @@
  \file indigo_wheel_fli.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME		"indigo_wheel_fli"
 
 #include <stdlib.h>
@@ -243,7 +243,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 
@@ -260,24 +260,21 @@ static void enumerate_devices() {
 	/* There is a mem leak heree!!! 8,192 constant + 12 bytes on every new connected device */
 	num_devices = 0;
 	long res = FLICreateList(enum_domain);
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d",enum_domain , res);
-	}
-	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
+	if (res)
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
+	else
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
+	res = FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListFirst(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
+	if (res == 0) {
 		do {
 			num_devices++;
-		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
+			res = FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListNext(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
+		} while ((res == 0) && (num_devices < MAX_DEVICES));
 	}
-	FLIDeleteList();
-	/* FOR DEBUG only!
-	FLICreateList(FLIDOMAIN_USB | FLIDEVICE_CAMERA);
-	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
-		do {
-			num_devices++;
-		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
-	}
-	FLIDeleteList();
-	*/
+	res = FLIDeleteList();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIDeleteList() = %d", res);
 }
 
 static int find_plugged_device(char *fname) {
@@ -372,7 +369,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
+			libusb_get_device_descriptor(dev, &descriptor);
 			if (descriptor.idVendor != FLI_VENDOR_ID) break;
 
 			int slot = find_available_device_slot();

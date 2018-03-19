@@ -26,7 +26,7 @@
 #define MAX_PATH                      255     /* Maximal Path Length */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x0002
+#define DRIVER_VERSION             0x0003
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
@@ -87,7 +87,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	long value;
 	flidev_t id = PRIVATE_DATA->dev_id;
 
-	int res;
+	long res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = FLIGetStepperPosition(id, &value);
 	value -= PRIVATE_DATA->zero_position;
@@ -257,7 +257,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	long res;
-	flidev_t id;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -265,7 +264,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (!device->is_connected) {
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, "Connecting to focuser, this may take time!");
-				//indigo_set_timer(device, 0, fli_focuser_connect);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -299,7 +297,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &current_value);
 			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", id, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 			current_value -= PRIVATE_DATA->zero_position;
 
@@ -326,7 +324,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
 			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", id, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", PRIVATE_DATA->dev_id, res);
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
@@ -349,7 +347,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		    (FOCUSER_POSITION_ITEM->number.value <= FOCUSER_POSITION_ITEM->number.max)) {
 			res = FLIGetStepperPosition(PRIVATE_DATA->dev_id, &value);
 			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", id, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 			value -= PRIVATE_DATA->zero_position;
 			value = FOCUSER_POSITION_ITEM->number.value - value;
@@ -366,7 +364,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, value);
 			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", id, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", PRIVATE_DATA->dev_id, res);
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -385,7 +383,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			res = FLIStepMotorAsync(PRIVATE_DATA->dev_id, 0);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", id, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 		}
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -410,7 +408,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 
@@ -427,26 +425,22 @@ static void enumerate_devices() {
 	/* There is a mem leak heree!!! 8,192 constant + 20 bytes on every new connected device */
 	num_devices = 0;
 	long res = FLICreateList(enum_domain);
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d",enum_domain , res);
-	}
-	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
+	if (res)
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
+	else
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
+	res = FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListFirst(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
+	if (res == 0) {
 		do {
 			num_devices++;
-		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
+			res = FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListNext(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
+		} while ((res == 0) && (num_devices < MAX_DEVICES));
 	}
-	FLIDeleteList();
-	/* FOR DEBUG only!
-	FLICreateList(FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL);
-	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
-		do {
-			num_devices++;
-		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));
-	}
-	FLIDeleteList();
-	*/
+	res = FLIDeleteList();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIDeleteList() = %d", res);
 }
-
 
 static int find_plugged_device(char *fname) {
 	enumerate_devices();
@@ -470,17 +464,6 @@ static int find_plugged_device(char *fname) {
 	}
 	return -1;
 }
-
-
-static int find_index_by_device_fname(char *fname) {
-	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-		if (!strncmp(fli_file_names[dev_no], fname, MAX_PATH)) {
-			return dev_no;
-		}
-	}
-	return -1;
-}
-
 
 static int find_available_device_slot() {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
@@ -539,7 +522,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
+			libusb_get_device_descriptor(dev, &descriptor);
 			if (descriptor.idVendor != FLI_VENDOR_ID) break;
 
 			int slot = find_available_device_slot();
