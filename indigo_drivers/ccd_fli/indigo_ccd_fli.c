@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -371,7 +371,6 @@ static bool fli_set_cooler(indigo_device *device, double target, double *current
 	long res;
 
 	flidev_t id = PRIVATE_DATA->dev_id;
-	long current_status;
 	static double old_target = 100.0;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -448,7 +447,6 @@ static void clear_reg_timer_callback(indigo_device *device) {
 
 
 static void rbi_exposure_timer_callback(indigo_device *device) {
-	bool ok;
 	PRIVATE_DATA->exposure_timer = NULL;
 
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
@@ -566,7 +564,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 
 static bool handle_nflushes_property(indigo_device *device, indigo_property *property) {
-	int id = PRIVATE_DATA->dev_id;
+	flidev_t id = PRIVATE_DATA->dev_id;
 	long nflushes = (long)(FLI_NFLUSHES_PROPERTY_ITEM->number.value);
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -588,7 +586,7 @@ static bool handle_nflushes_property(indigo_device *device, indigo_property *pro
 
 
 static bool handle_camera_mode_property(indigo_device *device, indigo_property *property) {
-	int id = PRIVATE_DATA->dev_id;
+	flidev_t id = PRIVATE_DATA->dev_id;
 	int mode;
 
 	for (mode = 0; mode < FLI_CAMERA_MODE_PROPERTY->count; mode++) {
@@ -946,7 +944,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 
@@ -989,7 +987,6 @@ static void enumerate_devices() {
 	*/
 }
 
-
 static int find_plugged_device(char *fname) {
 	enumerate_devices();
 	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
@@ -1012,17 +1009,6 @@ static int find_plugged_device(char *fname) {
 	}
 	return -1;
 }
-
-
-static int find_index_by_device_fname(char *fname) {
-	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-		if (!strncmp(fli_file_names[dev_no], fname, MAX_PATH)) {
-			return dev_no;
-		}
-	}
-	return -1;
-}
-
 
 static int find_available_device_slot() {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
@@ -1082,7 +1068,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
+			libusb_get_device_descriptor(dev, &descriptor);
 			if (descriptor.idVendor != FLI_VENDOR_ID) break;
 
 			int slot = find_available_device_slot();
