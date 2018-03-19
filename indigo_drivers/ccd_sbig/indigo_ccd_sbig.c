@@ -2268,7 +2268,6 @@ static int find_unplugged_device(char *dev_name) {
 
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	short res;
 	//pthread_mutex_lock(&hotplug_mutex);
 
 	switch (event) {
