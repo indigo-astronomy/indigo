@@ -205,7 +205,7 @@ static void init_vsamplitude_property_broken(indigo_device *device) {
 		char item[INDIGO_NAME_SIZE];
 		char description[INDIGO_VALUE_SIZE];
 		GetVSAmplitudeString(i, amplitude);
-		snprintf(item, INDIGO_NAME_SIZE, "AMPITUDE_%d", i);
+		snprintf(item, INDIGO_NAME_SIZE, "AMPLITUDE_%d", i);
 		indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + i, item, amplitude, false);
 	}
 	if (option_num) VSAMPLITUDE_PROPERTY->items[0].sw.value = true;
