@@ -57,7 +57,6 @@
 #define CAP_SET_HREADOUT (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HREADOUT)
 
 
-
 typedef struct {
 	long handle;
 	int index;
@@ -78,6 +77,8 @@ typedef struct {
 /* To avoid exposure failue when many cameras are present global mutex is required */
 static pthread_mutex_t driver_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+
+// -------------------------------------------------------------------------------- INDIGO CCD device implementation
 static void get_camera_type(unsigned long type, char *name,  size_t size){
 	switch (type) {
 	case AC_CAMERATYPE_PDA:
@@ -152,6 +153,7 @@ static void get_camera_type(unsigned long type, char *name,  size_t size){
 	}
 }
 
+
 static bool use_camera(indigo_device *device) {
 	at_32 res = SetCurrentCamera(PRIVATE_DATA->handle);
 	if (res != DRV_SUCCESS) {
@@ -160,6 +162,49 @@ static bool use_camera(indigo_device *device) {
 	}
 	return true;
 }
+
+
+static void init_vsspeed_property(indigo_device *device) {
+	int res, option_num;
+	res = GetNumberVSSpeeds(&option_num);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSSpeeds() error: %d", res);
+		option_num = 0;
+	}
+	VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, "Aquisition", "Vertical Shift Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	for (int i = 0; i < option_num; i++) {
+		float speed;
+		char item[INDIGO_NAME_SIZE];
+		char description[INDIGO_VALUE_SIZE];
+		GetVSSpeed(i, &speed);
+		snprintf(item, INDIGO_NAME_SIZE, "SPEED_%d", i);
+		snprintf(description, INDIGO_VALUE_SIZE, "%.2f us", speed);
+		indigo_init_switch_item(VSSPEED_PROPERTY->items + i, item, description, false);
+	}
+	if (option_num) VSSPEED_PROPERTY->items[0].sw.value = true;
+
+	res = SetVSSpeed(0);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSSpeed() error: %d", res);
+	}
+	indigo_define_property(device, VSSPEED_PROPERTY, NULL);
+}
+
+
+static void init_vsamplitude_property(indigo_device *device) {
+	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
+	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
+	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 1, "AMPLITUDE_1", "+1", false);
+	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 2, "AMPLITUDE_2", "+2", false);
+	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 3, "AMPLITUDE_3", "+3", false);
+	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 4, "AMPLITUDE_4", "+4", false);
+	indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
+	int res = SetVSAmplitude(0); /* 0 is Normal */
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
+	}
+}
+
 
 static bool andor_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
 	unsigned int res;
@@ -224,6 +269,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	return true;
 }
 
+
 static bool andor_read_pixels(indigo_device *device) {
 	long res;
 	long wait_cycles = 4000;
@@ -273,6 +319,7 @@ static bool andor_read_pixels(indigo_device *device) {
 	return true;
 }
 
+
 static void exposure_timer_callback(indigo_device *device) {
 	unsigned char *frame_buffer;
 
@@ -297,6 +344,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA ->no_check_temperature = false;
 }
 
+
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
 static void clear_reg_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
@@ -307,6 +355,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
+
 
 static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
 	long ok;
@@ -362,7 +411,6 @@ static bool andor_abort_exposure(indigo_device *device) {
 }
 
 
-// -------------------------------------------------------------------------------- INDIGO CCD device implementation
 static void ccd_temperature_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
@@ -399,6 +447,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+
 indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_ccd_enumerate_properties(device, client, property)) == INDIGO_OK) {
@@ -412,10 +461,12 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 	return result;
 }
 
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
+	int res;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -439,45 +490,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					return INDIGO_OK;
 				}
 
-				int option_num;
-				int res;
 				if (CAP_SET_VREADOUT) {
-					res = GetNumberVSSpeeds(&option_num);
-					if (res != DRV_SUCCESS) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSSpeeds() error: %d", res);
-						option_num = 0;
-					}
-					VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, "Aquisition", "Vertical Shift Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
-					for (int i = 0; i < option_num; i++) {
-						float speed;
-						char item[INDIGO_NAME_SIZE];
-						char description[INDIGO_VALUE_SIZE];
-						GetVSSpeed(i, &speed);
-						snprintf(item, INDIGO_NAME_SIZE, "SPEED_%d", i);
-						snprintf(description, INDIGO_VALUE_SIZE, "%.2f us", speed);
-						indigo_init_switch_item(VSSPEED_PROPERTY->items + i, item, description, false);
-					}
-					if (option_num) VSSPEED_PROPERTY->items[0].sw.value = true;
-
-					res = SetVSSpeed(0);
-					if (res != DRV_SUCCESS) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSSpeed() error: %d", res);
-					}
-					indigo_define_property(device, VSSPEED_PROPERTY, NULL);
+					init_vsspeed_property(device);
 				}
 
 				if(CAP_SET_VSAMPLITUDE) {
-					VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
-					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
-					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 1, "AMPLITUDE_1", "+1", false);
-					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 2, "AMPLITUDE_2", "+2", false);
-					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 3, "AMPLITUDE_3", "+3", false);
-					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 4, "AMPLITUDE_4", "+4", false);
-					indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
-					res = SetVSAmplitude(0); /* 0 is Normal */
-					if (res != DRV_SUCCESS) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
-					}
+					init_vsamplitude_property(device);
 				}
 
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
@@ -785,6 +803,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 #define MAX_DEVICES 8
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 at_32 device_num = 0;
+
 
 indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device imager_camera_template = INDIGO_DEVICE_INITIALIZER(
