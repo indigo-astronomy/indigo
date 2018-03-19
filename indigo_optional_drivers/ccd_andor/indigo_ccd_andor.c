@@ -391,14 +391,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		if(CAP_SET_VREADOUT) {
-			VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, "Aquisition", "Vertical Shift Speed (usec)", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-			indigo_init_switch_item(VSSPEED_PROPERTY->items + 0, "M", "Manual", true);
-		}
-		if(CAP_SET_VSAMPLITUDE) {
-			VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Speed Amplitude", INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-			indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "M", "Manual", true);
-		}
 		INFO_PROPERTY->count = 7;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -437,13 +429,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					return INDIGO_OK;
 				}
 
-				if (CAP_SET_VREADOUT) {
-					indigo_define_property(device, VSSPEED_PROPERTY, NULL);
-				}
-				if (CAP_SET_VSAMPLITUDE) {
-					indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
-				}
-
 				pthread_mutex_lock(&driver_mutex);
 				if (use_camera(device) == false) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -454,8 +439,41 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					return INDIGO_OK;
 				}
 
+				int option_num;
+				int res;
+				if (CAP_SET_VREADOUT) {
+					res = GetNumberVSSpeeds(&option_num);
+					if (res != DRV_SUCCESS) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSSpeeds() error: %d", res);
+						option_num = 0;
+					}
+					VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, "Aquisition", "Vertical Shift Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+					for (int i = 0; i < option_num; i++) {
+						float speed;
+						char item[INDIGO_NAME_SIZE];
+						char description[INDIGO_VALUE_SIZE];
+						GetVSSpeed(i, &speed);
+						snprintf(item, INDIGO_NAME_SIZE, "SPEED_%d", i);
+						snprintf(description, INDIGO_VALUE_SIZE, "%.2f us", speed);
+						indigo_init_switch_item(VSSPEED_PROPERTY->items + i, item, description, false);
+					}
+					if (option_num) VSSPEED_PROPERTY->items[0].sw.value = true;
+
+					res = SetVSSpeed(0);
+					if (res != DRV_SUCCESS) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSSpeed() error: %d", res);
+					}
+					indigo_define_property(device, VSSPEED_PROPERTY, NULL);
+				}
+
+				if(CAP_SET_VSAMPLITUDE) {
+					VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+					indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
+					indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
+				}
+
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-				int res = GetHeadModel(INFO_DEVICE_MODEL_ITEM->text.value);
+				res = GetHeadModel(INFO_DEVICE_MODEL_ITEM->text.value);
 				if (res!= DRV_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() error: %d", res);
 					INFO_DEVICE_MODEL_ITEM->text.value[0] = '\0';
@@ -678,8 +696,31 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		}
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-		// --------------------------------------------------------------------------------
+	} else if (indigo_property_match(VSSPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- VSSPEED
+		indigo_property_copy_values(VSSPEED_PROPERTY, property, false);
+		pthread_mutex_lock(&driver_mutex);
+		if (!use_camera(device)) {
+			pthread_mutex_unlock(&driver_mutex);
+			return INDIGO_OK;
+		}
+		for(int i = 0; i < VSSPEED_PROPERTY->count; i++) {
+			if(VSSPEED_PROPERTY->items[i].sw.value) {
+				uint32_t res = SetVSSpeed(i);
+				if (res != DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSSpeed(%d) error: %d", i, res);
+					VSSPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "VS Speed set to %d", i);
+					VSSPEED_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				break;
+			}
+		}
+		pthread_mutex_unlock(&driver_mutex);
+		indigo_update_property(device, VSSPEED_PROPERTY, NULL);
 	}
+	// --------------------------------------------------------------------------------
 	return indigo_ccd_change_property(device, client, property);
 }
 
