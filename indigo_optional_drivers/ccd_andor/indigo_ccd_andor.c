@@ -754,6 +754,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, VSAMPLITUDE_PROPERTY, NULL);
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, VSSPEED_PROPERTY);
+			indigo_save_property(device, NULL, VSAMPLITUDE_PROPERTY);
+		}
 	}
 	// --------------------------------------------------------------------------------
 	return indigo_ccd_change_property(device, client, property);
