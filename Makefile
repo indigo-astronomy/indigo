@@ -51,6 +51,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
 	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac/libASICamera2.a
 	LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac/libUSB2ST4Conv.a
+	FLISDK=libfli-1.999.1-180223
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
 	PACKAGE_TYPE=dmg
 	UINT=-Duint=unsigned
@@ -69,6 +70,7 @@ ifeq ($(OS_DETECTED),Linux)
 		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/$(ARCH_DETECTED)/libASICamera2.a
 		LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/$(ARCH_DETECTED)/libUSB2ST4Conv.a
 	endif
+	FLISDK=libfli-1.104
 	LIBRAW_1394=$(shell pkg-config --libs libraw1394)
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	INSTALL_PREFIX=/usr/local
@@ -393,15 +395,15 @@ $(BUILD_LIB)/libnmea.a: $(BUILD_INCLUDE)/nmea/nmea.h
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libfli/libfli.h: indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223/libfli.h
+$(BUILD_INCLUDE)/libfli/libfli.h: indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.h
 	install -d $(BUILD_INCLUDE)
 	install -d $(BUILD_INCLUDE)/libfli
-	cp indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223/libfli.h $(BUILD_INCLUDE)/libfli
+	cp indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.h $(BUILD_INCLUDE)/libfli
 
 $(BUILD_LIB)/libfli.a: $(BUILD_INCLUDE)/libfli/libfli.h
-	cd indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223; make clean; make; cd ../../../..
+	cd indigo_drivers/ccd_fli/externals/$(FLISDK); make clean; make; cd ../../../..
 	install -d $(BUILD_LIB)
-	cp indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223/libfli.a $(BUILD_LIB)
+	cp indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.a $(BUILD_LIB)
 
 
 #---------------------------------------------------------------------
