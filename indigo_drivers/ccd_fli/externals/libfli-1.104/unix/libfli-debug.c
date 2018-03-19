@@ -94,13 +94,17 @@ int debugclose(void)
   return 0;
 }
 
+void (*debug_ext)(int level, char *format, va_list arg) = NULL;
+
 void debug(int level, char *format, ...)
 {
   va_list ap;
 
   va_start(ap, format);
 
-  if (_loghost != NULL)
+  if (debug_ext)
+    debug_ext(level, format, ap);
+  else if (_loghost != NULL)
     vsyslog(sysloglevel(level), format, ap);
   else if (level > FLIDEBUG_NONE && level <= _loglevel)
   {
