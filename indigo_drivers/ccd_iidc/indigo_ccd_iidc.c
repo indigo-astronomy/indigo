@@ -484,7 +484,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 #define MAX_DEVICES                   10
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_device *devices[MAX_DEVICES];
 static dc1394_t *context;
 
