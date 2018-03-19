@@ -86,9 +86,6 @@ static void gps_close(indigo_device *device) {
 
 
 static void gps_timer_callback(indigo_device *device) {
-	int res;
-	double ra, dec, lon, lat;
-
 	if (PRIVATE_DATA->timer_ticks >= TICKS_TO_2D_FIX) {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX)*1000);
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = SIM_LATITUDE + rand() / ((double)(RAND_MAX)*1000);

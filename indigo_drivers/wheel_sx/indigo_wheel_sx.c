@@ -164,7 +164,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_device *device = NULL;
 
