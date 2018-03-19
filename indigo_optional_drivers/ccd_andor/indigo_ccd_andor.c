@@ -191,15 +191,48 @@ static void init_vsspeed_property(indigo_device *device) {
 }
 
 
+// Why is this broken????
+static void init_vsamplitude_property_broken(indigo_device *device) {
+	int res, option_num;
+	res = GetNumberVSAmplitudes(&option_num);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() error: %d", res);
+		option_num = 0;
+	}
+	VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	for (int i = 0; i < option_num; i++) {
+		char amplitude[INDIGO_NAME_SIZE];
+		char item[INDIGO_NAME_SIZE];
+		char description[INDIGO_VALUE_SIZE];
+		GetVSAmplitudeString(i, amplitude);
+		snprintf(item, INDIGO_NAME_SIZE, "AMPITUDE_%d", i);
+		indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + i, item, amplitude, false);
+	}
+	if (option_num) VSAMPLITUDE_PROPERTY->items[0].sw.value = true;
+
+	res = SetVSAmplitude(0);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
+	}
+	indigo_define_property(device, VSSPEED_PROPERTY, NULL);
+}
+
+
 static void init_vsamplitude_property(indigo_device *device) {
-	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
-	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
-	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 1, "AMPLITUDE_1", "+1", false);
-	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 2, "AMPLITUDE_2", "+2", false);
-	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 3, "AMPLITUDE_3", "+3", false);
-	indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 4, "AMPLITUDE_4", "+4", false);
+	int res, option_num;
+	res = GetNumberVSAmplitudes(&option_num);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() error: %d", res);
+		option_num = 0;
+	}
+	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	if (option_num > 0) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
+	if (option_num > 1) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 1, "AMPLITUDE_1", "+1", false);
+	if (option_num > 2) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 2, "AMPLITUDE_2", "+2", false);
+	if (option_num > 3) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 3, "AMPLITUDE_3", "+3", false);
+	if (option_num > 4) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 4, "AMPLITUDE_4", "+4", false);
 	indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
-	int res = SetVSAmplitude(0); /* 0 is Normal */
+	res = SetVSAmplitude(0); /* 0 is Normal */
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
 	}
