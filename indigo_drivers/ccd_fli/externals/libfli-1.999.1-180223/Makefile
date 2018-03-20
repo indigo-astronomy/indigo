@@ -47,7 +47,7 @@ endif
 
 ifeq ($(UNAME), Darwin)
 	CFLAGS += -Wno-absolute-value -arch x86_64
-	INC += $(DIR)/unix/osx /Developer/SDKs/MacOSX10.12.sdk/usr/include /usr/local/include
+	INC += $(DIR)/unix/osx /Developer/SDKs/MacOSX10.12.sdk/usr/include ../../../../build/include/
 	LIBS =IOkit
 	LIBPATH = /usr/local/lib /sw/lib /usr/lib/ /System/Library/Frameworks/CoreFoundation.framework
 	LDLIBS = $(patsubst %, -l%, $(LIBS))

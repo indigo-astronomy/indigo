@@ -319,13 +319,19 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					//pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
+				int res = EFWOpen(id);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d}) = %d", id, res);
 				while (true) {
-					int res = EFWGetProperty(id, &info);
+					res = EFWGetProperty(id, &info);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d, -> { %d, '%s', %d }) = %d", id, info.ID, info.Name, info.slotNum, res);
-					if (res == EFW_SUCCESS)
+					if (res == EFW_SUCCESS) {
+						EFWClose(id);
 						break;
-					if (res != EFW_ERROR_MOVING)
+					}
+					if (res != EFW_ERROR_MOVING) {
+						EFWClose(id);
 						return 0;
+					}
 					sleep(1);
 				}
 				indigo_device *device = malloc(sizeof(indigo_device));
