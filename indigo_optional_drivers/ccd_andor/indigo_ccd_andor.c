@@ -205,7 +205,7 @@ static void init_vsspeed_property(indigo_device *device) {
 		char description[INDIGO_VALUE_SIZE];
 		GetVSSpeed(i, &speed);
 		snprintf(item, INDIGO_NAME_SIZE, "SPEED_%d", i);
-		snprintf(description, INDIGO_VALUE_SIZE, "%.2f us", speed);
+		snprintf(description, INDIGO_VALUE_SIZE, "%.2fus", speed);
 		indigo_init_switch_item(VSSPEED_PROPERTY->items + i, item, description, false);
 	}
 	if (option_num) VSSPEED_PROPERTY->items[0].sw.value = true;
