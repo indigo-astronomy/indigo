@@ -320,7 +320,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					return 0;
 				}
 				int res = EFWOpen(id);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d}) = %d", id, res);
+				if (res) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWOpen(%d}) = %d", id, res);
+					return 0;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d}) = %d", id, res);
+				}
 				while (true) {
 					res = EFWGetProperty(id, &info);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d, -> { %d, '%s', %d }) = %d", id, info.ID, info.Name, info.slotNum, res);
