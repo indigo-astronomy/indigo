@@ -60,12 +60,14 @@ static unsigned int SetHighCapacity(int state) {
 
 #define VSSPEED_PROPERTY_NAME           "ANDOR_VSSPEED"
 #define VSAMPLITUDE_PROPERTY_NAME       "ANDOR_VSAMPLITUDE"
+#define HREADOUT_PROPERTY_NAME          "ANDOR_HREADOUT"
 #define PREAMPGAIN_PROPERTY_NAME        "ANDOR_PREAMPGAIN"
 #define HIGHCAPACITY_PROPERTY_NAME      "ANDOR_HIGHCAPACITY"
 
 #define PRIVATE_DATA                    ((andor_private_data *)device->private_data)
 #define VSSPEED_PROPERTY                PRIVATE_DATA->vsspeed_property
 #define VSAMPLITUDE_PROPERTY            PRIVATE_DATA->vsamplitude_property
+#define HREADOUT_PROPERTY               PRIVATE_DATA->hreadout_property
 #define PREAMPGAIN_PROPERTY             PRIVATE_DATA->preampgain_property
 #define HIGHCAPACITY_PROPERTY           PRIVATE_DATA->highcapacity_property
 
@@ -85,6 +87,7 @@ typedef struct {
 	int index;
 	indigo_property *vsspeed_property;
 	indigo_property *vsamplitude_property;
+	indigo_property *hreadout_property;
 	indigo_property *highcapacity_property;
 	indigo_property *preampgain_property;
 
@@ -264,6 +267,63 @@ static void init_vsamplitude_property_s(indigo_device *device) {
 }
 
 #endif /* NEW_SDK */
+
+static void init_hreadout_property(indigo_device *device) {
+	int res, channels, amps, items = 0;
+	HREADOUT_PROPERTY = indigo_init_switch_property(NULL, device->name, HREADOUT_PROPERTY_NAME, "Aquisition", "Horisontal Readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+
+	res = GetNumberADChannels(&channels);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberADChannels() error: %d", res);
+		channels = 0;
+	}
+
+	res = GetNumberAmp(&amps);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberAmp() error: %d", res);
+		amps = 0;
+	}
+
+	for (int channel = 0; channel < channels; channel++) {
+		int depth;
+		GetBitDepth(channel, &depth);
+		for (int amp = 0; amp < amps; amp++) {
+			int speeds;
+			char amp_desc[INDIGO_NAME_SIZE];
+			GetAmpDesc (amp, amp_desc, sizeof(amp_desc));
+			res = GetNumberHSSpeeds(channel, amp, &speeds);
+			if (res != DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberHSSpeeds() error: %d", res);
+				speeds = 0;
+			}
+			for (int speed = 0; speed < speeds; speed++) {
+				float speed_mhz;
+				GetHSSpeed(channel, amp, speed, &speed_mhz);
+				char item[INDIGO_NAME_SIZE];
+				char description[INDIGO_VALUE_SIZE];
+				snprintf(item, INDIGO_NAME_SIZE, "CHANNEL_%d_AMP_%d_SPEED_%d", channel, amp, speed);
+				snprintf(description, INDIGO_VALUE_SIZE, "%.2fMHz %dbit %s", speed_mhz, depth, amp_desc);
+				HREADOUT_PROPERTY = indigo_resize_property(HREADOUT_PROPERTY, items + 1);
+				indigo_init_switch_item(HREADOUT_PROPERTY->items + items, item, description, false);
+				items++;
+			}
+		}
+	}
+
+	if (items) HREADOUT_PROPERTY->items[0].sw.value = true;
+
+	res = SetHSSpeed(0,0);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHSSpeed() error: %d", res);
+	}
+
+	res = SetOutputAmplifier(0);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetOutputAmplifier() error: %d", res);
+	}
+
+	indigo_define_property(device, HREADOUT_PROPERTY, NULL);
+}
 
 
 static void init_preampgain_property(indigo_device *device) {
@@ -557,6 +617,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 				indigo_define_property(device, VSSPEED_PROPERTY, NULL);
 			if (indigo_property_match(VSAMPLITUDE_PROPERTY, property))
 				indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
+			if (indigo_property_match(HREADOUT_PROPERTY, property))
+				indigo_define_property(device, HREADOUT_PROPERTY, NULL);
 			if (indigo_property_match(PREAMPGAIN_PROPERTY, property))
 				indigo_define_property(device, PREAMPGAIN_PROPERTY, NULL);
 			if (indigo_property_match(HIGHCAPACITY_PROPERTY, property))
@@ -601,6 +663,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				if(CAP_SET_VSAMPLITUDE) {
 					init_vsamplitude_property(device);
+				}
+
+				if(CAP_SET_HREADOUT) {
+					init_hreadout_property(device);
 				}
 
 				if(CAP_SET_PREAMPGAIN) {
@@ -717,6 +783,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				if (CAP_SET_VSAMPLITUDE) {
 					indigo_delete_property(device, VSAMPLITUDE_PROPERTY, NULL);
+				}
+				if (CAP_SET_HREADOUT) {
+					indigo_delete_property(device, HREADOUT_PROPERTY, NULL);
 				}
 				if (CAP_SET_PREAMPGAIN) {
 					indigo_delete_property(device, PREAMPGAIN_PROPERTY, NULL);
@@ -942,6 +1011,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, VSSPEED_PROPERTY);
 			indigo_save_property(device, NULL, VSAMPLITUDE_PROPERTY);
+			indigo_save_property(device, NULL, HREADOUT_PROPERTY);
 			indigo_save_property(device, NULL, PREAMPGAIN_PROPERTY);
 			indigo_save_property(device, NULL, HIGHCAPACITY_PROPERTY);
 		}
@@ -959,6 +1029,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 		}
 		if (CAP_SET_VSAMPLITUDE) {
 			indigo_release_property(VSAMPLITUDE_PROPERTY);
+		}
+		if (CAP_SET_HREADOUT) {
+			indigo_release_property(HREADOUT_PROPERTY);
 		}
 		if (CAP_SET_PREAMPGAIN) {
 			indigo_release_property(PREAMPGAIN_PROPERTY);
