@@ -60,11 +60,13 @@ static unsigned int SetHighCapacity(int state) {
 
 #define VSSPEED_PROPERTY_NAME           "ANDOR_VSSPEED"
 #define VSAMPLITUDE_PROPERTY_NAME       "ANDOR_VSAMPLITUDE"
+#define PREAMPGAIN_PROPERTY_NAME        "ANDOR_PREAMPGAIN"
 #define HIGHCAPACITY_PROPERTY_NAME      "ANDOR_HIGHCAPACITY"
 
 #define PRIVATE_DATA                    ((andor_private_data *)device->private_data)
 #define VSSPEED_PROPERTY                PRIVATE_DATA->vsspeed_property
 #define VSAMPLITUDE_PROPERTY            PRIVATE_DATA->vsamplitude_property
+#define PREAMPGAIN_PROPERTY             PRIVATE_DATA->preampgain_property
 #define HIGHCAPACITY_PROPERTY           PRIVATE_DATA->highcapacity_property
 
 #define CAP_GET_TEMPERATURE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
@@ -75,7 +77,7 @@ static unsigned int SetHighCapacity(int state) {
 #define CAP_SET_VSAMPLITUDE (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VSAMPLITUDE)
 #define CAP_SET_HREADOUT (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HREADOUT)
 #define CAP_SET_HIGHCAPACITY (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY)
-
+#define CAP_SET_PREAMPGAIN (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_PREAMPGAIN)
 
 
 typedef struct {
@@ -84,6 +86,7 @@ typedef struct {
 	indigo_property *vsspeed_property;
 	indigo_property *vsamplitude_property;
 	indigo_property *highcapacity_property;
+	indigo_property *preampgain_property;
 
 	unsigned char *buffer;
 	long buffer_size;
@@ -225,7 +228,6 @@ static void init_vsamplitude_property(indigo_device *device) {
 	for (int i = 0; i < option_num; i++) {
 		char amplitude[INDIGO_NAME_SIZE];
 		char item[INDIGO_NAME_SIZE];
-		char description[INDIGO_VALUE_SIZE];
 		GetVSAmplitudeString(i, amplitude);
 		snprintf(item, INDIGO_NAME_SIZE, "AMPLITUDE_%d", i);
 		indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + i, item, amplitude, false);
@@ -262,6 +264,34 @@ static void init_vsamplitude_property_s(indigo_device *device) {
 }
 
 #endif /* NEW_SDK */
+
+
+static void init_preampgain_property(indigo_device *device) {
+	int res, option_num;
+	res = GetNumberPreAmpGains(&option_num);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberPreAmpGains() error: %d", res);
+		option_num = 0;
+	}
+	PREAMPGAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, PREAMPGAIN_PROPERTY_NAME, "Aquisition", "Preamp Gain", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	for (int i = 0; i < option_num; i++) {
+		float gain;
+		char item[INDIGO_NAME_SIZE];
+		char description[INDIGO_VALUE_SIZE];
+		GetPreAmpGain(i, &gain);
+		snprintf(item, INDIGO_NAME_SIZE, "GAIN_%d", i);
+		snprintf(description, INDIGO_VALUE_SIZE, "%.1fx", gain);
+		indigo_init_switch_item(PREAMPGAIN_PROPERTY->items + i, item, description, false);
+	}
+	if (option_num) PREAMPGAIN_PROPERTY->items[0].sw.value = true;
+
+	res = SetPreAmpGain(0);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetPreampGain() error: %d", res);
+	}
+	indigo_define_property(device, PREAMPGAIN_PROPERTY, NULL);
+}
+
 
 static void init_highcapacity_property(indigo_device *device) {
 	int res;
@@ -527,6 +557,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 				indigo_define_property(device, VSSPEED_PROPERTY, NULL);
 			if (indigo_property_match(VSAMPLITUDE_PROPERTY, property))
 				indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
+			if (indigo_property_match(PREAMPGAIN_PROPERTY, property))
+				indigo_define_property(device, PREAMPGAIN_PROPERTY, NULL);
 			if (indigo_property_match(HIGHCAPACITY_PROPERTY, property))
 				indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
 		}
@@ -569,6 +601,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				if(CAP_SET_VSAMPLITUDE) {
 					init_vsamplitude_property(device);
+				}
+
+				if(CAP_SET_PREAMPGAIN) {
+					init_preampgain_property(device);
 				}
 
 				if(CAP_SET_HIGHCAPACITY) {
@@ -681,6 +717,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				if (CAP_SET_VSAMPLITUDE) {
 					indigo_delete_property(device, VSAMPLITUDE_PROPERTY, NULL);
+				}
+				if (CAP_SET_PREAMPGAIN) {
+					indigo_delete_property(device, PREAMPGAIN_PROPERTY, NULL);
 				}
 				if (CAP_SET_HIGHCAPACITY) {
 					indigo_delete_property(device, HIGHCAPACITY_PROPERTY, NULL);
@@ -852,6 +891,29 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, VSAMPLITUDE_PROPERTY, NULL);
+	} else if (indigo_property_match(PREAMPGAIN_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- PREAMPGAIN
+		indigo_property_copy_values(PREAMPGAIN_PROPERTY, property, false);
+		pthread_mutex_lock(&driver_mutex);
+		if (!use_camera(device)) {
+			pthread_mutex_unlock(&driver_mutex);
+			return INDIGO_OK;
+		}
+		for(int i = 0; i < PREAMPGAIN_PROPERTY->count; i++) {
+			if(PREAMPGAIN_PROPERTY->items[i].sw.value) {
+				uint32_t res = SetPreAmpGain(i);
+				if (res != DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetPreampGain(%d) error: %d", i, res);
+					PREAMPGAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Preamp gain set to %d", i);
+					PREAMPGAIN_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				break;
+			}
+		}
+		pthread_mutex_unlock(&driver_mutex);
+		indigo_update_property(device, PREAMPGAIN_PROPERTY, NULL);
 	} else if (indigo_property_match(HIGHCAPACITY_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HIGHCAPACITY
 		indigo_property_copy_values(HIGHCAPACITY_PROPERTY, property, false);
@@ -880,6 +942,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, VSSPEED_PROPERTY);
 			indigo_save_property(device, NULL, VSAMPLITUDE_PROPERTY);
+			indigo_save_property(device, NULL, PREAMPGAIN_PROPERTY);
 			indigo_save_property(device, NULL, HIGHCAPACITY_PROPERTY);
 		}
 	}
@@ -896,6 +959,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 		}
 		if (CAP_SET_VSAMPLITUDE) {
 			indigo_release_property(VSAMPLITUDE_PROPERTY);
+		}
+		if (CAP_SET_PREAMPGAIN) {
+			indigo_release_property(PREAMPGAIN_PROPERTY);
 		}
 		if (CAP_SET_HIGHCAPACITY) {
 			indigo_release_property(HIGHCAPACITY_PROPERTY);
