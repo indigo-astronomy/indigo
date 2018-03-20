@@ -268,6 +268,7 @@ static void init_vsamplitude_property_s(indigo_device *device) {
 
 #endif /* NEW_SDK */
 
+
 static void init_hreadout_property(indigo_device *device) {
 	int res, channels, amps, items = 0;
 	HREADOUT_PROPERTY = indigo_init_switch_property(NULL, device->name, HREADOUT_PROPERTY_NAME, "Aquisition", "Horisontal Readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
@@ -375,7 +376,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
-	//Set Read Mode to --Image--
+	//Set Read Mode to Image
 	res = SetReadMode(4);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetReadMode(4) = %d", res);
@@ -383,7 +384,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 		return false;
 	}
 
-	//Set Acquisition mode to --Single scan--
+	//Set Acquisition mode to Single scan
 	SetAcquisitionMode(1);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetAcquisitionMode(1) = %d", res);
@@ -391,7 +392,6 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 		return false;
 	}
 
-	//Set initial exposure time
 	SetExposureTime(exposure);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetExposureTime(%f) = %d", exposure, res);
@@ -399,7 +399,6 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 		return false;
 	}
 
-	//Initialize Shutter
 	if(dark) {
 		res = SetShutter(1,2,50,50);
 	} else {
