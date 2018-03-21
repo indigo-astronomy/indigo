@@ -182,6 +182,19 @@ static void get_camera_type(unsigned long type, char *name,  size_t size){
 }
 
 
+static void fix_bpp(indigo_device *device) {
+	/* Disable 8-bit while andor_read_pixels() does not support 8-bit */
+	/* if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value <= 8.0) {
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8.0;
+	} else */
+	if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value <= 16.0) {
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16.0;
+	} else {
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 32.0;
+	}
+}
+
+
 static bool use_camera(indigo_device *device) {
 	at_32 res = SetCurrentCamera(PRIVATE_DATA->handle);
 	if (res != DRV_SUCCESS) {
@@ -759,6 +772,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						max_bpp_channel = i;
 					}
 				}
+				fix_bpp(device);
 				SetADChannel(max_bpp_channel);
 
 				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
@@ -883,14 +897,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
 		// ------------------------------------------------------------------------------- CCD_FRAME
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
-		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value <= 8.0) {
-			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8.0;
-		} else if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value <= 16.0) {
-			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16.0;
-		} else {
-			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 32.0;
-		}
-
+		fix_bpp(device);
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 
 		for (int i = 0; i < PRIVATE_DATA->adc_channels; i++) {
@@ -982,6 +989,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC Channel set to %d, HS Speed set to %d", channel, speed);
 					HREADOUT_PROPERTY->state = INDIGO_OK_STATE;
+
+					/* Update BPP in CCD_FRAME_PROPERTY*/
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->bit_depths[channel];
+					fix_bpp(device);
+					indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 				}
 				res = SetOutputAmplifier(amp);
 				if (res != DRV_SUCCESS) {
