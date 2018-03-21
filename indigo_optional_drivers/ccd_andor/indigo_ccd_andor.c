@@ -71,16 +71,17 @@ static unsigned int SetHighCapacity(int state) {
 #define PREAMPGAIN_PROPERTY             PRIVATE_DATA->preampgain_property
 #define HIGHCAPACITY_PROPERTY           PRIVATE_DATA->highcapacity_property
 
-#define CAP_GET_TEMPERATURE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
-#define CAP_GET_TEMPERATURE_RANGE (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE)
+#define CAP_GET_TEMPERATURE             (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
+#define CAP_GET_TEMPERATURE_RANGE       (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE)
 #define CAP_GET_TEMPERATURE_DURING_ACQUISITION (PRIVATE_DATA->caps.ulFeatures & AC_FEATURES_TEMPERATUREDURINGACQUISITION)
-#define CAP_SET_TEMPERATURE (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE)
-#define CAP_SET_VREADOUT (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VREADOUT)
-#define CAP_SET_VSAMPLITUDE (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VSAMPLITUDE)
-#define CAP_SET_HREADOUT (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HREADOUT)
-#define CAP_SET_HIGHCAPACITY (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY)
-#define CAP_SET_PREAMPGAIN (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_PREAMPGAIN)
+#define CAP_SET_TEMPERATURE             (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE)
+#define CAP_SET_VREADOUT                (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VREADOUT)
+#define CAP_SET_VSAMPLITUDE             (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VSAMPLITUDE)
+#define CAP_SET_HREADOUT                (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HREADOUT)
+#define CAP_SET_HIGHCAPACITY            (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_HIGHCAPACITY)
+#define CAP_SET_PREAMPGAIN              (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_PREAMPGAIN)
 
+#define HREADOUT_ITEM_FORMAT            "CHANNEL_%d_AMP_%d_SPEED_%d"
 
 typedef struct {
 	long handle;
@@ -302,7 +303,7 @@ static void init_hreadout_property(indigo_device *device) {
 				GetHSSpeed(channel, amp, speed, &speed_mhz);
 				char item[INDIGO_NAME_SIZE];
 				char description[INDIGO_VALUE_SIZE];
-				snprintf(item, INDIGO_NAME_SIZE, "CHANNEL_%d_AMP_%d_SPEED_%d", channel, amp, speed);
+				snprintf(item, INDIGO_NAME_SIZE, HREADOUT_ITEM_FORMAT, channel, amp, speed);
 				snprintf(description, INDIGO_VALUE_SIZE, "%.2fMHz %dbit %s", speed_mhz, depth, amp_desc);
 				HREADOUT_PROPERTY = indigo_resize_property(HREADOUT_PROPERTY, items + 1);
 				indigo_init_switch_item(HREADOUT_PROPERTY->items + items, item, description, false);
@@ -432,7 +433,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 
 static bool andor_read_pixels(indigo_device *device) {
 	long res;
-	long wait_cycles = 4000;
+	long wait_cycles = 12000;
 
 	pthread_mutex_lock(&driver_mutex);
 	if (!use_camera(device)) {
@@ -440,7 +441,9 @@ static bool andor_read_pixels(indigo_device *device) {
 		return false;
 	}
 
-	/* Wait until acquisition finished */
+	/* Wait until acquisition finished or
+	   10000*12000us = 120s => should be
+	   enough for the slowest speed */
 	int status;
 	do {
 		GetStatus(&status);
@@ -959,6 +962,40 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, VSAMPLITUDE_PROPERTY, NULL);
+	} else if (indigo_property_match(HREADOUT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- HREADOUT
+		indigo_property_copy_values(HREADOUT_PROPERTY, property, false);
+		pthread_mutex_lock(&driver_mutex);
+		if (!use_camera(device)) {
+			pthread_mutex_unlock(&driver_mutex);
+			return INDIGO_OK;
+		}
+		for (int i = 0; i < HREADOUT_PROPERTY->count; i++) {
+			if (HREADOUT_PROPERTY->items[i].sw.value) {
+				int channel, amp, speed;
+				res = sscanf(HREADOUT_PROPERTY->items[i].name, HREADOUT_ITEM_FORMAT, &channel, &amp, &speed);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s => Channel = %d, Amp = %d, Speed = %d", HREADOUT_PROPERTY->items[i].name, channel, amp, speed);
+				res = SetHSSpeed(channel, speed);
+				if (res != DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHSSpeed(%d, %d) error: %d", channel, speed, res);
+					HREADOUT_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC Channel set to %d, HS Speed set to %d", channel, speed);
+					HREADOUT_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				res = SetOutputAmplifier(amp);
+				if (res != DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetOutputAmplifier(%d) error: %d", amp, res);
+					HREADOUT_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Output Amplifier set to %d", amp);
+					HREADOUT_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				break;
+			}
+		}
+		pthread_mutex_unlock(&driver_mutex);
+		indigo_update_property(device, HREADOUT_PROPERTY, NULL);
 	} else if (indigo_property_match(PREAMPGAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- PREAMPGAIN
 		indigo_property_copy_values(PREAMPGAIN_PROPERTY, property, false);
