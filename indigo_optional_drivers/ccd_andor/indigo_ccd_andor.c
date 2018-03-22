@@ -1140,7 +1140,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerMode(%d) error: %d", i, res);
 					COOLERMODE_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Cooler mode (0=Disable on Shutdown/1=Keep ON on Shutdown): %d", i);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Cooler mode (0=Disable on Shutdown/1=Keep ON on Shutdown): %d", i);
 					COOLERMODE_PROPERTY->state = INDIGO_OK_STATE;
 				}
 				break;
