@@ -381,7 +381,6 @@ static void init_highcapacity_property(indigo_device *device) {
 	HIGHCAPACITY_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGHCAPACITY_PROPERTY_NAME, "Aquisition", "Capacity / Sensitivity", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	indigo_init_switch_item(HIGHCAPACITY_PROPERTY->items + 0, "HIGHT_SENSITIVITY", "High Sensitivity", true);
 	indigo_init_switch_item(HIGHCAPACITY_PROPERTY->items + 1, "HIGHT_CAPACITY", "High Capacity", false);
-
 	indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
 	res = SetHighCapacity(0); /* 0 is High Sensitivity */
 	if (res != DRV_SUCCESS) {
@@ -706,31 +705,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					pthread_mutex_unlock(&driver_mutex);
 					return INDIGO_OK;
 				}
-
 				if (CAP_SET_VREADOUT) {
 					init_vsspeed_property(device);
 				}
-
 				if(CAP_SET_VSAMPLITUDE) {
 					init_vsamplitude_property(device);
 				}
-
 				if(CAP_SET_HREADOUT) {
 					init_hreadout_property(device);
 				}
-
 				if(CAP_SET_PREAMPGAIN) {
 					init_preampgain_property(device);
 				}
-
 				if(CAP_SET_HIGHCAPACITY) {
 					init_highcapacity_property(device);
 				}
-
 				if(CAP_FANCONTROL) {
 					init_fancontrol_property(device);
 				}
-
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 				res = GetHeadModel(INFO_DEVICE_MODEL_ITEM->text.value);
 				if (res!= DRV_SUCCESS) {
