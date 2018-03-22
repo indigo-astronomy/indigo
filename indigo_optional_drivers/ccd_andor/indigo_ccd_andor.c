@@ -58,11 +58,14 @@ static unsigned int SetHighCapacity(int state) {
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
 
+#define AQUISITION_GROUP_NAME           "Aquisition"
 #define VSSPEED_PROPERTY_NAME           "ANDOR_VSSPEED"
 #define VSAMPLITUDE_PROPERTY_NAME       "ANDOR_VSAMPLITUDE"
 #define HREADOUT_PROPERTY_NAME          "ANDOR_HREADOUT"
 #define PREAMPGAIN_PROPERTY_NAME        "ANDOR_PREAMPGAIN"
 #define HIGHCAPACITY_PROPERTY_NAME      "ANDOR_HIGHCAPACITY"
+
+#define COOLER_GROUP_NAME               "Cooler"
 #define FANCONTROL_PROPERTY_NAME        "ANDOR_FANCONTROL"
 #define COOLERMODE_PROPERTY_NAME        "ANDOR_COOLERMODE"
 
@@ -220,7 +223,7 @@ static void init_vsspeed_property(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSSpeeds() error: %d", res);
 		option_num = 0;
 	}
-	VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, "Aquisition", "Vertical Shift Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Shift Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
 	for (int i = 0; i < option_num; i++) {
 		float speed;
 		char item[INDIGO_NAME_SIZE];
@@ -249,7 +252,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() error: %d", res);
 		option_num = 0;
 	}
-	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
 	for (int i = 0; i < option_num; i++) {
 		char amplitude[INDIGO_NAME_SIZE];
 		char item[INDIGO_NAME_SIZE];
@@ -275,7 +278,7 @@ static void init_vsamplitude_property_s(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() error: %d", res);
 		option_num = 0;
 	}
-	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, "Aquisition", "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
 	if (option_num > 0) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
 	if (option_num > 1) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 1, "AMPLITUDE_1", "+1", false);
 	if (option_num > 2) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 2, "AMPLITUDE_2", "+2", false);
@@ -293,7 +296,7 @@ static void init_vsamplitude_property_s(indigo_device *device) {
 
 static void init_hreadout_property(indigo_device *device) {
 	int res, channels, amps, items = 0;
-	HREADOUT_PROPERTY = indigo_init_switch_property(NULL, device->name, HREADOUT_PROPERTY_NAME, "Aquisition", "Horisontal Readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+	HREADOUT_PROPERTY = indigo_init_switch_property(NULL, device->name, HREADOUT_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Horisontal Readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
 
 	res = GetNumberADChannels(&channels);
 	if (res != DRV_SUCCESS) {
@@ -356,7 +359,7 @@ static void init_preampgain_property(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberPreAmpGains() error: %d", res);
 		option_num = 0;
 	}
-	PREAMPGAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, PREAMPGAIN_PROPERTY_NAME, "Aquisition", "Preamp Gain", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	PREAMPGAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, PREAMPGAIN_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Preamp Gain", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
 	for (int i = 0; i < option_num; i++) {
 		float gain;
 		char item[INDIGO_NAME_SIZE];
@@ -378,7 +381,7 @@ static void init_preampgain_property(indigo_device *device) {
 
 static void init_highcapacity_property(indigo_device *device) {
 	int res;
-	HIGHCAPACITY_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGHCAPACITY_PROPERTY_NAME, "Aquisition", "Capacity / Sensitivity", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	HIGHCAPACITY_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGHCAPACITY_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Capacity / Sensitivity", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	indigo_init_switch_item(HIGHCAPACITY_PROPERTY->items + 0, "HIGHT_SENSITIVITY", "High Sensitivity", true);
 	indigo_init_switch_item(HIGHCAPACITY_PROPERTY->items + 1, "HIGHT_CAPACITY", "High Capacity", false);
 	indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
@@ -391,7 +394,7 @@ static void init_highcapacity_property(indigo_device *device) {
 
 static void init_fancontrol_property(indigo_device *device) {
 	int res;
-	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, "Cooler", "Fan Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, COOLER_GROUP_NAME, "Fan Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	indigo_init_switch_item(FANCONTROL_PROPERTY->items + 0, "FULL_SPEED", "Full", false);
 	indigo_init_switch_item(FANCONTROL_PROPERTY->items + 1, "LOW_SPEED", "Low", false);
 	indigo_init_switch_item(FANCONTROL_PROPERTY->items + 2, "OFF", "Off", false);
@@ -401,7 +404,7 @@ static void init_fancontrol_property(indigo_device *device) {
 
 static void init_coolermode_property(indigo_device *device) {
 	int res;
-	COOLERMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, COOLERMODE_PROPERTY_NAME, "Cooler", "Cooling on Shutdown", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	COOLERMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, COOLERMODE_PROPERTY_NAME, COOLER_GROUP_NAME, "Cooling on Shutdown", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	indigo_init_switch_item(COOLERMODE_PROPERTY->items + 0, "DISABLE_ON_SHUTDOWN", "Disable", true);
 	indigo_init_switch_item(COOLERMODE_PROPERTY->items + 1, "KEEP_ON_SHUTDOWN", "Keep ON", false);
 	indigo_define_property(device, COOLERMODE_PROPERTY, NULL);
