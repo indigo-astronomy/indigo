@@ -766,8 +766,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 				}
 				if (CAP_SET_TEMPERATURE) {
+					int cooler_on;
 					CCD_COOLER_PROPERTY->hidden = false;
-					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
+					IsCoolerOn(&cooler_on);
+					if(cooler_on) {
+						indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+					} else {
+						indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
+					}
 					int temp_min = -100, temp_max = 20;
 					if (CAP_GET_TEMPERATURE_RANGE) GetTemperatureRange(&temp_min, &temp_max);
 					CCD_TEMPERATURE_ITEM->number.max = (double)temp_max;
