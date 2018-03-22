@@ -63,6 +63,7 @@ static unsigned int SetHighCapacity(int state) {
 #define HREADOUT_PROPERTY_NAME          "ANDOR_HREADOUT"
 #define PREAMPGAIN_PROPERTY_NAME        "ANDOR_PREAMPGAIN"
 #define HIGHCAPACITY_PROPERTY_NAME      "ANDOR_HIGHCAPACITY"
+#define FANCONTROL_PROPERTY_NAME        "ANDOR_FANCONTROL"
 
 #define PRIVATE_DATA                    ((andor_private_data *)device->private_data)
 #define VSSPEED_PROPERTY                PRIVATE_DATA->vsspeed_property
@@ -70,10 +71,13 @@ static unsigned int SetHighCapacity(int state) {
 #define HREADOUT_PROPERTY               PRIVATE_DATA->hreadout_property
 #define PREAMPGAIN_PROPERTY             PRIVATE_DATA->preampgain_property
 #define HIGHCAPACITY_PROPERTY           PRIVATE_DATA->highcapacity_property
+#define FANCONTROL_PROPERTY             PRIVATE_DATA->fancontrol_property
 
 #define CAP_GET_TEMPERATURE             (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
 #define CAP_GET_TEMPERATURE_RANGE       (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE)
 #define CAP_GET_TEMPERATURE_DURING_ACQUISITION (PRIVATE_DATA->caps.ulFeatures & AC_FEATURES_TEMPERATUREDURINGACQUISITION)
+#define CAP_FANCONTROL                  (PRIVATE_DATA->caps.ulFeatures & AC_FEATURES_FANCONTROL)
+#define CAP_MIDFANCONTROL               (PRIVATE_DATA->caps.ulFeatures & AC_FEATURES_MIDFANCONTROL)
 #define CAP_SET_TEMPERATURE             (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_TEMPERATURE)
 #define CAP_SET_VREADOUT                (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VREADOUT)
 #define CAP_SET_VSAMPLITUDE             (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_VSAMPLITUDE)
@@ -91,6 +95,7 @@ typedef struct {
 	indigo_property *hreadout_property;
 	indigo_property *highcapacity_property;
 	indigo_property *preampgain_property;
+	indigo_property *fancontrol_property;
 
 	unsigned char *buffer;
 	long buffer_size;
@@ -382,6 +387,16 @@ static void init_highcapacity_property(indigo_device *device) {
 }
 
 
+static void init_fancontrol_property(indigo_device *device) {
+	int res;
+	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, "Cooler", "Fan Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	indigo_init_switch_item(FANCONTROL_PROPERTY->items + 0, "FULL_SPEED", "Full", false);
+	indigo_init_switch_item(FANCONTROL_PROPERTY->items + 1, "LOW_SPEED", "Low", false);
+	indigo_init_switch_item(FANCONTROL_PROPERTY->items + 2, "OFF", "Off", false);
+	indigo_define_property(device, FANCONTROL_PROPERTY, NULL);
+}
+
+
 static bool andor_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
 	unsigned int res;
 
@@ -638,6 +653,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 				indigo_define_property(device, PREAMPGAIN_PROPERTY, NULL);
 			if (indigo_property_match(HIGHCAPACITY_PROPERTY, property))
 				indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
+			if (indigo_property_match(FANCONTROL_PROPERTY, property))
+				indigo_define_property(device, FANCONTROL_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -690,6 +707,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				if(CAP_SET_HIGHCAPACITY) {
 					init_highcapacity_property(device);
+				}
+
+				if(CAP_FANCONTROL) {
+					init_fancontrol_property(device);
 				}
 
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
@@ -808,6 +829,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				if (CAP_SET_HIGHCAPACITY) {
 					indigo_delete_property(device, HIGHCAPACITY_PROPERTY, NULL);
+				}
+				if (CAP_FANCONTROL) {
+					indigo_delete_property(device, FANCONTROL_PROPERTY, NULL);
 				}
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				if (PRIVATE_DATA->buffer != NULL) {
@@ -1054,6 +1078,29 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, HIGHCAPACITY_PROPERTY, NULL);
+	} else if (indigo_property_match(FANCONTROL_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- HIGHCAPACITY
+		indigo_property_copy_values(FANCONTROL_PROPERTY, property, false);
+		pthread_mutex_lock(&driver_mutex);
+		if (!use_camera(device)) {
+			pthread_mutex_unlock(&driver_mutex);
+			return INDIGO_OK;
+		}
+		for(int i = 0; i < FANCONTROL_PROPERTY->count; i++) {
+			if(FANCONTROL_PROPERTY->items[i].sw.value) {
+				uint32_t res = SetFanMode(i);
+				if (res != DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetFanMode(%d) error: %d", i, res);
+					FANCONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Fan mode (0=Full/1=Low/2=off): %d", i);
+					FANCONTROL_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				break;
+			}
+		}
+		pthread_mutex_unlock(&driver_mutex);
+		indigo_update_property(device, FANCONTROL_PROPERTY, NULL);
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -1062,6 +1109,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, HREADOUT_PROPERTY);
 			indigo_save_property(device, NULL, PREAMPGAIN_PROPERTY);
 			indigo_save_property(device, NULL, HIGHCAPACITY_PROPERTY);
+			indigo_save_property(device, NULL, FANCONTROL_PROPERTY);
 		}
 	}
 	// --------------------------------------------------------------------------------
@@ -1086,6 +1134,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 		}
 		if (CAP_SET_HIGHCAPACITY) {
 			indigo_release_property(HIGHCAPACITY_PROPERTY);
+		}
+		if (CAP_FANCONTROL) {
+			indigo_release_property(FANCONTROL_PROPERTY);
 		}
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
