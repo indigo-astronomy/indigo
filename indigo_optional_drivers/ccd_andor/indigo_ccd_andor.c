@@ -64,6 +64,7 @@ static unsigned int SetHighCapacity(int state) {
 #define PREAMPGAIN_PROPERTY_NAME        "ANDOR_PREAMPGAIN"
 #define HIGHCAPACITY_PROPERTY_NAME      "ANDOR_HIGHCAPACITY"
 #define FANCONTROL_PROPERTY_NAME        "ANDOR_FANCONTROL"
+#define COOLERMODE_PROPERTY_NAME        "ANDOR_COOLERMODE"
 
 #define PRIVATE_DATA                    ((andor_private_data *)device->private_data)
 #define VSSPEED_PROPERTY                PRIVATE_DATA->vsspeed_property
@@ -72,6 +73,7 @@ static unsigned int SetHighCapacity(int state) {
 #define PREAMPGAIN_PROPERTY             PRIVATE_DATA->preampgain_property
 #define HIGHCAPACITY_PROPERTY           PRIVATE_DATA->highcapacity_property
 #define FANCONTROL_PROPERTY             PRIVATE_DATA->fancontrol_property
+#define COOLERMODE_PROPERTY             PRIVATE_DATA->coolermode_property
 
 #define CAP_GET_TEMPERATURE             (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
 #define CAP_GET_TEMPERATURE_RANGE       (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE)
@@ -96,6 +98,7 @@ typedef struct {
 	indigo_property *highcapacity_property;
 	indigo_property *preampgain_property;
 	indigo_property *fancontrol_property;
+	indigo_property *coolermode_property;
 
 	unsigned char *buffer;
 	long buffer_size;
@@ -397,6 +400,19 @@ static void init_fancontrol_property(indigo_device *device) {
 }
 
 
+static void init_coolermode_property(indigo_device *device) {
+	int res;
+	COOLERMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, COOLERMODE_PROPERTY_NAME, "Cooler", "Cooling on Shutdown", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	indigo_init_switch_item(COOLERMODE_PROPERTY->items + 0, "DISABLE_ON_SHUTDOWN", "Disable", true);
+	indigo_init_switch_item(COOLERMODE_PROPERTY->items + 1, "KEEP_ON_SHUTDOWN", "Keep ON", false);
+	indigo_define_property(device, COOLERMODE_PROPERTY, NULL);
+	res = SetCoolerMode(0); /* 0 is DISABLE_ON_SHUTDOWN */
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerMode() error: %d", res);
+	}
+}
+
+
 static bool andor_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
 	unsigned int res;
 
@@ -655,6 +671,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 				indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
 			if (indigo_property_match(FANCONTROL_PROPERTY, property))
 				indigo_define_property(device, FANCONTROL_PROPERTY, NULL);
+			if (indigo_property_match(COOLERMODE_PROPERTY, property))
+				indigo_define_property(device, COOLERMODE_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -780,6 +798,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_TEMPERATURE_ITEM->number.min = (double)temp_min;
 					PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = (double)temp_max;
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+					init_coolermode_property(device);
 				}
 
 				/* Find available BPPs and use max */
@@ -820,6 +839,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		} else {
 			if (device->is_connected) {  /* Do not double close device */
+				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
 				indigo_global_unlock(device);
 				if (CAP_SET_VREADOUT) {
 					indigo_delete_property(device, VSSPEED_PROPERTY, NULL);
@@ -839,7 +859,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (CAP_FANCONTROL) {
 					indigo_delete_property(device, FANCONTROL_PROPERTY, NULL);
 				}
-				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				if (CAP_SET_TEMPERATURE) {
+					indigo_delete_property(device, COOLERMODE_PROPERTY, NULL);
+				}
+
 				if (PRIVATE_DATA->buffer != NULL) {
 					free(PRIVATE_DATA->buffer);
 					PRIVATE_DATA->buffer = NULL;
@@ -1085,7 +1108,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, HIGHCAPACITY_PROPERTY, NULL);
 	} else if (indigo_property_match(FANCONTROL_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- HIGHCAPACITY
+		// -------------------------------------------------------------------------------- FANCONTROL
 		indigo_property_copy_values(FANCONTROL_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
@@ -1107,6 +1130,29 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, FANCONTROL_PROPERTY, NULL);
+	} else if (indigo_property_match(COOLERMODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- COOLERMODE
+		indigo_property_copy_values(COOLERMODE_PROPERTY, property, false);
+		pthread_mutex_lock(&driver_mutex);
+		if (!use_camera(device)) {
+			pthread_mutex_unlock(&driver_mutex);
+			return INDIGO_OK;
+		}
+		for(int i = 0; i < COOLERMODE_PROPERTY->count; i++) {
+			if(COOLERMODE_PROPERTY->items[i].sw.value) {
+				uint32_t res = SetCoolerMode(i);
+				if (res != DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerMode(%d) error: %d", i, res);
+					COOLERMODE_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Cooler mode (0=Disable on Shutdown/1=Keep ON on Shutdown): %d", i);
+					COOLERMODE_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				break;
+			}
+		}
+		pthread_mutex_unlock(&driver_mutex);
+		indigo_update_property(device, COOLERMODE_PROPERTY, NULL);
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -1116,6 +1162,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, PREAMPGAIN_PROPERTY);
 			indigo_save_property(device, NULL, HIGHCAPACITY_PROPERTY);
 			indigo_save_property(device, NULL, FANCONTROL_PROPERTY);
+			indigo_save_property(device, NULL, COOLERMODE_PROPERTY);
 		}
 	}
 	// --------------------------------------------------------------------------------
@@ -1143,6 +1190,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 		}
 		if (CAP_FANCONTROL) {
 			indigo_release_property(FANCONTROL_PROPERTY);
+		}
+		if (CAP_SET_TEMPERATURE) {
+			indigo_release_property(COOLERMODE_PROPERTY);
 		}
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
