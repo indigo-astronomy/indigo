@@ -50,6 +50,7 @@ This is the list of requirements taken into the consideration:
 26. ICA (ImageCapture API) driver for DSLRs (Mac only)
 27. GPS Simulator
 28. NMEA 0183 GPS driver
+29. Andor CCD driver (32/64-bit Intel Linux only)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
