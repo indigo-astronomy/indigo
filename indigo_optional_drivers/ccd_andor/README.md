@@ -22,7 +22,7 @@ one should install Andor SDK and then in the indigo source directory do:
 
 make
 
-cd indigo_optionl_drivers/ccd_andor
+cd indigo_optional_drivers/ccd_andor
 
 make
 
