@@ -17,14 +17,19 @@ Andor SDK is not free. Please see http://www.andor.com/scientific-software/softw
 INDIGO Astronomy open-source license.
 
 ## Build
-This driver is not built by the main indigo Makefile.
+This driver is optional and not built by the main indigo Makefile.
 one should install Andor SDK and then in the indigo source directory do:
 
 make
 
-cd indigo_optionl_drivers/ccd_andor
+cd indigo_optional_drivers/ccd_andor
 
 make
+
+
+Tested to compile with:
+* Andor SDK v.2.95.30003.0
+* Andor SDK v.2.102.30001.0
 
 ## Use
 In case Andor SDK is not installed on the standard location, ANDOR_SDK_PATH
@@ -33,7 +38,7 @@ indigo_server. Default ANDOR_SDK_PATH is: "/usr/local/etc/andor".
 
 indigo_server indigo_ccd_andor
 
-## Status: Under development
+## Status: Stable
 
 Driver is developed and tested with:
 * Andor iKon-L

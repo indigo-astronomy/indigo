@@ -51,7 +51,7 @@
 7. SBIG CCD driver (based on SBIG SDK) __DONE__
 8. Apogee CCD driver (based on Apogee SDK)
 9. Fishcamp CCD driver (based on Fishcamp SDK)
-10. Andor CCD driver (based on Andor SDK - payed :( we will require but not provide it)
+10. Andor CCD driver (based on Andor SDK - payed (we will require but not provide it) __DONE__
 12. DSI driver. __DONE__
 13. ATIK CCD driver __DONE__
 
@@ -90,6 +90,14 @@
 4. EQMod mount driver
 5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft)
 6. Temma protocol mount driver __DONE__
+
+#### GPS
+1. GPS Simulator driver __DOME__
+2. NMEA183 GPS driver __DONE__
+
+#### Dome
+1. Dome Simulator driver __DONE__
+2. UNIWERSAL dome driver
 
 #### AO
 
