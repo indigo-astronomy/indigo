@@ -40,6 +40,8 @@
 #ifdef AC_CAMERATYPE_ISTAR_SCMOS
 	#define NEW_SDK
 #else
+	#define AC_CAMERATYPE_IVAC_CCD     23
+	#define AC_CAMERATYPE_IKONXL       28
 	#define AC_CAMERATYPE_ISTAR_SCMOS  30
 	#define AC_CAMERATYPE_IKONLR       31
 #endif
@@ -271,7 +273,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 
 #else /* SDK is old */
 
-static void init_vsamplitude_property_s(indigo_device *device) {
+static void init_vsamplitude_property(indigo_device *device) {
 	int res, option_num;
 	res = GetNumberVSAmplitudes(&option_num);
 	if (res != DRV_SUCCESS) {
