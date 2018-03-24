@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -117,6 +117,20 @@ typedef struct {
 
 /* To avoid exposure failue when many cameras are present global mutex is required */
 static pthread_mutex_t driver_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+int round_pow2(int num) {
+    int next = num;
+    next--;
+    next |= next >> 1;
+    next |= next >> 2;
+    next |= next >> 4;
+    next |= next >> 8;
+    next |= next >> 16;
+    next++;
+    int prev = next >> 1;
+    return (next - num) > (num - prev) ? prev : next;
+}
 
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -969,6 +983,28 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		}
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+	}  else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_BIN
+		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
+		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
+		int horizontal_bin = round_pow2((int)CCD_BIN_HORIZONTAL_ITEM->number.value);
+		int vertical_bin = round_pow2((int)CCD_BIN_VERTICAL_ITEM->number.value);
+		CCD_BIN_HORIZONTAL_ITEM->number.value = horizontal_bin;
+		CCD_BIN_VERTICAL_ITEM->number.value = vertical_bin;
+
+		char name[32] = "";
+		snprintf(name, 32, "BIN_%dx%d", horizontal_bin, vertical_bin);
+		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
+			item->sw.value = !strcmp(item->name, name);
+		}
+
+		CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(VSSPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- VSSPEED
 		indigo_property_copy_values(VSSPEED_PROPERTY, property, false);
