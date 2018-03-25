@@ -203,7 +203,7 @@ static void get_camera_type(unsigned long type, char *name,  size_t size){
 		strncpy(name,"Andor iKon LR", size);
 		return;
 	default:
-		strncpy(name,"Andor", size);
+		strncpy(name,"Andor Unknown", size);
 		return;
 	}
 }
@@ -904,6 +904,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			pthread_mutex_lock(&driver_mutex);
 			if (!use_camera(device)) {
 				pthread_mutex_unlock(&driver_mutex);
+				CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 				return INDIGO_OK;
 			}
 			long res;
@@ -943,6 +945,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			pthread_mutex_lock(&driver_mutex);
 			if (!use_camera(device)) {
 				pthread_mutex_unlock(&driver_mutex);
+				CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 				return INDIGO_OK;
 			}
 			long res = SetTemperature((int)PRIVATE_DATA->target_temperature);
@@ -969,6 +973,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				pthread_mutex_lock(&driver_mutex);
 				if (!use_camera(device)) {
 					pthread_mutex_unlock(&driver_mutex);
+					CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 					return INDIGO_OK;
 				}
 				uint32_t res = SetADChannel(i);
@@ -1011,6 +1017,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
 			pthread_mutex_unlock(&driver_mutex);
+			VSSPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, VSSPEED_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
 		for(int i = 0; i < VSSPEED_PROPERTY->count; i++) {
@@ -1034,6 +1042,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
 			pthread_mutex_unlock(&driver_mutex);
+			VSAMPLITUDE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, VSAMPLITUDE_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
 		for(int i = 0; i < VSAMPLITUDE_PROPERTY->count; i++) {
@@ -1061,6 +1071,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
 			pthread_mutex_unlock(&driver_mutex);
+			HREADOUT_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, HREADOUT_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
 		for (int i = 0; i < HREADOUT_PROPERTY->count; i++) {
@@ -1100,6 +1112,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
 			pthread_mutex_unlock(&driver_mutex);
+			PREAMPGAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, PREAMPGAIN_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
 		for(int i = 0; i < PREAMPGAIN_PROPERTY->count; i++) {
@@ -1123,6 +1137,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
 			pthread_mutex_unlock(&driver_mutex);
+			HIGHCAPACITY_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, HIGHCAPACITY_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
 		for(int i = 0; i < HIGHCAPACITY_PROPERTY->count; i++) {
@@ -1146,6 +1162,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
 			pthread_mutex_unlock(&driver_mutex);
+			FANCONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FANCONTROL_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
 		for(int i = 0; i < FANCONTROL_PROPERTY->count; i++) {
@@ -1169,6 +1187,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&driver_mutex);
 		if (!use_camera(device)) {
 			pthread_mutex_unlock(&driver_mutex);
+			COOLERMODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, COOLERMODE_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
 		for(int i = 0; i < COOLERMODE_PROPERTY->count; i++) {
