@@ -27,8 +27,9 @@ cd indigo_optional_drivers/ccd_andor
 make
 
 
-Tested to compile with:
+Tested to compile against:
 * Andor SDK v.2.95.30003.0
+* Andor SDK v.2.100.30039.0
 * Andor SDK v.2.102.30001.0
 
 ## Use
