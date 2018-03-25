@@ -748,18 +748,27 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() error: %d", res);
 					INFO_DEVICE_MODEL_ITEM->text.value[0] = '\0';
 				}
-				unsigned int fw_ver, fw_build, dummy;
-				GetHardwareVersion(&dummy, &dummy, &dummy, &dummy, &fw_ver, &fw_build);
+
+				unsigned int fw_ver = 0, fw_build = 0, dummy;
+				res = GetHardwareVersion(&dummy, &dummy, &dummy, &dummy, &fw_ver, &fw_build);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHardwareVersion() error: %d", res);
+				}
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%d-%d", fw_ver, fw_build);
 
-				int serial_num;
-				GetCameraSerialNumber(&serial_num);
+				int serial_num = 0;
+				res = GetCameraSerialNumber(&serial_num);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraSerialNumber() error: %d", res);
+				}
 				snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE, "CCD-%d", serial_num);
-
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 
-				int width, height;
-				GetDetector(&width, &height);
+				int width = 0, height = 0;
+				res = GetDetector(&width, &height);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDetector() error: %d", res);
+				}
 				CCD_INFO_WIDTH_ITEM->number.value = width;
 				CCD_INFO_HEIGHT_ITEM->number.value = height;
 				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
@@ -769,22 +778,31 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 				}
 
-				float x_size, y_size;
-				GetPixelSize(&x_size, &y_size);
+				float x_size = 0, y_size = 0;
+				res = GetPixelSize(&x_size, &y_size);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetPixelSize() error: %d", res);
+				}
 				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = x_size;
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = y_size;
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
 
-				int max_bin;
+				int max_bin = 1;
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 				// 4 is Image mode, 0 is horizontal binning
-				GetMaximumBinning(4, 0, &max_bin);
+				res = GetMaximumBinning(4, 0, &max_bin);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(X) error: %d", res);
+				}
 				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
 				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
 				CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
 
 				// 4 is Image mode, 1 is vertical binning
-				GetMaximumBinning(4, 1, &max_bin);
+				res = GetMaximumBinning(4, 1, &max_bin);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(Y) error: %d", res);
+				}
 				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
 				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
 				CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
@@ -795,7 +813,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 				}
 				if (CAP_SET_TEMPERATURE) {
-					int cooler_on;
+					int cooler_on = false;
 					CCD_COOLER_PROPERTY->hidden = false;
 					IsCoolerOn(&cooler_on);
 					if(cooler_on) {
@@ -816,7 +834,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 0;
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 128;
 				int max_bpp_channel = 0;
-				GetNumberADChannels(&PRIVATE_DATA->adc_channels);
+				res = GetNumberADChannels(&PRIVATE_DATA->adc_channels);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberADChannels() error: %d", res);
+				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC Channels: %d", PRIVATE_DATA->adc_channels);
 				for (int i = 0; i < PRIVATE_DATA->adc_channels; i++) {
 					GetBitDepth(i, &PRIVATE_DATA->bit_depths[i]);
@@ -830,7 +851,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					}
 				}
 				fix_bpp(device);
-				SetADChannel(max_bpp_channel);
+				res = SetADChannel(max_bpp_channel);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetADChannel(%d) error: %d", max_bpp_channel, res);
+				}
 
 				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_MODE_PROPERTY->count = 4;
