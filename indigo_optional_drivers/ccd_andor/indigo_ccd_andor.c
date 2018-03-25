@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -108,6 +108,7 @@ static unsigned int SetHighCapacity(int state) {
 typedef struct {
 	long handle;
 	int index;
+	int serial_number;
 	indigo_property *vsspeed_property;
 	indigo_property *vsamplitude_property;
 	indigo_property *hreadout_property;
@@ -767,12 +768,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%d-%d", fw_ver, fw_build);
 
-				int serial_num = 0;
-				res = GetCameraSerialNumber(&serial_num);
-				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraSerialNumber() error: %d", res);
-				}
-				snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE, "CCD-%d", serial_num);
+				snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_VALUE_SIZE, "CCD-%d", PRIVATE_DATA->serial_number);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 
 				int width = 0, height = 0;
@@ -1385,11 +1381,17 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 				private_data->caps.ulSize = sizeof(AndorCapabilities);
 				GetCapabilities(&private_data->caps);
 
+				res = GetCameraSerialNumber(&private_data->serial_number);
+				if (res!= DRV_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraSerialNumber() error: %d", res);
+					private_data->serial_number = 0;
+				}
+
 				pthread_mutex_unlock(&driver_mutex);
 
 				char camera_type[32];
 				get_camera_type(private_data->caps.ulCameraType, camera_type, sizeof(camera_type));
-				snprintf(device->name, sizeof(device->name), "%s #%d", camera_type, i);
+				snprintf(device->name, sizeof(device->name), "%s #%d", camera_type, private_data->serial_number);
 				private_data->index = i;
 				private_data->handle = handle;
 				device->private_data = private_data;
