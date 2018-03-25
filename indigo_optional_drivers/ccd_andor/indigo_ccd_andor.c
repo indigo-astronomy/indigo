@@ -37,14 +37,8 @@
 #include "indigo_ccd_andor.h"
 
 /* Make it work with older SDK */
-#ifdef AC_CAMERATYPE_ISTAR_SCMOS
-	#define NEW_SDK
-#else
-	#define AC_CAMERATYPE_IVAC_CCD     23
-	#define AC_CAMERATYPE_IKONXL       28
-	#define AC_CAMERATYPE_ISTAR_SCMOS  30
-	#define AC_CAMERATYPE_IKONLR       31
-#endif
+
+// #define SDK_PRIOR_2_92_30005_0
 
 // #define NO_SETHIGHCAPACITY
 #ifdef NO_SETHIGHCAPACITY
@@ -54,12 +48,29 @@ static unsigned int SetHighCapacity(int state) {
 }
 #endif
 
+#ifndef AC_CAMERATYPE_IVAC_CCD
+	#define AC_CAMERATYPE_IVAC_CCD     23
+#endif
 
+#ifndef AC_CAMERATYPE_IKONXL
+	#define AC_CAMERATYPE_IKONXL       28
+#endif
+
+#ifndef AC_CAMERATYPE_ISTAR_SCMOS
+	#define AC_CAMERATYPE_ISTAR_SCMOS  30
+#endif
+
+#ifndef AC_CAMERATYPE_IKONLR
+	#define AC_CAMERATYPE_IKONLR       31
+#endif
+
+/* Temperature update interval in seconds */
 #define TEMP_UPDATE         2.0
 
-// gp_bits is used as boolean
+/* gp_bits is used as boolean */
 #define is_connected                    gp_bits
 
+/* ANDOR specifiv properties */
 #define AQUISITION_GROUP_NAME           "Aquisition"
 #define VSSPEED_PROPERTY_NAME           "ANDOR_VSSPEED"
 #define VSAMPLITUDE_PROPERTY_NAME       "ANDOR_VSAMPLITUDE"
@@ -259,7 +270,29 @@ static void init_vsspeed_property(indigo_device *device) {
 }
 
 
-#ifdef NEW_SDK  /* SDK is new */
+#ifdef SDK_PRIOR_2_92_30005_0  /* SDK is older */
+
+static void init_vsamplitude_property(indigo_device *device) {
+	int res, option_num;
+	res = GetNumberVSAmplitudes(&option_num);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() error: %d", res);
+		option_num = 0;
+	}
+	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	if (option_num > 0) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
+	if (option_num > 1) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 1, "AMPLITUDE_1", "+1", false);
+	if (option_num > 2) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 2, "AMPLITUDE_2", "+2", false);
+	if (option_num > 3) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 3, "AMPLITUDE_3", "+3", false);
+	if (option_num > 4) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 4, "AMPLITUDE_4", "+4", false);
+	indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
+	res = SetVSAmplitude(0); /* 0 is Normal */
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
+	}
+}
+
+#else /* SDK is newer */
 
 static void init_vsamplitude_property(indigo_device *device) {
 	int res, option_num;
@@ -285,29 +318,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 	indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
 }
 
-#else /* SDK is old */
-
-static void init_vsamplitude_property(indigo_device *device) {
-	int res, option_num;
-	res = GetNumberVSAmplitudes(&option_num);
-	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() error: %d", res);
-		option_num = 0;
-	}
-	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
-	if (option_num > 0) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
-	if (option_num > 1) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 1, "AMPLITUDE_1", "+1", false);
-	if (option_num > 2) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 2, "AMPLITUDE_2", "+2", false);
-	if (option_num > 3) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 3, "AMPLITUDE_3", "+3", false);
-	if (option_num > 4) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 4, "AMPLITUDE_4", "+4", false);
-	indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
-	res = SetVSAmplitude(0); /* 0 is Normal */
-	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
-	}
-}
-
-#endif /* NEW_SDK */
+#endif /* SDK_PRIOR_2_92_30005_0 */
 
 
 static void init_hreadout_property(indigo_device *device) {
