@@ -248,7 +248,7 @@ static void init_vsspeed_property(indigo_device *device) {
 	int res, option_num;
 	res = GetNumberVSSpeeds(&option_num);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSSpeeds() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSSpeeds() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		option_num = 0;
 	}
 	VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Shift Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
@@ -265,7 +265,7 @@ static void init_vsspeed_property(indigo_device *device) {
 
 	res = SetVSSpeed(0);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSSpeed() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSSpeed() for camera %d error: %d", PRIVATE_DATA->handle, res);
 	}
 	indigo_define_property(device, VSSPEED_PROPERTY, NULL);
 }
@@ -277,7 +277,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 	int res, option_num;
 	res = GetNumberVSAmplitudes(&option_num);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		option_num = 0;
 	}
 	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
@@ -289,7 +289,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 	indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
 	res = SetVSAmplitude(0); /* 0 is Normal */
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() for camera %d error: %d", PRIVATE_DATA->handle, res);
 	}
 }
 
@@ -299,7 +299,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 	int res, option_num;
 	res = GetNumberVSAmplitudes(&option_num);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		option_num = 0;
 	}
 	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
@@ -314,7 +314,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 
 	res = SetVSAmplitude(0);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude() for camera %d error: %d", PRIVATE_DATA->handle, res);
 	}
 	indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
 }
@@ -328,13 +328,13 @@ static void init_hreadout_property(indigo_device *device) {
 
 	res = GetNumberADChannels(&channels);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberADChannels() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberADChannels() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		channels = 0;
 	}
 
 	res = GetNumberAmp(&amps);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberAmp() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberAmp() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		amps = 0;
 	}
 
@@ -347,7 +347,7 @@ static void init_hreadout_property(indigo_device *device) {
 			GetAmpDesc (amp, amp_desc, sizeof(amp_desc));
 			res = GetNumberHSSpeeds(channel, amp, &speeds);
 			if (res != DRV_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberHSSpeeds() error: %d", res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberHSSpeeds() for camera %d error: %d", PRIVATE_DATA->handle, res);
 				speeds = 0;
 			}
 			for (int speed = 0; speed < speeds; speed++) {
@@ -368,12 +368,12 @@ static void init_hreadout_property(indigo_device *device) {
 
 	res = SetHSSpeed(0,0);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHSSpeed() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHSSpeed() for camera %d error: %d", PRIVATE_DATA->handle, res);
 	}
 
 	res = SetOutputAmplifier(0);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetOutputAmplifier() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetOutputAmplifier() for camera %d error: %d", PRIVATE_DATA->handle, res);
 	}
 
 	indigo_define_property(device, HREADOUT_PROPERTY, NULL);
@@ -384,7 +384,7 @@ static void init_preampgain_property(indigo_device *device) {
 	int res, option_num;
 	res = GetNumberPreAmpGains(&option_num);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberPreAmpGains() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberPreAmpGains() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		option_num = 0;
 	}
 	PREAMPGAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, PREAMPGAIN_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Preamp Gain", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
@@ -401,7 +401,7 @@ static void init_preampgain_property(indigo_device *device) {
 
 	res = SetPreAmpGain(0);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetPreampGain() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetPreampGain() for camera %d error: %d", PRIVATE_DATA->handle, res);
 	}
 	indigo_define_property(device, PREAMPGAIN_PROPERTY, NULL);
 }
@@ -415,7 +415,7 @@ static void init_highcapacity_property(indigo_device *device) {
 	indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
 	res = SetHighCapacity(0); /* 0 is High Sensitivity */
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHighCapacity() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHighCapacity() for camera %d error: %d", PRIVATE_DATA->handle, res);
 	}
 }
 
@@ -438,7 +438,7 @@ static void init_coolermode_property(indigo_device *device) {
 	indigo_define_property(device, COOLERMODE_PROPERTY, NULL);
 	res = SetCoolerMode(0); /* 0 is DISABLE_ON_SHUTDOWN */
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerMode() error: %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerMode() for camera %d error: %d", PRIVATE_DATA->handle, res);
 	}
 }
 
@@ -454,7 +454,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	//Set Read Mode to Image
 	res = SetReadMode(4);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetReadMode(4) = %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetReadMode(4) for camera %d error: %d", PRIVATE_DATA->handle, res);
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -462,14 +462,14 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	//Set Acquisition mode to Single scan
 	SetAcquisitionMode(1);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetAcquisitionMode(1) = %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetAcquisitionMode(1) for camera %d error: %d", PRIVATE_DATA->handle, res);
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 
 	SetExposureTime(exposure);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetExposureTime(%f) = %d", exposure, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetExposureTime(%f) for camera %d error: %d", exposure, PRIVATE_DATA->handle, res);
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -480,7 +480,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 		res = SetShutter(1,0,50,50);
 	}
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetShutter() = %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetShutter() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -488,14 +488,14 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 	//Setup Image dimensions
 	res = SetImage(bin_x, bin_y, offset_x+1, offset_x+frame_width, offset_y+1, offset_y+frame_height);
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetImage(%d, %d, %d, %d, %d, %d) = %d", bin_x, bin_y, offset_x+1, offset_x+frame_width, offset_y+1, offset_y+frame_height, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetImage(%d, %d, %d, %d, %d, %d) for camera %d error: %d", bin_x, bin_y, offset_x+1, offset_x+frame_width, offset_y+1, offset_y+frame_height, PRIVATE_DATA->handle, res);
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 
 	res = StartAcquisition();
 	if (res != DRV_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "StartAcquisition() = %d", res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "StartAcquisition() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
@@ -540,14 +540,14 @@ static bool andor_read_pixels(indigo_device *device) {
 	if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value > 16) {
 		res = GetAcquiredData((uint32_t *)image, num_pixels);
 		if (res != DRV_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAcquiredData() = %d", res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAcquiredData() for camera %d error: %d", PRIVATE_DATA->handle, res);
 			pthread_mutex_unlock(&driver_mutex);
 			return false;
 		}
 	} else {
 		res = GetAcquiredData16((uint16_t *)image, num_pixels);
 		if (res != DRV_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAcquiredData16() = %d", res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAcquiredData16() for camera %d error: %d", PRIVATE_DATA->handle, res);
 			pthread_mutex_unlock(&driver_mutex);
 			return false;
 		}
@@ -757,14 +757,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 				res = GetHeadModel(INFO_DEVICE_MODEL_ITEM->text.value);
 				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHeadModel() for camera %d error: %d", PRIVATE_DATA->handle, res);
 					INFO_DEVICE_MODEL_ITEM->text.value[0] = '\0';
 				}
 
 				unsigned int fw_ver = 0, fw_build = 0, dummy;
 				res = GetHardwareVersion(&dummy, &dummy, &dummy, &dummy, &fw_ver, &fw_build);
 				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHardwareVersion() error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetHardwareVersion() for camera %d error: %d", PRIVATE_DATA->handle, res);
 				}
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%d-%d", fw_ver, fw_build);
 
@@ -774,7 +774,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				int width = 0, height = 0;
 				res = GetDetector(&width, &height);
 				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDetector() error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDetector() for camera %d error: %d", PRIVATE_DATA->handle, res);
 				}
 				CCD_INFO_WIDTH_ITEM->number.value = width;
 				CCD_INFO_HEIGHT_ITEM->number.value = height;
@@ -788,7 +788,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				float x_size = 0, y_size = 0;
 				res = GetPixelSize(&x_size, &y_size);
 				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetPixelSize() error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetPixelSize() for camera %d error: %d", PRIVATE_DATA->handle, res);
 				}
 				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = x_size;
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = y_size;
@@ -799,7 +799,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				// 4 is Image mode, 0 is horizontal binning
 				res = GetMaximumBinning(4, 0, &max_bin);
 				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(X) error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(X) for camera %d error: %d", PRIVATE_DATA->handle, res);
 				}
 				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
 				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
@@ -808,7 +808,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				// 4 is Image mode, 1 is vertical binning
 				res = GetMaximumBinning(4, 1, &max_bin);
 				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(Y) error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(Y) for camera %d error: %d", PRIVATE_DATA->handle, res);
 				}
 				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
 				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
@@ -843,7 +843,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				int max_bpp_channel = 0;
 				res = GetNumberADChannels(&PRIVATE_DATA->adc_channels);
 				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberADChannels() error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberADChannels() for camera %d error: %d", PRIVATE_DATA->handle, res);
 				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC Channels: %d", PRIVATE_DATA->adc_channels);
 				for (int i = 0; i < PRIVATE_DATA->adc_channels; i++) {
@@ -949,7 +949,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
 				} else {
 					CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CoolerON() error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CoolerON() for camera %d error: %d", PRIVATE_DATA->handle, res);
 				}
 			} else {
 				res = CoolerOFF();
@@ -959,7 +959,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
 				} else {
 					CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CoolerOFF() error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CoolerOFF() for camera %d error: %d", PRIVATE_DATA->handle, res);
 				}
 			}
 			pthread_mutex_unlock(&driver_mutex);
@@ -985,7 +985,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetTemperature() error: %d", res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetTemperature() for camera %d error: %d", PRIVATE_DATA->handle, res);
 			}
 			pthread_mutex_unlock(&driver_mutex);
 
@@ -1010,10 +1010,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				uint32_t res = SetADChannel(i);
 				if (res != DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetADChannel(%d) error: %d", i, PRIVATE_DATA->bit_depths[i]);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetADChannel(%d) for camera %d error: %d", i, PRIVATE_DATA->handle, res);
 					CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bit depth: %d (Channel %d)", PRIVATE_DATA->bit_depths[i], i);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bit depth: %d (Camera %d, Channel %d)", PRIVATE_DATA->bit_depths[i], PRIVATE_DATA->handle, i);
 				}
 				pthread_mutex_unlock(&driver_mutex);
 				break;
@@ -1056,10 +1056,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if(VSSPEED_PROPERTY->items[i].sw.value) {
 				uint32_t res = SetVSSpeed(i);
 				if (res != DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSSpeed(%d) error: %d", i, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSSpeed(%d) for camera %d error: %d", i, PRIVATE_DATA->handle, res);
 					VSSPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "VS Speed set to %d", i);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "VS Speed for camera %d set to %d", PRIVATE_DATA->handle, i);
 					VSSPEED_PROPERTY->state = INDIGO_OK_STATE;
 				}
 				break;
@@ -1084,11 +1084,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					if (res == DRV_P1INVALID) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude(%d): Amplitude Not Supported", i);
 					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude(%d) error: %d", i, res);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetVSAmplitude(%d) for camera %d error: %d", i, PRIVATE_DATA->handle, res);
 					}
 					VSAMPLITUDE_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "VS Amplitude set to %d", i);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "VS Amplitude for camera %d set to %d", PRIVATE_DATA->handle, i);
 					VSAMPLITUDE_PROPERTY->state = INDIGO_OK_STATE;
 				}
 				break;
@@ -1110,13 +1110,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (HREADOUT_PROPERTY->items[i].sw.value) {
 				int channel, amp, speed;
 				res = sscanf(HREADOUT_PROPERTY->items[i].name, HREADOUT_ITEM_FORMAT, &channel, &amp, &speed);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s => Channel = %d, Amp = %d, Speed = %d", HREADOUT_PROPERTY->items[i].name, channel, amp, speed);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %d %s => Channel = %d, Amp = %d, Speed = %d", PRIVATE_DATA->handle, HREADOUT_PROPERTY->items[i].name, channel, amp, speed);
 				res = SetHSSpeed(channel, speed);
 				if (res != DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHSSpeed(%d, %d) error: %d", channel, speed, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHSSpeed(%d, %d) for camera %d error: %d", channel, speed, PRIVATE_DATA->handle, res);
 					HREADOUT_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC Channel set to %d, HS Speed set to %d", channel, speed);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC Channel for camera %d set to %d, HS Speed set to %d", PRIVATE_DATA->handle, channel, speed);
 					HREADOUT_PROPERTY->state = INDIGO_OK_STATE;
 
 					/* Update BPP in CCD_FRAME_PROPERTY*/
@@ -1126,10 +1126,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				res = SetOutputAmplifier(amp);
 				if (res != DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetOutputAmplifier(%d) error: %d", amp, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetOutputAmplifier(%d) for camera %d error: %d", amp, PRIVATE_DATA->handle, res);
 					HREADOUT_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Output Amplifier set to %d", amp);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Output Amplifier for camera %d set to %d", PRIVATE_DATA->handle, amp);
 					HREADOUT_PROPERTY->state = INDIGO_OK_STATE;
 				}
 				break;
@@ -1151,10 +1151,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if(PREAMPGAIN_PROPERTY->items[i].sw.value) {
 				uint32_t res = SetPreAmpGain(i);
 				if (res != DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetPreampGain(%d) error: %d", i, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetPreampGain(%d) for camera %d error: %d", i, PRIVATE_DATA->handle, res);
 					PREAMPGAIN_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Preamp gain set to %d", i);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Preamp gain for camera %d set to %d", PRIVATE_DATA->handle, i);
 					PREAMPGAIN_PROPERTY->state = INDIGO_OK_STATE;
 				}
 				break;
@@ -1176,10 +1176,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if(HIGHCAPACITY_PROPERTY->items[i].sw.value) {
 				uint32_t res = SetHighCapacity(i);
 				if (res != DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHighCapacity(%d) error: %d", i, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetHighCapacity(%d) for camera %d error: %d", i, PRIVATE_DATA->handle, res);
 					HIGHCAPACITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "High Sensitivity/Capacity (0/1): %d", i);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set High Sensitivity/Capacity (0/1) for camera %d: %d", PRIVATE_DATA->handle, i);
 					HIGHCAPACITY_PROPERTY->state = INDIGO_OK_STATE;
 				}
 				break;
@@ -1201,10 +1201,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if(FANCONTROL_PROPERTY->items[i].sw.value) {
 				uint32_t res = SetFanMode(i);
 				if (res != DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetFanMode(%d) error: %d", i, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetFanMode(%d) for camera %d error: %d", i, PRIVATE_DATA->handle, res);
 					FANCONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Fan mode (0=Full/1=Low/2=off): %d", i);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set Fan mode for camera %d (0=Full/1=Low/2=off): %d", PRIVATE_DATA->handle, i);
 					FANCONTROL_PROPERTY->state = INDIGO_OK_STATE;
 				}
 				break;
@@ -1226,10 +1226,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if(COOLERMODE_PROPERTY->items[i].sw.value) {
 				uint32_t res = SetCoolerMode(i);
 				if (res != DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerMode(%d) error: %d", i, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerMode(%d) for camera %d error: %d", i, PRIVATE_DATA->handle, res);
 					COOLERMODE_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Cooler mode (0=Disable on Shutdown/1=Keep ON on Shutdown): %d", i);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set Cooler mode for camera %d (0=Disable on Shutdown/1=Keep ON on Shutdown): %d", PRIVATE_DATA->handle, i);
 					COOLERMODE_PROPERTY->state = INDIGO_OK_STATE;
 				}
 				break;
@@ -1339,10 +1339,10 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 				at_32 handle;
 				pthread_mutex_lock(&driver_mutex);
 				res = GetCameraHandle(i, &handle);
-				if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraHandle() error: %d", res);
+				if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraHandle() for camera %d error: %d", handle, res);
 
 				res = SetCurrentCamera(handle);
-				if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCurrentCamera() error: %d", res);
+				if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCurrentCamera() for camera %d error: %d", handle, res);
 
 				res = Initialize(andor_path);
 				if(res != DRV_SUCCESS) {
@@ -1372,7 +1372,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load “*.COF” or “*.RBF” files.");
 						break;
 					default:
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialisation error: %d", res);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialisation for camera %d error: %d", PRIVATE_DATA->handle, res);
 					}
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR_SDK_PATH may not be not valid.");
 					break;
@@ -1383,7 +1383,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 
 				res = GetCameraSerialNumber(&private_data->serial_number);
 				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraSerialNumber() error: %d", res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraSerialNumber() for camera %d error: %d", PRIVATE_DATA->handle, res);
 					private_data->serial_number = 0;
 				}
 
