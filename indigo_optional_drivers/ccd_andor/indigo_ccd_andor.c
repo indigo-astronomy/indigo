@@ -461,6 +461,11 @@ static void init_baselineoffset_property(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_init_number_property(BASELINEOFFSET_PROPERTY) for camera %d filed.", PRIVATE_DATA->handle);
 		return;
 	}
+	if (!CAP_SET_BASELINEOFFSET) {
+		BASELINEOFFSET_PROPERTY->hidden = true;
+		indigo_define_property(device, BASELINEOFFSET_PROPERTY, NULL);
+		return;
+	}
 	indigo_init_number_item(BASELINEOFFSET_OFFSET_ITEM, "OFFSET", "Offset", -1000, 1000, 100, 0);
 	indigo_define_property(device, BASELINEOFFSET_PROPERTY, NULL);
 	res = SetBaselineOffset(0);
@@ -808,9 +813,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if(CAP_SET_BASELINECLAMP) {
 					init_baselineclamp_property(device);
 				}
-				if(CAP_SET_BASELINEOFFSET) {
-					init_baselineoffset_property(device);
-				}
+				init_baselineoffset_property(device);
 				if(CAP_FANCONTROL) {
 					init_fancontrol_property(device);
 				}
@@ -961,9 +964,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (CAP_SET_BASELINECLAMP) {
 					indigo_delete_property(device, BASELINECLAMP_PROPERTY, NULL);
 				}
-				if (CAP_SET_BASELINEOFFSET) {
-					indigo_delete_property(device, BASELINEOFFSET_PROPERTY, NULL);
-				}
+				indigo_delete_property(device, BASELINEOFFSET_PROPERTY, NULL);
 				if (CAP_FANCONTROL) {
 					indigo_delete_property(device, FANCONTROL_PROPERTY, NULL);
 				}
@@ -1391,9 +1392,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 		if (CAP_SET_BASELINECLAMP) {
 			indigo_release_property(BASELINECLAMP_PROPERTY);
 		}
-		if (CAP_SET_BASELINEOFFSET) {
-			indigo_release_property(BASELINEOFFSET_PROPERTY);
-		}
+		indigo_release_property(BASELINEOFFSET_PROPERTY);
 		if (CAP_FANCONTROL) {
 			indigo_release_property(FANCONTROL_PROPERTY);
 		}
