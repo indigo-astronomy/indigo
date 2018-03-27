@@ -1437,7 +1437,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialization error: Unable to load “*.COF” or “*.RBF” files.");
 						break;
 					default:
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialisation for camera %d error: %d", PRIVATE_DATA->handle, res);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR SDK initialisation for camera %d error: %d", handle, res);
 					}
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ANDOR_SDK_PATH may not be not valid.");
 					break;
@@ -1448,7 +1448,7 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 
 				res = GetCameraSerialNumber(&private_data->serial_number);
 				if (res!= DRV_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraSerialNumber() for camera %d error: %d", PRIVATE_DATA->handle, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCameraSerialNumber() for camera %d error: %d", handle, res);
 					private_data->serial_number = 0;
 				}
 
