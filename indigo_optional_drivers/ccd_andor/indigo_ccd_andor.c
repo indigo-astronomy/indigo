@@ -89,7 +89,7 @@ static unsigned int SetHighCapacity(int state) {
 #define HREADOUT_PROPERTY               PRIVATE_DATA->hreadout_property
 #define PREAMPGAIN_PROPERTY             PRIVATE_DATA->preampgain_property
 #define HIGHCAPACITY_PROPERTY           PRIVATE_DATA->highcapacity_property
-#define BASELINECLAMP_PROPERTY          PRIVATE_DATA->baseclamp_property
+#define BASELINECLAMP_PROPERTY          PRIVATE_DATA->baselineclamp_property
 #define FANCONTROL_PROPERTY             PRIVATE_DATA->fancontrol_property
 #define COOLERMODE_PROPERTY             PRIVATE_DATA->coolermode_property
 
@@ -118,7 +118,7 @@ typedef struct {
 	indigo_property *hreadout_property;
 	indigo_property *highcapacity_property;
 	indigo_property *preampgain_property;
-	indigo_property *baseclamp_property;
+	indigo_property *baselineclamp_property;
 	indigo_property *fancontrol_property;
 	indigo_property *coolermode_property;
 
