@@ -78,6 +78,7 @@ static unsigned int SetHighCapacity(int state) {
 #define PREAMPGAIN_PROPERTY_NAME        "ANDOR_PREAMPGAIN"
 #define HIGHCAPACITY_PROPERTY_NAME      "ANDOR_HIGHCAPACITY"
 #define BASELINECLAMP_PROPERTY_NAME     "ANDOR_BASELINECLAMP"
+#define BASELINEOFFSET_PROPERTY_NAME    "ANDOR_BASELINEOFFSET"
 
 #define COOLER_GROUP_NAME               "Cooler"
 #define FANCONTROL_PROPERTY_NAME        "ANDOR_FANCONTROL"
@@ -90,8 +91,11 @@ static unsigned int SetHighCapacity(int state) {
 #define PREAMPGAIN_PROPERTY             PRIVATE_DATA->preampgain_property
 #define HIGHCAPACITY_PROPERTY           PRIVATE_DATA->highcapacity_property
 #define BASELINECLAMP_PROPERTY          PRIVATE_DATA->baselineclamp_property
+#define BASELINEOFFSET_PROPERTY         PRIVATE_DATA->baselineoffset_property
 #define FANCONTROL_PROPERTY             PRIVATE_DATA->fancontrol_property
 #define COOLERMODE_PROPERTY             PRIVATE_DATA->coolermode_property
+
+#define BASELINEOFFSET_OFFSET_ITEM      (BASELINEOFFSET_PROPERTY->items)
 
 #define CAP_GET_TEMPERATURE             (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURE)
 #define CAP_GET_TEMPERATURE_RANGE       (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_TEMPERATURERANGE)
@@ -106,6 +110,7 @@ static unsigned int SetHighCapacity(int state) {
 #define CAP_SET_PREAMPGAIN              (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_PREAMPGAIN)
 #define CAP_SET_BASELINECLAMP           (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_BASELINECLAMP)
 #define CAP_GET_BASELINECLAMP           (PRIVATE_DATA->caps.ulGetFunctions & AC_GETFUNCTION_BASELINECLAMP)
+#define CAP_SET_BASELINEOFFSET          (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_BASELINEOFFSET)
 
 #define HREADOUT_ITEM_FORMAT            "CHANNEL_%d_AMP_%d_SPEED_%d"
 
@@ -119,6 +124,7 @@ typedef struct {
 	indigo_property *highcapacity_property;
 	indigo_property *preampgain_property;
 	indigo_property *baselineclamp_property;
+	indigo_property *baselineoffset_property;
 	indigo_property *fancontrol_property;
 	indigo_property *coolermode_property;
 
@@ -448,6 +454,22 @@ static void init_baselineclamp_property(indigo_device *device) {
 }
 
 
+static void init_baselineoffset_property(indigo_device *device) {
+	int res;
+	BASELINEOFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, BASELINEOFFSET_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Baseline Offset", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+	if (BASELINEOFFSET_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_init_number_property(BASELINEOFFSET_PROPERTY) for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
+	indigo_init_number_item(BASELINEOFFSET_OFFSET_ITEM, "OFFSET", "Offset", -1000, 1000, 100, 0);
+	indigo_define_property(device, BASELINEOFFSET_PROPERTY, NULL);
+	res = SetBaselineOffset(0);
+	if (res != DRV_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetBaselineOffset(0) for camera %d error: %d", PRIVATE_DATA->handle, res);
+	}
+}
+
+
 static void init_fancontrol_property(indigo_device *device) {
 	int res;
 	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, COOLER_GROUP_NAME, "Fan Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
@@ -729,6 +751,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 				indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
 			if (indigo_property_match(BASELINECLAMP_PROPERTY, property))
 				indigo_define_property(device, BASELINECLAMP_PROPERTY, NULL);
+			if (indigo_property_match(BASELINEOFFSET_PROPERTY, property))
+				indigo_define_property(device, BASELINEOFFSET_PROPERTY, NULL);
 			if (indigo_property_match(FANCONTROL_PROPERTY, property))
 				indigo_define_property(device, FANCONTROL_PROPERTY, NULL);
 			if (indigo_property_match(COOLERMODE_PROPERTY, property))
@@ -783,6 +807,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				if(CAP_SET_BASELINECLAMP) {
 					init_baselineclamp_property(device);
+				}
+				if(CAP_SET_BASELINEOFFSET) {
+					init_baselineoffset_property(device);
 				}
 				if(CAP_FANCONTROL) {
 					init_fancontrol_property(device);
@@ -933,6 +960,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				if (CAP_SET_BASELINECLAMP) {
 					indigo_delete_property(device, BASELINECLAMP_PROPERTY, NULL);
+				}
+				if (CAP_SET_BASELINEOFFSET) {
+					indigo_delete_property(device, BASELINEOFFSET_PROPERTY, NULL);
 				}
 				if (CAP_FANCONTROL) {
 					indigo_delete_property(device, FANCONTROL_PROPERTY, NULL);
@@ -1248,6 +1278,29 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, BASELINECLAMP_PROPERTY, NULL);
+	} else if (indigo_property_match(BASELINEOFFSET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- BASELINEOFFSET
+		indigo_property_copy_values(BASELINEOFFSET_PROPERTY, property, false);
+		pthread_mutex_lock(&driver_mutex);
+		if (!use_camera(device)) {
+			pthread_mutex_unlock(&driver_mutex);
+			BASELINEOFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, BASELINEOFFSET_PROPERTY, NULL);
+			return INDIGO_OK;
+		}
+		int offset = (int)(round(BASELINEOFFSET_OFFSET_ITEM->number.value / 100.0) * 100);
+		BASELINEOFFSET_OFFSET_ITEM->number.value = offset;
+		uint32_t res = SetBaselineOffset(offset);
+		if (res != DRV_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetBaselineOffset(%d) for camera %d error: %d", offset, PRIVATE_DATA->handle, res);
+			BASELINEOFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set Baseline Offset for camera %d: %d", PRIVATE_DATA->handle, offset);
+			BASELINEOFFSET_PROPERTY->state = INDIGO_OK_STATE;
+		}
+
+		pthread_mutex_unlock(&driver_mutex);
+		indigo_update_property(device, BASELINEOFFSET_PROPERTY, NULL);
 	} else if (indigo_property_match(FANCONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FANCONTROL
 		indigo_property_copy_values(FANCONTROL_PROPERTY, property, false);
@@ -1307,6 +1360,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, PREAMPGAIN_PROPERTY);
 			indigo_save_property(device, NULL, HIGHCAPACITY_PROPERTY);
 			indigo_save_property(device, NULL, BASELINECLAMP_PROPERTY);
+			indigo_save_property(device, NULL, BASELINEOFFSET_PROPERTY);
 			indigo_save_property(device, NULL, FANCONTROL_PROPERTY);
 			indigo_save_property(device, NULL, COOLERMODE_PROPERTY);
 		}
@@ -1336,6 +1390,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 		}
 		if (CAP_SET_BASELINECLAMP) {
 			indigo_release_property(BASELINECLAMP_PROPERTY);
+		}
+		if (CAP_SET_BASELINEOFFSET) {
+			indigo_release_property(BASELINEOFFSET_PROPERTY);
 		}
 		if (CAP_FANCONTROL) {
 			indigo_release_property(FANCONTROL_PROPERTY);
