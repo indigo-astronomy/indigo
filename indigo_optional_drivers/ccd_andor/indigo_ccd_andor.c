@@ -70,6 +70,8 @@ static unsigned int SetHighCapacity(int state) {
 /* gp_bits is used as boolean */
 #define is_connected                    gp_bits
 
+#define andor_property_match(prop1, prop2) ((prop1 != NULL) && indigo_property_match(prop1, prop2))
+
 /* ANDOR specifiv properties */
 #define AQUISITION_GROUP_NAME           "Aquisition"
 #define VSSPEED_PROPERTY_NAME           "ANDOR_VSSPEED"
@@ -739,23 +741,23 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_ccd_enumerate_properties(device, client, property)) == INDIGO_OK) {
 		if (IS_CONNECTED) {
-			if (indigo_property_match(VSSPEED_PROPERTY, property))
+			if (andor_property_match(VSSPEED_PROPERTY, property))
 				indigo_define_property(device, VSSPEED_PROPERTY, NULL);
-			if (indigo_property_match(VSAMPLITUDE_PROPERTY, property))
+			if (andor_property_match(VSAMPLITUDE_PROPERTY, property))
 				indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
-			if (indigo_property_match(HREADOUT_PROPERTY, property))
+			if (andor_property_match(HREADOUT_PROPERTY, property))
 				indigo_define_property(device, HREADOUT_PROPERTY, NULL);
-			if (indigo_property_match(PREAMPGAIN_PROPERTY, property))
+			if (andor_property_match(PREAMPGAIN_PROPERTY, property))
 				indigo_define_property(device, PREAMPGAIN_PROPERTY, NULL);
-			if (indigo_property_match(HIGHCAPACITY_PROPERTY, property))
+			if (andor_property_match(HIGHCAPACITY_PROPERTY, property))
 				indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
-			if (indigo_property_match(BASELINECLAMP_PROPERTY, property))
+			if (andor_property_match(BASELINECLAMP_PROPERTY, property))
 				indigo_define_property(device, BASELINECLAMP_PROPERTY, NULL);
-			if (indigo_property_match(BASELINEOFFSET_PROPERTY, property))
+			if (andor_property_match(BASELINEOFFSET_PROPERTY, property))
 				indigo_define_property(device, BASELINEOFFSET_PROPERTY, NULL);
-			if (indigo_property_match(FANCONTROL_PROPERTY, property))
+			if (andor_property_match(FANCONTROL_PROPERTY, property))
 				indigo_define_property(device, FANCONTROL_PROPERTY, NULL);
-			if (indigo_property_match(COOLERMODE_PROPERTY, property))
+			if (andor_property_match(COOLERMODE_PROPERTY, property))
 				indigo_define_property(device, COOLERMODE_PROPERTY, NULL);
 		}
 	}
@@ -1108,7 +1110,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(VSSPEED_PROPERTY, property)) {
+	} else if (andor_property_match(VSSPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- VSSPEED
 		indigo_property_copy_values(VSSPEED_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
@@ -1133,7 +1135,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, VSSPEED_PROPERTY, NULL);
-	} else if (indigo_property_match(VSAMPLITUDE_PROPERTY, property)) {
+	} else if (andor_property_match(VSAMPLITUDE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- VSAMPLITUDE
 		indigo_property_copy_values(VSAMPLITUDE_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
@@ -1162,7 +1164,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, VSAMPLITUDE_PROPERTY, NULL);
-	} else if (indigo_property_match(HREADOUT_PROPERTY, property)) {
+	} else if (andor_property_match(HREADOUT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HREADOUT
 		indigo_property_copy_values(HREADOUT_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
@@ -1203,7 +1205,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, HREADOUT_PROPERTY, NULL);
-	} else if (indigo_property_match(PREAMPGAIN_PROPERTY, property)) {
+	} else if (andor_property_match(PREAMPGAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- PREAMPGAIN
 		indigo_property_copy_values(PREAMPGAIN_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
@@ -1228,7 +1230,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, PREAMPGAIN_PROPERTY, NULL);
-	} else if (indigo_property_match(HIGHCAPACITY_PROPERTY, property)) {
+	} else if (andor_property_match(HIGHCAPACITY_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HIGHCAPACITY
 		indigo_property_copy_values(HIGHCAPACITY_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
@@ -1253,7 +1255,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, HIGHCAPACITY_PROPERTY, NULL);
-	} else if (indigo_property_match(BASELINECLAMP_PROPERTY, property)) {
+	} else if (andor_property_match(BASELINECLAMP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- BASELINECLAMP
 		indigo_property_copy_values(BASELINECLAMP_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
@@ -1278,7 +1280,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, BASELINECLAMP_PROPERTY, NULL);
-	} else if (indigo_property_match(BASELINEOFFSET_PROPERTY, property)) {
+	} else if (andor_property_match(BASELINEOFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- BASELINEOFFSET
 		indigo_property_copy_values(BASELINEOFFSET_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
@@ -1301,7 +1303,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, BASELINEOFFSET_PROPERTY, NULL);
-	} else if (indigo_property_match(FANCONTROL_PROPERTY, property)) {
+	} else if (andor_property_match(FANCONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FANCONTROL
 		indigo_property_copy_values(FANCONTROL_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
@@ -1326,7 +1328,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, FANCONTROL_PROPERTY, NULL);
-	} else if (indigo_property_match(COOLERMODE_PROPERTY, property)) {
+	} else if (andor_property_match(COOLERMODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- COOLERMODE
 		indigo_property_copy_values(COOLERMODE_PROPERTY, property, false);
 		pthread_mutex_lock(&driver_mutex);
