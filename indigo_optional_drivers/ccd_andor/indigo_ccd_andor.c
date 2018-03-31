@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -263,6 +263,10 @@ static void init_vsspeed_property(indigo_device *device) {
 		option_num = 0;
 	}
 	VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Shift Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	if (VSSPEED_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of VSSPEED_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
 	for (int i = 0; i < option_num; i++) {
 		float speed;
 		char item[INDIGO_NAME_SIZE];
@@ -292,6 +296,10 @@ static void init_vsamplitude_property(indigo_device *device) {
 		option_num = 0;
 	}
 	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	if (VSAMPLITUDE_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of VSAMPLITUDE_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
 	if (option_num > 0) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 0, "NORMAL", "Normal", true);
 	if (option_num > 1) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 1, "AMPLITUDE_1", "+1", false);
 	if (option_num > 2) indigo_init_switch_item(VSAMPLITUDE_PROPERTY->items + 2, "AMPLITUDE_2", "+2", false);
@@ -314,6 +322,10 @@ static void init_vsamplitude_property(indigo_device *device) {
 		option_num = 0;
 	}
 	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	if (VSAMPLITUDE_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of VSAMPLITUDE_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
 	for (int i = 0; i < option_num; i++) {
 		char amplitude[INDIGO_NAME_SIZE];
 		char item[INDIGO_NAME_SIZE];
@@ -335,7 +347,12 @@ static void init_vsamplitude_property(indigo_device *device) {
 
 static void init_hreadout_property(indigo_device *device) {
 	int res, channels, amps, items = 0;
+
 	HREADOUT_PROPERTY = indigo_init_switch_property(NULL, device->name, HREADOUT_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Horisontal Readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+	if (HREADOUT_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of HREADOUT_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
 
 	res = GetNumberADChannels(&channels);
 	if (res != DRV_SUCCESS) {
@@ -399,6 +416,10 @@ static void init_preampgain_property(indigo_device *device) {
 		option_num = 0;
 	}
 	PREAMPGAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, PREAMPGAIN_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Preamp Gain", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	if (PREAMPGAIN_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of PREAMPGAIN_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
 	for (int i = 0; i < option_num; i++) {
 		float gain;
 		char item[INDIGO_NAME_SIZE];
@@ -421,6 +442,10 @@ static void init_preampgain_property(indigo_device *device) {
 static void init_highcapacity_property(indigo_device *device) {
 	int res;
 	HIGHCAPACITY_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGHCAPACITY_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Capacity / Sensitivity", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	if (HIGHCAPACITY_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of HIGHCAPACITY_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
 	indigo_init_switch_item(HIGHCAPACITY_PROPERTY->items + 0, "HIGHT_SENSITIVITY", "High Sensitivity", true);
 	indigo_init_switch_item(HIGHCAPACITY_PROPERTY->items + 1, "HIGHT_CAPACITY", "High Capacity", false);
 	indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
@@ -434,6 +459,10 @@ static void init_highcapacity_property(indigo_device *device) {
 static void init_baselineclamp_property(indigo_device *device) {
 	int res;
 	BASELINECLAMP_PROPERTY = indigo_init_switch_property(NULL, device->name, BASELINECLAMP_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Baseline Clamp", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	if (BASELINECLAMP_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of BASELINECLAMP_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
 	indigo_init_switch_item(BASELINECLAMP_PROPERTY->items + 0, "DISABLE", "Disable", false);
 	indigo_init_switch_item(BASELINECLAMP_PROPERTY->items + 1, "ENABLE", "Enable", false);
 	int on = 0;
@@ -458,7 +487,7 @@ static void init_baselineoffset_property(indigo_device *device) {
 	int res;
 	BASELINEOFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, BASELINEOFFSET_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Baseline Offset", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 	if (BASELINEOFFSET_PROPERTY == NULL) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_init_number_property(BASELINEOFFSET_PROPERTY) for camera %d filed.", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of BASELINEOFFSET_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
 		return;
 	}
 	indigo_init_number_item(BASELINEOFFSET_OFFSET_ITEM, "OFFSET", "Offset", -1000, 1000, 100, 0);
@@ -473,6 +502,10 @@ static void init_baselineoffset_property(indigo_device *device) {
 static void init_fancontrol_property(indigo_device *device) {
 	int res;
 	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, COOLER_GROUP_NAME, "Fan Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	if (FANCONTROL_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of FANCONTROL_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
 	indigo_init_switch_item(FANCONTROL_PROPERTY->items + 0, "FULL_SPEED", "Full", false);
 	indigo_init_switch_item(FANCONTROL_PROPERTY->items + 1, "LOW_SPEED", "Low", false);
 	indigo_init_switch_item(FANCONTROL_PROPERTY->items + 2, "OFF", "Off", false);
@@ -483,6 +516,10 @@ static void init_fancontrol_property(indigo_device *device) {
 static void init_coolermode_property(indigo_device *device) {
 	int res;
 	COOLERMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, COOLERMODE_PROPERTY_NAME, COOLER_GROUP_NAME, "Cooling on Shutdown", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	if (COOLERMODE_PROPERTY == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of COOLERMODE_PROPERTY for camera %d filed.", PRIVATE_DATA->handle);
+		return;
+	}
 	indigo_init_switch_item(COOLERMODE_PROPERTY->items + 0, "DISABLE_ON_SHUTDOWN", "Disable", true);
 	indigo_init_switch_item(COOLERMODE_PROPERTY->items + 1, "KEEP_ON_SHUTDOWN", "Keep ON", false);
 	indigo_define_property(device, COOLERMODE_PROPERTY, NULL);
