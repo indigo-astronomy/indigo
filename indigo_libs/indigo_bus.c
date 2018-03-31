@@ -518,7 +518,8 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 	int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
 	if (property == NULL) {
 		property = malloc(size);
-		assert(property != NULL);
+		if (property == NULL) return NULL;
+		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
@@ -539,7 +540,8 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
-		assert(property != NULL);
+		if (property == NULL) return NULL;
+		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
@@ -560,7 +562,8 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
-		assert(property != NULL);
+		if (property == NULL) return NULL;
+		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
@@ -582,7 +585,8 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
-		assert(property != NULL);
+		if (property == NULL) return NULL;
+		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
@@ -603,7 +607,8 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = malloc(size);
-		assert(property != NULL);
+		if (property == NULL) return NULL;
+		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
