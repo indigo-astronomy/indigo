@@ -277,7 +277,7 @@ indigo_result indigo_start() {
 indigo_result indigo_attach_device(indigo_device *device) {
 	if ((!is_started) || (device == NULL))
 		return INDIGO_FAILED;
-	//assert(device != NULL);
+
 	pthread_mutex_lock(&device_mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == NULL) {
@@ -295,7 +295,7 @@ indigo_result indigo_attach_device(indigo_device *device) {
 indigo_result indigo_attach_client(indigo_client *client) {
 	if ((!is_started) || (client == NULL))
 		return INDIGO_FAILED;
-	//assert(client != NULL);
+
 	pthread_mutex_lock(&client_mutex);
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		if (clients[i] == NULL) {
@@ -313,7 +313,7 @@ indigo_result indigo_attach_client(indigo_client *client) {
 indigo_result indigo_detach_device(indigo_device *device) {
 	if ((!is_started) || (device == NULL))
 		return INDIGO_FAILED;
-	//assert(device != NULL);
+
 	pthread_mutex_lock(&device_mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == device) {
@@ -331,7 +331,7 @@ indigo_result indigo_detach_device(indigo_device *device) {
 indigo_result indigo_detach_client(indigo_client *client) {
 	if ((!is_started) || (client == NULL))
 		return INDIGO_FAILED;
-	//assert(client != NULL);
+
 	pthread_mutex_lock(&client_mutex);
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		if (clients[i] == client) {
@@ -368,7 +368,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-	//assert(property != NULL);
+
 	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
@@ -388,7 +388,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-	//assert(property != NULL);
+
 	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: enable BLOB mode change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
@@ -408,7 +408,7 @@ indigo_result indigo_enable_blob(indigo_client *client, indigo_property *propert
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-	//assert(property != NULL);
+
 	if (!property->hidden) {
 		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property definition", property, true, true));
 		char message[INDIGO_VALUE_SIZE];
@@ -431,7 +431,7 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-	//assert(property != NULL);
+
 	if (!property->hidden) {
 		char message[INDIGO_VALUE_SIZE];
 		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property update", property, false, true));
@@ -454,7 +454,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-	//assert(property != NULL);
+
 	if (!property->hidden) {
 		char message[INDIGO_VALUE_SIZE];
 		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property removal", property, false, false));
@@ -519,7 +519,6 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 	if (property == NULL) {
 		property = malloc(size);
 		if (property == NULL) return NULL;
-		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
@@ -541,7 +540,6 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 	if (property == NULL) {
 		property = malloc(size);
 		if (property == NULL) return NULL;
-		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
@@ -563,7 +561,6 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 	if (property == NULL) {
 		property = malloc(size);
 		if (property == NULL) return NULL;
-		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
@@ -586,7 +583,6 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 	if (property == NULL) {
 		property = malloc(size);
 		if (property == NULL) return NULL;
-		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
@@ -608,7 +604,6 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	if (property == NULL) {
 		property = malloc(size);
 		if (property == NULL) return NULL;
-		//assert(property != NULL);
 	}
 	memset(property, 0, size);
 	strncpy(property->device, device, INDIGO_NAME_SIZE);
