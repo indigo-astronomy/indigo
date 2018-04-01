@@ -538,7 +538,7 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
-	//Set Read Mode to Image
+	/* Set Read Mode to Image */
 	res = SetReadMode(4);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetReadMode(4) for camera %d error: %d", PRIVATE_DATA->handle, res);
@@ -546,15 +546,15 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 		return false;
 	}
 
-	//Set Acquisition mode to Single scan
-	SetAcquisitionMode(1);
+	/* Set Acquisition mode to Single scan */
+	res = SetAcquisitionMode(1);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetAcquisitionMode(1) for camera %d error: %d", PRIVATE_DATA->handle, res);
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 
-	SetExposureTime(exposure);
+	res = SetExposureTime(exposure);
 	if (res != DRV_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetExposureTime(%f) for camera %d error: %d", exposure, PRIVATE_DATA->handle, res);
 		pthread_mutex_unlock(&driver_mutex);
@@ -722,13 +722,11 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 
 static bool andor_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&driver_mutex);
-
 	if (!use_camera(device)) {
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
 	long ret = AbortAcquisition();
-
 	pthread_mutex_unlock(&driver_mutex);
 	if ((ret == DRV_SUCCESS) || (ret == DRV_IDLE)) return true;
 	else return false;
@@ -737,7 +735,6 @@ static bool andor_abort_exposure(indigo_device *device) {
 
 static void ccd_temperature_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-
 	pthread_mutex_lock(&driver_mutex);
 	if (!use_camera(device)) {
 		pthread_mutex_unlock(&driver_mutex);
@@ -764,7 +761,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 7;
-		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -893,7 +889,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 				int max_bin = 1;
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-				// 4 is Image mode, 0 is horizontal binning
+				/* 4 is Image mode, 0 is horizontal binning */
 				res = GetMaximumBinning(4, 0, &max_bin);
 				if (res!= DRV_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(X) for camera %d error: %d", PRIVATE_DATA->handle, res);
@@ -902,7 +898,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
 				CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
 
-				// 4 is Image mode, 1 is vertical binning
+				/* 4 is Image mode, 1 is vertical binning */
 				res = GetMaximumBinning(4, 1, &max_bin);
 				if (res!= DRV_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetMaximumBinning(Y) for camera %d error: %d", PRIVATE_DATA->handle, res);
@@ -1406,6 +1402,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	return indigo_ccd_change_property(device, client, property);
 }
 
+
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -1447,7 +1444,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 #define MAX_DEVICES 8
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 at_32 device_num = 0;
-
 
 indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device imager_camera_template = INDIGO_DEVICE_INITIALIZER(
