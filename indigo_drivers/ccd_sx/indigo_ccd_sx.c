@@ -151,6 +151,7 @@ typedef struct {
 	int model;
 	bool is_interlaced;
 	bool is_color;
+	bool is_icx453;
 	unsigned short ccd_width;
 	unsigned short ccd_height;
 	double pix_width;
@@ -234,6 +235,7 @@ static bool sx_open(indigo_device *device) {
 					PRIVATE_DATA->is_interlaced = true;
 				if (PRIVATE_DATA->model == 0x16 || PRIVATE_DATA->model == 0x17 || PRIVATE_DATA->model == 0x18 || PRIVATE_DATA->model == 0x19)
 					PRIVATE_DATA->is_interlaced =  false;
+				PRIVATE_DATA->is_icx453 = result == 0x59;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s %s model %d\n", PRIVATE_DATA->is_interlaced ? "INTERLACED" : "NON-INTERLACED", PRIVATE_DATA->is_color ? "COLOR" : "MONO", PRIVATE_DATA->model);
 			}
 		}
@@ -271,6 +273,9 @@ static bool sx_open(indigo_device *device) {
 					assert(PRIVATE_DATA->even != NULL);
 					PRIVATE_DATA->odd = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
 					assert(PRIVATE_DATA->odd != NULL);
+				} else if (PRIVATE_DATA->is_icx453) {
+					PRIVATE_DATA->even = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+					assert(PRIVATE_DATA->even != NULL);
 				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sxGetCameraParams: chip size: %d x %d, pixel size: %4.2f x %4.2f, matrix type: %x", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height, PRIVATE_DATA->pix_width, PRIVATE_DATA->pix_height, PRIVATE_DATA->color_matrix);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sxGetCameraParams: capabilities:%s%s%s%s", (PRIVATE_DATA->extra_caps & CAPS_GUIDER ? " GUIDER" : ""), (PRIVATE_DATA->extra_caps & CAPS_STAR2K ? " STAR2K" : ""), (PRIVATE_DATA->extra_caps & CAPS_COOLER ? " COOLER" : ""), (PRIVATE_DATA->extra_caps & CAPS_SHUTTER ? " SHUTTER" : ""));
@@ -333,6 +338,16 @@ static bool sx_start_exposure(indigo_device *device, double exposure, bool dark,
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %lu bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 			}
 		} else {
+			if (PRIVATE_DATA->is_icx453) {
+				setup_data[REQ_DATA + 0] = (frame_left * 2) & 0xFF;
+				setup_data[REQ_DATA + 1] = (frame_left * 2) >> 8;
+				setup_data[REQ_DATA + 2] = (frame_top / 2) & 0xFF;
+				setup_data[REQ_DATA + 3] = (frame_top / 2) >> 8;
+				setup_data[REQ_DATA + 4] = (frame_width * 2) & 0xFF;
+				setup_data[REQ_DATA + 5] = (frame_width * 2) >> 8;
+				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
+				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
+			}
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %lu bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 		}
@@ -524,9 +539,36 @@ static bool sx_read_pixels(indigo_device *device) {
 			setup_data[REQ_DATA + 7] = frame_height >> 8;
 			setup_data[REQ_DATA + 8] = horizontal_bin;
 			setup_data[REQ_DATA + 9] = vertical_bin;
+			if (PRIVATE_DATA->is_icx453) {
+				setup_data[REQ_DATA + 0] = (frame_left * 2) & 0xFF;
+				setup_data[REQ_DATA + 1] = (frame_left * 2) >> 8;
+				setup_data[REQ_DATA + 2] = (frame_top / 2) & 0xFF;
+				setup_data[REQ_DATA + 3] = (frame_top / 2) >> 8;
+				setup_data[REQ_DATA + 4] = (frame_width * 2) & 0xFF;
+				setup_data[REQ_DATA + 5] = (frame_width * 2) >> 8;
+				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
+				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
+			}
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
 		}
-		rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
+		if (PRIVATE_DATA->is_icx453 && vertical_bin == 1) {
+			rc = sx_download_pixels(device, PRIVATE_DATA->even, 2 * size);
+			uint16_t *buf16 = (uint16_t *)PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
+			uint16_t *evenBuf16 = (uint16_t *)PRIVATE_DATA->even;
+			for (int i = 0; i < frame_height; i += 2) {
+				for (int j = 0; j < frame_width; j += 2) {
+					int isubW = i * frame_width;
+					int i1subW = (i + 1) * frame_width;
+					int j2 = j * 2;
+					buf16[isubW + j]  = evenBuf16[isubW + j2];
+					buf16[isubW + j + 1]  = evenBuf16[isubW + j2 + 2];
+					buf16[i1subW + j]  = evenBuf16[isubW + j2 + 1];
+					buf16[i1subW + j + 1]  = evenBuf16[isubW + j2 + 3];
+				}
+			}
+		} else {
+			rc = sx_download_pixels(device, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, 2 * size);
+		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return rc >= 0;
@@ -768,9 +810,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int v = CCD_BIN_VERTICAL_ITEM->number.value;
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
-		if (!(CCD_BIN_HORIZONTAL_ITEM->number.value == 1 || CCD_BIN_HORIZONTAL_ITEM->number.value == 2 || CCD_BIN_HORIZONTAL_ITEM->number.value == 4) || CCD_BIN_HORIZONTAL_ITEM->number.value != CCD_BIN_VERTICAL_ITEM->number.value) {
-			CCD_BIN_HORIZONTAL_ITEM->number.value = h;
-			CCD_BIN_VERTICAL_ITEM->number.value = v;
+		if (!(h == 1 || h == 2 || h == 4) || h != v) {
+			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.value = h;
 			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 			return INDIGO_OK;
