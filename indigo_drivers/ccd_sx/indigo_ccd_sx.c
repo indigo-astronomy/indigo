@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -266,16 +266,17 @@ static bool sx_open(indigo_device *device) {
 					PRIVATE_DATA->ccd_height *= 2;
 					PRIVATE_DATA->pix_height /= 2;
 				}
-				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + FITS_HEADER_SIZE);
+				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + FITS_HEADER_SIZE + 512);
 				assert(PRIVATE_DATA->buffer != NULL);
 				if (PRIVATE_DATA->is_interlaced) {
-					PRIVATE_DATA->even = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+					PRIVATE_DATA->even = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + 512);
 					assert(PRIVATE_DATA->even != NULL);
-					PRIVATE_DATA->odd = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+					PRIVATE_DATA->odd = malloc(PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + 512);
 					assert(PRIVATE_DATA->odd != NULL);
 				} else if (PRIVATE_DATA->is_icx453) {
-					PRIVATE_DATA->even = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
+					PRIVATE_DATA->even = malloc(2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height + 512);
 					assert(PRIVATE_DATA->even != NULL);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sxGetCameraParams: is_icx453 buffer %d bytes", 2 * PRIVATE_DATA->ccd_width * PRIVATE_DATA->ccd_height);
 				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sxGetCameraParams: chip size: %d x %d, pixel size: %4.2f x %4.2f, matrix type: %x", PRIVATE_DATA->ccd_width, PRIVATE_DATA->ccd_height, PRIVATE_DATA->pix_width, PRIVATE_DATA->pix_height, PRIVATE_DATA->color_matrix);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sxGetCameraParams: capabilities:%s%s%s%s", (PRIVATE_DATA->extra_caps & CAPS_GUIDER ? " GUIDER" : ""), (PRIVATE_DATA->extra_caps & CAPS_STAR2K ? " STAR2K" : ""), (PRIVATE_DATA->extra_caps & CAPS_COOLER ? " COOLER" : ""), (PRIVATE_DATA->extra_caps & CAPS_SHUTTER ? " SHUTTER" : ""));
@@ -347,6 +348,7 @@ static bool sx_start_exposure(indigo_device *device, double exposure, bool dark,
 				setup_data[REQ_DATA + 5] = (frame_width * 2) >> 8;
 				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
 				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_start_exposure: is_icx453 setup");
 			}
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %lu bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
@@ -548,13 +550,15 @@ static bool sx_read_pixels(indigo_device *device) {
 				setup_data[REQ_DATA + 5] = (frame_width * 2) >> 8;
 				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
 				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_read_pixels: is_icx453 setup");
 			}
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
 		}
 		if (PRIVATE_DATA->is_icx453 && vertical_bin == 1) {
 			rc = sx_download_pixels(device, PRIVATE_DATA->even, 2 * size);
 			uint16_t *buf16 = (uint16_t *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE);
-			uint16_t *evenBuf16 = (uint16_t *)PRIVATE_DATA->even;
+			uint16_t *evenBuf16 = (uint16_t *)(PRIVATE_DATA->even);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_read_pixels: is_icx453 %d x %d", frame_width, frame_height);
 			for (int i = 0; i < frame_height; i += 2) {
 				for (int j = 0; j < frame_width; j += 2) {
 					int isubW = i * frame_width;
