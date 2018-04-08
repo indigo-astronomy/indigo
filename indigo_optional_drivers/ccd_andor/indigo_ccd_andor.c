@@ -70,7 +70,7 @@ static unsigned int SetHighCapacity(int state) {
 /* gp_bits is used as boolean */
 #define is_connected                    gp_bits
 
-/* ANDOR specifiv properties */
+/* ANDOR specific properties */
 #define AQUISITION_GROUP_NAME           "Aquisition"
 #define VSSPEED_PROPERTY_NAME           "ANDOR_VSSPEED"
 #define VSAMPLITUDE_PROPERTY_NAME       "ANDOR_VSAMPLITUDE"
@@ -348,7 +348,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 static void init_hreadout_property(indigo_device *device) {
 	int res, channels, amps, items = 0;
 
-	HREADOUT_PROPERTY = indigo_init_switch_property(NULL, device->name, HREADOUT_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Horisontal Readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+	HREADOUT_PROPERTY = indigo_init_switch_property(NULL, device->name, HREADOUT_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Horizontal Readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
 	if (HREADOUT_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of HREADOUT_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
