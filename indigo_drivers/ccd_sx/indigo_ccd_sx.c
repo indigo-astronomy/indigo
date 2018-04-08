@@ -553,7 +553,7 @@ static bool sx_read_pixels(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->is_icx453 && vertical_bin == 1) {
 			rc = sx_download_pixels(device, PRIVATE_DATA->even, 2 * size);
-			uint16_t *buf16 = (uint16_t *)PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
+			uint16_t *buf16 = (uint16_t *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE);
 			uint16_t *evenBuf16 = (uint16_t *)PRIVATE_DATA->even;
 			for (int i = 0; i < frame_height; i += 2) {
 				for (int j = 0; j < frame_width; j += 2) {
