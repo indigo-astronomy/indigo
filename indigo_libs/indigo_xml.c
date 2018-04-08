@@ -32,7 +32,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <pthread.h>
-
+#include <math.h>
 #include <fcntl.h>
 
 #include "indigo_base64.h"
@@ -394,6 +394,12 @@ static void set_property(parser_context *context, indigo_property *other, char *
 								break;
 							case INDIGO_NUMBER_VECTOR:
 								property_item->number.value = other_item->number.value;
+								if (!isnan(other_item->number.min))
+									property_item->number.min = other_item->number.min;
+								if (!isnan(other_item->number.max))
+									property_item->number.max = other_item->number.max;
+								if (!isnan(other_item->number.step))
+									property_item->number.step = other_item->number.step;
 								if (property_item->number.value < property_item->number.min)
 									property_item->number.value = property_item->number.min;
 								if (property_item->number.value > property_item->number.max)
@@ -484,6 +490,14 @@ static void *set_one_number_vector_handler(parser_state state, parser_context *c
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
 		} else if (!strcmp(name, "target")) {
 			property->items[property->count-1].number.target = atof(value);
+		} else if (!strcmp(name, "min")) {
+			property->items[property->count-1].number.min = atof(value);
+		} else if (!strcmp(name, "max")) {
+			property->items[property->count-1].number.max = atof(value);
+		} else if (!strcmp(name, "step")) {
+			property->items[property->count-1].number.step = atof(value);
+		} else if (!strcmp(name, "format")) {
+			strncpy(property->items[property->count-1].number.format, value, INDIGO_NAME_SIZE);
 		}
 	} else if (state == TEXT) {
 		property->items[property->count-1].number.value = atof(value);
@@ -499,8 +513,12 @@ static void *set_number_vector_handler(parser_state state, parser_context *conte
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: set_number_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		if (!strcmp(name, "oneNumber")) {
-			if (property->count < INDIGO_MAX_ITEMS)
+			if (property->count < INDIGO_MAX_ITEMS) {
+				property->items[property->count].number.min = NAN;
+				property->items[property->count].number.max = NAN;
+				property->items[property->count].number.step = NAN;
 				property->count++;
+			}
 			return set_one_number_vector_handler;
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
