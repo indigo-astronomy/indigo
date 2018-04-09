@@ -386,13 +386,14 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					return 0;
 				}
 
-				indigo_device *device = malloc(sizeof(indigo_device));
 				int index = find_index_by_device_id(id);
 				if (index < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
 					//pthread_mutex_unlock(&device_mutex);
 					return 0;
 				}
+
+				indigo_device *device = malloc(sizeof(indigo_device));
 				assert(device != NULL);
 				memcpy(device, &guider_template, sizeof(indigo_device));
 				sprintf(device->name, "ASI USB-St4 Guider #%d", id);
