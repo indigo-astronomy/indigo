@@ -721,27 +721,29 @@ static indigo_result focuser_detach(indigo_device *device) {
 -(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSNumber *)value min:(NSNumber *)min max:(NSNumber *)max step:(NSNumber *)step readOnly:(BOOL)readOnly {
   indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	int index = [self propertyIndex:camera code:code type:INDIGO_NUMBER_VECTOR];
-	indigo_property *property = PRIVATE_DATA->dslr_properties[index];
-	bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
-	redefine = redefine || (property->items[0].number.min != min.intValue);
-	redefine = redefine || (property->items[0].number.max != max.intValue);
-	redefine = redefine || (property->items[0].number.step != step.intValue);
-	property->hidden = false;
-	if (redefine) {
-		if (IS_CONNECTED)
-			indigo_delete_property(device, property, NULL);
-		property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
-		property->items[0].number.min = min.intValue;
-		property->items[0].number.max = max.intValue;
-		property->items[0].number.step = step.intValue;
-		property->items[0].number.value = value.intValue;
-		if (IS_CONNECTED)
-			indigo_define_property(device, property, NULL);
-	} else if (property->items[0].number.value != value.intValue || property->state == INDIGO_BUSY_STATE) {
-		property->items[0].number.value = value.intValue;
-    property->state = INDIGO_OK_STATE;
-		indigo_update_property(device, property, NULL);
-	}
+  if (index >= 0) {
+    indigo_property *property = PRIVATE_DATA->dslr_properties[index];
+    bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
+    redefine = redefine || (property->items[0].number.min != min.intValue);
+    redefine = redefine || (property->items[0].number.max != max.intValue);
+    redefine = redefine || (property->items[0].number.step != step.intValue);
+    property->hidden = false;
+    if (redefine) {
+      if (IS_CONNECTED)
+        indigo_delete_property(device, property, NULL);
+      property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
+      property->items[0].number.min = min.intValue;
+      property->items[0].number.max = max.intValue;
+      property->items[0].number.step = step.intValue;
+      property->items[0].number.value = value.intValue;
+      if (IS_CONNECTED)
+        indigo_define_property(device, property, NULL);
+    } else if (property->items[0].number.value != value.intValue || property->state == INDIGO_BUSY_STATE) {
+      property->items[0].number.value = value.intValue;
+      property->state = INDIGO_OK_STATE;
+      indigo_update_property(device, property, NULL);
+    }
+  }
 }
 
 -(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly {
