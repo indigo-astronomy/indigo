@@ -1450,7 +1450,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 }
 
 -(void)didDownloadFile:(ICCameraFile*)file error:(nullable NSError*)error options:(nullable NSDictionary<NSString*,id>*)options contextInfo:(nullable void*)contextInfo {
-  if (error == nil) {
+  //if (error == nil) {
     NSURL *folder = options[ICDownloadsDirectoryURL];
     NSString *name = options[ICSavedFilename];
     if (folder != nil && name != nil) {
@@ -1463,8 +1463,8 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       [NSFileManager.defaultManager removeItemAtURL:url error:nil];
       return;
     }
-  }
-  [_delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"requestDownloadFile failed (%@)", error.localizedDescription]];
+  //}
+  //[_delegate cameraExposureFailed:self message:[NSString stringWithFormat:@"requestDownloadFile failed (%@)", error.localizedDescription]];
 }
 
 -(void)cameraDevice:(ICCameraDevice*)camera didReceivePTPEvent:(NSData*)eventData {
