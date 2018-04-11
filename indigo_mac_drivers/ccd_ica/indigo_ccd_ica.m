@@ -801,7 +801,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 -(void)cameraExposureDone:(PTPCamera*)camera data:(NSData *)data filename:(NSString *)filename {
-  NSLog(@"in");
   indigo_device *device = [(NSValue *)camera.userData pointerValue];
   filename = filename.lowercaseString;
   NSString *extension = [@"." stringByAppendingString:filename.pathExtension];
@@ -832,7 +831,6 @@ static indigo_result focuser_detach(indigo_device *device) {
       indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
     }
   }
-  NSLog(@"out %d", (int)CCD_STREAMING_COUNT_ITEM->number.value);
 }
 
 -(void)cameraExposureFailed:(PTPCamera*)camera message:(NSString *)message {
