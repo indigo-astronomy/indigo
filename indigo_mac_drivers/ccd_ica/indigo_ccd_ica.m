@@ -749,23 +749,25 @@ static indigo_result focuser_detach(indigo_device *device) {
 -(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code value:(NSString *)value readOnly:(BOOL)readOnly {
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	int index = [self propertyIndex:camera code:code type:INDIGO_TEXT_VECTOR];
-	indigo_property *property = PRIVATE_DATA->dslr_properties[index];
-	bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
-  char string[INDIGO_VALUE_SIZE];
-  strncpy(string, [value cStringUsingEncoding:NSUTF8StringEncoding], INDIGO_VALUE_SIZE);
-	property->hidden = false;
-	if (redefine) {
-		if (IS_CONNECTED)
-			indigo_delete_property(device, property, NULL);
-		property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
-		strncpy(property->items[0].text.value, string, INDIGO_VALUE_SIZE);
-		if (IS_CONNECTED)
-			indigo_define_property(device, property, NULL);
-	} else if (strcmp(property->items[0].text.value, string) || property->state == INDIGO_BUSY_STATE) {
-		strncpy(property->items[0].text.value, string, INDIGO_VALUE_SIZE);
-    property->state = INDIGO_OK_STATE;
-		indigo_update_property(device, property, NULL);
-	}
+  if (index >= 0) {
+    indigo_property *property = PRIVATE_DATA->dslr_properties[index];
+    bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
+    char string[INDIGO_VALUE_SIZE];
+    strncpy(string, value ? [value cStringUsingEncoding:NSUTF8StringEncoding] : "(NULL)", INDIGO_VALUE_SIZE);
+    property->hidden = false;
+    if (redefine) {
+      if (IS_CONNECTED)
+        indigo_delete_property(device, property, NULL);
+      property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
+      strncpy(property->items[0].text.value, string, INDIGO_VALUE_SIZE);
+      if (IS_CONNECTED)
+        indigo_define_property(device, property, NULL);
+    } else if (strcmp(property->items[0].text.value, string) || property->state == INDIGO_BUSY_STATE) {
+      strncpy(property->items[0].text.value, string, INDIGO_VALUE_SIZE);
+      property->state = INDIGO_OK_STATE;
+      indigo_update_property(device, property, NULL);
+    }
+  }
 }
 
 -(void)cameraPropertyChanged:(PTPCamera *)camera code:(PTPPropertyCode)code readOnly:(BOOL)readOnly {
