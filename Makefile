@@ -491,13 +491,13 @@ drivers: $(DRIVER_LIBS) $(DRIVER_SOLIBS) $(DRIVERS)
 #
 #---------------------------------------------------------------------
 
-$(BUILD_DRIVERS)/indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
+$(BUILD_DRIVERS)/indigo_ccd_simulator.a: indigo_drivers/ccd_simulator/indigo_ccd_simulator.o indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_ccd_simulator: indigo_drivers/ccd_simulator/indigo_ccd_simulator_main.o $(BUILD_DRIVERS)/indigo_ccd_simulator.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_ccd_simulator.$(SOEXT): indigo_drivers/ccd_simulator/indigo_ccd_simulator.o
+$(BUILD_DRIVERS)/indigo_ccd_simulator.$(SOEXT): indigo_drivers/ccd_simulator/indigo_ccd_simulator.o indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
