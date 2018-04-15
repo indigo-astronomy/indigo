@@ -29,6 +29,10 @@ else
 		ARCH_DETECTED=arm
 		DEBIAN_ARCH=armhf
 	endif
+	ifeq ($(ARCH_DETECTED),aarch64)
+		ARCH_DETECTED=arm64
+		DEBIAN_ARCH=arm64
+	endif
 	ifeq ($(ARCH_DETECTED),i686)
 		ARCH_DETECTED=x86
 		DEBIAN_ARCH=i386
@@ -66,9 +70,15 @@ ifeq ($(OS_DETECTED),Linux)
 		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/armv6/libASICamera2.a
 		LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/armv6/libUSB2ST4Conv.a
 	else
-		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/$(ARCH_DETECTED)/libEFWFilter.a
-		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/$(ARCH_DETECTED)/libASICamera2.a
-		LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/$(ARCH_DETECTED)/libUSB2ST4Conv.a
+		ifeq ($(ARCH_DETECTED),arm64)
+			LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/armv8/libEFWFilter.a
+			LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/armv8/libASICamera2.a
+			LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/armv8/libUSB2ST4Conv.a
+		else
+			LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/$(ARCH_DETECTED)/libEFWFilter.a
+			LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/$(ARCH_DETECTED)/libASICamera2.a
+			LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/$(ARCH_DETECTED)/libUSB2ST4Conv.a
+		endif
 	endif
 	FLISDK=libfli-1.104
 	LIBRAW_1394=$(shell pkg-config --libs libraw1394)
@@ -110,8 +120,13 @@ ifeq ($(OS_DETECTED),Linux)
 		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
 		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -pthread -DINDIGO_LINUX
 	else
-		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -pthread -DINDIGO_LINUX
+		ifeq ($(ARCH_DETECTED),arm64)
+			CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv8 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+			CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv8 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -pthread -DINDIGO_LINUX
+		else
+			CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+			CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -pthread -DINDIGO_LINUX
+		endif
 	endif
 	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
