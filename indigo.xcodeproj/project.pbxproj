@@ -400,6 +400,7 @@
 		595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent.h; sourceTree = "<group>"; };
 		595AA1D01FC5EEFE00350E7B /* indigo_agent.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent.c; sourceTree = "<group>"; };
 		595AA1D31FC5F26600350E7B /* libnmea.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnmea.a; path = indigo_drivers/gps_nmea/externals/nmealib/lib/libnmea.a; sourceTree = SOURCE_ROOT; };
+		5971EAA820836A0000B25696 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		5981C8DC1DC291A500C7705F /* libfcusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libfcusb.h; path = include/libfcusb/libfcusb.h; sourceTree = "<group>"; };
 		5981C8DE1DC291AF00C7705F /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfcusb.a; path = lib/macOS/libfcusb.a; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
@@ -1277,6 +1278,7 @@
 		59F6546D1EE473AF007B8C93 /* qhyccd */ = {
 			isa = PBXGroup;
 			children = (
+				5971EAA820836A0000B25696 /* CMakeLists.txt */,
 				59F654701EE47484007B8C93 /* libqhy.a */,
 				59F654711EE47484007B8C93 /* qhyccd.h */,
 			);
