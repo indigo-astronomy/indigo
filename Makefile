@@ -120,13 +120,8 @@ ifeq ($(OS_DETECTED),Linux)
 		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
 		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -pthread -DINDIGO_LINUX
 	else
-		ifeq ($(ARCH_DETECTED),arm64)
-			CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv8 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-			CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv8 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -pthread -DINDIGO_LINUX
-		else
-			CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-			CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -pthread -DINDIGO_LINUX
-		endif
+		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -pthread -DINDIGO_LINUX
 	endif
 	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
@@ -930,6 +925,13 @@ ifeq ($(ARCH_DETECTED),arm)
 	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
 	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
 	rm -rf /tmp/libftd2xx-arm-v6-hf-1.4.6.tgz /tmp/release
+endif
+ifeq ($(ARCH_DETECTED),arm)
+  curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-arm-v8-1.4.6.tgz >/tmp/libftd2xx-arm-v8-1.4.6.tgz
+  tar xvfz /tmp/libftd2xx-arm-v8-1.4.6.tgz -C /tmp
+  cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
+  cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
+  rm -rf /tmp/libftd2xx-arm-v8-1.4.6.tgz /tmp/release
 endif
 ifeq ($(ARCH_DETECTED),x86)
 	curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-i386-1.4.6.tgz >/tmp/libftd2xx-i386-1.4.6.tgz
