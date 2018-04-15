@@ -69,7 +69,9 @@
 #include "wheel_fli/indigo_wheel_fli.h"
 #include "focuser_fli/indigo_focuser_fli.h"
 #include "focuser_usbv3/indigo_focuser_usbv3.h"
+#ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
+#endif
 #include "ccd_dsi/indigo_ccd_dsi.h"
 #include "ccd_qsi/indigo_ccd_qsi.h"
 #include "gps_nmea/indigo_gps_nmea.h"
@@ -107,7 +109,9 @@ driver_entry_point static_drivers[] = {
 	indigo_wheel_fli,
 	indigo_focuser_fli,
 	indigo_focuser_usbv3,
+#ifndef __aarch64__
 	indigo_ccd_sbig,
+#endif
 	indigo_ccd_dsi,
 /* Removed temporary as it is not stable and hangs servers on shutdown */
 /*	indigo_ccd_qsi,  */
