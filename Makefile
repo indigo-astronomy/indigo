@@ -926,7 +926,7 @@ ifeq ($(ARCH_DETECTED),arm)
 	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
 	rm -rf /tmp/libftd2xx-arm-v6-hf-1.4.6.tgz /tmp/release
 endif
-ifeq ($(ARCH_DETECTED),arm)
+ifeq ($(ARCH_DETECTED),arm64)
   curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-arm-v8-1.4.6.tgz >/tmp/libftd2xx-arm-v8-1.4.6.tgz
   tar xvfz /tmp/libftd2xx-arm-v8-1.4.6.tgz -C /tmp
   cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
