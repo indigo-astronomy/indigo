@@ -183,7 +183,7 @@ ifeq ($(ARCH_DETECTED),arm64)
 	TMP := $(DRIVER_LIBS)
 	DRIVER_LIBS := $(filter-out $(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/, indigo_ccd_sbig)),$(TMP))
 	TMP := $(DRIVER_SOLIBS)
-	DRIVER_LIBS := $(filter-out $(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/, indigo_ccd_sbig)),$(TMP))
+	DRIVER_SOLIBS := $(filter-out $(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/, indigo_ccd_sbig)),$(TMP))
 endif
 
 SIMULATOR_LIBS=\
