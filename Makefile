@@ -177,6 +177,15 @@ DRIVER_SOLIBS=$(PLATFORM_DRIVER_SOLIBS)\
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/agent_*))))
 
+ifeq ($(ARCH_DETECTED),arm64)
+	TMP := $(DRIVERS)
+	DRIVERS := $(filter-out $(addprefix $(BUILD_DRIVERS)/, indigo_ccd_sbig),$(TMP))
+	TMP := $(DRIVER_LIBS)
+	DRIVER_LIBS := $(filter-out $(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/, indigo_ccd_sbig)),$(TMP))
+	TMP := $(DRIVER_SOLIBS)
+	DRIVER_LIBS := $(filter-out $(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/, indigo_ccd_sbig)),$(TMP))
+endif
+
 SIMULATOR_LIBS=\
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/*_simulator))))
 
