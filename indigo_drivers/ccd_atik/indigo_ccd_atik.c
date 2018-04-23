@@ -77,7 +77,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		int width = ((int)CCD_FRAME_WIDTH_ITEM->number.value / (int)CCD_BIN_HORIZONTAL_ITEM->number.value) * (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int height = ((int)CCD_FRAME_HEIGHT_ITEM->number.value / (int)CCD_BIN_VERTICAL_ITEM->number.value) * (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		if (libatik_read_pixels(PRIVATE_DATA->device_context, 0, left, top, width, height, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value, (unsigned short *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), &PRIVATE_DATA->image_width, &PRIVATE_DATA->image_height)) {
-			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->image_width, PRIVATE_DATA->image_height, true, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->image_width, PRIVATE_DATA->image_height, 16, true, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
@@ -110,7 +110,7 @@ static void short_exposure_timer_callback(indigo_device *device) {
 		int width = ((int)CCD_FRAME_WIDTH_ITEM->number.value / (int)CCD_BIN_HORIZONTAL_ITEM->number.value) * (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int height = ((int)CCD_FRAME_HEIGHT_ITEM->number.value / (int)CCD_BIN_VERTICAL_ITEM->number.value) * (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		if (libatik_read_pixels(PRIVATE_DATA->device_context, CCD_EXPOSURE_ITEM->number.target, left, top, width, height, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value, (unsigned short *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), &PRIVATE_DATA->image_width, &PRIVATE_DATA->image_height)) {
-			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->image_width, PRIVATE_DATA->image_height, true, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->image_width, PRIVATE_DATA->image_height, 16, true, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {

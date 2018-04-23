@@ -549,14 +549,14 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, bool little_endian, indigo_fits_keyword *keywords) {
+void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, indigo_fits_keyword *keywords) {
 	assert(device != NULL);
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
 
 	int horizontal_bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
-	int byte_per_pixel = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value / 8;
+	int byte_per_pixel = bpp / 8;
 	int naxis = 2;
 	int size = frame_width * frame_height;
 	int blobsize = byte_per_pixel * size;
@@ -577,7 +577,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		memset(header, ' ', FITS_HEADER_SIZE);
 		int t = sprintf(header, "SIMPLE  =                    T / file conforms to FITS standard");
 		header[t] = ' ';
-		t = sprintf(header += 80, "BITPIX  = %20d / number of bits per data pixel", 8 * byte_per_pixel);
+		t = sprintf(header += 80, "BITPIX  = %20d / number of bits per data pixel", bpp);
 		header[t] = ' ';
 		t = sprintf(header += 80, "NAXIS   =                    %d / number of data axes", naxis);
 		header[t] = ' ';

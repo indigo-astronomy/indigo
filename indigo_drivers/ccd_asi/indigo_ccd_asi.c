@@ -90,6 +90,7 @@ typedef struct {
 	int count_open;
 	int exp_bin_x, exp_bin_y;
 	int exp_frame_width, exp_frame_height;
+	int exp_bpp;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	long cooler_power;
@@ -304,6 +305,7 @@ static bool asi_setup_exposure(indigo_device *device, double exposure, int frame
 	PRIVATE_DATA->exp_bin_y = vertical_bin;
 	PRIVATE_DATA->exp_frame_width = frame_width;
 	PRIVATE_DATA->exp_frame_height = frame_height;
+	PRIVATE_DATA->exp_bpp = (int)CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -439,7 +441,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (asi_read_pixels(device)) {
 			char *color_string = get_bayer_string(device);
-			if(color_string) {
+			if (color_string) {
 				/* NOTE: There is no need to take care about the offsets,
 				   the SDK takes care the image to be in the correct bayer pattern */
 				indigo_fits_keyword keywords[] = {
@@ -448,9 +450,9 @@ static void exposure_timer_callback(indigo_device *device) {
 					{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 					{ 0 }
 				};
-				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), true, keywords);
+				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, keywords);
 			} else {
-				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), true, NULL);
+				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, NULL);
 			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -488,10 +490,10 @@ static void streaming_timer_callback(indigo_device *device) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetVideoData((%d) = %d", id, res);
 					break;
 				}
-				if(color_string) {
-					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, keywords);
+				if (color_string) {
+					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, keywords);
 				} else {
-					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, NULL);
 				}
 				if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
 					CCD_STREAMING_COUNT_ITEM->number.value -= 1;

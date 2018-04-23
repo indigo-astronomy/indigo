@@ -422,7 +422,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (fli_read_pixels(device)) {
-			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x), (int)(PRIVATE_DATA->frame_params.height / PRIVATE_DATA->frame_params.bin_y), true, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->frame_params.width / PRIVATE_DATA->frame_params.bin_x), (int)(PRIVATE_DATA->frame_params.height / PRIVATE_DATA->frame_params.bin_y), PRIVATE_DATA->frame_params.bpp, true, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
