@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -132,6 +132,8 @@ typedef struct {
 	long buffer_size;
 	int adc_channels;
 	int bit_depths[10];
+	int exp_bin_x, exp_bin_y, exp_bpp;
+	int exp_frame_width, exp_frame_height;
 	AndorCapabilities caps;
 	bool no_check_temperature;
 	float target_temperature, current_temperature, cooler_power;
@@ -530,7 +532,7 @@ static void init_coolermode_property(indigo_device *device) {
 }
 
 
-static bool andor_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y) {
+static bool andor_start_exposure(indigo_device *device, double exposure, bool dark, int offset_x, int offset_y, int frame_width, int frame_height, int bin_x, int bin_y, int bpp) {
 	unsigned int res;
 
 	pthread_mutex_lock(&driver_mutex);
@@ -579,6 +581,11 @@ static bool andor_start_exposure(indigo_device *device, double exposure, bool da
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
 	}
+	PRIVATE_DATA->exp_bin_x = bin_x;
+	PRIVATE_DATA->exp_bin_y = bin_y;
+	PRIVATE_DATA->exp_frame_width = frame_width;
+	PRIVATE_DATA->exp_frame_height = frame_height;
+	PRIVATE_DATA->exp_bpp = bpp;
 
 	res = StartAcquisition();
 	if (res != DRV_SUCCESS) {
@@ -619,12 +626,12 @@ static bool andor_read_pixels(indigo_device *device) {
 		return false;
 	}
 
-	long num_pixels = (long)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value) *
-	                  (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value);
+	long num_pixels = (long)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x) *
+	                  (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y);
 
 	unsigned char *image = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
 
-	if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value > 16) {
+	if (PRIVATE_DATA->exp_bpp  > 16) {
 		res = GetAcquiredData((uint32_t *)image, num_pixels);
 		if (res != DRV_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAcquiredData() for camera %d error: %d", PRIVATE_DATA->handle, res);
@@ -658,8 +665,8 @@ static void exposure_timer_callback(indigo_device *device) {
 
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_process_image(device, frame_buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value),
-			                    (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), true, NULL);
+			indigo_process_image(device, frame_buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x),
+			                    (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), true, NULL);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
@@ -691,7 +698,8 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	                         CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
 	                         CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
 	                         CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-	                         CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value
+	                         CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value,
+	                         CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value
 	);
 
 	if (ok) {
