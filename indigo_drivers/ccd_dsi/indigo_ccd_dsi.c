@@ -24,7 +24,7 @@
  \file indigo_ccd_dsi.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME		"indigo_ccd_dsi"
 
 #include <stdlib.h>
@@ -71,6 +71,7 @@
 
 typedef struct {
 	char dev_sid[DSI_ID_LEN];
+	enum DSI_BIN_MODE exp_bin_mode;
 	dsi_camera_t *dsi;
 	int count_open;
 	indigo_timer *exposure_timer, *temperature_timer;
@@ -142,6 +143,7 @@ static bool camera_start_exposure(indigo_device *device, double exposure, bool d
 		return false;
 	}
 
+	PRIVATE_DATA->exp_bin_mode = bin_mode;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -205,6 +207,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (camera_read_pixels(device)) {
+			int binning = (PRIVATE_DATA->exp_bin_mode == BIN1X1) ? 1 : 2;
 			const char *color_string = dsi_get_bayer_pattern(PRIVATE_DATA->dsi);
 			if (color_string[0] != '\0') {
 				/* NOTE: There is no need to take care about the offsets,
@@ -218,16 +221,16 @@ static void exposure_timer_callback(indigo_device *device) {
 				indigo_process_image(
 					device,
 					PRIVATE_DATA->buffer,
-					(int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value),
-					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value),
+					(int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
+					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
 					false, keywords
 				);
 			} else {
 				indigo_process_image(
 					device,
 					PRIVATE_DATA->buffer,
-					(int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value),
-					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value),
+					(int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
+					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
 					false, NULL
 				);
 			}
