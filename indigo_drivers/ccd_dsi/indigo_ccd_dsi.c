@@ -232,7 +232,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					PRIVATE_DATA->buffer,
 					(int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
 					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
-				  DEFAULT_BPP,
+					DEFAULT_BPP,
 					false, NULL
 				);
 			}
