@@ -191,7 +191,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			cam.get_NumY(&height);
 			cam.get_ImageArray(PRIVATE_DATA->buffer + FITS_HEADER_SIZE);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Image %ld x %ld", width, height);
-			indigo_process_image(device, PRIVATE_DATA->buffer, (int)width, (int)height, false, NULL);
+			indigo_process_image(device, PRIVATE_DATA->buffer, (int)width, (int)height, 16, false, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} catch (std::runtime_error err) {

@@ -180,7 +180,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				else
 					raw[i] = rgb;
 			}
-			indigo_process_image(device, private_data->image, WIDTH, HEIGHT, false, NULL);
+			indigo_process_image(device, private_data->image, WIDTH, HEIGHT, 16, false, NULL);
 		} else {
 			unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
 			int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -289,7 +289,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				memcpy(raw, tmp, 2 * size);
 				free(tmp);
 			}
-			indigo_process_image(device, private_data->image, frame_width, frame_height, true, NULL);
+			indigo_process_image(device, private_data->image, frame_width, frame_height, 16, true, NULL);
 		}
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);

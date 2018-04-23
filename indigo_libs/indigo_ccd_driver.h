@@ -376,7 +376,7 @@ typedef struct {
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
-extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, bool little_endian, indigo_fits_keyword *keywords);
+extern void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, indigo_fits_keyword *keywords);
 
 /** Process DSLR image in image buffer (starting on data).
  */
