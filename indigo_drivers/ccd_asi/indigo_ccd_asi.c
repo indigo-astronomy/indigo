@@ -1142,6 +1142,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+		/* NOTE: BPP can not be set directly because can not be linked to PIXEL_FORMAT_PROPERTY */
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
@@ -1156,6 +1157,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(PIXEL_FORMAT_PROPERTY, property, false);
 		PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 
+		/* NOTE: BPP can not be set directly because can not be linked to PIXEL_FORMAT_PROPERTY */
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 
@@ -1213,6 +1215,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				break;
 			}
 		}
+		/* NOTE: BPP can not be set directly because can not be linked to PIXEL_FORMAT_PROPERTY */
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = get_pixel_depth(device);
 		if (IS_CONNECTED) {
 			PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
