@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -113,6 +113,7 @@ static unsigned int SetHighCapacity(int state) {
 #define CAP_SET_BASELINEOFFSET          (PRIVATE_DATA->caps.ulSetFunctions & AC_SETFUNCTION_BASELINEOFFSET)
 
 #define HREADOUT_ITEM_FORMAT            "CHANNEL_%d_AMP_%d_SPEED_%d"
+#define MAX_CCD_MODES                   16   /* CCD_MODE_PROPERTY has 64 items */
 
 typedef struct {
 	long handle;
@@ -964,17 +965,22 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetADChannel(%d) error: %d", max_bpp_channel, res);
 				}
 
-				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-				CCD_MODE_PROPERTY->count = 4;
 				char name[32];
-				sprintf(name, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value, (int)CCD_INFO_HEIGHT_ITEM->number.value);
-				indigo_init_switch_item(CCD_MODE_ITEM+0, "BIN_1x1", name, true);
-				sprintf(name, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value/2, (int)CCD_INFO_HEIGHT_ITEM->number.value/2);
-				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-				sprintf(name, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value/4, (int)CCD_INFO_HEIGHT_ITEM->number.value/4);
-				indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
-				sprintf(name, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value/8, (int)CCD_INFO_HEIGHT_ITEM->number.value/8);
-				indigo_init_switch_item(CCD_MODE_ITEM+3, "BIN_8x8", name, false);
+				char value[32];
+				CCD_MODE_PROPERTY->count = 0;
+				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+				int bin = 1;
+				for (int i = 0; i < MAX_CCD_MODES; i++) {
+					if ((CCD_BIN_HORIZONTAL_ITEM->number.max < bin) || (CCD_BIN_VERTICAL_ITEM->number.max < bin)) {
+						break;
+					}
+					sprintf(value, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / bin, (int)CCD_INFO_HEIGHT_ITEM->number.value / bin);
+					sprintf(name, "BIN_%dx%d", bin, bin);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_MODE_ITEM[%d] => %s = \"%s\", selected = %d", i, name, value, !i);
+					indigo_init_switch_item(CCD_MODE_ITEM+i, name, value, !i);
+					CCD_MODE_PROPERTY->count = i + 1;
+					bin *= 2; /* binning should be power of 2 */
+				}
 
 				pthread_mutex_unlock(&driver_mutex);
 				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback);
