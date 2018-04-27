@@ -41,9 +41,10 @@
 
 static void countdown_timer_callback(indigo_device *device) {
 	if (CCD_CONTEXT->countdown_enabled && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
-		indigo_reschedule_timer(device, 1.0, &CCD_CONTEXT->countdown_timer);
 		CCD_EXPOSURE_ITEM->number.value -= 1;
+		if (CCD_EXPOSURE_ITEM->number.value < 0) CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		indigo_reschedule_timer(device, 1.0, &CCD_CONTEXT->countdown_timer);
 	}
 }
 
