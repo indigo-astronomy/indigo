@@ -693,6 +693,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	long ok;
 
 	if (!CAP_GET_TEMPERATURE_DURING_ACQUISITION) PRIVATE_DATA->no_check_temperature = true;
+	indigo_use_shortest_exposure_if_bias(device);
 
 	ok = andor_start_exposure(device,
 	                         CCD_EXPOSURE_ITEM->number.target,
