@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
