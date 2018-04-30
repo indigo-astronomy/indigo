@@ -128,11 +128,11 @@ extern "C" {
 /** CCD_STREAMING.EXPOSURE property item pointer.
  */
 #define CCD_STREAMING_EXPOSURE_ITEM       (CCD_STREAMING_PROPERTY->items+0)
-	
+
 /** CCD_STREAMING.COUNT property item pointer.
  */
 #define CCD_STREAMING_COUNT_ITEM          (CCD_STREAMING_PROPERTY->items+1)
-	
+
 /** CCD_ABORT property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
 #define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_CONTEXT->ccd_abort_exposure_property)
@@ -348,6 +348,11 @@ extern void indigo_ccd_suspend_countdown(indigo_device *device);
  */
 extern void indigo_ccd_resume_countdown(indigo_device *device);
 
+/** Set minimal exposure in case of a bias frame, otherwise does nothing.
+    The intended use is in exposure propery handling.
+ */
+extern void indigo_use_minimal_exposure_if_bias(indigo_device *device);
+
 /** Attach callback function.
  */
 extern indigo_result indigo_ccd_attach(indigo_device *device, unsigned version);
@@ -381,10 +386,9 @@ extern void indigo_process_image(indigo_device *device, void *data, int frame_wi
 /** Process DSLR image in image buffer (starting on data).
  */
 extern void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix);
-	
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* indigo_ccd_h */
-
