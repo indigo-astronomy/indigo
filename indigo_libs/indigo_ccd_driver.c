@@ -57,6 +57,13 @@ void indigo_ccd_resume_countdown(indigo_device *device) {
 	CCD_CONTEXT->countdown_timer = indigo_set_timer(device, 1.0, countdown_timer_callback);
 }
 
+void indigo_use_minimal_exposure_if_bias(indigo_device *device) {
+	if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value) {
+		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min;
+		CCD_EXPOSURE_ITEM->number.target = CCD_EXPOSURE_ITEM->number.min;
+	}
+}
+
 indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 	assert(device != NULL);
 	if (CCD_CONTEXT == NULL) {
