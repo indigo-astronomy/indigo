@@ -348,10 +348,10 @@ extern void indigo_ccd_suspend_countdown(indigo_device *device);
  */
 extern void indigo_ccd_resume_countdown(indigo_device *device);
 
-/** Set minimal exposure in case of a bias frame, otherwise does nothing.
+/** Set shortest exposure in case of a bias frame, otherwise does nothing.
     The intended use is in exposure propery handling.
  */
-extern void indigo_use_minimal_exposure_if_bias(indigo_device *device);
+extern void indigo_use_shortest_exposure_if_bias(indigo_device *device);
 
 /** Attach callback function.
  */
