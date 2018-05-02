@@ -264,8 +264,8 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPPropertyCodeFNumber: {
-      NSArray *values = @[ @"350", @"400", @"450", @"500", @"560", @"630", @"710", @"800", @"900", @"1000", @"1100", @"1300", @"1400", @"1600", @"1800", @"2000", @"2200" ];
-      NSArray *labels = @[ @"f/3.5", @"f/4", @"f/4.5", @"f/5", @"f/5.6", @"f/6.3", @"f/7.1", @"f/8", @"f/9", @"f/10", @"f/11", @"f/13", @"f/14", @"f/16", @"f/18", @"f/20", @"f/22" ];
+      NSArray *values = @[ @"180", @"200", @"220", @"250", @"280", @"350", @"400", @"450", @"500", @"560", @"630", @"710", @"800", @"900", @"1000", @"1100", @"1300", @"1400", @"1600", @"1800", @"2000", @"2200" ];
+      NSArray *labels = @[ @"f/1.8", @"f/2.0", @"f/2.2", @"f/2.5", @"f/2.8", @"f/3.5", @"f/4", @"f/4.5", @"f/5", @"f/5.6", @"f/6.3", @"f/7.1", @"f/8", @"f/9", @"f/10", @"f/11", @"f/13", @"f/14", @"f/16", @"f/18", @"f/20", @"f/22" ];
       property.readOnly = mode != 3 && mode != 1 && mode != 32849 && mode != 32851;
       [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
@@ -607,7 +607,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(void)setProperty:(PTPPropertyCode)code value:(NSString *)value {
   switch (code) {
     case PTPPropertyCodeFNumber: {
-      long map[] = { 350, 400, 450, 500, 560, 630, 710, 800, 900, 1000, 1100, 1300, 1400, 1600, 1800, 2000, 2200, -1 };
+      long map[] = { 180, 200, 220, 250, 280, 320, 350, 400, 450, 500, 560, 630, 710, 800, 900, 1000, 1100, 1300, 1400, 1600, 1800, 2000, 2200, -1 };
       [self iterate:code to:value withMap:map];
       break;
     }
