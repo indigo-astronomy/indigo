@@ -23,7 +23,7 @@
  \file indigo_ccd_ica.m
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_ica"
 
 #import <Cocoa/Cocoa.h>
