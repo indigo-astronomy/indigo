@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_ccd_qhy"
 
 #include <stdlib.h>
@@ -915,6 +915,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+		indigo_use_shortest_exposure_if_bias(device);
 		qhy_start_exposure(
 			device, CCD_EXPOSURE_ITEM->number.target, (CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value),
 			CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,

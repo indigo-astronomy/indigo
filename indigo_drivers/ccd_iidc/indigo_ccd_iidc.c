@@ -23,7 +23,7 @@
  \file indigo_ccd_iidc.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_iidc"
 
 #include <stdlib.h>
@@ -424,6 +424,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {

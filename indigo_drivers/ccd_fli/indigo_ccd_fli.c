@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -812,6 +812,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		if (IS_CONNECTED) {
+			indigo_use_shortest_exposure_if_bias(device);
 			handle_exposure_property(device, property);
 		}
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
