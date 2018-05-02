@@ -24,7 +24,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME		"indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -371,6 +371,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		if (IS_CONNECTED) {
+			indigo_use_shortest_exposure_if_bias(device);
 			try {
 				cam.put_StartX(CCD_FRAME_LEFT_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value);
 				cam.put_StartY(CCD_FRAME_TOP_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value);

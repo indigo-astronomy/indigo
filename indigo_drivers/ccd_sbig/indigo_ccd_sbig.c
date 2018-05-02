@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -1277,6 +1277,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+			indigo_use_shortest_exposure_if_bias(device);
 			handle_exposure_property(device, property);
 		}
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
