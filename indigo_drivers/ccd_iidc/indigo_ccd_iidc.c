@@ -86,10 +86,12 @@ typedef struct {
 	int device_count;
 	dc1394bool_t temperature_is_present, gain_is_present, gamma_is_present;
 	indigo_timer *exposure_timer, *temperture_timer;
+	pthread_mutex_t mutex;
 	unsigned char *buffer;
 } iidc_private_data;
 
 static void stop_camera(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (PRIVATE_DATA->connected) {
     dc1394error_t err = dc1394_video_set_transmission(PRIVATE_DATA->camera, DC1394_OFF);
     INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_transmission() -> %s", dc1394_error_get_string(err));
@@ -97,10 +99,12 @@ static void stop_camera(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_stop() -> %s", dc1394_error_get_string(err));
 	}
 	PRIVATE_DATA->connected = false;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void setup_camera(indigo_device *device) {
 	stop_camera(device);
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (!PRIVATE_DATA->connected) {
 		dc1394error_t err;
 		uint32_t packet_size;
@@ -121,9 +125,11 @@ static void setup_camera(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_setup() -> %s", dc1394_error_get_string(err));
 		PRIVATE_DATA->connected = true;
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static bool setup_feature(indigo_device *device, indigo_item *item, dc1394feature_t feature) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	dc1394feature_info_t info;
 	info.id = feature;
 	INDIGO_DEBUG_DRIVER(const char *f = dc1394_feature_get_string(feature));
@@ -150,8 +156,10 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 		if (item->number.value > info.abs_max)
 			item->number.value = info.abs_max;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "feature %s: value=%g min=%g max=%g", f, info.abs_value, info.abs_min, info.abs_max);
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return true;
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	return false;
 }
 
@@ -187,7 +195,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
 	}
-  stop_camera(device);
+	stop_camera(device);
 }
 
 static void streaming_timer_callback(indigo_device *device) {
@@ -221,11 +229,11 @@ static void streaming_timer_callback(indigo_device *device) {
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	}
+  stop_camera(device);
 	CCD_STREAMING_COUNT_ITEM->number.value = 0;
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-  stop_camera(device);
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
@@ -250,6 +258,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		dc1394error_t err;
 		dc1394video_modes_t modes;
 		char name[128], label[128];
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		err = dc1394_video_get_supported_modes(PRIVATE_DATA->camera, &modes);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_get_supported_modes() -> %s", dc1394_error_get_string(err));
 		CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
