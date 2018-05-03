@@ -442,13 +442,39 @@ endif
 #
 #---------------------------------------------------------------------
 
-SUBMODULES_FLAG=externals/SUBMODULES-UP-TO-DATE
-
 submodule-init:
-ifeq ("$(wildcard $(SUBMODULES_FLAG))","")
-	git submodule update --init --recursive
-	git submodule foreach git pull origin master
-	touch $(SUBMODULES_FLAG)
+ifeq ("$(wildcard externals)","")
+	mkdir externals
+endif
+ifeq ("$(wildcard externals/libusb)","")
+	cd externals; git clone https://github.com/indigo-astronomy/libusb.git; cd ../..
+else
+	cd externals/libusb; git pull; cd ../..
+endif
+ifeq ("$(wildcard externals/hidapi)","")
+	cd externals; git clone https://github.com/indigo-astronomy/hidapi.git; cd ../..
+else
+	cd externals/hidapi; git pull; cd ../..
+endif
+ifeq ("$(wildcard externals/novas)","")
+	cd externals; git clone https://github.com/indigo-astronomy/novas.git; cd ../..
+else
+	cd externals/novas; git pull; cd ../..
+endif
+ifeq ("$(wildcard externals/libjpeg)","")
+	cd externals; git clone https://github.com/indigo-astronomy/libjpeg.git; cd ../..
+else
+	cd externals/libjpeg; git pull; cd ../..
+endif
+ifeq ("$(wildcard indigo_drivers/ccd_iidc/externals/libdc1394)","")
+	cd indigo_drivers/ccd_iidc/externals; git clone https://github.com/indigo-astronomy/libdc1394.git; cd ../..
+else
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; git pull; cd ../..
+endif
+ifeq ("$(indigo_drivers/mount_nexstar/externals/libnexstar)","")
+	cd indigo_drivers/mount_nexstar/externals; git clone https://github.com/indigo-astronomy/libnexstar.git; cd ../..
+else
+	cd indigo_drivers/mount_nexstar/externals/libnexstar; git pull; cd ../..
 endif
 
 init: submodule-init
