@@ -466,10 +466,16 @@ ifeq ("$(wildcard externals/libjpeg)","")
 else
 	cd externals/libjpeg; git pull; cd ../..
 endif
+ifeq ("$(wildcard indigo_drivers/ccd_iidc/externals)","")
+	mkdir indigo_drivers/ccd_iidc/externals
+endif
 ifeq ("$(wildcard indigo_drivers/ccd_iidc/externals/libdc1394)","")
 	cd indigo_drivers/ccd_iidc/externals; git clone https://github.com/indigo-astronomy/libdc1394.git; cd ../..
 else
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; git pull; cd ../..
+endif
+ifeq ("$(wildcard indigo_drivers/mount_nexstar/externals)","")
+	mkdir indigo_drivers/mount_nexstar/externals
 endif
 ifeq ("$(indigo_drivers/mount_nexstar/externals/libnexstar)","")
 	cd indigo_drivers/mount_nexstar/externals; git clone https://github.com/indigo-astronomy/libnexstar.git; cd ../..
