@@ -159,8 +159,8 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 
 static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
-
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	CCD_EXPOSURE_ITEM->number.value = 0;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_EXPOSURE_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) -> %s", CCD_EXPOSURE_ITEM->number.value, dc1394_error_get_string(err));
@@ -197,6 +197,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	setup_camera(device);
 	err = dc1394_video_set_transmission(PRIVATE_DATA->camera, DC1394_ON);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_transmission(DC1394_ON) -> %s", dc1394_error_get_string(err));
+	CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 	while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 		dc1394video_frame_t *frame;
 		err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
@@ -440,6 +441,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
+		indigo_use_shortest_exposure_if_bias(device);
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
