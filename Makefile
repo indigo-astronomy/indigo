@@ -441,8 +441,9 @@ endif
 #	Initialize
 #
 #---------------------------------------------------------------------
-
+SUBMODULES_FLAG=externals/SUBMODULES-UP-TO-DATE
 submodule-init:
+ifeq ("$(wildcard $(SUBMODULES_FLAG))","")
 ifeq ("$(wildcard externals)","")
 	mkdir externals
 endif
@@ -481,6 +482,8 @@ ifeq ("$(indigo_drivers/mount_nexstar/externals/libnexstar)","")
 	cd indigo_drivers/mount_nexstar/externals; git clone https://github.com/indigo-astronomy/libnexstar.git; cd ../..
 else
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; git pull; cd ../..
+endif
+	touch $(SUBMODULES_FLAG)
 endif
 
 init: submodule-init
