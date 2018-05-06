@@ -175,6 +175,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		} else {
       CCD_INFO_PROPERTY->hidden = true;
 		}
+    PRIVATE_DATA->useLiveView = true;
     CCD_FRAME_PROPERTY->hidden = CCD_MODE_PROPERTY->hidden = CCD_BIN_PROPERTY->hidden =  true;
     CCD_IMAGE_FORMAT_PROPERTY->perm = CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
     DSLR_LOCK_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_LOCK_PROPERTY_NAME, "DSLR", "Lock camera GUI", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
