@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"indigo_ccd_simulator"
 
 #include <stdlib.h>
@@ -180,7 +180,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				else
 					raw[i] = rgb;
 			}
-			indigo_process_image(device, private_data->image, WIDTH, HEIGHT, 16, false, NULL);
+			indigo_process_image(device, private_data->image, WIDTH, HEIGHT, 24, false, NULL);
 		} else {
 			unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
 			int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
