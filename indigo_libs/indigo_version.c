@@ -359,7 +359,7 @@ void indigo_copy_property_name(indigo_version version, indigo_property *property
 		struct property_mapping *property_mapping = legacy;
 		while (property_mapping->legacy) {
 			if (!strcmp(name, property_mapping->legacy)) {
-				INDIGO_DEBUG(indigo_debug("version: %s -> %s (current)", property_mapping->legacy, property_mapping->current));
+				INDIGO_TRACE(indigo_trace("version: %s -> %s (current)", property_mapping->legacy, property_mapping->current));
 				strcpy(property->name, property_mapping->current);
 				return;
 			}
@@ -377,7 +377,7 @@ void indigo_copy_item_name(indigo_version version, indigo_property *property, in
 				struct item_mapping *item_mapping = property_mapping->items;
 				while (item_mapping->legacy) {
 					if (!strcmp(name, item_mapping->legacy)) {
-						INDIGO_DEBUG(indigo_debug("version: %s.%s -> %s.%s (current)", property_mapping->legacy, item_mapping->legacy, property_mapping->current, item_mapping->current));
+						INDIGO_TRACE(indigo_trace("version: %s.%s -> %s.%s (current)", property_mapping->legacy, item_mapping->legacy, property_mapping->current, item_mapping->current));
 						strncpy(item->name, item_mapping->current, INDIGO_NAME_SIZE);
 						return;
 					}
@@ -397,7 +397,7 @@ const char *indigo_property_name(indigo_version version, indigo_property *proper
 		struct property_mapping *property_mapping = legacy;
 		while (property_mapping->legacy) {
 			if (!strcmp(property->name, property_mapping->current)) {
-				INDIGO_DEBUG(indigo_debug("version: %s -> %s (legacy)", property_mapping->current, property_mapping->legacy));
+				INDIGO_TRACE(indigo_trace("version: %s -> %s (legacy)", property_mapping->current, property_mapping->legacy));
 				return property_mapping->legacy;
 			}
 			property_mapping++;
@@ -414,7 +414,7 @@ const char *indigo_item_name(indigo_version version, indigo_property *property, 
 				struct item_mapping *item_mapping = property_mapping->items;
 				while (item_mapping->legacy) {
 					if (!strcmp(item->name, item_mapping->current)) {
-						INDIGO_DEBUG(indigo_debug("version: %s.%s -> %s.%s (legacy)", property_mapping->current, item_mapping->current, property_mapping->legacy, item_mapping->legacy));
+						INDIGO_TRACE(indigo_trace("version: %s.%s -> %s.%s (legacy)", property_mapping->current, item_mapping->current, property_mapping->legacy, item_mapping->legacy));
 						return item_mapping->legacy;
 					}
 					item_mapping++;
