@@ -436,6 +436,8 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 }
 
 indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property) {
+	if (property == NULL) return INDIGO_FAILED;
+
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		if (file_handle == NULL)
 			file_handle = &DEVICE_CONTEXT->property_save_file_handle;
