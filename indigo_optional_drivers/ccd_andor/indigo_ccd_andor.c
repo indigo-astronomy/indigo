@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -1585,6 +1585,10 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 
 					if (private_data != NULL) {
 						pthread_mutex_destroy(&driver_mutex);
+						if (private_data->buffer != NULL) {
+							free(private_data->buffer);
+							private_data->buffer = NULL;
+						}
 						free(private_data);
 					}
 				}
