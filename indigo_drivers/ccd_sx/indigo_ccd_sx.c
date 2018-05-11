@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -1118,6 +1118,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		}
 		if (private_data != NULL) {
 			libusb_unref_device(dev);
+			if (private_data->buffer != NULL) free(private_data->buffer);
+			if (private_data->even != NULL) free(private_data->even);
+			if (private_data->odd != NULL) free(private_data->odd);
 			free(private_data);
 		}
 		break;
