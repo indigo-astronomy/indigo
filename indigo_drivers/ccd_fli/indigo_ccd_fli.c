@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -1117,6 +1117,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					return 0;
 				}
 				indigo_detach_device(*device);
+				fli_private_data *private_data = (*device)->private_data;
+				if (private_data->buffer) free(private_data->buffer);
 				free((*device)->private_data);
 				free(*device);
 				libusb_unref_device(dev);
@@ -1140,6 +1142,8 @@ static void remove_all_devices() {
 		if (*device == NULL)
 			continue;
 		indigo_detach_device(*device);
+		fli_private_data *private_data = (*device)->private_data;
+		if (private_data->buffer) free(private_data->buffer);
 		free((*device)->private_data);
 		free(*device);
 		*device = NULL;
