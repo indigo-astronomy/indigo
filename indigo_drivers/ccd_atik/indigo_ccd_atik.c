@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -637,6 +637,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 			if (private_data != NULL) {
 				libusb_unref_device(dev);
+				if (private_data->buffer != NULL) free(private_data->buffer);
 				free(private_data);
 			}
 			break;
