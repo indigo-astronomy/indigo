@@ -630,7 +630,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
-		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->info.BitDepth;
 
 		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
 		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
@@ -1651,6 +1651,10 @@ indigo_result indigo_ccd_asi(indigo_driver_action action, indigo_driver_info *in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+
+			char *sdk_version = ASIGetSDKVersion();
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "ASI SDK v. %s", sdk_version);
+
 			asi_id_count = ASIGetProductIDs(asi_products);
 			if (asi_id_count <= 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported product IDs.");
