@@ -1606,6 +1606,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 				if (private_data) {
 					ASICloseCamera(id);
+					if (private_data->buffer != NULL) {
+						free(private_data->buffer);
+						private_data->buffer = NULL;
+					}
 					free(private_data);
 					private_data = NULL;
 				}
@@ -1635,7 +1639,14 @@ static void remove_all_devices() {
 
 	/* free private data */
 	for(i = 0; i < ASICAMERA_ID_MAX; i++) {
-		if (pds[i]) free(pds[i]);
+		if (pds[i]) {
+			if (pds[i]->buffer != NULL) {
+				ASICloseCamera(pds[i]->dev_id);
+				free(pds[i]->buffer);
+				pds[i]->buffer = NULL;
+			}
+			free(pds[i]);
+		}
 	}
 
 	for(i = 0; i < ASICAMERA_ID_MAX; i++)
