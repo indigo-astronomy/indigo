@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_ccd_qhy"
 
 #include <stdlib.h>
@@ -1473,6 +1473,7 @@ static void process_unplug_event() {
 			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
+		qhy_close(*device);
 		indigo_detach_device(*device);
 		if ((*device)->private_data) {
 			private_data = (qhy_private_data*)((*device)->private_data);
@@ -1483,7 +1484,6 @@ static void process_unplug_event() {
 	}
 
 	if (private_data) {
-		CloseQHYCCD(private_data->handle);
 		free(private_data);
 		private_data = NULL;
 	}
