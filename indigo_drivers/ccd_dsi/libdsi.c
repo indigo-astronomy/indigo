@@ -1600,13 +1600,19 @@ enum DSI_BIN_MODE dsi_get_binning(dsi_camera_t *dsi) {
 }
 
 int dsi_get_identifier(libusb_device *device, char *identifier) {
-	uint8_t data[11];
+	uint8_t data[10];
+	char buf[10];
 	int i;
+
 	data[0]=libusb_get_bus_number(device);
-	/* port munbers will fit in data[] as max(n)=7 */
-	int n = libusb_get_port_numbers(device, &data[1], 10);
+	int n = libusb_get_port_numbers(device, &data[1], 9);
 	if (n != LIBUSB_ERROR_OVERFLOW) {
-		for (i = 0; i <= n; i++) sprintf(identifier + 2 * i, "%02X", data[i]);
+		sprintf(identifier,"%X", data[0]);
+		for (i = 1; i <= n; i++) {
+			sprintf(buf, "%X", data[i]);
+			strcat(identifier, ".");
+			strcat(identifier, buf);
+		}
 	} else {
 		identifier[0] = '\0';
 		return n;
