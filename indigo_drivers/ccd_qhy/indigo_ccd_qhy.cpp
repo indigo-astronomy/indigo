@@ -48,6 +48,7 @@
 #include "log4z.h"
 #include "indigo_ccd_qhy.h"
 #include "indigo_driver_xml.h"
+#include "indigo_usb_utils.h"
 
 #define MAX_SID_LEN                255
 #define QHY_MAX_FORMATS            4
@@ -1281,29 +1282,6 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 
-bool get_usb_path_str(qhyccd_handle *handle, char *path) {
-	libusb_device* device = libusb_get_device(handle);
-	uint8_t data[10];
-	char buf[10];
-	int i;
-
-	data[0]=libusb_get_bus_number(device);
-	int n = libusb_get_port_numbers(device, &data[1], 9);
-	if (n != LIBUSB_ERROR_OVERFLOW) {
-		sprintf(path,"%X", data[0]);
-		for (i = 1; i <= n; i++) {
-			sprintf(buf, "%X", data[i]);
-			strcat(path, ".");
-			strcat(path, buf);
-		}
-	} else {
-		path[0] = '\0';
-		return false;
-	}
-	return true;
-}
-
-
 static bool find_plugged_device_sid(char *new_sid) {
 	int i;
 	char sid[MAX_SID_LEN] = {0};
@@ -1423,7 +1401,7 @@ static void process_plug_event() {
 		return;
 	}
 	int check_st4 = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
-	get_usb_path_str(handle, dev_usbpath);
+	indigo_get_usb_path(libusb_get_device(handle), dev_usbpath);
 	CloseQHYCCD(handle);
 
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));

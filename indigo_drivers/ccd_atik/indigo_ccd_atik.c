@@ -42,10 +42,10 @@
 
 #include <libatik/libatik.h>
 
+#include "indigo_usb_utils.h"
 #include "indigo_driver_xml.h"
 
 #include "indigo_ccd_atik.h"
-
 
 #define PRIVATE_DATA        ((atik_private_data *)device->private_data)
 
@@ -581,7 +581,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				assert(device != NULL);
 				memcpy(device, &ccd_template, sizeof(indigo_device));
 				device->master_device = master_device;
-				strncpy(device->name, name, INDIGO_NAME_SIZE);
+				char usb_path[INDIGO_NAME_SIZE];
+				indigo_get_usb_path(dev, usb_path);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", name, usb_path);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
@@ -594,8 +596,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					assert(device != NULL);
 					memcpy(device, &guider_template, sizeof(indigo_device));
 					device->master_device = master_device;
-					strncpy(device->name, name, INDIGO_NAME_SIZE - 10);
-					strcat(device->name, " (guider)");
+					snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", name, usb_path);
 					device->private_data = private_data;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						if (devices[j] == NULL) {
@@ -609,8 +610,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					assert(device != NULL);
 					memcpy(device, &wheel_template, sizeof(indigo_device));
 					device->master_device = master_device;
-					strncpy(device->name, name, INDIGO_NAME_SIZE - 10);
-					strcat(device->name, " (wheel)");
+					snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%s", name, usb_path);
 					device->private_data = private_data;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						if (devices[j] == NULL) {
