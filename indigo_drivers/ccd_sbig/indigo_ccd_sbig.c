@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -2312,6 +2312,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 				if (private_data) {
 					/* close driver and device here */
+					if (private_data->imager_buffer) free(private_data->imager_buffer);
+					if (private_data->guider_buffer) free(private_data->guider_buffer);
 					free(private_data);
 					private_data = NULL;
 				}
@@ -2345,7 +2347,12 @@ static void remove_usb_devices() {
 
 	/* free private data */
 	for(i = 0; i < MAX_USB_DEVICES; i++) {
-		if (pds[i]) free(pds[i]);
+		if (pds[i]) {
+			sbig_private_data *private_data = (sbig_private_data*)pds[i];
+			if (private_data->imager_buffer) free(private_data->imager_buffer);
+			if (private_data->guider_buffer) free(private_data->guider_buffer);
+			free(pds[i]);
+		}
 	}
 }
 
@@ -2365,7 +2372,11 @@ static void remove_eth_devices() {
 		free(device);
 		devices[i] = NULL;
 	}
-	free(private_data);
+	if (private_data) {
+		if (private_data->imager_buffer) free(private_data->imager_buffer);
+		if (private_data->guider_buffer) free(private_data->guider_buffer);
+		free(private_data);
+	}
 }
 
 static libusb_hotplug_callback_handle callback_handle;
