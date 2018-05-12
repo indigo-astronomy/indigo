@@ -43,7 +43,7 @@
 #include <hidapi/hidapi.h>
 
 #include "indigo_driver_xml.h"
-
+#include "indigo_usb_utils.h"
 #include "indigo_wheel_sx.h"
 
 // -------------------------------------------------------------------------------- SX USB interface implementation
@@ -170,7 +170,7 @@ static indigo_device *device = NULL;
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
-		"SX Filter Wheel",
+		"",
 		wheel_attach,
 		indigo_wheel_enumerate_properties,
 		wheel_change_property,
@@ -188,6 +188,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			device = malloc(sizeof(indigo_device));
 			assert(device != NULL);
 			memcpy(device, &wheel_template, sizeof(indigo_device));
+			char usb_path[INDIGO_NAME_SIZE];
+			indigo_get_usb_path(dev, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "SX Filter Wheel #%s", usb_path);
 			sx_private_data *private_data = malloc(sizeof(sx_private_data));
 			assert(private_data != NULL);
 			memset(private_data, 0, sizeof(sx_private_data));

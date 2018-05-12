@@ -54,6 +54,8 @@
 		599C9A5D1DA028E4008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
+		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
+		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
 		59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */; };
 		59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */; };
 		59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */; };
@@ -442,6 +444,8 @@
 		599C9A6D1DA05063008BBCC1 /* BridgingHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
+		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
+		59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb_utils.c; sourceTree = "<group>"; };
 		59BFB3DB1E11845900064E9C /* iOptron Telescope RS-232 Command language.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "iOptron Telescope RS-232 Command language.pdf"; sourceTree = "<group>"; };
 		59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ica.h; sourceTree = "<group>"; };
 		59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ccd_ica.m; sourceTree = "<group>"; };
@@ -1152,6 +1156,8 @@
 				9DDBAE171E2D2099004FE70F /* indigo_timer.c */,
 				9DDA7FD11F791F7D0094D65D /* indigo_novas.h */,
 				9DDA7FD01F791F7D0094D65D /* indigo_novas.c */,
+				59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */,
+				59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */,
 			);
 			path = indigo_libs;
 			sourceTree = "<group>";
@@ -1435,6 +1441,7 @@
 				9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */,
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
 				59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */,
+				59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */,
 				9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */,
 				595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */,
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
@@ -1809,6 +1816,7 @@
 				9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */,
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
 				591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */,
+				59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */,
 				59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
