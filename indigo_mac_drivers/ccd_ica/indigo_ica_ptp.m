@@ -1124,7 +1124,7 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
       break;
     }
     case PTPPropertyCodeCompressionSetting: {
-      NSDictionary *map = @{ @0: @"JPEG Basic", @1: @"JPEG Norm", @2: @"JPEG Fine", @4: @"RAW", @5: @"RAW + JPEG Basic", @6: @"RAW + JPEG Norm", @7: @"RAW + JPEG Fine" };
+      NSDictionary *map = @{ @0: @"JPEG Basic", @1: @"JPEG Norm", @2: @"JPEG Fine", @3:@"TIFF-RGB", @4: @"RAW", @5: @"RAW + JPEG Basic", @6: @"RAW + JPEG Norm", @7: @"RAW + JPEG Fine" };
       _imagesPerShot = (5 <= property.value.intValue && property.value.intValue <= 7) ? 2 : 1;
       [self mapValueList:property map:map];
       break;
