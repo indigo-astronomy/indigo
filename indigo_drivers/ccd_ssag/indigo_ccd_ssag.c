@@ -605,6 +605,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		}
 		if (private_data != NULL) {
 			libusb_unref_device(dev);
+			if (private_data->buffer)
+				free(private_data->buffer);
 			free(private_data);
 		}
 		break;
