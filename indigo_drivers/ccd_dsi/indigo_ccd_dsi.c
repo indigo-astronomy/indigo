@@ -24,7 +24,7 @@
  \file indigo_ccd_dsi.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME		"indigo_ccd_dsi"
 
 #include <stdlib.h>
@@ -522,7 +522,6 @@ static indigo_device *devices[MAX_DEVICES] = {NULL};
 
 static bool find_plugged_device_sid(char *new_sid) {
 	int i;
-	char sid[DSI_ID_LEN] = {0};
 	bool found = false;
 	dsi_device_list dev_list;
 
@@ -570,7 +569,6 @@ static int find_device_slot(const char *sid) {
 static int find_unplugged_device_slot() {
 	int slot;
 	indigo_device *device;
-	char sid[DSI_ID_LEN] = {0};
 	bool found = true;
 	dsi_device_list dev_list;
 
@@ -649,6 +647,7 @@ static void process_unplug_event() {
 		if (*device == NULL) {
 			return;
 		}
+
 		indigo_detach_device(*device);
 		if ((*device)->private_data) {
 			private_data = (dsi_private_data*)((*device)->private_data);
@@ -659,6 +658,10 @@ static void process_unplug_event() {
 	}
 
 	if (private_data) {
+		if (private_data->buffer != NULL) {
+			free(private_data->buffer);
+			private_data->buffer = NULL;
+		}
 		free(private_data);
 		private_data = NULL;
 	}
@@ -744,6 +747,7 @@ static void remove_all_devices() {
 		if (*device == NULL)
 			continue;
 		indigo_detach_device(*device);
+		camera_close(*device);
 		free((*device)->private_data);
 		free(*device);
 		*device = NULL;
