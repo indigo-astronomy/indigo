@@ -23,7 +23,7 @@
  \file indigo_ccd_iidc.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_ccd_iidc"
 
 #include <stdlib.h>
@@ -608,6 +608,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						INDIGO_DRIVER_LOG(DRIVER_NAME, "Camera %s removed", private_data->camera->model);
 						indigo_detach_device(device);
 						dc1394_camera_free(private_data->camera);
+						if (private_data->buffer)
+							free(private_data->buffer);
 						free(private_data);
 						free(device);
 						devices[j] = NULL;
@@ -749,6 +751,8 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 			indigo_device *device = devices[j];
 			if (device != NULL) {
 				if (PRIVATE_DATA != NULL) {
+					if (PRIVATE_DATA->buffer)
+						free(PRIVATE_DATA->buffer);
 					free(PRIVATE_DATA);
 				}
 				indigo_detach_device(device);
