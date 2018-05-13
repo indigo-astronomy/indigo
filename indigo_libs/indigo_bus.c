@@ -204,6 +204,8 @@ indigo_log_levels indigo_get_log_level() {
 
 void indigo_trace_property(const char *message, indigo_property *property, bool defs, bool items) {
 	if (indigo_log_level >= INDIGO_LOG_TRACE) {
+		static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+		pthread_mutex_lock(&log_mutex);
 		if (message != NULL)
 			indigo_trace(message);
 		if (defs)
@@ -248,6 +250,7 @@ void indigo_trace_property(const char *message, indigo_property *property, bool 
 			}
 		}
 		indigo_trace("}");
+		pthread_mutex_unlock(&log_mutex);
 	}
 }
 
