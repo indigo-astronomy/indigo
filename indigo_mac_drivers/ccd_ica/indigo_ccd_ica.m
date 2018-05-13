@@ -656,7 +656,7 @@ static indigo_result focuser_detach(indigo_device *device) {
       break;
     }
 		case PTPPropertyCodeCompressionSetting: {
-			if (value.intValue >= 4 && value.intValue <= 8) {
+			if (value.intValue >= 3 && value.intValue <= 8) {
 				if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value) {
 					indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_RAW_ITEM, true);
 					indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
@@ -938,6 +938,10 @@ static indigo_result focuser_detach(indigo_device *device) {
 		free(PRIVATE_DATA);
 		free(device);
 	}
+}
+
+-(void)error:(NSString *)message {
+  INDIGO_ERROR(indigo_error([message cStringUsingEncoding:NSUTF8StringEncoding]));
 }
 
 -(void)log:(NSString *)message {

@@ -512,6 +512,7 @@ extern NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf);
 -(void)cameraFocusDone:(PTPCamera *)camera;
 -(void)cameraFocusFailed:(PTPCamera *)camera message:(NSString *)message;
 -(void)cameraFrame:(PTPCamera *)camera left:(int)left top:(int)top width:(int)width height:(int)height;
+-(void)error:(NSString *)message;
 -(void)log:(NSString *)message;
 -(void)debug:(NSString *)message;
 @end
