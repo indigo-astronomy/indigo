@@ -559,6 +559,15 @@ static struct info {
 
 -(void)processPropertyDescription:(PTPProperty *)property {
   switch (property.propertyCode) {
+    case PTPPropertyCodeCompressionSetting: {
+      if (![super.name.uppercaseString containsString:@"D850"])
+        return [super processPropertyDescription:property];
+      NSDictionary *map = @{ @0: @"JPEG basic", @1: @"JPEG basic *", @2: @"JPEG normal", @3: @"JPEG normal *", @4: @"JPEG fine", @5: @"JPEG  fine *", @6: @"TIFF (RGB)", @7: @"NEF", @8: @"NEF + JPEG basic", @9: @"NEF + JPEG basic *", @10: @"NEF + JPEG normal", @11: @"NEF + JPEG normal *", @12: @"NEF + JPEG fine", @13: @"NEF + JPEG fine *" };
+      self.imagesPerShot = (property.value.intValue > 7) ? 2 : 1;
+//      [self.delegate error:[NSString stringWithFormat:@"PTPPropertyCodeCompressionSetting -> %d, \"%@\", %d",  property.value.intValue,  map[property.value], self.imagesPerShot]];
+      [self mapValueList:property map:map];
+      break;
+    }
     case PTPPropertyCodeExposureProgramMode: {
       NSDictionary *map = @{ @1: @"Manual", @2: @"Program", @3: @"Aperture priority", @4: @"Shutter priority", @32784: @"Auto", @32785: @"Portrait", @32786: @"Landscape", @32787:@"Macro", @32788: @"Sport", @32789: @"Night portrait", @32790:@"Night landscape", @32791: @"Child", @32792: @"Scene", @32793: @"Effects" };
       [self mapValueList:property map:map];
