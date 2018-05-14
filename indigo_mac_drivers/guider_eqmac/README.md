@@ -18,5 +18,5 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_guider_eqmac
 
-## Status: Under development
+## Status: Stable
 

@@ -20,7 +20,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_ccd_ica
 
-## Status
+## Status: Stable
 
 Driver is developed and tested with:
 * Nikon D70
@@ -29,6 +29,7 @@ Driver is developed and tested with:
 * Nikon D5100
 * Nikon D5600
 * Nikon D750
+* Nikon D850
 * Canon 1000D
 * Canon 600D
 * Canon 6D

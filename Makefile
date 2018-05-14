@@ -952,9 +952,6 @@ $(BUILD_DRIVERS)/indigo_ccd_ica.dylib: indigo_mac_drivers/ccd_ica/indigo_ccd_ica
 #
 #---------------------------------------------------------------------
 
-indigo_mac_drivers/guider_eqmac/indigo_guider_eqmac.o:	indigo_mac_drivers/guider_eqmac/indigo_guider_eqmac.c
-	$(CC) -c -o $@ $< $(MFLAGS)
-
 $(BUILD_DRIVERS)/indigo_guider_eqmac.a: indigo_mac_drivers/guider_eqmac/indigo_guider_eqmac.o
 	$(AR) $(ARFLAGS) $@ $^
 
