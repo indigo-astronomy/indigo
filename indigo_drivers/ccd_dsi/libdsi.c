@@ -652,7 +652,6 @@ static int dsicmd_command_3(dsi_camera_t *dsi, dsi_command_t cmd, int param, int
  */
 static int dsicmd_command_4(dsi_camera_t *dsi, dsi_command_t cmd,
 			  int val, int val_bytes, int ret_bytes) {
-	const size_t size = 0x40;
 	unsigned char buffer[0x40];
 	dsi->command_sequence_number++;
 
@@ -960,7 +959,7 @@ static void dsicmd_get_eeprom_string(dsi_camera_t *dsi, unsigned char *buffer, i
  * @return
  */
 static void dsicmd_set_eeprom_string(dsi_camera_t *dsi, char *buffer, int start, int length) {
-	int i, j, n;
+	int i, n;
 	char *scratch;
 	/* The buffer is assumed to be a normal null-terminated C-string and has
 	   to be encoded for storage in the EEPROM.  EEPROM strings have their
