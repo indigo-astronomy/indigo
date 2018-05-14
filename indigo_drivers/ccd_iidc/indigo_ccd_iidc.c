@@ -374,7 +374,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_MODE_PROPERTY, "Camera is busy");
 		} else {
-			bool update_frame = false;
 			indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
 			stop_camera(device);
 			for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
