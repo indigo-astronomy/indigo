@@ -144,11 +144,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		OSErr err = 0;
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		double duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
 			err = eqmacGuide(0.0, duration / 1000);
 		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			double duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				err = eqmacGuide(0.0, -duration / 1000);
 			} else {
@@ -170,11 +170,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		OSErr err = 0;
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		double duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
 			err = eqmacGuide(duration / 1000, 0.0);
 		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			double duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				err = eqmacGuide(-duration / 1000, 0.0);
 			} else {
