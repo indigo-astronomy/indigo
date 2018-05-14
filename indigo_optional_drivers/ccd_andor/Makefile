@@ -15,7 +15,7 @@ DEBUG_BUILD=-g
 OS_DETECTED := $(shell uname -s)
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
-	CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -I$(ROOT)/indigo_libs -I$(ROOT)/indigo_drivers -I $(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+	CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Wall -I$(ROOT)/indigo_libs -I$(ROOT)/indigo_drivers -I $(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
 	LDFLAGS=-lm -L $(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	AR=ar

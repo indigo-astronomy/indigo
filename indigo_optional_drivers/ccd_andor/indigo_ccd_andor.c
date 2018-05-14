@@ -503,7 +503,6 @@ static void init_baselineoffset_property(indigo_device *device) {
 
 
 static void init_fancontrol_property(indigo_device *device) {
-	int res;
 	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, COOLER_GROUP_NAME, "Fan Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (FANCONTROL_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of FANCONTROL_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
@@ -633,7 +632,7 @@ static bool andor_read_pixels(indigo_device *device) {
 	unsigned char *image = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
 
 	if (PRIVATE_DATA->exp_bpp > 16) {
-		res = GetAcquiredData((uint32_t *)image, num_pixels);
+		res = GetAcquiredData((at_32 *)image, num_pixels);
 		if (res != DRV_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAcquiredData() for camera %d error: %d", PRIVATE_DATA->handle, res);
 			pthread_mutex_unlock(&driver_mutex);
