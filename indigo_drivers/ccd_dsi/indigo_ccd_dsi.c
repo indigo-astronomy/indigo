@@ -83,8 +83,6 @@ typedef struct {
 
 
 static bool camera_open(indigo_device *device) {
-	int id;
-
 	if (device->is_connected) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -332,11 +330,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				if (camera_open(device)) {
-					int id = 0;
-					long res;
-					int i;
-					char mode_name[INDIGO_NAME_SIZE];
-
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					CCD_INFO_WIDTH_ITEM->number.value = dsi_get_frame_width(PRIVATE_DATA->dsi);
 					CCD_INFO_HEIGHT_ITEM->number.value = dsi_get_frame_height(PRIVATE_DATA->dsi);
@@ -512,7 +505,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 
 // -------------------------------------------------------------------------------- hot-plug support
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 #define NOT_FOUND                    (-1)
@@ -555,7 +548,7 @@ static int find_available_device_slot() {
 	return NOT_FOUND;
 }
 
-
+/*
 static int find_device_slot(const char *sid) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
@@ -564,7 +557,7 @@ static int find_device_slot(const char *sid) {
 	}
 	return NOT_FOUND;
 }
-
+*/
 
 static int find_unplugged_device_slot() {
 	int slot;
