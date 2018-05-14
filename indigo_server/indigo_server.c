@@ -77,6 +77,7 @@
 #include "gps_nmea/indigo_gps_nmea.h"
 #ifdef INDIGO_MACOS
 #include "ccd_ica/indigo_ccd_ica.h"
+#include "guider_eqmac/indigo_guider_eqmac.h"
 #endif
 #include "agent_snoop/indigo_agent_snoop.h"
 #endif
@@ -118,6 +119,7 @@ driver_entry_point static_drivers[] = {
 	indigo_gps_nmea,
 #ifdef INDIGO_MACOS
 	indigo_ccd_ica,
+	indigo_guider_eqmac,
 #endif
 	indigo_agent_snoop,
 #endif
