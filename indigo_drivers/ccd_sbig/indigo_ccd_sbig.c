@@ -262,7 +262,7 @@ static int get_command_status(unsigned short command, unsigned short *status) {
 	return res;
 }
 
-
+/*
 static int sbig_link_status(GetLinkStatusResults *glsr) {
 	int res = sbig_command(CC_GET_LINK_STATUS, NULL, glsr);
 	if (res != CE_NO_ERROR) {
@@ -270,7 +270,6 @@ static int sbig_link_status(GetLinkStatusResults *glsr) {
 	}
 	return res;
 }
-
 
 static bool sbig_check_link() {
 	GetLinkStatusResults glsr;
@@ -283,7 +282,7 @@ static bool sbig_check_link() {
 	}
 	return false;
 }
-
+*/
 
 static int sbig_set_temperature(double t, bool enable) {
 	int res;
@@ -1602,7 +1601,6 @@ static indigo_result guider_detach(indigo_device *device) {
 
 bool get_host_ip(char *hostname , unsigned long *ip) {
 	struct addrinfo hints, *servinfo, *p;
-	struct sockaddr_in *h;
 	int rv;
 
 	memset(&hints, 0, sizeof hints);
@@ -1945,7 +1943,6 @@ static indigo_device *devices[MAX_DEVICES] = {NULL};
 static indigo_device *sbig_eth = NULL;
 
 static QueryUSBResults2 usb_cams = {0};
-static QueryEthernetResults2 eth_cams = {0};
 
 
 static inline int usb_to_index(SBIG_DEVICE_TYPE type) {
