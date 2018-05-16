@@ -505,7 +505,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 
 // -------------------------------------------------------------------------------- hot-plug support
-//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 #define NOT_FOUND                    (-1)
