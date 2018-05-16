@@ -144,11 +144,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		OSErr err = 0;
-		double duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		double duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 		if (duration > 0) {
 			err = eqmacGuide(0.0, duration / 1000);
 		} else {
-			double duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			double duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 			if (duration > 0) {
 				err = eqmacGuide(0.0, -duration / 1000);
 			} else {
