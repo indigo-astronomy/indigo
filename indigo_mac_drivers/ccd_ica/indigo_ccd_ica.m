@@ -804,6 +804,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 -(void)cameraExposureDone:(PTPCamera*)camera data:(NSData *)data filename:(NSString *)filename {
+  indigo_log("Exposure done");
   indigo_device *device = [(NSValue *)camera.userData pointerValue];
   filename = filename.lowercaseString;
   NSString *extension = [@"." stringByAppendingString:filename.pathExtension];
