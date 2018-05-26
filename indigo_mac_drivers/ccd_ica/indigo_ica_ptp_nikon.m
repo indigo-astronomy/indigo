@@ -1104,6 +1104,7 @@ static struct info {
     [self setProperty:PTPPropertyCodeNikonExposureDelayMode value:(self.useMirrorLockup ? delayModeOn : delayModeOff)];
     delay = self.useMirrorLockup ? 2.0 : 0.0;
   }
+  [self.delegate log:@"Exposure initiated"];
   if ([self operationIsSupported:PTPRequestCodeNikonInitiateCaptureRecInMedia]) {
     [self sendPTPRequest:PTPRequestCodeNikonInitiateCaptureRecInMedia param1: self.avoidAF ? 0xFFFFFFFF : 0xFFFFFFFE param2:0];
     [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];

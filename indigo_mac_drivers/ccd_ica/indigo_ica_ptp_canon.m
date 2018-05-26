@@ -1485,11 +1485,13 @@ static struct info {
         [self setProperty:PTPPropertyCodeCanonExMirrorLockup value:@"0"];
       [self setProperty:PTPPropertyCodeCanonDriveMode value:@"0"];
     }
+    [self.delegate log:@"Exposure initiated"];
     [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOn param1:3 param2:(self.avoidAF ? 1 : 0)];
     if (currentShutterSpeed != 0x0C && currentMode != 4) {
       [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
     }
   } else {
+    [self.delegate log:@"Exposure initiated"];
     if (currentShutterSpeed == 0x0C || currentMode == 4) {
       [self sendPTPRequest:PTPRequestCodeCanonBulbStart];
     } else {
