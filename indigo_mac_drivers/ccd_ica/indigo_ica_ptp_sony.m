@@ -672,6 +672,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   waitForCapture = true;
   [self setProperty:PTPPropertyCodeSonyAutofocus value:@"2"];
   if (focusMode == 1) {
+    [self.delegate log:@"Exposure initiated"];
     if (shutterSpeed) {
       waitForCapture = false;
       [self setProperty:PTPPropertyCodeSonyCapture value:@"2"];
