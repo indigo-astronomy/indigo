@@ -155,6 +155,8 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
   bool waitForCapture;
   unsigned int shutterSpeed;
   unsigned int focusMode;
+  bool liveView;
+  int retryCount;
   PTPPropertyCode iteratedProperty;
 }
 
@@ -169,6 +171,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(id)initWithICCamera:(ICCameraDevice *)icCamera delegate:(NSObject<PTPDelegateProtocol> *)delegate {
   self = [super initWithICCamera:icCamera delegate:delegate];
   if (self) {
+    liveView = false;
   }
   return self;
 }
@@ -378,6 +381,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(void)processConnect {
   if ([self propertyIsSupported:PTPPropertyCodeSonyStillImage])
     [self.delegate cameraCanExposure:self];
+  [self.delegate cameraCanPreview:self];
   [super processConnect];
 }
 
@@ -458,13 +462,49 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPRequestCodeGetObject: {
-      self.remainingCount--;
-      if (format == 0x3801)
-        [self.delegate cameraExposureDone:self data:data filename:@"image.jpeg"];
-      else if (format == 0xb101)
-        [self.delegate cameraExposureDone:self data:data filename:@"image.arw"];
-      if (self.remainingCount > 0)
-        [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:request.parameter1];
+      if (request.parameter1 == 0xffffc002) {
+        if (liveView) {
+          if (response.responseCode == PTPResponseCodeAccessDenied) {
+            if (retryCount < 30) {
+              retryCount++;
+              [self getPreviewImage];
+            } else {
+              liveView = false;
+              [self.delegate cameraExposureFailed:self message:@"LiveView failed"];
+            }
+          } else {
+            uint8 *start = (uint8 *)data.bytes;
+            unsigned long i = data.length;
+            while (i > 0) {
+              if (start[0] == 0xFF && start[1] == 0xD8) {
+                uint8 *end = start + 2;
+                i -= 2;
+                while (i > 0) {
+                  if (end[0] == 0xFF && end[1] == 0xD9) {
+                    data = [NSData dataWithBytes:start length:end-start];
+                    [self.delegate cameraExposureDone:self data:data filename:@"preview.jpeg"];
+                    break;
+                  }
+                  end++;
+                  i--;
+                }
+                break;
+              }
+              start++;
+              i--;
+            }
+            [self getPreviewImage];
+          }
+        }
+      } else {
+        self.remainingCount--;
+        if (format == 0x3801)
+          [self.delegate cameraExposureDone:self data:data filename:@"image.jpeg"];
+        else if (format == 0xb101)
+          [self.delegate cameraExposureDone:self data:data filename:@"image.arw"];
+        if (self.remainingCount > 0)
+          [self sendPTPRequest:PTPRequestCodeGetObjectInfo param1:request.parameter1];
+      }
       break;
     }
     default: {
@@ -645,6 +685,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 -(void)getPreviewImage {
+  [self sendPTPRequest:PTPRequestCodeGetObject param1:0xffffc002];
 }
 
 -(void)lock {
@@ -654,10 +695,14 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 -(void)startPreview {
-
+  self.remainingCount = 0;
+  liveView = true;
+  retryCount = 0;
+  [self getPreviewImage];
 }
 
 -(void)stopPreview {
+  liveView = false;
 }
 
 -(void)startAutofocus {
@@ -670,6 +715,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 
 -(double)startExposure {
   waitForCapture = true;
+  liveView = false;
   [self setProperty:PTPPropertyCodeSonyAutofocus value:@"2"];
   if (focusMode == 1) {
     [self.delegate log:@"Exposure initiated"];
