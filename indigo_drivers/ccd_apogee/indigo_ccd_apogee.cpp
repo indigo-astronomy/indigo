@@ -33,6 +33,11 @@
 #include <math.h>
 #include <assert.h>
 
+#include <sstream>
+//#include <iostream>
+//#include <fstream>
+#include <stdexcept>
+
 #include <pthread.h>
 #include <sys/time.h>
 
@@ -44,6 +49,9 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
+#include <libapogee/ApogeeCam.h>
+#include <libapogee/FindDeviceEthernet.h>
+#include <libapogee/FindDeviceUsb.h>
 #include <libapogee/Alta.h>
 #include <libapogee/AltaF.h>
 #include <libapogee/Ascent.h>
@@ -64,6 +72,7 @@
 #define INDIGO_DEBUG_DRIVER(c) c
 
 typedef struct {
+	ApogeeCam *camera;
 	bool available;
 	indigo_timer *exposure_timer, *temperature_timer;
 	long int buffer_size;
@@ -99,9 +108,198 @@ static indigo_result ccd_detach(indigo_device *device) {
 	return indigo_ccd_detach(device);
 }
 
+
+std::vector<std::string> GetDeviceVector( const std::string & msg ) {
+	std::vector<std::string> devices;
+	const std::string startDelim("<d>");
+	const std::string stopDelim("</d>");
+
+	size_t pos = 0;
+	bool find = true;
+	while( find ) {
+		size_t posStart = msg.find( startDelim, pos );
+		if( std::string::npos == posStart ) {
+			break;
+		}
+		size_t posStop = msg.find( stopDelim, posStart+1 );
+		if( std::string::npos == posStop ) {
+			break;
+		}
+		size_t strLen = (posStop - posStart) - startDelim.size();
+		std::string sub = msg.substr( posStart+startDelim.size(), strLen );
+		devices.push_back( sub );
+		pos = 1+posStop;
+	}
+	return devices;
+}
+
+std::vector<std::string> MakeTokens(const std::string &str, const std::string &separator)
+{
+	std::vector<std::string> returnVector;
+	std::string::size_type start = 0;
+	std::string::size_type end = 0;
+
+	while( (end = str.find(separator, start)) != std::string::npos)
+	{
+		returnVector.push_back (str.substr (start, end-start));
+		start = end + separator.size();
+	}
+
+	returnVector.push_back( str.substr(start) );
+
+	return returnVector;
+}
+
+///////////////////////////
+//	GET    ITEM    FROM     FIND       STR
+std::string GetItemFromFindStr( const std::string & msg,
+				const std::string & item )
+{
+
+	//search the single device input string for the requested item
+    std::vector<std::string> params = MakeTokens( msg, "," );
+	std::vector<std::string>::iterator iter;
+
+	for(iter = params.begin(); iter != params.end(); ++iter)
+	{
+	   if( std::string::npos != (*iter).find( item ) )
+	   {
+		 std::string result = MakeTokens( (*iter), "=" ).at(1);
+
+		 return result;
+	   }
+	} //for
+
+	std::string noOp;
+	return noOp;
+}
+
+////////////////////////////
+//	GET		USB  ADDRESS
+std::string GetUsbAddress( const std::string & msg )
+{
+    return GetItemFromFindStr( msg, "address=" );
+}
+
+
+////////////////////////////
+//	GET		ETHERNET  ADDRESS
+std::string GetEthernetAddress( const std::string & msg )
+{
+    std::string addr = GetItemFromFindStr( msg, "address=" );
+    addr.append(":");
+    addr.append( GetItemFromFindStr( msg, "port=" ) );
+    return addr;
+}
+////////////////////////////
+//	GET		ID
+uint16_t GetID( const std::string & msg )
+{
+    std::string str = GetItemFromFindStr( msg, "id=" );
+    uint16_t id = 0;
+    std::stringstream ss;
+    ss << std::hex << std::showbase << str.c_str();
+    ss >> id;
+
+    return id;
+}
+
+////////////////////////////
+//	GET		FRMWR       REV
+uint16_t GetFrmwrRev( const std::string & msg )
+{
+    std::string str = GetItemFromFindStr(  msg, "firmwareRev=" );
+
+    uint16_t rev = 0;
+    std::stringstream ss;
+    ss << std::hex << std::showbase << str.c_str();
+    ss >> rev;
+
+    return rev;
+}
+
+CamModel::PlatformType GetModel(const std::string &msg)
+{
+    return CamModel::GetPlatformType(GetItemFromFindStr(msg, "model="));
+}
+
+////////////////////////////
+//	        IS      DEVICE      FILTER      WHEEL
+bool IsDeviceFilterWheel( const std::string & msg )
+{
+    std::string str = GetItemFromFindStr(  msg, "deviceType=" );
+
+    return ( 0 == str.compare("filterWheel" ) ? true : false );
+}
+
+////////////////////////////
+//	        IS  	ASCENT
+bool IsAscent( const std::string & msg )
+{
+	std::string model = GetItemFromFindStr(  msg, "model=" );
+	std::string ascent("Ascent");
+    return( 0 == model .compare( 0, ascent.size(), ascent ) ? true : false );
+}
+
+////////////////////////////
+//	        IS  	ASPEN
+bool IsAspen( const std::string & msg )
+{
+	std::string model = GetItemFromFindStr(  msg, "model=" );
+	std::string aspen("Aspen");
+    return( 0 == model .compare( 0, aspen.size(), aspen ) ? true : false );
+}
+
+////////////////////////////
+//		CHECK	STATUS
+void checkStatus( const Apg::Status status )
+{
+	switch( status )
+	{
+		case Apg::Status_ConnectionError:
+		{
+			std::string errMsg("Status_ConnectionError");
+			std::runtime_error except( errMsg );
+			throw except;
+		}
+		break;
+
+		case Apg::Status_DataError:
+		{
+			std::string errMsg("Status_DataError");
+			std::runtime_error except( errMsg );
+			throw except;
+		}
+		break;
+
+		case Apg::Status_PatternError:
+		{
+			std::string errMsg("Status_PatternError");
+			std::runtime_error except( errMsg );
+			throw except;
+		}
+		break;
+
+		case Apg::Status_Idle:
+		{
+			std::string errMsg("Status_Idle");
+			std::runtime_error except( errMsg );
+			throw except;
+		}
+		break;
+
+		default:
+			//no op on purpose
+		break;
+	}
+}
+
 // -------------------------------------------------------------------------------- hot-plug support
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+std::vector<std::string> deviceStrings;
 
 static indigo_device *devices[MAXCAMERAS];
 
@@ -117,20 +315,26 @@ static void hotplug(void *param) {
 
 	std::string camSerial[MAXCAMERAS];
 	std::string camDesc[MAXCAMERAS];
+	std::string msg;
+	std::string addr;
+
 	char serial[INDIGO_NAME_SIZE];
 	char desc[INDIGO_NAME_SIZE];
 	int count;
 	sleep(3);
 	try {
-		//cam.get_AvailableCameras(camSerial, camDesc, count);
+		FindDeviceUsb lookUsb;
+		msg  = lookUsb.Find();
+		deviceStrings = GetDeviceVector( msg );
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		std::string last("");
-		//cam.get_LastError(last);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot plug failed  %s %s", text.c_str(), last.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot plug failed  %s", text.c_str());
 		return;
 	}
-	for (int i = 0; i < count; i++) {
+
+	std::vector<std::string>::iterator iter;
+	int i =0;
+	for( iter = deviceStrings.begin(); iter != deviceStrings.end(); ++iter, ++i ) {
 		strncpy(serial, camSerial[i].c_str(), INDIGO_NAME_SIZE);
 		strncpy(desc, camDesc[i].c_str(), INDIGO_NAME_SIZE);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: desc = %s serial = %s", i, desc, serial);
@@ -167,24 +371,28 @@ static void hotplug(void *param) {
 static void hotunplug(void *param) {
 	std::string camSerial[MAXCAMERAS];
 	std::string camDesc[MAXCAMERAS];
+	std::string msg;
+	std::string addr;
 	char serial[INDIGO_NAME_SIZE];
 	int count;
 	sleep(3);
 	try {
-		//cam.get_AvailableCameras(camSerial, camDesc, count);
+		FindDeviceUsb lookUsb;
+		msg  = lookUsb.Find();
+		deviceStrings = GetDeviceVector( msg );
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		std::string last("");
-		//cam.get_LastError(last);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot unplug failed  %s %s", text.c_str(), last.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot unplug failed  %s", text.c_str());
 		return;
 	}
+
 	for (int j = 0; j < MAXCAMERAS; j++) {
 		indigo_device *device = devices[j];
 		if (device) {
 			PRIVATE_DATA->available = false;
 		}
 	}
+
 	for (int i = 0; i < count; i++) {
 		strncpy(serial, camSerial[i].c_str(), INDIGO_NAME_SIZE);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: serial = %s", i, serial);
@@ -214,12 +422,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	if (descriptor.idVendor == UsbFrmwr::APOGEE_VID) {
 		switch (event) {
 			case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot-plug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot-plug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 				indigo_async((void *(*)(void *))hotplug, NULL);
 				break;
 			}
 			case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hot-unplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot-unplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 				indigo_async((void *(*)(void *))hotunplug, NULL);
 				break;
 			}
