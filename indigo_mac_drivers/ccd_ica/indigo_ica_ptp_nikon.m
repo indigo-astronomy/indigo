@@ -951,12 +951,12 @@ static struct info {
     case PTPRequestCodeNikonMfDrive: {
       if (response.responseCode == PTPResponseCodeOK) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-          if (tempLiveView) {
+          if (self->tempLiveView) {
             [self sendPTPRequest:PTPRequestCodeNikonEndLiveView];
             [self sendPTPRequest:PTPRequestCodeNikonDeviceReady];
             [self setProperty:PTPPropertyCodeNikonSaveMedia value:@"0"];
-            if (focusMode != -1)
-              [self setProperty:PTPPropertyCodeNikonAutofocusMode value:[NSString stringWithFormat:@"%d", focusMode]];
+            if (self->focusMode != -1)
+              [self setProperty:PTPPropertyCodeNikonAutofocusMode value:[NSString stringWithFormat:@"%d", self->focusMode]];
           }
           [self.delegate cameraFocusDone:self];
         });
