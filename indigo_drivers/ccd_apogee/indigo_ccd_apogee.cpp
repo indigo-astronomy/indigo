@@ -315,7 +315,7 @@ static void hotplug(void *param) {
 	std::string msg;
 	std::string discovery_string;
 
-	sleep(3);
+	//sleep(3);
 	try {
 		FindDeviceUsb lookUsb;
 		msg = lookUsb.Find();
@@ -333,29 +333,34 @@ static void hotplug(void *param) {
 	int i = 0;
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "camera[%d]: desc = %s serial = %s", i, discovery_string.c_str());
+		uint16_t id = GetID((*iter));
+		uint16_t frmwrRev = GetFrmwrRev((*iter));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST camera[%d]: desc = %s", i, discovery_string.c_str());
 		bool found = false;
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];
 			if (device) {
-				if (discovery_string.compare(PRIVATE_DATA->discovery_string) == 0) {
+				uint16_t c_id = GetID(PRIVATE_DATA->discovery_string);
+				uint16_t c_frmwrRev = GetFrmwrRev(PRIVATE_DATA->discovery_string);
+				if ((id == c_id) && (frmwrRev == c_frmwrRev)) {
 					found = true;
 					break;
 				}
 			}
 		}
 		if (found) continue;
-
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ATTACH camera[%d]: desc = %s", i, discovery_string.c_str());
 		apogee_private_data *private_data = (apogee_private_data *)malloc(sizeof(apogee_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(apogee_private_data));
 		indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &ccd_template, sizeof(indigo_device));
+		device->private_data = private_data;
 		PRIVATE_DATA->discovery_string = discovery_string;
 		std::string model = GetItemFromFindStr(discovery_string, "model=");
-		strncpy(device->name, model.c_str(), INDIGO_NAME_SIZE);
-		device->private_data = private_data;
+		//strncpy(device->name, model.c_str(), INDIGO_NAME_SIZE);
+		snprintf(device->name, INDIGO_NAME_SIZE, "%s #%d", model.c_str(), id);
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			if (devices[j] == NULL) {
 				indigo_async((void *(*)(void *))indigo_attach_device, devices[j] = device);
@@ -368,7 +373,7 @@ static void hotplug(void *param) {
 static void hotunplug(void *param) {
 	std::string discovery_string;
 	std::string msg;
-	sleep(3);
+	//sleep(3);
 	try {
 		FindDeviceUsb lookUsb;
 		msg = lookUsb.Find();
@@ -390,17 +395,17 @@ static void hotunplug(void *param) {
 	int i = 0;
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: serial = %s", i, discovery_string.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST camera[%d]: serial = %s", i, discovery_string.c_str());
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];
-			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) == 0)) continue;
+			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) != 0)) continue;
 			PRIVATE_DATA->available = true;
-			break;
 		}
 	}
 	for (int j = 0; j < MAXCAMERAS; j++) {
 		indigo_device *device = devices[j];
 		if (device && !PRIVATE_DATA->available) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "DETACH camera[%d]: serial = %s", i, PRIVATE_DATA->discovery_string.c_str());
 			indigo_detach_device(device);
 			free(device->private_data);
 			free(device);
