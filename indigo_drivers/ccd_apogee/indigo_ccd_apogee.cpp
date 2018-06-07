@@ -64,7 +64,7 @@
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_apogee.h"
 
-#define MAXCAMERAS				5
+#define MAXCAMERAS				32
 
 #define PRIVATE_DATA              ((apogee_private_data *)device->private_data)
 
@@ -73,6 +73,7 @@
 
 typedef struct {
 	ApogeeCam *camera;
+	std::string discovery_string;
 	bool available;
 	indigo_timer *exposure_timer, *temperature_timer;
 	long int buffer_size;
@@ -299,9 +300,8 @@ void checkStatus( const Apg::Status status )
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
-std::vector<std::string> deviceStrings;
-
-static indigo_device *devices[MAXCAMERAS];
+std::vector<std::string> device_strings;
+static indigo_device *devices[MAXCAMERAS] = {NULL};
 
 static void hotplug(void *param) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
@@ -312,20 +312,17 @@ static void hotplug(void *param) {
 		NULL,
 		ccd_detach
 	);
-
-	std::string camSerial[MAXCAMERAS];
-	std::string camDesc[MAXCAMERAS];
 	std::string msg;
-	std::string addr;
+	std::string discovery_string;
 
-	char serial[INDIGO_NAME_SIZE];
-	char desc[INDIGO_NAME_SIZE];
-	int count;
 	sleep(3);
 	try {
 		FindDeviceUsb lookUsb;
-		msg  = lookUsb.Find();
-		deviceStrings = GetDeviceVector( msg );
+		msg = lookUsb.Find();
+		//msg  = std::string("<d>address=0,interface=usb,deviceType=camera,id=0x49,firmwareRev=0x21,model=AltaU-"
+		//                   "4020ML,interfaceStatus=NA</d><d>address=1,interface=usb,model=Filter "
+		//                   "Wheel,deviceType=filterWheel,id=0xFFFF,firmwareRev=0xFFEE</d>");
+		device_strings = GetDeviceVector( msg );
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot plug failed  %s", text.c_str());
@@ -333,31 +330,31 @@ static void hotplug(void *param) {
 	}
 
 	std::vector<std::string>::iterator iter;
-	int i =0;
-	for( iter = deviceStrings.begin(); iter != deviceStrings.end(); ++iter, ++i ) {
-		strncpy(serial, camSerial[i].c_str(), INDIGO_NAME_SIZE);
-		strncpy(desc, camDesc[i].c_str(), INDIGO_NAME_SIZE);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: desc = %s serial = %s", i, desc, serial);
+	int i = 0;
+	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
+		discovery_string = (*iter);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "camera[%d]: desc = %s serial = %s", i, discovery_string.c_str());
 		bool found = false;
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];
 			if (device) {
-				if (!strcmp(serial, PRIVATE_DATA->serial)) {
+				if (discovery_string.compare(PRIVATE_DATA->discovery_string) == 0) {
 					found = true;
 					break;
 				}
 			}
 		}
-		if (found)
-			continue;
+		if (found) continue;
+
 		apogee_private_data *private_data = (apogee_private_data *)malloc(sizeof(apogee_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(apogee_private_data));
-		strncpy(private_data->serial, serial, INDIGO_NAME_SIZE);
 		indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
 		assert(device != NULL);
 		memcpy(device, &ccd_template, sizeof(indigo_device));
-		strncpy(device->name, desc, INDIGO_NAME_SIZE);
+		PRIVATE_DATA->discovery_string = discovery_string;
+		std::string model = GetItemFromFindStr(discovery_string, "model=");
+		strncpy(device->name, model.c_str(), INDIGO_NAME_SIZE);
 		device->private_data = private_data;
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			if (devices[j] == NULL) {
@@ -369,17 +366,13 @@ static void hotplug(void *param) {
 }
 
 static void hotunplug(void *param) {
-	std::string camSerial[MAXCAMERAS];
-	std::string camDesc[MAXCAMERAS];
+	std::string discovery_string;
 	std::string msg;
-	std::string addr;
-	char serial[INDIGO_NAME_SIZE];
-	int count;
 	sleep(3);
 	try {
 		FindDeviceUsb lookUsb;
-		msg  = lookUsb.Find();
-		deviceStrings = GetDeviceVector( msg );
+		msg = lookUsb.Find();
+		device_strings = GetDeviceVector( msg );
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot unplug failed  %s", text.c_str());
@@ -393,13 +386,14 @@ static void hotunplug(void *param) {
 		}
 	}
 
-	for (int i = 0; i < count; i++) {
-		strncpy(serial, camSerial[i].c_str(), INDIGO_NAME_SIZE);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: serial = %s", i, serial);
+	std::vector<std::string>::iterator iter;
+	int i = 0;
+	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
+		discovery_string = (*iter);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: serial = %s", i, discovery_string.c_str());
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];
-			if (!device || strcmp(serial, PRIVATE_DATA->serial))
-				continue;
+			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) == 0)) continue;
 			PRIVATE_DATA->available = true;
 			break;
 		}
