@@ -176,13 +176,18 @@ std::string GetItemFromFindStr( const std::string & msg,
 }
 
 ////////////////////////////
+//	GET		INTERFACE
+std::string GetInterface( const std::string & msg )
+{
+    return GetItemFromFindStr( msg, "interface=" );
+}
+
+////////////////////////////
 //	GET		USB  ADDRESS
 std::string GetUsbAddress( const std::string & msg )
 {
     return GetItemFromFindStr( msg, "address=" );
 }
-
-
 ////////////////////////////
 //	GET		ETHERNET  ADDRESS
 std::string GetEthernetAddress( const std::string & msg )
@@ -299,11 +304,10 @@ void checkStatus( const Apg::Status status )
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
-std::vector<std::string> device_strings;
 static indigo_device *devices[MAXCAMERAS] = {NULL};
 
-static void hotplug(void *param) {
+
+static void ethernet_discover(char *network, bool cam_found) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -314,28 +318,33 @@ static void hotplug(void *param) {
 	);
 	std::string msg;
 	std::string discovery_string;
+	std::string interface;
+	std::vector<std::string> device_strings;
+	std::vector<std::string>::iterator iter;
+	int i;
 
-	//sleep(3);
 	try {
-		FindDeviceUsb lookUsb;
-		msg = lookUsb.Find();
+		FindDeviceEthernet Ethernet;
+		msg = Ethernet.Find(std::string(network));
 		//msg  = std::string("<d>address=0,interface=usb,deviceType=camera,id=0x49,firmwareRev=0x21,model=AltaU-"
 		//                   "4020ML,interfaceStatus=NA</d><d>address=1,interface=usb,model=Filter "
 		//                   "Wheel,deviceType=filterWheel,id=0xFFFF,firmwareRev=0xFFEE</d>");
-		device_strings = GetDeviceVector( msg );
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot plug failed  %s", text.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Ethernet hot plug failed  %s", text.c_str());
 		return;
 	}
+	if (cam_found) msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
 
-	std::vector<std::string>::iterator iter;
-	int i = 0;
+	device_strings = GetDeviceVector(msg);
+	i = 0;
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
-		uint16_t id = GetID((*iter));
-		uint16_t frmwrRev = GetFrmwrRev((*iter));
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST camera[%d]: desc = %s", i, discovery_string.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST device[%d]: string = %s", i, discovery_string.c_str());
+		interface = GetInterface(discovery_string);
+		if (interface.compare(std::string("ethernet")) != 0) continue;
+		uint16_t id = GetID(discovery_string);
+		uint16_t frmwrRev = GetFrmwrRev(discovery_string);
 		bool found = false;
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];
@@ -349,7 +358,7 @@ static void hotplug(void *param) {
 			}
 		}
 		if (found) continue;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ATTACH camera[%d]: desc = %s", i, discovery_string.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ATTACH device[%d]: string = %s", i, discovery_string.c_str());
 		apogee_private_data *private_data = (apogee_private_data *)malloc(sizeof(apogee_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(apogee_private_data));
@@ -359,8 +368,7 @@ static void hotplug(void *param) {
 		device->private_data = private_data;
 		PRIVATE_DATA->discovery_string = discovery_string;
 		std::string model = GetItemFromFindStr(discovery_string, "model=");
-		//strncpy(device->name, model.c_str(), INDIGO_NAME_SIZE);
-		snprintf(device->name, INDIGO_NAME_SIZE, "%s #%d", model.c_str(), id);
+		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s #%d", model.c_str(), id);
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			if (devices[j] == NULL) {
 				indigo_async((void *(*)(void *))indigo_attach_device, devices[j] = device);
@@ -368,25 +376,135 @@ static void hotplug(void *param) {
 			}
 		}
 	}
-}
-
-static void hotunplug(void *param) {
-	std::string discovery_string;
-	std::string msg;
-	//sleep(3);
-	try {
-		FindDeviceUsb lookUsb;
-		msg = lookUsb.Find();
-		device_strings = GetDeviceVector( msg );
-	} catch (std::runtime_error err) {
-		std::string text = err.what();
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot unplug failed  %s", text.c_str());
-		return;
-	}
 
 	for (int j = 0; j < MAXCAMERAS; j++) {
 		indigo_device *device = devices[j];
 		if (device) {
+			interface = GetInterface(PRIVATE_DATA->discovery_string);
+			if (interface.compare(std::string("ethernet")) != 0) continue;
+			PRIVATE_DATA->available = false;
+		}
+	}
+
+	i = 0;
+	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
+		discovery_string = (*iter);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST camera[%d]: serial = %s", i, discovery_string.c_str());
+		for (int j = 0; j < MAXCAMERAS; j++) {
+			indigo_device *device = devices[j];
+			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) != 0)) continue;
+			interface = GetInterface(PRIVATE_DATA->discovery_string);
+			if (interface.compare(std::string("ethernet")) != 0) continue;
+			PRIVATE_DATA->available = true;
+		}
+	}
+	for (int j = 0; j < MAXCAMERAS; j++) {
+		indigo_device *device = devices[j];
+		if (device && !PRIVATE_DATA->available) {
+			interface = GetInterface(PRIVATE_DATA->discovery_string);
+			if (interface.compare(std::string("ethernet")) != 0) continue;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "DETACH camera[%d]: serial = %s", i, PRIVATE_DATA->discovery_string.c_str());
+			indigo_detach_device(device);
+			free(device->private_data);
+			free(device);
+			devices[j] = NULL;
+		}
+	}
+}
+
+
+static void usb_hotplug(void *param) {
+	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
+		"",
+		ccd_attach,
+		indigo_ccd_enumerate_properties,
+		ccd_change_property,
+		NULL,
+		ccd_detach
+	);
+	std::string msg;
+	std::string discovery_string;
+	std::vector<std::string> device_strings;
+
+	//sleep(3);
+	try {
+		FindDeviceUsb lookUsb;
+		msg = lookUsb.Find();
+		//msg  = std::string("<d>address=0,interface=usb,deviceType=camera,id=0x49,firmwareRev=0x21,model=AltaU-"
+		//                   "4020ML,interfaceStatus=NA</d><d>address=1,interface=usb,model=Filter "
+		//                   "Wheel,deviceType=filterWheel,id=0xFFFF,firmwareRev=0xFFEE</d>");
+	} catch (std::runtime_error err) {
+		std::string text = err.what();
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB hot plug failed  %s", text.c_str());
+		return;
+	}
+	//msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
+
+	device_strings = GetDeviceVector(msg);
+	std::vector<std::string>::iterator iter;
+	int i = 0;
+	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
+		discovery_string = (*iter);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST device[%d]: string = %s", i, discovery_string.c_str());
+		std::string interface = GetInterface(discovery_string);
+		if (interface.compare(std::string("usb")) != 0) continue;
+		uint16_t id = GetID(discovery_string);
+		uint16_t frmwrRev = GetFrmwrRev(discovery_string);
+		bool found = false;
+		for (int j = 0; j < MAXCAMERAS; j++) {
+			indigo_device *device = devices[j];
+			if (device) {
+				uint16_t c_id = GetID(PRIVATE_DATA->discovery_string);
+				uint16_t c_frmwrRev = GetFrmwrRev(PRIVATE_DATA->discovery_string);
+				if ((id == c_id) && (frmwrRev == c_frmwrRev)) {
+					found = true;
+					break;
+				}
+			}
+		}
+		if (found) continue;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ATTACH device[%d]: string = %s", i, discovery_string.c_str());
+		apogee_private_data *private_data = (apogee_private_data *)malloc(sizeof(apogee_private_data));
+		assert(private_data != NULL);
+		memset(private_data, 0, sizeof(apogee_private_data));
+		indigo_device *device = (indigo_device *)malloc(sizeof(indigo_device));
+		assert(device != NULL);
+		memcpy(device, &ccd_template, sizeof(indigo_device));
+		device->private_data = private_data;
+		PRIVATE_DATA->discovery_string = discovery_string;
+		std::string model = GetItemFromFindStr(discovery_string, "model=");
+		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s #%d", model.c_str(), id);
+		for (int j = 0; j < MAXCAMERAS; j++) {
+			if (devices[j] == NULL) {
+				indigo_async((void *(*)(void *))indigo_attach_device, devices[j] = device);
+				break;
+			}
+		}
+	}
+	//ethernet_discover("192.168.0.255",true);
+}
+
+static void usb_hotunplug(void *param) {
+	std::string discovery_string;
+	std::string msg;
+	std::string interface;
+	std::vector<std::string> device_strings;
+	//sleep(3);
+	try {
+		FindDeviceUsb lookUsb;
+		msg = lookUsb.Find();
+	} catch (std::runtime_error err) {
+		std::string text = err.what();
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB hot unplug failed  %s", text.c_str());
+		return;
+	}
+	//msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
+	device_strings = GetDeviceVector( msg );
+	for (int j = 0; j < MAXCAMERAS; j++) {
+		indigo_device *device = devices[j];
+		if (device) {
+			interface = GetInterface(PRIVATE_DATA->discovery_string);
+			if (interface.compare(std::string("usb")) != 0) continue;
 			PRIVATE_DATA->available = false;
 		}
 	}
@@ -399,12 +517,16 @@ static void hotunplug(void *param) {
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];
 			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) != 0)) continue;
+			interface = GetInterface(PRIVATE_DATA->discovery_string);
+			if (interface.compare(std::string("usb")) != 0) continue;
 			PRIVATE_DATA->available = true;
 		}
 	}
 	for (int j = 0; j < MAXCAMERAS; j++) {
 		indigo_device *device = devices[j];
 		if (device && !PRIVATE_DATA->available) {
+			interface = GetInterface(PRIVATE_DATA->discovery_string);
+			if (interface.compare(std::string("usb")) != 0) continue;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "DETACH camera[%d]: serial = %s", i, PRIVATE_DATA->discovery_string.c_str());
 			indigo_detach_device(device);
 			free(device->private_data);
@@ -412,6 +534,7 @@ static void hotunplug(void *param) {
 			devices[j] = NULL;
 		}
 	}
+	//ethernet_discover("192.168.0.255",false);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
@@ -422,12 +545,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		switch (event) {
 			case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot-plug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-				indigo_async((void *(*)(void *))hotplug, NULL);
+				indigo_async((void *(*)(void *))usb_hotplug, NULL);
 				break;
 			}
 			case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot-unplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-				indigo_async((void *(*)(void *))hotunplug, NULL);
+				indigo_async((void *(*)(void *))usb_hotunplug, NULL);
 				break;
 			}
 		}
