@@ -419,7 +419,7 @@ $(BUILD_INCLUDE)/libaopgee/Alta.h: indigo_drivers/ccd_apogee/externals/libapogee
 	install -d $(BUILD_INCLUDE)/libapogee
 	cp indigo_drivers/ccd_apogee/externals/libapogee/*.h $(BUILD_INCLUDE)/libapogee
 
-$(BUILD_LIB)/libapogee.a: $(BUILD_INCLUDE)/libaopgee/Alta.h
+$(BUILD_LIB)/libapogee.a: $(BUILD_INCLUDE)/libapogee/Alta.h
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make; cd ../../../..
 	install -d $(BUILD_LIB)
 	cp indigo_drivers/ccd_apogee/externals/libapogee/libapogee.a $(BUILD_LIB)
