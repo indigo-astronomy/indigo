@@ -1157,7 +1157,9 @@ extern void (*debug_ext)(int level, char *format, va_list arg);
 static void _debug_ext(int level, char *format, va_list arg) {
 	char _format[1024];
 	snprintf(_format, sizeof(_format), "FLISDK: %s", format);
-	INDIGO_DEBUG_DRIVER(indigo_log_message(_format, arg));
+	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+		INDIGO_DEBUG_DRIVER(indigo_log_message(_format, arg));
+	}
 }
 
 indigo_result indigo_ccd_fli(indigo_driver_action action, indigo_driver_info *info) {
