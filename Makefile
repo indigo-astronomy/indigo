@@ -80,7 +80,7 @@ ifeq ($(OS_DETECTED),Linux)
 			LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/$(ARCH_DETECTED)/libUSB2ST4Conv.a
 		endif
 	endif
-	FLISDK=libfli-1.104
+	FLISDK=libfli-1.999.1-180223
 	LIBRAW_1394=$(shell pkg-config --libs libraw1394)
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	INSTALL_PREFIX=/usr/local
