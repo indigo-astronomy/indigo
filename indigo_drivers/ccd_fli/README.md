@@ -26,8 +26,8 @@ Driver is developed and tested with:
 * FLI PL9000
 
 ## NOTES
-### Requires Kernel Driver (Linux only)
-This INDIGO driver requires Linux kernel driver to work. The kernel driver is available for download here:
+### Up to version 2.0.0.5 this driver requires Kernel Driver (Linux only)
+This INDIGO driver up to version 2.0.0.5 requires Linux kernel driver to work. The kernel driver is available for download here:
 http://indigo-astronomy.org/downloads.html
 
 After kernel update one may need to execute:
@@ -35,3 +35,6 @@ After kernel update one may need to execute:
 sudo indigo-install-fliusb
 
 In order to install the kernel driver for the new kernel.
+
+### Since version 2.0.0.6 the driver uses libusb.
+Since version 2.0.0.6 the kernel driver is not required any more as it uses libusb.
