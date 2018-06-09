@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
