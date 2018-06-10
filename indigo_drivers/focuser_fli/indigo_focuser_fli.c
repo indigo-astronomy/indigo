@@ -600,8 +600,17 @@ static void remove_all_devices() {
 	}
 }
 
-
 static libusb_hotplug_callback_handle callback_handle;
+
+extern void (*debug_ext)(int level, char *format, va_list arg);
+
+static void _debug_ext(int level, char *format, va_list arg) {
+	char _format[1024];
+	snprintf(_format, sizeof(_format), "FLISDK: %s", format);
+	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+		INDIGO_DEBUG_DRIVER(indigo_log_message(_format, arg));
+	}
+}
 
 indigo_result indigo_focuser_fli(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -613,6 +622,8 @@ indigo_result indigo_focuser_fli(indigo_driver_action action, indigo_driver_info
 
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
+		debug_ext = _debug_ext;
+		FLISetDebugLevel(NULL, FLIDEBUG_ALL);
 		last_action = action;
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FLI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
