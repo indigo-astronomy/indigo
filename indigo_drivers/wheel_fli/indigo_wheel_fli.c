@@ -23,7 +23,7 @@
  \file indigo_wheel_fli.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME		"indigo_wheel_fli"
 
 #include <stdlib.h>
