@@ -414,7 +414,7 @@ $(BUILD_LIB)/libnmea.a: $(BUILD_INCLUDE)/nmea/nmea.h
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libaopgee/Alta.h: indigo_drivers/ccd_apogee/externals/libapogee/Alta.h
+$(BUILD_INCLUDE)/libapogee/Alta.h: indigo_drivers/ccd_apogee/externals/libapogee/Alta.h
 	install -d $(BUILD_INCLUDE)
 	install -d $(BUILD_INCLUDE)/libapogee
 	cp indigo_drivers/ccd_apogee/externals/libapogee/*.h $(BUILD_INCLUDE)/libapogee
