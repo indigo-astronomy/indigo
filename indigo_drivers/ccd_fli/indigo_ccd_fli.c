@@ -26,6 +26,7 @@
 
 #define DRIVER_VERSION 0x0007
 #define DRIVER_NAME		"indigo_ccd_fli"
+#define __LIBUSBFIX__
 
 #include <stdlib.h>
 #include <string.h>
@@ -1118,7 +1119,7 @@ static void process_unplug_event() {
 	pthread_mutex_unlock(&device_mutex);
 }
 
-#ifdef __APPLE__
+#ifdef ___LIBUSBFIX__
 static void *plug_thread_func(void *sid) {
 	process_plug_event();
 	pthread_exit(NULL);
@@ -1130,7 +1131,7 @@ static void *unplug_thread_func(void *sid) {
 	pthread_exit(NULL);
 	return NULL;
 }
-#endif /* __APPLE__ */
+#endif /* ___LIBUSBFIX__ */
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 
@@ -1141,26 +1142,26 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			libusb_get_device_descriptor(dev, &descriptor);
 			if (descriptor.idVendor != FLI_VENDOR_ID)
 				break;
-#ifdef __APPLE__
+#ifdef ___LIBUSBFIX__
 			pthread_t plug_thread;
 			if (pthread_create(&plug_thread, NULL, plug_thread_func, NULL)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for hot plug");
 			}
 #else
 			process_plug_event();
-#endif /* __APPLE__ */
+#endif /* ___LIBUSBFIX__ */
 
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-#ifdef __APPLE__
+#ifdef ___LIBUSBFIX__
 			pthread_t unplug_thread;
 			if (pthread_create(&unplug_thread, NULL, unplug_thread_func, NULL)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for hot unplug");
 			}
 #else
 			process_unplug_event();
-#endif /* __APPLE__ */
+#endif /* ___LIBUSBFIX__ */
 		}
 	}
 	return 0;
