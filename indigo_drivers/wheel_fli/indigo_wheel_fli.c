@@ -68,6 +68,7 @@ static int find_index_by_device_fname(char *fname);
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
 static void wheel_timer_callback(indigo_device *device) {
+	if (!device->is_connected) return;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	long res = FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
@@ -138,7 +139,6 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 					if (!res) {
 						flidev_t id = PRIVATE_DATA->dev_id;
 						long int num_slots;
-						device->is_connected = true;
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 						FLIGetFilterCount(id, &num_slots);
@@ -186,6 +186,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+						device->is_connected = true;
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -198,6 +199,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			}
 		} else {
 			if (device->is_connected) {
+				device->is_connected = false;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				long res = FLIClose(PRIVATE_DATA->dev_id);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -206,7 +208,6 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				}
 				PRIVATE_DATA->dev_id = -1;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				device->is_connected = false;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				indigo_global_unlock(device);
 			}

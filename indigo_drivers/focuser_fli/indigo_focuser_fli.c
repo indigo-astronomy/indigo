@@ -83,6 +83,7 @@ static void fli_close(indigo_device *device) {
 
 
 static void focuser_timer_callback(indigo_device *device) {
+	if (!device->is_connected) return;
 	long steps_remaining;
 	long value;
 	flidev_t id = PRIVATE_DATA->dev_id;
@@ -158,7 +159,6 @@ static void fli_focuser_connect(indigo_device *device) {
 	long res = FLIOpen(&id, PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 	if (!res) {
 		PRIVATE_DATA->dev_id = id;
-		device->is_connected = true;
 		res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetModel(%d) = %d", id, res);
@@ -244,6 +244,7 @@ static void fli_focuser_connect(indigo_device *device) {
 
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, "Connected");
+		device->is_connected = true;
 	} else {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, "Connect failed!");
@@ -275,9 +276,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			if (device->is_connected) {
+				device->is_connected = false;
 				fli_close(device);
 				indigo_global_unlock(device);
-				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
