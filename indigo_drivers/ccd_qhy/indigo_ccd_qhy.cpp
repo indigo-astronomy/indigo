@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_qhy"
 
 #include <stdlib.h>

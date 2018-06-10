@@ -26,7 +26,7 @@
 #define MAX_PATH                      255     /* Maximal Path Length */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x0004
+#define DRIVER_VERSION             0x0005
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
