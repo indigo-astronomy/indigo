@@ -73,7 +73,7 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
     return -ENODEV;
   }
 
-//  libusb_set_debug(NULL,LIBUSB_LOG_LEVEL_DEBUG); 
+//  libusb_set_debug(NULL,LIBUSB_LOG_LEVEL_DEBUG);
 
   usb_han = libusb_fli_find_handle(NULL, name);
   io->han = usb_han;
@@ -95,7 +95,7 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
 	  __PRETTY_FUNCTION__, strerror(errno));
     return -EIO;
   }
-  
+
   if (usbdesc.idVendor != FLIUSB_VENDORID)
   {
     debug(FLIDEBUG_INFO, "%s: Not a FLI device!", __PRETTY_FUNCTION__);
@@ -119,6 +119,7 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
   DEVICE->devinfo.devid = usbdesc.idProduct;
   DEVICE->devinfo.fwrev = usbdesc.bcdDevice;
 
+#if 0 // This part doesn't work on linux and crash on mac!
   if (usbdesc.iSerialNumber != 0)
   {
     memset(strdesc, '\0', sizeof(strdesc));
@@ -132,7 +133,7 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
     else
     {
       DEVICE->devinfo.serial = xstrndup((const char *)strdesc, sizeof(strdesc));
-  
+
       debug(FLIDEBUG_INFO, "Serial Number: %s", strdesc);
     }
   }
@@ -140,7 +141,9 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
   {
     debug(FLIDEBUG_INFO, "Device is not serialized.");
   }
-
+#else
+  DEVICE->devinfo.serial = "000000";
+#endif
   if((r = libusb_kernel_driver_active(io->han, 0)) == 1)
   {
     debug(FLIDEBUG_INFO, "Kernel Driver Active.");
@@ -181,7 +184,7 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
         int epaddr;
 
         numep = dsc->interface[0].altsetting[0].bNumEndpoints;
-        
+
         debug(FLIDEBUG_INFO, "Config Desc: %d", dsc->bConfigurationValue);
         debug(FLIDEBUG_INFO, "NumEP: %d", dsc->interface[0].altsetting[0].bNumEndpoints);
 
@@ -200,7 +203,7 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
           __PRETTY_FUNCTION__, libusb_error_name(r));
       }
     }
-  }  
+  }
 #endif
 
   return 0;
@@ -334,7 +337,7 @@ long libusb_bulkread(flidev_t dev, void *buf, long *rlen)
 long libusb_usb_disconnect(flidev_t dev,  fli_unixio_t *io)
 {
   long err = 0;
-	
+
   debug(FLIDEBUG_INFO, "Disconnecting");
 
   if (io->han != NULL)
@@ -345,7 +348,7 @@ long libusb_usb_disconnect(flidev_t dev,  fli_unixio_t *io)
 	io->han = NULL;
 
   libusb_exit(NULL);
-	
+
   return err;
 }
 
@@ -375,7 +378,7 @@ int libusb_fli_get_serial(libusb_device *usb_dev, char *serial, size_t max_seria
   {
     if (max_serial > 0) serial[0] = '\0';
   }
-  
+
   return r;
 }
 
@@ -460,7 +463,7 @@ int libusb_fli_create_name(libusb_device *usb_dev, char *name, size_t max_name)
     *p = '\0';
   }
 
-  return len;  
+  return len;
 }
 
 long libusb_list(char *pattern, flidomain_t domain, char ***names)
@@ -480,7 +483,7 @@ long libusb_list(char *pattern, flidomain_t domain, char ***names)
     libusb_exit(NULL);
     return -ENODEV;
   }
-	
+
   num_usb_devices = libusb_get_device_list(NULL, &usb_devs);
   if(num_usb_devices < 0)
   {
@@ -509,7 +512,7 @@ long libusb_list(char *pattern, flidomain_t domain, char ***names)
       debug(FLIDEBUG_WARN, "USB Device Descriptor not obtained.");
       continue;
     }
-    
+
     /* FLI device? */
     if(usb_desc.idVendor != FLIUSB_VENDORID)
       continue;
@@ -583,7 +586,7 @@ long libusb_list(char *pattern, flidomain_t domain, char ***names)
       {
         libusb_get_string_descriptor_ascii(usb_han, usb_desc.iProduct,
           (unsigned char *) fli_model_name, sizeof(fli_model_name) - 1);
-  
+
         libusb_close(usb_han);
       }
       else
@@ -597,7 +600,7 @@ long libusb_list(char *pattern, flidomain_t domain, char ***names)
             strlen(fli_model_name) + 2)) == NULL)
     {
       int j;
-      
+
       /* Free the list */
       for (j = 0; j < num_fli_devices; j++)
         xfree(list[j]);
@@ -650,7 +653,7 @@ libusb_device_handle * libusb_fli_find_handle(struct libusb_context *usb_ctx, ch
 
     if(libusb_get_device_descriptor(usb_dev, &usb_desc) != LIBUSB_SUCCESS)
       continue;
-      
+
     if(usb_desc.idVendor == FLIUSB_VENDORID)
     {
       memset(serial, '\0', sizeof(serial));
