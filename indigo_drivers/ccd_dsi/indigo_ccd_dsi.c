@@ -666,7 +666,7 @@ static void process_unplug_event() {
 
 
 #ifdef __APPLE__
-void *plug_thread_func(void *sid) {
+static void *plug_thread_func(void *sid) {
 	pthread_mutex_lock(&device_mutex);
 	dsi_load_firmware();
 	process_plug_event();
@@ -676,7 +676,7 @@ void *plug_thread_func(void *sid) {
 }
 
 
-void *unplug_thread_func(void *sid) {
+static void *unplug_thread_func(void *sid) {
 	pthread_mutex_lock(&device_mutex);
 	process_unplug_event();
 	pthread_mutex_unlock(&device_mutex);

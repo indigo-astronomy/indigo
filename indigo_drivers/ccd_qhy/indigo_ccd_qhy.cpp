@@ -1474,7 +1474,7 @@ static void process_unplug_event() {
 
 
 #ifdef __APPLE__
-void *plug_thread_func(void *sid) {
+static void *plug_thread_func(void *sid) {
 	char firmware_base_dir[1024] = "/usr/local/lib/qhy";
 	if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
 		strncpy(firmware_base_dir, getenv("INDIGO_FIRMWARE_BASE"), 1024);
@@ -1485,8 +1485,7 @@ void *plug_thread_func(void *sid) {
 	return NULL;
 }
 
-
-void *unplug_thread_func(void *sid) {
+static void *unplug_thread_func(void *sid) {
 	process_unplug_event();
 	pthread_exit(NULL);
 	return NULL;
