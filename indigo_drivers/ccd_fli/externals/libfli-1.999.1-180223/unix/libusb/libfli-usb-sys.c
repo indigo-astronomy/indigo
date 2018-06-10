@@ -119,7 +119,7 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
   DEVICE->devinfo.devid = usbdesc.idProduct;
   DEVICE->devinfo.fwrev = usbdesc.bcdDevice;
 
-#if 0 // This part doesn't work on linux and crash on mac!
+#if 0 // This part doesn't work!
   if (usbdesc.iSerialNumber != 0)
   {
     memset(strdesc, '\0', sizeof(strdesc));

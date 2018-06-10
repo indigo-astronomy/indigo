@@ -945,7 +945,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 
@@ -956,7 +956,6 @@ static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
 static flidomain_t fli_domains[MAX_DEVICES] = {0};
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
-
 
 static void enumerate_devices() {
 	/* There is a mem leak heree!!! 8,192 constant + 20 bytes on every new connected device */
@@ -1018,7 +1017,6 @@ static int find_available_device_slot() {
 	return -1;
 }
 
-
 static int find_device_slot(char *fname) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
@@ -1027,7 +1025,6 @@ static int find_device_slot(char *fname) {
 	}
 	return -1;
 }
-
 
 static int find_unplugged_device(char *fname) {
 	enumerate_devices();
@@ -1052,9 +1049,7 @@ static int find_unplugged_device(char *fname) {
 	return -1;
 }
 
-
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-
+static void process_plug_event() {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -1062,75 +1057,113 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_change_property,
 		NULL,
 		ccd_detach
-	);
+		);
+	
+	pthread_mutex_lock(&device_mutex);
+	int slot = find_available_device_slot();
+	if (slot < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	
+	char file_name[MAX_PATH];
+	int idx = find_plugged_device(file_name);
+	if (idx < 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera plugged.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	indigo_device *device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
+	memcpy(device, &ccd_template, sizeof(indigo_device));
+	sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
+	fli_private_data *private_data = malloc(sizeof(fli_private_data));
+	assert(private_data);
+	memset(private_data, 0, sizeof(fli_private_data));
+	private_data->dev_id = 0;
+	private_data->domain = fli_domains[idx];
+	strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
+	strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
+	device->private_data = private_data;
+	indigo_async((void *)(void *)indigo_attach_device, device);
+	devices[slot]=device;
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static void process_unplug_event() {
+	pthread_mutex_lock(&device_mutex);
+	int slot, id;
+	char file_name[MAX_PATH];
+	bool removed = false;
+	while ((id = find_unplugged_device(file_name)) != -1) {
+		slot = find_device_slot(file_name);
+		if (slot < 0) continue;
+		indigo_device **device = &devices[slot];
+		if (*device == NULL) {
+			pthread_mutex_unlock(&device_mutex);
+			return;
+		}
+		indigo_detach_device(*device);
+		fli_private_data *private_data = (*device)->private_data;
+		if (private_data->buffer) free(private_data->buffer);
+		free((*device)->private_data);
+		free(*device);
+		*device = NULL;
+		removed = true;
+	}
+	if (!removed) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera unplugged!");
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+#ifdef __APPLE__
+static void *plug_thread_func(void *sid) {
+	process_plug_event();
+	pthread_exit(NULL);
+	return NULL;
+}
+
+static void *unplug_thread_func(void *sid) {
+	process_unplug_event();
+	pthread_exit(NULL);
+	return NULL;
+}
+#endif /* __APPLE__ */
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 
 	struct libusb_device_descriptor descriptor;
 
-	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
-			if (descriptor.idVendor != FLI_VENDOR_ID) break;
-
-			int slot = find_available_device_slot();
-			if (slot < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-				//pthread_mutex_unlock(&device_mutex);
-				return 0;
+			if (descriptor.idVendor != FLI_VENDOR_ID)
+				break;
+#ifdef __APPLE__
+			pthread_t plug_thread;
+			if (pthread_create(&plug_thread, NULL, plug_thread_func, NULL)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for hot plug");
 			}
+#else
+			process_plug_event();
+#endif /* __APPLE__ */
 
-			char file_name[MAX_PATH];
-			int idx = find_plugged_device(file_name);
-			if (idx < 0) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera plugged.");
-				//pthread_mutex_unlock(&device_mutex);
-				return 0;
-			}
-
-			indigo_device *device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &ccd_template, sizeof(indigo_device));
-			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
-			fli_private_data *private_data = malloc(sizeof(fli_private_data));
-			assert(private_data);
-			memset(private_data, 0, sizeof(fli_private_data));
-			private_data->dev_id = 0;
-			private_data->domain = fli_domains[idx];
-			strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
-			strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
-			device->private_data = private_data;
-			indigo_async((void *)(void *)indigo_attach_device, device);
-			devices[slot]=device;
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			int slot, id;
-			char file_name[MAX_PATH];
-			bool removed = false;
-			while ((id = find_unplugged_device(file_name)) != -1) {
-				slot = find_device_slot(file_name);
-				if (slot < 0) continue;
-				indigo_device **device = &devices[slot];
-				if (*device == NULL) {
-					//pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-				indigo_detach_device(*device);
-				fli_private_data *private_data = (*device)->private_data;
-				if (private_data->buffer) free(private_data->buffer);
-				free((*device)->private_data);
-				free(*device);
-				libusb_unref_device(dev);
-				*device = NULL;
-				removed = true;
+#ifdef __APPLE__
+			pthread_t unplug_thread;
+			if (pthread_create(&unplug_thread, NULL, unplug_thread_func, NULL)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for hot unplug");
 			}
-			if (!removed) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera unplugged!");
-			}
+#else
+			process_unplug_event();
+#endif /* __APPLE__ */
 		}
 	}
-	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 

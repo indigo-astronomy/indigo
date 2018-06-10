@@ -205,13 +205,15 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			CCD_TEMPERATURE_PROPERTY->hidden = true;
 			indigo_init_number_item(CCD_TEMPERATURE_ITEM, CCD_TEMPERATURE_ITEM_NAME, "Temperature (C)", -50, 50, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
-			CCD_FITS_HEADERS_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_FITS_HEADERS_NAME, CCD_IMAGE_GROUP, "Custom FITS headers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 10);
+			CCD_FITS_HEADERS_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_FITS_HEADERS_NAME, CCD_IMAGE_GROUP, "Custom FITS headers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 12);
 			if (CCD_FITS_HEADERS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+			indigo_init_text_item(CCD_FITS_HEADERS_PROPERTY->items + 0, CCD_FITS_HEADER_FILTER_ITEM_NAME, "Filter header", "");
+			indigo_init_text_item(CCD_FITS_HEADERS_PROPERTY->items + 1, CCD_FITS_HEADER_FOCUS_ITEM_NAME, "Focus header", "");
+			for (int i = 2; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 				char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
-				sprintf(name, CCD_FITS_HEADER_ITEM_NAME, i + 1);
-				sprintf(label, "Header #%d", i + 1);
+				sprintf(name, CCD_FITS_HEADER_ITEM_NAME, i - 1);
+				sprintf(label, "Custom Header #%d", i - 1);
 				indigo_init_text_item(CCD_FITS_HEADERS_PROPERTY->items + i, name, label, "");
 			}
 			// --------------------------------------------------------------------------------
