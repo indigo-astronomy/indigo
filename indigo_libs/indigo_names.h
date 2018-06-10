@@ -443,14 +443,6 @@
  */
 #define CCD_FITS_HEADERS_PROPERTY_NAME									"CCD_FITS_HEADERS"
 
-/** CCD_FITS_HEADERS.HEADER_FILTER property item name.
- */
-#define CCD_FITS_HEADER_FILTER_ITEM_NAME			"HEADER_FILTER"
-
-/** CCD_FITS_HEADERS.HEADER_FOCUS property item name.
- */
-#define CCD_FITS_HEADER_FOCUS_ITEM_NAME			"HEADER_FOCUS"
-
 /** CCD_FITS_HEADERS.HEADER_x property item name.
  */
 #define CCD_FITS_HEADER_ITEM_NAME							"HEADER_%d"
