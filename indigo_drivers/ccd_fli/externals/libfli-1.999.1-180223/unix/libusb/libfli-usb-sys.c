@@ -119,7 +119,6 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
   DEVICE->devinfo.devid = usbdesc.idProduct;
   DEVICE->devinfo.fwrev = usbdesc.bcdDevice;
 
-#if 0 // This part doesn't work!
   if (usbdesc.iSerialNumber != 0)
   {
     memset(strdesc, '\0', sizeof(strdesc));
@@ -141,9 +140,7 @@ long libusb_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
   {
     debug(FLIDEBUG_INFO, "Device is not serialized.");
   }
-#else
-  DEVICE->devinfo.serial = "000000";
-#endif
+
   if((r = libusb_kernel_driver_active(io->han, 0)) == 1)
   {
     debug(FLIDEBUG_INFO, "Kernel Driver Active.");
