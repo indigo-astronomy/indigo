@@ -1167,7 +1167,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	return 0;
 };
 
-
 static void remove_all_devices() {
 	int i;
 	for(i = 0; i < MAX_DEVICES; i++) {
