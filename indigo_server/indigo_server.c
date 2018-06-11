@@ -69,6 +69,7 @@
 #include "wheel_fli/indigo_wheel_fli.h"
 #include "focuser_fli/indigo_focuser_fli.h"
 #include "focuser_usbv3/indigo_focuser_usbv3.h"
+#include "focuser_wemacro/indigo_focuser_wemacro.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -110,6 +111,7 @@ driver_entry_point static_drivers[] = {
 	indigo_wheel_fli,
 	indigo_focuser_fli,
 	indigo_focuser_usbv3,
+	indigo_focuser_wemacro,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif
