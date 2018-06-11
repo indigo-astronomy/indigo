@@ -441,12 +441,11 @@
 //----------------------------------------------------------------------
 /** CCD_FITS_HEADERS property name.
  */
-#define CCD_FITS_HEADERS_NAME									"CCD_FITS_HEADERS"
+#define CCD_FITS_HEADERS_PROPERTY_NAME									"CCD_FITS_HEADERS"
 
 /** CCD_FITS_HEADERS.HEADER_x property item name.
  */
 #define CCD_FITS_HEADER_ITEM_NAME							"HEADER_%d"
-
 
 //----------------------------------------------------------------------
 /** DSLR_PROGRAM property name.
