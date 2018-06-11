@@ -921,6 +921,22 @@ $(BUILD_DRIVERS)/indigo_focuser_usbv3.$(SOEXT): indigo_drivers/focuser_usbv3/ind
 
 #---------------------------------------------------------------------
 #
+#	Build WeMacro Rail driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_wemacro.a: indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_wemacro: indigo_drivers/focuser_wemacro/indigo_focuser_wemacro_main.o $(BUILD_DRIVERS)/indigo_focuser_wemacro.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_wemacro.$(SOEXT): indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+
+#---------------------------------------------------------------------
+#
 #	Build ICA CCD driver
 #
 #---------------------------------------------------------------------
