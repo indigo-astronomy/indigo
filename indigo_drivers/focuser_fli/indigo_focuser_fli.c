@@ -26,13 +26,13 @@
 #define MAX_PATH                      255     /* Maximal Path Length */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x0004
+#define DRIVER_VERSION             0x0005
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
 
 #define MAX_STEPS_AT_ONCE            4000
-
+#define __LIBUSBFIX__
 
 #include <stdlib.h>
 #include <string.h>
@@ -83,6 +83,7 @@ static void fli_close(indigo_device *device) {
 
 
 static void focuser_timer_callback(indigo_device *device) {
+	if (!device->is_connected) return;
 	long steps_remaining;
 	long value;
 	flidev_t id = PRIVATE_DATA->dev_id;
@@ -158,7 +159,6 @@ static void fli_focuser_connect(indigo_device *device) {
 	long res = FLIOpen(&id, PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 	if (!res) {
 		PRIVATE_DATA->dev_id = id;
-		device->is_connected = true;
 		res = FLIGetModel(id, INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetModel(%d) = %d", id, res);
@@ -244,6 +244,7 @@ static void fli_focuser_connect(indigo_device *device) {
 
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, "Connected");
+		device->is_connected = true;
 	} else {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, "Connect failed!");
@@ -275,9 +276,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		} else {
 			if (device->is_connected) {
+				device->is_connected = false;
 				fli_close(device);
 				indigo_global_unlock(device);
-				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
@@ -408,7 +409,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 
@@ -506,9 +507,7 @@ static int find_unplugged_device(char *fname) {
 	return -1;
 }
 
-
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-
+static void process_plug_event() {
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		focuser_attach,
@@ -516,77 +515,113 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		focuser_change_property,
 		NULL,
 		focuser_detach
-	);
+		);
 
+	pthread_mutex_lock(&device_mutex);
+	int slot = find_available_device_slot();
+	if (slot < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	
+	char file_name[MAX_PATH];
+	int idx = find_plugged_device(file_name);
+	if (idx < 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera plugged.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	indigo_device *device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
+	memcpy(device, &focuser_template, sizeof(indigo_device));
+	sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
+	fli_private_data *private_data = malloc(sizeof(fli_private_data));
+	assert(private_data);
+	memset(private_data, 0, sizeof(fli_private_data));
+	private_data->dev_id = 0;
+	private_data->domain = fli_domains[idx];
+	strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
+	strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
+	device->private_data = private_data;
+	indigo_async((void *)(void *)indigo_attach_device, device);
+	devices[slot]=device;
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static void process_unplug_event() {
+	pthread_mutex_lock(&device_mutex);
+	int slot, id;
+	char file_name[MAX_PATH];
+	bool removed = false;
+	while ((id = find_unplugged_device(file_name)) != -1) {
+		slot = find_device_slot(file_name);
+		if (slot < 0) continue;
+		indigo_device **device = &devices[slot];
+		if (*device == NULL) {
+			pthread_mutex_unlock(&device_mutex);
+			return;
+		}
+		indigo_detach_device(*device);
+		free((*device)->private_data);
+		free(*device);
+		*device = NULL;
+		removed = true;
+	}
+	if (!removed) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera unplugged!");
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+#ifdef ___LIBUSBFIX__
+static void *plug_thread_func(void *sid) {
+	process_plug_event();
+	pthread_exit(NULL);
+	return NULL;
+}
+
+static void *unplug_thread_func(void *sid) {
+	process_unplug_event();
+	pthread_exit(NULL);
+	return NULL;
+}
+#endif /* ___LIBUSBFIX__ */
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+	
 	struct libusb_device_descriptor descriptor;
-	//pthread_mutex_lock(&device_mutex);
+	
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
-			if (descriptor.idVendor != FLI_VENDOR_ID) break;
-
-			int slot = find_available_device_slot();
-			if (slot < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-				//pthread_mutex_unlock(&device_mutex);
-				return 0;
+			if (descriptor.idVendor != FLI_VENDOR_ID)
+				break;
+#ifdef ___LIBUSBFIX__
+			pthread_t plug_thread;
+			if (pthread_create(&plug_thread, NULL, plug_thread_func, NULL)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for hot plug");
 			}
-
-			char file_name[MAX_PATH];
-			int idx = find_plugged_device(file_name);
-			if (idx < 0) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI focuser plugged.");
-				//pthread_mutex_unlock(&device_mutex);
-				return 0;
-			}
-
-			indigo_device *device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &focuser_template, sizeof(indigo_device));
-			sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
-			fli_private_data *private_data = malloc(sizeof(fli_private_data));
-			assert(private_data);
-			memset(private_data, 0, sizeof(fli_private_data));
-			private_data->dev_id = 0;
-			private_data->domain = fli_domains[idx];
-			strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
-			strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
-			device->private_data = private_data;
-			indigo_async((void *)(void *)indigo_attach_device, device);
-			devices[slot]=device;
+#else
+			process_plug_event();
+#endif /* ___LIBUSBFIX__ */
+			
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			int slot, id;
-			char file_name[MAX_PATH];
-			bool removed = false;
-			while ((id = find_unplugged_device(file_name)) != -1) {
-				slot = find_device_slot(file_name);
-				if (slot < 0)
-					continue;
-				indigo_device **device = &devices[slot];
-				if (*device == NULL) {
-					//pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-				indigo_detach_device(*device);
-				free((*device)->private_data);
-				free(*device);
-				libusb_unref_device(dev);
-				*device = NULL;
-				removed = true;
+#ifdef ___LIBUSBFIX__
+			pthread_t unplug_thread;
+			if (pthread_create(&unplug_thread, NULL, unplug_thread_func, NULL)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for hot unplug");
 			}
-			if (!removed) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Focuser unplugged!");
-			}
+#else
+			process_unplug_event();
+#endif /* ___LIBUSBFIX__ */
 		}
 	}
-	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
-
-
 static void remove_all_devices() {
 	int i;
 	for(i = 0; i < MAX_DEVICES; i++) {
@@ -600,8 +635,17 @@ static void remove_all_devices() {
 	}
 }
 
-
 static libusb_hotplug_callback_handle callback_handle;
+
+extern void (*debug_ext)(int level, char *format, va_list arg);
+
+static void _debug_ext(int level, char *format, va_list arg) {
+	char _format[1024];
+	snprintf(_format, sizeof(_format), "FLISDK: %s", format);
+	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+		INDIGO_DEBUG_DRIVER(indigo_log_message(_format, arg));
+	}
+}
 
 indigo_result indigo_focuser_fli(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -613,6 +657,8 @@ indigo_result indigo_focuser_fli(indigo_driver_action action, indigo_driver_info
 
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
+		debug_ext = _debug_ext;
+		FLISetDebugLevel(NULL, FLIDEBUG_ALL);
 		last_action = action;
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FLI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
