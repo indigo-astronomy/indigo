@@ -123,11 +123,11 @@ static bool wemacro_command(indigo_device *device, uint8_t cmd, uint8_t a, uint8
 			else
 				crc = crc >> 1;
 		}
-		out[10] = crc & 0xFF;
-		out[11] = (crc >> 8) &0xFF;
-		result = indigo_write(PRIVATE_DATA->handle, (char *)out, sizeof(out));
-		INDIGO_DEBUG_DRIVER(indigo_debug("WeMacro < %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %s", out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], out[9], out[10], out[11], result ? "OK" : "Failed"));
 	}
+	out[10] = crc & 0xFF;
+	out[11] = (crc >> 8) &0xFF;
+	result = indigo_write(PRIVATE_DATA->handle, (char *)out, sizeof(out));
+	INDIGO_DEBUG_DRIVER(indigo_debug("WeMacro < %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %s", out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], out[9], out[10], out[11], result ? "OK" : "Failed"));
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return result;
 }
@@ -228,10 +228,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (PRIVATE_DATA->handle) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
 				pthread_create(&PRIVATE_DATA->reader, NULL, (void * (*)(void*))wemacro_reader, device);
+				indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+				indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
+				indigo_define_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
+				indigo_define_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
+				indigo_define_property(device, X_RAIL_MOVE_STEPS_PROPERTY, NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
 				PRIVATE_DATA->device_count--;
+				indigo_delete_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+				indigo_delete_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
+				indigo_delete_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
+				indigo_delete_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
+				indigo_delete_property(device, X_RAIL_MOVE_STEPS_PROPERTY, NULL);
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
@@ -280,9 +290,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(X_RAIL_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIL_SHUTTER
 		indigo_property_copy_values(X_RAIL_SHUTTER_PROPERTY, property, false);
-		wemacro_command(device, 0x04, 0, 0, 0, 0);
-		X_RAIL_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+		if (X_RAIL_SHUTTER_ITEM->sw.value) {
+			wemacro_command(device, 0x04, 0, 0, 0, 0);
+			X_RAIL_SHUTTER_ITEM->sw.value = false;
+		}
+		X_RAIL_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_RAIL_MOVE_AHEAD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIL_MOVE_AHEAD
