@@ -88,7 +88,7 @@ static char *wemacro_reader(indigo_device *device) {
 	while (PRIVATE_DATA->handle > 0) {
 		uint8_t in[3] = { 0, 0, 0 };
 		int result = indigo_read(PRIVATE_DATA->handle, (char *)in, sizeof(in));
-		if (result == 3) {
+		if (result == sizeof(in)) {
 			INDIGO_DEBUG_DRIVER(indigo_debug("WeMacro > %02x %02x %02x", in[0], in[1], in[2]));
 			if (in[2] == 0xf5 || in[2] == 0xf6) {
 				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -113,17 +113,15 @@ static char *wemacro_reader(indigo_device *device) {
 static bool wemacro_command(indigo_device *device, uint8_t cmd, uint8_t a, uint8_t b, uint8_t c, uint32_t d) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	bool result = true;
-	if (cmd) {
-		uint8_t out[12] = { 0xA5, 0x5A, cmd, a, b, c, (d >> 24 & 0xFF), (d >> 16 & 0xFF), (d >> 8 & 0xFF), (d & 0xFF) };
-		uint16_t crc = 0xFFFF;
-		for (int i = 0; i < 10; i++) {
-			crc = crc ^ out[i];
-			for (int j = 0; j < 8; j++) {
-				if (crc & 0x0001)
-					crc = (crc >> 1) ^ 0xA001;
-				else
-					crc = crc >> 1;
-			}
+	uint8_t out[12] = { 0xA5, 0x5A, cmd, a, b, c, (d >> 24 & 0xFF), (d >> 16 & 0xFF), (d >> 8 & 0xFF), (d & 0xFF) };
+	uint16_t crc = 0xFFFF;
+	for (int i = 0; i < 10; i++) {
+		crc = crc ^ out[i];
+		for (int j = 0; j < 8; j++) {
+			if (crc & 0x0001)
+				crc = (crc >> 1) ^ 0xA001;
+			else
+				crc = crc >> 1;
 		}
 		out[10] = crc & 0xFF;
 		out[11] = (crc >> 8) &0xFF;
@@ -158,9 +156,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		X_RAIL_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_CONFIG", X_RAIL_BATCH, "Configuration", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
 		if (X_RAIL_CONFIG_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(X_RAIL_CONFIG_BACK_ITEM, "BACK", "Return to original positon when done", false);
+		indigo_init_switch_item(X_RAIL_CONFIG_BACK_ITEM, "BACK", "Return back when done", false);
 		indigo_init_switch_item(X_RAIL_CONFIG_BEEP_ITEM, "BEEP", "Beep when done", false);
-		indigo_init_switch_item(X_RAIL_CONFIG_MM_ITEM, "MM", "Use mm (instead of um)", false);
+		indigo_init_switch_item(X_RAIL_CONFIG_MM_ITEM, "MM", "Use milimeters (instead of microns)", false);
 		// -------------------------------------------------------------------------------- X_RAIL_SHUTTER
 		X_RAIL_SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_SHUTTER", X_RAIL_BATCH, "Shutter", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (X_RAIL_SHUTTER_PROPERTY == NULL)
@@ -252,15 +250,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				if (FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value)
-					wemacro_command(device, 0x40, 0, 0, 0, FOCUSER_STEPS_ITEM->number.value);
-				else
-					wemacro_command(device, 0x41, 0, 0, 0, FOCUSER_STEPS_ITEM->number.value);
+				wemacro_command(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x40 : 0x41, 0, 0, 0, FOCUSER_STEPS_ITEM->number.value);
 			} else {
-				if (FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value)
-					wemacro_command(device, 0x41, 0, 0, 0, FOCUSER_STEPS_ITEM->number.value);
-				else
-					wemacro_command(device, 0x40, 0, 0, 0, FOCUSER_STEPS_ITEM->number.value);
+				wemacro_command(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x41 : 0x40, 0, 0, 0, FOCUSER_STEPS_ITEM->number.value);
 			}
 		}
 		return INDIGO_OK;
@@ -295,14 +287,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(X_RAIL_MOVE_AHEAD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIL_MOVE_AHEAD
 		indigo_property_copy_values(X_RAIL_MOVE_AHEAD_PROPERTY, property, false);
-		wemacro_command(device, 0x40, (uint8_t)X_RAIL_MOVE_AHEAD_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_MOVE_AHEAD_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_MOVE_AHEAD_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_MOVE_AHEAD_LENGTH_ITEM->number.value);
+		wemacro_command(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x40 : 0x41, (uint8_t)X_RAIL_MOVE_AHEAD_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_MOVE_AHEAD_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_MOVE_AHEAD_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_MOVE_AHEAD_LENGTH_ITEM->number.value);
 		X_RAIL_MOVE_AHEAD_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_RAIL_MOVE_BACK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIL_MOVE_BACK
 		indigo_property_copy_values(X_RAIL_MOVE_BACK_PROPERTY, property, false);
-		wemacro_command(device, 0x41, (uint8_t)X_RAIL_MOVE_BACK_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_MOVE_BACK_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_MOVE_BACK_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_MOVE_BACK_LENGTH_ITEM->number.value);
+		wemacro_command(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x41 : 0x40, (uint8_t)X_RAIL_MOVE_BACK_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_MOVE_BACK_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_MOVE_BACK_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_MOVE_BACK_LENGTH_ITEM->number.value);
 		X_RAIL_MOVE_BACK_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
 		return INDIGO_OK;
