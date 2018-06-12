@@ -45,28 +45,30 @@
 #define X_RAIL_CONFIG_PROPERTY							(PRIVATE_DATA->config_property)
 #define X_RAIL_CONFIG_BACK_ITEM							(X_RAIL_CONFIG_PROPERTY->items+0)
 #define X_RAIL_CONFIG_BEEP_ITEM							(X_RAIL_CONFIG_PROPERTY->items+1)
-#define X_RAIL_CONFIG_MM_ITEM								(X_RAIL_CONFIG_PROPERTY->items+2)
 
 #define X_RAIL_SHUTTER_PROPERTY							(PRIVATE_DATA->shutter_property)
 #define X_RAIL_SHUTTER_ITEM									(X_RAIL_SHUTTER_PROPERTY->items+0)
 
-#define X_RAIL_MOVE_AHEAD_PROPERTY					(PRIVATE_DATA->move_ahead_property)
-#define X_RAIL_MOVE_AHEAD_SETTLE_TIME_ITEM	(X_RAIL_MOVE_AHEAD_PROPERTY->items+0)
-#define X_RAIL_MOVE_AHEAD_PER_STEP_ITEM			(X_RAIL_MOVE_AHEAD_PROPERTY->items+1)
-#define X_RAIL_MOVE_AHEAD_INTERVAL_ITEM			(X_RAIL_MOVE_AHEAD_PROPERTY->items+2)
-#define X_RAIL_MOVE_AHEAD_LENGTH_ITEM				(X_RAIL_MOVE_AHEAD_PROPERTY->items+3)
+//#define X_RAIL_MOVE_AHEAD_PROPERTY					(PRIVATE_DATA->move_ahead_property)
+//#define X_RAIL_MOVE_AHEAD_SETTLE_TIME_ITEM	(X_RAIL_MOVE_AHEAD_PROPERTY->items+0)
+//#define X_RAIL_MOVE_AHEAD_PER_STEP_ITEM			(X_RAIL_MOVE_AHEAD_PROPERTY->items+1)
+//#define X_RAIL_MOVE_AHEAD_INTERVAL_ITEM			(X_RAIL_MOVE_AHEAD_PROPERTY->items+2)
+//#define X_RAIL_MOVE_AHEAD_LENGTH_ITEM				(X_RAIL_MOVE_AHEAD_PROPERTY->items+3)
+//#define X_RAIL_MOVE_AHEAD_COUNT_ITEM				(X_RAIL_MOVE_AHEAD_PROPERTY->items+4)
+//
+//#define X_RAIL_MOVE_BACK_PROPERTY						(PRIVATE_DATA->move_back_property)
+//#define X_RAIL_MOVE_BACK_SETTLE_TIME_ITEM		(X_RAIL_MOVE_BACK_PROPERTY->items+0)
+//#define X_RAIL_MOVE_BACK_PER_STEP_ITEM			(X_RAIL_MOVE_BACK_PROPERTY->items+1)
+//#define X_RAIL_MOVE_BACK_INTERVAL_ITEM			(X_RAIL_MOVE_BACK_PROPERTY->items+2)
+//#define X_RAIL_MOVE_BACK_LENGTH_ITEM				(X_RAIL_MOVE_BACK_PROPERTY->items+3)
+//#define X_RAIL_MOVE_BACK_COUNT_ITEM					(X_RAIL_MOVE_BACK_PROPERTY->items+4)
 
-#define X_RAIL_MOVE_BACK_PROPERTY						(PRIVATE_DATA->move_back_property)
-#define X_RAIL_MOVE_BACK_SETTLE_TIME_ITEM		(X_RAIL_MOVE_BACK_PROPERTY->items+0)
-#define X_RAIL_MOVE_BACK_PER_STEP_ITEM			(X_RAIL_MOVE_BACK_PROPERTY->items+1)
-#define X_RAIL_MOVE_BACK_INTERVAL_ITEM			(X_RAIL_MOVE_BACK_PROPERTY->items+2)
-#define X_RAIL_MOVE_BACK_LENGTH_ITEM				(X_RAIL_MOVE_BACK_PROPERTY->items+3)
-
-#define X_RAIL_MOVE_STEPS_PROPERTY					(PRIVATE_DATA->move_steps_property)
-#define X_RAIL_MOVE_STEPS_SETTLE_TIME_ITEM	(X_RAIL_MOVE_STEPS_PROPERTY->items+0)
-#define X_RAIL_MOVE_STEPS_PER_STEP_ITEM			(X_RAIL_MOVE_STEPS_PROPERTY->items+1)
-#define X_RAIL_MOVE_STEPS_INTERVAL_ITEM			(X_RAIL_MOVE_STEPS_PROPERTY->items+2)
-#define X_RAIL_MOVE_STEPS_COUNT_ITEM				(X_RAIL_MOVE_STEPS_PROPERTY->items+3)
+#define X_RAIL_EXECUTE_PROPERTY								(PRIVATE_DATA->move_steps_property)
+#define X_RAIL_EXECUTE_SETTLE_TIME_ITEM				(X_RAIL_EXECUTE_PROPERTY->items+0)
+#define X_RAIL_EXECUTE_PER_STEP_ITEM					(X_RAIL_EXECUTE_PROPERTY->items+1)
+#define X_RAIL_EXECUTE_INTERVAL_ITEM					(X_RAIL_EXECUTE_PROPERTY->items+2)
+#define X_RAIL_EXECUTE_LENGTH_ITEM						(X_RAIL_EXECUTE_PROPERTY->items+3)
+#define X_RAIL_EXECUTE_COUNT_ITEM							(X_RAIL_EXECUTE_PROPERTY->items+4)
 
 
 typedef struct {
@@ -76,8 +78,8 @@ typedef struct {
 	pthread_mutex_t port_mutex;
 	indigo_property *shutter_property;
 	indigo_property *config_property;
-	indigo_property *move_ahead_property;
-	indigo_property *move_back_property;
+//	indigo_property *move_ahead_property;
+//	indigo_property *move_back_property;
 	indigo_property *move_steps_property;
 } wemacro_private_data;
 
@@ -95,13 +97,17 @@ static char *wemacro_reader(indigo_device *device) {
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				}
-				if (X_RAIL_MOVE_AHEAD_PROPERTY->state == INDIGO_BUSY_STATE) {
-					X_RAIL_MOVE_AHEAD_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
-				}
-				if (X_RAIL_MOVE_BACK_PROPERTY->state == INDIGO_BUSY_STATE) {
-					X_RAIL_MOVE_BACK_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
+//				if (X_RAIL_MOVE_AHEAD_PROPERTY->state == INDIGO_BUSY_STATE) {
+//					X_RAIL_MOVE_AHEAD_PROPERTY->state = INDIGO_OK_STATE;
+//					indigo_update_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
+//				}
+//				if (X_RAIL_MOVE_BACK_PROPERTY->state == INDIGO_BUSY_STATE) {
+//					X_RAIL_MOVE_BACK_PROPERTY->state = INDIGO_OK_STATE;
+//					indigo_update_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
+//				}
+				if (X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 				}
 			}
 		}
@@ -139,8 +145,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		FOCUSER_ROTATION_PROPERTY->hidden = false;
-		FOCUSER_SPEED_PROPERTY->hidden = true;
 		FOCUSER_POSITION_PROPERTY->hidden = true;
+		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
+		FOCUSER_SPEED_ITEM->number.max = 2;
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "CH341")) {
@@ -153,41 +160,43 @@ static indigo_result focuser_attach(indigo_device *device) {
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/wemacro_rail");
 #endif
 		// -------------------------------------------------------------------------------- X_RAIL_CONFIG
-		X_RAIL_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_CONFIG", X_RAIL_BATCH, "Configuration", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
+		X_RAIL_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_CONFIG", X_RAIL_BATCH, "Set configuration", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (X_RAIL_CONFIG_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_RAIL_CONFIG_BACK_ITEM, "BACK", "Return back when done", false);
 		indigo_init_switch_item(X_RAIL_CONFIG_BEEP_ITEM, "BEEP", "Beep when done", false);
-		indigo_init_switch_item(X_RAIL_CONFIG_MM_ITEM, "MM", "Use milimeters (instead of microns)", false);
 		// -------------------------------------------------------------------------------- X_RAIL_SHUTTER
-		X_RAIL_SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_SHUTTER", X_RAIL_BATCH, "Shutter", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		X_RAIL_SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_SHUTTER", X_RAIL_BATCH, "Fire shutter", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (X_RAIL_SHUTTER_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(X_RAIL_SHUTTER_ITEM, "SHUTTER", "Shutter", false);
-		// -------------------------------------------------------------------------------- X_RAIL_MOVE_AHEAD
-		X_RAIL_MOVE_AHEAD_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RAIL_MOVE_AHEAD", X_RAIL_BATCH, "Move ahead", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
-		if (X_RAIL_MOVE_AHEAD_PROPERTY == NULL)
+		indigo_init_switch_item(X_RAIL_SHUTTER_ITEM, "SHUTTER", "Fire shutter", false);
+//		// -------------------------------------------------------------------------------- X_RAIL_MOVE_AHEAD
+//		X_RAIL_MOVE_AHEAD_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RAIL_MOVE_AHEAD", X_RAIL_BATCH, "Move ahead", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 5);
+//		if (X_RAIL_MOVE_AHEAD_PROPERTY == NULL)
+//			return INDIGO_FAILED;
+//		indigo_init_number_item(X_RAIL_MOVE_AHEAD_SETTLE_TIME_ITEM, "SETTLE_TIME", "Settle time", 0, 99, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_AHEAD_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_AHEAD_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_AHEAD_LENGTH_ITEM, "LENGTH", "Length", 1, 0xFFFFFF, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_AHEAD_COUNT_ITEM, "COUNT", "Count", 1, 0xFFFFFF, 1, 1);
+//		// -------------------------------------------------------------------------------- X_RAIL_MOVE_BACK
+//		X_RAIL_MOVE_BACK_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RAIL_MOVE_BACK", X_RAIL_BATCH, "Move back", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 5);
+//		if (X_RAIL_MOVE_BACK_PROPERTY == NULL)
+//			return INDIGO_FAILED;
+//		indigo_init_number_item(X_RAIL_MOVE_BACK_SETTLE_TIME_ITEM, "SETTLE_TIME", "Settle time", 0, 99, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_BACK_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_BACK_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_BACK_LENGTH_ITEM, "LENGTH", "Length", 1, 0xFFFFFF, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_BACK_COUNT_ITEM, "COUNT", "Count", 1, 0xFFFFFF, 1, 1);
+		// -------------------------------------------------------------------------------- X_RAIL_EXECUTE
+		X_RAIL_EXECUTE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RAIL_EXECUTE", X_RAIL_BATCH, "Execute batch", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 5);
+		if (X_RAIL_EXECUTE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(X_RAIL_MOVE_AHEAD_SETTLE_TIME_ITEM, "SETTLE_TIME", "Settle time", 0, 99, 1, 1);
-		indigo_init_number_item(X_RAIL_MOVE_AHEAD_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
-		indigo_init_number_item(X_RAIL_MOVE_AHEAD_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
-		indigo_init_number_item(X_RAIL_MOVE_AHEAD_LENGTH_ITEM, "LENTH", "Length", 1, 0xFFFFFF, 1, 1);
-		// -------------------------------------------------------------------------------- X_RAIL_MOVE_BACK
-		X_RAIL_MOVE_BACK_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RAIL_MOVE_BACK", X_RAIL_BATCH, "Move back", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
-		if (X_RAIL_MOVE_BACK_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_number_item(X_RAIL_MOVE_BACK_SETTLE_TIME_ITEM, "SETTLE_TIME", "Settle time", 0, 99, 1, 1);
-		indigo_init_number_item(X_RAIL_MOVE_BACK_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
-		indigo_init_number_item(X_RAIL_MOVE_BACK_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
-		indigo_init_number_item(X_RAIL_MOVE_BACK_LENGTH_ITEM, "LENTH", "Length", 1, 0xFFFFFF, 1, 1);
-		// -------------------------------------------------------------------------------- X_RAIL_MOVE_STEPS
-		X_RAIL_MOVE_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RAIL_MOVE_STEPS", X_RAIL_BATCH, "Move steps", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
-		if (X_RAIL_MOVE_STEPS_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_number_item(X_RAIL_MOVE_STEPS_SETTLE_TIME_ITEM, "SETTLE_TIME", "Settle time", 0, 99, 1, 1);
-		indigo_init_number_item(X_RAIL_MOVE_STEPS_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
-		indigo_init_number_item(X_RAIL_MOVE_STEPS_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
-		indigo_init_number_item(X_RAIL_MOVE_STEPS_COUNT_ITEM, "COUNT", "Count", 1, 0xFFFFFF, 1, 1);
+		indigo_init_number_item(X_RAIL_EXECUTE_SETTLE_TIME_ITEM, "SETTLE_TIME", "Settle time", 0, 99, 1, 1);
+		indigo_init_number_item(X_RAIL_EXECUTE_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
+		indigo_init_number_item(X_RAIL_EXECUTE_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
+		indigo_init_number_item(X_RAIL_EXECUTE_LENGTH_ITEM, "LENGTH", "Step size", 1, 0xFFFFFF, 1, 1);
+		indigo_init_number_item(X_RAIL_EXECUTE_COUNT_ITEM, "COUNT", "Step count", 1, 0xFFFFFF, 1, 1);
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -202,12 +211,12 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 		if (indigo_property_match(X_RAIL_SHUTTER_PROPERTY, property))
 			indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
-		if (indigo_property_match(X_RAIL_MOVE_AHEAD_PROPERTY, property))
-			indigo_define_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
-		if (indigo_property_match(X_RAIL_MOVE_BACK_PROPERTY, property))
-			indigo_define_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
-		if (indigo_property_match(X_RAIL_MOVE_STEPS_PROPERTY, property))
-			indigo_define_property(device, X_RAIL_MOVE_STEPS_PROPERTY, NULL);
+//		if (indigo_property_match(X_RAIL_MOVE_AHEAD_PROPERTY, property))
+//			indigo_define_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
+//		if (indigo_property_match(X_RAIL_MOVE_BACK_PROPERTY, property))
+//			indigo_define_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
+		if (indigo_property_match(X_RAIL_EXECUTE_PROPERTY, property))
+			indigo_define_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -223,25 +232,25 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (PRIVATE_DATA->device_count++ == 0) {
 				PRIVATE_DATA->handle = indigo_open_serial(name);
-				wemacro_command(device, 0x20, 0, 0, 0, 0);
+				wemacro_command(device, 0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0, 0, 0, 0);
 			}
 			if (PRIVATE_DATA->handle) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
 				pthread_create(&PRIVATE_DATA->reader, NULL, (void * (*)(void*))wemacro_reader, device);
 				indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 				indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
-				indigo_define_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
-				indigo_define_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
-				indigo_define_property(device, X_RAIL_MOVE_STEPS_PROPERTY, NULL);
+//				indigo_define_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
+//				indigo_define_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
+				indigo_define_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);
 				PRIVATE_DATA->device_count--;
 				indigo_delete_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 				indigo_delete_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
-				indigo_delete_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
-				indigo_delete_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
-				indigo_delete_property(device, X_RAIL_MOVE_STEPS_PROPERTY, NULL);
+//				indigo_delete_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
+//				indigo_delete_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
+				indigo_delete_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
@@ -280,10 +289,16 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_SPEED
+		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
+		wemacro_command(device, 0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0, 0, 0, 0);
+		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(X_RAIL_CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIL_CONFIG
 		indigo_property_copy_values(X_RAIL_CONFIG_PROPERTY, property, false);
-		wemacro_command(device, 0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), X_RAIL_CONFIG_MM_ITEM->sw.value ? 0xFF : 0, 0, 0, 0xFFFFFF);
 		X_RAIL_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -297,27 +312,38 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		X_RAIL_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_RAIL_MOVE_AHEAD_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_RAIL_MOVE_AHEAD
-		indigo_property_copy_values(X_RAIL_MOVE_AHEAD_PROPERTY, property, false);
-		wemacro_command(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x40 : 0x41, (uint8_t)X_RAIL_MOVE_AHEAD_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_MOVE_AHEAD_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_MOVE_AHEAD_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_MOVE_AHEAD_LENGTH_ITEM->number.value);
-		X_RAIL_MOVE_AHEAD_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
+//	} else if (indigo_property_match(X_RAIL_MOVE_AHEAD_PROPERTY, property)) {
+//		// -------------------------------------------------------------------------------- X_RAIL_MOVE_AHEAD
+//		indigo_property_copy_values(X_RAIL_MOVE_AHEAD_PROPERTY, property, false);
+//		wemacro_command(device, 0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0, 0, 0, 1000);
+//		usleep(500000);
+//		wemacro_command(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x40 : 0x41, (uint8_t)X_RAIL_MOVE_AHEAD_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_MOVE_AHEAD_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_MOVE_AHEAD_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_MOVE_AHEAD_COUNT_ITEM->number.value);
+//		X_RAIL_MOVE_AHEAD_PROPERTY->state = INDIGO_BUSY_STATE;
+//		indigo_update_property(device, X_RAIL_MOVE_AHEAD_PROPERTY, NULL);
+//		return INDIGO_OK;
+//	} else if (indigo_property_match(X_RAIL_MOVE_BACK_PROPERTY, property)) {
+//		// -------------------------------------------------------------------------------- X_RAIL_MOVE_BACK
+//		indigo_property_copy_values(X_RAIL_MOVE_BACK_PROPERTY, property, false);
+//		wemacro_command(device, 0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0, 0, 0, 1000);
+//		usleep(500000);
+//		wemacro_command(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x41 : 0x40, (uint8_t)X_RAIL_MOVE_BACK_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_MOVE_BACK_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_MOVE_BACK_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_MOVE_BACK_COUNT_ITEM->number.value);
+//		X_RAIL_MOVE_BACK_PROPERTY->state = INDIGO_BUSY_STATE;
+//		indigo_update_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
+//		return INDIGO_OK;
+	} else if (indigo_property_match(X_RAIL_EXECUTE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_RAIL_EXECUTE
+		indigo_property_copy_values(X_RAIL_EXECUTE_PROPERTY, property, false);
+		wemacro_command(device, 0x80, FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0, 0, 0, (uint32_t)X_RAIL_EXECUTE_LENGTH_ITEM->number.value);
+		usleep(500000);
+		wemacro_command(device, 0x10 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), (uint8_t)X_RAIL_EXECUTE_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_EXECUTE_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_EXECUTE_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_EXECUTE_COUNT_ITEM->number.value - 1);
+		X_RAIL_EXECUTE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_RAIL_MOVE_BACK_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_RAIL_MOVE_BACK
-		indigo_property_copy_values(X_RAIL_MOVE_BACK_PROPERTY, property, false);
-		wemacro_command(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x41 : 0x40, (uint8_t)X_RAIL_MOVE_BACK_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_MOVE_BACK_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_MOVE_BACK_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_MOVE_BACK_LENGTH_ITEM->number.value);
-		X_RAIL_MOVE_BACK_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(X_RAIL_MOVE_STEPS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_RAIL_MOVE_STEPS
-		indigo_property_copy_values(X_RAIL_MOVE_STEPS_PROPERTY, property, false);
-		wemacro_command(device, 0x10 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), (uint8_t)X_RAIL_MOVE_STEPS_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_MOVE_STEPS_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_MOVE_STEPS_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_MOVE_STEPS_COUNT_ITEM->number.value);
-		X_RAIL_MOVE_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_RAIL_MOVE_STEPS_PROPERTY, NULL);
-		return INDIGO_OK;
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, X_RAIL_CONFIG_PROPERTY);
+		}
 	// --------------------------------------------------------------------------------
 	}
 	return indigo_focuser_change_property(device, client, property);
@@ -329,9 +355,9 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_RAIL_CONFIG_PROPERTY);
 	indigo_release_property(X_RAIL_SHUTTER_PROPERTY);
-	indigo_release_property(X_RAIL_MOVE_AHEAD_PROPERTY);
-	indigo_release_property(X_RAIL_MOVE_BACK_PROPERTY);
-	indigo_release_property(X_RAIL_MOVE_STEPS_PROPERTY);
+//	indigo_release_property(X_RAIL_MOVE_AHEAD_PROPERTY);
+//	indigo_release_property(X_RAIL_MOVE_BACK_PROPERTY);
+	indigo_release_property(X_RAIL_EXECUTE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
