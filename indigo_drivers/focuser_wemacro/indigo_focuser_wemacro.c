@@ -185,7 +185,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 //		indigo_init_number_item(X_RAIL_MOVE_AHEAD_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
 //		indigo_init_number_item(X_RAIL_MOVE_AHEAD_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
 //		indigo_init_number_item(X_RAIL_MOVE_AHEAD_LENGTH_ITEM, "LENGTH", "Length", 1, 0xFFFFFF, 1, 1);
-//		indigo_init_number_item(X_RAIL_MOVE_AHEAD_COUNT_ITEM, "COUNT", "Count", 1, 0xFFFFFF, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_AHEAD_COUNT_ITEM, "COUNT", "Count", 0, 0xFFFFFF, 1, 1);
 //		// -------------------------------------------------------------------------------- X_RAIL_MOVE_BACK
 //		X_RAIL_MOVE_BACK_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RAIL_MOVE_BACK", X_RAIL_BATCH, "Move back", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 5);
 //		if (X_RAIL_MOVE_BACK_PROPERTY == NULL)
@@ -194,7 +194,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 //		indigo_init_number_item(X_RAIL_MOVE_BACK_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
 //		indigo_init_number_item(X_RAIL_MOVE_BACK_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
 //		indigo_init_number_item(X_RAIL_MOVE_BACK_LENGTH_ITEM, "LENGTH", "Length", 1, 0xFFFFFF, 1, 1);
-//		indigo_init_number_item(X_RAIL_MOVE_BACK_COUNT_ITEM, "COUNT", "Count", 1, 0xFFFFFF, 1, 1);
+//		indigo_init_number_item(X_RAIL_MOVE_BACK_COUNT_ITEM, "COUNT", "Count", 0, 0xFFFFFF, 1, 1);
 		// -------------------------------------------------------------------------------- X_RAIL_EXECUTE
 		X_RAIL_EXECUTE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RAIL_EXECUTE", X_RAIL_BATCH, "Execute batch", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 5);
 		if (X_RAIL_EXECUTE_PROPERTY == NULL)
@@ -203,7 +203,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_number_item(X_RAIL_EXECUTE_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
 		indigo_init_number_item(X_RAIL_EXECUTE_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
 		indigo_init_number_item(X_RAIL_EXECUTE_LENGTH_ITEM, "LENGTH", "Step size", 1, 0xFFFFFF, 1, 1);
-		indigo_init_number_item(X_RAIL_EXECUTE_COUNT_ITEM, "COUNT", "Step count", 1, 0xFFFFFF, 1, 1);
+		indigo_init_number_item(X_RAIL_EXECUTE_COUNT_ITEM, "COUNT", "Step count", 0, 0xFFFFFF, 1, 1);
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
