@@ -1502,7 +1502,7 @@ static struct info {
 }
 
 -(void)stopExposure {
-  self->doImageDownload = false;
+  //self->doImageDownload = false;
   if ([self operationIsSupported:PTPRequestCodeCanonRemoteReleaseOff]) {
     [self sendPTPRequest:PTPRequestCodeCanonRemoteReleaseOff param1:3];
   } else {
