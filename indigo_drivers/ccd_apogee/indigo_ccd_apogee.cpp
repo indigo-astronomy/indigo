@@ -219,7 +219,7 @@ bool IsDeviceFilterWheel( const std::string & msg )
 {
     std::string str = GetItemFromFindStr(  msg, "deviceType=" );
 
-    return ( 0 == str.compare("filterWheel" ) ? true : false );
+    return ( 0 == str.compare("filterWheel") ? true : false );
 }
 
 ////////////////////////////
@@ -807,9 +807,11 @@ static void ethernet_discover(char *network, bool cam_found) {
 	i = 0;
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
+		if (IsDeviceFilterWheel(discovery_string)) continue;
+
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST device[%d]: string = %s", i, discovery_string.c_str());
 		interface = GetInterface(discovery_string);
-		if (interface.compare(std::string("ethernet")) != 0) continue;
+		if (interface.compare("ethernet") != 0) continue;
 		uint16_t id = GetID(discovery_string);
 		uint16_t frmwrRev = GetFrmwrRev(discovery_string);
 		bool found = false;
@@ -848,7 +850,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		indigo_device *device = devices[j];
 		if (device) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
-			if (interface.compare(std::string("ethernet")) != 0) continue;
+			if (interface.compare("ethernet") != 0) continue;
 			PRIVATE_DATA->available = false;
 		}
 	}
@@ -861,7 +863,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 			indigo_device *device = devices[j];
 			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) != 0)) continue;
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
-			if (interface.compare(std::string("ethernet")) != 0) continue;
+			if (interface.compare("ethernet") != 0) continue;
 			PRIVATE_DATA->available = true;
 		}
 	}
@@ -869,7 +871,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		indigo_device *device = devices[j];
 		if (device && !PRIVATE_DATA->available) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
-			if (interface.compare(std::string("ethernet")) != 0) continue;
+			if (interface.compare("ethernet") != 0) continue;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "DETACH camera[%d]: serial = %s", i, PRIVATE_DATA->discovery_string.c_str());
 			indigo_detach_device(device);
 			free(device->private_data);
@@ -912,9 +914,11 @@ static void usb_hotplug(void *param) {
 	int i = 0;
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
+		if (IsDeviceFilterWheel(discovery_string)) continue;
+
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST device[%d]: string = %s", i, discovery_string.c_str());
 		std::string interface = GetInterface(discovery_string);
-		if (interface.compare(std::string("usb")) != 0) continue;
+		if (interface.compare("usb") != 0) continue;
 		uint16_t id = GetID(discovery_string);
 		uint16_t frmwrRev = GetFrmwrRev(discovery_string);
 		bool found = false;
@@ -971,7 +975,7 @@ static void usb_hotunplug(void *param) {
 		indigo_device *device = devices[j];
 		if (device) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
-			if (interface.compare(std::string("usb")) != 0) continue;
+			if (interface.compare("usb") != 0) continue;
 			PRIVATE_DATA->available = false;
 		}
 	}
@@ -985,7 +989,7 @@ static void usb_hotunplug(void *param) {
 			indigo_device *device = devices[j];
 			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) != 0)) continue;
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
-			if (interface.compare(std::string("usb")) != 0) continue;
+			if (interface.compare("usb") != 0) continue;
 			PRIVATE_DATA->available = true;
 		}
 	}
@@ -993,7 +997,7 @@ static void usb_hotunplug(void *param) {
 		indigo_device *device = devices[j];
 		if (device && !PRIVATE_DATA->available) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
-			if (interface.compare(std::string("usb")) != 0) continue;
+			if (interface.compare("usb") != 0) continue;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "DETACH camera[%d]: serial = %s", i, PRIVATE_DATA->discovery_string.c_str());
 			indigo_detach_device(device);
 			free(device->private_data);
