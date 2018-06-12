@@ -93,7 +93,245 @@ typedef struct {
 	bool can_check_temperature;
 } apogee_private_data;
 
+
+std::vector<std::string> GetDeviceVector( const std::string & msg ) {
+	std::vector<std::string> devices;
+	const std::string startDelim("<d>");
+	const std::string stopDelim("</d>");
+
+	size_t pos = 0;
+	bool find = true;
+	while( find ) {
+		size_t posStart = msg.find( startDelim, pos );
+		if( std::string::npos == posStart ) {
+			break;
+		}
+		size_t posStop = msg.find( stopDelim, posStart+1 );
+		if( std::string::npos == posStop ) {
+			break;
+		}
+		size_t strLen = (posStop - posStart) - startDelim.size();
+		std::string sub = msg.substr( posStart+startDelim.size(), strLen );
+		devices.push_back( sub );
+		pos = 1+posStop;
+	}
+	return devices;
+}
+
+std::vector<std::string> MakeTokens(const std::string &str, const std::string &separator)
+{
+	std::vector<std::string> returnVector;
+	std::string::size_type start = 0;
+	std::string::size_type end = 0;
+
+	while( (end = str.find(separator, start)) != std::string::npos)
+	{
+		returnVector.push_back (str.substr (start, end-start));
+		start = end + separator.size();
+	}
+
+	returnVector.push_back( str.substr(start) );
+
+	return returnVector;
+}
+
+///////////////////////////
+//	GET    ITEM    FROM     FIND       STR
+std::string GetItemFromFindStr( const std::string & msg,
+				const std::string & item )
+{
+
+	//search the single device input string for the requested item
+    std::vector<std::string> params = MakeTokens( msg, "," );
+	std::vector<std::string>::iterator iter;
+
+	for(iter = params.begin(); iter != params.end(); ++iter)
+	{
+	   if( std::string::npos != (*iter).find( item ) )
+	   {
+		 std::string result = MakeTokens( (*iter), "=" ).at(1);
+
+		 return result;
+	   }
+	} //for
+
+	std::string noOp;
+	return noOp;
+}
+
+////////////////////////////
+//	GET		INTERFACE
+std::string GetInterface( const std::string & msg )
+{
+    return GetItemFromFindStr( msg, "interface=" );
+}
+
+////////////////////////////
+//	GET		USB  ADDRESS
+std::string GetUsbAddress( const std::string & msg )
+{
+    return GetItemFromFindStr( msg, "address=" );
+}
+////////////////////////////
+//	GET		ETHERNET  ADDRESS
+std::string GetEthernetAddress( const std::string & msg )
+{
+    std::string addr = GetItemFromFindStr( msg, "address=" );
+    addr.append(":");
+    addr.append( GetItemFromFindStr( msg, "port=" ) );
+    return addr;
+}
+////////////////////////////
+//	GET		ID
+uint16_t GetID( const std::string & msg )
+{
+    std::string str = GetItemFromFindStr( msg, "id=" );
+    uint16_t id = 0;
+    std::stringstream ss;
+    ss << std::hex << std::showbase << str.c_str();
+    ss >> id;
+
+    return id;
+}
+
+////////////////////////////
+//	GET		FRMWR       REV
+uint16_t GetFrmwrRev( const std::string & msg )
+{
+    std::string str = GetItemFromFindStr(  msg, "firmwareRev=" );
+
+    uint16_t rev = 0;
+    std::stringstream ss;
+    ss << std::hex << std::showbase << str.c_str();
+    ss >> rev;
+
+    return rev;
+}
+
+CamModel::PlatformType GetModel(const std::string &msg)
+{
+    return CamModel::GetPlatformType(GetItemFromFindStr(msg, "model="));
+}
+
+////////////////////////////
+//	        IS      DEVICE      FILTER      WHEEL
+bool IsDeviceFilterWheel( const std::string & msg )
+{
+    std::string str = GetItemFromFindStr(  msg, "deviceType=" );
+
+    return ( 0 == str.compare("filterWheel" ) ? true : false );
+}
+
+////////////////////////////
+//	        IS  	ASCENT
+bool IsAscent( const std::string & msg )
+{
+	std::string model = GetItemFromFindStr(  msg, "model=" );
+	std::string ascent("Ascent");
+    return( 0 == model .compare( 0, ascent.size(), ascent ) ? true : false );
+}
+
+////////////////////////////
+//	        IS  	ASPEN
+bool IsAspen( const std::string & msg )
+{
+	std::string model = GetItemFromFindStr(  msg, "model=" );
+	std::string aspen("Aspen");
+    return( 0 == model .compare( 0, aspen.size(), aspen ) ? true : false );
+}
+
+////////////////////////////
+//		CHECK	STATUS
+void checkStatus( const Apg::Status status )
+{
+	switch( status )
+	{
+		case Apg::Status_ConnectionError:
+		{
+			std::string errMsg("Status_ConnectionError");
+			std::runtime_error except( errMsg );
+			throw except;
+		}
+		break;
+
+		case Apg::Status_DataError:
+		{
+			std::string errMsg("Status_DataError");
+			std::runtime_error except( errMsg );
+			throw except;
+		}
+		break;
+
+		case Apg::Status_PatternError:
+		{
+			std::string errMsg("Status_PatternError");
+			std::runtime_error except( errMsg );
+			throw except;
+		}
+		break;
+
+		case Apg::Status_Idle:
+		{
+			std::string errMsg("Status_Idle");
+			std::runtime_error except( errMsg );
+			throw except;
+		}
+		break;
+
+		default:
+			//no op on purpose
+		break;
+	}
+}
+
+
 static bool apogee_open(indigo_device *device) {
+	uint16_t id = GetID(PRIVATE_DATA->discovery_string);
+	uint16_t frmwrRev = GetFrmwrRev(PRIVATE_DATA->discovery_string);
+
+	char firmwareStr[16];
+	snprintf(firmwareStr, 16, "0x%X", frmwrRev);
+	std::string firmwareRev = std::string(firmwareStr);
+	CamModel::PlatformType model = GetModel(PRIVATE_DATA->discovery_string);
+
+	std::string ioInterface = std::string("usb");
+	std::string addr = GetUsbAddress(PRIVATE_DATA->discovery_string);
+
+	switch (model) {
+		case CamModel::ALTAU:
+		case CamModel::ALTAE:
+			PRIVATE_DATA->camera = new Alta();
+			break;
+
+		case CamModel::ASPEN:
+			PRIVATE_DATA->camera = new Aspen();
+			break;
+
+		case CamModel::ALTAF:
+			PRIVATE_DATA->camera = new AltaF();
+			break;
+
+		case CamModel::ASCENT:
+			PRIVATE_DATA->camera = new Ascent();
+			break;
+
+		case CamModel::QUAD:
+			PRIVATE_DATA->camera = new Quad();
+			break;
+
+		default:
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Model %s is not supported by the INDI Apogee driver.", GetItemFromFindStr(PRIVATE_DATA->discovery_string, "model=").c_str());
+			return false;
+			break;
+	}
+
+	try {
+		PRIVATE_DATA->camera->OpenConnection(ioInterface, addr, frmwrRev, id);
+		PRIVATE_DATA->camera->Init();
+	} catch (std::runtime_error &err) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error opening camera: %s", err.what());
+		return false;
+	}
 	/*
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
@@ -271,17 +509,22 @@ static bool apogee_set_cooler(indigo_device *device, bool status, double target,
 
 
 static void apogee_close(indigo_device *device) {
-
 	if (!device->is_connected) return;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (--PRIVATE_DATA->count_open == 0) {
-		//ASICloseCamera(PRIVATE_DATA->dev_id);
-		indigo_global_unlock(device);
-		if (PRIVATE_DATA->buffer != NULL) {
-			free(PRIVATE_DATA->buffer);
-			PRIVATE_DATA->buffer = NULL;
+	if (PRIVATE_DATA->camera != NULL) {
+		try {
+			PRIVATE_DATA->camera->CloseConnection();
+		} catch (std::runtime_error &err) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error closing camera: %s", err.what());
 		}
+		delete(PRIVATE_DATA->camera);
+		PRIVATE_DATA->camera = NULL;
+		indigo_global_unlock(device);
+	}
+	if (PRIVATE_DATA->buffer != NULL) {
+		free(PRIVATE_DATA->buffer);
+		PRIVATE_DATA->buffer = NULL;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
@@ -543,196 +786,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 	return indigo_ccd_detach(device);
 }
 
-
-std::vector<std::string> GetDeviceVector( const std::string & msg ) {
-	std::vector<std::string> devices;
-	const std::string startDelim("<d>");
-	const std::string stopDelim("</d>");
-
-	size_t pos = 0;
-	bool find = true;
-	while( find ) {
-		size_t posStart = msg.find( startDelim, pos );
-		if( std::string::npos == posStart ) {
-			break;
-		}
-		size_t posStop = msg.find( stopDelim, posStart+1 );
-		if( std::string::npos == posStop ) {
-			break;
-		}
-		size_t strLen = (posStop - posStart) - startDelim.size();
-		std::string sub = msg.substr( posStart+startDelim.size(), strLen );
-		devices.push_back( sub );
-		pos = 1+posStop;
-	}
-	return devices;
-}
-
-std::vector<std::string> MakeTokens(const std::string &str, const std::string &separator)
-{
-	std::vector<std::string> returnVector;
-	std::string::size_type start = 0;
-	std::string::size_type end = 0;
-
-	while( (end = str.find(separator, start)) != std::string::npos)
-	{
-		returnVector.push_back (str.substr (start, end-start));
-		start = end + separator.size();
-	}
-
-	returnVector.push_back( str.substr(start) );
-
-	return returnVector;
-}
-
-///////////////////////////
-//	GET    ITEM    FROM     FIND       STR
-std::string GetItemFromFindStr( const std::string & msg,
-				const std::string & item )
-{
-
-	//search the single device input string for the requested item
-    std::vector<std::string> params = MakeTokens( msg, "," );
-	std::vector<std::string>::iterator iter;
-
-	for(iter = params.begin(); iter != params.end(); ++iter)
-	{
-	   if( std::string::npos != (*iter).find( item ) )
-	   {
-		 std::string result = MakeTokens( (*iter), "=" ).at(1);
-
-		 return result;
-	   }
-	} //for
-
-	std::string noOp;
-	return noOp;
-}
-
-////////////////////////////
-//	GET		INTERFACE
-std::string GetInterface( const std::string & msg )
-{
-    return GetItemFromFindStr( msg, "interface=" );
-}
-
-////////////////////////////
-//	GET		USB  ADDRESS
-std::string GetUsbAddress( const std::string & msg )
-{
-    return GetItemFromFindStr( msg, "address=" );
-}
-////////////////////////////
-//	GET		ETHERNET  ADDRESS
-std::string GetEthernetAddress( const std::string & msg )
-{
-    std::string addr = GetItemFromFindStr( msg, "address=" );
-    addr.append(":");
-    addr.append( GetItemFromFindStr( msg, "port=" ) );
-    return addr;
-}
-////////////////////////////
-//	GET		ID
-uint16_t GetID( const std::string & msg )
-{
-    std::string str = GetItemFromFindStr( msg, "id=" );
-    uint16_t id = 0;
-    std::stringstream ss;
-    ss << std::hex << std::showbase << str.c_str();
-    ss >> id;
-
-    return id;
-}
-
-////////////////////////////
-//	GET		FRMWR       REV
-uint16_t GetFrmwrRev( const std::string & msg )
-{
-    std::string str = GetItemFromFindStr(  msg, "firmwareRev=" );
-
-    uint16_t rev = 0;
-    std::stringstream ss;
-    ss << std::hex << std::showbase << str.c_str();
-    ss >> rev;
-
-    return rev;
-}
-
-CamModel::PlatformType GetModel(const std::string &msg)
-{
-    return CamModel::GetPlatformType(GetItemFromFindStr(msg, "model="));
-}
-
-////////////////////////////
-//	        IS      DEVICE      FILTER      WHEEL
-bool IsDeviceFilterWheel( const std::string & msg )
-{
-    std::string str = GetItemFromFindStr(  msg, "deviceType=" );
-
-    return ( 0 == str.compare("filterWheel" ) ? true : false );
-}
-
-////////////////////////////
-//	        IS  	ASCENT
-bool IsAscent( const std::string & msg )
-{
-	std::string model = GetItemFromFindStr(  msg, "model=" );
-	std::string ascent("Ascent");
-    return( 0 == model .compare( 0, ascent.size(), ascent ) ? true : false );
-}
-
-////////////////////////////
-//	        IS  	ASPEN
-bool IsAspen( const std::string & msg )
-{
-	std::string model = GetItemFromFindStr(  msg, "model=" );
-	std::string aspen("Aspen");
-    return( 0 == model .compare( 0, aspen.size(), aspen ) ? true : false );
-}
-
-////////////////////////////
-//		CHECK	STATUS
-void checkStatus( const Apg::Status status )
-{
-	switch( status )
-	{
-		case Apg::Status_ConnectionError:
-		{
-			std::string errMsg("Status_ConnectionError");
-			std::runtime_error except( errMsg );
-			throw except;
-		}
-		break;
-
-		case Apg::Status_DataError:
-		{
-			std::string errMsg("Status_DataError");
-			std::runtime_error except( errMsg );
-			throw except;
-		}
-		break;
-
-		case Apg::Status_PatternError:
-		{
-			std::string errMsg("Status_PatternError");
-			std::runtime_error except( errMsg );
-			throw except;
-		}
-		break;
-
-		case Apg::Status_Idle:
-		{
-			std::string errMsg("Status_Idle");
-			std::runtime_error except( errMsg );
-			throw except;
-		}
-		break;
-
-		default:
-			//no op on purpose
-		break;
-	}
-}
 
 // -------------------------------------------------------------------------------- hot-plug support
 
