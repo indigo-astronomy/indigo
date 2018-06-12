@@ -296,7 +296,7 @@ static bool apogee_open(indigo_device *device) {
 
 	std::string ioInterface = GetItemFromFindStr(PRIVATE_DATA->discovery_string, "interface=");
 	std::string addr;
-	if (ioInterface.compare("usb")) {
+	if (!ioInterface.compare("usb")) {
 		addr = GetUsbAddress(PRIVATE_DATA->discovery_string);
 	} else {
 		addr = GetEthernetAddress(PRIVATE_DATA->discovery_string);
