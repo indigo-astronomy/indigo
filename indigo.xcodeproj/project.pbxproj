@@ -577,6 +577,7 @@
 		9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fcusb_main.c; sourceTree = "<group>"; };
 		9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_focuser_fcusb.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_fcusb.h; sourceTree = "<group>"; };
+		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
 		9DB918011DF8546800678721 /* indigo_mount_lx200.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_lx200.h; sourceTree = "<group>"; };
@@ -1093,6 +1094,7 @@
 				59C4C88020CEF107007EE330 /* indigo_focuser_wemacro.h */,
 				59C4C88120CEF107007EE330 /* indigo_focuser_wemacro_main.c */,
 				59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */,
+				9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */,
 			);
 			path = focuser_wemacro;
 			sourceTree = "<group>";

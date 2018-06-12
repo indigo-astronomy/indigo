@@ -1,0 +1,1 @@
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1A86", ATTRS{idProduct}=="7523", MODE="0666", SYMLINK+="wemacro_rail"
