@@ -88,7 +88,7 @@ typedef struct {
 	indigo_timer *exposure_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
 	long int buffer_size;
-	unsigned short *buffer;
+	unsigned char *buffer;
 	char serial[255];
 	bool can_check_temperature;
 } apogee_private_data;
@@ -294,9 +294,15 @@ static bool apogee_open(indigo_device *device) {
 	std::string firmwareRev = std::string(firmwareStr);
 	CamModel::PlatformType model = GetModel(PRIVATE_DATA->discovery_string);
 
-	std::string ioInterface = std::string("usb");
-	std::string addr = GetUsbAddress(PRIVATE_DATA->discovery_string);
+	std::string ioInterface = GetItemFromFindStr(PRIVATE_DATA->discovery_string, "interface=");
+	std::string addr;
+	if (ioInterface.compare("usb")) {
+		addr = GetUsbAddress(PRIVATE_DATA->discovery_string);
+	} else {
+		addr = GetEthernetAddress(PRIVATE_DATA->discovery_string);
+	}
 
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	switch (model) {
 		case CamModel::ALTAU:
 		case CamModel::ALTAE:
@@ -325,54 +331,28 @@ static bool apogee_open(indigo_device *device) {
 			break;
 	}
 
+	ApogeeCam *camera = PRIVATE_DATA->camera;
 	try {
-		PRIVATE_DATA->camera->OpenConnection(ioInterface, addr, frmwrRev, id);
-		PRIVATE_DATA->camera->Init();
+		camera->OpenConnection(ioInterface, addr, frmwrRev, id);
+		camera->Init();
 	} catch (std::runtime_error &err) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error opening camera: %s", err.what());
+		try {
+			camera->CloseConnection();
+		} catch (std::runtime_error &err) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error closing camera: %s", err.what());
+		}
+		delete(camera);
+		PRIVATE_DATA->camera = NULL;
 		return false;
 	}
-	/*
-	int id = PRIVATE_DATA->dev_id;
-	ASI_ERROR_CODE res;
 
-	if (device->is_connected) return false;
-
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (PRIVATE_DATA->count_open++ == 0) {
-		if (indigo_try_global_lock(device) != INDIGO_OK) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			PRIVATE_DATA->count_open--;
-			return false;
-		}
-		res = ASIOpenCamera(id);
-		if (res) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIOpenCamera(%d) = %d", id, res);
-			PRIVATE_DATA->count_open--;
-			return false;
-		}
-		res = ASIInitCamera(id);
-		if (res) {
-			ASICloseCamera(id);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIInitCamera(%d) = %d", id, res);
-			PRIVATE_DATA->count_open--;
-			return false;
-		}
-		if (PRIVATE_DATA->buffer == NULL) {
-			if(PRIVATE_DATA->info.IsColorCam)
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*3 + FITS_HEADER_SIZE;
-			else
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*2 + FITS_HEADER_SIZE;
-
-			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
-		}
+	if (PRIVATE_DATA->buffer == NULL) {
+		PRIVATE_DATA->buffer_size = camera->GetMaxImgCols() * camera->GetMaxImgRows() * 2 + FITS_HEADER_SIZE;
+		PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 	}
-	PRIVATE_DATA->is_asi120 = strstr(PRIVATE_DATA->info.Name, "ASI120M") != NULL;
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	*/
 	return true;
 }
 
