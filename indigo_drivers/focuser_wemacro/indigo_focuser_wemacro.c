@@ -92,8 +92,8 @@ static char *wemacro_reader(indigo_device *device) {
 		int result = indigo_read(PRIVATE_DATA->handle, (char *)in, sizeof(in));
 		if (result == sizeof(in)) {
 			INDIGO_DEBUG_DRIVER(indigo_debug("WeMacro > %02x %02x %02x", in[0], in[1], in[2]));
-			if (in[2] == 0xf5 || in[2] == 0xf6) {
-				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				if (in[2] == 0xf5 || in[2] == 0xf6) {
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				}
@@ -105,10 +105,17 @@ static char *wemacro_reader(indigo_device *device) {
 //					X_RAIL_MOVE_BACK_PROPERTY->state = INDIGO_OK_STATE;
 //					indigo_update_property(device, X_RAIL_MOVE_BACK_PROPERTY, NULL);
 //				}
-				if (X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
+			} else if (X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				if (in[2] == 0xf7) {
+					X_RAIL_EXECUTE_COUNT_ITEM->number.value--;
 				}
+				if (X_RAIL_CONFIG_BACK_ITEM->sw.value) {
+					if (in[2] == 0xf6)
+						X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
+				} else if (X_RAIL_EXECUTE_COUNT_ITEM->number.value == 0) {
+					X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 			}
 		}
 	}
@@ -280,8 +287,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 			wemacro_command(device, 0x20, 0, 0, 0, 0);
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			X_RAIL_EXECUTE_COUNT_ITEM->number.value = 0;
+			X_RAIL_EXECUTE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		}
