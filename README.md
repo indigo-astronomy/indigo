@@ -52,6 +52,7 @@ This is the list of requirements taken into the consideration:
 28. NMEA 0183 GPS driver
 29. Andor CCD driver (32/64-bit Intel Linux only)
 30. WeMacro Rail  focuser driver
+31. EQMac guider driver (Mac only)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
