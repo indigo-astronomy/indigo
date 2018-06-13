@@ -45,7 +45,7 @@
 int indigo_open_serial(const char *dev_file) {
 	int dev_fd;
 	struct termios options;
-	if ((dev_fd = open(dev_file, O_RDWR | O_NOCTTY | O_SYNC))==-1) {
+	if ((dev_fd = open(dev_file, O_RDWR | O_NOCTTY | O_SYNC)) == -1) {
 		return -1;
 	}
 	memset(&options, 0, sizeof options);

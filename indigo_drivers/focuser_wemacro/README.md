@@ -23,6 +23,6 @@ indigo_server indigo_focuser_wemacro
 
 You will need system level driver to recognise CH-341 usb-to-serial controller (e.g. this one https://www.mac-usb-serial.com for macOS).
 
-## Status: Under development
+## Status: Stable
 
 Driver is developed and tested with the physical hardware.
