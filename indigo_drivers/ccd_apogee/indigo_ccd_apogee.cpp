@@ -595,6 +595,31 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					if (PRIVATE_DATA->has_temperature_sensor) {
 						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 					}
+					ApogeeCam *camera = PRIVATE_DATA->camera;
+					int image_width = camera->GetMaxImgCols();
+					int image_height = camera->GetMaxImgRows();
+					CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = image_width;
+					CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = image_height;
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(camera->GetPixelWidth() * 100)/100;
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(camera->GetPixelHeight() * 100) / 100;
+					CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_MODE_PROPERTY->count = 3;
+					char name[32];
+					sprintf(name, "RAW 16 %dx%d", image_width, image_height);
+					indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+					sprintf(name, "RAW 16 %dx%d", image_width/2, image_height/2);
+					indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+					sprintf(name, "RAW 16 %dx%d", image_width/4, image_height/4);
+					indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
+
+					CCD_COOLER_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_COOLER_POWER_PROPERTY->hidden = false;
+					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+					//bool status;
+					//libatik_check_cooler(PRIVATE_DATA->device_context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature);
+					PRIVATE_DATA->target_temperature = 0;
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 
 					device->is_connected = true;
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
