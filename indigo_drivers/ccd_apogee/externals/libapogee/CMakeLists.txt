@@ -49,8 +49,10 @@ target_link_libraries(apogee ${USB1_LIBRARIES} ${CURL_LIBRARY} ${Boost_LIBRARIES
 
 install(TARGETS apogee LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-file(GLOB libapogee_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
-install( FILES ${libapogee_HEADERS} DESTINATION include/libapogee COMPONENT Devel)
+IF(NOT SKIP_H_INSTALL MATCHES "True")
+	file(GLOB libapogee_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+	install( FILES ${libapogee_HEADERS} DESTINATION include/libapogee COMPONENT Devel)
+ENDIF(NOT SKIP_H_INSTALL MATCHES "True")
 
 install(
    CODE "
