@@ -448,8 +448,12 @@ static bool apogee_read_pixels(indigo_device *device) {
 static bool apogee_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int res;
-	//ASI_ERROR_CODE err = ASIStopExposure(PRIVATE_DATA->dev_id);
-
+	try {
+		PRIVATE_DATA->camera->StopExposure(false);
+	} catch (std::runtime_error err) {
+		std::string text = err.what();
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StopExposure(): %s", text.c_str());
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if(res) return false;
 	else return true;
