@@ -596,12 +596,35 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 					}
 					ApogeeCam *camera = PRIVATE_DATA->camera;
-					int image_width = camera->GetMaxImgCols();
-					int image_height = camera->GetMaxImgRows();
+					uint16_t image_width = 0;
+					uint16_t image_height = 0;
+					double pixel_width = 0;
+					double pixel_height = 0;
+					uint16_t max_bin_x = 0;
+					uint16_t max_bin_y = 0;
+					std::string serial_no;
+					try {
+						image_width = camera->GetMaxImgCols();
+						image_height = camera->GetMaxImgRows();
+						pixel_width = camera->GetPixelWidth();
+						pixel_height = camera->GetPixelHeight();
+						max_bin_x = camera->GetMaxBinCols();
+						max_bin_y = camera->GetMaxBinCols();
+						serial_no = camera->GetSerialNumber();
+					} catch (std::runtime_error err) {
+							std::string text = err.what();
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get camera info: %s", text.c_str());
+					}
 					CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = image_width;
 					CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = image_height;
-					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(camera->GetPixelWidth() * 100)/100;
-					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(camera->GetPixelHeight() * 100) / 100;
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(pixel_width * 100)/100;
+					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(pixel_height * 100) / 100;
+
+					INFO_PROPERTY->count = 7;
+					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_no.c_str(), INDIGO_VALUE_SIZE);
+					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "0x%x", GetFrmwrRev(PRIVATE_DATA->discovery_string));
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+
 					CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 					CCD_MODE_PROPERTY->count = 3;
 					char name[32];
@@ -611,6 +634,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
 					sprintf(name, "RAW 16 %dx%d", image_width/4, image_height/4);
 					indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
+
+					CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+					CCD_BIN_PROPERTY->hidden = false;
+					CCD_BIN_HORIZONTAL_ITEM->number.min = CCD_BIN_HORIZONTAL_ITEM->number.value = 1;
+					CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin_x;
+					CCD_BIN_VERTICAL_ITEM->number.min = CCD_BIN_VERTICAL_ITEM->number.value = 1;
+					CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin_y;
 
 					CCD_COOLER_PROPERTY->hidden = false;
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
