@@ -213,6 +213,11 @@ CamModel::PlatformType GetModel(const std::string &msg)
     return CamModel::GetPlatformType(GetItemFromFindStr(msg, "model="));
 }
 
+std::string GetModelName(const std::string &msg)
+{
+    return GetItemFromFindStr(msg, "model=");
+}
+
 ////////////////////////////
 //	        IS      DEVICE      FILTER      WHEEL
 bool IsDeviceFilterWheel( const std::string & msg )
@@ -578,6 +583,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		PRIVATE_DATA->can_check_temperature = true;
+		INFO_PROPERTY->count = 7;
+		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, GetModelName(PRIVATE_DATA->discovery_string).c_str(), INDIGO_VALUE_SIZE);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -623,8 +630,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = image_height;
 					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(pixel_width * 100)/100;
 					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(pixel_height * 100) / 100;
+					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 
-					INFO_PROPERTY->count = 7;
 					strncpy(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_no.c_str(), INDIGO_VALUE_SIZE);
 					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "0x%x", GetFrmwrRev(PRIVATE_DATA->discovery_string));
 					indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -895,7 +902,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		memcpy(device, &ccd_template, sizeof(indigo_device));
 		device->private_data = private_data;
 		PRIVATE_DATA->discovery_string = discovery_string;
-		std::string model = GetItemFromFindStr(discovery_string, "model=");
+		std::string model = GetModelName(discovery_string);
 		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s #%d", model.c_str(), id);
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			if (devices[j] == NULL) {
