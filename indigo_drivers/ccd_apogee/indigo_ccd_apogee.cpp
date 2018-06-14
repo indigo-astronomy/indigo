@@ -332,9 +332,13 @@ static bool apogee_open(indigo_device *device) {
 	}
 
 	ApogeeCam *camera = PRIVATE_DATA->camera;
+	uint16_t image_width = 0;
+	uint16_t image_height = 0;
 	try {
 		camera->OpenConnection(ioInterface, addr, frmwrRev, id);
 		camera->Init();
+		image_width = camera->GetMaxImgCols();
+		image_height = camera->GetMaxImgRows();
 	} catch (std::runtime_error &err) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error opening camera: %s", err.what());
 		try {
@@ -348,7 +352,7 @@ static bool apogee_open(indigo_device *device) {
 	}
 
 	if (PRIVATE_DATA->buffer == NULL) {
-		PRIVATE_DATA->buffer_size = camera->GetMaxImgCols() * camera->GetMaxImgRows() * 2 + FITS_HEADER_SIZE;
+		PRIVATE_DATA->buffer_size = image_height * image_width * 2 + FITS_HEADER_SIZE;
 		PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 	}
 
