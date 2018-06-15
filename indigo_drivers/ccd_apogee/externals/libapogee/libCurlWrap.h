@@ -38,7 +38,7 @@ class CLibCurlWrap
             const std::string & postFields, 
             std::vector<uint8_t> & result);
 
-		void setTimeout( int timeout );
+		void setTimeout(int timeout);
 		unsigned int getTimeout();
 
         std::string GetVerison();

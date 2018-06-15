@@ -18,13 +18,14 @@
 #include <vector>
 #include <stdint.h>
 
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 #include "CameraStatusRegs.h" 
 #include "CameraInfo.h" 
-#include "DefDllExport.h"
-
-
 
 class PlatformData;
 class CApnCamData;
@@ -33,7 +34,7 @@ class ModeFsm;
 class CcdAcqParams;
 class ApgTimer;
 
-class DLL_EXPORT ApogeeCam 
+class ApogeeCam 
 { 
     public: 
 
@@ -57,14 +58,14 @@ class DLL_EXPORT ApogeeCam
          *  \return Register value
          *  \exception std::runtime_error 
          */
-        uint16_t ReadReg( uint16_t reg );
+        uint16_t ReadReg(uint16_t reg);
 
         /*! 
          * \param [in] reg Register
          * \param [in] value Value to write
          * \exception std::runtime_error
          */
-        void WriteReg( uint16_t reg,  uint16_t value);
+        void WriteReg(uint16_t reg,  uint16_t value);
         
         /*! 
          * Sets the number of imaging ROI rows
@@ -72,7 +73,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] rows number of rows, 1 to GetMaxImgRows() is the valid value range.
          * \exception std::runtime_error
          */
-        void SetRoiNumRows( uint16_t rows );
+        void SetRoiNumRows(uint16_t rows);
 
         /*! 
          * Sets the number of imaging ROI columns.
@@ -81,7 +82,7 @@ class DLL_EXPORT ApogeeCam
          * For imaging the overscan columns maximum is GetMaxImgCols() + GetNumOverscanCols().
          * \exception std::runtime_error
          */
-        void SetRoiNumCols( uint16_t cols );
+        void SetRoiNumCols(uint16_t cols);
 
         /*! 
          * Returns the number of imaging ROI rows
@@ -100,14 +101,14 @@ class DLL_EXPORT ApogeeCam
          * \param [in] row 0 to GetMaxImgRows() -1 is the valid value range.
          * \exception std::runtime_error
          */
-        void SetRoiStartRow( uint16_t row );
+        void SetRoiStartRow(uint16_t row);
 
         /*! 
          * Sets the starting column for the imaging ROI. 0 is the default value.
          * \param [in] col 0 to GetMaxImgCols() -1 is the valid value range.
          * \exception std::runtime_error
          */
-        void SetRoiStartCol( uint16_t col );
+        void SetRoiStartCol(uint16_t col);
 
         /*! 
          * Returns the starting row for the imaging ROI
@@ -128,7 +129,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] bin Valid range is 1 - GetMaxBinRows()
          * \exception std::runtime_error
          */
-        void SetRoiBinRow( uint16_t bin );
+        void SetRoiBinRow(uint16_t bin);
 
         /*! 
          * Returns the number of binning rows.
@@ -143,7 +144,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] bin Valid range is 1 - GetMaxBinCols()
          * \exception std::runtime_error
          */
-        void SetRoiBinCol( uint16_t bin );
+        void SetRoiBinCol(uint16_t bin);
 
         /*! 
          * Returns the number of binning columns.
@@ -163,7 +164,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] count Number of image in the sequence to acquire.
          * \exception std::runtime_error
          */
-        void SetImageCount( uint16_t count );
+        void SetImageCount(uint16_t count);
 
         /*! 
          * Returns the number of sequence images set by the user.
@@ -181,12 +182,12 @@ class DLL_EXPORT ApogeeCam
 
         /*! 
          * Time delay between images of the sequence.  Dependent on 
-         * SetVariableSequenceDelay( bool variable ). 
+         * SetVariableSequenceDelay(bool variable). 
          * The default value of this variable after initialization is 327us.
          * \param [in] delay The valid range is from  327us to 21.42s.
          * \exception std::runtime_error
          */
-        void SetSequenceDelay( double delay );
+        void SetSequenceDelay(double delay);
 
         /*! 
          * Returns he amount of time between the close of the 
@@ -203,7 +204,7 @@ class DLL_EXPORT ApogeeCam
          * from the beginning of the last exposure to the beginning of the next exposure.
          * \exception std::runtime_error
          */
-        void SetVariableSequenceDelay( bool variable );
+        void SetVariableSequenceDelay(bool variable);
 
         /*! 
          * Returns the variable sequence delay state.
@@ -214,11 +215,11 @@ class DLL_EXPORT ApogeeCam
         /*! 
          * Rate between TDI rows.  The default value for this variable 
          * after initialization is 0.100s. Modifying this property also changes 
-         * the value of the SetKineticsShiftInterval( double  interval ) property.
+         * the value of the SetKineticsShiftInterval(double  interval) property.
          * \param [in] TdiRate Range is from 5.12us to 336ms. 
          * \exception std::runtime_error
          */
-        void SetTdiRate( double TdiRate );
+        void SetTdiRate(double TdiRate);
 
         /*! 
          * Returns the rate between TDI rows.
@@ -230,11 +231,11 @@ class DLL_EXPORT ApogeeCam
          * Total number of rows in the TDI image.  The default value 
          * for this variable after initialization is 1. Modifying this property 
          * also changes the value of the 
-         * SetKineticsSections( uint16_t sections ) property.
+         * SetKineticsSections(uint16_t sections) property.
          * \param [in] TdiRows Range is between 1 and 65535.
          * \exception std::runtime_error
          */
-        void SetTdiRows( uint16_t TdiRows );
+        void SetTdiRows(uint16_t TdiRows);
 
         /*! 
          * Returns the total number of rows in the TDI image.
@@ -254,12 +255,12 @@ class DLL_EXPORT ApogeeCam
          * The row (vertical) binning of a TDI image.
          * The default value for this variable after initialization is 1. 
          * Modifying this property also changes the value of the 
-         * SetKineticsSectionHeight( uint16_t height ) property.
+         * SetKineticsSectionHeight(uint16_t height) property.
          * \param [in] bin  The valid range for this variable is between 1 
          * and the corresponding value of  GetMaxBinRows(). 
          * \exception std::runtime_error
          */
-        void SetTdiBinningRows( uint16_t bin );
+        void SetTdiBinningRows(uint16_t bin);
 
         /*! 
          * Returns the number TDI binning rows
@@ -269,13 +270,13 @@ class DLL_EXPORT ApogeeCam
         
         /*! 
          * Set the vertical height for a Kinetics Mode section. Modifying this 
-         * property also changes the value of the SetTdiBinningRows( uint16_t bin ) 
+         * property also changes the value of the SetTdiBinningRows(uint16_t bin) 
          * variable. The default value for this variable after initialization is 1.
          * \param [in] height Valid range for this variable is between 1 
          * and the corresponding value of  GetMaxBinRows(). 
          * \exception std::runtime_error
          */
-        void SetKineticsSectionHeight( uint16_t height );
+        void SetKineticsSectionHeight(uint16_t height);
 
         /*! 
          * Returns the vertical height for a Kinetics Mode section.
@@ -286,11 +287,11 @@ class DLL_EXPORT ApogeeCam
         /*! 
          * Sets the number of sections in a Kinetics Mode image.
          * Modifying this property  also changes the value of the 
-         * SetTdiRows( uint16_t TdiRows )
+         * SetTdiRows(uint16_t TdiRows)
          * \param [in] sections Valid range is 1 to 65535.
          * \exception std::runtime_error
          */
-        void SetKineticsSections( uint16_t sections );
+        void SetKineticsSections(uint16_t sections);
 
         /*! 
          * Retruns the number of sections in a Kinetics Mode image.
@@ -302,11 +303,11 @@ class DLL_EXPORT ApogeeCam
          * Sets the incremental rate between Kinetics Mode sections.
          * The default value for this variable 
          * after initialization is 0.100s. Modifying this property also changes 
-         * the value of SetTdiRate( double TdiRate ).
+         * the value of SetTdiRate(double TdiRate).
          * \param [in] interval The valid range is from 5.12us to 336ms. 
          * \exception std::runtime_error
          */
-        void SetKineticsShiftInterval( double  interval );
+        void SetKineticsShiftInterval(double  interval);
 
         /*! 
          * Returns the incremental rate between Kinetics Mode sections.
@@ -323,7 +324,7 @@ class DLL_EXPORT ApogeeCam
          * maximum value is 167ms (2.56us/bit resolution).
          * \exception std::runtime_error
          */
-        void SetShutterStrobePosition( double position );
+        void SetShutterStrobePosition(double position);
 
         /*! 
          * Returns the shutter strobe position.
@@ -339,7 +340,7 @@ class DLL_EXPORT ApogeeCam
          * value is 2.6ms (40ns/bit resolution).
          * \exception std::runtime_error
          */
-        void SetShutterStrobePeriod( double period );
+        void SetShutterStrobePeriod(double period);
 
         /*! 
          * Returns ths shutter strobe period.
@@ -357,7 +358,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] delay
          * \exception std::runtime_error
          */
-        void SetShutterCloseDelay( double delay );
+        void SetShutterCloseDelay(double delay);
 
         /*! 
          * Returns the shutter close delay
@@ -375,7 +376,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] point Desired backoff point.  Must be greater than 0.
          * \exception std::runtime_error
          */
-        void SetCoolerBackoffPoint( double point );
+        void SetCoolerBackoffPoint(double point);
 
         /*! 
          * Returns the cooler backoff temperature in Celsius. 
@@ -393,7 +394,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] point Desired cooler set point
          * \exception std::runtime_error
          */
-        void SetCoolerSetPoint( double point );
+        void SetCoolerSetPoint(double point);
 
         /*! 
          * Returns the desired cooler temperature in Celsius.
@@ -413,7 +414,7 @@ class DLL_EXPORT ApogeeCam
          * is Apg::CameraMode_Normal.
          * \exception std::runtime_error
          */
-        void SetCameraMode( Apg::CameraMode mode );
+        void SetCameraMode(Apg::CameraMode mode);
 
         /*! 
          * Enables/Disables very fast back to back exposures for interline CCDs only.
@@ -426,7 +427,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] TurnOn true enables fast sequences, false disables this feature
          * \exception std::runtime_error
          */
-        void SetFastSequence( bool TurnOn );
+        void SetFastSequence(bool TurnOn);
 
         /*! 
          * Retruns the state of fast sequences (true = on, false = off)
@@ -446,7 +447,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] TurnOn true enables bulk download, false disables this feature
          * \exception std::runtime_error
          */
-        void SetBulkDownload( bool TurnOn );
+        void SetBulkDownload(bool TurnOn);
 
         /*! 
          * Returns the state of bulk downloads (true = on, false = off)
@@ -465,7 +466,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] TurnOn true enables pipelined download, false disables this feature
          * \exception std::runtime_error
          */
-        void SetPipelineDownload( bool TurnOn );
+        void SetPipelineDownload(bool TurnOn);
 
         /*! 
          * Returns the state of pipelined downloads (true = on, false = off)
@@ -497,7 +498,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] assignment The valid range is for the 6 LSBs, 0x0 to 0x3F.
          * \exception std::runtime_error
          */
-        void SetIoPortAssignment( uint16_t assignment );
+        void SetIoPortAssignment(uint16_t assignment);
 
         /*! 
          * Returns the I/O port's signal usage.
@@ -509,7 +510,7 @@ class DLL_EXPORT ApogeeCam
          *
          * \exception std::runtime_error
          */
-        void SetIoPortBlankingBits( uint16_t blankingBits );
+        void SetIoPortBlankingBits(uint16_t blankingBits);
 
         /*! 
          *
@@ -530,7 +531,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] direction Valid range is for the 6 LSBs, 0x0 to 0x3F.
          * \exception std::runtime_error
          */
-        void SetIoPortDirection( uint16_t direction );
+        void SetIoPortDirection(uint16_t direction);
 
         /*! 
          * Returns the IO Port Direction.
@@ -546,7 +547,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] data Valid range of this property is for the 6 LSBs, 0x0 to 0x3F.
          * \exception std::runtime_error
          */
-        void SetIoPortData( uint16_t data );
+        void SetIoPortData(uint16_t data);
 
         /*! 
          * Returns the I/O port data.
@@ -561,10 +562,10 @@ class DLL_EXPORT ApogeeCam
          * \ param [in] TurnOn, true turn IR pre-flash on, false turns pre-flash off.
          * \exception std::runtime_error
          */
-        void SetPreFlash( bool TurnOn ) { m_IsPreFlashOn = TurnOn; }
+        void SetPreFlash(bool TurnOn) { m_IsPreFlashOn = TurnOn; }
 
         /*! 
-         * Returns IR pre-flash state ( true = turned on, false = turned off )
+         * Returns IR pre-flash state (true = turned on, false = turned off)
          * \exception std::runtime_error
          */
         bool GetPreFlash() { return m_IsPreFlashOn; }
@@ -577,8 +578,8 @@ class DLL_EXPORT ApogeeCam
          * \param [in] trigType Trigger Type
          * \exception std::runtime_error
          */
-        void SetExternalTrigger( bool TurnOn, Apg::TriggerMode trigMode,
-            Apg::TriggerType trigType );
+        void SetExternalTrigger(bool TurnOn, Apg::TriggerMode trigMode,
+            Apg::TriggerType trigType);
 
         /*! 
          * Returns true if normal each trigger is on, false if off.
@@ -621,7 +622,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] state Desired shutter state
          * \exception std::runtime_error
          */
-        void SetShutterState( Apg::ShutterState state );
+        void SetShutterState(Apg::ShutterState state);
 
         /*! 
          * Returns the current shutter state.
@@ -655,7 +656,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] TurnOn true disables the CCD voltage, false enables voltage
          * \exception std::runtime_error
          */
-        void SetShutterAmpCtrl( bool TurnOn );
+        void SetShutterAmpCtrl(bool TurnOn);
 
         /*! 
          * Returns shutter amp control state (true = CCD voltage disabled, 
@@ -669,7 +670,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] TurnOn true = on, false = off
          * \exception std::runtime_error
          */
-        void SetCooler( bool TurnOn );
+        void SetCooler(bool TurnOn);
 
         /*! 
          * Returns the current cooler status
@@ -709,7 +710,7 @@ class DLL_EXPORT ApogeeCam
          * Sets the camera's acquisition speed. The default value after initialization
          * is Apg::AdcSpeed_Normal.  
          * For the AltaU setting the camera's speed to normal/fast is
-         * the equivalant of SetCcdAdcResolution( 16bit/12bit ).  Calling 
+         * the equivalant of SetCcdAdcResolution(16bit/12bit).  Calling 
          * GetCcdAdcResolution() after setting the ADC speed will return 16bit for
          * normal speed and 12bit for fast.
          */
@@ -786,7 +787,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] state Desired Apg::LedState
          * \exception std::runtime_error
          */
-        void SetLedAState( Apg::LedState state );
+        void SetLedAState(Apg::LedState state);
 
         /*! 
          * Returns the state of LED light A.
@@ -799,7 +800,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] state Desired Apg::LedState
          * \exception std::runtime_error
          */
-        void SetLedBState( Apg::LedState state );
+        void SetLedBState(Apg::LedState state);
 
         /*! 
          * Returns the state of LED light B.
@@ -812,7 +813,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] mode Desired Apg::LedMode
          * \exception std::runtime_error
          */
-        void SetLedMode( Apg::LedMode mode );
+        void SetLedMode(Apg::LedMode mode);
 
         /*! 
          * Returns the mode of LED status lights.
@@ -842,7 +843,7 @@ class DLL_EXPORT ApogeeCam
         /*! 
          * Enables/Disables any flushing command sent by the software 
          * to be recognized or unrecognized by the camera control firmware. 
-         * This property may be used with SetPostExposeFlushing( bool Disable )
+         * This property may be used with SetPostExposeFlushing(bool Disable)
          * to completely stop all flushing operations within the camera. The 
          * default value of this variable after initialization is false. WARNING: This 
          * is a highly specialized property designed for very unique experiments. 
@@ -851,7 +852,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] Disable True disables flushing, false allows flushing after commands
          * \exception std::runtime_error
          */
-        void SetFlushCommands( bool Disable );
+        void SetFlushCommands(bool Disable);
 
         /*! 
          * Retruns if flushing commands have been disabled.
@@ -862,7 +863,7 @@ class DLL_EXPORT ApogeeCam
         /*! 
          * Enables/Disables the camera control firmware to/from immediately 
          * beginning an internal flush cycle after an exposure. This property may 
-         * be used with SetFlushCommands( bool Disable ) to completely stop all flushing 
+         * be used with SetFlushCommands(bool Disable) to completely stop all flushing 
          * operations within the camera. The default value of this variable after 
          * initialization is false.  WARNING: This is a highly specialized property 
          * designed for very unique experiments. Applications and users will not 
@@ -870,7 +871,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] Disable True disables flushing, false allows flushing after exposures
          * \exception std::runtime_error
          */
-        void SetPostExposeFlushing( bool Disable );
+        void SetPostExposeFlushing(bool Disable);
 
         /*! 
          * Retruns if post exposure flushing has been disabled.
@@ -939,7 +940,7 @@ class DLL_EXPORT ApogeeCam
          * \param [out] DeviceId USB device id
          * \exception std::runtime_error
          */
-        void GetUsbVendorInfo( uint16_t & VendorId,
+        void GetUsbVendorInfo(uint16_t & VendorId,
             uint16_t & ProductId, uint16_t  & DeviceId);
 
         /*! 
@@ -956,7 +957,7 @@ class DLL_EXPORT ApogeeCam
          * to either state (i.e. back-to-back true states) have no effect.
          * \exception std::runtime_error
          */
-        void PauseTimer( bool TurnOn );
+        void PauseTimer(bool TurnOn);
 
         /*! 
          * Returns whether the camera supports Serial Port A. 
@@ -981,7 +982,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] bin The valid range for this property is between 1 and GetMaxBinRows(). 
          * \exception std::runtime_error
          */
-        void SetFlushBinningRows( uint16_t bin );
+        void SetFlushBinningRows(uint16_t bin);
 
         /*! 
          * Returns the row (vertical) binning value used during flushing operations. 
@@ -1002,7 +1003,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] TurnOn Toggling the digitize overscan variable
          * \exception std::runtime_error
          */
-        void SetDigitizeOverscan( const bool TurnOn );
+        void SetDigitizeOverscan(const bool TurnOn);
 
         /*! 
          * Sets the analog to digital converter gain value for the given ad and channel.
@@ -1011,7 +1012,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] channel Channel on the ADC to set.  Valid range is 0 to 1 - GetNumAdChannels().
          * \exception std::runtime_error
          */
-        void SetAdcGain( uint16_t gain, int32_t ad, int32_t channel );
+        void SetAdcGain(uint16_t gain, int32_t ad, int32_t channel);
 
         /*! 
          * This function returns the analog to digital converter gain value for the given ad and channel.
@@ -1019,7 +1020,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] channel Channel on the ADC to query.  Valid range is 0 to 1 - GetNumAdChannels().
          * \exception std::runtime_error
          */
-        uint16_t GetAdcGain( int32_t ad, int32_t channel );
+        uint16_t GetAdcGain(int32_t ad, int32_t channel);
 
         /*! 
          * Sets the analog to digital converter offset value for the given ad and channel.
@@ -1028,7 +1029,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] channel Channel on the ADC to set.  Valid range is 0 to 1 - GetNumAdChannels().
          * \exception std::runtime_error
          */
-        void SetAdcOffset( uint16_t offset, int32_t ad, int32_t channel );
+        void SetAdcOffset(uint16_t offset, int32_t ad, int32_t channel);
 
         /*! 
          * This function returns the analog to digital converter offset value for the given ad and channel.
@@ -1036,7 +1037,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] channel Channel on the ADC to query.  Valid range is 0 to 1 - GetNumAdChannels().
          * \exception std::runtime_error
          */
-        uint16_t GetAdcOffset( int32_t ad, int32_t channel );
+        uint16_t GetAdcOffset(int32_t ad, int32_t channel);
 
         /*! 
          * Returns if the Init() function has been called.
@@ -1054,7 +1055,7 @@ class DLL_EXPORT ApogeeCam
          * param [in] TurnOn True turns on simulator mode.  False turns of the simulator.
          * \exception std::runtime_error
          */
-        void SetAdSimMode( bool TurnOn );
+        void SetAdSimMode(bool TurnOn);
 
         /*! 
          * Status of camera simulator mode
@@ -1069,7 +1070,7 @@ class DLL_EXPORT ApogeeCam
          * \param [in] PercentIntensity Valid range is 0-100.
          * \exception std::runtime_error
          */
-        void SetLedBrightness( double PercentIntensity );
+        void SetLedBrightness(double PercentIntensity);
 
         /*! 
          * Returns brightness/intensity level of the LED light within the 
@@ -1114,10 +1115,10 @@ class DLL_EXPORT ApogeeCam
          * camera specfic parameters.
          * \exception std::runtime_error
          */
-        virtual void OpenConnection( const std::string & ioType,
+        virtual void OpenConnection(const std::string & ioType,
             const std::string & DeviceAddr,
             const uint16_t FirmwareRev,
-            const uint16_t Id ) = 0;
+            const uint16_t Id) = 0;
 
         /*! 
          * Closes the IO connection to the camera.  IMPORTANT: If this call is made
@@ -1145,7 +1146,7 @@ class DLL_EXPORT ApogeeCam
          * requires this parameter to be false.
          * \exception std::runtime_error
          */
-        virtual void StartExposure( double Duration, bool IsLight ) = 0;
+        virtual void StartExposure(double Duration, bool IsLight) = 0;
 
         /*! 
          * Returns the camera's status registers as a CameraStatusRegs class.
@@ -1164,7 +1165,7 @@ class DLL_EXPORT ApogeeCam
          * \param [out] out Vector that will recieve the image data
          * \exception std::runtime_error
          */
-        virtual void GetImage( std::vector<uint16_t> & out ) = 0;
+        virtual void GetImage(std::vector<uint16_t> & out) = 0;
 
         /*! 
          * This method halts an in progress exposure. If this method is called 
@@ -1175,7 +1176,7 @@ class DLL_EXPORT ApogeeCam
          * should not  call GetImage().  
          * \exception std::runtime_error
          */
-        virtual void StopExposure( bool Digitize ) = 0;
+        virtual void StopExposure(bool Digitize) = 0;
 
         /*! 
          * Returns the amount of available memory for storing images in terms of kilobytes (KB).
@@ -1212,7 +1213,7 @@ class DLL_EXPORT ApogeeCam
          * PreCondCheck should ALWAYS be set to true.
          * \exception std::runtime_error
          */
-        virtual void SetFanMode( Apg::FanMode mode, bool PreCondCheck = true ) = 0;
+        virtual void SetFanMode(Apg::FanMode mode, bool PreCondCheck = true) = 0;
 
         /*! 
          * Retruns current fan mode.  Ascents always return Apg::FanMode_Off.
@@ -1237,68 +1238,54 @@ class DLL_EXPORT ApogeeCam
         ApogeeCam(CamModel::PlatformType platform) ;
         
         void VerifyFrmwrRev();
-        void LogConnectAndDisconnect( bool Connect );
+        void LogConnectAndDisconnect(bool Connect);
 
         void ExectuePreFlash();
-        void SetExpsoureTime( double Duration );
-        void IssueExposeCmd(  bool IsLight );
+        void SetExpsoureTime(double Duration);
+        void IssueExposeCmd( bool IsLight);
 
-        void IsThereAStatusError( uint16_t statusReg );
+        void IsThereAStatusError(uint16_t statusReg);
 
-        bool IsImgDone( const CameraStatusRegs & statusObj);
-        Apg::Status LogAndReturnStatus( Apg::Status status,
+        bool IsImgDone(const CameraStatusRegs & statusObj);
+        Apg::Status LogAndReturnStatus(Apg::Status status,
             const CameraStatusRegs & statusObj);
 
-        void SupsendCooler( bool & resume );
+        void SupsendCooler(bool & resume);
         void ResumeCooler();
-        void WaitForCoolerSuspendBit( const uint16_t mask, const bool IsHigh );
+        void WaitForCoolerSuspendBit(const uint16_t mask, const bool IsHigh);
 
         void InitShutterCloseDelay();
 
-        void StopExposureModeNorm( bool Digitize );
+        void StopExposureModeNorm(bool Digitize);
         void Reset(bool Flush);
 
-        void HardStopExposure( const std::string & msg );
+        void HardStopExposure(const std::string & msg);
         void GrabImageAndThrowItAway();
 
-        void AdcParamCheck( const int32_t ad, 
-                              const int32_t channel, const std::string & fxName );
+        void AdcParamCheck(const int32_t ad, 
+                              const int32_t channel, const std::string & fxName);
 
-        void SetNumAdOutputs( const uint16_t num );
+        void SetNumAdOutputs(const uint16_t num);
 
-        bool CheckAndWaitForStatus( Apg::Status desired, Apg::Status & acutal );
+        bool CheckAndWaitForStatus(Apg::Status desired, Apg::Status & acutal);
         void CancelExposureNoThrow();
         double DefaultGetTempHeatsink();
 
         void DefaultInit();
         void ClearAllRegisters();
-        void DefaultCfgCamFromId( uint16_t CameraId );
-        void DefaultSetFanMode( Apg::FanMode mode, bool PreCondCheck );
+        void DefaultCfgCamFromId(uint16_t CameraId);
+        void DefaultSetFanMode(Apg::FanMode mode, bool PreCondCheck);
         Apg::FanMode DefaultGetFanMode();
         void DefaultCloseConnection();
 
          // ****** PURE VIRTUAL INTERFACE ********
-        virtual void CfgCamFromId( uint16_t CameraId ) = 0;
+        virtual void CfgCamFromId(uint16_t CameraId) = 0;
         virtual void ExposureAndGetImgRC(uint16_t & r, uint16_t & c) = 0;
         virtual uint16_t ExposureZ() = 0;
         virtual uint16_t GetImageZ() = 0;
         virtual uint16_t GetIlluminationMask() = 0;
-        virtual void FixImgFromCamera( const std::vector<uint16_t> & data,
-            std::vector<uint16_t> & out,  int32_t rows, int32_t cols) = 0;
-                
-//this code removes vc++ compiler warning C4251
-//from http://www.unknownroad.com/rtfm/VisualStudio/warningC4251.html
-#ifdef WIN_OS
-#if _MSC_VER < 1600
-        template class DLL_EXPORT std::shared_ptr<CameraIo>;
-        template class DLL_EXPORT std::shared_ptr<PlatformData>;
-        template class DLL_EXPORT std::shared_ptr<CApnCamData>;
-        template class DLL_EXPORT std::shared_ptr<ModeFsm>;
-        template class DLL_EXPORT std::shared_ptr<CcdAcqParams>;
-        template class DLL_EXPORT std::shared_ptr<ApgTimer>;
-#endif
-#endif
-
+        virtual void FixImgFromCamera(const std::vector<uint16_t> & data,
+				std::vector<uint16_t> & out,  int32_t rows, int32_t cols) = 0;
         std::shared_ptr<CameraIo> m_CamIo;
         std::shared_ptr<PlatformData> m_CameraConsts;
         std::shared_ptr<CApnCamData> m_CamCfgData;

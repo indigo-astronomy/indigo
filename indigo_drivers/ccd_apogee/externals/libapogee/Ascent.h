@@ -20,7 +20,7 @@
 
 class ApgTimer;
 
-class DLL_EXPORT Ascent : public CamGen2Base
+class Ascent : public CamGen2Base
 { 
     public:
         /*! */
@@ -43,10 +43,10 @@ class DLL_EXPORT Ascent : public CamGen2Base
 
         Ascent();
 
-        void OpenConnection( const std::string & ioType,
+        void OpenConnection(const std::string & ioType,
              const std::string & DeviceAddr,
              const uint16_t FirmwareRev,
-             const uint16_t Id );
+             const uint16_t Id);
 
         void CloseConnection();
 
@@ -57,7 +57,7 @@ class DLL_EXPORT Ascent : public CamGen2Base
          *  \param [in] type Filter wheel type attached to the Ascent camera
          *  \exception std::runtime_error 
          */
-        void FilterWheelOpen( Ascent::FilterWheelType type );
+        void FilterWheelOpen(Ascent::FilterWheelType type);
 
         /*! 
          *  Closes the connection to the Ascent filter wheel
@@ -70,7 +70,7 @@ class DLL_EXPORT Ascent : public CamGen2Base
          *  \param [in] pos Desired position. Valid range is 0 to GetFilterWheelMaxPositions() - 1.
          *  \exception std::runtime_error 
          */
-        void SetFilterWheelPos( uint16_t pos );
+        void SetFilterWheelPos(uint16_t pos);
 
         /*! 
          *  Returns the current filter wheel position.
@@ -101,7 +101,7 @@ class DLL_EXPORT Ascent : public CamGen2Base
          */
         uint16_t GetFilterWheelMaxPositions();
 
-        void StartExposure( double Duration, bool IsLight );
+        void StartExposure(double Duration, bool IsLight);
 
         int32_t GetNumAdChannels();
 
@@ -123,7 +123,7 @@ class DLL_EXPORT Ascent : public CamGen2Base
          *  \param [in] TurnOn true to activate, false to deactivate (single readout mode)
          * \exception std::runtime_error
          */
-         void SetDualReadout( bool TurnOn );
+         void SetDualReadout(bool TurnOn);
 
          /*! 
          * \return true if dual readout is on, false if it is off (single readout mode)
@@ -131,14 +131,14 @@ class DLL_EXPORT Ascent : public CamGen2Base
          bool GetDualReadout();
 
         Apg::FanMode GetFanMode();
-        void SetFanMode( Apg::FanMode mode, bool PreCondCheck = true );
+        void SetFanMode(Apg::FanMode mode, bool PreCondCheck = true);
 
     protected:
         Ascent(const std::string & ioType,
              const std::string & DeviceAddr);
 
-        void FixImgFromCamera( const std::vector<uint16_t> & data,
-            std::vector<uint16_t> & out,  int32_t rows, int32_t cols );
+        void FixImgFromCamera(const std::vector<uint16_t> & data,
+            std::vector<uint16_t> & out,  int32_t rows, int32_t cols);
 
         void CreateCamIo(const std::string & ioType,
             const std::string & DeviceAddr);
@@ -152,11 +152,11 @@ class DLL_EXPORT Ascent : public CamGen2Base
         void SetIsAscentBit();
 
     private:
-        void StartFwTimer( uint16_t pos );
+        void StartFwTimer(uint16_t pos);
         ApogeeFilterWheel::Status FwStatusFromTimer();
         ApogeeFilterWheel::Status FwStatusFromCamera();
 
-        void CfgCamFromId( uint16_t CameraId );
+        void CfgCamFromId(uint16_t CameraId);
 
         void VerifyCamId();
 
@@ -168,14 +168,6 @@ class DLL_EXPORT Ascent : public CamGen2Base
         Ascent::FilterWheelType m_filterWheelType;
         double m_FwDiffTime;
       
-//this code removes vc++ compiler warning C4251
-//from http://www.unknownroad.com/rtfm/VisualStudio/warningC4251.html
-#ifdef WIN_OS
-#if _MSC_VER < 1600
-        template class DLL_EXPORT std::shared_ptr<ApgTimer>;
-#endif
-#endif
-		
         std::shared_ptr<ApgTimer> m_FwTimer;
 
         //disabling the copy ctor and assignment operator

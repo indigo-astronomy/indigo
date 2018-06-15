@@ -18,7 +18,11 @@
 #include <string>
 #include <vector>
 
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 #include <stdint.h>
 
@@ -27,8 +31,8 @@ class IUsb;
 class PromFx2Io 
 { 
     public: 
-        PromFx2Io( std::shared_ptr<IUsb> & usb,
-            uint32_t MaxBlocks, uint32_t MaxBanks );
+        PromFx2Io(std::shared_ptr<IUsb> & usb,
+            uint32_t MaxBlocks, uint32_t MaxBanks);
         virtual ~PromFx2Io(); 
 
         void FirmwareDownload(const std::vector<UsbFrmwr::IntelHexRec> & Records);
@@ -37,20 +41,20 @@ class PromFx2Io
             uint8_t StartBlock, uint16_t StartAddr, uint32_t & NumBytesWritten);
  
         void BufferWriteEeprom(uint8_t StartBank, uint8_t StartBlock,
-            uint16_t StartAddr, const std::vector<uint8_t> & Buffer );
+            uint16_t StartAddr, const std::vector<uint8_t> & Buffer);
 
         void BufferReadEeprom(uint8_t StartBank, uint8_t StartBlock,
-            uint16_t StartAddr, std::vector<uint8_t> & Buffer );
+            uint16_t StartAddr, std::vector<uint8_t> & Buffer);
        
-         void WriteEepromHdr( const Eeprom::Header & hdr,
+         void WriteEepromHdr(const Eeprom::Header & hdr,
             uint8_t StartBank, uint8_t StartBlock,
             uint16_t StartAddr);
 
-        void ReadEepromHdr( Eeprom::Header & hdr,
+        void ReadEepromHdr(Eeprom::Header & hdr,
             uint8_t StartBank, uint8_t StartBlock,
             uint16_t StartAddr);
 
-        std::vector<uint8_t> ReadFirmwareFile( const std::string & filename );
+        std::vector<uint8_t> ReadFirmwareFile(const std::string & filename);
 
     private:
         

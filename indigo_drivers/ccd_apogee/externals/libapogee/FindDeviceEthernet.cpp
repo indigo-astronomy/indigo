@@ -19,12 +19,7 @@
 
 #include <sstream>
 
-#if defined (WIN_OS)
-    #include "UdpSocketWin.h" 
-#else
-     #include "linux/UdpSocketLinux.h"
-#endif
-
+#include "linux/UdpSocketLinux.h"
 
 namespace
 {
@@ -40,12 +35,7 @@ FindDeviceEthernet::FindDeviceEthernet() : m_fileName(__FILE__),
 { 
     //create the right type of 
     //socket for the platform
-    #if defined (WIN_OS)
-        m_socketPtr = new UdpSocketWin();
-	#else
-        m_socketPtr = new UdpSocketLinux();
-    #endif
-
+		m_socketPtr = new UdpSocketLinux();
 } 
 
 //////////////////////////// 
@@ -81,7 +71,7 @@ std::string FindDeviceEthernet::Find(const std::string & subnet)
 
     //return an no op string to the caller
     std::string noop("<d></d>");
-    if( CameraMsgVect.empty() )
+    if (CameraMsgVect.empty())
     {
         return noop;
     }
@@ -97,22 +87,22 @@ std::string FindDeviceEthernet::Find(const std::string & subnet)
         for(msgIter = CameraMsgVect.begin(); msgIter != CameraMsgVect.end(); ++msgIter)
         {
             //check that it is a camera that responded
-            if( 0 == (*msgIter).compare( 0, m_CamResponse.size(), m_CamResponse ) )
+            if (0 == (*msgIter).compare(0, m_CamResponse.size(), m_CamResponse ))
             {
-                devices.append( MakeDeviceStr( (*msgIter) ) );
+                devices.append(MakeDeviceStr((*msgIter) ));
             }
         }
     }
-    catch( std::exception & err )
+    catch(std::exception & err)
     {
         // catch, log, and rethrow errors from parsecfgfile
-        apgHelper::LogErrorMsg( __FILE__, err.what(), __LINE__ );
+        apgHelper::LogErrorMsg(__FILE__, err.what(), __LINE__);
 
         throw;
     }
 
     //return an no op string if there are no devices
-    if( devices.empty() )
+    if (devices.empty())
     {
         return noop;
     }
@@ -126,7 +116,7 @@ std::string FindDeviceEthernet::MakeDeviceStr(const std::string & input)
 {
 
     std::string id("0xFFFF");
-    std::string firmwareRev( CamModel::GetNoOpFirmwareRev() );
+    std::string firmwareRev(CamModel::GetNoOpFirmwareRev());
     std::string ipAddr("0.0.0.0");
     std::string port("0");
     std::string mac("0");
@@ -139,12 +129,12 @@ std::string FindDeviceEthernet::MakeDeviceStr(const std::string & input)
 
     for(iter = lines.begin(); iter != lines.end(); ++iter)
     {
-        GetId( (*iter), id );
-        GetFirmwareRev( (*iter), firmwareRev );
-        GetIpAddr((*iter), ipAddr );
-        GetPort((*iter), port );
-        GetMacAddr((*iter), mac );
-        GetInterfaceStatus((*iter), interfaceStatus );
+        GetId((*iter), id);
+        GetFirmwareRev((*iter), firmwareRev);
+        GetIpAddr((*iter), ipAddr);
+        GetPort((*iter), port);
+        GetMacAddr((*iter), mac);
+        GetInterfaceStatus((*iter), interfaceStatus);
     }
     
     std::string result = "<d>interface=ethernet,deviceType=camera,address=" + ipAddr  +
@@ -156,72 +146,72 @@ std::string FindDeviceEthernet::MakeDeviceStr(const std::string & input)
 
 //////////////////////////// 
 // GET  ID 
-void FindDeviceEthernet::GetId( const std::string & input, std::string & id )
+void FindDeviceEthernet::GetId(const std::string & input, std::string & id)
 {
-    if( input.find("CameraModel:") != std::string::npos )
+    if (input.find("CameraModel:") != std::string::npos)
     {
-        std::vector<std::string> ff = help::MakeTokens( input, ": " );
+        std::vector<std::string> ff = help::MakeTokens(input, ": ");
         id = ff.at(1);
     }
 }
 
 //////////////////////////// 
 // GET          FIRMWARE        REV 
-void FindDeviceEthernet::GetFirmwareRev( const std::string & input, 
-                                        std::string & firmwareRev )
+void FindDeviceEthernet::GetFirmwareRev(const std::string & input, 
+                                        std::string & firmwareRev)
 {
-    if( input.find("FirmwareRev:") != std::string::npos )
+    if (input.find("FirmwareRev:") != std::string::npos)
     {
         //split string in half and get the desired data
-        std::vector<std::string> ff = help::MakeTokens( input, ": " );
+        std::vector<std::string> ff = help::MakeTokens(input, ": ");
         firmwareRev = ff.at(1);
     }
 }
         
 //////////////////////////// 
 //GET   IP  ADDR
-void FindDeviceEthernet::GetIpAddr( const std::string & input, 
-                                   std::string & ipAddr )
+void FindDeviceEthernet::GetIpAddr(const std::string & input, 
+                                   std::string & ipAddr)
 {
-    if( input.find("Configure-Tcp-Ip::IPv4-Address-1-Current:") != std::string::npos )
+    if (input.find("Configure-Tcp-Ip::IPv4-Address-1-Current:") != std::string::npos)
     {
         //split string in half and get the desired data
-        std::vector<std::string> ff = help::MakeTokens( input, ": " );
+        std::vector<std::string> ff = help::MakeTokens(input, ": ");
         ipAddr = ff.at(1);
     }
 }
         
 //////////////////////////// 
 // GET  PORT
-void FindDeviceEthernet::GetPort( const std::string & input, 
-                                 std::string & port )
+void FindDeviceEthernet::GetPort(const std::string & input, 
+                                 std::string & port)
 {
-    if( input.find("Configure-Tcp-Ip::IPv4-Port-1:") != std::string::npos )
+    if (input.find("Configure-Tcp-Ip::IPv4-Port-1:") != std::string::npos)
     {
         //split string in half and get the desired data
-        std::vector<std::string> ff = help::MakeTokens( input, ": " );
+        std::vector<std::string> ff = help::MakeTokens(input, ": ");
         port = ff.at(1);
     }
 }
         
 //////////////////////////// 
 // GET  MAC ADDR
-void FindDeviceEthernet::GetMacAddr( const std::string & input, std::string & mac )
+void FindDeviceEthernet::GetMacAddr(const std::string & input, std::string & mac)
 {
-    if( input.find("Monitor-Camera::Name-Camera-1:") != std::string::npos )
+    if (input.find("Monitor-Camera::Name-Camera-1:") != std::string::npos)
     {
         //split string in half and get the desired data
-        std::vector<std::string> ff = help::MakeTokens( input, ": " );
+        std::vector<std::string> ff = help::MakeTokens(input, ": ");
         mac = ff.at(1);
 
         //remove the " on the mac
-        std::string searchString( "\"" ); 
-        std::string replaceString( "" );
+        std::string searchString("\""); 
+        std::string replaceString("");
 
         std::string::size_type pos = 0;
-        while ( (pos = mac.find(searchString, pos)) != std::string::npos ) 
+        while ((pos = mac.find(searchString, pos)) != std::string::npos) 
         {
-            mac.replace( pos, searchString.size(), replaceString );
+            mac.replace(pos, searchString.size(), replaceString);
             ++pos;
         }
     }
@@ -229,23 +219,23 @@ void FindDeviceEthernet::GetMacAddr( const std::string & input, std::string & ma
 
 //////////////////////////// 
 // GET  INTERFACE   STATUS
-void FindDeviceEthernet::GetInterfaceStatus( const std::string & input, 
-                        std::string & interfaceStatus )
+void FindDeviceEthernet::GetInterfaceStatus(const std::string & input, 
+                        std::string & interfaceStatus)
 {
-    if( input.find("InterfaceStatus:") != std::string::npos )
+    if (input.find("InterfaceStatus:") != std::string::npos)
     {
         //split string in half and get the desired data
-        std::vector<std::string> ff = help::MakeTokens( input, ": " );
+        std::vector<std::string> ff = help::MakeTokens(input, ": ");
         interfaceStatus = ff.at(1);
 
         //remove the " on the interfaceStatus
-        std::string searchString( "\"" ); 
-        std::string replaceString( "" );
+        std::string searchString("\""); 
+        std::string replaceString("");
 
         std::string::size_type pos = 0;
-        while ( (pos = interfaceStatus.find(searchString, pos)) != std::string::npos ) 
+        while ((pos = interfaceStatus.find(searchString, pos)) != std::string::npos) 
         {
-            interfaceStatus.replace( pos, searchString.size(), replaceString );
+            interfaceStatus.replace(pos, searchString.size(), replaceString);
             ++pos;
         }
     }
@@ -257,30 +247,30 @@ std::string FindDeviceEthernet::CameraInfo(const std::string & rawIdStr,
                                            const std::string & frmwRevStr)
 {
     
-    const uint16_t rev = help::Str2uShort( frmwRevStr );
+    const uint16_t rev = help::Str2uShort(frmwRevStr);
 
     // AltaE's don't send the firmware rev, so if
     // we get the no op rev, then assume (I know this is bad...)
     // it is an Alta camera and use the standard firmware rev
     // of 33 to get the correct id mask
     uint16_t tempRev = rev;
-    if( rev == help::Str2uShort( CamModel::GetNoOpFirmwareRev() ) )
+    if (rev == help::Str2uShort(CamModel::GetNoOpFirmwareRev() ))
     {
         tempRev = 33;
     }
     
     uint16_t fixedId = 6500;
 
-    if( std::string::npos != rawIdStr.find("0x") )
+    if (std::string::npos != rawIdStr.find("0x"))
     {
-        const uint16_t rawId = help::Str2uShort( rawIdStr, true );
-        fixedId = CamModel::MaskRawId( tempRev, rawId );  
+        const uint16_t rawId = help::Str2uShort(rawIdStr, true);
+        fixedId = CamModel::MaskRawId(tempRev, rawId);  
     }
     else
     {
         //Aspen ids are in decimal in flash, so they don't need to
         //be masked or converted
-        fixedId =  help::Str2uShort( rawIdStr, false );
+        fixedId =  help::Str2uShort(rawIdStr, false);
     }
 
     std::stringstream idStr;
@@ -289,7 +279,7 @@ std::string FindDeviceEthernet::CameraInfo(const std::string & rawIdStr,
     std::stringstream revStr;
     revStr << std::hex << std::showbase << rev;
 
-    std::string modelStr = CamModel::GetPlatformStr( fixedId, true  );
+    std::string modelStr = CamModel::GetPlatformStr(fixedId, true );
    
     std::string camInfoStr = "id=" + idStr.str() +",firmwareRev=" + revStr.str() +
         ",model=" + modelStr+ "-" + CamModel::GetModelStr(fixedId);

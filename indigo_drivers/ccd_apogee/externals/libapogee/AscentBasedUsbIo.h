@@ -20,7 +20,7 @@
 class AscentBasedUsbIo : public CamUsbIo
 { 
     public: 
-        AscentBasedUsbIo( const std::string & DeviceEnum );
+        AscentBasedUsbIo(const std::string & DeviceEnum);
         virtual ~AscentBasedUsbIo(); 
 
         void Program(const std::string & FilenameFpga,
@@ -28,12 +28,12 @@ class AscentBasedUsbIo : public CamUsbIo
             const std::string & FilenameDescriptor,
             bool Print2StdOut=false);
 
-        void ReadHeader( Eeprom::Header & hdr );
+        void ReadHeader(Eeprom::Header & hdr);
 
         void SetSerialNumber(const std::string & num);
         std::string GetSerialNumber();
 
-        void WriteStrDatabase( const std::vector<std::string> & info );
+        void WriteStrDatabase(const std::vector<std::string> & info);
         std::vector<std::string> ReadStrDatabase();
 
     private:

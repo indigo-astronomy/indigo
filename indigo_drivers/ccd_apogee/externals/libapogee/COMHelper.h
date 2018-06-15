@@ -15,21 +15,20 @@
 
 #include <string>
 #include "CameraInfo.h"
-#include "DefDllExport.h"
 
 namespace COMHelper 
 { 
-    void DLL_EXPORT GetCamInfo( const std::string & intrfcStr, 
+    void GetCamInfo(const std::string & intrfcStr, 
         const unsigned long idOne, 
         const unsigned long idTwo, 
         CamModel::PlatformType & platform, 
         std::string & addr, 
         uint16_t & frmwrRev,
-        uint16_t & camId );
+        uint16_t & camId);
 
-    std::string ULong2IpStr( const unsigned long ipAddr );
+    std::string ULong2IpStr(const unsigned long ipAddr);
 
-    unsigned long DLL_EXPORT IpStr2ULong( const std::string & ipAddr );
+    unsigned long IpStr2ULong(const std::string & ipAddr);
 
 }; 
 

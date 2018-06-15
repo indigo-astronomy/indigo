@@ -42,24 +42,24 @@ namespace
 //////////////////////////// 
 // CTOR 
 ApogeeCam::ApogeeCam(const CamModel::PlatformType platform) : 
-                                m_PlatformType( platform ),
-                                m_fileName( __FILE__ ),
-                                m_FirmwareVersion( 0 ),
-                                m_Id( 0 ),
+                                m_PlatformType(platform),
+                                m_fileName(__FILE__),
+                                m_FirmwareVersion(0),
+                                m_Id(0),
                                 m_NumImgsDownloaded(0),
-                                m_ImageInProgress( false ),
-                                m_IsPreFlashOn( false ),
-                                m_IsInitialized( false ),
+                                m_ImageInProgress(false),
+                                m_IsPreFlashOn(false),
+                                m_IsInitialized(false),
                                 m_IsConnected(false),
-								m_ExposureTimer( new ApgTimer ),
+								m_ExposureTimer(new ApgTimer),
 								m_LastExposureTime(0)
 { 
 #ifdef DEBUGGING_CAMERA 
-    ApgLogger::Instance().SetLogLevel( ApgLogger::LEVEL_DEBUG );
+    ApgLogger::Instance().SetLogLevel(ApgLogger::LEVEL_DEBUG);
 #endif
 
 #ifdef DEBUGGING_CAMERA_STATUS
-    ApgLogger::Instance().SetLogLevel( ApgLogger::LEVEL_DEBUG );
+    ApgLogger::Instance().SetLogLevel(ApgLogger::LEVEL_DEBUG);
 #endif
 
 	// make sure start and stop have valid values
@@ -73,8 +73,8 @@ ApogeeCam::ApogeeCam(const CamModel::PlatformType platform) :
 ApogeeCam::~ApogeeCam() 
 { 
     std::string info;
-    info.append( "Model: " + GetModel() + "\n" );
-    info.append(  "Sensor: " + GetSensor() + "\n" );
+    info.append("Model: " + GetModel() + "\n");
+    info.append( "Sensor: " + GetSensor() + "\n");
    
     std::string msg = "Deleting camera:\n" + info;
     ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",msg); 
@@ -85,45 +85,45 @@ ApogeeCam::~ApogeeCam()
 void ApogeeCam::DefaultInit()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::Init" );
+    apgHelper::DebugMsg("ApogeeCam::Init");
 #endif
 
      //issue camera reset
-    Reset( false );
+    Reset(false);
 
-    SetFlushCommands( false );
-    SetPostExposeFlushing( false );
+    SetFlushCommands(false);
+    SetPostExposeFlushing(false);
 
     ClearAllRegisters();
 
     //issue camera reset
-    Reset( false );
+    Reset(false);
 
     // Load Inversion Mask
-    WriteReg( CameraRegs::VRAM_INV_MASK, 
-        m_CamCfgData->m_VerticalPattern.Mask );
+    WriteReg(CameraRegs::VRAM_INV_MASK, 
+        m_CamCfgData->m_VerticalPattern.Mask);
 
 	// Load the veritcal Pattern Files
-    m_CamIo->LoadVerticalPattern( m_CamCfgData->m_VerticalPattern );
+    m_CamIo->LoadVerticalPattern(m_CamCfgData->m_VerticalPattern);
 
-    WriteReg( CameraRegs::CLAMP_COUNT, 
+    WriteReg(CameraRegs::CLAMP_COUNT, 
         m_CamCfgData->m_MetaData.ClampColumns);
 
     // Set horizontal and vertical imaging roi registers
-    m_CcdAcqSettings->SetImagingRegs( m_FirmwareVersion );
+    m_CcdAcqSettings->SetImagingRegs(m_FirmwareVersion);
 
     // Since the default state of m_DigitizeOverscan is false, set the count to zero.
-    WriteReg( CameraRegs::OVERSCAN_COUNT, 0x0 );
+    WriteReg(CameraRegs::OVERSCAN_COUNT, 0x0);
 
     //setup the ccd adc and load the appropreate horiztonal 
     //pattern files
     m_CcdAcqSettings->Init();
 
 	// we don't use write_FlushBinningV() here because that would include additional RESETs
-    WriteReg( CameraRegs::VFLUSH_BINNING, 
-        m_CamCfgData->m_MetaData.VFlushBinning );
+    WriteReg(CameraRegs::VFLUSH_BINNING, 
+        m_CamCfgData->m_MetaData.VFlushBinning);
 
-    if ( m_CamCfgData->m_MetaData.HFlushDisable )
+    if (m_CamCfgData->m_MetaData.HFlushDisable)
     {
         m_CamIo->ReadOrWriteReg(CameraRegs::OP_A, 
             CameraRegs::OP_A_DISABLE_H_CLK_BIT);
@@ -131,12 +131,12 @@ void ApogeeCam::DefaultInit()
 
     Reset(true);
 
-    SetImageCount( 1 );
+    SetImageCount(1);
 
-    SetBulkDownload( true );
-    SetSequenceDelay( m_CameraConsts->m_SequenceDelayMinimum );
+    SetBulkDownload(true);
+    SetSequenceDelay(m_CameraConsts->m_SequenceDelayMinimum);
 
-    SetVariableSequenceDelay( true );
+    SetVariableSequenceDelay(true);
 
     //shutter close delay
    InitShutterCloseDelay();
@@ -144,27 +144,27 @@ void ApogeeCam::DefaultInit()
     //set LED state
     //doing this becase reg 52 is write only, so we have
     //to write values here to set up the internal map
-    WriteReg( CameraRegs::LED, 0);
-    SetLedMode( Apg::LedMode_EnableAll );
+    WriteReg(CameraRegs::LED, 0);
+    SetLedMode(Apg::LedMode_EnableAll);
 
     // Default values for I/O Port - the CLEAR op doesn't clear these values
 	// This will also init our private vars to 0x0
-	SetIoPortAssignment( 0x0 );
-    SetIoPortBlankingBits( 0x0 );
-	SetIoPortDirection( 0x0 );
+	SetIoPortAssignment(0x0);
+    SetIoPortBlankingBits(0x0);
+	SetIoPortDirection(0x0);
 
 	// Set the default TDI variables.  These also will automatically initialize
 	// the "virtual" kinetics mode variables.
-    SetTdiRate( m_CameraConsts->m_TdiRateDefault );
-	SetTdiRows( 1 );
-	SetTdiBinningRows( 1 );
+    SetTdiRate(m_CameraConsts->m_TdiRateDefault);
+	SetTdiRows(1);
+	SetTdiBinningRows(1);
 
     // Set the shutter strobe values to their defaults
-    SetShutterStrobePeriod( m_CameraConsts->m_StrobePeriodDefault );
-    SetShutterStrobePosition( m_CameraConsts->m_StrobePositionDefault );
+    SetShutterStrobePeriod(m_CameraConsts->m_StrobePeriodDefault);
+    SetShutterStrobePosition(m_CameraConsts->m_StrobePositionDefault);
 
 	// Set default averaging state
-    if ( m_CamCfgData->m_MetaData.DefaultDataReduction )
+    if (m_CamCfgData->m_MetaData.DefaultDataReduction)
 	{
         m_CamIo->ReadOrWriteReg(CameraRegs::OP_B, 
             CameraRegs::OP_B_AD_AVERAGING_BIT);
@@ -173,27 +173,27 @@ void ApogeeCam::DefaultInit()
 	// Program our initial cooler values.  The only cooler value that we reset
 	// at init time is the backoff point.  Everything else is left untouched, and
 	// state information is determined from the camera controller.
-	SetCoolerBackoffPoint( m_CamCfgData->m_MetaData.TempBackoffPoint );
+	SetCoolerBackoffPoint(m_CamCfgData->m_MetaData.TempBackoffPoint);
 
     WriteReg(CameraRegs::TEMP_RAMP_DOWN_A,	
-        m_CamCfgData->m_MetaData.TempRampRateOne );
+        m_CamCfgData->m_MetaData.TempRampRateOne);
 
 	WriteReg(CameraRegs::TEMP_RAMP_DOWN_B, 
-        m_CamCfgData->m_MetaData.TempRampRateTwo );
+        m_CamCfgData->m_MetaData.TempRampRateTwo);
 
 	// Set the Fan State. 
-    SetFanMode( Apg::FanMode_Low, false );
+    SetFanMode(Apg::FanMode_Low, false);
 
     //set the vdd state
-    if( 1 == m_CamCfgData->m_MetaData.AmpCutoffDisable )
+    if (1 == m_CamCfgData->m_MetaData.AmpCutoffDisable)
     {
           m_CamIo->ReadOrWriteReg(CameraRegs::OP_A, 
             CameraRegs::OP_A_AMP_CUTOFF_DISABLE_BIT);
     }
     else
     {
-         m_CamIo->ReadAndWriteReg( CameraRegs::OP_A,
-            static_cast<uint16_t>(~CameraRegs::OP_A_AMP_CUTOFF_DISABLE_BIT) );
+         m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,
+            static_cast<uint16_t>(~CameraRegs::OP_A_AMP_CUTOFF_DISABLE_BIT));
     }
 
 
@@ -206,7 +206,7 @@ void ApogeeCam::DefaultInit()
 void ApogeeCam::ClearAllRegisters()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::ClearAllRegisters" );
+    apgHelper::DebugMsg("ApogeeCam::ClearAllRegisters");
 #endif
      // Issue a clear command, so the registers are zeroed out
 	// This will put the camera in a known state for us.
@@ -219,7 +219,7 @@ void ApogeeCam::ClearAllRegisters()
 void ApogeeCam::InitShutterCloseDelay()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::InitShutterCloseDelay" );
+    apgHelper::DebugMsg("ApogeeCam::InitShutterCloseDelay");
 #endif
   
     //convert 300 ms to 0.3 sec
@@ -227,21 +227,21 @@ void ApogeeCam::InitShutterCloseDelay()
 
     //if the default m_MetaData.ShutterCloseDelay is zero.
     //then set it to the min value
-    if( CloseDelay < SHUTTER_CLOSE_DELAY_MIN )
+    if (CloseDelay < SHUTTER_CLOSE_DELAY_MIN)
     {
         CloseDelay = SHUTTER_CLOSE_DELAY_MIN;
     }
      
-    SetShutterCloseDelay( CloseDelay );
+    SetShutterCloseDelay(CloseDelay);
 }
 
 //////////////////////////// 
 //      DEFAULT    CFG        CAM    FROM    ID
-void ApogeeCam::DefaultCfgCamFromId( const uint16_t CameraId )
+void ApogeeCam::DefaultCfgCamFromId(const uint16_t CameraId)
 {
-    m_CamCfgData = std::shared_ptr<CApnCamData>( new CApnCamData );
-    m_CamCfgData->Set( apgHelper::GetCamCfgDir(), 
-        apgHelper::GetCfgFileName(), CameraId );
+    m_CamCfgData = std::shared_ptr<CApnCamData>(new CApnCamData);
+    m_CamCfgData->Set(apgHelper::GetCamCfgDir(), 
+        apgHelper::GetCfgFileName(), CameraId);
 }
 
 //////////////////////////// 
@@ -249,21 +249,21 @@ void ApogeeCam::DefaultCfgCamFromId( const uint16_t CameraId )
 void ApogeeCam::Reset()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::Reset");
+    apgHelper::DebugMsg("ApogeeCam::Reset");
 #endif
     //public function
     //log the call to reset the camera
     ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",
-        apgHelper::mkMsg( m_fileName, "Camera Reset Called", __LINE__) );
-    //if( m_ImageInProgress )
+        apgHelper::mkMsg(m_fileName, "Camera Reset Called", __LINE__));
+    //if (m_ImageInProgress)
     {
         // reseting camera and cancel pending image
         // transfer
-        HardStopExposure( "Called from Reset()" );
+        HardStopExposure("Called from Reset()");
     }
     //else
     {
-        m_CamIo->Reset( true );
+        m_CamIo->Reset(true);
     }
 
 }
@@ -273,12 +273,12 @@ void ApogeeCam::Reset()
 void ApogeeCam::Reset(const bool Flush)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::Reset -> Flush = %d", Flush );
+    apgHelper::DebugMsg("ApogeeCam::Reset -> Flush = %d", Flush);
 #endif
     
-    m_CamIo->Reset( Flush );
+    m_CamIo->Reset(Flush);
 
-    if( m_ImageInProgress )
+    if (m_ImageInProgress)
     {
 
     }
@@ -289,11 +289,11 @@ void ApogeeCam::Reset(const bool Flush)
 void ApogeeCam::DefaultCloseConnection()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::DefaultCloseConnection");
+    apgHelper::DebugMsg("ApogeeCam::DefaultCloseConnection");
 #endif
 
      //log that we are closing the connection to
-    LogConnectAndDisconnect( false );
+    LogConnectAndDisconnect(false);
 
     // try to cancel an exposure if it is in progress
     CancelExposureNoThrow();
@@ -311,20 +311,20 @@ void ApogeeCam::DefaultCloseConnection()
 
 //////////////////////////// 
 // LOG      CONNECT     AND     DISCONNECT
-void ApogeeCam::LogConnectAndDisconnect( bool Connect )
+void ApogeeCam::LogConnectAndDisconnect(bool Connect)
 {
     std::string msg;
 
-    if( Connect )
+    if (Connect)
     {
-        msg.append( "Successfully created connected to camera:\n" );
-        msg.append( GetInfo() );
+        msg.append("Successfully created connected to camera:\n");
+        msg.append(GetInfo());
     }
     else
     {
-        msg.append( "Disconnecting camera:\n" );
-        msg.append( "Model: " + GetModel() + "\n" );
-        msg.append( "Sensor: " + GetSensor() + "\n" );
+        msg.append("Disconnecting camera:\n");
+        msg.append("Model: " + GetModel() + "\n");
+        msg.append("Sensor: " + GetSensor() + "\n");
     }
     
     ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",msg); 
@@ -334,50 +334,50 @@ void ApogeeCam::LogConnectAndDisconnect( bool Connect )
 
 //////////////////////////// 
 // READ     REG
-uint16_t ApogeeCam::ReadReg( const uint16_t reg )
+uint16_t ApogeeCam::ReadReg(const uint16_t reg)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::ReadReg -> reg = %d", reg );
+    apgHelper::DebugMsg("ApogeeCam::ReadReg -> reg = %d", reg);
 #endif
  
-    return m_CamIo->ReadReg( reg );
+    return m_CamIo->ReadReg(reg);
 }
 
 
 //////////////////////////// 
 // WRITE     REG
-void  ApogeeCam::WriteReg( const uint16_t reg,  
+void  ApogeeCam::WriteReg(const uint16_t reg,  
                           const uint16_t value)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::WriteReg -> reg = %d, value = 0x%X", reg, value );
+    apgHelper::DebugMsg("ApogeeCam::WriteReg -> reg = %d, value = 0x%X", reg, value);
 #endif
     
-    m_CamIo->WriteReg( reg, value );
+    m_CamIo->WriteReg(reg, value);
 }
 
 
 
 //////////////////////////// 
 // SET       ROI       NUM     ROWS 
-void ApogeeCam::SetRoiNumRows( const uint16_t rows )
+void ApogeeCam::SetRoiNumRows(const uint16_t rows)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetRoiNumRows -> rows = %d", rows );
+    apgHelper::DebugMsg("ApogeeCam::SetRoiNumRows -> rows = %d", rows);
 #endif
     
-    m_CcdAcqSettings->SetRoiNumRows( rows );
+    m_CcdAcqSettings->SetRoiNumRows(rows);
 }
 
 //////////////////////////// 
 // SET       ROI       NUM     COLS
-void ApogeeCam::SetRoiNumCols( const uint16_t cols )
+void ApogeeCam::SetRoiNumCols(const uint16_t cols)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetRoiNumCols -> cols = %d", cols );
+    apgHelper::DebugMsg("ApogeeCam::SetRoiNumCols -> cols = %d", cols);
 #endif
 
-    m_CcdAcqSettings->SetRoiNumCols( cols );
+    m_CcdAcqSettings->SetRoiNumCols(cols);
 }
 
 //////////////////////////// 
@@ -385,7 +385,7 @@ void ApogeeCam::SetRoiNumCols( const uint16_t cols )
 uint16_t ApogeeCam::GetRoiNumRows()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetRoiNumRows" );
+    apgHelper::DebugMsg("ApogeeCam::GetRoiNumRows");
 #endif
     return m_CcdAcqSettings->GetRoiNumRows();
 }
@@ -395,7 +395,7 @@ uint16_t ApogeeCam::GetRoiNumRows()
 uint16_t ApogeeCam::GetRoiNumCols()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetRoiNumCols" );
+    apgHelper::DebugMsg("ApogeeCam::GetRoiNumCols");
 #endif
 
     return m_CcdAcqSettings->GetRoiNumCols();
@@ -403,24 +403,24 @@ uint16_t ApogeeCam::GetRoiNumCols()
 
 //////////////////////////// 
 // SET       ROI       START ROW
-void ApogeeCam::SetRoiStartRow( const uint16_t row )
+void ApogeeCam::SetRoiStartRow(const uint16_t row)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetRoiStartRow -> row = %d", row );
+    apgHelper::DebugMsg("ApogeeCam::SetRoiStartRow -> row = %d", row);
 #endif
     
-    return m_CcdAcqSettings->SetRoiStartRow( row );
+    return m_CcdAcqSettings->SetRoiStartRow(row);
 }
 
 //////////////////////////// 
 // SET       ROI       START     COL
-void ApogeeCam::SetRoiStartCol( const uint16_t col )
+void ApogeeCam::SetRoiStartCol(const uint16_t col)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetRoiStartCol ->col = %d", col );
+    apgHelper::DebugMsg("ApogeeCam::SetRoiStartCol ->col = %d", col);
 #endif
     
-    return m_CcdAcqSettings->SetRoiStartCol( col );
+    return m_CcdAcqSettings->SetRoiStartCol(col);
 }
         
 //////////////////////////// 
@@ -428,7 +428,7 @@ void ApogeeCam::SetRoiStartCol( const uint16_t col )
 uint16_t ApogeeCam::GetRoiStartRow()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetRoiStartRow" );
+    apgHelper::DebugMsg("ApogeeCam::GetRoiStartRow");
 #endif
 
     return m_CcdAcqSettings->GetRoiStartRow();
@@ -439,7 +439,7 @@ uint16_t ApogeeCam::GetRoiStartRow()
 uint16_t ApogeeCam::GetRoiStartCol()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetRoiStartCol" );
+    apgHelper::DebugMsg("ApogeeCam::GetRoiStartCol");
 #endif
 
     return m_CcdAcqSettings->GetRoiStartCol();
@@ -447,13 +447,13 @@ uint16_t ApogeeCam::GetRoiStartCol()
 
 //////////////////////////// 
 // SET       ROI       START     COL
-void ApogeeCam::SetRoiBinRow( const uint16_t bin )
+void ApogeeCam::SetRoiBinRow(const uint16_t bin)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetRoiBinRow -> bin = %d", bin );
+    apgHelper::DebugMsg("ApogeeCam::SetRoiBinRow -> bin = %d", bin);
 #endif
 
-    m_CcdAcqSettings->SetNumRows2Bin( bin );
+    m_CcdAcqSettings->SetNumRows2Bin(bin);
 }
 
 //////////////////////////// 
@@ -461,7 +461,7 @@ void ApogeeCam::SetRoiBinRow( const uint16_t bin )
 uint16_t ApogeeCam::GetRoiBinRow()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetRoiBinRow" );
+    apgHelper::DebugMsg("ApogeeCam::GetRoiBinRow");
 #endif
 
     return m_CcdAcqSettings->GetNumRows2Bin();
@@ -469,13 +469,13 @@ uint16_t ApogeeCam::GetRoiBinRow()
 
 //////////////////////////// 
 // SET       ROI       START     COL
-void ApogeeCam::SetRoiBinCol( const uint16_t bin )
+void ApogeeCam::SetRoiBinCol(const uint16_t bin)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetRoiBinCol -> bin = %d", bin );
+    apgHelper::DebugMsg("ApogeeCam::SetRoiBinCol -> bin = %d", bin);
 #endif
 
-    m_CcdAcqSettings->SetNumCols2Bin( bin );
+    m_CcdAcqSettings->SetNumCols2Bin(bin);
 }
 
 //////////////////////////// 
@@ -483,7 +483,7 @@ void ApogeeCam::SetRoiBinCol( const uint16_t bin )
 uint16_t ApogeeCam::GetRoiBinCol()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetRoiBinCol" );
+    apgHelper::DebugMsg("ApogeeCam::GetRoiBinCol");
 #endif
 
     return m_CcdAcqSettings->GetNumCols2Bin();
@@ -494,43 +494,43 @@ uint16_t ApogeeCam::GetRoiBinCol()
 void ApogeeCam::VerifyFrmwrRev()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::VerifyFrmwrRev" );
+    apgHelper::DebugMsg("ApogeeCam::VerifyFrmwrRev");
 #endif
 
     const uint16_t rev = m_CamIo->GetFirmwareRev();
 
-    if( rev != m_FirmwareVersion )
+    if (rev != m_FirmwareVersion)
     {
         std::string errStr = "firmware rev mis-match expected rev =" + 
             help::uShort2Str(m_FirmwareVersion) + " received from camera rev = " +
             help::uShort2Str(rev);
-        apgHelper::throwRuntimeException( m_fileName, errStr, 
-            __LINE__, Apg::ErrorType_Connection );
+        apgHelper::throwRuntimeException(m_fileName, errStr, 
+            __LINE__, Apg::ErrorType_Connection);
     }
     
 }
 
 //////////////////////////// 
 // SET    IMAGE   COUNT
-void ApogeeCam::SetImageCount( const uint16_t count )
+void ApogeeCam::SetImageCount(const uint16_t count)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetImageCount -> count = %d", count );
+    apgHelper::DebugMsg("ApogeeCam::SetImageCount -> count = %d", count);
 #endif
      
-    if ( count == 0 )
+    if (count == 0)
     {
         //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing image count  from " << count << " to " << 1;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
-        WriteReg( CameraRegs::IMAGE_COUNT, 1 );
+        WriteReg(CameraRegs::IMAGE_COUNT, 1);
     }
     else
     {
-         WriteReg( CameraRegs::IMAGE_COUNT, count );
+         WriteReg(CameraRegs::IMAGE_COUNT, count);
     }
 }
 //////////////////////////// 
@@ -538,10 +538,10 @@ void ApogeeCam::SetImageCount( const uint16_t count )
 uint16_t  ApogeeCam::GetImageCount()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetImageCount" );
+    apgHelper::DebugMsg("ApogeeCam::GetImageCount");
 #endif
 
-    return m_CamIo->ReadMirrorReg( CameraRegs::IMAGE_COUNT );
+    return m_CamIo->ReadMirrorReg(CameraRegs::IMAGE_COUNT);
 }
 
 //////////////////////////// 
@@ -549,12 +549,12 @@ uint16_t  ApogeeCam::GetImageCount()
 uint16_t ApogeeCam::GetImgSequenceCount()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetImgSequenceCount" );
+    apgHelper::DebugMsg("ApogeeCam::GetImgSequenceCount");
 #endif
 
     CameraStatusRegs status = GetStatus();
 
-    if( m_CamMode->IsBulkDownloadOn() )
+    if (m_CamMode->IsBulkDownloadOn())
     {
         return status.GetSequenceCounter();
     }
@@ -566,38 +566,38 @@ uint16_t ApogeeCam::GetImgSequenceCount()
 
 //////////////////////////// 
 // SET    SEQUENCE    DELAY
-void ApogeeCam::SetSequenceDelay( double delay )
+void ApogeeCam::SetSequenceDelay(double delay)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetSequenceDelay -> delay= %f", delay );
+    apgHelper::DebugMsg("ApogeeCam::SetSequenceDelay -> delay= %f", delay);
 #endif
 
     // boundary checking AND correcting...
-    if ( delay > m_CameraConsts->m_SequenceDelayMaximum )
+    if (delay > m_CameraConsts->m_SequenceDelayMaximum)
     {
         //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input sequence delay  from " << delay << " to " << m_CameraConsts->m_SequenceDelayMaximum;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
 		delay = m_CameraConsts->m_SequenceDelayMaximum;
     }
 
-    if ( delay < m_CameraConsts->m_SequenceDelayMinimum )
+    if (delay < m_CameraConsts->m_SequenceDelayMinimum)
     {
         //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input sequence delay  from " << delay << " to " << m_CameraConsts->m_SequenceDelayMinimum;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
 		delay = m_CameraConsts->m_SequenceDelayMinimum;
     }
 
-    uint16_t SequenceDelay = static_cast<uint16_t>(delay / m_CameraConsts->m_SequenceDelayResolution );
+    uint16_t SequenceDelay = static_cast<uint16_t>(delay / m_CameraConsts->m_SequenceDelayResolution);
 
-	WriteReg( CameraRegs::SEQUENCE_DELAY, SequenceDelay );
+	WriteReg(CameraRegs::SEQUENCE_DELAY, SequenceDelay);
 }
 
 //////////////////////////// 
@@ -605,33 +605,33 @@ void ApogeeCam::SetSequenceDelay( double delay )
 double ApogeeCam::GetSequenceDelay()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetSequenceDelay" );
+    apgHelper::DebugMsg("ApogeeCam::GetSequenceDelay");
 #endif
 
-    uint16_t SequenceDelay = m_CamIo->ReadMirrorReg( CameraRegs::SEQUENCE_DELAY);
+    uint16_t SequenceDelay = m_CamIo->ReadMirrorReg(CameraRegs::SEQUENCE_DELAY);
 
     return (m_CameraConsts->m_SequenceDelayResolution*SequenceDelay);
 }
 
 //////////////////////////// 
 // SET    VARIABLE      SEQUENCE    DELAY
-void ApogeeCam::SetVariableSequenceDelay( const bool variable )
+void ApogeeCam::SetVariableSequenceDelay(const bool variable)
 {
 #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "ApogeeCam::SetVariableSequenceDelay -> variable = %d", variable );
+     apgHelper::DebugMsg("ApogeeCam::SetVariableSequenceDelay -> variable = %d", variable);
  #endif
    
-	if ( variable )
+	if (variable)
     {
         // variable when zero
-        m_CamIo->ReadAndWriteReg( CameraRegs::OP_A, 
-            static_cast<uint16_t>(~CameraRegs::OP_A_DELAY_MODE_BIT) );
+        m_CamIo->ReadAndWriteReg(CameraRegs::OP_A, 
+            static_cast<uint16_t>(~CameraRegs::OP_A_DELAY_MODE_BIT));
     }
 	else
     {
         // constant when one
         m_CamIo->ReadOrWriteReg(CameraRegs::OP_A, 
-            CameraRegs::OP_A_DELAY_MODE_BIT );
+            CameraRegs::OP_A_DELAY_MODE_BIT);
     }
 }
 
@@ -640,50 +640,50 @@ void ApogeeCam::SetVariableSequenceDelay( const bool variable )
  bool ApogeeCam::GetVariableSequenceDelay()
  {
  #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "ApogeeCam::GetVariableSequenceDelay" );
+     apgHelper::DebugMsg("ApogeeCam::GetVariableSequenceDelay");
  #endif
 
-     const uint16_t val = ReadReg( CameraRegs::OP_A );
+     const uint16_t val = ReadReg(CameraRegs::OP_A);
      
      // constant when one
     // variable when zero
-     return ( val & CameraRegs::OP_A_DELAY_MODE_BIT ? false : true );
+     return (val & CameraRegs::OP_A_DELAY_MODE_BIT ? false : true);
  }
 
 //////////////////////////// 
 // SET   TDI    RATE
-void ApogeeCam::SetTdiRate( double TdiRate )
+void ApogeeCam::SetTdiRate(double TdiRate)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetTdiRate -> rate = %f", TdiRate );
+    apgHelper::DebugMsg("ApogeeCam::SetTdiRate -> rate = %f", TdiRate);
 #endif
 
-	if ( TdiRate <  m_CameraConsts->m_TdiRateMin )
+	if (TdiRate <  m_CameraConsts->m_TdiRateMin)
     {
          //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input tdi rate from " << TdiRate << " to " << m_CameraConsts->m_TdiRateMin;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         TdiRate = m_CameraConsts->m_TdiRateMin;
     }
 	
-	if ( TdiRate > m_CameraConsts->m_TdiRateMax )
+	if (TdiRate > m_CameraConsts->m_TdiRateMax)
     {
          //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input tdi rate from " << TdiRate << " to " << m_CameraConsts->m_TdiRateMax;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
 		TdiRate = m_CameraConsts->m_TdiRateMax;
     }
 
-    uint16_t Rate2Set = static_cast<uint16_t>( TdiRate / 
-        m_CameraConsts->m_TdiRateResolution );
+    uint16_t Rate2Set = static_cast<uint16_t>(TdiRate / 
+        m_CameraConsts->m_TdiRateResolution);
 
-    WriteReg( CameraRegs::TDI_RATE, Rate2Set );
+    WriteReg(CameraRegs::TDI_RATE, Rate2Set);
 }
 
 //////////////////////////// 
@@ -691,7 +691,7 @@ void ApogeeCam::SetTdiRate( double TdiRate )
 double ApogeeCam::GetTdiRate()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetTdiRate" );
+    apgHelper::DebugMsg("ApogeeCam::GetTdiRate");
 #endif
 
     const double rate = m_CamIo->ReadMirrorReg(CameraRegs::TDI_RATE)*
@@ -702,25 +702,25 @@ double ApogeeCam::GetTdiRate()
 
 //////////////////////////// 
 // SET   TDI    ROWS
-void ApogeeCam::SetTdiRows( const uint16_t TdiRows )
+void ApogeeCam::SetTdiRows(const uint16_t TdiRows)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetTdiRows ->TdiRows = %d", TdiRows );
+    apgHelper::DebugMsg("ApogeeCam::SetTdiRows ->TdiRows = %d", TdiRows);
 #endif
 
     // Make sure the TDI row count is at least 1
-	if ( TdiRows == 0 )	
+	if (TdiRows == 0)	
     {
          //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input tdi rows from " << TdiRows << " to " << 1;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         // not using driect register io here, because we
         // have to save a copy of the number of rows, because the
         // tdi rows must be set to 0 in trigger each mode
-        m_CamMode->SetTdiRows( 1 );
+        m_CamMode->SetTdiRows(1);
         
     }
     else
@@ -728,7 +728,7 @@ void ApogeeCam::SetTdiRows( const uint16_t TdiRows )
          // not using driect register io here, because we
         // have to save a copy of the number of rows, because the
         // tdi rows must be set to 0 in trigger each mode
-        m_CamMode->SetTdiRows( TdiRows );
+        m_CamMode->SetTdiRows(TdiRows);
     }
 }
 
@@ -742,7 +742,7 @@ uint16_t ApogeeCam::GetTdiRows()
     const uint16_t rows =  m_CamMode->GetTdiRows();
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetTdiRows -> rows = %d", rows );
+    apgHelper::DebugMsg("ApogeeCam::GetTdiRows -> rows = %d", rows);
 #endif
 
     return rows;
@@ -756,34 +756,34 @@ uint16_t ApogeeCam::GetTdiCounter()
     const uint16_t result = IsBulkDownloadOn() ? status.GetTdiCounter() : status.GetReadyFrame();
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetTdiCounter -> counter = %d", result );
+    apgHelper::DebugMsg("ApogeeCam::GetTdiCounter -> counter = %d", result);
 #endif
 
-    return( result  );
+    return(result );
 }
 
 
 //////////////////////////// 
 // SET   TDI    BINNING  ROWS
-void ApogeeCam::SetTdiBinningRows( const uint16_t bin )
+void ApogeeCam::SetTdiBinningRows(const uint16_t bin)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetTdiBinningRows -> bin = %d", bin );
+    apgHelper::DebugMsg("ApogeeCam::SetTdiBinningRows -> bin = %d", bin);
 #endif
 
-	if ( 0 == bin)	
+	if (0 == bin)	
     {
         // Make sure the TDI binning is at least 1
         //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input tdi bining v from " << bin << " to " << 1;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
-        WriteReg( CameraRegs::TDI_BINNING, 1 );
+        WriteReg(CameraRegs::TDI_BINNING, 1);
     }
     else
     {
-        WriteReg( CameraRegs::TDI_BINNING, bin );
+        WriteReg(CameraRegs::TDI_BINNING, bin);
     }      
 }
 
@@ -792,21 +792,21 @@ void ApogeeCam::SetTdiBinningRows( const uint16_t bin )
 uint16_t ApogeeCam::GetTdiBinningRows()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetTdiBinningRows" );
+    apgHelper::DebugMsg("ApogeeCam::GetTdiBinningRows");
 #endif
 
-    return m_CamIo->ReadMirrorReg( CameraRegs::TDI_BINNING );
+    return m_CamIo->ReadMirrorReg(CameraRegs::TDI_BINNING);
 }
 
 //////////////////////////// 
 // SET          KINETICS   SECTION       HEIGHT
-void ApogeeCam::SetKineticsSectionHeight( uint16_t height )
+void ApogeeCam::SetKineticsSectionHeight(uint16_t height)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetKineticsSectionHeight -> height = %d", height );
+    apgHelper::DebugMsg("ApogeeCam::SetKineticsSectionHeight -> height = %d", height);
 #endif
 
-    SetTdiBinningRows( height );
+    SetTdiBinningRows(height);
 }
 
 //////////////////////////// 
@@ -814,20 +814,20 @@ void ApogeeCam::SetKineticsSectionHeight( uint16_t height )
 uint16_t ApogeeCam::GetKineticsSectionHeight()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetKineticsSectionHeight" );
+    apgHelper::DebugMsg("ApogeeCam::GetKineticsSectionHeight");
 #endif
     return GetTdiBinningRows();
 }
 
 //////////////////////////// 
 // SET          KINETICS           SECTIONS
-void ApogeeCam::SetKineticsSections( uint16_t sections )
+void ApogeeCam::SetKineticsSections(uint16_t sections)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetKineticsSections -> sections = %d", sections );
+    apgHelper::DebugMsg("ApogeeCam::SetKineticsSections -> sections = %d", sections);
 #endif
 
-    SetTdiRows( sections );
+    SetTdiRows(sections);
 }
 
 //////////////////////////// 
@@ -835,7 +835,7 @@ void ApogeeCam::SetKineticsSections( uint16_t sections )
 uint16_t ApogeeCam::GetKineticsSections()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetKineticsSections" );
+    apgHelper::DebugMsg("ApogeeCam::GetKineticsSections");
 #endif
 
     return GetTdiRows();
@@ -843,13 +843,13 @@ uint16_t ApogeeCam::GetKineticsSections()
 
 //////////////////////////// 
 // SET      KINETICS      SHIFT         INTERVAL
-void ApogeeCam::SetKineticsShiftInterval( double  interval)
+void ApogeeCam::SetKineticsShiftInterval(double  interval)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetKineticsShiftInterval -> interval = %f", interval );
+    apgHelper::DebugMsg("ApogeeCam::SetKineticsShiftInterval -> interval = %f", interval);
 #endif
 
-    SetTdiRate( interval );
+    SetTdiRate(interval);
 }
 
 //////////////////////////// 
@@ -857,7 +857,7 @@ void ApogeeCam::SetKineticsShiftInterval( double  interval)
 double ApogeeCam::GetKineticsShiftInterval()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetKineticsSections" );
+    apgHelper::DebugMsg("ApogeeCam::GetKineticsSections");
 #endif
 
     return GetTdiRate();
@@ -865,62 +865,62 @@ double ApogeeCam::GetKineticsShiftInterval()
 
 //////////////////////////// 
 // SET    SHUTTER       STROBE     POSITION
-void ApogeeCam::SetShutterStrobePosition( double position )
+void ApogeeCam::SetShutterStrobePosition(double position)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetShutterStrobePosition -> pos = %f", position);
+    apgHelper::DebugMsg("ApogeeCam::SetShutterStrobePosition -> pos = %f", position);
 #endif
 	
 	//boundary checking
-    if ( position < m_CameraConsts->m_StrobePositionMin)
+    if (position < m_CameraConsts->m_StrobePositionMin)
     {
         //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input strobe position from " << position << " to " << m_CameraConsts->m_StrobePositionMin;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         position = m_CameraConsts->m_StrobePositionMin;
     }
 
 
-    if ( position > m_CameraConsts->m_StrobePositionMax)
+    if (position > m_CameraConsts->m_StrobePositionMax)
     {
         //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input strobe position from " << position << " to " << m_CameraConsts->m_StrobePositionMax;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         position = m_CameraConsts->m_StrobePositionMax;
     }
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "m_CameraConsts->m_StrobePositionMin = %e", m_CameraConsts->m_StrobePositionMin);
-    apgHelper::DebugMsg( "m_CameraConsts->m_StrobePositionMax = %e", m_CameraConsts->m_StrobePositionMax);
-//    apgHelper::DebugMsg( "m_CameraConsts->m_preflashTimerResolution = %e", m_CameraConsts->m_preflashTimerResolution);
-    apgHelper::DebugMsg( "m_CameraConsts->m_StrobePositionMin = %e", m_CameraConsts->m_StrobePositionMin);
+    apgHelper::DebugMsg("m_CameraConsts->m_StrobePositionMin = %e", m_CameraConsts->m_StrobePositionMin);
+    apgHelper::DebugMsg("m_CameraConsts->m_StrobePositionMax = %e", m_CameraConsts->m_StrobePositionMax);
+//    apgHelper::DebugMsg("m_CameraConsts->m_preflashTimerResolution = %e", m_CameraConsts->m_preflashTimerResolution);
+    apgHelper::DebugMsg("m_CameraConsts->m_StrobePositionMin = %e", m_CameraConsts->m_StrobePositionMin);
 #endif
     double temp = position - m_CameraConsts->m_StrobePositionMin;
     temp /= m_CameraConsts->m_StrobeTimerResolution;
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "calculated ShutterStrobePosition as float = %e", temp);
+    apgHelper::DebugMsg("calculated ShutterStrobePosition as float = %e", temp);
     if (temp > 65535.0) {
-        apgHelper::DebugMsg( "calculated ShutterStrobePosition will overflow register" );
+        apgHelper::DebugMsg("calculated ShutterStrobePosition will overflow register");
     }
 #endif
     uint16_t ShutterStrobePosition = static_cast<uint16_t>(temp);
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "calculated ShutterStrobePosition as uint16_t = %d", ShutterStrobePosition);
+    apgHelper::DebugMsg("calculated ShutterStrobePosition as uint16_t = %d", ShutterStrobePosition);
     uint16_t current = ReadReg(CameraRegs::SHUTTER_STROBE_POSITION);
-    apgHelper::DebugMsg( "read ShutterStrobePosition = 0x%X", current);
+    apgHelper::DebugMsg("read ShutterStrobePosition = 0x%X", current);
 #endif
 
     WriteReg(CameraRegs::SHUTTER_STROBE_POSITION, ShutterStrobePosition);
 #ifdef DEBUGGING_CAMERA
     current = ReadReg(CameraRegs::SHUTTER_STROBE_POSITION);
-    apgHelper::DebugMsg( "read ShutterStrobePosition = 0x%X", current);
+    apgHelper::DebugMsg("read ShutterStrobePosition = 0x%X", current);
 #endif
 }
 
@@ -929,40 +929,40 @@ void ApogeeCam::SetShutterStrobePosition( double position )
 double ApogeeCam::GetShutterStrobePosition()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetShutterStrobePosition" );
+    apgHelper::DebugMsg("ApogeeCam::GetShutterStrobePosition");
 #endif
 
     uint16_t ShutterStrobePosition =  m_CamIo->ReadMirrorReg(CameraRegs::SHUTTER_STROBE_POSITION);
-    return (  (ShutterStrobePosition*m_CameraConsts->m_StrobeTimerResolution) 
-    + m_CameraConsts->m_StrobePositionMin );
+    return ( (ShutterStrobePosition*m_CameraConsts->m_StrobeTimerResolution) 
+    + m_CameraConsts->m_StrobePositionMin);
 }
 
 //////////////////////////// 
 // SET    SHUTTER       STROBE     PERIOD
-void ApogeeCam::SetShutterStrobePeriod( double period )
+void ApogeeCam::SetShutterStrobePeriod(double period)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetShutterStrobePeriod -> period = %f", period);
+    apgHelper::DebugMsg("ApogeeCam::SetShutterStrobePeriod -> period = %f", period);
 #endif
 
     //boundary checking
-     if ( period < m_CameraConsts->m_StrobePeriodMin)
+     if (period < m_CameraConsts->m_StrobePeriodMin)
     {
         //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input strobe period from " << period << " to " << m_CameraConsts->m_StrobePeriodMin;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         period = m_CameraConsts->m_StrobePeriodMin;
     }
 
-    if ( period > m_CameraConsts->m_StrobePeriodMax)
+    if (period > m_CameraConsts->m_StrobePeriodMax)
     {
         //log a warning that we are changing the input value under the sheets
         std::stringstream msg;
         msg << "Changing input strobe position from " <<period << " to " << m_CameraConsts->m_StrobePeriodMax;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         period = m_CameraConsts->m_StrobePeriodMax;
@@ -971,7 +971,7 @@ void ApogeeCam::SetShutterStrobePeriod( double period )
 	uint16_t ShutterStrobePeriod = static_cast<uint16_t>((period - m_CameraConsts->m_StrobePeriodMin) / 
         m_CameraConsts->m_PeriodTimerResolution);
 
-    WriteReg(CameraRegs::SHUTTER_STROBE_PERIOD,ShutterStrobePeriod );
+    WriteReg(CameraRegs::SHUTTER_STROBE_PERIOD,ShutterStrobePeriod);
 }
 
 //////////////////////////// 
@@ -979,47 +979,47 @@ void ApogeeCam::SetShutterStrobePeriod( double period )
 double ApogeeCam::GetShutterStrobePeriod()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetShutterStrobePeriod" );
+    apgHelper::DebugMsg("ApogeeCam::GetShutterStrobePeriod");
 #endif
    
     uint16_t ShutterStrobePeriod = m_CamIo->ReadMirrorReg(CameraRegs::SHUTTER_STROBE_PERIOD);
     
-    return ( (ShutterStrobePeriod*m_CameraConsts->m_PeriodTimerResolution) + m_CameraConsts->m_StrobePeriodMin );
+    return ((ShutterStrobePeriod*m_CameraConsts->m_PeriodTimerResolution) + m_CameraConsts->m_StrobePeriodMin);
 }
 
 //////////////////////////// 
 // SET    SHUTTER      CLOSE       DELAY
-void ApogeeCam::SetShutterCloseDelay( double delay )
+void ApogeeCam::SetShutterCloseDelay(double delay)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetShutterCloseDelay -> delay = %f", delay );
+    apgHelper::DebugMsg("ApogeeCam::SetShutterCloseDelay -> delay = %f", delay);
 #endif
 
-    if( delay > SHUTTER_CLOSE_DELAY_MAX )
+    if (delay > SHUTTER_CLOSE_DELAY_MAX)
     {
         std::stringstream msg;
         msg << "Changing input shutter delay from " << delay;
         msg << " to " << SHUTTER_CLOSE_DELAY_MAX;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         delay = SHUTTER_CLOSE_DELAY_MAX;
     }
 
-    if( delay < SHUTTER_CLOSE_DELAY_MIN )
+    if (delay < SHUTTER_CLOSE_DELAY_MIN)
     {
         std::stringstream msg;
         msg << "Changing input shutter delay from " << delay;
         msg << " to " << SHUTTER_CLOSE_DELAY_MIN;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         delay = SHUTTER_CLOSE_DELAY_MIN;
     }
 
-    uint16_t ShutterCloseDelay = static_cast<uint16_t>( delay*SHUTTER_CLOSE_DELAY_SLOPE );
+    uint16_t ShutterCloseDelay = static_cast<uint16_t>(delay*SHUTTER_CLOSE_DELAY_SLOPE);
    
-    WriteReg(CameraRegs::SHUTTER_CLOSE_DELAY, ShutterCloseDelay );
+    WriteReg(CameraRegs::SHUTTER_CLOSE_DELAY, ShutterCloseDelay);
 }
 
 //////////////////////////// 
@@ -1027,58 +1027,58 @@ void ApogeeCam::SetShutterCloseDelay( double delay )
 double ApogeeCam::GetShutterCloseDelay()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetShutterCloseDelay" );
+    apgHelper::DebugMsg("ApogeeCam::GetShutterCloseDelay");
 #endif
 
     uint16_t delay = m_CamIo->ReadMirrorReg(CameraRegs::SHUTTER_CLOSE_DELAY);
 
     double val = delay / SHUTTER_CLOSE_DELAY_SLOPE;
 
-    return( val );
+    return(val);
 }
 
 //////////////////////////// 
 // SET    COOLER        BACKOFF       POINT
-void ApogeeCam::SetCoolerBackoffPoint( double point )
+void ApogeeCam::SetCoolerBackoffPoint(double point)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetCoolerBackoffPoint -> point = %f", point );
+    apgHelper::DebugMsg("ApogeeCam::SetCoolerBackoffPoint -> point = %f", point);
 #endif
     if (point == 0.0)
     {
-        WriteReg( CameraRegs::TEMP_BACKOFF, 0 );
+        WriteReg(CameraRegs::TEMP_BACKOFF, 0);
         return;
     }
 
 	double TempVal = point;
 
     //boundary checking
-    if ( point < m_CameraConsts->m_TempBackoffpointMin )
+    if (point < m_CameraConsts->m_TempBackoffpointMin)
     {
         std::stringstream msg;
         msg << "Changing input cooler backoff point from " << point;
         msg << " to " << m_CameraConsts->m_TempBackoffpointMin;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
 		TempVal = m_CameraConsts->m_TempBackoffpointMin;
     }
 
-	if ( point  > m_CameraConsts->m_TempBackoffpointMax )
+	if (point  > m_CameraConsts->m_TempBackoffpointMax)
     {
         std::stringstream msg;
         msg << "Changing input cooler backoff point from " << point;
         msg << " to " << m_CameraConsts->m_TempBackoffpointMax;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         TempVal = m_CameraConsts->m_TempBackoffpointMax;
     }
 
-	const uint16_t CoolerBackoffPoint = static_cast<uint16_t>( 
+	const uint16_t CoolerBackoffPoint = static_cast<uint16_t>(
         TempVal / m_CameraConsts->m_TempDegreesPerBit);
 	
-    WriteReg( CameraRegs::TEMP_BACKOFF, CoolerBackoffPoint );
+    WriteReg(CameraRegs::TEMP_BACKOFF, CoolerBackoffPoint);
 }
 
 //////////////////////////// 
@@ -1086,19 +1086,19 @@ void ApogeeCam::SetCoolerBackoffPoint( double point )
 double ApogeeCam::GetCoolerBackoffPoint()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetCoolerBackoffPoint" );
+    apgHelper::DebugMsg("ApogeeCam::GetCoolerBackoffPoint");
 #endif
 
-    return (m_CamIo->ReadMirrorReg( CameraRegs::TEMP_BACKOFF ) * 
+    return (m_CamIo->ReadMirrorReg(CameraRegs::TEMP_BACKOFF) * 
         m_CameraConsts->m_TempDegreesPerBit);
 }
 
 //////////////////////////// 
 // SET    COOLER      SET    POINT
-void ApogeeCam::SetCoolerSetPoint( const double point )
+void ApogeeCam::SetCoolerSetPoint(const double point)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetCoolerSetPoint -> point = %f", point );
+    apgHelper::DebugMsg("ApogeeCam::SetCoolerSetPoint -> point = %f", point);
 #endif
   
     //The hardware document defines a number of ranges for the cooler set point
@@ -1110,23 +1110,23 @@ void ApogeeCam::SetCoolerSetPoint( const double point )
 	double TempVal = point;
 
     //boundary checking
-    if ( point < m_CameraConsts->m_TempSetpointMin )
+    if (point < m_CameraConsts->m_TempSetpointMin)
     {
         std::stringstream msg;
         msg << "Changing input cooler set point from " << point;
         msg << " to " << m_CameraConsts->m_TempSetpointMin;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         TempVal = m_CameraConsts->m_TempSetpointMin;
     }
 
-    if ( point > m_CameraConsts->m_TempSetpointMax )
+    if (point > m_CameraConsts->m_TempSetpointMax)
     {
         std::stringstream msg;
         msg << "Changing input cooler set point from " << point;
         msg << " to " << m_CameraConsts->m_TempSetpointMax;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         TempVal = m_CameraConsts->m_TempSetpointMax;
@@ -1136,10 +1136,10 @@ void ApogeeCam::SetCoolerSetPoint( const double point )
     // b = emperically determined register zero crossing value
     // x = the input temp divided by the degrees per bit
     // m = 1
-    const uint16_t CoolerSetPoint = static_cast<uint16_t>( 
+    const uint16_t CoolerSetPoint = static_cast<uint16_t>(
         (TempVal / m_CameraConsts->m_TempDegreesPerBit) + m_CameraConsts->m_TempSetpointZeroPoint);
 	
-    WriteReg( CameraRegs::TEMP_DESIRED, CoolerSetPoint );
+    WriteReg(CameraRegs::TEMP_DESIRED, CoolerSetPoint);
 }
 
 //////////////////////////// 
@@ -1147,31 +1147,31 @@ void ApogeeCam::SetCoolerSetPoint( const double point )
 double ApogeeCam::GetCoolerSetPoint()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetCoolerSetPoint" );
+    apgHelper::DebugMsg("ApogeeCam::GetCoolerSetPoint");
 #endif
 
     //12 bit value
-    const uint16_t CoolerSetPoint = ReadReg( CameraRegs::TEMP_DESIRED ) & 0x0FFF;
+    const uint16_t CoolerSetPoint = ReadReg(CameraRegs::TEMP_DESIRED) & 0x0FFF;
 
-    return( (CoolerSetPoint - m_CameraConsts->m_TempSetpointZeroPoint ) * 
-        m_CameraConsts->m_TempDegreesPerBit );
+    return((CoolerSetPoint - m_CameraConsts->m_TempSetpointZeroPoint) * 
+        m_CameraConsts->m_TempDegreesPerBit);
 }
 
 //////////////////////////// 
 // ISSUE     EXPOSE     CMD  
-void ApogeeCam::IssueExposeCmd( const bool IsLight )
+void ApogeeCam::IssueExposeCmd(const bool IsLight)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IssueExposeCmd -> IsLight = %d", IsLight );
+    apgHelper::DebugMsg("ApogeeCam::IssueExposeCmd -> IsLight = %d", IsLight);
 #endif
 
     //figure out what exposure method we are using
 	uint16_t CmdValue = 0;
 
-    switch ( m_CamMode->GetMode() )
+    switch (m_CamMode->GetMode())
     {
         case Apg::CameraMode_Normal:
-            if ( IsLight )
+            if (IsLight)
             {
                 CmdValue = CameraRegs::CMD_A_EXPOSE_BIT;
             }
@@ -1184,9 +1184,9 @@ void ApogeeCam::IssueExposeCmd( const bool IsLight )
         case Apg::CameraMode_TDI:
             CmdValue = CameraRegs::CMD_A_TDI_BIT;
 
-            if ( !IsLight && !IsShutterForcedClosed() )
+            if (!IsLight && !IsShutterForcedClosed())
             {
-                SetShutterState( Apg::ShutterState_ForceClosed );
+                SetShutterState(Apg::ShutterState_ForceClosed);
                 //TODO
                 //m_pvtRestoreShutterControl = true;
             }
@@ -1201,28 +1201,28 @@ void ApogeeCam::IssueExposeCmd( const bool IsLight )
             std::stringstream msg;
             msg << "Invalid camera mode " << m_CamMode->GetMode();
             apgHelper::throwRuntimeException(m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidMode );
+                __LINE__, Apg::ErrorType_InvalidMode);
        }
         break;
     }
 
 	// Send the expose type to the camera
-	WriteReg( CameraRegs::CMD_A, CmdValue );
+	WriteReg(CameraRegs::CMD_A, CmdValue);
 }
 
 //////////////////////////// 
 //  IS     THERE       A  STATUS     ERROR
-void ApogeeCam::IsThereAStatusError( const uint16_t statusReg )
+void ApogeeCam::IsThereAStatusError(const uint16_t statusReg)
 {
-    if( statusReg & CameraRegs::STATUS_PATTERN_ERROR_BIT )
+    if (statusReg & CameraRegs::STATUS_PATTERN_ERROR_BIT)
     {
         std::stringstream ss;
         ss << "Camera Pattern Error Bit Set. Status reg = " << statusReg;
-        apgHelper::throwRuntimeException( m_fileName, ss.str(), 
-            __LINE__, Apg::ErrorType_Serious );
+        apgHelper::throwRuntimeException(m_fileName, ss.str(), 
+            __LINE__, Apg::ErrorType_Serious);
     }
 
-    if( statusReg & CameraRegs::STATUS_DATA_HALTED_BIT )
+    if (statusReg & CameraRegs::STATUS_DATA_HALTED_BIT)
     {
         // per a discussion with wayne, just log this error
         // don't throw, b/c reading the image clears it
@@ -1233,27 +1233,27 @@ void ApogeeCam::IsThereAStatusError( const uint16_t statusReg )
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE, "error", msgStr);
     }
 
-    if( m_CamIo->IsError() )
+    if (m_CamIo->IsError())
     {
-         apgHelper::throwRuntimeException( m_fileName, 
-             "Camera IO comms error" , __LINE__, Apg::ErrorType_Critical );
+         apgHelper::throwRuntimeException(m_fileName, 
+             "Camera IO comms error" , __LINE__, Apg::ErrorType_Critical);
     }
 
 }
 
 //////////////////////////// 
 //  IS     IMG     DONE
-bool ApogeeCam::IsImgDone( const CameraStatusRegs & statusObj)
+bool ApogeeCam::IsImgDone(const CameraStatusRegs & statusObj)
 {
 	bool doneBitSet = statusObj.GetStatus() & CameraRegs::STATUS_IMAGE_DONE_BIT ? true : false;
 	bool dataFlag = false;
 
-	if( CamModel::ASPEN == m_PlatformType && m_CamIo->GetInterfaceType() == CamModel::ETHERNET && true == IsPipelineDownloadOn())
+	if (CamModel::ASPEN == m_PlatformType && m_CamIo->GetInterfaceType() == CamModel::ETHERNET && true == IsPipelineDownloadOn())
     {
 		m_ExposureTimer->Stop();
         dataFlag = m_ExposureTimer->GetTimeInSec() >= m_LastExposureTime ? true : false;
     }
-    else if( m_CamIo->GetInterfaceType() == CamModel::ETHERNET || false == IsPipelineDownloadOn())
+    else if (m_CamIo->GetInterfaceType() == CamModel::ETHERNET || false == IsPipelineDownloadOn())
     {
 		dataFlag = false;
     }
@@ -1262,15 +1262,15 @@ bool ApogeeCam::IsImgDone( const CameraStatusRegs & statusObj)
         //pipeline download by reporting image done as soon as data is available
         dataFlag = statusObj.GetDataAvailFlag();
     }
-    return( doneBitSet || dataFlag ? true : false );
+    return(doneBitSet || dataFlag ? true : false);
 }
 //////////////////////////// 
 //LOG        AND      RETURN        STATUS
-Apg::Status ApogeeCam::LogAndReturnStatus( const Apg::Status status,
+Apg::Status ApogeeCam::LogAndReturnStatus(const Apg::Status status,
                                          const CameraStatusRegs & statusObj)
 {
     //log the error
-    if( status == Apg::Status_ConnectionError	||
+    if (status == Apg::Status_ConnectionError	||
         status == Apg::Status_DataError ||
         status == Apg::Status_PatternError)
     {
@@ -1284,7 +1284,7 @@ Apg::Status ApogeeCam::LogAndReturnStatus( const Apg::Status status,
     else
     {
          #ifdef DEBUGGING_CAMERA
-            apgHelper::DebugMsg( "ApogeeCam::LogAndReturnStatus -> status = %d",  status);
+            apgHelper::DebugMsg("ApogeeCam::LogAndReturnStatus -> status = %d",  status);
         #endif
     }
 
@@ -1299,7 +1299,7 @@ Apg::CameraMode ApogeeCam::GetCameraMode()
     const Apg::CameraMode mode = m_CamMode->GetMode();
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetCameraMode -> mode = %d", mode );
+    apgHelper::DebugMsg("ApogeeCam::GetCameraMode -> mode = %d", mode);
 #endif
 
     return mode;
@@ -1307,29 +1307,29 @@ Apg::CameraMode ApogeeCam::GetCameraMode()
 
 //////////////////////////// 
 // SET       CAMERA     MODE 
-void ApogeeCam::SetCameraMode( const Apg::CameraMode mode )
+void ApogeeCam::SetCameraMode(const Apg::CameraMode mode)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetCameraMode -> mode = %d", mode );
+    apgHelper::DebugMsg("ApogeeCam::SetCameraMode -> mode = %d", mode);
 #endif
 
-    m_CamMode->SetMode( mode );
+    m_CamMode->SetMode(mode);
 }
 
 //////////////////////////// 
 // SET      FAST   SEQUENCE
-void ApogeeCam::SetFastSequence( const bool TurnOn )
+void ApogeeCam::SetFastSequence(const bool TurnOn)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetFastSequence -> TurnOn = %d", TurnOn );
+    apgHelper::DebugMsg("ApogeeCam::SetFastSequence -> TurnOn = %d", TurnOn);
 #endif
 
-    m_CamMode->SetFastSequence( TurnOn );
+    m_CamMode->SetFastSequence(TurnOn);
 
-    if( TurnOn )
+    if (TurnOn)
     {
         //set the shutter delay to zero
-        SetShutterCloseDelay( 0.0 );
+        SetShutterCloseDelay(0.0);
     }
     else
     {
@@ -1343,7 +1343,7 @@ void ApogeeCam::SetFastSequence( const bool TurnOn )
 bool ApogeeCam::IsFastSequenceOn()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsFastSequenceOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsFastSequenceOn");
 #endif
 
     return m_CamMode->IsFastSequenceOn();
@@ -1352,13 +1352,13 @@ bool ApogeeCam::IsFastSequenceOn()
 
 //////////////////////////// 
 //  SET         BULK      DOWNLOAD
-void ApogeeCam::SetBulkDownload( const bool TurnOn )
+void ApogeeCam::SetBulkDownload(const bool TurnOn)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetBulkDownload -> TurnOn = %d", TurnOn );
+    apgHelper::DebugMsg("ApogeeCam::SetBulkDownload -> TurnOn = %d", TurnOn);
 #endif
 
-    m_CamMode->SetBulkDownload( TurnOn );
+    m_CamMode->SetBulkDownload(TurnOn);
 }
 
 //////////////////////////// 
@@ -1366,7 +1366,7 @@ void ApogeeCam::SetBulkDownload( const bool TurnOn )
 bool ApogeeCam::IsBulkDownloadOn()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsBulkDownloadOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsBulkDownloadOn");
 #endif
 
      return m_CamMode->IsBulkDownloadOn();
@@ -1375,13 +1375,13 @@ bool ApogeeCam::IsBulkDownloadOn()
 
 //////////////////////////// 
 //  SET         PIPELINE      DOWNLOAD
-void ApogeeCam::SetPipelineDownload( const bool TurnOn )
+void ApogeeCam::SetPipelineDownload(const bool TurnOn)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetPipelineDownload -> TurnOn = %d", TurnOn );
+    apgHelper::DebugMsg("ApogeeCam::SetPipelineDownload -> TurnOn = %d", TurnOn);
 #endif
 
-    m_CamMode->SetPipelineDownload( TurnOn );
+    m_CamMode->SetPipelineDownload(TurnOn);
 }
 
 //////////////////////////// 
@@ -1389,7 +1389,7 @@ void ApogeeCam::SetPipelineDownload( const bool TurnOn )
 bool ApogeeCam::IsPipelineDownloadOn()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsPipelineDownloadOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsPipelineDownloadOn");
 #endif
 
      return m_CamMode->IsPipelineDownloadOn();
@@ -1397,14 +1397,14 @@ bool ApogeeCam::IsPipelineDownloadOn()
 
 //////////////////////////// 
 // SET    IO     PORT    ASSIGNMENT
-void ApogeeCam::SetIoPortAssignment( const uint16_t assignment )
+void ApogeeCam::SetIoPortAssignment(const uint16_t assignment)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetIoPortAssignment -> assignment = %d", assignment );
+    apgHelper::DebugMsg("ApogeeCam::SetIoPortAssignment -> assignment = %d", assignment);
 #endif
 
    const uint16_t val2write = assignment & CameraRegs::IO_PORT_ASSIGNMENT_MASK;
-    WriteReg( CameraRegs::IO_PORT_ASSIGNMENT, val2write);
+    WriteReg(CameraRegs::IO_PORT_ASSIGNMENT, val2write);
 }
 
 //////////////////////////// 
@@ -1412,24 +1412,24 @@ void ApogeeCam::SetIoPortAssignment( const uint16_t assignment )
 uint16_t ApogeeCam::GetIoPortAssignment()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetIoPortAssignment" );
+    apgHelper::DebugMsg("ApogeeCam::GetIoPortAssignment");
 #endif
 
-    return m_CamIo->ReadMirrorReg( 
-        CameraRegs::IO_PORT_ASSIGNMENT );
+    return m_CamIo->ReadMirrorReg(
+        CameraRegs::IO_PORT_ASSIGNMENT);
 }
 
 //////////////////////////// 
 // SET    IO        PORT    BLANKING     BITS
-void ApogeeCam::SetIoPortBlankingBits( const uint16_t blankingBits )
+void ApogeeCam::SetIoPortBlankingBits(const uint16_t blankingBits)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetIoPortBlankingBits -> blankingBits = %d", blankingBits );
+    apgHelper::DebugMsg("ApogeeCam::SetIoPortBlankingBits -> blankingBits = %d", blankingBits);
 #endif
 
     const uint16_t val2write = blankingBits & CameraRegs::IO_PORT_BLANKING_BITS_MASK;
-    WriteReg( CameraRegs::IO_PORT_BLANKING_BITS, 
-        val2write );
+    WriteReg(CameraRegs::IO_PORT_BLANKING_BITS, 
+        val2write);
 }
 
 //////////////////////////// 
@@ -1437,23 +1437,23 @@ void ApogeeCam::SetIoPortBlankingBits( const uint16_t blankingBits )
 uint16_t ApogeeCam::GetIoPortBlankingBits()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetIoPortBlankingBits" );
+    apgHelper::DebugMsg("ApogeeCam::GetIoPortBlankingBits");
 #endif
 
-    return m_CamIo->ReadMirrorReg( 
-        CameraRegs::IO_PORT_BLANKING_BITS );
+    return m_CamIo->ReadMirrorReg(
+        CameraRegs::IO_PORT_BLANKING_BITS);
 }
 	
 //////////////////////////// 
 // SET    IO     PORT    DIRECTION
-void ApogeeCam::SetIoPortDirection( const uint16_t direction )
+void ApogeeCam::SetIoPortDirection(const uint16_t direction)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetIoPortDirection -> direction = %d", direction );
+    apgHelper::DebugMsg("ApogeeCam::SetIoPortDirection -> direction = %d", direction);
 #endif
 
     const uint16_t val2write = direction & CameraRegs::IO_PORT_DIRECTION_MASK;
-    WriteReg( CameraRegs::IO_PORT_DIRECTION, val2write );
+    WriteReg(CameraRegs::IO_PORT_DIRECTION, val2write);
 }
 
 //////////////////////////// 
@@ -1461,23 +1461,23 @@ void ApogeeCam::SetIoPortDirection( const uint16_t direction )
 uint16_t ApogeeCam::GetIoPortDirection()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetIoPortDirection" );
+    apgHelper::DebugMsg("ApogeeCam::GetIoPortDirection");
 #endif
 
-    return m_CamIo->ReadMirrorReg( 
-        CameraRegs::IO_PORT_DIRECTION );
+    return m_CamIo->ReadMirrorReg(
+        CameraRegs::IO_PORT_DIRECTION);
 }
 
 //////////////////////////// 
 // SET    IO     PORT      DATA
-void ApogeeCam::SetIoPortData( const uint16_t data )
+void ApogeeCam::SetIoPortData(const uint16_t data)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetIoPortData -> data = %d", data );
+    apgHelper::DebugMsg("ApogeeCam::SetIoPortData -> data = %d", data);
 #endif
 
     const uint16_t val2write = data & CameraRegs::IO_PORT_DATA_MASK;
-    WriteReg( CameraRegs::IO_PORT_DATA_WRITE, val2write );
+    WriteReg(CameraRegs::IO_PORT_DATA_WRITE, val2write);
 }
 
 //////////////////////////// 
@@ -1485,10 +1485,10 @@ void ApogeeCam::SetIoPortData( const uint16_t data )
 uint16_t ApogeeCam::GetIoPortData()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetIoPortData" );
+    apgHelper::DebugMsg("ApogeeCam::GetIoPortData");
 #endif
 
-    const uint16_t data = ReadReg( CameraRegs::IO_PORT_DATA_READ ) &
+    const uint16_t data = ReadReg(CameraRegs::IO_PORT_DATA_READ) &
         CameraRegs::IO_PORT_DATA_MASK;
     return  data;
 }
@@ -1499,7 +1499,7 @@ uint16_t ApogeeCam::GetIoPortData()
 void ApogeeCam::ExectuePreFlash()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::ExectuePreFlash" );
+    apgHelper::DebugMsg("ApogeeCam::ExectuePreFlash");
 #endif
 
     //save the external trigger values and 
@@ -1512,7 +1512,7 @@ void ApogeeCam::ExectuePreFlash()
    std::vector< std::pair<Apg::TriggerMode,Apg::TriggerType> >::iterator iter;
     for(iter = trigs.begin(); iter != trigs.end(); ++iter)
     {
-        m_CamMode->SetExternalTrigger(false, iter->first, iter->second );
+        m_CamMode->SetExternalTrigger(false, iter->first, iter->second);
     }
 
     //save the current strobe value to reset later
@@ -1520,92 +1520,92 @@ void ApogeeCam::ExectuePreFlash()
     const double PreFlashDuration = m_CamCfgData->m_MetaData.IRPreflashTime / 1000.0;
     // write the time for the IR pre-flash, which is different than
     // the strobe position for a regular exposure
-    SetShutterStrobePosition( PreFlashDuration );
+    SetShutterStrobePosition(PreFlashDuration);
 
     // disable fpga fifo writes
-    m_CamIo->ReadOrWriteReg( CameraRegs::OP_B,
+    m_CamIo->ReadOrWriteReg(CameraRegs::OP_B,
         CameraRegs::OP_B_FIFO_WRITE_BLOCK_BIT);
 
     //set the preflash bit
-    m_CamIo->ReadOrWriteReg( CameraRegs::OP_B,
+    m_CamIo->ReadOrWriteReg(CameraRegs::OP_B,
         CameraRegs::OP_B_IR_PREFLASH_ENABLE_BIT);
 
     // Calculate and set the preflash exposure time 
     const double PreFlashExposureTime = PreFlashDuration + 0.050;
-    SetExpsoureTime( PreFlashExposureTime );
+    SetExpsoureTime(PreFlashExposureTime);
 
     // start the dark exposure
-    WriteReg( CameraRegs::CMD_A, 
-        CameraRegs::CMD_A_DARK_BIT );
+    WriteReg(CameraRegs::CMD_A, 
+        CameraRegs::CMD_A_DARK_BIT);
 
-    apgHelper::ApogeeSleep( m_CamCfgData->m_MetaData.IRPreflashTime );    
+    apgHelper::ApogeeSleep(m_CamCfgData->m_MetaData.IRPreflashTime);    
 
     //wait for the image
     int32_t WaitCounter = 0;
-    while( GetImagingStatus() != Apg::Status_Flushing )
+    while(GetImagingStatus() != Apg::Status_Flushing)
 	{
-        apgHelper::ApogeeSleep( 20 );
+        apgHelper::ApogeeSleep(20);
 
 		++WaitCounter;
 		
-		if ( WaitCounter > 1000 )
+		if (WaitCounter > 1000)
 		{
             // we've waited longer than 3s to start flushing in the camera head
             // something is amiss...abort the expose command to avoid an infinite loop
-            std::string msg( "Preflash dark image failed to finish.");
+            std::string msg("Preflash dark image failed to finish.");
             apgHelper::throwRuntimeException(m_fileName, msg, 
-                __LINE__, Apg::ErrorType_Critical );
+                __LINE__, Apg::ErrorType_Critical);
 		}
 	}
 
     //turn off pre-flash
-    m_CamIo->ReadAndWriteReg( CameraRegs::OP_B,
-        static_cast<uint16_t>(~CameraRegs::OP_B_IR_PREFLASH_ENABLE_BIT) );
+    m_CamIo->ReadAndWriteReg(CameraRegs::OP_B,
+        static_cast<uint16_t>(~CameraRegs::OP_B_IR_PREFLASH_ENABLE_BIT));
 
     // allow fifo writes!!
-    m_CamIo->ReadAndWriteReg( CameraRegs::OP_B,
-        static_cast<uint16_t>(~CameraRegs::OP_B_FIFO_WRITE_BLOCK_BIT) );
+    m_CamIo->ReadAndWriteReg(CameraRegs::OP_B,
+        static_cast<uint16_t>(~CameraRegs::OP_B_FIFO_WRITE_BLOCK_BIT));
 
     //restore the triggers to its previous state
     for(iter = trigs.begin(); iter != trigs.end(); ++iter)
     {
-        m_CamMode->SetExternalTrigger(true, iter->first, iter->second );
+        m_CamMode->SetExternalTrigger(true, iter->first, iter->second);
     }
 
     //restore strob pos, reg23 to is original value
     //for regular exposures
-    SetShutterStrobePosition( strobePos );
+    SetShutterStrobePosition(strobePos);
 }
 
 //////////////////////////// 
 //  SET      EXPSOURE    TIME
-void ApogeeCam::SetExpsoureTime( const double Duration )
+void ApogeeCam::SetExpsoureTime(const double Duration)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetExpsoureTime -> Duration = %f", Duration );
+    apgHelper::DebugMsg("ApogeeCam::SetExpsoureTime -> Duration = %f", Duration);
 #endif
 
     const uint32_t ExpTime = 
-        static_cast<uint32_t>( (Duration / m_CameraConsts->m_TimerResolution) ) + 
+        static_cast<uint32_t>((Duration / m_CameraConsts->m_TimerResolution)) + 
         m_CameraConsts->m_TimerOffsetCount;
 
     const uint16_t ExpTimeLow = (ExpTime & 0xFFFF);
-    WriteReg( CameraRegs::TIMER_LOWER, ExpTimeLow);
-    const uint16_t ExpTimeHigh = ( (ExpTime >> 16) & 0xFFFF);
-    WriteReg( CameraRegs::TIMER_UPPER, ExpTimeHigh);
+    WriteReg(CameraRegs::TIMER_LOWER, ExpTimeLow);
+    const uint16_t ExpTimeHigh = ((ExpTime >> 16) & 0xFFFF);
+    WriteReg(CameraRegs::TIMER_UPPER, ExpTimeHigh);
 }
 
 //////////////////////////// 
 //  SET   EXTERNAL TRIGGER 
-void ApogeeCam::SetExternalTrigger( bool TurnOn, const Apg::TriggerMode trigMode,
-            const Apg::TriggerType trigType )
+void ApogeeCam::SetExternalTrigger(bool TurnOn, const Apg::TriggerMode trigMode,
+            const Apg::TriggerType trigType)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetExternalTrigger -> TurnOn = %d, trigMode = %d, trigType = %d", 
-        TurnOn, trigMode, trigType );
+    apgHelper::DebugMsg("ApogeeCam::SetExternalTrigger -> TurnOn = %d, trigMode = %d, trigType = %d", 
+        TurnOn, trigMode, trigType);
 #endif
 
-    m_CamMode->SetExternalTrigger( TurnOn, trigMode, trigType );
+    m_CamMode->SetExternalTrigger(TurnOn, trigMode, trigType);
 }
 
 //////////////////////////// 
@@ -1613,7 +1613,7 @@ void ApogeeCam::SetExternalTrigger( bool TurnOn, const Apg::TriggerMode trigMode
 bool ApogeeCam::IsTriggerNormEachOn()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsTriggerNormEachOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsTriggerNormEachOn");
 #endif
 
     return m_CamMode->IsTriggerNormEachOn();
@@ -1624,7 +1624,7 @@ bool ApogeeCam::IsTriggerNormEachOn()
 bool ApogeeCam::IsTriggerNormGroupOn()
 {
 #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "ApogeeCam::IsTriggerNormGroupOn" );
+     apgHelper::DebugMsg("ApogeeCam::IsTriggerNormGroupOn");
  #endif
 
     return m_CamMode->IsTriggerNormGroupOn();
@@ -1634,7 +1634,7 @@ bool ApogeeCam::IsTriggerNormGroupOn()
 bool ApogeeCam::IsTriggerTdiKinEachOn()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsTriggerTdiKinEachOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsTriggerTdiKinEachOn");
 #endif
 
     return m_CamMode->IsTriggerTdiKinEachOn();
@@ -1645,7 +1645,7 @@ bool ApogeeCam::IsTriggerTdiKinEachOn()
 bool ApogeeCam::IsTriggerTdiKinGroupOn()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsTriggerTdiKinGroupOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsTriggerTdiKinGroupOn");
 #endif
 
     return m_CamMode->IsTriggerTdiKinGroupOn();
@@ -1656,7 +1656,7 @@ bool ApogeeCam::IsTriggerTdiKinGroupOn()
 bool ApogeeCam::IsTriggerExternalShutterOn()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsTriggerExternalShutterOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsTriggerExternalShutterOn");
 #endif
 
     return m_CamMode->IsTriggerExternalShutterOn();
@@ -1667,7 +1667,7 @@ bool ApogeeCam::IsTriggerExternalShutterOn()
 bool ApogeeCam::IsTriggerExternalReadoutOn()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsTriggerExternalShutterOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsTriggerExternalShutterOn");
 #endif
 
     return m_CamMode->IsTriggerExternalReadoutOn();
@@ -1675,44 +1675,44 @@ bool ApogeeCam::IsTriggerExternalReadoutOn()
 
 //////////////////////////// 
 //  SET     SHUTTER      STATE
-void ApogeeCam::SetShutterState( const Apg::ShutterState state )
+void ApogeeCam::SetShutterState(const Apg::ShutterState state)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetShutterState -> state = %d", state );
+    apgHelper::DebugMsg("ApogeeCam::SetShutterState -> state = %d", state);
 #endif
 
-    switch( state )
+    switch(state)
     {
         case Apg::ShutterState_Normal:
             //for normal operations bits 11 and 12 are low
-            m_CamIo->ReadAndWriteReg( CameraRegs::OP_A,
-            static_cast<uint16_t>(~CameraRegs::OP_A_FORCE_SHUTTER_BIT) );
+            m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,
+            static_cast<uint16_t>(~CameraRegs::OP_A_FORCE_SHUTTER_BIT));
 
-             m_CamIo->ReadAndWriteReg( CameraRegs::OP_A,
-            static_cast<uint16_t>(~CameraRegs::OP_A_DISABLE_SHUTTER_BIT) );
+             m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,
+            static_cast<uint16_t>(~CameraRegs::OP_A_DISABLE_SHUTTER_BIT));
          break;
 
         case Apg::ShutterState_ForceOpen:
             //force open bit 11 is HIGH and 12 is LOW
-            m_CamIo->ReadOrWriteReg( CameraRegs::OP_A,
+            m_CamIo->ReadOrWriteReg(CameraRegs::OP_A,
             CameraRegs::OP_A_FORCE_SHUTTER_BIT);
 
-            m_CamIo->ReadAndWriteReg( CameraRegs::OP_A,
-            static_cast<uint16_t>(~CameraRegs::OP_A_DISABLE_SHUTTER_BIT) );
+            m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,
+            static_cast<uint16_t>(~CameraRegs::OP_A_DISABLE_SHUTTER_BIT));
         break;
 
         case Apg::ShutterState_ForceClosed:
             //force closed bit 11 is LOW and 12 is HIGH
-            m_CamIo->ReadAndWriteReg( CameraRegs::OP_A,
-            static_cast<uint16_t>(~CameraRegs::OP_A_FORCE_SHUTTER_BIT) );
+            m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,
+            static_cast<uint16_t>(~CameraRegs::OP_A_FORCE_SHUTTER_BIT));
 
-            m_CamIo->ReadOrWriteReg( CameraRegs::OP_A,
-            CameraRegs::OP_A_DISABLE_SHUTTER_BIT );
+            m_CamIo->ReadOrWriteReg(CameraRegs::OP_A,
+            CameraRegs::OP_A_DISABLE_SHUTTER_BIT);
         break;
 
         default:
-            apgHelper::throwRuntimeException( m_fileName, 
-                "Invalid shutter state.", __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, 
+                "Invalid shutter state.", __LINE__, Apg::ErrorType_InvalidUsage);
         break;
     }
 }
@@ -1722,12 +1722,12 @@ void ApogeeCam::SetShutterState( const Apg::ShutterState state )
 Apg::ShutterState ApogeeCam::GetShutterState()
 {
 
-    const uint16_t val = ReadReg( CameraRegs::OP_A );
+    const uint16_t val = ReadReg(CameraRegs::OP_A);
     const uint16_t mask = 0x1800;  //bits 11 and 12
     const uint16_t result =  val & mask;
 
     Apg::ShutterState state =  Apg::ShutterState_Unkown;
-    switch( result )
+    switch(result)
     {
         case 0x0:
             state = Apg::ShutterState_Normal;
@@ -1749,7 +1749,7 @@ Apg::ShutterState ApogeeCam::GetShutterState()
     }
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetShutterState -> state = %d, val = 0x%x, result = 0x%x", state, val, result );
+    apgHelper::DebugMsg("ApogeeCam::GetShutterState -> state = %d, val = 0x%x, result = 0x%x", state, val, result);
 #endif
 
     return state;
@@ -1761,10 +1761,10 @@ Apg::ShutterState ApogeeCam::GetShutterState()
 bool ApogeeCam::IsShutterForcedOpen()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsShutterForcedOpen" );
+    apgHelper::DebugMsg("ApogeeCam::IsShutterForcedOpen");
 #endif
 
-    return( GetShutterState() ==  Apg::ShutterState_ForceOpen ?  true : false );
+    return(GetShutterState() ==  Apg::ShutterState_ForceOpen ?  true : false);
 }
 
 //////////////////////////// 
@@ -1772,10 +1772,10 @@ bool ApogeeCam::IsShutterForcedOpen()
 bool ApogeeCam::IsShutterForcedClosed()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsShutterForcedClosed" );
+    apgHelper::DebugMsg("ApogeeCam::IsShutterForcedClosed");
 #endif
 
-    return( GetShutterState() ==  Apg::ShutterState_ForceClosed ?  true : false );
+    return(GetShutterState() ==  Apg::ShutterState_ForceClosed ?  true : false);
 }
 
 //////////////////////////// 
@@ -1783,33 +1783,33 @@ bool ApogeeCam::IsShutterForcedClosed()
 bool ApogeeCam::IsShutterOpen()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsShutterOpen" );
+    apgHelper::DebugMsg("ApogeeCam::IsShutterOpen");
 #endif
 
     CameraStatusRegs StatusObj = GetStatus();
-    return( 
-        (StatusObj.GetStatus() & CameraRegs::STATUS_SHUTTER_OPEN_BIT ) ?
-        true : false );
+    return(
+        (StatusObj.GetStatus() & CameraRegs::STATUS_SHUTTER_OPEN_BIT) ?
+        true : false);
 }
 
 
 //////////////////////////// 
 //  SET     SHUTTER      AMP        CTRL      ON
-void ApogeeCam::SetShutterAmpCtrl( const bool TurnOn )
+void ApogeeCam::SetShutterAmpCtrl(const bool TurnOn)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetShutterAmpCtrl -> TurnOn = %d", TurnOn );
+    apgHelper::DebugMsg("ApogeeCam::SetShutterAmpCtrl -> TurnOn = %d", TurnOn);
 #endif
 
-    if( TurnOn )
+    if (TurnOn)
     {
-         m_CamIo->ReadOrWriteReg( CameraRegs::OP_A,
+         m_CamIo->ReadOrWriteReg(CameraRegs::OP_A,
             CameraRegs::OP_A_SHUTTER_AMP_CONTROL_BIT);
     }
     else
     {
-          m_CamIo->ReadAndWriteReg( CameraRegs::OP_A,
-            static_cast<uint16_t>(~CameraRegs::OP_A_SHUTTER_AMP_CONTROL_BIT) );
+          m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,
+            static_cast<uint16_t>(~CameraRegs::OP_A_SHUTTER_AMP_CONTROL_BIT));
     }
 }
 
@@ -1818,34 +1818,34 @@ void ApogeeCam::SetShutterAmpCtrl( const bool TurnOn )
 bool ApogeeCam::IsShutterAmpCtrlOn()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsShutterAmpCtrlOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsShutterAmpCtrlOn");
 #endif
 
-    const uint16_t opA = ReadReg( CameraRegs::OP_A );
+    const uint16_t opA = ReadReg(CameraRegs::OP_A);
 
-     return( 
-        (opA & CameraRegs::OP_A_SHUTTER_AMP_CONTROL_BIT ) ?
-        true : false );
+     return(
+        (opA & CameraRegs::OP_A_SHUTTER_AMP_CONTROL_BIT) ?
+        true : false);
 }
 
 
 //////////////////////////// 
 //  SET   COOLER 
-void ApogeeCam::SetCooler( const bool TurnOn )
+void ApogeeCam::SetCooler(const bool TurnOn)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetCooler -> TurnOn = %d", TurnOn );
+    apgHelper::DebugMsg("ApogeeCam::SetCooler -> TurnOn = %d", TurnOn);
 #endif
 
-    if( TurnOn )
+    if (TurnOn)
     {
-        WriteReg( CameraRegs::CMD_B,
-            CameraRegs::CMD_B_RAMP_TO_SETPOINT_BIT );
+        WriteReg(CameraRegs::CMD_B,
+            CameraRegs::CMD_B_RAMP_TO_SETPOINT_BIT);
     }
     else
     {
-        WriteReg( CameraRegs::CMD_B,
-            CameraRegs::CMD_B_RAMP_TO_AMBIENT_BIT );
+        WriteReg(CameraRegs::CMD_B,
+            CameraRegs::CMD_B_RAMP_TO_AMBIENT_BIT);
     }
 }
 
@@ -1856,10 +1856,10 @@ Apg::CoolerStatus ApogeeCam::GetCoolerStatus()
     CameraStatusRegs StatusObj = GetStatus();
    
     //check if the cooler is even turned on
-    if( (StatusObj.GetStatus() & CameraRegs::STATUS_TEMP_ACTIVE_BIT) != CameraRegs::STATUS_TEMP_ACTIVE_BIT )
+    if ((StatusObj.GetStatus() & CameraRegs::STATUS_TEMP_ACTIVE_BIT) != CameraRegs::STATUS_TEMP_ACTIVE_BIT)
     {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetCoolerStatus -> status = %d", Apg::CoolerStatus_Off );
+    apgHelper::DebugMsg("ApogeeCam::GetCoolerStatus -> status = %d", Apg::CoolerStatus_Off);
 #endif
         return Apg::CoolerStatus_Off;
     }
@@ -1875,11 +1875,11 @@ Apg::CoolerStatus ApogeeCam::GetCoolerStatus()
      const uint16_t tempStatus = StatusObj.GetStatus() & TEMP_MASK;
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetCoolerStatus -> status reg & temp mask = %x", tempStatus );
+    apgHelper::DebugMsg("ApogeeCam::GetCoolerStatus -> status reg & temp mask = %x", tempStatus);
 #endif
 
     Apg::CoolerStatus currentStatus = Apg::CoolerStatus_Off;
-    switch( tempStatus )
+    switch(tempStatus)
     {
         case CameraRegs::STATUS_TEMP_REVISION_BIT:
         case (CameraRegs::STATUS_TEMP_ACTIVE_BIT | CameraRegs::STATUS_TEMP_REVISION_BIT):
@@ -1909,7 +1909,7 @@ Apg::CoolerStatus ApogeeCam::GetCoolerStatus()
     }
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetCoolerStatus -> status = %d", currentStatus );
+    apgHelper::DebugMsg("ApogeeCam::GetCoolerStatus -> status = %d", currentStatus);
 #endif
 
     return currentStatus;
@@ -1920,30 +1920,30 @@ Apg::CoolerStatus ApogeeCam::GetCoolerStatus()
 bool ApogeeCam::IsCoolerOn()
 {
 #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "ApogeeCam::IsCoolerOn" );
+     apgHelper::DebugMsg("ApogeeCam::IsCoolerOn");
 #endif
 
     const Apg::CoolerStatus cooler = GetCoolerStatus();
 
-    return( cooler != Apg::CoolerStatus_Off ? true : false );
+    return(cooler != Apg::CoolerStatus_Off ? true : false);
 }
 
 
 //////////////////////////// 
 //  SUPSEND   COOLER
-void ApogeeCam::SupsendCooler( bool & resume )
+void ApogeeCam::SupsendCooler(bool & resume)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SupsendCooler" );
+    apgHelper::DebugMsg("ApogeeCam::SupsendCooler");
 #endif
 
-    if( IsCoolerOn() )
+    if (IsCoolerOn())
     {
-        m_CamIo->ReadOrWriteReg( CameraRegs::OP_A,
-            CameraRegs::OP_A_TEMP_SUSPEND_BIT );
+        m_CamIo->ReadOrWriteReg(CameraRegs::OP_A,
+            CameraRegs::OP_A_TEMP_SUSPEND_BIT);
 
-        WaitForCoolerSuspendBit( 
-            CameraRegs::STATUS_TEMP_SUSPEND_ACK_BIT, true );
+        WaitForCoolerSuspendBit(
+            CameraRegs::STATUS_TEMP_SUSPEND_ACK_BIT, true);
 
         resume = true;
     }
@@ -1954,26 +1954,26 @@ void ApogeeCam::SupsendCooler( bool & resume )
 void ApogeeCam::ResumeCooler()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::ResumeCooler" );
+    apgHelper::DebugMsg("ApogeeCam::ResumeCooler");
 #endif
 
     // ticket #39 always allow this write
-    m_CamIo->ReadAndWriteReg( CameraRegs::OP_A, 
-    static_cast<uint16_t>(~CameraRegs::OP_A_TEMP_SUSPEND_BIT) );
+    m_CamIo->ReadAndWriteReg(CameraRegs::OP_A, 
+    static_cast<uint16_t>(~CameraRegs::OP_A_TEMP_SUSPEND_BIT));
 
     //wait for the status temp suspend bit to go low
     const uint16_t mask = 
         static_cast<uint16_t>(~CameraRegs::STATUS_TEMP_SUSPEND_ACK_BIT);
-    WaitForCoolerSuspendBit(  mask, false );
+    WaitForCoolerSuspendBit( mask, false);
 
 }
 
 //////////////////////////// 
 //  WAIT        FOR      COOLER    SUSPEND      BIT
-void ApogeeCam::WaitForCoolerSuspendBit( const uint16_t mask, const bool IsHigh )
+void ApogeeCam::WaitForCoolerSuspendBit(const uint16_t mask, const bool IsHigh)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::WaitForCoolerSuspendBit" );
+    apgHelper::DebugMsg("ApogeeCam::WaitForCoolerSuspendBit");
 #endif
 
     int32_t loopCount = 0;
@@ -1981,30 +1981,30 @@ void ApogeeCam::WaitForCoolerSuspendBit( const uint16_t mask, const bool IsHigh 
 
     bool waiting = true;
 
-    while( waiting )
+    while(waiting)
     { 
-        if( loopCount >= NUM_LOOPS )
+        if (loopCount >= NUM_LOOPS)
         {
             //throw an error we have been waiting too long
-            apgHelper::throwRuntimeException( m_fileName,
+            apgHelper::throwRuntimeException(m_fileName,
                 "Waiting for temp suspension timed out.", __LINE__,
-                Apg::ErrorType_Critical );
+                Apg::ErrorType_Critical);
         }
 
         //pause and increment - try again
-        apgHelper::ApogeeSleep( 100 );
+        apgHelper::ApogeeSleep(100);
         ++loopCount;
 
-       uint16_t value = ReadReg( CameraRegs::STATUS );
+       uint16_t value = ReadReg(CameraRegs::STATUS);
        uint16_t result = 0;
        // loop until the desired bit goes high (the &) or low (the |)
-       if( IsHigh )
+       if (IsHigh)
        {
-           result = ( value & mask );
+           result = (value & mask);
        }
        else 
        {
-           result = ( value | mask );
+           result = (value | mask);
        }
 
        waiting = result != mask ? true : false;
@@ -2019,7 +2019,7 @@ double ApogeeCam::GetTempCcd()
 {
     double summedRegValues = 0;
 
-    for( int i=0; i < NUM_TEMP_2_AVG; ++i )
+    for(int i=0; i < NUM_TEMP_2_AVG; ++i)
     {
         CameraStatusRegs curStatus = GetStatus();
         summedRegValues += curStatus.GetTempCcd();
@@ -2027,11 +2027,11 @@ double ApogeeCam::GetTempCcd()
 
     const double avgRegVal = summedRegValues / (double)NUM_TEMP_2_AVG;
 
-    double result =   ( avgRegVal - m_CameraConsts->m_TempSetpointZeroPoint ) * 
+    double result =   (avgRegVal - m_CameraConsts->m_TempSetpointZeroPoint) * 
                     m_CameraConsts->m_TempDegreesPerBit;
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetTempCcd -> temp = %f", result );
+    apgHelper::DebugMsg("ApogeeCam::GetTempCcd -> temp = %f", result);
 #endif
 
     return result;
@@ -2043,7 +2043,7 @@ double ApogeeCam::DefaultGetTempHeatsink()
 {
     double summedRegValues = 0;
 
-    for( int i=0; i < NUM_TEMP_2_AVG; ++i )
+    for(int i=0; i < NUM_TEMP_2_AVG; ++i)
     {
         CameraStatusRegs curStatus = GetStatus();
         summedRegValues += curStatus.GetTempHeatSink() & CameraRegs::MASK_TEMP_PARAMS;
@@ -2052,11 +2052,11 @@ double ApogeeCam::DefaultGetTempHeatsink()
     const double avgRegVal = summedRegValues / (double)NUM_TEMP_2_AVG;
 
      const double temp = 
-         ( avgRegVal - m_CameraConsts->m_TempHeatsinkZeroPoint ) * 
+         (avgRegVal - m_CameraConsts->m_TempHeatsinkZeroPoint) * 
         m_CameraConsts->m_TempDegreesPerBit;
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetTempHeatsink -> temp = %f", temp );
+    apgHelper::DebugMsg("ApogeeCam::GetTempHeatsink -> temp = %f", temp);
 #endif
 
      return temp;
@@ -2064,13 +2064,13 @@ double ApogeeCam::DefaultGetTempHeatsink()
 
 //////////////////////////// 
 // SET      ADC     RESOLUTION
-void ApogeeCam::SetCcdAdcResolution(const Apg::Resolution res )
+void ApogeeCam::SetCcdAdcResolution(const Apg::Resolution res)
 { 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetCcdAdcResolution -> res = %d", res );
+    apgHelper::DebugMsg("ApogeeCam::SetCcdAdcResolution -> res = %d", res);
 #endif
 
-    m_CcdAcqSettings->SetResolution( res );
+    m_CcdAcqSettings->SetResolution(res);
 }
 
 //////////////////////////// 
@@ -2078,7 +2078,7 @@ void ApogeeCam::SetCcdAdcResolution(const Apg::Resolution res )
 Apg::Resolution ApogeeCam::GetCcdAdcResolution()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetCcdAdcResolution" );
+    apgHelper::DebugMsg("ApogeeCam::GetCcdAdcResolution");
 #endif
 
     return m_CcdAcqSettings->GetResolution();
@@ -2086,23 +2086,23 @@ Apg::Resolution ApogeeCam::GetCcdAdcResolution()
 
 //////////////////////////// 
 // SET      ADC     SPEED
-void ApogeeCam::SetCcdAdcSpeed( const Apg::AdcSpeed speed )
+void ApogeeCam::SetCcdAdcSpeed(const Apg::AdcSpeed speed)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetCcdAdcSpeed -> speed = %d", speed );
+    apgHelper::DebugMsg("ApogeeCam::SetCcdAdcSpeed -> speed = %d", speed);
 #endif
 
-    if( GetCcdAdcSpeed() == speed )
+    if (GetCcdAdcSpeed() == speed)
     {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetCcdAdcSpeed speed already set, exiting function" );
+    apgHelper::DebugMsg("ApogeeCam::SetCcdAdcSpeed speed already set, exiting function");
 #endif
         // exit here cannot hammer on the ascents cause image 
         // flicker in alta ticket #114
         return;
     }
 
-    m_CcdAcqSettings->SetSpeed( speed );
+    m_CcdAcqSettings->SetSpeed(speed);
 }
   
 //////////////////////////// 
@@ -2110,7 +2110,7 @@ void ApogeeCam::SetCcdAdcSpeed( const Apg::AdcSpeed speed )
 Apg::AdcSpeed ApogeeCam::GetCcdAdcSpeed()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetCcdAdcSpeed" );
+    apgHelper::DebugMsg("ApogeeCam::GetCcdAdcSpeed");
 #endif
 
     return  m_CcdAcqSettings->GetSpeed();
@@ -2121,7 +2121,7 @@ Apg::AdcSpeed ApogeeCam::GetCcdAdcSpeed()
 uint16_t ApogeeCam::GetMaxBinCols()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetMaxBinCols" );
+    apgHelper::DebugMsg("ApogeeCam::GetMaxBinCols");
 #endif
 
     return m_CcdAcqSettings->GetMaxBinCols();
@@ -2132,7 +2132,7 @@ uint16_t ApogeeCam::GetMaxBinCols()
 uint16_t ApogeeCam::GetMaxBinRows()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetMaxBinRows" );
+    apgHelper::DebugMsg("ApogeeCam::GetMaxBinRows");
 #endif
     return m_CcdAcqSettings->GetMaxBinRows(); 
 }
@@ -2142,7 +2142,7 @@ uint16_t ApogeeCam::GetMaxBinRows()
 uint16_t ApogeeCam::GetMaxImgCols()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetMaxImgCols" );
+    apgHelper::DebugMsg("ApogeeCam::GetMaxImgCols");
 #endif
 
     return m_CamCfgData->m_MetaData.ImagingColumns;
@@ -2153,7 +2153,7 @@ uint16_t ApogeeCam::GetMaxImgCols()
 uint16_t ApogeeCam::GetMaxImgRows()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetMaxImgRows" );
+    apgHelper::DebugMsg("ApogeeCam::GetMaxImgRows");
 #endif
 
     return m_CamCfgData->m_MetaData.ImagingRows;
@@ -2165,7 +2165,7 @@ uint16_t ApogeeCam::GetMaxImgRows()
 uint16_t ApogeeCam::GetTotalRows()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetTotalRows" );
+    apgHelper::DebugMsg("ApogeeCam::GetTotalRows");
 #endif
 
     return m_CamCfgData->m_MetaData.TotalRows;
@@ -2176,7 +2176,7 @@ uint16_t ApogeeCam::GetTotalRows()
 uint16_t ApogeeCam::GetTotalCols()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetTotalCols" );
+    apgHelper::DebugMsg("ApogeeCam::GetTotalCols");
 #endif
 
     return m_CamCfgData->m_MetaData.TotalColumns;
@@ -2187,7 +2187,7 @@ uint16_t ApogeeCam::GetTotalCols()
 uint16_t ApogeeCam::GetNumOverscanCols()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetNumOverscanCols" );
+    apgHelper::DebugMsg("ApogeeCam::GetNumOverscanCols");
 #endif
 
     return m_CamCfgData->m_MetaData.OverscanColumns;
@@ -2198,21 +2198,21 @@ uint16_t ApogeeCam::GetNumOverscanCols()
 bool ApogeeCam::IsInterline()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsInterline" );
+    apgHelper::DebugMsg("ApogeeCam::IsInterline");
 #endif
 
-    return( m_CamCfgData->m_MetaData.InterlineCCD ? true : false );
+    return(m_CamCfgData->m_MetaData.InterlineCCD ? true : false);
 }
 
 //////////////////////////// 
 //  SET     LED     A     STATE
- void ApogeeCam::SetLedAState( Apg::LedState state )
+ void ApogeeCam::SetLedAState(Apg::LedState state)
  {
  #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "ApogeeCam::SetLedAState -> state = %d", state );
+     apgHelper::DebugMsg("ApogeeCam::SetLedAState -> state = %d", state);
 #endif
 
-     uint16_t value = m_CamIo->ReadMirrorReg( CameraRegs::LED );
+     uint16_t value = m_CamIo->ReadMirrorReg(CameraRegs::LED);
     
     //clear bits 0:2
      value &= ~CameraRegs::LED_A_MASK;
@@ -2223,7 +2223,7 @@ bool ApogeeCam::IsInterline()
      value |= newState;
 
      //write the new value to the camera
-     WriteReg( CameraRegs::LED, value );
+     WriteReg(CameraRegs::LED, value);
  }
  
 //////////////////////////// 
@@ -2231,35 +2231,35 @@ bool ApogeeCam::IsInterline()
  Apg::LedState ApogeeCam::GetLedAState()
  {
  #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "ApogeeCam::GetLedAState" );
+     apgHelper::DebugMsg("ApogeeCam::GetLedAState");
 #endif
 
-     const uint16_t value = m_CamIo->ReadMirrorReg( CameraRegs::LED ) & CameraRegs::LED_A_MASK;
-     return apgHelper::ConvertUShort2ApnLedState( value );
+     const uint16_t value = m_CamIo->ReadMirrorReg(CameraRegs::LED) & CameraRegs::LED_A_MASK;
+     return apgHelper::ConvertUShort2ApnLedState(value);
  }
  
 //////////////////////////// 
 //  SET     LED     B     STATE
- void ApogeeCam::SetLedBState( Apg::LedState state )
+ void ApogeeCam::SetLedBState(Apg::LedState state)
  {
  #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "ApogeeCam::SetLedBState -> state = %d", state );
+     apgHelper::DebugMsg("ApogeeCam::SetLedBState -> state = %d", state);
 #endif
 
-     uint16_t value = m_CamIo->ReadMirrorReg( CameraRegs::LED );
+     uint16_t value = m_CamIo->ReadMirrorReg(CameraRegs::LED);
     
      //clear bits  4:6
      value &= ~CameraRegs::LED_B_MASK;
 
       //set the lower 3 bits to zero and keep bits 4:6 led B values     value &= CameraRegs::LED_B_MASK;
 
-     uint16_t newState = ( static_cast<uint16_t>(state) << CameraRegs::LED_BIT_SHIFT);
+     uint16_t newState = (static_cast<uint16_t>(state) << CameraRegs::LED_BIT_SHIFT);
 
     //or in the new state into bits 4:6
      value |= newState;
 
      //write the new value to the camera
-     WriteReg( CameraRegs::LED, value );
+     WriteReg(CameraRegs::LED, value);
  }
 
 //////////////////////////// 
@@ -2267,24 +2267,24 @@ bool ApogeeCam::IsInterline()
 Apg::LedState ApogeeCam::GetLedBState()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetLedBState" );
+    apgHelper::DebugMsg("ApogeeCam::GetLedBState");
 #endif
 
-    const uint16_t value = (m_CamIo->ReadMirrorReg( CameraRegs::LED ) & CameraRegs::LED_B_MASK ) >> CameraRegs::LED_BIT_SHIFT;
-    return apgHelper::ConvertUShort2ApnLedState( value );
+    const uint16_t value = (m_CamIo->ReadMirrorReg(CameraRegs::LED) & CameraRegs::LED_B_MASK) >> CameraRegs::LED_BIT_SHIFT;
+    return apgHelper::ConvertUShort2ApnLedState(value);
 }
 
 //////////////////////////// 
 //  SET     LED     MODE
-void ApogeeCam::SetLedMode( const Apg::LedMode mode )
+void ApogeeCam::SetLedMode(const Apg::LedMode mode)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetLedMode -> mode = %d", mode );
+    apgHelper::DebugMsg("ApogeeCam::SetLedMode -> mode = %d", mode);
 #endif
 
-    uint16_t value = ReadReg( CameraRegs::OP_A );
+    uint16_t value = ReadReg(CameraRegs::OP_A);
 
-    switch ( mode )
+    switch (mode)
     {
         case Apg::LedMode_DisableAll:
 	        value |= CameraRegs::OP_A_LED_DISABLE_BIT;
@@ -2305,13 +2305,13 @@ void ApogeeCam::SetLedMode( const Apg::LedMode mode )
         {
             std::stringstream msg;
             msg << "Invalid led mode: " <<  mode;
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
 
-    WriteReg( CameraRegs::OP_A, value );
+    WriteReg(CameraRegs::OP_A, value);
 
 }
 
@@ -2320,16 +2320,16 @@ void ApogeeCam::SetLedMode( const Apg::LedMode mode )
 Apg::LedMode ApogeeCam::GetLedMode()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetLedMode" );
+    apgHelper::DebugMsg("ApogeeCam::GetLedMode");
 #endif
 
-    const uint16_t ledMask = ( CameraRegs::OP_A_LED_DISABLE_BIT |
+    const uint16_t ledMask = (CameraRegs::OP_A_LED_DISABLE_BIT |
             CameraRegs::OP_A_LED_EXPOSE_DISABLE_BIT);
-    const uint16_t value = (ReadReg( CameraRegs::OP_A ) & ledMask);
+    const uint16_t value = (ReadReg(CameraRegs::OP_A) & ledMask);
 
     Apg::LedMode result = Apg::LedMode_DisableAll;
 
-    switch( value )
+    switch(value)
     {
         case CameraRegs::OP_A_LED_DISABLE_BIT:
             result = Apg::LedMode_DisableAll;
@@ -2352,21 +2352,21 @@ Apg::LedMode ApogeeCam::GetLedMode()
 std::string ApogeeCam::GetInfo()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetInfo" );
+    apgHelper::DebugMsg("ApogeeCam::GetInfo");
 #endif
 
     std::string info;
 
-    info.append( "Model: " + GetModel() + "\n" );
-    info.append( "Sensor: " + GetSensor() + "\n" );
+    info.append("Model: " + GetModel() + "\n");
+    info.append("Sensor: " + GetSensor() + "\n");
     
     std::stringstream libapgStr;
     libapgStr << "libapogee: " << APOGEE_MAJOR_VERSION << ".";
     libapgStr << APOGEE_MINOR_VERSION << ".";
     libapgStr << APOGEE_PATCH_VERSION << "\n";
-    info.append( libapgStr.str() );
+    info.append(libapgStr.str());
   
-    info.append( m_CamIo->GetInfo() );
+    info.append(m_CamIo->GetInfo());
 
     return info;
 }
@@ -2376,26 +2376,26 @@ std::string ApogeeCam::GetInfo()
 std::string ApogeeCam::GetModel()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetModel" );
+    apgHelper::DebugMsg("ApogeeCam::GetModel");
 #endif
 
     std::string result("Unknown");
 
-    if( 0 != m_CamCfgData )
+    if (0 != m_CamCfgData)
     {
         result = m_CamCfgData->m_MetaData.CameraLine;
 
-        if( CamModel::ALTAE == m_PlatformType )
+        if (CamModel::ALTAE == m_PlatformType)
         {
-            result.append( "E" );
+            result.append("E");
         }
 
-        if( CamModel::ALTAU == m_PlatformType )
+        if (CamModel::ALTAU == m_PlatformType)
         {
-            result.append( "U" );
+            result.append("U");
         }
-        result.append( "-" );
-        result.append( m_CamCfgData->m_MetaData.CameraModel );
+        result.append("-");
+        result.append(m_CamCfgData->m_MetaData.CameraModel);
     }
 
     return result;
@@ -2406,10 +2406,10 @@ std::string ApogeeCam::GetModel()
 std::string ApogeeCam::GetSensor()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetSensor" );
+    apgHelper::DebugMsg("ApogeeCam::GetSensor");
 #endif
 
-    if( 0 == m_CamCfgData )
+    if (0 == m_CamCfgData)
     {
         std::string result("No Sensor");
         return result;
@@ -2422,22 +2422,22 @@ std::string ApogeeCam::GetSensor()
 
 //////////////////////////// 
 //  SET     FLUSH        COMMANDS
-void ApogeeCam::SetFlushCommands( const bool Disable )
+void ApogeeCam::SetFlushCommands(const bool Disable)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetFlushCommands -> Disable = %d", Disable );
+    apgHelper::DebugMsg("ApogeeCam::SetFlushCommands -> Disable = %d", Disable);
 #endif
 
     std::string msg;
-    if( Disable )
+    if (Disable)
     {
-        m_CamIo->ReadOrWriteReg( CameraRegs::OP_B,
-            CameraRegs::OP_B_DISABLE_FLUSH_COMMANDS_BIT );
+        m_CamIo->ReadOrWriteReg(CameraRegs::OP_B,
+            CameraRegs::OP_B_DISABLE_FLUSH_COMMANDS_BIT);
     }
     else
     {
-        m_CamIo->ReadAndWriteReg( CameraRegs::OP_B,
-            static_cast<uint16_t>(~CameraRegs::OP_B_DISABLE_FLUSH_COMMANDS_BIT) );
+        m_CamIo->ReadAndWriteReg(CameraRegs::OP_B,
+            static_cast<uint16_t>(~CameraRegs::OP_B_DISABLE_FLUSH_COMMANDS_BIT));
     }
 }
   
@@ -2446,30 +2446,30 @@ void ApogeeCam::SetFlushCommands( const bool Disable )
 bool ApogeeCam::AreFlushCmdsDisabled()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::AreFlushCmdsDisabled" );
+    apgHelper::DebugMsg("ApogeeCam::AreFlushCmdsDisabled");
 #endif
 
-    return ( (ReadReg(CameraRegs::OP_B) & CameraRegs::OP_B_DISABLE_FLUSH_COMMANDS_BIT) ?
-        true : false );
+    return ((ReadReg(CameraRegs::OP_B) & CameraRegs::OP_B_DISABLE_FLUSH_COMMANDS_BIT) ?
+        true : false);
 }
 
 //////////////////////////// 
 //  SET POST EXPOSE FLUSHING
-void ApogeeCam::SetPostExposeFlushing( const bool Disable )
+void ApogeeCam::SetPostExposeFlushing(const bool Disable)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetPostExposeFlushing -> Disable = %d", Disable );
+    apgHelper::DebugMsg("ApogeeCam::SetPostExposeFlushing -> Disable = %d", Disable);
 #endif
 
-    if( Disable )
+    if (Disable)
     {
-         m_CamIo->ReadOrWriteReg( CameraRegs::OP_B,
-             CameraRegs::OP_B_DISABLE_POST_EXP_FLUSH_BIT );
+         m_CamIo->ReadOrWriteReg(CameraRegs::OP_B,
+             CameraRegs::OP_B_DISABLE_POST_EXP_FLUSH_BIT);
     }
     else
     {
-        m_CamIo->ReadAndWriteReg( CameraRegs::OP_B,
-            static_cast<uint16_t>(~CameraRegs::OP_B_DISABLE_POST_EXP_FLUSH_BIT) );
+        m_CamIo->ReadAndWriteReg(CameraRegs::OP_B,
+            static_cast<uint16_t>(~CameraRegs::OP_B_DISABLE_POST_EXP_FLUSH_BIT));
     }
 }
 
@@ -2478,20 +2478,20 @@ void ApogeeCam::SetPostExposeFlushing( const bool Disable )
 bool ApogeeCam::IsPostExposeFlushingDisabled()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsPostExposeFlushingDisabled" );
+    apgHelper::DebugMsg("ApogeeCam::IsPostExposeFlushingDisabled");
 #endif
 
-     return ( (ReadReg(CameraRegs::OP_B) & CameraRegs::OP_B_DISABLE_POST_EXP_FLUSH_BIT) ?
-        true : false );
+     return ((ReadReg(CameraRegs::OP_B) & CameraRegs::OP_B_DISABLE_POST_EXP_FLUSH_BIT) ?
+        true : false);
 }
 
 
 //////////////////////////// 
 //      GET     SERIAL       NUMBER
-std::string ApogeeCam::GetSerialNumber( )
+std::string ApogeeCam::GetSerialNumber()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetSerialNumber" );
+    apgHelper::DebugMsg("ApogeeCam::GetSerialNumber");
 #endif
 
     return m_CamIo->GetSerialNumber();
@@ -2499,99 +2499,99 @@ std::string ApogeeCam::GetSerialNumber( )
 
 //////////////////////////// 
 //      STOP  EXPOSURE   MODE     NORM
-void ApogeeCam::StopExposureModeNorm( const bool Digitize )
+void ApogeeCam::StopExposureModeNorm(const bool Digitize)
 {
 #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "ApogeeCam::StopExposureModeNorm -> Digitize = %d", Digitize );
+     apgHelper::DebugMsg("ApogeeCam::StopExposureModeNorm -> Digitize = %d", Digitize);
 #endif
 
      //pre-conditions
-     if( Apg::CameraMode_Normal != GetCameraMode() )
+     if (Apg::CameraMode_Normal != GetCameraMode())
      {
          // we are not in the right mode throw an exception
         apgHelper::throwRuntimeException(m_fileName,
             "Error: StopExposureModeNorm camera is not in normal mode", 
-             __LINE__, Apg::ErrorType_InvalidMode );
+             __LINE__, Apg::ErrorType_InvalidMode);
      }
 
-    if( !m_ImageInProgress )
+    if (!m_ImageInProgress)
     {
         // we are not taking a picture so log a warning
         // and exit, ticket #42
-         std::string vinfo = apgHelper::mkMsg( m_fileName, 
+         std::string vinfo = apgHelper::mkMsg(m_fileName, 
              "Exposure not in progress, thus exiting out of function without performing any operations", 
              __LINE__);
          ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         // if the user is expecting data we should throw, so they know
         // there is nothing to fetch
-        if( Digitize )
+        if (Digitize)
         {
              apgHelper::throwRuntimeException(m_fileName,
                 "Error exposure never started, thus no image to digitize", 
-            __LINE__, Apg::ErrorType_InvalidMode );
+            __LINE__, Apg::ErrorType_InvalidMode);
         }
 
         //otherwise just exit
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::StopExposureModeNorm 0 END" );
+    apgHelper::DebugMsg("ApogeeCam::StopExposureModeNorm 0 END");
 #endif
         return;
     }
 
     //tell the fpga to stop imaging
     WriteReg(CameraRegs::CMD_B,
-        CameraRegs::CMD_B_END_EXPOSURE_BIT );
+        CameraRegs::CMD_B_END_EXPOSURE_BIT);
 
     //if we are waiting on a trigger, we cannot save the
     //data, we MUST force a reset of the camera
     // and exit function
-    if( Apg::Status_WaitingOnTrigger == GetImagingStatus() )
+    if (Apg::Status_WaitingOnTrigger == GetImagingStatus())
     {
-        HardStopExposure( "Stopping exposure while waiting for external triggers" );
+        HardStopExposure("Stopping exposure while waiting for external triggers");
 
         #ifdef DEBUGGING_CAMERA
-            apgHelper::DebugMsg( "ApogeeCam::StopExposureModeNorm 2 END" );
+            apgHelper::DebugMsg("ApogeeCam::StopExposureModeNorm 2 END");
         #endif
         return;
     }
   
     //check if we are in image sequence mode
     //if so, do another hard stop
-    if( GetImageCount() > 1)
+    if (GetImageCount() > 1)
      {
-        HardStopExposure( "Hard stop of an exposure of image sequences" );
+        HardStopExposure("Hard stop of an exposure of image sequences");
 
         #ifdef DEBUGGING_CAMERA
-            apgHelper::DebugMsg( "ApogeeCam::StopExposureModeNorm 3 END" );
+            apgHelper::DebugMsg("ApogeeCam::StopExposureModeNorm 3 END");
         #endif
         return;
     }
 
-    if( !Digitize )
+    if (!Digitize)
     {
         GrabImageAndThrowItAway();
     }
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::StopExposureModeNorm 4 END" );
+    apgHelper::DebugMsg("ApogeeCam::StopExposureModeNorm 4 END");
 #endif
 
  }
 
 //////////////////////////// 
 //      HARD      STOP     EXPOSURE
-void ApogeeCam::HardStopExposure( const std::string & msg )
+void ApogeeCam::HardStopExposure(const std::string & msg)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::HardStopExposure -> msg = %s", msg.c_str() );
+    apgHelper::DebugMsg("ApogeeCam::HardStopExposure -> msg = %s", msg.c_str());
 #endif
 
     //log the hard stop
     ApgLogger::Instance().Write(ApgLogger::LEVEL_DEBUG,"info",
-        apgHelper::mkMsg( m_fileName, msg, __LINE__) );
+        apgHelper::mkMsg(m_fileName, msg, __LINE__));
 
-    Reset( true );
+    Reset(true);
     m_CamIo->CancelImgXfer();
     m_ImageInProgress = false;
       
@@ -2602,7 +2602,7 @@ void ApogeeCam::HardStopExposure( const std::string & msg )
 void ApogeeCam::GrabImageAndThrowItAway()
 {
 #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "ApogeeCam::GrabImageAndThrowItAway" );
+     apgHelper::DebugMsg("ApogeeCam::GrabImageAndThrowItAway");
 #endif
 
     //the user doesn't want the data so we will wait for the camera
@@ -2612,20 +2612,20 @@ void ApogeeCam::GrabImageAndThrowItAway()
     const int32_t NUM_WAITS = 1000;
     const uint32_t SLEEP_IN_MSEC = 100;
 	m_LastExposureTime = 0; // for aspen ethernet issue
-    while( GetImagingStatus() != Apg::Status_ImageReady )
+    while(GetImagingStatus() != Apg::Status_ImageReady)
     {
-        apgHelper::ApogeeSleep( SLEEP_IN_MSEC );
+        apgHelper::ApogeeSleep(SLEEP_IN_MSEC);
 
         ++WaitCounter;
     	
-        if ( WaitCounter >= NUM_WAITS  )
+        if (WaitCounter >= NUM_WAITS )
         {
             // we have waited to long for the image data
             // throw here to break an inifinite loop
             std::stringstream ss;
             ss << "Stop image no digitize failed.  ";
             ss << "Camera has not freed image data in ";
-            ss << ((SLEEP_IN_MSEC*0.001)*NUM_WAITS ) << " seconds.";
+            ss << ((SLEEP_IN_MSEC*0.001)*NUM_WAITS) << " seconds.";
             apgHelper::throwRuntimeException(m_fileName, ss.str(), 
                 __LINE__, Apg::ErrorType_Critical);
         }
@@ -2634,7 +2634,7 @@ void ApogeeCam::GrabImageAndThrowItAway()
     //grab the data off the camera, so it is clear for the next image
     //the user doesn't want it so just leave it here to be destoryed on exit
     std::vector<uint16_t> data;
-    GetImage( data );
+    GetImage(data);
 }
 
 //////////////////////////// 
@@ -2642,7 +2642,7 @@ void ApogeeCam::GrabImageAndThrowItAway()
 double ApogeeCam::GetPixelWidth()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetPixelWidth" );
+    apgHelper::DebugMsg("ApogeeCam::GetPixelWidth");
 #endif
 
     return m_CamCfgData->m_MetaData.PixelSizeX;
@@ -2653,7 +2653,7 @@ double ApogeeCam::GetPixelWidth()
 double ApogeeCam::GetPixelHeight()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetPixelHeight" );
+    apgHelper::DebugMsg("ApogeeCam::GetPixelHeight");
 #endif
 
     return m_CamCfgData->m_MetaData.PixelSizeY;
@@ -2664,7 +2664,7 @@ double ApogeeCam::GetPixelHeight()
 double ApogeeCam::GetMinExposureTime()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetMinExposureTime" );
+    apgHelper::DebugMsg("ApogeeCam::GetMinExposureTime");
 #endif
 
     return m_CameraConsts->m_ExposureTimeMin;
@@ -2675,7 +2675,7 @@ double ApogeeCam::GetMinExposureTime()
 double ApogeeCam::GetMaxExposureTime()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetMaxExposureTime" );
+    apgHelper::DebugMsg("ApogeeCam::GetMaxExposureTime");
 #endif
 
     return m_CameraConsts->m_ExposureTimeMax;
@@ -2686,7 +2686,7 @@ double ApogeeCam::GetMaxExposureTime()
 bool ApogeeCam::IsColor()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsColor" );
+    apgHelper::DebugMsg("ApogeeCam::IsColor");
 #endif
 
     return m_CamCfgData->m_MetaData.Color;
@@ -2697,7 +2697,7 @@ bool ApogeeCam::IsColor()
 bool ApogeeCam::IsCoolingSupported()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsCoolingSupported" );
+    apgHelper::DebugMsg("ApogeeCam::IsCoolingSupported");
 #endif
 
     return m_CamCfgData->m_MetaData.CoolingSupported;
@@ -2708,7 +2708,7 @@ bool ApogeeCam::IsCoolingSupported()
 bool ApogeeCam::IsCoolingRegulated()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsCoolingRegulated" );
+    apgHelper::DebugMsg("ApogeeCam::IsCoolingRegulated");
 #endif
 
     return m_CamCfgData->m_MetaData.RegulatedCoolingSupported;
@@ -2720,11 +2720,11 @@ double ApogeeCam::GetInputVoltage()
 {
     CameraStatusRegs StatusObj = GetStatus();
 
-    const double voltage = ( StatusObj.GetInputVoltage() & CameraRegs::INPUT_VOLTAGE_MASK	) 
+    const double voltage = (StatusObj.GetInputVoltage() & CameraRegs::INPUT_VOLTAGE_MASK	) 
         * m_CameraConsts->m_VoltageResolution;
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetInputVoltage -> voltage = %f", voltage );
+    apgHelper::DebugMsg("ApogeeCam::GetInputVoltage -> voltage = %f", voltage);
 #endif
 
     return voltage;
@@ -2735,7 +2735,7 @@ double ApogeeCam::GetInputVoltage()
 CamModel::InterfaceType ApogeeCam::GetInterfaceType()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetInterfaceType" );
+    apgHelper::DebugMsg("ApogeeCam::GetInterfaceType");
 #endif
     return m_CamIo->GetInterfaceType();
 }
@@ -2743,14 +2743,14 @@ CamModel::InterfaceType ApogeeCam::GetInterfaceType()
 
 //////////////////////////// 
 //      GET    USB     VENDOR        INFO
-void ApogeeCam::GetUsbVendorInfo( uint16_t & VendorId,
+void ApogeeCam::GetUsbVendorInfo(uint16_t & VendorId,
             uint16_t & ProductId, uint16_t  & DeviceId)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetUsbVendorInfo" );
+    apgHelper::DebugMsg("ApogeeCam::GetUsbVendorInfo");
 #endif
 
-    m_CamIo->GetUsbVendorInfo( VendorId, ProductId, DeviceId );
+    m_CamIo->GetUsbVendorInfo(VendorId, ProductId, DeviceId);
 }
 
 //////////////////////////// 
@@ -2758,7 +2758,7 @@ void ApogeeCam::GetUsbVendorInfo( uint16_t & VendorId,
 bool ApogeeCam::IsCCD()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsCCD" );
+    apgHelper::DebugMsg("ApogeeCam::IsCCD");
 #endif
 
     return m_CamCfgData->m_MetaData.SensorTypeCCD;
@@ -2767,21 +2767,21 @@ bool ApogeeCam::IsCCD()
 
 //////////////////////////// 
 //          PAUSE    TIMER
-void ApogeeCam::PauseTimer( const bool TurnOn )
+void ApogeeCam::PauseTimer(const bool TurnOn)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::PauseTimer -> TurnOn = %d", TurnOn );
+    apgHelper::DebugMsg("ApogeeCam::PauseTimer -> TurnOn = %d", TurnOn);
 #endif
 
-    if( TurnOn )
+    if (TurnOn)
     {
-        m_CamIo->ReadOrWriteReg( CameraRegs::OP_A,	
-        CameraRegs::OP_A_PAUSE_TIMER_BIT );
+        m_CamIo->ReadOrWriteReg(CameraRegs::OP_A,	
+        CameraRegs::OP_A_PAUSE_TIMER_BIT);
     }
     else
     {
-        m_CamIo->ReadAndWriteReg( CameraRegs::OP_A,	
-            static_cast<uint16_t>( (~CameraRegs::OP_A_PAUSE_TIMER_BIT) ) );
+        m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,	
+            static_cast<uint16_t>((~CameraRegs::OP_A_PAUSE_TIMER_BIT) ));
     }
 
 }
@@ -2791,7 +2791,7 @@ void ApogeeCam::PauseTimer( const bool TurnOn )
 bool ApogeeCam::IsSerialASupported()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsSerialASupported" );
+    apgHelper::DebugMsg("ApogeeCam::IsSerialASupported");
 #endif
 
     return m_CamCfgData->m_MetaData.SupportsSerialA;
@@ -2802,7 +2802,7 @@ bool ApogeeCam::IsSerialASupported()
 bool ApogeeCam::IsSerialBSupported()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsSerialBSupported" );
+    apgHelper::DebugMsg("ApogeeCam::IsSerialBSupported");
 #endif
 
     return m_CamCfgData->m_MetaData.SupportsSerialB;
@@ -2810,32 +2810,32 @@ bool ApogeeCam::IsSerialBSupported()
 
 //////////////////////////// 
 //          SET         FLUSH        BINNING     ROWS
-void ApogeeCam::SetFlushBinningRows( const uint16_t bin )
+void ApogeeCam::SetFlushBinningRows(const uint16_t bin)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetFlushBinningRows -> bin = %d", bin );
+    apgHelper::DebugMsg("ApogeeCam::SetFlushBinningRows -> bin = %d", bin);
 #endif
 
     uint16_t actualBin = bin;
 
 	// Do some bounds checking on our input parameter
-	if ( 0 == bin ) 
+	if (0 == bin) 
     {
         std::stringstream msg;
         msg << "Changing input flush binning rows from " << bin;
         msg << " to " << 1;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
 		actualBin = 1;
     }
 	
-    if(  GetMaxBinRows() < bin ) 
+    if (GetMaxBinRows() < bin) 
     {
         std::stringstream msg;
         msg << "Changing input flush binning rows from " << bin;
         msg << " to " << GetMaxBinRows();
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
         // TODO: determine how video mode, which will result in a
@@ -2844,9 +2844,9 @@ void ApogeeCam::SetFlushBinningRows( const uint16_t bin )
 		actualBin = GetMaxBinRows();
     }
 	
-	Reset( false );
-    WriteReg( CameraRegs::VFLUSH_BINNING, actualBin );
-	Reset( true );
+	Reset(false);
+    WriteReg(CameraRegs::VFLUSH_BINNING, actualBin);
+	Reset(true);
 
 }
 
@@ -2855,10 +2855,10 @@ void ApogeeCam::SetFlushBinningRows( const uint16_t bin )
 uint16_t ApogeeCam::GetFlushBinningRows()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetFlushBinningRows" );
+    apgHelper::DebugMsg("ApogeeCam::GetFlushBinningRows");
 #endif
 
-    return ( m_CamIo->ReadMirrorReg( CameraRegs::VFLUSH_BINNING ) );
+    return (m_CamIo->ReadMirrorReg(CameraRegs::VFLUSH_BINNING ));
 }
 
 //////////////////////////// 
@@ -2866,7 +2866,7 @@ uint16_t ApogeeCam::GetFlushBinningRows()
 bool ApogeeCam::IsOverscanDigitized()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsOverscanDigitized" );
+    apgHelper::DebugMsg("ApogeeCam::IsOverscanDigitized");
 #endif
 
     return m_CcdAcqSettings->IsOverscanDigitized();
@@ -2874,87 +2874,87 @@ bool ApogeeCam::IsOverscanDigitized()
 
 //////////////////////////// 
 //      SET         DIGITIZE        OVERSCAN
-void ApogeeCam::SetDigitizeOverscan( const bool TurnOn )
+void ApogeeCam::SetDigitizeOverscan(const bool TurnOn)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetDigitizeOverscan -> TurnOn = %d", TurnOn );
+    apgHelper::DebugMsg("ApogeeCam::SetDigitizeOverscan -> TurnOn = %d", TurnOn);
 #endif
 
-    m_CcdAcqSettings->SetDigitizeOverscan( TurnOn );
+    m_CcdAcqSettings->SetDigitizeOverscan(TurnOn);
 }
 
 //////////////////////////// 
 //      SET     ADC        GAIN 
-void ApogeeCam::SetAdcGain( const uint16_t gain, const int32_t ad, 
-                           const int32_t channel )
+void ApogeeCam::SetAdcGain(const uint16_t gain, const int32_t ad, 
+                           const int32_t channel)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetAdcGain -> gain = %d, ad = %d, channel = %d", 
-        gain, ad, channel );
+    apgHelper::DebugMsg("ApogeeCam::SetAdcGain -> gain = %d, ad = %d, channel = %d", 
+        gain, ad, channel);
 #endif
 
     //pre-condition check, throws on failure
-   AdcParamCheck( ad, channel, "ApogeeCam::SetAdcGain" );
+   AdcParamCheck(ad, channel, "ApogeeCam::SetAdcGain");
 
-    m_CcdAcqSettings->SetAdcGain( gain, ad, channel );
+    m_CcdAcqSettings->SetAdcGain(gain, ad, channel);
 }
 
 //////////////////////////// 
 //      GET     ADC        GAIN 
-uint16_t ApogeeCam::GetAdcGain( int32_t ad, int32_t channel )
+uint16_t ApogeeCam::GetAdcGain(int32_t ad, int32_t channel)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetAdcGain" );
+    apgHelper::DebugMsg("ApogeeCam::GetAdcGain");
 #endif
 
-    return m_CcdAcqSettings->GetAdcGain( ad, channel );
+    return m_CcdAcqSettings->GetAdcGain(ad, channel);
 }
 
 //////////////////////////// 
 //      SET     ADC        OFFSET
-void ApogeeCam::SetAdcOffset( uint16_t offset, int32_t ad, int32_t channel )
+void ApogeeCam::SetAdcOffset(uint16_t offset, int32_t ad, int32_t channel)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetAdcOffset -> offset = %d, ad = %d, channel = %d", 
-        offset, ad, channel );
+    apgHelper::DebugMsg("ApogeeCam::SetAdcOffset -> offset = %d, ad = %d, channel = %d", 
+        offset, ad, channel);
 #endif
 
    //pre-condition check, throws on failure
-   AdcParamCheck( ad, channel, "ApogeeCam::SetAdcOffset" );
+   AdcParamCheck(ad, channel, "ApogeeCam::SetAdcOffset");
 
-    m_CcdAcqSettings->SetAdcOffset( offset, ad, channel );
+    m_CcdAcqSettings->SetAdcOffset(offset, ad, channel);
 }
 
 //////////////////////////// 
 //      GET     ADC        OFFSET
-uint16_t ApogeeCam::GetAdcOffset( int32_t ad, int32_t channel )
+uint16_t ApogeeCam::GetAdcOffset(int32_t ad, int32_t channel)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetAdcOffset" );
+    apgHelper::DebugMsg("ApogeeCam::GetAdcOffset");
 #endif
-    return m_CcdAcqSettings->GetAdcOffset( ad, channel );
+    return m_CcdAcqSettings->GetAdcOffset(ad, channel);
 }
 
 //////////////////////////// 
 //      ADC    PARAM       CHECK
-void ApogeeCam::AdcParamCheck( const int32_t ad, 
-                              const int32_t channel, const std::string & fxName )
+void ApogeeCam::AdcParamCheck(const int32_t ad, 
+                              const int32_t channel, const std::string & fxName)
 {
     //minus one because counting starts a zero for adc and channel values
-    if( ad > GetNumAds()-1  || ad < 0 )
+    if (ad > GetNumAds()-1  || ad < 0)
     {
         std::stringstream ss;
         ss << "Invalid adc number, " << ad << ", passed to function = " << fxName;
-        apgHelper::throwRuntimeException( m_fileName, ss.str(), 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+        apgHelper::throwRuntimeException(m_fileName, ss.str(), 
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
 
-    if( channel > GetNumAdChannels()-1 || channel < 0 )
+    if (channel > GetNumAdChannels()-1 || channel < 0)
     {
          std::stringstream ss;
         ss << "Invalid adc channel, " << ad << ", passed to function = " << fxName;
-        apgHelper::throwRuntimeException( m_fileName, ss.str(), 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+        apgHelper::throwRuntimeException(m_fileName, ss.str(), 
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
     
 }
@@ -2964,7 +2964,7 @@ void ApogeeCam::AdcParamCheck( const int32_t ad,
 uint16_t ApogeeCam::GetFirmwareRev() 
 { 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetFirmwareRev -> rev = %d", m_FirmwareVersion );
+    apgHelper::DebugMsg("ApogeeCam::GetFirmwareRev -> rev = %d", m_FirmwareVersion);
 #endif
     return m_FirmwareVersion; 
 }
@@ -2974,7 +2974,7 @@ uint16_t ApogeeCam::GetFirmwareRev()
 CamModel::PlatformType ApogeeCam::GetPlatformType() 
 { 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetPlatformType -> type = %d", m_PlatformType );
+    apgHelper::DebugMsg("ApogeeCam::GetPlatformType -> type = %d", m_PlatformType);
 #endif
     return m_PlatformType; 
 }
@@ -2982,13 +2982,13 @@ CamModel::PlatformType ApogeeCam::GetPlatformType()
 
 //////////////////////////// 
 //      SET     AD       SIM     MODE
-void ApogeeCam::SetAdSimMode( const bool TurnOn )
+void ApogeeCam::SetAdSimMode(const bool TurnOn)
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetAdSimMode -> turnOn = %d", TurnOn );
+    apgHelper::DebugMsg("ApogeeCam::SetAdSimMode -> turnOn = %d", TurnOn);
 #endif
 
-    m_CcdAcqSettings->SetAdsSimMode( TurnOn );
+    m_CcdAcqSettings->SetAdsSimMode(TurnOn);
 }
 
 //////////////////////////// 
@@ -2996,7 +2996,7 @@ void ApogeeCam::SetAdSimMode( const bool TurnOn )
 bool ApogeeCam::IsAdSimModeOn()
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::IsAdSimModeOn" );
+    apgHelper::DebugMsg("ApogeeCam::IsAdSimModeOn");
 #endif
 
     return m_CcdAcqSettings->IsAdsSimModeOn();
@@ -3004,13 +3004,13 @@ bool ApogeeCam::IsAdSimModeOn()
 
 //////////////////////////// 
 //      SET         LED         BRIGHTNESS
-void ApogeeCam::SetLedBrightness( double PercentIntensity )
+void ApogeeCam::SetLedBrightness(double PercentIntensity)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::SetLedBrightness -> PercentIntensity = %f", PercentIntensity );
+    apgHelper::DebugMsg("ApogeeCam::SetLedBrightness -> PercentIntensity = %f", PercentIntensity);
 #endif
 
-    if( apgHelper::IsEqual( PercentIntensity, GetLedBrightness() ) )
+    if (apgHelper::IsEqual(PercentIntensity, GetLedBrightness() ))
     {
         //no change is required
         return;
@@ -3018,16 +3018,16 @@ void ApogeeCam::SetLedBrightness( double PercentIntensity )
 
     //pausing cooler, i believe to get access to the DAC
     bool RestartCooler = false;
-    SupsendCooler( RestartCooler );
+    SupsendCooler(RestartCooler);
 
     //calc reg value and write it to the led drive reg
-    uint16_t value = static_cast<uint16_t>( 
-        GetIlluminationMask() * (PercentIntensity/100.0) );
+    uint16_t value = static_cast<uint16_t>(
+        GetIlluminationMask() * (PercentIntensity/100.0));
 
-    WriteReg( CameraRegs::LED_DRIVE, value );
+    WriteReg(CameraRegs::LED_DRIVE, value);
 
     // restarting the cooler if neccessary
-    if( RestartCooler )
+    if (RestartCooler)
     {
         ResumeCooler();
     }
@@ -3038,11 +3038,11 @@ void ApogeeCam::SetLedBrightness( double PercentIntensity )
 double ApogeeCam::GetLedBrightness()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetLedBrightness" );
+    apgHelper::DebugMsg("ApogeeCam::GetLedBrightness");
 #endif
 
-    return( 100.0 * static_cast<double>(
-        m_CamIo->ReadMirrorReg( CameraRegs::LED_DRIVE ) / GetIlluminationMask() ) );
+    return(100.0 * static_cast<double>(
+        m_CamIo->ReadMirrorReg(CameraRegs::LED_DRIVE) / GetIlluminationMask() ));
 }
 
 //////////////////////////// 
@@ -3050,7 +3050,7 @@ double ApogeeCam::GetLedBrightness()
 std::string ApogeeCam::GetDriverVersion()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetDriverVersion" );
+    apgHelper::DebugMsg("ApogeeCam::GetDriverVersion");
 #endif
 
     return m_CamIo->GetDriverVersion();
@@ -3061,7 +3061,7 @@ std::string ApogeeCam::GetDriverVersion()
 std::string ApogeeCam::GetUsbFirmwareVersion()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::GetUsbFirmwareVersion" );
+    apgHelper::DebugMsg("ApogeeCam::GetUsbFirmwareVersion");
 #endif
 
     return m_CamIo->GetUsbFirmwareVersion();
@@ -3069,7 +3069,7 @@ std::string ApogeeCam::GetUsbFirmwareVersion()
 
 //////////////////////////// 
 //      CHECK       AND    WAIT       FOR     STATUS
-bool ApogeeCam::CheckAndWaitForStatus( const Apg::Status desired, Apg::Status & acutal )
+bool ApogeeCam::CheckAndWaitForStatus(const Apg::Status desired, Apg::Status & acutal)
 {
     // giving the camera a little time to get into the desired mode
     // found this code is needed while running the irregularRoi.py test
@@ -3081,12 +3081,12 @@ bool ApogeeCam::CheckAndWaitForStatus( const Apg::Status desired, Apg::Status & 
     const uint32_t SLEEP_IN_MSEC = 10;
     uint32_t waitCount = 0;
     acutal  = GetImagingStatus();
-    while( desired != acutal  )
+    while(desired != acutal )
     {
-        if( waitCount < MAX_WAIT_COUNT )
+        if (waitCount < MAX_WAIT_COUNT)
         {
             ++waitCount;
-            apgHelper::ApogeeSleep( SLEEP_IN_MSEC );
+            apgHelper::ApogeeSleep(SLEEP_IN_MSEC);
             acutal = GetImagingStatus();
         }
         else
@@ -3103,39 +3103,39 @@ bool ApogeeCam::CheckAndWaitForStatus( const Apg::Status desired, Apg::Status & 
 void ApogeeCam::CancelExposureNoThrow()
 {
 
-    if( m_ImageInProgress )
+    if (m_ImageInProgress)
     {
         try
         {
-            HardStopExposure(  "Stopping exposure in CancelExposureNoThrow()" );
+            HardStopExposure( "Stopping exposure in CancelExposureNoThrow()");
         }
-        catch( std::exception & err )
+        catch(std::exception & err)
         {
-            std::string msg ("Exception caught stopping exposure in CancelExposureNoThrow() msg = " );
-            msg.append( err.what() );
+            std::string msg ("Exception caught stopping exposure in CancelExposureNoThrow() msg = ");
+            msg.append(err.what());
             ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"error",
                 msg);
         }
-        catch( ... )
+        catch(...)
         {
             ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"error",
-            "Unknown exception caught stopping exposure in ~ApogeeCam()" );
+            "Unknown exception caught stopping exposure in ~ApogeeCam()");
         }
     }
 }
 
 //////////////////////////// 
 //      DEFAULT    SET      FAN       MODE
-void ApogeeCam::DefaultSetFanMode( const Apg::FanMode mode, const bool PreCondCheck )
+void ApogeeCam::DefaultSetFanMode(const Apg::FanMode mode, const bool PreCondCheck)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "DefaultSetFanMode -> mode = %d, PreCondCheck =%d ", 
-        mode, PreCondCheck );
+    apgHelper::DebugMsg("DefaultSetFanMode -> mode = %d, PreCondCheck =%d ", 
+        mode, PreCondCheck);
 #endif
 
-    if( PreCondCheck )
+    if (PreCondCheck)
     {
-        if( GetFanMode() == mode )
+        if (GetFanMode() == mode)
         {
             //exit we are already in the fan mode
             return;
@@ -3143,7 +3143,7 @@ void ApogeeCam::DefaultSetFanMode( const Apg::FanMode mode, const bool PreCondCh
     }
 
     uint16_t RegVal = 0;
-    switch ( mode )
+    switch (mode)
     {
         case Apg::FanMode_Off:
             RegVal = m_CameraConsts->m_FanSpeedOff;
@@ -3165,8 +3165,8 @@ void ApogeeCam::DefaultSetFanMode( const Apg::FanMode mode, const bool PreCondCh
         {
             std::stringstream msg;
             msg << "Invalid fan mode: " << mode;
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
@@ -3174,21 +3174,21 @@ void ApogeeCam::DefaultSetFanMode( const Apg::FanMode mode, const bool PreCondCh
     bool resumeCooling = false;
 
     //disable cooler to access the fan dac
-    SupsendCooler( resumeCooling );
+    SupsendCooler(resumeCooling);
 
-    WriteReg( CameraRegs::FAN_SPEED_CONTROL, RegVal );
+    WriteReg(CameraRegs::FAN_SPEED_CONTROL, RegVal);
 
-     uint16_t opBVal = ReadReg( CameraRegs::OP_B );
+     uint16_t opBVal = ReadReg(CameraRegs::OP_B);
 
      opBVal |= CameraRegs::OP_B_DAC_SELECT_ZERO_BIT;
      opBVal &= ~CameraRegs::OP_B_DAC_SELECT_ONE_BIT;
      
-     WriteReg( CameraRegs::OP_B, opBVal );
+     WriteReg(CameraRegs::OP_B, opBVal);
 
-     WriteReg( CameraRegs::CMD_B,
-         CameraRegs::CMD_B_DAC_LOAD_BIT );
+     WriteReg(CameraRegs::CMD_B,
+         CameraRegs::CMD_B_DAC_LOAD_BIT);
 
-    if ( resumeCooling )
+    if (resumeCooling)
     {
         ResumeCooler();
     }
@@ -3200,25 +3200,25 @@ void ApogeeCam::DefaultSetFanMode( const Apg::FanMode mode, const bool PreCondCh
 Apg::FanMode ApogeeCam::DefaultGetFanMode()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::DefaultGetFanMode" );
+    apgHelper::DebugMsg("ApogeeCam::DefaultGetFanMode");
 #endif
 
     const uint16_t val = m_CamIo->ReadMirrorReg(
         CameraRegs::FAN_SPEED_CONTROL);
 
-    if( val == m_CameraConsts->m_FanSpeedOff)
+    if (val == m_CameraConsts->m_FanSpeedOff)
     {
             return Apg::FanMode_Off;
     }
-    else if( val == m_CameraConsts->m_FanSpeedLow)
+    else if (val == m_CameraConsts->m_FanSpeedLow)
     {
         return Apg::FanMode_Low;
     }
-    else if ( val == m_CameraConsts->m_FanSpeedMedium)
+    else if (val == m_CameraConsts->m_FanSpeedMedium)
     {
         return Apg::FanMode_Medium;
     }
-    else if( val == m_CameraConsts->m_FanSpeedHigh)
+    else if (val == m_CameraConsts->m_FanSpeedHigh)
     {
         return Apg::FanMode_High;
     }
@@ -3226,8 +3226,8 @@ Apg::FanMode ApogeeCam::DefaultGetFanMode()
     {
         std::stringstream msg;
         msg << "Unknow fan DAC value: " << val;
-        apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+        apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
     
     //fall through - should never reach here
@@ -3238,9 +3238,9 @@ Apg::FanMode ApogeeCam::DefaultGetFanMode()
 CamInfo::StrDb ApogeeCam::ReadStrDatabase()
 { 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::ReadStrDatabase" );
+    apgHelper::DebugMsg("ApogeeCam::ReadStrDatabase");
 #endif
-    if ( (m_PlatformType == CamModel::ASCENT) || (m_PlatformType == CamModel::ALTAF) )
+    if ((m_PlatformType == CamModel::ASCENT) || (m_PlatformType == CamModel::ALTAF))
     {
         return std::dynamic_pointer_cast<AscentBasedIo>(m_CamIo)->ReadStrDatabase();
     }
@@ -3253,9 +3253,9 @@ CamInfo::StrDb ApogeeCam::ReadStrDatabase()
 void ApogeeCam::WriteStrDatabase(CamInfo::StrDb &info)
 { 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "ApogeeCam::WriteStrDatabase" );
+    apgHelper::DebugMsg("ApogeeCam::WriteStrDatabase");
 #endif
-    if ( (m_PlatformType == CamModel::ASCENT) || (m_PlatformType == CamModel::ALTAF) )
+    if ((m_PlatformType == CamModel::ASCENT) || (m_PlatformType == CamModel::ALTAF))
     {
         std::dynamic_pointer_cast<AscentBasedIo>(m_CamIo)->WriteStrDatabase(info);
     }

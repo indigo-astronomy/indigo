@@ -16,7 +16,11 @@
 #include <vector>
 #include <stdint.h>
 
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 #include "CamCfgMatrix.h" 
 
@@ -25,21 +29,21 @@ namespace parseCfgTabDelim
     
    //------------------------------------------------
    // FUNCTIONS
-   bool IsPatternFile( const std::string & fileName );
-   bool IsVerticalFile( const std::string & fileName );
-   bool IsCfgFile( const std::string & fileName );
+   bool IsPatternFile(const std::string & fileName);
+   bool IsVerticalFile(const std::string & fileName);
+   bool IsCfgFile(const std::string & fileName);
  
    CamCfg::APN_HPATTERN_FILE FetchHorizontalPattern(
          const std::string & fileName);
 
-   CamCfg::APN_VPATTERN_FILE FetchVerticalPattern( 
+   CamCfg::APN_VPATTERN_FILE FetchVerticalPattern(
        const std::string & fileName);
 
     void FetchMetaData(const std::string & fileName,
         std::vector< std::shared_ptr<CamCfg::APN_CAMERA_METADATA> > & out);
 
     CamCfg::APN_CAMERA_METADATA FetchMetaData(
-        const std::string & fileName, uint16_t CamId );
+        const std::string & fileName, uint16_t CamId);
 }; 
 
 #endif

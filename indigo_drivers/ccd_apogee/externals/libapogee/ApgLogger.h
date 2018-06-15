@@ -17,7 +17,11 @@
 #include <string>
 #include <stdexcept>
 
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 class ILog;
 
@@ -42,7 +46,7 @@ class ApgLogger
 
         ApgLogger::Level GetLogLevel() { return m_level; }
 
-        void SetLogLevel( ApgLogger::Level newLevel ) { m_level = newLevel; }
+        void SetLogLevel(ApgLogger::Level newLevel) { m_level = newLevel; }
 
         bool IsLevelVerbose();
 

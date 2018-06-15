@@ -16,7 +16,7 @@
 #include "ApogeeCam.h" 
 #include <string>
 
-class DLL_EXPORT CamGen2Base  : public ApogeeCam
+class CamGen2Base  : public ApogeeCam
 { 
     public: 
         virtual ~CamGen2Base(); 
@@ -24,9 +24,9 @@ class DLL_EXPORT CamGen2Base  : public ApogeeCam
         CameraStatusRegs GetStatus();
         Apg::Status GetImagingStatus();
 
-        void GetImage( std::vector<uint16_t> & out );
+        void GetImage(std::vector<uint16_t> & out);
 
-        void StopExposure( bool Digitize );
+        void StopExposure(bool Digitize);
 
         uint32_t GetAvailableMemory();
 
@@ -49,7 +49,7 @@ class DLL_EXPORT CamGen2Base  : public ApogeeCam
 
         uint16_t GetIlluminationMask();
 
-        void DefaultStartExposure( double Duration, bool IsLight, bool IssueReset=true );
+        void DefaultStartExposure(double Duration, bool IsLight, bool IssueReset=true);
 
     private:
         const std::string m_fileName;

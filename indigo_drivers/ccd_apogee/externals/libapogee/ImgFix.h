@@ -18,26 +18,26 @@
 
 namespace ImgFix 
 { 
-    void SingleOuputErase( std::vector<uint16_t> & data, int32_t rows,  
-        int32_t numImgCols,  int32_t numLatencyPixels );
+    void SingleOuputErase(std::vector<uint16_t> & data, int32_t rows,  
+        int32_t numImgCols,  int32_t numLatencyPixels);
 
-    void SingleOuputCopy( const std::vector<uint16_t> & data,   
+    void SingleOuputCopy(const std::vector<uint16_t> & data,   
         std::vector<uint16_t> & out, int32_t rows, int32_t numImgCols,  
-        int32_t numLatencyPixels );
+        int32_t numLatencyPixels);
 
-    void QuadOuputCopy( const std::vector<uint16_t> & data, 
+    void QuadOuputCopy(const std::vector<uint16_t> & data, 
         std::vector<uint16_t> & out, int32_t rows,  
-        int32_t cols,  int32_t numLatencyPixels, int32_t outputBuffOffset=0 );
+        int32_t cols,  int32_t numLatencyPixels, int32_t outputBuffOffset=0);
 
-    void QuadOuputFix( const std::vector<uint16_t> & data, 
+    void QuadOuputFix(const std::vector<uint16_t> & data, 
                                      std::vector<uint16_t> & out,
                                      const int32_t rows,  const int32_t cols,
-                                     const int32_t numLatencyPixels );
+                                     const int32_t numLatencyPixels);
 
-    void DualOuputFix( const std::vector<uint16_t> & data, 
+    void DualOuputFix(const std::vector<uint16_t> & data, 
                                      std::vector<uint16_t> & out,
                                      const int32_t rows,  const int32_t cols,
-                                     const int32_t numLatencyPixels );
+                                     const int32_t numLatencyPixels);
 }; 
 
 #endif

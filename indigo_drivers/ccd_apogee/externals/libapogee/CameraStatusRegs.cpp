@@ -15,19 +15,19 @@
 //////////////////////////// 
 // CTOR 
 CameraStatusRegs::CameraStatusRegs() : 
-                            m_TempHeatSink( 0 ),
-                            m_TempCcd( 0 ),
-                            m_CoolerDrive( 0 ),
-                            m_InputVoltage( 0 ),
-                            m_TdiCounter( 0 ),
-                            m_SequenceCounter( 0 ),
-                            m_Status( 0 ),
-                            m_uFrame( 0 ), 
-                            m_MostRecentFrame( 0 ),
-                            m_ReadyFrame( 0 ),
-                            m_CurrentFrame( 0 ),
-                            m_FetchCount( 0 ),
-                            m_DataAvailFlag( 0 )
+                            m_TempHeatSink(0),
+                            m_TempCcd(0),
+                            m_CoolerDrive(0),
+                            m_InputVoltage(0),
+                            m_TdiCounter(0),
+                            m_SequenceCounter(0),
+                            m_Status(0),
+                            m_uFrame(0), 
+                            m_MostRecentFrame(0),
+                            m_ReadyFrame(0),
+                            m_CurrentFrame(0),
+                            m_FetchCount(0),
+                            m_DataAvailFlag(0)
 {
 
 }
@@ -35,19 +35,19 @@ CameraStatusRegs::CameraStatusRegs() :
 //////////////////////////// 
 // CTOR 
 CameraStatusRegs::CameraStatusRegs(const CameraStatusRegs::AdvStatus & adv) : 
-                                   m_TempHeatSink( adv.TempHeatSink ),
-                                   m_TempCcd( adv.TempCcd ),
-                                   m_CoolerDrive( adv.CoolerDrive ),
-                                   m_InputVoltage( adv.InputVoltage ),
-                                   m_TdiCounter( adv.TdiCounter ),
-                                   m_SequenceCounter( adv.SequenceCounter ),
-                                   m_Status( adv.Status ),
-                                   m_uFrame( adv.uFrame ), 
-                                   m_MostRecentFrame( adv.MostRecentFrame ),
-                                   m_ReadyFrame( adv.ReadyFrame ),
-                                   m_CurrentFrame( adv.CurrentFrame ),
-                                   m_FetchCount( adv.FetchCount ),    
-                                   m_DataAvailFlag( adv.DataAvailFlag )
+                                   m_TempHeatSink(adv.TempHeatSink),
+                                   m_TempCcd(adv.TempCcd),
+                                   m_CoolerDrive(adv.CoolerDrive),
+                                   m_InputVoltage(adv.InputVoltage),
+                                   m_TdiCounter(adv.TdiCounter),
+                                   m_SequenceCounter(adv.SequenceCounter),
+                                   m_Status(adv.Status),
+                                   m_uFrame(adv.uFrame), 
+                                   m_MostRecentFrame(adv.MostRecentFrame),
+                                   m_ReadyFrame(adv.ReadyFrame),
+                                   m_CurrentFrame(adv.CurrentFrame),
+                                   m_FetchCount(adv.FetchCount),    
+                                   m_DataAvailFlag(adv.DataAvailFlag)
 {
 
 }
@@ -55,19 +55,19 @@ CameraStatusRegs::CameraStatusRegs(const CameraStatusRegs::AdvStatus & adv) :
 //////////////////////////// 
 // CTOR 
 CameraStatusRegs::CameraStatusRegs(const CameraStatusRegs::BasicStatus & basic) : 
-                                   m_TempHeatSink( basic.TempHeatSink ),
-                                   m_TempCcd( basic.TempCcd ),
-                                   m_CoolerDrive( basic.CoolerDrive ),
-                                   m_InputVoltage( basic.InputVoltage ),
-                                   m_TdiCounter( basic.TdiCounter ),
-                                   m_SequenceCounter( basic.SequenceCounter ),
-                                   m_Status( basic.Status ),
-                                   m_uFrame( basic.uFrame ), 
-                                   m_MostRecentFrame( 0 ),
-                                   m_ReadyFrame( 0 ),
-                                   m_CurrentFrame( 0 ),
-                                   m_FetchCount( 0 ),    
-                                   m_DataAvailFlag( basic.DataAvailFlag )
+                                   m_TempHeatSink(basic.TempHeatSink),
+                                   m_TempCcd(basic.TempCcd),
+                                   m_CoolerDrive(basic.CoolerDrive),
+                                   m_InputVoltage(basic.InputVoltage),
+                                   m_TdiCounter(basic.TdiCounter),
+                                   m_SequenceCounter(basic.SequenceCounter),
+                                   m_Status(basic.Status),
+                                   m_uFrame(basic.uFrame), 
+                                   m_MostRecentFrame(0),
+                                   m_ReadyFrame(0),
+                                   m_CurrentFrame(0),
+                                   m_FetchCount(0),    
+                                   m_DataAvailFlag(basic.DataAvailFlag)
 {
 
 }
@@ -81,7 +81,7 @@ CameraStatusRegs::~CameraStatusRegs()
 
 //////////////////////////// 
 // QUERY    STATUS      REGS
-void CameraStatusRegs::QueryStatusRegs( uint16_t &	StatusReg,
+void CameraStatusRegs::QueryStatusRegs(uint16_t &	StatusReg,
 						          uint16_t &	HeatsinkTempReg,
 						          uint16_t &	CcdTempReg,
 						          uint16_t &	CoolerDriveReg,

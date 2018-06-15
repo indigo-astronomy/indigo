@@ -15,11 +15,10 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
-#include "DefDllExport.h"
 
 namespace CamInfo
 {
-    struct DLL_EXPORT StrDb {
+    struct StrDb {
         std::string FactorySn;
         std::string CustomerSn;
         std::string Id;
@@ -61,12 +60,12 @@ namespace CamInfo
         std::string Comment3;
     };
 
-    std::vector< std::string > DLL_EXPORT MkStrVectFromStrDb( const CamInfo::StrDb & DbStruct );
-    CamInfo::StrDb DLL_EXPORT MkStrDbFromStrVect( const std::vector< std::string > & strVect );
-    CamInfo::StrDb DLL_EXPORT GetNoOpDb();
+    std::vector< std::string > MkStrVectFromStrDb(const CamInfo::StrDb & DbStruct);
+    CamInfo::StrDb MkStrDbFromStrVect(const std::vector< std::string > & strVect);
+    CamInfo::StrDb GetNoOpDb();
 
     const uint32_t NET_MAGIC_VALID = 0x63626160;	
-	struct DLL_EXPORT NetDb {
+	struct NetDb {
 		uint32_t Magic;          // 0x63626160 when struct is valid
 		uint8_t  IP[4];          // IP address
 		uint8_t  Gateway[4];     // Gateway
@@ -76,8 +75,8 @@ namespace CamInfo
 		uint8_t  MAC[6];         // MAC
 		uint32_t Timeout;        // session timeout (minutes)
 	};
-    std::vector< uint8_t > DLL_EXPORT MkU8VectFromNetDb( const CamInfo::NetDb & DbStruct );
-    CamInfo::NetDb DLL_EXPORT MkNetDbFromU8Vect( const std::vector< uint8_t > & u8Vect );
+    std::vector< uint8_t > MkU8VectFromNetDb(const CamInfo::NetDb & DbStruct);
+    CamInfo::NetDb MkNetDbFromU8Vect(const std::vector< uint8_t > & u8Vect);
 
 }
 
@@ -88,7 +87,7 @@ namespace CamInfo
 namespace CamModel
 {
     /*! */
-    enum DLL_EXPORT InterfaceType {	
+    enum InterfaceType {	
         /*! */
         UNKNOWN_INTERFACE,
         /*! */
@@ -98,7 +97,7 @@ namespace CamModel
         };
 
     /*! */
-    enum DLL_EXPORT PlatformType {	
+    enum PlatformType {	
         /*! */
         UNKNOWN_PLATFORM,
         /*! */
@@ -117,19 +116,19 @@ namespace CamModel
         QUAD
     };
 
-    bool DLL_EXPORT IsAlta(uint16_t FirmwareRev);
-    bool DLL_EXPORT IsGen2Platform(uint16_t FirmwareRev);
-    bool DLL_EXPORT IsFirmwareRevGood( uint16_t FirmwareRev );
+    bool IsAlta(uint16_t FirmwareRev);
+    bool IsGen2Platform(uint16_t FirmwareRev);
+    bool IsFirmwareRevGood(uint16_t FirmwareRev);
 
-    uint16_t DLL_EXPORT MaskRawId( uint16_t FirmwareRev,
+    uint16_t MaskRawId(uint16_t FirmwareRev,
         uint16_t CamId);
 
     
-    CamModel::PlatformType DLL_EXPORT GetPlatformType( uint16_t FixedId, bool IsEthernet=false );
-    CamModel::PlatformType DLL_EXPORT GetPlatformType( const std::string & cameraLine );
-    std::string DLL_EXPORT GetPlatformStr(uint16_t FixedId, bool IsEthernet=false);
-    std::string DLL_EXPORT GetModelStr( uint16_t CamId );
-    std::string DLL_EXPORT GetNoOpFirmwareRev();
+    CamModel::PlatformType GetPlatformType(uint16_t FixedId, bool IsEthernet=false);
+    CamModel::PlatformType GetPlatformType(const std::string & cameraLine);
+    std::string GetPlatformStr(uint16_t FixedId, bool IsEthernet=false);
+    std::string GetModelStr(uint16_t CamId);
+    std::string GetNoOpFirmwareRev();
 
      // Used to derive camera platform type from camera ID
     const uint16_t FIRMWARE_PLATFORM_MASK              = 0xFF00;	
@@ -152,7 +151,7 @@ namespace CamModel
 namespace Apg
 {
     /*! The current imaging state of the camera. */
-    enum DLL_EXPORT Status
+    enum Status
     {	
         /*!  An internal error was generated while attempting to communicate 
         with the camera. This error may occur when a connection to the camera is 
@@ -185,7 +184,7 @@ namespace Apg
     };
 
     /*! Camera operational mode.*/
-    enum DLL_EXPORT CameraMode
+    enum CameraMode
     {	
         /*! Specifies nominal camera operation for exposure control. 
         Single exposures, or sequences of exposures, are may be initiated 
@@ -224,7 +223,7 @@ namespace Apg
     };
 
      /*! */
-    enum DLL_EXPORT Resolution
+    enum Resolution
     {	
         /*! */
         Resolution_SixteenBit	= 0,
@@ -234,7 +233,7 @@ namespace Apg
 
 
      /*! */
-    enum DLL_EXPORT AdcSpeed
+    enum AdcSpeed
     {
         /*! */
         AdcSpeed_Unknown,
@@ -247,7 +246,7 @@ namespace Apg
     };
 
      /*! */
-    enum DLL_EXPORT CoolerStatus
+    enum CoolerStatus
     {	/*! */
         CoolerStatus_Off	= 0,
         /*! */
@@ -261,7 +260,7 @@ namespace Apg
     };
 
     /*! Camera Fan Mode */
-    enum DLL_EXPORT FanMode
+    enum FanMode
     {	
         /*! Turns off the fan*/
         FanMode_Off	= 0,
@@ -276,7 +275,7 @@ namespace Apg
     };
 
      /*! */
-    enum DLL_EXPORT LedState
+    enum LedState
     {	/*! */
         LedState_Expose	= 0,
         /*! */
@@ -298,7 +297,7 @@ namespace Apg
     };
 
      /*! */
-    enum DLL_EXPORT LedMode
+    enum LedMode
     {	
         /*! */
         LedMode_DisableAll	= 0,
@@ -311,7 +310,7 @@ namespace Apg
     };
 
     /*! */
-    enum DLL_EXPORT TriggerMode
+    enum TriggerMode
     {
         /*! */
         TriggerMode_Unknown,
@@ -326,7 +325,7 @@ namespace Apg
     };
 
     /*! */
-    enum DLL_EXPORT TriggerType
+    enum TriggerType
     {
         /*! */
         TriggerType_Unkown,
@@ -337,7 +336,7 @@ namespace Apg
     };
 
     /*! Camera's shutter state*/
-    enum DLL_EXPORT ShutterState
+    enum ShutterState
     {
         /*! Error condition*/
         ShutterState_Unkown,
@@ -352,7 +351,7 @@ namespace Apg
     /*! Exception Error Catagories.  
     * See the \ref exceptionHandling "Exception Handling" 
     * page for more information */
-    enum DLL_EXPORT ErrorType
+    enum ErrorType
     {
         /*! Error trying to establish connection with camera */
         ErrorType_Connection = 0,
@@ -374,7 +373,7 @@ namespace Apg
     };
 
      /*! AltaU serial port parity type*/
-    enum DLL_EXPORT SerialParity
+    enum SerialParity
     {
         /*! The parity state of the port cannot be determined. */
         SerialParity_Unknown	= -1,
@@ -387,7 +386,7 @@ namespace Apg
     };
 
     /*! AltaU serial port flow control type*/
-    enum DLL_EXPORT SerialFC
+    enum SerialFC
     {
         /*! The flow control state of the port cannot be determined. */
         SerialFC_Unknown	= -1,

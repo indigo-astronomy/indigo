@@ -21,7 +21,7 @@
 
 //////////////////////////// 
 // CTOR 
-ModeFsm::ModeFsm( std::shared_ptr<CameraIo> & io,
+ModeFsm::ModeFsm(std::shared_ptr<CameraIo> & io,
                  std::shared_ptr<CApnCamData> & camData, 
                  uint16_t rev) :
                  m_fileName(__FILE__),
@@ -31,9 +31,9 @@ ModeFsm::ModeFsm( std::shared_ptr<CameraIo> & io,
                  m_FirmwareVersion(rev),
                  m_IsBulkDownloadOn(false),
                  m_IsPipelineDownloadOn(true),
-                 m_TdiRows( 1 )
+                 m_TdiRows(1)
 {
-    m_CamIo->ReadOrWriteReg( CameraRegs::CMD_A, CameraRegs::CMD_A_PIPELINE_BIT );
+    m_CamIo->ReadOrWriteReg(CameraRegs::CMD_A, CameraRegs::CMD_A_PIPELINE_BIT);
 }
 
 //////////////////////////// 
@@ -45,30 +45,30 @@ ModeFsm::~ModeFsm()
 
 //////////////////////////// 
 // SET    MODE 
-void ModeFsm::SetMode( const Apg::CameraMode newMode )
+void ModeFsm::SetMode(const Apg::CameraMode newMode)
 {
-    if( newMode == m_mode )
+    if (newMode == m_mode)
     {
         //exit no need to change mode
         return;
     }
 
-    if( !IsModeValid( newMode ) )
+    if (!IsModeValid(newMode ))
     {
         std::stringstream msg;
         msg << "Invalid mode detected " << newMode;
         msg << " setting camera to mode " << Apg::CameraMode_Normal;
-        std::string vinfo = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
 
-        SetMode( Apg::CameraMode_Normal );
+        SetMode(Apg::CameraMode_Normal);
         return;
     }
 
     
     ExitOldMode();
 
-    EnterNewMode( newMode );
+    EnterNewMode(newMode);
 
     Apg::CameraMode old = m_mode;
     m_mode = newMode;
@@ -76,33 +76,33 @@ void ModeFsm::SetMode( const Apg::CameraMode newMode )
     std::stringstream msg;
     msg << "Succesfully transitioned from mode " << old;
     msg << " to mode " << m_mode;
-    std::string str = apgHelper::mkMsg( m_fileName, msg.str(), __LINE__);
+    std::string str = apgHelper::mkMsg(m_fileName, msg.str(), __LINE__);
     ApgLogger::Instance().Write(ApgLogger::LEVEL_DEBUG,"info",str); 
 }
 
 //////////////////////////// 
 // IS    MODE     VALID
-bool ModeFsm::IsModeValid( const Apg::CameraMode newMode )
+bool ModeFsm::IsModeValid(const Apg::CameraMode newMode)
 {
-    if( newMode == Apg::CameraMode_ExternalShutter )
+    if (newMode == Apg::CameraMode_ExternalShutter)
     {
-        std::string vinfo = apgHelper::mkMsg( m_fileName, "Apg::CameraMode_ExternalShutter depericated", __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, "Apg::CameraMode_ExternalShutter depericated", __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
         return false;
     }
 
-    if( newMode == Apg::CameraMode_ExternalTrigger )
+    if (newMode == Apg::CameraMode_ExternalTrigger)
     {
-        std::string vinfo = apgHelper::mkMsg( m_fileName, "Apg::CameraMode_ExternalTrigger depericated", __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, "Apg::CameraMode_ExternalTrigger depericated", __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
         return false;
     }
 
-    if( newMode  == Apg::CameraMode_Kinetics )
+    if (newMode  == Apg::CameraMode_Kinetics)
     {
-        if( !IsKineticsAvailable() )
+        if (!IsKineticsAvailable())
         {
-            std::string vinfo = apgHelper::mkMsg( m_fileName, "Kinetics mode not supported", __LINE__);
+            std::string vinfo = apgHelper::mkMsg(m_fileName, "Kinetics mode not supported", __LINE__);
             ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
             return false;
         }
@@ -110,9 +110,9 @@ bool ModeFsm::IsModeValid( const Apg::CameraMode newMode )
     
     if (newMode  == Apg::CameraMode_TDI) 
     {
-        if( !IsTdiAvailable() )
+        if (!IsTdiAvailable())
         {
-            std::string vinfo = apgHelper::mkMsg( m_fileName, "TDI mode not supported", __LINE__);
+            std::string vinfo = apgHelper::mkMsg(m_fileName, "TDI mode not supported", __LINE__);
             ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
             return false;
         }
@@ -125,10 +125,10 @@ bool ModeFsm::IsModeValid( const Apg::CameraMode newMode )
 // EXIT   OLD  MODE
 void  ModeFsm::ExitOldMode()
 {
-    if( Apg::CameraMode_Test == m_mode )
+    if (Apg::CameraMode_Test == m_mode)
     {
-        m_CamIo->ReadAndWriteReg( CameraRegs::OP_B,
-             static_cast<uint16_t>(~CameraRegs::OP_B_AD_SIMULATION_BIT) );
+        m_CamIo->ReadAndWriteReg(CameraRegs::OP_B,
+             static_cast<uint16_t>(~CameraRegs::OP_B_AD_SIMULATION_BIT));
     }
 
     //otherwise no op
@@ -136,11 +136,11 @@ void  ModeFsm::ExitOldMode()
     
 //////////////////////////// 
 // ENTER   NEW      MODE
-void  ModeFsm::EnterNewMode( Apg::CameraMode newMode )
+void  ModeFsm::EnterNewMode(Apg::CameraMode newMode)
 {
-    if( Apg::CameraMode_Test == newMode )
+    if (Apg::CameraMode_Test == newMode)
     {
-         m_CamIo->ReadOrWriteReg( CameraRegs::OP_B,
+         m_CamIo->ReadOrWriteReg(CameraRegs::OP_B,
             CameraRegs::OP_B_AD_SIMULATION_BIT);
     }
 
@@ -151,15 +151,15 @@ void  ModeFsm::EnterNewMode( Apg::CameraMode newMode )
 
 //////////////////////////// 
 // SET       BULK         DOWNLOAD
-void ModeFsm::SetBulkDownload( bool TurnOn )
+void ModeFsm::SetBulkDownload(bool TurnOn)
 {
 	/* Turn this check off for Aspen
 
     //checking pre-conditions
-    if( false == TurnOn && CamModel::ETHERNET == m_CamIo->GetInterfaceType() )
+    if (false == TurnOn && CamModel::ETHERNET == m_CamIo->GetInterfaceType())
     {
         // TODO - figure out if this is true for AltaG cameras
-        std::string msg( "Cannot turn bulk sequece off for generation one ethernet interfaces.");
+        std::string msg("Cannot turn bulk sequece off for generation one ethernet interfaces.");
         apgHelper::throwRuntimeException(m_fileName, msg, 
             __LINE__, Apg::ErrorType_InvalidOperation);
 
@@ -172,23 +172,23 @@ void ModeFsm::SetBulkDownload( bool TurnOn )
 
 //////////////////////////// 
 // SET       PIPELINE         DOWNLOAD
-void ModeFsm::SetPipelineDownload( bool TurnOn )
+void ModeFsm::SetPipelineDownload(bool TurnOn)
 {
     //checking pre-conditions
-    if( true == TurnOn && CamModel::ETHERNET == m_CamIo->GetInterfaceType() )
+    if (true == TurnOn && CamModel::ETHERNET == m_CamIo->GetInterfaceType())
     {
         // This property does not apply to ethernet systems, 
 		// because there is no way to tell if data is in the fifo.
         return;
 
     }
-    if( TurnOn)
+    if (TurnOn)
     {
-        m_CamIo->ReadOrWriteReg( CameraRegs::CMD_A, CameraRegs::CMD_A_PIPELINE_BIT );
+        m_CamIo->ReadOrWriteReg(CameraRegs::CMD_A, CameraRegs::CMD_A_PIPELINE_BIT);
     }
     else
     {
-        m_CamIo->ReadAndWriteReg(CameraRegs::CMD_A, static_cast<uint16_t>(~CameraRegs::CMD_A_PIPELINE_BIT) );
+        m_CamIo->ReadAndWriteReg(CameraRegs::CMD_A, static_cast<uint16_t>(~CameraRegs::CMD_A_PIPELINE_BIT));
     }
     m_IsPipelineDownloadOn = TurnOn;
 }
@@ -201,46 +201,46 @@ std::vector< std::pair<Apg::TriggerMode, Apg::TriggerType> > ModeFsm::GetTrigsTh
 {
     std::vector< std::pair<Apg::TriggerMode,Apg::TriggerType> > trigs;
 
-    if( IsTriggerNormEachOn() )
+    if (IsTriggerNormEachOn())
     {
-         trigs.push_back( 
+         trigs.push_back(
             std::pair<Apg::TriggerMode,Apg::TriggerType>(
-            Apg::TriggerMode_Normal, Apg::TriggerType_Each) );
+            Apg::TriggerMode_Normal, Apg::TriggerType_Each));
     }
     
-    if( IsTriggerNormGroupOn() )
+    if (IsTriggerNormGroupOn())
     {
-         trigs.push_back( 
+         trigs.push_back(
             std::pair<Apg::TriggerMode,Apg::TriggerType>(
-            Apg::TriggerMode_Normal, Apg::TriggerType_Group) );
+            Apg::TriggerMode_Normal, Apg::TriggerType_Group));
     }
 
-    if( IsTriggerTdiKinEachOn() )
+    if (IsTriggerTdiKinEachOn())
     {
-         trigs.push_back( 
+         trigs.push_back(
             std::pair<Apg::TriggerMode,Apg::TriggerType>(
-            Apg::TriggerMode_TdiKinetics, Apg::TriggerType_Each) );
+            Apg::TriggerMode_TdiKinetics, Apg::TriggerType_Each));
     }
 
-    if( IsTriggerTdiKinGroupOn() )
+    if (IsTriggerTdiKinGroupOn())
     {
-         trigs.push_back( 
+         trigs.push_back(
             std::pair<Apg::TriggerMode,Apg::TriggerType>(
-            Apg::TriggerMode_TdiKinetics, Apg::TriggerType_Group) );
+            Apg::TriggerMode_TdiKinetics, Apg::TriggerType_Group));
     }
 
-    if( IsTriggerExternalShutterOn() )
+    if (IsTriggerExternalShutterOn())
     {
-         trigs.push_back( 
+         trigs.push_back(
             std::pair<Apg::TriggerMode,Apg::TriggerType>(
-            Apg::TriggerMode_ExternalShutter, Apg::TriggerType_Each) );
+            Apg::TriggerMode_ExternalShutter, Apg::TriggerType_Each));
     }
 
-    if( IsTriggerExternalReadoutOn() )
+    if (IsTriggerExternalReadoutOn())
     {
-         trigs.push_back( 
+         trigs.push_back(
             std::pair<Apg::TriggerMode,Apg::TriggerType>(
-            Apg::TriggerMode_ExternalReadoutIo, Apg::TriggerType_Each) );
+            Apg::TriggerMode_ExternalReadoutIo, Apg::TriggerType_Each));
     }
 
     return trigs;
@@ -249,25 +249,25 @@ std::vector< std::pair<Apg::TriggerMode, Apg::TriggerType> > ModeFsm::GetTrigsTh
 
 //////////////////////////// 
 // SET  EXTERNAL TRIGGER
-void ModeFsm::SetExternalTrigger( const bool TurnOn, 
+void ModeFsm::SetExternalTrigger(const bool TurnOn, 
                                  const Apg::TriggerMode trigMode,
                                  const Apg::TriggerType trigType)
 {
-    if( TurnOn )
+    if (TurnOn)
     {
-        if( !IsExternalTriggerAvailable( trigMode ) )
+        if (!IsExternalTriggerAvailable(trigMode ))
         {
             std::stringstream msg;
             msg << "Cannot activate trigger mode " << trigMode;
             apgHelper::throwRuntimeException(m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
     }
     else
     {
-        if( !IsExternalTriggerAvailable( trigMode ) )
+        if (!IsExternalTriggerAvailable(trigMode ))
         {
-             std::string vinfo = apgHelper::mkMsg( m_fileName, 
+             std::string vinfo = apgHelper::mkMsg(m_fileName, 
                  "External trigger not available, exiting without setting", __LINE__);
             ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
             return;
@@ -279,15 +279,15 @@ void ModeFsm::SetExternalTrigger( const bool TurnOn,
         // ATTENTION: Two conditions here Norm and Tdi/Kin
         case Apg::TriggerMode_Normal:
         case Apg::TriggerMode_TdiKinetics:
-            SetNormTdiKinTriggers( TurnOn,  trigMode, trigType);
+            SetNormTdiKinTriggers(TurnOn,  trigMode, trigType);
         break;
 
         case Apg::TriggerMode_ExternalShutter:
-            SetShutterTrigger( TurnOn );
+            SetShutterTrigger(TurnOn);
         break;
 
         case Apg::TriggerMode_ExternalReadoutIo:
-            SetReadoutIoTrigger( TurnOn );
+            SetReadoutIoTrigger(TurnOn);
         break;
 
         default:
@@ -295,7 +295,7 @@ void ModeFsm::SetExternalTrigger( const bool TurnOn,
             std::stringstream msg;
             msg << "Invalid trigger mode " << trigMode;
             apgHelper::throwRuntimeException(m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
@@ -303,52 +303,52 @@ void ModeFsm::SetExternalTrigger( const bool TurnOn,
 
 //////////////////////////// 
 // SET  SHUTTER  TRIGGER
-void ModeFsm::SetShutterTrigger( bool TurnOn )
+void ModeFsm::SetShutterTrigger(bool TurnOn)
 {
-    if( TurnOn)
+    if (TurnOn)
     {
-        m_CamIo->ReadOrWriteReg( CameraRegs::OP_A,
-        CameraRegs::OP_A_SHUTTER_SOURCE_BIT );
+        m_CamIo->ReadOrWriteReg(CameraRegs::OP_A,
+        CameraRegs::OP_A_SHUTTER_SOURCE_BIT);
     }
     else
     {
         m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,
-        static_cast<uint16_t>(~CameraRegs::OP_A_SHUTTER_SOURCE_BIT) );
+        static_cast<uint16_t>(~CameraRegs::OP_A_SHUTTER_SOURCE_BIT));
     }
 
 }
 
 //////////////////////////// 
 // SET  SHUTTER  TRIGGER
-void ModeFsm::SetReadoutIoTrigger( bool TurnOn )
+void ModeFsm::SetReadoutIoTrigger(bool TurnOn)
 {
-    if( TurnOn)
+    if (TurnOn)
     {
-        m_CamIo->ReadOrWriteReg( CameraRegs::OP_A,
-        CameraRegs::OP_A_EXTERNAL_READOUT_BIT );
+        m_CamIo->ReadOrWriteReg(CameraRegs::OP_A,
+        CameraRegs::OP_A_EXTERNAL_READOUT_BIT);
     }
     else
     {
         m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,
-        static_cast<uint16_t>(~CameraRegs::OP_A_EXTERNAL_READOUT_BIT) );
+        static_cast<uint16_t>(~CameraRegs::OP_A_EXTERNAL_READOUT_BIT));
     }
 
 }
 
 //////////////////////////// 
 // SET  NORM TDI KIN  TRIGGERS
-void ModeFsm::SetNormTdiKinTriggers( const bool TurnOn, 
+void ModeFsm::SetNormTdiKinTriggers(const bool TurnOn, 
                                  const Apg::TriggerMode trigMode,
                                  const Apg::TriggerType trigType)
 {   
     switch(trigMode)
     {
         case Apg::TriggerMode_Normal:
-           SetNormTrigger( TurnOn, trigType );
+           SetNormTrigger(TurnOn, trigType);
         break;
 
         case Apg::TriggerMode_TdiKinetics:
-           SetTdiKinTrigger( TurnOn, trigType );
+           SetTdiKinTrigger(TurnOn, trigType);
         break;
 
         default:
@@ -367,52 +367,52 @@ void ModeFsm::SetNormTdiKinTriggers( const bool TurnOn,
 
 //////////////////////////// 
 //      SET     NORM    TRIGGER
-void ModeFsm::SetNormTrigger( const bool TurnOn, 
+void ModeFsm::SetNormTrigger(const bool TurnOn, 
                                  const Apg::TriggerType trigType)
 {
-    const uint16_t trigBit2Touch =  GetNormTrigMask( trigType );
+    const uint16_t trigBit2Touch =  GetNormTrigMask(trigType);
 
     //toggle the bit
-    if( TurnOn )
+    if (TurnOn)
     {
-       TurnTrigOn( trigBit2Touch );
+       TurnTrigOn(trigBit2Touch);
     }
     else
     {
-        TurnTrigOff( 
-            static_cast<uint16_t>(~trigBit2Touch)  );
+        TurnTrigOff(
+            static_cast<uint16_t>(~trigBit2Touch) );
     }
 }
 
 //////////////////////////// 
 //      SET         TDI      KIN      TRIGGER
-void ModeFsm::SetTdiKinTrigger( const bool TurnOn, 
+void ModeFsm::SetTdiKinTrigger(const bool TurnOn, 
                                  const Apg::TriggerType trigType)
 {
     //checking pre-conditions
     switch(trigType)
     {
         case Apg::TriggerType_Each:
-            if( IsTriggerTdiKinGroupOn() && TurnOn)
+            if (IsTriggerTdiKinGroupOn() && TurnOn)
             {
                 apgHelper::throwRuntimeException(m_fileName, 
                     "Error cannot set tdi-kinetics each trigger: group trigger on", 
-                    __LINE__, Apg::ErrorType_InvalidUsage );
+                    __LINE__, Apg::ErrorType_InvalidUsage);
             }
 
-            if( TurnOn )
+            if (TurnOn)
             {
-                 m_CamIo->WriteReg( CameraRegs::TDI_ROWS, 0 );
+                 m_CamIo->WriteReg(CameraRegs::TDI_ROWS, 0);
             }
             else
             {
-                m_CamIo->WriteReg( CameraRegs::TDI_ROWS, m_TdiRows );
+                m_CamIo->WriteReg(CameraRegs::TDI_ROWS, m_TdiRows);
             }
 
         break;
 
         case Apg::TriggerType_Group:
-             if( IsTriggerTdiKinEachOn() && TurnOn )
+             if (IsTriggerTdiKinEachOn() && TurnOn)
             {
                 apgHelper::throwRuntimeException(m_fileName, 
                     "Error cannot set tdi-kinetics group trigger: each trigger on", 
@@ -430,23 +430,23 @@ void ModeFsm::SetTdiKinTrigger( const bool TurnOn,
         break;
     }
 
-    const uint16_t trigBit2Touch = GetTdiKinTrigMask( trigType );
+    const uint16_t trigBit2Touch = GetTdiKinTrigMask(trigType);
 
      //toggle the bit
-    if( TurnOn )
+    if (TurnOn)
     {
-       TurnTrigOn( trigBit2Touch );
+       TurnTrigOn(trigBit2Touch);
     }
     else
     {
-        TurnTrigOff( 
-            static_cast<uint16_t>(~trigBit2Touch)  );
+        TurnTrigOff(
+            static_cast<uint16_t>(~trigBit2Touch) );
     }
 }
 
 //////////////////////////// 
 // GET       NORM    TRIG        MASK
-uint16_t ModeFsm::GetNormTrigMask( const Apg::TriggerType trigType )
+uint16_t ModeFsm::GetNormTrigMask(const Apg::TriggerType trigType)
 {
     //detemerine which bit we need to touch
     uint16_t  trigBit2Touch = 0;
@@ -466,7 +466,7 @@ uint16_t ModeFsm::GetNormTrigMask( const Apg::TriggerType trigType )
             std::stringstream msg;
             msg << "Invalid trigger type " << trigType;
             apgHelper::throwRuntimeException(m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
@@ -476,7 +476,7 @@ uint16_t ModeFsm::GetNormTrigMask( const Apg::TriggerType trigType )
 
 //////////////////////////// 
 // GET       TDI       KIN    TRIG        MASK
-uint16_t ModeFsm::GetTdiKinTrigMask( const Apg::TriggerType trigType)
+uint16_t ModeFsm::GetTdiKinTrigMask(const Apg::TriggerType trigType)
 {
      //detemerine which bit we need to touch
     uint16_t  trigBit2Touch = 0;
@@ -510,30 +510,30 @@ uint16_t ModeFsm::GetTdiKinTrigMask( const Apg::TriggerType trigType)
 void ModeFsm::TurnTrigOn(const uint16_t mask)
 {
     EnableIoPortBit();
-    m_CamIo->ReadOrWriteReg( CameraRegs::OP_C, 
-        mask );
+    m_CamIo->ReadOrWriteReg(CameraRegs::OP_C, 
+        mask);
 }
  
 //////////////////////////// 
 // TURN     TRIG     OFF
 void ModeFsm::TurnTrigOff(const uint16_t mask)
 {
-    m_CamIo->ReadAndWriteReg( CameraRegs::OP_C,
-        mask );
+    m_CamIo->ReadAndWriteReg(CameraRegs::OP_C,
+        mask);
 }
 
 //////////////////////////// 
 //  ENABLE     IO        PORT        BIT
 void ModeFsm::EnableIoPortBit()
 {
-    uint16_t value = m_CamIo->ReadMirrorReg( 
-        CameraRegs::IO_PORT_ASSIGNMENT );
+    uint16_t value = m_CamIo->ReadMirrorReg(
+        CameraRegs::IO_PORT_ASSIGNMENT);
 
-    if( !(value & CameraRegs::IO_PORT_ASSIGNMENT_TRIG_IN_BIT) )
+    if (!(value & CameraRegs::IO_PORT_ASSIGNMENT_TRIG_IN_BIT))
     {
         //the bit is off, so turn it on
-        m_CamIo->ReadOrWriteReg( CameraRegs::IO_PORT_ASSIGNMENT,
-            CameraRegs::IO_PORT_ASSIGNMENT_TRIG_IN_BIT );
+        m_CamIo->ReadOrWriteReg(CameraRegs::IO_PORT_ASSIGNMENT,
+            CameraRegs::IO_PORT_ASSIGNMENT_TRIG_IN_BIT);
     }
 
 }
@@ -543,44 +543,44 @@ void ModeFsm::EnableIoPortBit()
 void ModeFsm::DisableIoPortBit()
 {
     //disable io bit if all triggers are off
-    if( !IsTriggerNormEachOn() && !IsTriggerNormGroupOn() &&
-        !IsTriggerTdiKinEachOn() && !IsTriggerTdiKinGroupOn() )
+    if (!IsTriggerNormEachOn() && !IsTriggerNormGroupOn() &&
+        !IsTriggerTdiKinEachOn() && !IsTriggerTdiKinGroupOn())
     {
-        m_CamIo->ReadAndWriteReg( CameraRegs::IO_PORT_ASSIGNMENT,
-            static_cast<uint16_t>(~CameraRegs::IO_PORT_ASSIGNMENT_TRIG_IN_BIT) );
+        m_CamIo->ReadAndWriteReg(CameraRegs::IO_PORT_ASSIGNMENT,
+            static_cast<uint16_t>(~CameraRegs::IO_PORT_ASSIGNMENT_TRIG_IN_BIT));
     }
 }
 
 
 //////////////////////////// 
 // SET    FAST      SEQUENCE
-void ModeFsm::SetFastSequence( const bool TurnOn )
+void ModeFsm::SetFastSequence(const bool TurnOn)
 {
-    if( TurnOn )
+    if (TurnOn)
     {
         //precondition correct sensor type and trigger mode
-        if( !IsInterlineCcd() )
+        if (!IsInterlineCcd())
         {
             apgHelper::throwRuntimeException(m_fileName, 
                 "Cannot turn on fast sequences camera doesn't have a interline ccd.", 
-                __LINE__, Apg::ErrorType_InvalidOperation );
+                __LINE__, Apg::ErrorType_InvalidOperation);
         }
 
         //checking if we are in a good mode to turn on     
-        if( IsTriggerNormEachOn() )
+        if (IsTriggerNormEachOn())
         {
               apgHelper::throwRuntimeException(m_fileName, 
                 "Cannot turn on fast sequences TriggerNormalEach on", __LINE__,
-                Apg::ErrorType_InvalidMode );
+                Apg::ErrorType_InvalidMode);
         }
 
-        m_CamIo->ReadOrWriteReg( CameraRegs::OP_A,
-            CameraRegs::OP_A_RATIO_BIT );
+        m_CamIo->ReadOrWriteReg(CameraRegs::OP_A,
+            CameraRegs::OP_A_RATIO_BIT);
     }
     else
     {
-        m_CamIo->ReadAndWriteReg( CameraRegs::OP_A,
-            static_cast<uint16_t>(~CameraRegs::OP_A_RATIO_BIT) );
+        m_CamIo->ReadAndWriteReg(CameraRegs::OP_A,
+            static_cast<uint16_t>(~CameraRegs::OP_A_RATIO_BIT));
     }
 }
 
@@ -588,8 +588,8 @@ void ModeFsm::SetFastSequence( const bool TurnOn )
 // IS      FAST     SEQUENCE     ON
 bool ModeFsm::IsFastSequenceOn()
 {
-    return( (m_CamIo->ReadReg(CameraRegs::OP_A) 
-        & CameraRegs::OP_A_RATIO_BIT) ? true : false );
+    return((m_CamIo->ReadReg(CameraRegs::OP_A) 
+        & CameraRegs::OP_A_RATIO_BIT) ? true : false);
 }
 
 //////////////////////////// 
@@ -601,7 +601,7 @@ bool ModeFsm::IsInterlineCcd()
 
 //////////////////////////// 
 // UPDATE      APNCAM        DATA
-void  ModeFsm::UpdateApnCamData( std::shared_ptr<CApnCamData> & newCamData )
+void  ModeFsm::UpdateApnCamData(std::shared_ptr<CApnCamData> & newCamData)
 {
     m_CamData = newCamData;
 }
@@ -609,14 +609,14 @@ void  ModeFsm::UpdateApnCamData( std::shared_ptr<CApnCamData> & newCamData )
 
 //////////////////////////// 
 //      SET         TDI      ROWS 
-void ModeFsm::SetTdiRows( const uint16_t rows )
+void ModeFsm::SetTdiRows(const uint16_t rows)
 {
     m_TdiRows = rows;
 
-    if( !IsTriggerTdiKinEachOn() )
+    if (!IsTriggerTdiKinEachOn())
     {
-        m_CamIo->WriteReg( CameraRegs::TDI_ROWS,
-            rows );
+        m_CamIo->WriteReg(CameraRegs::TDI_ROWS,
+            rows);
     }
 }
 

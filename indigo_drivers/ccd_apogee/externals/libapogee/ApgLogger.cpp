@@ -9,28 +9,15 @@
 * 
 */ 
 
-#include "ApgLogger.h" 
-
-#ifdef WIN_OS
-    #include "windozeHelpers.h" 
-    #include "LoggerWin.h" 
-#else
-    #include "linux/LoggerSyslog.h" 
-#endif
-
+#include "ApgLogger.h"
+#include "linux/LoggerSyslog.h"
 
 //////////////////////////// 
 // CTOR 
-ApgLogger::ApgLogger() : m_level( ApgLogger::LEVEL_RELEASE )
+ApgLogger::ApgLogger() : m_level(ApgLogger::LEVEL_RELEASE)
 { 
-
-    
-#ifdef WIN_OS
-        m_theLogger = std::shared_ptr<ILog>( new LoggerWin );
-#else
-    	m_theLogger = std::shared_ptr<ILog>( new LoggerSyslog );
-#endif
-   
+		m_theLogger = std::shared_ptr<ILog>(new LoggerSyslog);
+	
     //TODO figure out how to read ini or another file
     //to set the logging level
 } 
@@ -48,16 +35,16 @@ ApgLogger::~ApgLogger()
 void ApgLogger::Write(ApgLogger::Level level, 
             const std::string & type, const std::string & msg)
 {
-    if( level <= m_level )
+    if (level <= m_level)
     {
-        std::string libapgStr ( "libapogee:" );
-        if( 0 == msg.compare( 0, libapgStr.size(), libapgStr ) )
+        std::string libapgStr ("libapogee:");
+        if (0 == msg.compare(0, libapgStr.size(), libapgStr ))
         {
             m_theLogger->Write(type,msg);
         }
         else
         {
-            libapgStr.append( msg );
+            libapgStr.append(msg);
             m_theLogger->Write(type,libapgStr);
         }
     }
@@ -67,5 +54,5 @@ void ApgLogger::Write(ApgLogger::Level level,
 //      IsLevelVerbose
 bool ApgLogger::IsLevelVerbose()
 {
-    return ( ApgLogger::LEVEL_VERBOSE == m_level ? true : false) ;
+    return (ApgLogger::LEVEL_VERBOSE == m_level ? true : false) ;
 }

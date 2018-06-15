@@ -14,22 +14,25 @@
 #define FILTERWHEELIO_INCLUDE_H__ 
 
 
-#include "DefDllExport.h"
 #include <stdint.h>
 #include <string>
 
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 class IUsb;
 
-class DLL_EXPORT FilterWheelIo
+class FilterWheelIo
 { 
     public: 
-        FilterWheelIo( const std::string & DeviceAddr ); 
+        FilterWheelIo(const std::string & DeviceAddr); 
         virtual ~FilterWheelIo(); 
 
-        void Program( const std::string & FilenameFx2, 
-            const std::string & FilenameDescriptor );
+        void Program(const std::string & FilenameFx2, 
+            const std::string & FilenameDescriptor);
 
         uint16_t GetVendorId();
         uint16_t GetProductId();
@@ -37,8 +40,8 @@ class DLL_EXPORT FilterWheelIo
 
         std::string GetUsbFirmwareRev();
 
-        void ReadCtrlPort( uint8_t & control, uint8_t & pin );
-        void WriteCtrlPort( uint8_t control, uint8_t pin );
+        void ReadCtrlPort(uint8_t & control, uint8_t & pin);
+        void WriteCtrlPort(uint8_t control, uint8_t pin);
 
     private:
         void DownloadFirmware();
@@ -52,7 +55,7 @@ class DLL_EXPORT FilterWheelIo
 //from http://www.unknownroad.com/rtfm/VisualStudio/warningC4251.html
 #ifdef WIN_OS
 #if _MSC_VER < 1600
-        template class DLL_EXPORT std::shared_ptr<IUsb>;
+        template class std::shared_ptr<IUsb>;
 #endif
 #endif
 

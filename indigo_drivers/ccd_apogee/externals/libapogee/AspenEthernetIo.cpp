@@ -20,22 +20,13 @@
 #include <ctime>
 #include <algorithm>
 
-// TODO figure out what to do
-// with the pretty formatting.  g++ doesn't
-// seem to have full regex support
-//#ifdef WIN_OS
-//#include <regex>
-//#else
-//#include <tr1/regex>
-//#endif
-
 #include <cstring>  //for memcpy
 
 namespace
 {
     bool IsResultOk(const std::string & response)
     {
-         if( std::string::npos != response.find("OK") )
+         if (std::string::npos != response.find("OK"))
          {
              return true;
          }
@@ -45,13 +36,13 @@ namespace
          }
     }
 
-    bool IsSessionOk(const std::string & response, const std::string & key )
+    bool IsSessionOk(const std::string & response, const std::string & key)
     {
         size_t found = response.find("=");
   
-        if( std::string::npos != found )
+        if (std::string::npos != found)
         {
-             if( 0 == response.compare( found+1, key.size(), key) )
+             if (0 == response.compare(found+1, key.size(), key))
              {
                  return true;
              }
@@ -67,9 +58,9 @@ namespace
 
 //////////////////////////// 
 // CTOR 
-AspenEthernetIo::AspenEthernetIo( const std::string url ) : m_url( url ),
-                                                          m_fileName( __FILE__ ),
-                                                          m_libcurl( new CLibCurlWrap ),
+AspenEthernetIo::AspenEthernetIo(const std::string url) : m_url(url),
+                                                          m_fileName(__FILE__),
+                                                          m_libcurl(new CLibCurlWrap),
                                                           m_sessionKey(""),
                                                           m_sessionKeyUrlStr("")
 
@@ -78,13 +69,13 @@ AspenEthernetIo::AspenEthernetIo( const std::string url ) : m_url( url ),
     //make the guid for the session key from
     //the date/time
     time_t rawtime;
-    time( &rawtime );
-    struct tm * timeinfo = localtime( &rawtime );
+    time(&rawtime);
+    struct tm * timeinfo = localtime(&rawtime);
     char buffer [80];
     strftime(buffer,80,"%Y%m%d%H%M%S", timeinfo);
-    m_sessionKey.append( buffer );
+    m_sessionKey.append(buffer);
     m_sessionKeyUrlStr.append("&keyval=");
-    m_sessionKeyUrlStr.append( m_sessionKey );
+    m_sessionKeyUrlStr.append(m_sessionKey);
     
     StartSession();
 
@@ -107,19 +98,19 @@ void AspenEthernetIo::StartSession()
     const std::string fullUrl = m_url + "/camcmd.cgi?req=Start_Session" + m_sessionKeyUrlStr;
 
     std::string result;
-    m_libcurl->HttpGet( fullUrl, result );
+    m_libcurl->HttpGet(fullUrl, result);
 
-    if( !IsSessionOk( result, m_sessionKey ) )
+    if (!IsSessionOk(result, m_sessionKey ))
     {
         std::string errMsg = "ERROR - command " + fullUrl + " failed.";
-        apgHelper::throwRuntimeException( m_fileName, errMsg, 
-            __LINE__, Apg::ErrorType_Critical );
+        apgHelper::throwRuntimeException(m_fileName, errMsg, 
+            __LINE__, Apg::ErrorType_Critical);
     }
 
      //log device we are connected to
     const std::string msg = "Connected to device " + m_url;
     ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",
-      msg ); 
+      msg); 
 }
 
 //////////////////////////// 
@@ -129,12 +120,12 @@ void AspenEthernetIo::EndSession()
      const std::string fullUrl = m_url + "/camcmd.cgi?req=End_Session" + m_sessionKeyUrlStr;
 
     std::string result;
-    m_libcurl->HttpGet( fullUrl, result );
+    m_libcurl->HttpGet(fullUrl, result);
 
-    if( !IsSessionOk( result, m_sessionKey ) )
+    if (!IsSessionOk(result, m_sessionKey ))
     {
         std::string errMsg = "ERROR - command " + fullUrl + " failed.";
-        std::string msg2Log = apgHelper::mkMsg( m_fileName, errMsg, __LINE__ );
+        std::string msg2Log = apgHelper::mkMsg(m_fileName, errMsg, __LINE__);
         
         //since this is called by the dtor all I can do is 
         //log that something bad happened
@@ -144,22 +135,22 @@ void AspenEthernetIo::EndSession()
     //log what device we have disconnected from
     const std::string msg = "Connection to device " + m_url + " is closed.";
     ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",
-      msg ); 
+      msg); 
 }
 
 //////////////////////////// 
 // READ     REG 
-uint16_t AspenEthernetIo::ReadReg( uint16_t reg ) const
+uint16_t AspenEthernetIo::ReadReg(uint16_t reg) const
 {
     const std::string fullUrl = m_url + "/camcmd.cgi?req=CC_Reg_Rd&wIndex=" +
         help::uShort2Str(reg) + "&wValue=1" + m_sessionKeyUrlStr;
 
     std::string result;
-    m_libcurl->HttpGet(fullUrl, result );
+    m_libcurl->HttpGet(fullUrl, result);
 
     uint16_t FpgaData = 0;
     
-    std::stringstream is( result );
+    std::stringstream is(result);
     is >> std::hex >> FpgaData;
 
     return FpgaData;
@@ -168,20 +159,20 @@ uint16_t AspenEthernetIo::ReadReg( uint16_t reg ) const
    
 //////////////////////////// 
 // WRITE        REG 
-void AspenEthernetIo::WriteReg( uint16_t reg, uint16_t val ) 
+void AspenEthernetIo::WriteReg(uint16_t reg, uint16_t val) 
 {
     const std::string fullUrl = m_url + "/camcmd.cgi?req=CC_Reg_Wr&wIndex=" +
         help::uShort2Str(reg) + "&wValue=1&param=" + 
         help::uShort2Str(val) + m_sessionKeyUrlStr;
 
     std::string result;
-    m_libcurl->HttpGet( fullUrl, result );
+    m_libcurl->HttpGet(fullUrl, result);
 
-    if( !IsResultOk( result ) )
+    if (!IsResultOk(result ))
     {
         std::string errMsg = "ERROR - command " + fullUrl + " failed.";
-        apgHelper::throwRuntimeException( m_fileName, errMsg, 
-            __LINE__, Apg::ErrorType_Critical );
+        apgHelper::throwRuntimeException(m_fileName, errMsg, 
+            __LINE__, Apg::ErrorType_Critical);
     }
    
 	
@@ -208,20 +199,20 @@ void AspenEthernetIo::GetImageData(std::vector<uint16_t> & ImageData)
     std::vector<uint8_t> result;
 	// set container capacity so it doesn't waste time
 	// dynamically allocating space
-	result.reserve( NumBytesExpected );
-	m_libcurl->setTimeout( 60 + getLastExposureTime() ); // set extended timeout
-    m_libcurl->HttpGet( fullUrl, result );
-	m_libcurl->setTimeout( -1 ); // restore default timeout
+	result.reserve(NumBytesExpected);
+	m_libcurl->setTimeout(60 + getLastExposureTime()); // set extended timeout
+    m_libcurl->HttpGet(fullUrl, result);
+	m_libcurl->setTimeout(-1); // restore default timeout
 
-    if( NumBytesExpected !=  apgHelper::SizeT2Int32( result.size() ) )
+    if (NumBytesExpected !=  apgHelper::SizeT2Int32(result.size() ))
     {
         std::stringstream msg;
         msg <<  fullUrl.c_str() << " error -  requested ";
         msg << NumBytesExpected << " bytes, but received ";
         msg << result.size() << " bytes.";
 
-        apgHelper::throwRuntimeException( m_fileName, msg.str() , 
-            __LINE__, Apg::ErrorType_Critical );
+        apgHelper::throwRuntimeException(m_fileName, msg.str() , 
+            __LINE__, Apg::ErrorType_Critical);
     }
 
     //faster than for loop
@@ -240,7 +231,7 @@ void AspenEthernetIo::SetupImgXfer(uint16_t Rows,
     std::stringstream FrameCount;
 
 
-	if ( IsBulkSeq || NumOfImages == 1)
+	if (IsBulkSeq || NumOfImages == 1)
     {
 		// download all as 1 image
 		const uint32_t numPixels = Rows * Cols * NumOfImages;
@@ -265,13 +256,13 @@ void AspenEthernetIo::SetupImgXfer(uint16_t Rows,
       
     
     std::string result;
-    m_libcurl->HttpGet( fullUrl, result );
+    m_libcurl->HttpGet(fullUrl, result);
 
-    if( !IsResultOk( result ) )
+    if (!IsResultOk(result ))
     {
         std::string errMsg = "ERROR - command " + fullUrl + " failed.";
-        apgHelper::throwRuntimeException( m_fileName, errMsg, 
-            __LINE__, Apg::ErrorType_Critical );
+        apgHelper::throwRuntimeException(m_fileName, errMsg, 
+            __LINE__, Apg::ErrorType_Critical);
     }
 }
 
@@ -283,13 +274,13 @@ void AspenEthernetIo::CancelImgXfer()
         m_sessionKeyUrlStr;
     
     std::string result;
-    m_libcurl->HttpGet( fullUrl, result );
+    m_libcurl->HttpGet(fullUrl, result);
 
-    if( !IsResultOk( result ) )
+    if (!IsResultOk(result ))
     {
         std::string errMsg = "ERROR - command " + fullUrl + " failed.";
-        apgHelper::throwRuntimeException( m_fileName, errMsg, 
-            __LINE__, Apg::ErrorType_Critical );
+        apgHelper::throwRuntimeException(m_fileName, errMsg, 
+            __LINE__, Apg::ErrorType_Critical);
     }
 }
 
@@ -299,7 +290,7 @@ void AspenEthernetIo::GetStatus(CameraStatusRegs::BasicStatus & status)
 {
    CameraStatusRegs::AdvStatus advStatus;
  
-   GetStatus( advStatus );
+   GetStatus(advStatus);
 
    status.CoolerDrive = advStatus.CoolerDrive;
    status.DataAvailFlag = advStatus.DataAvailFlag;
@@ -321,7 +312,7 @@ void AspenEthernetIo::GetStatus(CameraStatusRegs::AdvStatus & status)
     const std::string fullUrl = m_url + "/camcmd.cgi?req=Get_Status" + m_sessionKeyUrlStr;
 
     std::vector<uint8_t> result;
-    m_libcurl->HttpGet( fullUrl, result );
+    m_libcurl->HttpGet(fullUrl, result);
 
     status.TempHeatSink = ((result.at(0) << 8) | result.at(1));
     status.TempCcd = ((result.at(2) << 8) | result.at(3));
@@ -341,33 +332,33 @@ void AspenEthernetIo::GetStatus(CameraStatusRegs::AdvStatus & status)
 
 //////////////////////////// 
 //  GET      MAC      ADDRESS
-void AspenEthernetIo::GetMacAddress( std::string & Mac )
+void AspenEthernetIo::GetMacAddress(std::string & Mac)
 {
     const std::string fullUrl = m_url + "/camcmd.cgi?req=Get_Mac" + m_sessionKeyUrlStr;
 
-    m_libcurl->HttpGet( fullUrl, Mac );
+    m_libcurl->HttpGet(fullUrl, Mac);
 }
 
 //////////////////////////// 
 // WRITE        SRMD 
-void AspenEthernetIo::WriteSRMD(const uint16_t reg, const std::vector<uint16_t> & data )
+void AspenEthernetIo::WriteSRMD(const uint16_t reg, const std::vector<uint16_t> & data)
 {
     std::vector<uint16_t>::const_iterator iter;
-    for( iter = data.begin(); iter != data.end(); ++iter )
+    for(iter = data.begin(); iter != data.end(); ++iter)
     {
-        WriteReg( reg, *iter );
+        WriteReg(reg, *iter);
     }
 }
 
 //////////////////////////// 
 // WRITE        MRMD 
-void AspenEthernetIo::WriteMRMD(const uint16_t reg, const std::vector<uint16_t> & data )
+void AspenEthernetIo::WriteMRMD(const uint16_t reg, const std::vector<uint16_t> & data)
 {
      std::vector<uint16_t>::const_iterator iter;
     uint16_t offset = 0;
-    for( iter = data.begin(); iter != data.end(); ++iter, ++offset )
+    for(iter = data.begin(); iter != data.end(); ++iter, ++offset)
     {
-        WriteReg( reg+offset, *iter );
+        WriteReg(reg+offset, *iter);
     }
 }
 
@@ -378,7 +369,7 @@ std::string AspenEthernetIo::GetNetworkSettings()
     const std::string fullUrl = m_url + "/camcmd.cgi?req=Net_Param_Rd" + m_sessionKeyUrlStr;
 
     std::string info;
-    m_libcurl->HttpGet( fullUrl, info );
+    m_libcurl->HttpGet(fullUrl, info);
 
     // TODO figure out what to do
    // with the pretty formatting.  g++ doesn't
@@ -412,7 +403,7 @@ std::string AspenEthernetIo::GetDriverVersion()
 // GET       FIRMWARE    REV
 uint16_t AspenEthernetIo::GetFirmwareRev()
 {
-    return ReadReg( CameraRegs::FIRMWARE_REV );
+    return ReadReg(CameraRegs::FIRMWARE_REV);
 }
 
 
@@ -437,62 +428,62 @@ std::vector<std::string> AspenEthernetIo::ReadStrDatabase()
     // if so how big is it
     std::vector<uint8_t> out;
     
-    if( !ReadStrDatabase( 0, MAX_STRDB_READ_BYTES, out ) )
+    if (!ReadStrDatabase(0, MAX_STRDB_READ_BYTES, out ))
     {
         std::string errMsg = "Initial read of str db via ethernet failed.";
-        apgHelper::throwRuntimeException( m_fileName, errMsg, 
-            __LINE__, Apg::ErrorType_Critical );
+        apgHelper::throwRuntimeException(m_fileName, errMsg, 
+            __LINE__, Apg::ErrorType_Critical);
 
     }
 
     const uint16_t totalSize = out.at(1) << 8 | out.at(0);
 
-    if( CamStrDb::MAX_STR_DB_BYTES < totalSize )
+    if (CamStrDb::MAX_STR_DB_BYTES < totalSize)
     {
          //log error and return an empty vector
         std::stringstream ss;
-        ss << "Read of Aspen string db returned an in valid size (" << totalSize << " ).  ";
-        apgHelper::LogErrorMsg( __FILE__, ss.str(), __LINE__ );
+        ss << "Read of Aspen string db returned an in valid size (" << totalSize << ").  ";
+        apgHelper::LogErrorMsg(__FILE__, ss.str(), __LINE__);
         std::vector<std::string> out;
         return out;
     }
 
     // now read the full db
-    std::vector<uint8_t> result( totalSize );
+    std::vector<uint8_t> result(totalSize);
 
     uint32_t NumBytesExpected  =  totalSize;
     uint32_t offset = 0;
 
-    while( NumBytesExpected > 0 )
+    while(NumBytesExpected > 0)
     {
         uint32_t SizeToRead = std::min<uint32_t>(NumBytesExpected,
-            MAX_STRDB_READ_BYTES );   
+            MAX_STRDB_READ_BYTES);   
         
         std::vector<uint8_t> strDb;
 
-        if( !ReadStrDatabase( offset, SizeToRead, strDb ) )
+        if (!ReadStrDatabase(offset, SizeToRead, strDb ))
         {
              std::stringstream ss;
             ss << "Read string db failed at offset " << offset << " with a read of ";
             ss << SizeToRead << " bytes.";
-            apgHelper::throwRuntimeException( m_fileName, ss.str(), 
-                __LINE__, Apg::ErrorType_Critical );
+            apgHelper::throwRuntimeException(m_fileName, ss.str(), 
+                __LINE__, Apg::ErrorType_Critical);
         }
 
         std::vector<uint8_t>::iterator copyStart = result.begin()+offset;
-        std::copy( strDb.begin(), strDb.end(), copyStart );
+        std::copy(strDb.begin(), strDb.end(), copyStart);
 
         NumBytesExpected -= SizeToRead;
         offset += SizeToRead; 
     }
    
-   return CamStrDb::UnpackStrings( result );
+   return CamStrDb::UnpackStrings(result);
 }
 
 //////////////////////////// 
 //      READ       STR     DATABASE
-bool AspenEthernetIo::ReadStrDatabase( const uint32_t offset, const uint32_t size2Read, 
-                                      std::vector<uint8_t> & out )
+bool AspenEthernetIo::ReadStrDatabase(const uint32_t offset, const uint32_t size2Read, 
+                                      std::vector<uint8_t> & out)
 {
     std::stringstream offsetSs;
     offsetSs << "offset=" << offset;
@@ -502,21 +493,21 @@ bool AspenEthernetIo::ReadStrDatabase( const uint32_t offset, const uint32_t siz
 
     std::string fullUrl = m_url + "/camcmd.cgi?req=get_str_db&" + offsetSs.str() + "&" + bytesSs.str() + m_sessionKeyUrlStr;
     
-    m_libcurl->HttpGet( fullUrl, out );
+    m_libcurl->HttpGet(fullUrl, out);
 
-    if( 0 == out.size() )
+    if (0 == out.size())
     {
-        apgHelper::LogErrorMsg( __FILE__,"string db cmd return a zero size response", __LINE__ );
+        apgHelper::LogErrorMsg(__FILE__,"string db cmd return a zero size response", __LINE__);
         return false;
     }
 
     //check if ERR 2 is in the response
-    std::string testStr( reinterpret_cast<const char*>( &out.at(0) ), out.size() );
-    if( std::string::npos != testStr.find("ERR 2") )
+    std::string testStr(reinterpret_cast<const char*>(&out.at(0)), out.size());
+    if (std::string::npos != testStr.find("ERR 2"))
     {
-        std::string errMsg( "Error returned with str db cmd: ");
-        errMsg.append( testStr );
-        apgHelper::LogErrorMsg( __FILE__, errMsg, __LINE__ );
+        std::string errMsg("Error returned with str db cmd: ");
+        errMsg.append(testStr);
+        apgHelper::LogErrorMsg(__FILE__, errMsg, __LINE__);
         return false;
     }
 

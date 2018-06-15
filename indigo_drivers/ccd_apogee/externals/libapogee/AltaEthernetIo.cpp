@@ -27,11 +27,11 @@ namespace
     const int32_t MAX_READS_PER_URL = 40;
 
      // GET    PORT      STR
-    std::string GetPortStr( const uint16_t PortId )
+    std::string GetPortStr(const uint16_t PortId)
     {
         std::string result;
 
-        switch( PortId )
+        switch(PortId)
         {
             case 0:
                 result.append("A");
@@ -45,8 +45,8 @@ namespace
             {
                 std::stringstream errMsg;
                 errMsg << "Invalid port " << PortId;
-                apgHelper::throwRuntimeException( __FILE__, errMsg.str(), 
-                        __LINE__, Apg::ErrorType_InvalidUsage );
+                apgHelper::throwRuntimeException(__FILE__, errMsg.str(), 
+                        __LINE__, Apg::ErrorType_InvalidUsage);
             }
             break;
         }
@@ -55,7 +55,7 @@ namespace
     }
 
     //      UINT32    TO      STR
-    std::string uint32ToStr( const uint32_t value )
+    std::string uint32ToStr(const uint32_t value)
     {
         std::stringstream ss;
         ss << value;
@@ -63,13 +63,13 @@ namespace
     }
 
     //  FIND     VAL   IN     MAP
-    uint16_t FindValInMap(  const uint16_t Reg, 
-        const std::map<uint16_t,uint16_t> & theMap )
+    uint16_t FindValInMap( const uint16_t Reg, 
+        const std::map<uint16_t,uint16_t> & theMap)
     {
         std::map<uint16_t,uint16_t>::const_iterator iter = 
-            theMap.find( Reg );
+            theMap.find(Reg);
 
-        if( iter != theMap.end() )
+        if (iter != theMap.end())
         {
             //found a value before we reached the end
             return (*iter).second;
@@ -78,17 +78,17 @@ namespace
         {
             std::stringstream errMsg;
             errMsg << "Failed to find register " << Reg << " in status map";
-            apgHelper::throwRuntimeException( __FILE__, errMsg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(__FILE__, errMsg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
             return 0;
         }
 
     }
 
     //  MK   HEX   REG      STR
-    std::string mkHexRegStr( const uint16_t Reg )
+    std::string mkHexRegStr(const uint16_t Reg)
     {
-        if( !Reg )
+        if (!Reg)
         {
             std::string result("0x0000");
             return result;
@@ -104,8 +104,8 @@ namespace
 
 //////////////////////////// 
 // CTOR 
-AltaEthernetIo::AltaEthernetIo( const std::string url ) : m_url( url ),
-                                                          m_fileName( __FILE__ )
+AltaEthernetIo::AltaEthernetIo(const std::string url) : m_url(url),
+                                                          m_fileName(__FILE__)
 
 { 
     //open a session with the camera
@@ -136,19 +136,19 @@ void AltaEthernetIo::OpenSession()
     CLibCurlWrap theCurl;
 
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 
-     if( std::string::npos == result.find("SessionId=") )
+     if (std::string::npos == result.find("SessionId="))
     {
         std::string errMsg = "Invalid open session response = " + result;
-        apgHelper::throwRuntimeException( m_fileName, errMsg, 
-            __LINE__, Apg::ErrorType_Critical  );
+        apgHelper::throwRuntimeException(m_fileName, errMsg, 
+            __LINE__, Apg::ErrorType_Critical );
     }
 
      //log device we are connected to
     const std::string msg = "Connected to device " + m_url;
     ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",
-      msg ); 
+      msg); 
 }
 
 //////////////////////////// 
@@ -160,9 +160,9 @@ void AltaEthernetIo::CloseSession()
     CLibCurlWrap theCurl;
 
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 
-     if( std::string::npos == result.find("SessionId=") )
+     if (std::string::npos == result.find("SessionId="))
     {
         //no throwing b/c this is called by the dtor
         //log the error
@@ -173,25 +173,25 @@ void AltaEthernetIo::CloseSession()
      //log what device we have disconnected from
     const std::string msg = "Connection to device " + m_url + " is closed.";
     ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",
-      msg ); 
+      msg); 
 
 }
 
 //////////////////////////// 
 // READ     REG 
-uint16_t AltaEthernetIo::ReadReg( uint16_t reg ) const
+uint16_t AltaEthernetIo::ReadReg(uint16_t reg) const
 {
 
-    const std::string finalUrl = m_url + "/FPGA?RR="+ help::uShort2Str( reg );
+    const std::string finalUrl = m_url + "/FPGA?RR="+ help::uShort2Str(reg);
         
     CLibCurlWrap theCurl;
     std::string result;
-    theCurl.HttpGet( finalUrl, result );
+    theCurl.HttpGet(finalUrl, result);
 
     std::vector<std::string> tokens = help::MakeTokens(result,"=");
 
     uint16_t FpgaData = 0;
-    std::istringstream is( tokens[1] );
+    std::istringstream is(tokens[1]);
     is >> std::hex >> FpgaData;
 
     return FpgaData;
@@ -199,7 +199,7 @@ uint16_t AltaEthernetIo::ReadReg( uint16_t reg ) const
 
 //////////////////////////// 
 // READ     REGS 
-std::map<uint16_t,uint16_t> AltaEthernetIo::ReadRegs(const std::vector<uint16_t> & Regs )
+std::map<uint16_t,uint16_t> AltaEthernetIo::ReadRegs(const std::vector<uint16_t> & Regs)
 {
     //build the get string with all of the registers
     std::string base = m_url + "/FPGA?";
@@ -211,27 +211,27 @@ std::map<uint16_t,uint16_t> AltaEthernetIo::ReadRegs(const std::vector<uint16_t>
     std::string finalResult;
     int32_t count = 0;
 
-    for( iter = Regs.begin(); iter != Regs.end(); ++iter )
+    for(iter = Regs.begin(); iter != Regs.end(); ++iter)
     {
-        if( first )
+        if (first)
         {
-            std::string vv = "RR=" +  help::uShort2Str( *iter );
+            std::string vv = "RR=" +  help::uShort2Str(*iter);
             finalUrl.append(vv);
             first = false;
         }
         else
         {
-            std::string vv = "&RR=" +  help::uShort2Str( *iter );
+            std::string vv = "&RR=" +  help::uShort2Str(*iter);
             finalUrl.append(vv);
         }
 
-         if( MAX_READS_PER_URL-1 == count )
+         if (MAX_READS_PER_URL-1 == count)
         {
             //send the max data
             CLibCurlWrap theCurl;
             std::string result;
-            theCurl.HttpGet( finalUrl, result );
-            finalResult.append( result );
+            theCurl.HttpGet(finalUrl, result);
+            finalResult.append(result);
 
             //reset
             count = 0;
@@ -245,13 +245,13 @@ std::map<uint16_t,uint16_t> AltaEthernetIo::ReadRegs(const std::vector<uint16_t>
             
     }
 
-    if( count )
+    if (count)
     {
         //send the cmd
         CLibCurlWrap theCurl;
         std::string result;
-        theCurl.HttpGet( finalUrl, result );
-        finalResult.append( result );
+        theCurl.HttpGet(finalUrl, result);
+        finalResult.append(result);
     }
 
     //convert the string into a map
@@ -261,29 +261,29 @@ std::map<uint16_t,uint16_t> AltaEthernetIo::ReadRegs(const std::vector<uint16_t>
 
     std::map<uint16_t,uint16_t> mapOut;
 
-    for( siter = tokens.begin(); siter != tokens.end(); ++siter )
+    for(siter = tokens.begin(); siter != tokens.end(); ++siter)
     {
-        if( (*siter).empty() )
+        if ((*siter).empty())
         {
             continue;
         }
         
-        int32_t regStart = apgHelper::SizeT2Int32( (*siter).find("[") );
-        int32_t regEnd = apgHelper::SizeT2Int32( (*siter).find("]") );
+        int32_t regStart = apgHelper::SizeT2Int32((*siter).find("["));
+        int32_t regEnd = apgHelper::SizeT2Int32((*siter).find("]"));
         int32_t len = regEnd - regStart - 1;
         std::string regStr = (*siter).substr(regStart+1,len);   
 
         uint16_t theReg = 0;
-        std::istringstream is1( regStr );
+        std::istringstream is1(regStr);
         is1 >> theReg;
 
-        int32_t valStart = apgHelper::SizeT2Int32( (*siter).find("x") );
-        int32_t valEnd = apgHelper::SizeT2Int32( (*siter).size() );
+        int32_t valStart = apgHelper::SizeT2Int32((*siter).find("x"));
+        int32_t valEnd = apgHelper::SizeT2Int32((*siter).size());
         len = valEnd - valStart - 1;
         std::string valStr = (*siter).substr(valStart+1,len);
 
         uint16_t theValue = 0;
-        std::istringstream is2( valStr );
+        std::istringstream is2(valStr);
         is2 >> std::hex >> theValue;
 
         mapOut[theReg] = theValue;
@@ -294,7 +294,7 @@ std::map<uint16_t,uint16_t> AltaEthernetIo::ReadRegs(const std::vector<uint16_t>
    
 //////////////////////////// 
 // WRITE        REG 
-void AltaEthernetIo::WriteReg( uint16_t reg, uint16_t val ) 
+void AltaEthernetIo::WriteReg(uint16_t reg, uint16_t val) 
 {
     std::string fullUrl = m_url + "/FPGA?WR=" +
         help::uShort2Str(reg) + "&WD=" + help::uShort2Str(val, true);
@@ -302,19 +302,19 @@ void AltaEthernetIo::WriteReg( uint16_t reg, uint16_t val )
     CLibCurlWrap theCurl;
 
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 
 }
 
 //////////////////////////// 
 // WRITE        MRMD 
-void AltaEthernetIo::WriteMRMD(const uint16_t reg, const std::vector<uint16_t> & data )
+void AltaEthernetIo::WriteMRMD(const uint16_t reg, const std::vector<uint16_t> & data)
 {
      std::vector<uint16_t>::const_iterator iter;
     uint16_t offset = 0;
-    for( iter = data.begin(); iter != data.end(); ++iter, ++offset )
+    for(iter = data.begin(); iter != data.end(); ++iter, ++offset)
     {
-        WriteReg( reg+offset, *iter );
+        WriteReg(reg+offset, *iter);
     }
 }
 
@@ -323,16 +323,16 @@ void AltaEthernetIo::WriteMRMD(const uint16_t reg, const std::vector<uint16_t> &
 void AltaEthernetIo::GetImageData(std::vector<uint16_t> & ImageData)
 {
     const int32_t NumBytesExpected = 
-        apgHelper::SizeT2Int32( ImageData.size() )*sizeof(uint16_t);
+        apgHelper::SizeT2Int32(ImageData.size())*sizeof(uint16_t);
 
     //grab the data
     std::string fullUrl = m_url + "/UE/image.bin";
 
     CLibCurlWrap theCurl;
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 
-    if( NumBytesExpected !=  apgHelper::SizeT2Int32( result.size() ) )
+    if (NumBytesExpected !=  apgHelper::SizeT2Int32(result.size() ))
     {
         std::stringstream received;
         received <<  result.size();
@@ -342,8 +342,8 @@ void AltaEthernetIo::GetImageData(std::vector<uint16_t> & ImageData)
 
         std::string errMsg = fullUrl + " error - " + requested.str() \
             + " bytes requsted " + received.str() + " bytes received.";
-        apgHelper::throwRuntimeException( m_fileName, errMsg, 
-            __LINE__, Apg::ErrorType_Critical );
+        apgHelper::throwRuntimeException(m_fileName, errMsg, 
+            __LINE__, Apg::ErrorType_Critical);
     }
     
     std::string::iterator strIter;
@@ -370,11 +370,11 @@ void AltaEthernetIo::SetupImgXfer(const uint16_t Rows,
             const bool IsBulkSeq)
 {
  
-    if( !IsBulkSeq)
+    if (!IsBulkSeq)
     {
-        apgHelper::throwRuntimeException( m_fileName, 
+        apgHelper::throwRuntimeException(m_fileName, 
             "Bulk sequence must be active for AltaEthernetIo", 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
 
     //in alta code the number of frames is rolled into the image height
@@ -389,7 +389,7 @@ void AltaEthernetIo::SetupImgXfer(const uint16_t Rows,
     CLibCurlWrap theCurl;
 
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 
 }
 
@@ -398,8 +398,8 @@ void AltaEthernetIo::SetupImgXfer(const uint16_t Rows,
 void AltaEthernetIo::CancelImgXfer()
 {
     std::string errStr("CancelImgXfer not supported on alta ethernet cameras.");
-    apgHelper::throwRuntimeException( m_fileName, errStr, 
-        __LINE__, Apg::ErrorType_InvalidOperation );
+    apgHelper::throwRuntimeException(m_fileName, errStr, 
+        __LINE__, Apg::ErrorType_InvalidOperation);
 }
 
 //////////////////////////// 
@@ -408,31 +408,31 @@ void AltaEthernetIo::GetStatus(CameraStatusRegs::BasicStatus & status)
 {    
     
     std::map<uint16_t,uint16_t> statusMap = 
-        ReadRegs( m_StatusRegs );
+        ReadRegs(m_StatusRegs);
 
     //TODO - verify that this is OK
     //setting the values we don't have to zero
-    status.CoolerDrive =  FindValInMap( 
+    status.CoolerDrive =  FindValInMap(
         CameraRegs::TEMP_DRIVE, statusMap);
 
     status.FetchCount = 0;
 
-    status.InputVoltage = FindValInMap( 
+    status.InputVoltage = FindValInMap(
         CameraRegs::INPUT_VOLTAGE, statusMap);
 
-    status.SequenceCounter = FindValInMap( 
+    status.SequenceCounter = FindValInMap(
         CameraRegs::SEQUENCE_COUNTER, statusMap);
 
-    status.Status =  FindValInMap( 
+    status.Status =  FindValInMap(
         CameraRegs::STATUS, statusMap);
 
-    status.TdiCounter = FindValInMap( 
+    status.TdiCounter = FindValInMap(
         CameraRegs::TDI_COUNTER, statusMap);
 
-    status.TempCcd = FindValInMap( 
+    status.TempCcd = FindValInMap(
         CameraRegs::TEMP_CCD, statusMap);
 
-    status.TempHeatSink = FindValInMap( 
+    status.TempHeatSink = FindValInMap(
         CameraRegs::TEMP_HEATSINK, statusMap);
 
     status.uFrame = 0;
@@ -446,7 +446,7 @@ void AltaEthernetIo::GetStatus(CameraStatusRegs::AdvStatus & status)
 {
     CameraStatusRegs::BasicStatus basic;
     memset(&basic,0,sizeof(basic));
-    GetStatus( basic );
+    GetStatus(basic);
 
      //TODO - verify that this is OK 
      //setting the values we don't have to zero
@@ -467,7 +467,7 @@ void AltaEthernetIo::GetStatus(CameraStatusRegs::AdvStatus & status)
 
 //////////////////////////// 
 //  GET      MAC      ADDRESS
-void AltaEthernetIo::GetMacAddress( std::string & Mac )
+void AltaEthernetIo::GetMacAddress(std::string & Mac)
 {
    
     const std::string fullUrl = m_url + "/NVRAM?Tag=10&Length=6&Get";
@@ -475,10 +475,10 @@ void AltaEthernetIo::GetMacAddress( std::string & Mac )
     CLibCurlWrap theCurl;
 
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 
     const std::string dataUrl = m_url + "/UE/nvram.bin";
-    theCurl.HttpGet( dataUrl, Mac );
+    theCurl.HttpGet(dataUrl, Mac);
 
 }
 
@@ -491,13 +491,13 @@ void AltaEthernetIo::Reboot()
     CLibCurlWrap theCurl;
 
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 
 }
 
 //////////////////////////// 
 // WRITE        SRMD 
-void AltaEthernetIo::WriteSRMD(const uint16_t reg, const std::vector<uint16_t> & data )
+void AltaEthernetIo::WriteSRMD(const uint16_t reg, const std::vector<uint16_t> & data)
 {
     std::string base = m_url + "/FPGA?WR=" + help::uShort2Str(reg);
     std::string fullUrl = base;
@@ -505,17 +505,17 @@ void AltaEthernetIo::WriteSRMD(const uint16_t reg, const std::vector<uint16_t> &
 
     int32_t count = 0;
 
-    for( iter = data.begin(); iter != data.end(); ++iter )
+    for(iter = data.begin(); iter != data.end(); ++iter)
     {
-        std::string temp = "&WD=" + mkHexRegStr( *iter );
-        fullUrl.append( temp );
+        std::string temp = "&WD=" + mkHexRegStr(*iter);
+        fullUrl.append(temp);
 
-        if( MAX_WRITES_PER_URL-1 == count )
+        if (MAX_WRITES_PER_URL-1 == count)
         {
             //send the max data
             CLibCurlWrap theCurl;
             std::string result;
-            theCurl.HttpGet( fullUrl, result );
+            theCurl.HttpGet(fullUrl, result);
 
             //reset
             count = 0;
@@ -528,11 +528,11 @@ void AltaEthernetIo::WriteSRMD(const uint16_t reg, const std::vector<uint16_t> &
     }
 
     //send any remaining data
-    if( count )
+    if (count)
     {
         CLibCurlWrap theCurl;
         std::string result;
-        theCurl.HttpGet( fullUrl, result );
+        theCurl.HttpGet(fullUrl, result);
     }
 }
 
@@ -541,7 +541,7 @@ void AltaEthernetIo::WriteSRMD(const uint16_t reg, const std::vector<uint16_t> &
 std::string AltaEthernetIo::GetNetworkSettings()
 {
     std::string mac;
-    GetMacAddress( mac );
+    GetMacAddress(mac);
 
     std::string result = "Mac Address: " + mac + "\n";
 
@@ -560,7 +560,7 @@ std::string AltaEthernetIo::GetDriverVersion()
 // GET       FIRMWARE    REV
 uint16_t AltaEthernetIo::GetFirmwareRev()
 {
-    return ReadReg( CameraRegs::FIRMWARE_REV );
+    return ReadReg(CameraRegs::FIRMWARE_REV);
 }
 
 
@@ -578,31 +578,31 @@ std::string AltaEthernetIo::GetInfo()
 
 //////////////////////////// 
 //      SET     SERIAL       BAUD     RATE
-void AltaEthernetIo::SetSerialBaudRate( const uint16_t PortId , const uint32_t BaudRate )
+void AltaEthernetIo::SetSerialBaudRate(const uint16_t PortId , const uint32_t BaudRate)
 {
      std::string fullUrl = m_url + "/SERCFG?SetBitRate=" +
-        GetPortStr( PortId ) + "," + uint32ToStr( BaudRate );
+        GetPortStr(PortId) + "," + uint32ToStr(BaudRate);
 
     CLibCurlWrap theCurl;
 
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 }
 
 //////////////////////////// 
 //      GET     SERIAL       BAUD     RATE
-uint32_t AltaEthernetIo::GetSerialBaudRate(  const uint16_t PortId  )
+uint32_t AltaEthernetIo::GetSerialBaudRate( const uint16_t PortId )
 {
-    const std::string finalUrl = m_url + "/SERCFG?GetBitRate="+ GetPortStr( PortId );
+    const std::string finalUrl = m_url + "/SERCFG?GetBitRate="+ GetPortStr(PortId);
         
     CLibCurlWrap theCurl;
     std::string result;
-    theCurl.HttpGet( finalUrl, result );
+    theCurl.HttpGet(finalUrl, result);
 
     std::vector<std::string> tokens = help::MakeTokens(result,",");
 
     uint32_t BaudRate = 0;
-    std::istringstream is( tokens[2] );
+    std::istringstream is(tokens[2]);
     is >>  BaudRate;
 
     return BaudRate;
@@ -611,24 +611,24 @@ uint32_t AltaEthernetIo::GetSerialBaudRate(  const uint16_t PortId  )
 
 //////////////////////////// 
 //   GET    SERIAL   FLOW     CONTROL
-Apg::SerialFC AltaEthernetIo::GetSerialFlowControl( uint16_t PortId )
+Apg::SerialFC AltaEthernetIo::GetSerialFlowControl(uint16_t PortId)
 {
-    const std::string finalUrl = m_url + "/SERCFG?GetFlowControl="+ GetPortStr( PortId );
+    const std::string finalUrl = m_url + "/SERCFG?GetFlowControl="+ GetPortStr(PortId);
         
     CLibCurlWrap theCurl;
     std::string result;
-    theCurl.HttpGet( finalUrl, result );
+    theCurl.HttpGet(finalUrl, result);
 
     std::vector<std::string> tokens = help::MakeTokens(result,",");
 
     Apg::SerialFC flow = Apg::SerialFC_Unknown;
 
-    if( 0 == tokens[2].compare( "N" ) )
+    if (0 == tokens[2].compare("N" ))
     {
         flow = Apg::SerialFC_Off;
     }
     
-    if( 0 == tokens[2].compare( "S" ) )
+    if (0 == tokens[2].compare("S" ))
     {
         flow = Apg::SerialFC_On;
     }
@@ -638,11 +638,11 @@ Apg::SerialFC AltaEthernetIo::GetSerialFlowControl( uint16_t PortId )
 
 //////////////////////////// 
 //   SET    SERIAL   FLOW     CONTROL
-void AltaEthernetIo::SetSerialFlowControl( uint16_t PortId, 
-            const Apg::SerialFC FlowControl )
+void AltaEthernetIo::SetSerialFlowControl(uint16_t PortId, 
+            const Apg::SerialFC FlowControl)
 {
     std::string cflowStr;
-    switch( FlowControl )
+    switch(FlowControl)
     {
         case Apg::SerialFC_Off:
             cflowStr.append("N");
@@ -656,47 +656,47 @@ void AltaEthernetIo::SetSerialFlowControl( uint16_t PortId,
         {
             std::stringstream msg;
             msg <<  "Invalid SerialFlowControl value = " << FlowControl;
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
 
-    const std::string fullUrl = m_url + "/SERCFG?SetFlowControl="+ GetPortStr( PortId ) +
+    const std::string fullUrl = m_url + "/SERCFG?SetFlowControl="+ GetPortStr(PortId) +
         "," + cflowStr;
 
     CLibCurlWrap theCurl;
 
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 
 }
 
 //////////////////////////// 
 //  GET    SERIAL    PARITY
-Apg::SerialParity AltaEthernetIo::GetSerialParity( uint16_t PortId )
+Apg::SerialParity AltaEthernetIo::GetSerialParity(uint16_t PortId)
 {
-    const std::string finalUrl = m_url + "/SERCFG?GetParityBits="+ GetPortStr( PortId );
+    const std::string finalUrl = m_url + "/SERCFG?GetParityBits="+ GetPortStr(PortId);
         
     CLibCurlWrap theCurl;
     std::string result;
-    theCurl.HttpGet( finalUrl, result );
+    theCurl.HttpGet(finalUrl, result);
 
     std::vector<std::string> tokens = help::MakeTokens(result,",");
     
     Apg::SerialParity parity = Apg::SerialParity_Unknown;  
 
-    if( 0 == tokens[2].compare( "N" ) )
+    if (0 == tokens[2].compare("N" ))
     {
         parity = Apg::SerialParity_None;
     }
     
-    if( 0 == tokens[2].compare( "O" ) )
+    if (0 == tokens[2].compare("O" ))
     {
         parity = Apg::SerialParity_Odd;
     }
 
-     if( 0 == tokens[2].compare( "E" ) )
+     if (0 == tokens[2].compare("E" ))
     {
         parity = Apg::SerialParity_Even;
     }
@@ -706,11 +706,11 @@ Apg::SerialParity AltaEthernetIo::GetSerialParity( uint16_t PortId )
 
 //////////////////////////// 
 //  SET    SERIAL    PARITY
-void AltaEthernetIo::SetSerialParity( uint16_t PortId, 
-                                const Apg::SerialParity Parity )
+void AltaEthernetIo::SetSerialParity(uint16_t PortId, 
+                                const Apg::SerialParity Parity)
 {
     std::string parityStr;
-    switch( Parity  )
+    switch(Parity )
     {
         case Apg::SerialParity_Even:
             parityStr.append("E");
@@ -728,35 +728,35 @@ void AltaEthernetIo::SetSerialParity( uint16_t PortId,
         {
             std::stringstream msg;
             msg <<  "Invalid Parity value = " << Parity;
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
 
-    const std::string fullUrl = m_url + "/SERCFG?SetParityBits="+ GetPortStr( PortId ) +
+    const std::string fullUrl = m_url + "/SERCFG?SetParityBits="+ GetPortStr(PortId) +
         "," + parityStr;
 
     CLibCurlWrap theCurl;
 
     std::string result;
-    theCurl.HttpGet( fullUrl, result );
+    theCurl.HttpGet(fullUrl, result);
 
 }
 
 //////////////////////////// 
 //      READ       SERIAL         
-void AltaEthernetIo::ReadSerial( uint16_t PortId, std::string & buffer )
+void AltaEthernetIo::ReadSerial(uint16_t PortId, std::string & buffer)
 {
-        apgHelper::throwRuntimeException( m_fileName, "Not implemented", 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+        apgHelper::throwRuntimeException(m_fileName, "Not implemented", 
+                __LINE__, Apg::ErrorType_InvalidUsage);
 }
 
 //////////////////////////// 
 //      WRITE       SERIAL   
-void AltaEthernetIo::WriteSerial( uint16_t PortId, const std::string & buffer )
+void AltaEthernetIo::WriteSerial(uint16_t PortId, const std::string & buffer)
 {
-   apgHelper::throwRuntimeException( m_fileName, "Not implemented", 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+   apgHelper::throwRuntimeException(m_fileName, "Not implemented", 
+                __LINE__, Apg::ErrorType_InvalidUsage);
 }
 

@@ -30,17 +30,17 @@ CamRegMirror::~CamRegMirror()
 
 //////////////////////////// 
 // READ
-uint16_t CamRegMirror::Read( const uint16_t reg )
+uint16_t CamRegMirror::Read(const uint16_t reg)
 {
     std::map<uint16_t, uint16_t>::iterator iter = m_RegMirror.find(reg);
 
-    if( iter == m_RegMirror.end() )
+    if (iter == m_RegMirror.end())
     {
         std::stringstream ss;
         ss << reg;
         std::string errStr = "Could not find register " + ss.str() + " in the mirror of the camera registers";
-        apgHelper::throwRuntimeException( __FILE__, errStr, 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+        apgHelper::throwRuntimeException(__FILE__, errStr, 
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
 
     //found a value before we reached the end

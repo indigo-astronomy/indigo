@@ -31,14 +31,14 @@ LinuxTimer::~LinuxTimer()
 // START
 void LinuxTimer::Start()
 {
-    gettimeofday( &m_start, NULL);
+    gettimeofday(&m_start, NULL);
 }
 
 //////////////////////////// 
 // STOP
 void LinuxTimer::Stop()
 {
-    gettimeofday( &m_end, NULL);
+    gettimeofday(&m_end, NULL);
 }
 
 //////////////////////////// 
@@ -47,7 +47,7 @@ double LinuxTimer::GetTimeInMs()
 {
     double seconds  = m_end.tv_sec  - m_start.tv_sec;
     double useconds = m_end.tv_usec - m_start.tv_usec;
-    double mtime = ( (seconds * 1000) + useconds/1000.0) + 0.5;
+    double mtime = ((seconds * 1000) + useconds/1000.0) + 0.5;
     return mtime;
 }
 
@@ -55,5 +55,5 @@ double LinuxTimer::GetTimeInMs()
 // GET      TIME      IN     SEC
 double LinuxTimer::GetTimeInSec()
 {
-  return( GetTimeInMs() / 1000.0 );
+  return(GetTimeInMs() / 1000.0);
 }

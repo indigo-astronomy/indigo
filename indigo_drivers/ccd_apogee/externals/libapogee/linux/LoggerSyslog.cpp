@@ -37,23 +37,23 @@ void LoggerSyslog::Write(const std::string & type,
 
     int priority = LOG_ERR;
 
-    if( std::string::npos != type.find("error") )
+    if (std::string::npos != type.find("error"))
     {
         priority = LOG_ERR;
     }
 
-    if( std::string::npos != type.find("warn") )
+    if (std::string::npos != type.find("warn"))
     {
         priority = LOG_WARNING;
     }
 
-    if( std::string::npos != type.find("info") )
+    if (std::string::npos != type.find("info"))
     {
         priority = LOG_INFO;
     }
 
     //TODO - should we handle the fall through?
-    syslog( priority, "%s", msg.c_str() );
+    syslog(priority, "%s", msg.c_str());
    
 }
 

@@ -17,7 +17,7 @@
 #include "CameraInfo.h" 
 #include <string>
 
-class DLL_EXPORT HiC : public Quad
+class HiC : public Quad
 { 
     public: 
         HiC();
@@ -26,9 +26,9 @@ class DLL_EXPORT HiC : public Quad
        
         void SetSerialNumber(const std::string & num);
         CamInfo::StrDb GetCamInfo();
-        void SetCamInfo( CamInfo::StrDb & info );
+        void SetCamInfo(CamInfo::StrDb & info);
 
-        void Get4kby4kImage( std::vector<uint16_t> & out );
+        void Get4kby4kImage(std::vector<uint16_t> & out);
 
     private:
         const std::string m_fileName;

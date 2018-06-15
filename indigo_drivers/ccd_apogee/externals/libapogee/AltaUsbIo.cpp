@@ -1325,11 +1325,11 @@ namespace
 
 //////////////////////////// 
 // CTOR 
-AltaUsbIo::AltaUsbIo( const std::string & DeviceEnum ) : 
-                                        CamUsbIo( DeviceEnum, 
+AltaUsbIo::AltaUsbIo(const std::string & DeviceEnum) : 
+                                        CamUsbIo(DeviceEnum, 
                                             ALTA_U_MAX_BUFFER_SIZE,
-                                            false ),
-                                        m_fileName( __FILE__)
+                                            false),
+                                        m_fileName(__FILE__)
 { 
 
 } 
@@ -1346,13 +1346,13 @@ AltaUsbIo::~AltaUsbIo()
 void AltaUsbIo::DownloadFirmware()
 {
     std::vector<UsbFrmwr::IntelHexRec> frmwr = 
-        UsbFrmwr::MakeRecVect( firmware );
+        UsbFrmwr::MakeRecVect(firmware);
 
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         ALTA_EEPROM_MAX_BLOCKS,
-        ALTA_EEPROM_MAX_BANKS );
+        ALTA_EEPROM_MAX_BANKS);
 
-    pf.FirmwareDownload( frmwr );
+    pf.FirmwareDownload(frmwr);
 }
 
 
@@ -1362,7 +1362,7 @@ void AltaUsbIo::DownloadFirmware()
 void AltaUsbIo::Program(const std::string & FilenameCamCon,
             const std::string & FilenameBufCon, const std::string & FilenameFx2,
             const std::string & FilenameGpifCamCon,const std::string & FilenameGpifBufCon,
-            const std::string & FilenameGpifFifo, bool Print2StdOut )
+            const std::string & FilenameGpifFifo, bool Print2StdOut)
 {
     m_Print2StdOut = Print2StdOut;
     //STEP 1
@@ -1370,7 +1370,7 @@ void AltaUsbIo::Program(const std::string & FilenameCamCon,
     uint16_t Vid = 0; 
     uint16_t Pid = 0;
     uint16_t Did = 0;
-    GetUsbVendorInfo( Vid, Pid, Did );
+    GetUsbVendorInfo(Vid, Pid, Did);
    
     //if this programmed with apogee fx2 code
     //grab the custom serial number now, so we
@@ -1378,93 +1378,93 @@ void AltaUsbIo::Program(const std::string & FilenameCamCon,
     //programming
     std::string serialNum;
 
-    if ( ( UsbFrmwr::ALTA_USB_PID  == Pid ) && (UsbFrmwr::ALTA_USB_DID  <= Did) )
+    if ( (UsbFrmwr::ALTA_USB_PID  == Pid) && (UsbFrmwr::ALTA_USB_DID  <= Did))
 	{
         serialNum = GetSerialNumber();
 	}
    
-    Progress2StdOut( 8 );
+    Progress2StdOut(8);
 
     //STEP 2
     //download the alta firmware
     DownloadFirmware();
 
-    Progress2StdOut( 16 );
+    Progress2StdOut(16);
 
     //STEP 3
     // initialize prom header information
 	Eeprom::Header hdr;
-    memset(&hdr, 0, sizeof( hdr ) );
-    hdr.Size = sizeof( hdr );
+    memset(&hdr, 0, sizeof(hdr ));
+    hdr.Size = sizeof(hdr);
     hdr.Version = Eeprom::HEADER_VERSION;
 
-    Progress2StdOut( 24 );
+    Progress2StdOut(24);
 
     //STEP 4
     //download bufcon
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         ALTA_EEPROM_MAX_BLOCKS,
-        ALTA_EEPROM_MAX_BANKS );
+        ALTA_EEPROM_MAX_BANKS);
 
     uint32_t DownloadSize = 0;
-    pf.WriteFile2Eeprom( FilenameBufCon, BUFCON_PROM_BANK,
-        BUFCON_PROM_BLOCK , BUFCON_PROM_ADDR, DownloadSize );
+    pf.WriteFile2Eeprom(FilenameBufCon, BUFCON_PROM_BANK,
+        BUFCON_PROM_BLOCK , BUFCON_PROM_ADDR, DownloadSize);
 
     hdr.BufConSize = DownloadSize;
     hdr.Fields |= Eeprom::HEADER_BUFCON_VALID_BIT;
 
-    Progress2StdOut( 32 );
+    Progress2StdOut(32);
 
     //STEP 5
     //download camcon
-    pf.WriteFile2Eeprom( FilenameCamCon, CAMCON_PROM_BANK,
-        CAMCON_PROM_BLOCK , CAMCON_PROM_ADDR, DownloadSize );
+    pf.WriteFile2Eeprom(FilenameCamCon, CAMCON_PROM_BANK,
+        CAMCON_PROM_BLOCK , CAMCON_PROM_ADDR, DownloadSize);
 
     hdr.CamConSize = DownloadSize;
     hdr.Fields |= Eeprom::HEADER_CAMCON_VALID_BIT;
 
-    Progress2StdOut( 40 );
+    Progress2StdOut(40);
 
     //STEP 6
     //download the fx2
-    pf.WriteFile2Eeprom( FilenameFx2, FX2_PROM_BANK,
-        FX2_PROM_BLOCK, FX2_PROM_ADDR, DownloadSize );
+    pf.WriteFile2Eeprom(FilenameFx2, FX2_PROM_BANK,
+        FX2_PROM_BLOCK, FX2_PROM_ADDR, DownloadSize);
 
     hdr.Fields |= Eeprom::HEADER_BOOTROM_VALID_BIT;
 
-    Progress2StdOut( 48 );
+    Progress2StdOut(48);
 
     //STEP 7
     //download the bufcon gpif waveform
-    pf.WriteFile2Eeprom( FilenameGpifBufCon, 
+    pf.WriteFile2Eeprom(FilenameGpifBufCon, 
         GPIF_WAVEFORM_BUFCON_PROM_BANK,
         GPIF_WAVEFORM_BUFCON_PROM_BLOCK, 
         GPIF_WAVEFORM_BUFCON_PROM_ADDR, 
-        DownloadSize );
+        DownloadSize);
 
-    Progress2StdOut( 56 );
+    Progress2StdOut(56);
 
     //STEP 8
     //download the camcon gpif waveform
-    pf.WriteFile2Eeprom( FilenameGpifCamCon, 
+    pf.WriteFile2Eeprom(FilenameGpifCamCon, 
         GPIF_WAVEFORM_CAMCON_PROM_BANK,
         GPIF_WAVEFORM_CAMCON_PROM_BLOCK, 
         GPIF_WAVEFORM_CAMCON_PROM_ADDR, 
-        DownloadSize );
+        DownloadSize);
 
-    Progress2StdOut( 64 );
+    Progress2StdOut(64);
 
      //STEP 9
     //download the FIFO gpif waveform
-    pf.WriteFile2Eeprom( FilenameGpifFifo, 
+    pf.WriteFile2Eeprom(FilenameGpifFifo, 
         GPIF_WAVEFORM_FIFO_PROM_BANK,
         GPIF_WAVEFORM_FIFO_PROM_BLOCK, 
         GPIF_WAVEFORM_FIFO_PROM_ADDR, 
-        DownloadSize );
+        DownloadSize);
 
     hdr.Fields |= Eeprom::HEADER_GPIF_VALID_BIT;
 
-    Progress2StdOut( 72 );
+    Progress2StdOut(72);
 
     //STEP 10
     //set the vid, pid, and did
@@ -1475,22 +1475,22 @@ void AltaUsbIo::Program(const std::string & FilenameCamCon,
     hdr.DeviceId = UsbFrmwr::ALTA_USB_DID;
     hdr.Fields |= Eeprom::HEADER_DID_VALID;
 
-    Progress2StdOut( 80 );
+    Progress2StdOut(80);
 
     //STEP 11
     //write the header
-    hdr.CheckSum = Eeprom::CalcHdrCheckSum( hdr );
+    hdr.CheckSum = Eeprom::CalcHdrCheckSum(hdr);
 
-    pf.WriteEepromHdr( hdr, HEADER_PROM_BANK,
+    pf.WriteEepromHdr(hdr, HEADER_PROM_BANK,
         HEADER_PROM_BLOCK, HEADER_PROM_ADDR);
     
-    Progress2StdOut( 88 );
+    Progress2StdOut(88);
 
     //STEP 12
     //write the stored serial number to the camera
-    SetSerialNumber( serialNum );
+    SetSerialNumber(serialNum);
 
-    Progress2StdOut( 100 );
+    Progress2StdOut(100);
 
     //turn this off on exit
     m_Print2StdOut = false;
@@ -1498,14 +1498,14 @@ void AltaUsbIo::Program(const std::string & FilenameCamCon,
 
 //////////////////////////// 
 //      READ      HEADER
-void AltaUsbIo::ReadHeader( Eeprom::Header & hdr )
+void AltaUsbIo::ReadHeader(Eeprom::Header & hdr)
 {
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         ALTA_EEPROM_MAX_BLOCKS,
-        ALTA_EEPROM_MAX_BANKS );
+        ALTA_EEPROM_MAX_BANKS);
 
-    pf.ReadEepromHdr( hdr, HEADER_PROM_BANK,
-        HEADER_PROM_BLOCK, HEADER_PROM_ADDR );
+    pf.ReadEepromHdr(hdr, HEADER_PROM_BANK,
+        HEADER_PROM_BLOCK, HEADER_PROM_ADDR);
 }
 
 //////////////////////////// 
@@ -1514,9 +1514,9 @@ std::string AltaUsbIo::GetSerialNumber()
 {
     std::vector<char> data(Eeprom::MAX_SERIAL_NUM_BYTES+1, 0);
 
-    m_Usb->GetSerialNumber( reinterpret_cast<int8_t*>(&data.at(0)), Eeprom::MAX_SERIAL_NUM_BYTES );
+    m_Usb->GetSerialNumber(reinterpret_cast<int8_t*>(&data.at(0)), Eeprom::MAX_SERIAL_NUM_BYTES);
 
-    std::string serialNum( &data.at(0) );
+    std::string serialNum(&data.at(0));
 
     return serialNum;
 }
@@ -1531,13 +1531,13 @@ void AltaUsbIo::SetSerialNumber(const std::string & num)
     DownloadFirmware();
 
     //write the serial number into the EEPROM
-    std::vector<uint8_t> numVect( Eeprom::MAX_SERIAL_NUM_BYTES, 0); 
+    std::vector<uint8_t> numVect(Eeprom::MAX_SERIAL_NUM_BYTES, 0); 
         
-    std::copy(num.begin(), num.end(), numVect.begin() );
+    std::copy(num.begin(), num.end(), numVect.begin());
 
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         ALTA_EEPROM_MAX_BLOCKS,
-        ALTA_EEPROM_MAX_BANKS );
+        ALTA_EEPROM_MAX_BANKS);
 
     pf.BufferWriteEeprom(ALTA_SN_EEPROM_BANK, ALTA_SN_EEPROM_BLOCK,
         ALTA_SN_EEPROM_ADDR, numVect);
@@ -1546,39 +1546,39 @@ void AltaUsbIo::SetSerialNumber(const std::string & num)
 
 //////////////////////////// 
 //      SET     SERIAL       BAUD     RATE
-void AltaUsbIo::SetSerialBaudRate( const uint16_t PortId , const uint32_t BaudRate )
+void AltaUsbIo::SetSerialBaudRate(const uint16_t PortId , const uint32_t BaudRate)
 {
-    AltaUsbIo::SerialPortSettings settings = ReadSerialSettings( PortId );
+    AltaUsbIo::SerialPortSettings settings = ReadSerialSettings(PortId);
     settings.BaudRate = BaudRate;
-    WriteSerialSettings( PortId, settings );
+    WriteSerialSettings(PortId, settings);
 }
 
 //////////////////////////// 
 //      GET     SERIAL       BAUD     RATE
-uint32_t AltaUsbIo::GetSerialBaudRate(  const uint16_t PortId  )
+uint32_t AltaUsbIo::GetSerialBaudRate( const uint16_t PortId )
 {
-     const AltaUsbIo::SerialPortSettings settings = ReadSerialSettings( PortId );
+     const AltaUsbIo::SerialPortSettings settings = ReadSerialSettings(PortId);
      return settings.BaudRate;
 }
 
 //////////////////////////// 
 //   GET    SERIAL   FLOW     CONTROL
-Apg::SerialFC AltaUsbIo::GetSerialFlowControl( uint16_t PortId )
+Apg::SerialFC AltaUsbIo::GetSerialFlowControl(uint16_t PortId)
 {
-    const AltaUsbIo::SerialPortSettings settings = ReadSerialSettings( PortId );
+    const AltaUsbIo::SerialPortSettings settings = ReadSerialSettings(PortId);
 
-    return( settings.PortCtrl & SERIAL_FLOW_MASK ? Apg::SerialFC_On : Apg::SerialFC_Off );
+    return(settings.PortCtrl & SERIAL_FLOW_MASK ? Apg::SerialFC_On : Apg::SerialFC_Off);
 }
 
 //////////////////////////// 
 //   SET    SERIAL   FLOW     CONTROL
-void AltaUsbIo::SetSerialFlowControl( uint16_t PortId, 
-            const Apg::SerialFC FlowControl )
+void AltaUsbIo::SetSerialFlowControl(uint16_t PortId, 
+            const Apg::SerialFC FlowControl)
 {
-    AltaUsbIo::SerialPortSettings settings = ReadSerialSettings( PortId );
+    AltaUsbIo::SerialPortSettings settings = ReadSerialSettings(PortId);
     
     
-    switch( FlowControl )
+    switch(FlowControl)
     {
         case Apg::SerialFC_Off:
            settings.PortCtrl &= static_cast<uint8_t>(~SERIAL_FLOW_MASK);
@@ -1592,26 +1592,26 @@ void AltaUsbIo::SetSerialFlowControl( uint16_t PortId,
         {
             std::stringstream msg;
             msg <<  "Invalid SerialFlowControl value = " << FlowControl;
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
 
-    WriteSerialSettings( PortId, settings );
+    WriteSerialSettings(PortId, settings);
 }
 
 //////////////////////////// 
 //  GET    SERIAL    PARITY
-Apg::SerialParity AltaUsbIo::GetSerialParity( uint16_t PortId )
+Apg::SerialParity AltaUsbIo::GetSerialParity(uint16_t PortId)
 {
-    const AltaUsbIo::SerialPortSettings settings = ReadSerialSettings( PortId );
+    const AltaUsbIo::SerialPortSettings settings = ReadSerialSettings(PortId);
 
     Apg::SerialParity result = Apg::SerialParity_Unknown;
     const uint8_t PARITY_MASK = SERIAL_PARITY_ENA_MASK | SERIAL_PARITY_ODD_MASK;
     const uint8_t parityValue = settings.PortCtrl & PARITY_MASK;
     
-    switch( parityValue )
+    switch(parityValue)
     {
         case SERIAL_PARITY_ENA_MASK:
             result = Apg::SerialParity_Even;
@@ -1631,15 +1631,15 @@ Apg::SerialParity AltaUsbIo::GetSerialParity( uint16_t PortId )
 
 //////////////////////////// 
 //  SET    SERIAL    PARITY
-void AltaUsbIo::SetSerialParity( uint16_t PortId, Apg::SerialParity Parity )
+void AltaUsbIo::SetSerialParity(uint16_t PortId, Apg::SerialParity Parity)
 {
-    AltaUsbIo::SerialPortSettings settings = ReadSerialSettings( PortId );
+    AltaUsbIo::SerialPortSettings settings = ReadSerialSettings(PortId);
 
     //set both bits low
     settings.PortCtrl &= static_cast<uint8_t>(~SERIAL_PARITY_ENA_MASK);
     settings.PortCtrl &= static_cast<uint8_t>(~SERIAL_PARITY_ODD_MASK);
 
-    switch( Parity  )
+    switch(Parity )
     {
         case Apg::SerialParity_Even:
             settings.PortCtrl |= SERIAL_PARITY_ENA_MASK;
@@ -1658,62 +1658,62 @@ void AltaUsbIo::SetSerialParity( uint16_t PortId, Apg::SerialParity Parity )
         {
             std::stringstream msg;
             msg <<  "Invalid Parity value = " << Parity;
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
 
-    WriteSerialSettings( PortId, settings );
+    WriteSerialSettings(PortId, settings);
 }
 
 //////////////////////////// 
 //      READ       SERIAL         
-void AltaUsbIo::ReadSerial( uint16_t PortId, std::string & buffer )
+void AltaUsbIo::ReadSerial(uint16_t PortId, std::string & buffer)
 {
     // camera sends us 64byte buffers
     const size_t SERIAL_BUF_SIZE = 64;
     std::vector<char> data(SERIAL_BUF_SIZE +1, 0);
 
-    m_Usb->ReadSerialPort( PortId,
-        reinterpret_cast<uint8_t*>( &data.at(0) ), 
-        apgHelper::SizeT2Uint16( SERIAL_BUF_SIZE) );
+    m_Usb->ReadSerialPort(PortId,
+        reinterpret_cast<uint8_t*>(&data.at(0)), 
+        apgHelper::SizeT2Uint16(SERIAL_BUF_SIZE));
 
     buffer.clear();
-    buffer.append( &data.at(0) );
+    buffer.append(&data.at(0));
 }
 
 //////////////////////////// 
 //      WRITE       SERIAL   
-void AltaUsbIo::WriteSerial( uint16_t PortId, const std::string & buffer )
+void AltaUsbIo::WriteSerial(uint16_t PortId, const std::string & buffer)
 {
      
-    std::vector<uint8_t> data( buffer.size(), 0); 
+    std::vector<uint8_t> data(buffer.size(), 0); 
         
-    std::copy(buffer.begin(), buffer.end(), data.begin() );
+    std::copy(buffer.begin(), buffer.end(), data.begin());
 
-    m_Usb->UsbRequestOut( VND_APOGEE_SERIAL, PortId, 0, 
-        &(*data.begin()), apgHelper::SizeT2Uint32( buffer.size() ) );
+    m_Usb->UsbRequestOut(VND_APOGEE_SERIAL, PortId, 0, 
+        &(*data.begin()), apgHelper::SizeT2Uint32(buffer.size() ));
 }
 
 //////////////////////////// 
 //      READ       SERIAL           SETTINGS
-AltaUsbIo::SerialPortSettings AltaUsbIo::ReadSerialSettings( const uint16_t PortId )
+AltaUsbIo::SerialPortSettings AltaUsbIo::ReadSerialSettings(const uint16_t PortId)
 {
     AltaUsbIo::SerialPortSettings settings;
 
-    m_Usb->UsbRequestIn( VND_APOGEE_SET_SERIAL, 
-            PortId, 0, reinterpret_cast<uint8_t*>(&settings), sizeof(settings) );
+    m_Usb->UsbRequestIn(VND_APOGEE_SET_SERIAL, 
+            PortId, 0, reinterpret_cast<uint8_t*>(&settings), sizeof(settings));
 
     return settings;
 }
  
 //////////////////////////// 
 //      WRITE        SERIAL           SETTINGS
-void AltaUsbIo::WriteSerialSettings( const uint16_t PortId, 
+void AltaUsbIo::WriteSerialSettings(const uint16_t PortId, 
     AltaUsbIo::SerialPortSettings & settings)
 {
-    m_Usb->UsbRequestOut( VND_APOGEE_SET_SERIAL, 
-        PortId, 0, reinterpret_cast<uint8_t*>(&settings), sizeof(settings) );
+    m_Usb->UsbRequestOut(VND_APOGEE_SET_SERIAL, 
+        PortId, 0, reinterpret_cast<uint8_t*>(&settings), sizeof(settings));
 }
 

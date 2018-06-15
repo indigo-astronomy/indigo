@@ -103,7 +103,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a
+	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.a $(BUILD_DRIVERS)/indigo_guider_eqmac.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib
 endif
@@ -128,7 +128,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a
+	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
 endif
 
 #---------------------------------------------------------------------
@@ -414,8 +414,15 @@ $(BUILD_LIB)/libnmea.a: $(BUILD_INCLUDE)/nmea/nmea.h
 #
 #---------------------------------------------------------------------
 
-$(BUILD_LIB)/libapogee.$(SOEXT):
-	mkdir libapogee_scratch; cd libapogee_scratch; cmake -DCMAKE_INSTALL_PREFIX=../build/ ../indigo_drivers/ccd_apogee/externals/libapogee/; make install; cd ..; rm -rf libapogee_scratch
+$(BUILD_INCLUDE)/libapogee/ApogeeCam.h: indigo_drivers/ccd_apogee/externals/libapogee/ApogeeCam.h
+	install -d $(BUILD_INCLUDE)
+	install -d $(BUILD_INCLUDE)/libapogee
+	cp indigo_drivers/ccd_apogee/externals/libapogee/*.h $(BUILD_INCLUDE)/libapogee
+
+$(BUILD_LIB)/libapogee.a:	$(BUILD_INCLUDE)/libapogee/ApogeeCam.h
+	cd indigo_drivers/ccd_apogee/externals/libapogee; make clean; make; cd ../../../..
+	install -d $(BUILD_LIB)
+	cp indigo_drivers/ccd_apogee/externals/libapogee/libapogee.a $(BUILD_LIB)
 
 
 #---------------------------------------------------------------------
@@ -659,11 +666,11 @@ $(BUILD_DRIVERS)/indigo_mount_temma.$(SOEXT): indigo_drivers/mount_temma/indigo_
 $(BUILD_DRIVERS)/indigo_ccd_apogee.a: indigo_drivers/ccd_apogee/indigo_ccd_apogee.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_DRIVERS)/indigo_ccd_apogee: indigo_drivers/ccd_apogee/indigo_ccd_apogee_main.o $(BUILD_DRIVERS)/indigo_ccd_apogee.a $(BUILD_LIB)/libapogee.$(SOEXT)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo -lapogee -lcurl
+$(BUILD_DRIVERS)/indigo_ccd_apogee: indigo_drivers/ccd_apogee/indigo_ccd_apogee_main.o $(BUILD_DRIVERS)/indigo_ccd_apogee.a $(BUILD_LIB)/libapogee.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo -lcurl
 
-$(BUILD_DRIVERS)/indigo_ccd_apogee.$(SOEXT): indigo_drivers/ccd_apogee/indigo_ccd_apogee.o $(BUILD_LIB)/libapogee.$(SOEXT)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo -lapogee -lcurl
+$(BUILD_DRIVERS)/indigo_ccd_apogee.$(SOEXT): indigo_drivers/ccd_apogee/indigo_ccd_apogee.o $(BUILD_LIB)/libapogee.a
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo -lcurl
 
 #---------------------------------------------------------------------
 #
@@ -1102,7 +1109,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 
 $(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS) $(BUILD_LIB)/libindigo.a $(EXTERNALS) ctrlpanel
-	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS) $(PLATFORM_DRIVER_LIBS) $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) $(LIBRAW_1394) -lstdc++
+	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS) $(PLATFORM_DRIVER_LIBS) $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) $(LIBRAW_1394) -lstdc++  -lcurl
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
@@ -1265,6 +1272,7 @@ clean-all: clean
 	cd indigo_drivers/gps_nmea/externals/nmealib; make clean; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223; make clean; cd ../../../..
 	cd indigo_drivers/ccd_qsi/externals; rm -rf qsiapi-7.6.0; cd ../../..
+	cd indigo_drivers/ccd_apogee/externals/libapogee; make clean; cd ../../../..
 
 #---------------------------------------------------------------------
 #

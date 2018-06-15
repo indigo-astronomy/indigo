@@ -19,7 +19,7 @@
 class CamGen2ModeFsm : public ModeFsm
 { 
     public: 
-         CamGen2ModeFsm( std::shared_ptr<CameraIo> & io,
+         CamGen2ModeFsm(std::shared_ptr<CameraIo> & io,
              std::shared_ptr<CApnCamData> & camData,
              uint16_t rev);
         virtual ~CamGen2ModeFsm(); 
@@ -35,7 +35,7 @@ class CamGen2ModeFsm : public ModeFsm
         bool IsTriggerExternalReadoutOn();
 
      private:
-         bool IsExternalTriggerAvailable( Apg::TriggerMode trigMode );
+         bool IsExternalTriggerAvailable(Apg::TriggerMode trigMode);
 
         std::string m_fileName;
 

@@ -17,39 +17,39 @@
 #include "CamGen2Base.h" 
 #include <string>
 
-class DLL_EXPORT AltaF : public CamGen2Base
+class AltaF : public CamGen2Base
 { 
     public: 
         AltaF();
 
         virtual ~AltaF(); 
 
-        void OpenConnection( const std::string & ioType,
+        void OpenConnection(const std::string & ioType,
              const std::string & DeviceAddr,
              const uint16_t FirmwareRev,
-             const uint16_t Id );
+             const uint16_t Id);
 
         void CloseConnection();
 
-        void StartExposure( double Duration, bool IsLight );
+        void StartExposure(double Duration, bool IsLight);
 
         int32_t GetNumAdChannels();
         
         void Init();
 
         Apg::FanMode GetFanMode();
-        void SetFanMode( Apg::FanMode mode, bool PreCondCheck = true );
+        void SetFanMode(Apg::FanMode mode, bool PreCondCheck = true);
 
     protected:
-        void FixImgFromCamera( const std::vector<uint16_t> & data,
-            std::vector<uint16_t> & out,  int32_t rows, int32_t cols );
+        void FixImgFromCamera(const std::vector<uint16_t> & data,
+            std::vector<uint16_t> & out,  int32_t rows, int32_t cols);
 
         void ExposureAndGetImgRC(uint16_t & r, uint16_t & c);
 
         void CreateCamIo(const std::string & ioType,
             const std::string & DeviceAddr);
 
-        void CfgCamFromId( uint16_t CameraId );
+        void CfgCamFromId(uint16_t CameraId);
 
         void VerifyCamId();
 

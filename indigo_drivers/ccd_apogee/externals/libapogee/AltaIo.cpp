@@ -33,44 +33,44 @@ namespace
         return result;
     }
 
-    bool IsBaudRateValid( const uint32_t rate )
+    bool IsBaudRateValid(const uint32_t rate)
     {
         std::vector<uint32_t> ratesVect = GetValidBaudRates();
 
-        return( std::find( ratesVect.begin(), ratesVect.end(), rate ) != 
-            ratesVect.end() ? true : false );
+        return(std::find(ratesVect.begin(), ratesVect.end(), rate) != 
+            ratesVect.end() ? true : false);
     }
 }
 
 //////////////////////////// 
 // CTOR 
-AltaIo::AltaIo( CamModel::InterfaceType type, 
-               const std::string & deviceAddr ) :
-                CameraIo( type ),
-                m_fileName( __FILE__ )
+AltaIo::AltaIo(CamModel::InterfaceType type, 
+               const std::string & deviceAddr) :
+                CameraIo(type),
+                m_fileName(__FILE__)
 { 
 
     //log that we are trying to connect
     std::string msg = "Try to connection to device " + deviceAddr;
     ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",
-      apgHelper::mkMsg ( m_fileName, msg, __LINE__) ); 
+      apgHelper::mkMsg (m_fileName, msg, __LINE__)); 
 
     //create the camera interface
-    switch( m_type )
+    switch(m_type)
     {
         case CamModel::ETHERNET:
-              m_Interface = std::shared_ptr<ICamIo>( new AltaEthernetIo( deviceAddr ) );
+              m_Interface = std::shared_ptr<ICamIo>(new AltaEthernetIo(deviceAddr ));
         break;
 
         case CamModel::USB:
-            m_Interface = std::shared_ptr<ICamIo>( new AltaUsbIo( deviceAddr ) );
+            m_Interface = std::shared_ptr<ICamIo>(new AltaUsbIo(deviceAddr ));
         break;
 
         default:
         {
             std::string errStr("Undefined camera interface type");
-            apgHelper::throwRuntimeException( m_fileName, errStr, 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, errStr, 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
@@ -88,14 +88,14 @@ AltaIo::~AltaIo()
 void AltaIo::Program(const std::string & FilenameCamCon,
             const std::string & FilenameBufCon, const std::string & FilenameFx2,
             const std::string & FilenameGpifCamCon,const std::string & FilenameGpifBufCon,
-            const std::string & FilenameGpifFifo, bool Print2StdOut )
+            const std::string & FilenameGpifFifo, bool Print2StdOut)
 {
  
-    if( CamModel::ETHERNET == m_type )
+    if (CamModel::ETHERNET == m_type)
     {
          std::string errStr("cannot program camera via ethernet");
-        apgHelper::throwRuntimeException( m_fileName, errStr, 
-         __LINE__, Apg::ErrorType_InvalidOperation );
+        apgHelper::throwRuntimeException(m_fileName, errStr, 
+         __LINE__, Apg::ErrorType_InvalidOperation);
     }
 
     std::dynamic_pointer_cast<AltaUsbIo>(m_Interface)->Program(FilenameCamCon,
@@ -108,124 +108,124 @@ void AltaIo::Program(const std::string & FilenameCamCon,
 uint16_t AltaIo::GetId()
 {
     const uint16_t rawId = GetIdFromReg();
-    return( rawId & CamModel::ALTA_CAMERA_ID_MASK );
+    return(rawId & CamModel::ALTA_CAMERA_ID_MASK);
 }
 
 //////////////////////////// 
 // GET   MAC   ADDRESS
 std::string AltaIo::GetMacAddress()
 {
-    if( CamModel::ETHERNET != m_type )
+    if (CamModel::ETHERNET != m_type)
     {
          std::string errStr("cannot read mac address via usb");
-        apgHelper::throwRuntimeException( m_fileName, errStr, 
-         __LINE__, Apg::ErrorType_InvalidOperation );
+        apgHelper::throwRuntimeException(m_fileName, errStr, 
+         __LINE__, Apg::ErrorType_InvalidOperation);
     }
 
     std::string result;
     std::dynamic_pointer_cast<AltaEthernetIo>(
-            m_Interface)->GetMacAddress( result );
+            m_Interface)->GetMacAddress(result);
 
     return result;
 }
 
 //////////////////////////// 
 //      SET     SERIAL       BAUD     RATE
-void AltaIo::SetSerialBaudRate( const uint16_t PortId , const uint32_t BaudRate )
+void AltaIo::SetSerialBaudRate(const uint16_t PortId , const uint32_t BaudRate)
 {
-    VerifyPortIdGood(  PortId );
-    if( !IsBaudRateValid( BaudRate ) )
+    VerifyPortIdGood( PortId);
+    if (!IsBaudRateValid(BaudRate ))
     {
          std::stringstream errMsg;
         errMsg << "Invalid baud rate " << BaudRate;
-        apgHelper::throwRuntimeException( m_fileName, errMsg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+        apgHelper::throwRuntimeException(m_fileName, errMsg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
     }
 
     std::dynamic_pointer_cast<IAltaSerialPortIo>(
-            m_Interface)->SetSerialBaudRate( PortId, BaudRate );
+            m_Interface)->SetSerialBaudRate(PortId, BaudRate);
 }
 
 //////////////////////////// 
 //      GET     SERIAL       BAUD     RATE
-uint32_t AltaIo::GetSerialBaudRate(  const uint16_t PortId  )
+uint32_t AltaIo::GetSerialBaudRate( const uint16_t PortId )
 {
-    VerifyPortIdGood(  PortId );
+    VerifyPortIdGood( PortId);
 
     return std::dynamic_pointer_cast<IAltaSerialPortIo>(
-            m_Interface)->GetSerialBaudRate( PortId );
+            m_Interface)->GetSerialBaudRate(PortId);
 }
 
 //////////////////////////// 
 //   GET    SERIAL   FLOW     CONTROL
-Apg::SerialFC AltaIo::GetSerialFlowControl( uint16_t PortId )
+Apg::SerialFC AltaIo::GetSerialFlowControl(uint16_t PortId)
 {
-    VerifyPortIdGood(  PortId );
+    VerifyPortIdGood( PortId);
 
     return std::dynamic_pointer_cast<IAltaSerialPortIo>(
-            m_Interface)->GetSerialFlowControl( PortId );
+            m_Interface)->GetSerialFlowControl(PortId);
 }
 
 //////////////////////////// 
 //   SET    SERIAL   FLOW     CONTROL
-void AltaIo::SetSerialFlowControl( uint16_t PortId, 
-            const Apg::SerialFC FlowControl )
+void AltaIo::SetSerialFlowControl(uint16_t PortId, 
+            const Apg::SerialFC FlowControl)
 {
-    VerifyPortIdGood( PortId );
+    VerifyPortIdGood(PortId);
 
     std::dynamic_pointer_cast<IAltaSerialPortIo>(
-            m_Interface)->SetSerialFlowControl( PortId, FlowControl );
+            m_Interface)->SetSerialFlowControl(PortId, FlowControl);
 }
 
 //////////////////////////// 
 //  GET    SERIAL    PARITY
-Apg::SerialParity AltaIo::GetSerialParity( uint16_t PortId )
+Apg::SerialParity AltaIo::GetSerialParity(uint16_t PortId)
 {
-    VerifyPortIdGood(  PortId );
+    VerifyPortIdGood( PortId);
 
     return std::dynamic_pointer_cast<IAltaSerialPortIo>(
-            m_Interface)->GetSerialParity( PortId );
+            m_Interface)->GetSerialParity(PortId);
 }
 
 //////////////////////////// 
 //  SET    SERIAL    PARITY
-void AltaIo::SetSerialParity( uint16_t PortId, Apg::SerialParity Parity )
+void AltaIo::SetSerialParity(uint16_t PortId, Apg::SerialParity Parity)
 {
-    VerifyPortIdGood(  PortId );
+    VerifyPortIdGood( PortId);
 
     std::dynamic_pointer_cast<IAltaSerialPortIo>(
-            m_Interface)->SetSerialParity( PortId, Parity );
+            m_Interface)->SetSerialParity(PortId, Parity);
 }
 
 //////////////////////////// 
 //      READ       SERIAL         
-void AltaIo::ReadSerial( uint16_t PortId, std::string & buffer )
+void AltaIo::ReadSerial(uint16_t PortId, std::string & buffer)
 {
-    VerifyPortIdGood(  PortId );
+    VerifyPortIdGood( PortId);
 
     std::dynamic_pointer_cast<IAltaSerialPortIo>(
-            m_Interface)->ReadSerial( PortId, buffer );
+            m_Interface)->ReadSerial(PortId, buffer);
 }
 
 //////////////////////////// 
 //      WRITE       SERIAL   
-void AltaIo::WriteSerial( uint16_t PortId, const std::string & buffer )
+void AltaIo::WriteSerial(uint16_t PortId, const std::string & buffer)
 {
-    VerifyPortIdGood(  PortId );
+    VerifyPortIdGood( PortId);
 
     std::dynamic_pointer_cast<IAltaSerialPortIo>(
-            m_Interface)->WriteSerial( PortId, buffer );
+            m_Interface)->WriteSerial(PortId, buffer);
 }
 
 //////////////////////////// 
 //      VERIFY       PORT      ID        GOOD   
-void AltaIo::VerifyPortIdGood(  const uint16_t PortId )
+void AltaIo::VerifyPortIdGood( const uint16_t PortId)
 {
-    if( PortId > 1 )
+    if (PortId > 1)
     {
         std::stringstream errMsg;
         errMsg << "Invalid port " << PortId;
-        apgHelper::throwRuntimeException( m_fileName, errMsg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+        apgHelper::throwRuntimeException(m_fileName, errMsg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
     }
 }

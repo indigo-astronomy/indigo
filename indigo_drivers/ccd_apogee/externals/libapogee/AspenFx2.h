@@ -32,7 +32,7 @@ class GeeFx2 : public Fx2Base
             const std::string & FilenameWebPage, const std::string & FilenameWebServer,
             const std::string & FilenameWebCfg);
 
-        void ReadHeader( Eeprom::Header & hdr );
+        void ReadHeader(Eeprom::Header & hdr);
 
     private:
         void WriteFlash(uint32_t StartAddr,

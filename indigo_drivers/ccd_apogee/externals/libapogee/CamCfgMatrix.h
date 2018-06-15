@@ -113,13 +113,13 @@ namespace CamCfg
     };
 
       
-   void Clear( CamCfg::APN_CAMERA_METADATA & data );
-   void Clear( CamCfg::APN_VPATTERN_FILE & data );
-   void Clear( CamCfg::APN_HPATTERN_FILE & data );
+   void Clear(CamCfg::APN_CAMERA_METADATA & data);
+   void Clear(CamCfg::APN_VPATTERN_FILE & data);
+   void Clear(CamCfg::APN_HPATTERN_FILE & data);
 
    //type safe enum conversion function
    CamCfg::ApnAdType ConvertInt2ApnAdType(const int32_t value);
-   std::string ApnAdType2Str( const CamCfg::ApnAdType in );
+   std::string ApnAdType2Str(const CamCfg::ApnAdType in);
 
 }
 

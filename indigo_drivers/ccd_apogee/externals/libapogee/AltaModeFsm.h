@@ -20,7 +20,7 @@
 class AltaModeFsm : public ModeFsm
 { 
     public: 
-        AltaModeFsm( std::shared_ptr<CameraIo> & io,
+        AltaModeFsm(std::shared_ptr<CameraIo> & io,
              std::shared_ptr<CApnCamData> & camData,
              uint16_t rev);
 
@@ -39,7 +39,7 @@ class AltaModeFsm : public ModeFsm
     private:
         std::string m_fileName;
 
-        bool IsExternalTriggerAvailable( Apg::TriggerMode trigMode );
+        bool IsExternalTriggerAvailable(Apg::TriggerMode trigMode);
 
         AltaModeFsm(const AltaModeFsm&);
         AltaModeFsm& operator=(AltaModeFsm&);

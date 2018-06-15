@@ -21,14 +21,14 @@ std::vector< std::vector<uint16_t> > linuxHelpers::GetDevicesLinux()
 {
 	libusb_context * ctxt = NULL;
 
-	int32_t result = libusb_init( &ctxt );
+	int32_t result = libusb_init(&ctxt);
 
-	if( result )
+	if (result)
 	{
 		std::stringstream ss;
 		ss << "libusb_init failed with error = " << result;
 		apgHelper::throwRuntimeException(__FILE__, ss.str(), 
-            __LINE__, Apg::ErrorType_Connection );
+            __LINE__, Apg::ErrorType_Connection);
 	}
 
 	try
@@ -36,7 +36,7 @@ std::vector< std::vector<uint16_t> > linuxHelpers::GetDevicesLinux()
 		libusb_device **devs = NULL;
 
 		//get the list of usb devices
-		const int32_t cnt = libusb_get_device_list(ctxt, &devs);
+		const int32_t cnt = (int32_t)libusb_get_device_list(ctxt, &devs);
 
 		std::vector< std::vector<uint16_t> > deviceVect;
 
@@ -51,21 +51,21 @@ std::vector< std::vector<uint16_t> > linuxHelpers::GetDevicesLinux()
 				continue;
 			}
 
-			if( UsbFrmwr::IsApgDevice(desc.idVendor, desc.idProduct) )
+			if (UsbFrmwr::IsApgDevice(desc.idVendor, desc.idProduct))
 			{
 				//save the values
                 std::vector<uint16_t> temp; 
-                temp.push_back( libusb_get_device_address(devs[i]) );
-                temp.push_back( desc.idVendor );
-                temp.push_back( desc.idProduct );
+                temp.push_back(libusb_get_device_address(devs[i]));
+                temp.push_back(desc.idVendor);
+                temp.push_back(desc.idProduct);
 
-				deviceVect.push_back( temp );
+				deviceVect.push_back(temp);
 			}
 		}
 
 
-		libusb_free_device_list( devs, 1 );
-		libusb_exit( ctxt );
+		libusb_free_device_list(devs, 1);
+		libusb_exit(ctxt);
 
 		return deviceVect;
 	}
@@ -73,7 +73,7 @@ std::vector< std::vector<uint16_t> > linuxHelpers::GetDevicesLinux()
 	{
 		//clean up before exiting
 		//wish c++ had a final like python...
-		libusb_exit( ctxt );
+		libusb_exit(ctxt);
 		std::vector< std::vector<uint16_t> > nothing;
 		return nothing;
 	}

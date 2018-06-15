@@ -22,7 +22,7 @@ std::string help::uShort2Str(const uint16_t val, bool hexOut)
 {
     stringstream ss;
 
-    if( hexOut )
+    if (hexOut)
     {
         ss <<  "0x" << hex << val;
     }
@@ -39,7 +39,7 @@ std::string help::uShort2Str(const uint16_t val, bool hexOut)
 uint16_t help::Str2uShort(const std::string & str, bool hexIn)
 {
     uint16_t val = 0;
-    stringstream is( str );
+    stringstream is(str);
 
     if(hexIn)
     {
@@ -58,7 +58,7 @@ uint16_t help::Str2uShort(const std::string & str, bool hexIn)
 double help::Str2Double(const std::string & str)
 {
     double val = 0;
-    stringstream is( str );
+    stringstream is(str);
     is >> val;
     return val;
 }
@@ -73,13 +73,13 @@ const std::string &separator)
     std::string::size_type start = 0;
     std::string::size_type end = 0;
 
-    while( (end = str.find (separator, start)) != std::string::npos)
+    while((end = str.find (separator, start)) != std::string::npos)
     {
         returnVector.push_back (str.substr (start, end-start));
         start = end + separator.size();
     }
 
-    returnVector.push_back( str.substr(start) );
+    returnVector.push_back(str.substr(start));
 
     return returnVector;
 }
@@ -92,7 +92,7 @@ const std::string &separator)
 
      std::replace_if(result.begin(), result.end(), std::bind2nd(std::equal_to<int8_t>(),'\\'), '/');
 
-    if( 0 != result.compare( result.size()-1, 1, "/" ) )
+    if (0 != result.compare(result.size()-1, 1, "/" ))
     {
         result.append("/");
     }
@@ -103,48 +103,48 @@ const std::string &separator)
 
 //------------------------
 //	GET		HIGH		WORD
-uint16_t help::GetHighWord( const uint32_t value)
+uint16_t help::GetHighWord(const uint32_t value)
 {
-	return ( (value >> 16) & 0x0000FFFF );
+	return ((value >> 16) & 0x0000FFFF);
 }
 
 //------------------------
 //		GET		LOW		WORD
-uint16_t help::GetLowWord( const uint32_t value)
+uint16_t help::GetLowWord(const uint32_t value)
 {
 	return (value & 0xFFFF);
 }
 
 //------------------------
 //		GET		LOW		BYTE
-uint8_t help::GetLowByte( const uint16_t value )
+uint8_t help::GetLowByte(const uint16_t value)
 {
 	return (value & 0xFF);
 }
 
 //------------------------
 //		GET		HIGH		BYTE
-uint8_t help::GetHighByte( const uint16_t value )
+uint8_t help::GetHighByte(const uint16_t value)
 {
-	return( (value >> 8) & 0xFF );
+	return((value >> 8) & 0xFF);
 }
 
 
 //------------------------
 //	GET    ITEM    FROM     FIND       STR
-std::string help::GetItemFromFindStr( const std::string & msg,
-                                     const std::string & item )
+std::string help::GetItemFromFindStr(const std::string & msg,
+                                     const std::string & item)
 {
 
 	//search the single device input string for the requested item
-    std::vector<std::string> params =  help::MakeTokens( msg, "," );
+    std::vector<std::string> params =  help::MakeTokens(msg, ",");
 	std::vector<std::string>::iterator iter;
 
 	for(iter = params.begin(); iter != params.end(); ++iter)
 	{
-	   if( std::string::npos != (*iter).find( item ) )
+	   if (std::string::npos != (*iter).find(item ))
 	   {
-		 std::string result =  help::MakeTokens( (*iter), "=" ).at(1);
+		 std::string result =  help::MakeTokens((*iter), "=").at(1);
 		 
 		 return result;
 	   }

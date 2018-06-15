@@ -16,11 +16,10 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
-#include "DefDllExport.h"
 
 class CamUsbIo;
 
-class DLL_EXPORT FindDeviceUsb 
+class FindDeviceUsb 
 { 
     public: 
         /*! */
@@ -37,16 +36,16 @@ class DLL_EXPORT FindDeviceUsb
         std::string Find();
 
     private:
-        std::string AltaInfo( const std::string & deviceAddr );
-        std::string AscentInfo( const std::string & deviceAddr );
-        std::string AspenInfo( const std::string & deviceAddr );
+        std::string AltaInfo(const std::string & deviceAddr);
+        std::string AscentInfo(const std::string & deviceAddr);
+        std::string AspenInfo(const std::string & deviceAddr);
 
-        std::string MkCamInfoStr( uint16_t Id, 
-            uint16_t FrmwrRev );
+        std::string MkCamInfoStr(uint16_t Id, 
+            uint16_t FrmwrRev);
 
         std::vector< std::vector<uint16_t> > GetApgDevices();
         std::string CameraInfo(CamUsbIo & usbIo);
-        bool IsDeviceAlreadyOpen( uint16_t deviceNum );
+        bool IsDeviceAlreadyOpen(uint16_t deviceNum);
 }; 
 
 #endif

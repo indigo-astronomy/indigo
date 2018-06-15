@@ -12,13 +12,15 @@
 #ifndef APGTIMER_INCLUDE_H__ 
 #define APGTIMER_INCLUDE_H__ 
 
-#include "DefDllExport.h"
-
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 class ITimer;
 
-class DLL_EXPORT ApgTimer 
+class ApgTimer 
 { 
     public: 
         ApgTimer(); 
@@ -31,15 +33,7 @@ class DLL_EXPORT ApgTimer
         double GetTimeInSec();
 
     private:
-//this code removes vc++ compiler warning C4251
-//from http://www.unknownroad.com/rtfm/VisualStudio/warningC4251.html
-#ifdef WIN_OS
-#if _MSC_VER < 1600
-        template class DLL_EXPORT std::shared_ptr<ITimer>;
-#endif
-#endif
-
-        std::shared_ptr<ITimer> m_timer;
+				std::shared_ptr<ITimer> m_timer;
 }; 
 
 #endif
