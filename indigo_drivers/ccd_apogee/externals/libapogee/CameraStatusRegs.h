@@ -15,12 +15,11 @@
 
 #include <string>
 #include <stdint.h>
-#include "DefDllExport.h"
 
-class DLL_EXPORT CameraStatusRegs 
+class CameraStatusRegs 
 { 
     public: 
-#pragma pack( push, 1 )
+#pragma pack(push, 1)
    /*! \struct BasicStatus */
     struct BasicStatus
     {
@@ -45,9 +44,9 @@ class DLL_EXPORT CameraStatusRegs
         /*! Is the data ready for transfer */
         uint8_t  DataAvailFlag;
     };
-#pragma pack( pop )
+#pragma pack(pop)
 
-#pragma pack( push, 1 )
+#pragma pack(push, 1)
     /*! \struct AdvStatus */
     struct AdvStatus
     {
@@ -79,7 +78,7 @@ class DLL_EXPORT CameraStatusRegs
         uint8_t  DataAvailFlag;
 
     };
-#pragma pack( pop )
+#pragma pack(pop)
 
         CameraStatusRegs();
         CameraStatusRegs(const CameraStatusRegs::AdvStatus & adv);
@@ -98,9 +97,9 @@ class DLL_EXPORT CameraStatusRegs
         uint16_t GetReadyFrame() { return m_ReadyFrame; }
         uint16_t GetCurrentFrame() { return m_CurrentFrame ; }
         uint32_t  GetFetchCount() { return m_FetchCount; }   
-        bool  GetDataAvailFlag() const { return ( (m_DataAvailFlag & 0x1) ? true:false); }
+        bool  GetDataAvailFlag() const { return ((m_DataAvailFlag & 0x1) ? true:false); }
 
-        void QueryStatusRegs( uint16_t &	StatusReg,
+        void QueryStatusRegs(uint16_t &	StatusReg,
 						      uint16_t &	HeatsinkTempReg,
 						      uint16_t &	CcdTempReg,
 						      uint16_t &	CoolerDriveReg,

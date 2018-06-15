@@ -16,18 +16,17 @@
 #include <vector>
 #include <string>
 #include <stdint.h>
-#include "DefDllExport.h"
 
 namespace DeviceStr
 { 
-    std::vector<std::string> DLL_EXPORT GetVect( std::string data );
-    std::vector<std::string> DLL_EXPORT GetCameras( std::string data  );
-    std::string DLL_EXPORT GetType( const std::string & data );
-    std::string DLL_EXPORT GetName( const std::string & data );
-    std::string DLL_EXPORT GetAddr( const std::string & data );
-    std::string DLL_EXPORT GetPort( const std::string & data );
-    std::string DLL_EXPORT GetInterface( const std::string & data );
-    uint16_t DLL_EXPORT GetFwVer( const std::string & data );
+    std::vector<std::string> GetVect(std::string data);
+    std::vector<std::string> GetCameras(std::string data );
+    std::string GetType(const std::string & data);
+    std::string GetName(const std::string & data);
+    std::string GetAddr(const std::string & data);
+    std::string GetPort(const std::string & data);
+    std::string GetInterface(const std::string & data);
+    uint16_t GetFwVer(const std::string & data);
 }; 
 
 #endif

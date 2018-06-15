@@ -20,7 +20,12 @@
 
 #include <string>
 #include <vector>
+
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 class IUsb;
 
@@ -30,13 +35,13 @@ class CamUsbIo : public ICamIo
     public: 
         virtual ~CamUsbIo(); 
 
-        uint16_t ReadReg( uint16_t reg ) const;
-	    void WriteReg( uint16_t reg, uint16_t val ) ;
+        uint16_t ReadReg(uint16_t reg) const;
+	    void WriteReg(uint16_t reg, uint16_t val) ;
 
-        void WriteSRMD( uint16_t reg, const std::vector<uint16_t> & data );
-        void WriteMRMD( uint16_t reg, const std::vector<uint16_t> & data );
+        void WriteSRMD(uint16_t reg, const std::vector<uint16_t> & data);
+        void WriteMRMD(uint16_t reg, const std::vector<uint16_t> & data);
 
-        void GetUsbVendorInfo( uint16_t & VendorId,
+        void GetUsbVendorInfo(uint16_t & VendorId,
             uint16_t & ProductId, uint16_t  & DeviceId);
 
         std::string GetUsbFirmwareVersion();
@@ -48,7 +53,7 @@ class CamUsbIo : public ICamIo
 
         void CancelImgXfer();
        
-        void GetImageData( std::vector<uint16_t> & data );
+        void GetImageData(std::vector<uint16_t> & data);
     
         void GetStatus(CameraStatusRegs::BasicStatus & status);
         void GetStatus(CameraStatusRegs::AdvStatus & status);
@@ -57,11 +62,11 @@ class CamUsbIo : public ICamIo
 
          std::string GetInfo();
 
-        uint8_t ReadBufConReg( uint16_t reg );
-	    void WriteBufConReg( uint16_t reg, uint8_t val );
+        uint8_t ReadBufConReg(uint16_t reg);
+	    void WriteBufConReg(uint16_t reg, uint8_t val);
 
-        uint8_t ReadFx2Reg( uint16_t reg );
-        void WriteFx2Reg( uint16_t reg, uint8_t val );
+        uint8_t ReadFx2Reg(uint16_t reg);
+        void WriteFx2Reg(uint16_t reg, uint8_t val);
 
         uint32_t GetMaxXferBufSize() { return m_MaxBufSize; }
 
@@ -73,12 +78,12 @@ class CamUsbIo : public ICamIo
         // PURE VIRTUALS
         virtual void SetSerialNumber(const std::string & num) = 0;
         virtual std::string GetSerialNumber() = 0;
-        virtual void ReadHeader( Eeprom::Header & hdr ) = 0;
+        virtual void ReadHeader(Eeprom::Header & hdr) = 0;
 
     protected:
-        CamUsbIo( const std::string & DeviceEnum, 
+        CamUsbIo(const std::string & DeviceEnum, 
             uint32_t MaxBufSize,
-            bool ApplyPad );
+            bool ApplyPad);
 
         void Progress2StdOut(const int32_t percentComplete);
 
@@ -92,7 +97,7 @@ class CamUsbIo : public ICamIo
         bool m_ApplyPadding;
         uint32_t m_MaxBufSize;
 
-        int32_t GetPadding( const int32_t Num );
+        int32_t GetPadding(const int32_t Num);
 
         private:
         //disabling the copy ctor and assignment operator

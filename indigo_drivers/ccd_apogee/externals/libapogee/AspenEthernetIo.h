@@ -18,21 +18,25 @@
 #include <string>
 #include <vector>
 
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 class CLibCurlWrap;
 
 class AspenEthernetIo : public ICamIo
 { 
     public: 
-        AspenEthernetIo( const std::string url );
+        AspenEthernetIo(const std::string url);
         virtual ~AspenEthernetIo(); 
 
 
-        uint16_t ReadReg( uint16_t reg ) const;
-	    void WriteReg( uint16_t reg, uint16_t val ) ;
+        uint16_t ReadReg(uint16_t reg) const;
+	    void WriteReg(uint16_t reg, uint16_t val) ;
 
-        void GetImageData( std::vector<uint16_t> & data );
+        void GetImageData(std::vector<uint16_t> & data);
 
         void SetupImgXfer(uint16_t Rows, 
             uint16_t Cols,
@@ -51,11 +55,11 @@ class AspenEthernetIo : public ICamIo
         uint8_t ReadRegPhy(uint16_t Reg);
         void WriteConPhy(uint16_t Reg, uint8_t & Val);
 
-        void GetMacAddress( std::string & Mac );
+        void GetMacAddress(std::string & Mac);
 
-        void WriteSRMD( uint16_t reg, const std::vector<uint16_t> & data );
+        void WriteSRMD(uint16_t reg, const std::vector<uint16_t> & data);
 
-        void WriteMRMD( uint16_t reg, const std::vector<uint16_t> & data );
+        void WriteMRMD(uint16_t reg, const std::vector<uint16_t> & data);
 
         std::string GetNetworkSettings();
 
@@ -82,8 +86,8 @@ class AspenEthernetIo : public ICamIo
 
         void StartSession();
         void EndSession();
-        bool ReadStrDatabase( const uint32_t offset, const uint32_t size2Read, 
-                                      std::vector<uint8_t> & out );
+        bool ReadStrDatabase(const uint32_t offset, const uint32_t size2Read, 
+                                      std::vector<uint8_t> & out);
 
         std::shared_ptr<CLibCurlWrap> m_libcurl;
         //disable the copy ctor and assignment operator

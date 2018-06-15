@@ -24,10 +24,10 @@
 //////////////////////////// 
 // CTOR 
 AltaF::AltaF() :  CamGen2Base(CamModel::ALTAF),
-                m_fileName( __FILE__ )
+                m_fileName(__FILE__)
 {
      //alloc and set the camera constants
-    m_CameraConsts = std::shared_ptr<PlatformData>( new AscentData() );
+    m_CameraConsts = std::shared_ptr<PlatformData>(new AscentData());
 }
 
 //////////////////////////// 
@@ -37,37 +37,37 @@ AltaF::~AltaF()
 
     // trying to leave the camera in a good imaging state
     // from Ticket #111 in the Alta project and ticket #87 in Zenith
-    if( m_IsConnected )
+    if (m_IsConnected)
     {
         try
         {
             CloseConnection();
         }
-        catch( std::exception & err )
+        catch(std::exception & err)
         {
-            std::string msg ("Exception caught in ~AltaF msg = " );
-            msg.append( err.what() );
+            std::string msg ("Exception caught in ~AltaF msg = ");
+            msg.append(err.what());
             ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"error",
                 msg);
         }
-        catch( ... )
+        catch(...)
         {
             ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"error",
-            "Unknown exception caught stopping exposure in ~AltaF" );
+            "Unknown exception caught stopping exposure in ~AltaF");
         }
     }
 } 
 
 //////////////////////////// 
 // OPEN       CONNECTION
-void AltaF::OpenConnection( const std::string & ioType,
+void AltaF::OpenConnection(const std::string & ioType,
                 const std::string & DeviceAddr,
                 const uint16_t FirmwareRev,
                 const uint16_t Id)
 
 {
     //create the camera interface
-    CreateCamIo( ioType, DeviceAddr );
+    CreateCamIo(ioType, DeviceAddr);
 
     // save the input data
     m_FirmwareVersion =  FirmwareRev;
@@ -80,22 +80,22 @@ void AltaF::OpenConnection( const std::string & ioType,
     VerifyCamId();
 
     //create the ccd specific object
-    CfgCamFromId( m_Id );
+    CfgCamFromId(m_Id);
 
     // overwrite cfg matrix data with
     // information from the camera
     UpdateCfgWithStrDbInfo();
 
     //set the camera mode fsm
-    m_CamMode = std::shared_ptr<ModeFsm>( new CamGen2ModeFsm(m_CamIo,
-        m_CamCfgData, m_FirmwareVersion) );
+    m_CamMode = std::shared_ptr<ModeFsm>(new CamGen2ModeFsm(m_CamIo,
+        m_CamCfgData, m_FirmwareVersion));
 
     //create the adc and pattern file handler object
-    m_CcdAcqSettings = std::shared_ptr<CcdAcqParams>( 
-        new CamGen2CcdAcqParams(m_CamCfgData,m_CamIo,m_CameraConsts) );
+    m_CcdAcqSettings = std::shared_ptr<CcdAcqParams>(
+        new CamGen2CcdAcqParams(m_CamCfgData,m_CamIo,m_CameraConsts));
 
     m_IsConnected = true;
-    LogConnectAndDisconnect( true );
+    LogConnectAndDisconnect(true);
 } 
 
 //////////////////////////// 
@@ -103,7 +103,7 @@ void AltaF::OpenConnection( const std::string & ioType,
 void AltaF::CloseConnection()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "AltaF::DefaultCloseConnection");
+    apgHelper::DebugMsg("AltaF::DefaultCloseConnection");
 #endif
 
     DefaultCloseConnection();
@@ -115,26 +115,26 @@ void AltaF::CreateCamIo(const std::string & ioType,
      const std::string & DeviceAddr)
 {
         
-    CamModel::InterfaceType type = InterfaceHelper::DetermineInterfaceType( ioType );
+    CamModel::InterfaceType type = InterfaceHelper::DetermineInterfaceType(ioType);
 
-    m_CamIo = std::shared_ptr<CameraIo>( new AscentBasedIo( type,DeviceAddr ) );
+    m_CamIo = std::shared_ptr<CameraIo>(new AscentBasedIo(type,DeviceAddr ));
 
 
-    if( !m_CamIo )
+    if (!m_CamIo)
     {
         std::string errStr("failed to create a camera interface io object");
-        apgHelper::throwRuntimeException( m_fileName, errStr, __LINE__,
-            Apg::ErrorType_Connection );
+        apgHelper::throwRuntimeException(m_fileName, errStr, __LINE__,
+            Apg::ErrorType_Connection);
     }
 
 }
 
 //////////////////////////// 
 // CFG      CAM       FROM  ID
-void AltaF::CfgCamFromId( const uint16_t CameraId )
+void AltaF::CfgCamFromId(const uint16_t CameraId)
 {
      //create and set the camera's cfg data
-    DefaultCfgCamFromId( CameraId );
+    DefaultCfgCamFromId(CameraId);
 }
 
 //////////////////////////// 
@@ -144,27 +144,27 @@ void AltaF::UpdateCfgWithStrDbInfo()
     CamInfo::StrDb infoStruct = std::dynamic_pointer_cast<AscentBasedIo>(
         m_CamIo)->ReadStrDatabase();
 
-    if( 0 != infoStruct.Ad1Gain.compare("Not Set") )
+    if (0 != infoStruct.Ad1Gain.compare("Not Set"))
     {
-        std::stringstream ss( infoStruct.Ad1Gain );
+        std::stringstream ss(infoStruct.Ad1Gain);
         ss >> m_CamCfgData->m_MetaData.DefaultGainLeft;
     }
 
-    if( 0 != infoStruct.Ad1Offset.compare("Not Set") )
+    if (0 != infoStruct.Ad1Offset.compare("Not Set"))
     {
-        std::stringstream ss( infoStruct.Ad1Offset );
+        std::stringstream ss(infoStruct.Ad1Offset);
         ss >> m_CamCfgData->m_MetaData.DefaultOffsetLeft;
     }
 
-    if( 0 != infoStruct.Ad2Gain.compare("Not Set") )
+    if (0 != infoStruct.Ad2Gain.compare("Not Set"))
     {
-        std::stringstream ss( infoStruct.Ad2Gain );
+        std::stringstream ss(infoStruct.Ad2Gain);
         ss >> m_CamCfgData->m_MetaData.DefaultGainRight;
     }
 
-    if( 0 != infoStruct.Ad2Offset.compare("Not Set") )
+    if (0 != infoStruct.Ad2Offset.compare("Not Set"))
     {
-        std::stringstream ss( infoStruct.Ad2Offset );
+        std::stringstream ss(infoStruct.Ad2Offset);
         ss >> m_CamCfgData->m_MetaData.DefaultOffsetRight;
     }
 
@@ -176,42 +176,42 @@ void AltaF::VerifyCamId()
 {
     const uint16_t id = m_CamIo->GetId();
 
-    if( id != m_Id )
+    if (id != m_Id)
     {
         std::stringstream msg;
         msg << "Error: Expected camera id of " << m_Id << ". Read from camera id of " << id;
-        apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-            __LINE__, Apg::ErrorType_Connection );
+        apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+            __LINE__, Apg::ErrorType_Connection);
     }
 
 }
 
 //////////////////////////// 
 //      FIX      IMG        FROM          CAMERA
-void AltaF::FixImgFromCamera( const std::vector<uint16_t> & data,
+void AltaF::FixImgFromCamera(const std::vector<uint16_t> & data,
                               std::vector<uint16_t> & out,  const int32_t rows, 
-                              const int32_t cols )
+                              const int32_t cols)
 {
     int32_t offset = 0; 
 
-    switch( m_CamCfgData->m_MetaData.NumAdOutputs )
+    switch(m_CamCfgData->m_MetaData.NumAdOutputs)
     {
         case 1:
             offset = m_CcdAcqSettings->GetPixelShift();
-            ImgFix::SingleOuputCopy( data, out, rows, cols, offset );
+            ImgFix::SingleOuputCopy(data, out, rows, cols, offset);
         break;
 
         case 2:
             offset = m_CcdAcqSettings->GetPixelShift() * 2;
-            ImgFix::DualOuputFix( data, out, rows, cols, offset );
+            ImgFix::DualOuputFix(data, out, rows, cols, offset);
         break;
 
         default:
         {
             std::stringstream msg;
             msg << "Invaild number of ad ouputs = " << m_CamCfgData->m_MetaData.NumAdOutputs;
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
@@ -219,32 +219,32 @@ void AltaF::FixImgFromCamera( const std::vector<uint16_t> & data,
 
 //////////////////////////// 
 //      START        EXPOSURE
-void AltaF::StartExposure( const double Duration, const bool IsLight )
+void AltaF::StartExposure(const double Duration, const bool IsLight)
 {
     bool IssueReset = false;
 
     // alta f must have greater than v108 for this feature
-    if( m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES )
+    if (m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES)
     {
         IssueReset = true;
     }
  
     // if this is a dual read out camera make sure the columns
     // are centered
-    if( 2 == m_CamCfgData->m_MetaData.NumAdOutputs )
+    if (2 == m_CamCfgData->m_MetaData.NumAdOutputs)
     {
-        if( !AreColsCentered() )
+        if (!AreColsCentered())
         {
             std::stringstream msg;
             msg << "Colmns not centered on dual readout system: ";
             msg << "; start col = " << GetRoiStartCol();
             msg << "; # roi cols = " << GetRoiNumCols();
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
     }
 
-    DefaultStartExposure( Duration, IsLight, IssueReset );
+    DefaultStartExposure(Duration, IsLight, IssueReset);
     
 }
 
@@ -256,7 +256,7 @@ bool AltaF::AreColsCentered()
 
     const int32_t START_DIFF = GetRoiStartCol() - CENTER;
 
-    if( START_DIFF >= 0 )
+    if (START_DIFF >= 0)
     {
         return false;
     }
@@ -267,15 +267,15 @@ bool AltaF::AreColsCentered()
 
     const int32_t END_DIFF = CENTER - END_POS;
 
-    if( END_DIFF >= 0 )
+    if (END_DIFF >= 0)
     {
         return false;
     }
 
     // off by plus minus one ok because of odd column
     // rois
-    if( END_DIFF < (START_DIFF-1) || 
-        END_DIFF > (START_DIFF+1)  )
+    if (END_DIFF < (START_DIFF-1) || 
+        END_DIFF > (START_DIFF+1) )
     {
         return false;
     }
@@ -288,11 +288,11 @@ bool AltaF::AreColsCentered()
 void AltaF::ExposureAndGetImgRC(uint16_t & r, uint16_t & c)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "AltaF:::ExposureAndGetImgRC" );
+    apgHelper::DebugMsg("AltaF:::ExposureAndGetImgRC");
 #endif
 
     //detemine the exposure height
-    if( Apg::CameraMode_TDI == m_CamMode->GetMode() )
+    if (Apg::CameraMode_TDI == m_CamMode->GetMode())
     {
         r =  1;
     }
@@ -302,7 +302,7 @@ void AltaF::ExposureAndGetImgRC(uint16_t & r, uint16_t & c)
     }
 
     //detemine the exposure width
-    if( 2 == m_CamCfgData->m_MetaData.NumAdOutputs )
+    if (2 == m_CamCfgData->m_MetaData.NumAdOutputs)
     {
         // if this is an odd number of cols, then we are actually
         // requesting 1 less column than desired, see how
@@ -327,7 +327,7 @@ void AltaF::ExposureAndGetImgRC(uint16_t & r, uint16_t & c)
 int32_t AltaF::GetNumAdChannels() 
 { 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "AltaF::GetNumAdChannels" );
+    apgHelper::DebugMsg("AltaF::GetNumAdChannels");
 #endif
     return 2; 
 }  
@@ -337,16 +337,16 @@ int32_t AltaF::GetNumAdChannels()
 void AltaF::WriteId2CamReg()
 {
     // alta f must have 109 or greater for this feature
-    if( m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES )
+    if (m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES)
      {
          return;
      }
 
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "AltaF::WriteId2CamReg" );
+    apgHelper::DebugMsg("AltaF::WriteId2CamReg");
 #endif
-    m_CamIo->WriteReg( CameraRegs::ID_FROM_PROM,
-        m_Id );
+    m_CamIo->WriteReg(CameraRegs::ID_FROM_PROM,
+        m_Id);
 }
 
 //////////////////////////// 
@@ -354,21 +354,21 @@ void AltaF::WriteId2CamReg()
 void AltaF::SetIsInterlineBit()
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "AltaF::SetIsInterlineBit" );
+    apgHelper::DebugMsg("AltaF::SetIsInterlineBit");
 #endif
 
-    if( m_FirmwareVersion >  CamconFrmwr::ASC_BASED_BASIC_FEATURES )
+    if (m_FirmwareVersion >  CamconFrmwr::ASC_BASED_BASIC_FEATURES)
     {
-        if( m_CamCfgData->m_MetaData.InterlineCCD )
+        if (m_CamCfgData->m_MetaData.InterlineCCD)
         {
             //set high this is an interline ccd
-            m_CamIo->ReadOrWriteReg( CameraRegs::OP_C,
+            m_CamIo->ReadOrWriteReg(CameraRegs::OP_C,
                 CameraRegs::OP_C_IS_INTERLINE_BIT);
         }
         else
         {
-             m_CamIo->ReadAndWriteReg( CameraRegs::OP_C,
-                 static_cast<uint16_t>(~CameraRegs::OP_C_IS_INTERLINE_BIT) );
+             m_CamIo->ReadAndWriteReg(CameraRegs::OP_C,
+                 static_cast<uint16_t>(~CameraRegs::OP_C_IS_INTERLINE_BIT));
         }
     }
     	
@@ -380,7 +380,7 @@ void AltaF::SetIsInterlineBit()
 void AltaF::Init()
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "AltaF::Init" );
+    apgHelper::DebugMsg("AltaF::Init");
 #endif
 
     DefaultInit();
@@ -396,14 +396,14 @@ void AltaF::Init()
 
 //////////////////////////// 
 //  SET      FAN       MODE
-void AltaF::SetFanMode( const Apg::FanMode mode, const bool PreCondCheck )
+void AltaF::SetFanMode(const Apg::FanMode mode, const bool PreCondCheck)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "AltaF::SetFanMode -> mode = %d, PreCondCheck =%d ", 
-        mode, PreCondCheck );
+    apgHelper::DebugMsg("AltaF::SetFanMode -> mode = %d, PreCondCheck =%d ", 
+        mode, PreCondCheck);
 #endif
 
-   DefaultSetFanMode( mode, PreCondCheck );
+   DefaultSetFanMode(mode, PreCondCheck);
 }
 
 //////////////////////////// 
@@ -411,7 +411,7 @@ void AltaF::SetFanMode( const Apg::FanMode mode, const bool PreCondCheck )
 Apg::FanMode AltaF::GetFanMode()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "AltaF::GetFanMode" );
+    apgHelper::DebugMsg("AltaF::GetFanMode");
 #endif
     return DefaultGetFanMode();
 }

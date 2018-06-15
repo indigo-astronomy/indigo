@@ -13,7 +13,7 @@
 
 //////////////////////////// 
 // CTOR 
-PlatformData::PlatformData( const uint16_t HBinningMax,
+PlatformData::PlatformData(const uint16_t HBinningMax,
                             const uint16_t VBinningMax,
                             const double TimerResolution,
                             const double PeriodTimerResolution,

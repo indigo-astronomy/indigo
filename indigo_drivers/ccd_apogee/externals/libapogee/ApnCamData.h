@@ -15,9 +15,8 @@
 #include <string>
 #include <stdint.h>
 #include "CamCfgMatrix.h"
-#include "DefDllExport.h"
 
-class DLL_EXPORT CApnCamData  
+class CApnCamData  
 {
     public:
 
@@ -39,9 +38,9 @@ class DLL_EXPORT CApnCamData
             const CamCfg::APN_HPATTERN_FILE & roiNormDual,
             const CamCfg::APN_HPATTERN_FILE & clampFastDual,
             const CamCfg::APN_HPATTERN_FILE & skipFastDual,
-            const CamCfg::APN_HPATTERN_FILE & roiFastDual );
+            const CamCfg::APN_HPATTERN_FILE & roiFastDual);
 
-        CApnCamData( const CApnCamData &rhs );
+        CApnCamData(const CApnCamData &rhs);
         CApnCamData& operator=(CApnCamData const&d);
        
 	    virtual ~CApnCamData();
@@ -50,7 +49,7 @@ class DLL_EXPORT CApnCamData
                       const std::string & cfgFile,
                       uint16_t CamId);
         void Clear();
-		void Write2File( const std::string & fname );
+		void Write2File(const std::string & fname);
 
         CamCfg::APN_CAMERA_METADATA m_MetaData;
 
@@ -80,16 +79,16 @@ class DLL_EXPORT CApnCamData
     private:
         std::string m_FileName;
 
-        void LoadVertical( const std::string & name, 
-            CamCfg::APN_VPATTERN_FILE & vpattern );
+        void LoadVertical(const std::string & name, 
+            CamCfg::APN_VPATTERN_FILE & vpattern);
 
-        void LoadHorizontal( const std::string & name, 
-            CamCfg::APN_HPATTERN_FILE & hpattern );
+        void LoadHorizontal(const std::string & name, 
+            CamCfg::APN_HPATTERN_FILE & hpattern);
 
-        void WriteMeta( const std::string & fname );
-        void WriteVPattern( const std::string & fname, 
-            const CamCfg::APN_VPATTERN_FILE & vert );
-        void WriteHPattern( const std::string & fname,
+        void WriteMeta(const std::string & fname);
+        void WriteVPattern(const std::string & fname, 
+            const CamCfg::APN_VPATTERN_FILE & vert);
+        void WriteHPattern(const std::string & fname,
                                 const CamCfg::APN_HPATTERN_FILE & horiztonal);
 
        

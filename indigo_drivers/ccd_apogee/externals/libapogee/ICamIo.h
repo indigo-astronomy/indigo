@@ -16,7 +16,11 @@
 #include <vector>
 #include <stdint.h>
 
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 #include "CameraStatusRegs.h" 
 
@@ -48,34 +52,34 @@ class ICamIo
          * \param[in] NumberOfPixels Total number of pixels to transfer from the camera to host
          * \return ImageData Image from the camera
          */
-        virtual void GetImageData( std::vector<uint16_t> & data ) = 0;	
+        virtual void GetImageData(std::vector<uint16_t> & data) = 0;	
 
         /*!
          *  Reads camera control registers
          * \param[in] reg Register to read.
          */
-	    virtual uint16_t ReadReg( uint16_t reg ) const = 0;
+	    virtual uint16_t ReadReg(uint16_t reg) const = 0;
 
          /*!
          *  Writes data to camera control registers
          * \param[in] reg Register to write to.
          * \param[out] val Data value in the register
          */
-	    virtual void WriteReg( uint16_t reg, uint16_t val ) = 0;
+	    virtual void WriteReg(uint16_t reg, uint16_t val) = 0;
 
         /*!
          *  Writes data to a Single Request Multiple Data (SRMD) controller on the camera
          * \param[in] reg Register to write to.
          * \param[out] data Data vector
          */
-        virtual void WriteSRMD( uint16_t reg, const std::vector<uint16_t> & data ) = 0;
+        virtual void WriteSRMD(uint16_t reg, const std::vector<uint16_t> & data) = 0;
 
         /*!
          *  Writes data to a Multiple Request Multiple Data (MRMD) controller on the camera
          * \param[in] reg Register to write to.
          * \param[out] data Data vector
          */
-        virtual void WriteMRMD( uint16_t reg, const std::vector<uint16_t> & data ) = 0;
+        virtual void WriteMRMD(uint16_t reg, const std::vector<uint16_t> & data) = 0;
 
         /*!
          *  Fetches the camera's status.  This function should be used on rev 15 firmware 

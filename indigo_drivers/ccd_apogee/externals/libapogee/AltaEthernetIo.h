@@ -23,17 +23,17 @@
 class AltaEthernetIo : public ICamIo, public IAltaSerialPortIo
 { 
     public: 
-        AltaEthernetIo( const std::string url );
+        AltaEthernetIo(const std::string url);
         virtual ~AltaEthernetIo(); 
 
-        std::map<uint16_t,uint16_t> ReadRegs(const std::vector<uint16_t> & Regs );
+        std::map<uint16_t,uint16_t> ReadRegs(const std::vector<uint16_t> & Regs);
 
-        uint16_t ReadReg( uint16_t reg ) const;
-	    void WriteReg( uint16_t reg, uint16_t val ) ;
+        uint16_t ReadReg(uint16_t reg) const;
+	    void WriteReg(uint16_t reg, uint16_t val) ;
 
-        void WriteSRMD( uint16_t reg, const std::vector<uint16_t> & data );
+        void WriteSRMD(uint16_t reg, const std::vector<uint16_t> & data);
 
-        void WriteMRMD( uint16_t reg, const std::vector<uint16_t> & data );
+        void WriteMRMD(uint16_t reg, const std::vector<uint16_t> & data);
 
         void SetupImgXfer(uint16_t Rows, 
             uint16_t Cols, 
@@ -41,12 +41,12 @@ class AltaEthernetIo : public ICamIo, public IAltaSerialPortIo
 
         void CancelImgXfer();
 
-        void GetImageData( std::vector<uint16_t> & data );
+        void GetImageData(std::vector<uint16_t> & data);
 
         void GetStatus(CameraStatusRegs::AdvStatus & status);
         void GetStatus(CameraStatusRegs::BasicStatus & status);
 
-        void GetMacAddress( std::string & Mac );
+        void GetMacAddress(std::string & Mac);
 
         void Reboot();
 
@@ -57,22 +57,22 @@ class AltaEthernetIo : public ICamIo, public IAltaSerialPortIo
         uint16_t GetFirmwareRev();
         std::string GetInfo();
 
-        void SetSerialBaudRate( uint16_t PortId , uint32_t BaudRate );
+        void SetSerialBaudRate(uint16_t PortId , uint32_t BaudRate);
 
-        uint32_t GetSerialBaudRate(  uint16_t PortId  );
+        uint32_t GetSerialBaudRate( uint16_t PortId );
 
-        Apg::SerialFC GetSerialFlowControl( uint16_t PortId );
+        Apg::SerialFC GetSerialFlowControl(uint16_t PortId);
 
-        void SetSerialFlowControl( uint16_t PortId, 
-            Apg::SerialFC FlowControl );
+        void SetSerialFlowControl(uint16_t PortId, 
+            Apg::SerialFC FlowControl);
 
-         Apg::SerialParity GetSerialParity( uint16_t PortId );
+         Apg::SerialParity GetSerialParity(uint16_t PortId);
         
-        void SetSerialParity( uint16_t PortId, Apg::SerialParity Parity );
+        void SetSerialParity(uint16_t PortId, Apg::SerialParity Parity);
         
-        void ReadSerial( uint16_t PortId, std::string & buffer );
+        void ReadSerial(uint16_t PortId, std::string & buffer);
         
-        void WriteSerial( uint16_t PortId, const std::string & buffer );
+        void WriteSerial(uint16_t PortId, const std::string & buffer);
 
         // TODO - see if we can do same error
         // trapping we do in USB

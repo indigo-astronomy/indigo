@@ -17,11 +17,11 @@
 #include "CameraInfo.h" 
 #include <string>
 
-class DLL_EXPORT AscentBasedIo : public CameraIo
+class AscentBasedIo : public CameraIo
 { 
     public: 
-        AscentBasedIo( CamModel::InterfaceType type, 
-               const std::string & deviceAddr ); 
+        AscentBasedIo(CamModel::InterfaceType type, 
+               const std::string & deviceAddr); 
         virtual ~AscentBasedIo(); 
 
         void Program(const std::string & FilenameFpga,
@@ -29,7 +29,7 @@ class DLL_EXPORT AscentBasedIo : public CameraIo
             const std::string & FilenameDescriptor,
             bool Print2StdOut=false);
 
-        void WriteStrDatabase( const CamInfo::StrDb & info );
+        void WriteStrDatabase(const CamInfo::StrDb & info);
         CamInfo::StrDb ReadStrDatabase();
 
         uint16_t GetId();

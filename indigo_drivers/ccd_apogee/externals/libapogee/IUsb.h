@@ -22,12 +22,12 @@ class IUsb
     public: 
         virtual ~IUsb(); 
 
-        virtual uint16_t ReadReg(uint16_t FpgaReg ) = 0;
+        virtual uint16_t ReadReg(uint16_t FpgaReg) = 0;
 
         virtual void WriteReg(uint16_t FpgaReg, 
-            const uint16_t FpgaData ) = 0;
+            const uint16_t FpgaData) = 0;
 
-        virtual void GetVendorInfo( uint16_t & VendorId,
+        virtual void GetVendorInfo(uint16_t & VendorId,
             uint16_t & ProductId, uint16_t  & DeviceId) = 0;
 
         virtual void SetupSingleImgXfer(uint16_t Rows, 
@@ -38,7 +38,7 @@ class IUsb
 
         virtual void CancelImgXfer() = 0;
 
-        virtual void ReadImage( uint16_t * ImageData, 
+        virtual void ReadImage(uint16_t * ImageData, 
 					            const uint32_t InSizeInBytes,
 					            uint32_t &OutSizeInBytes) = 0;	
 
@@ -66,8 +66,8 @@ class IUsb
             uint16_t Index, uint16_t	Value,
             const uint8_t * ioBuf, uint32_t BufSzInBytes) = 0;
 
-        virtual void ReadSerialPort( uint16_t PortId, 
-            uint8_t * ioBuf, uint16_t BufSzInBytes ) = 0;
+        virtual void ReadSerialPort(uint16_t PortId, 
+            uint8_t * ioBuf, uint16_t BufSzInBytes) = 0;
 }; 
 
 #endif

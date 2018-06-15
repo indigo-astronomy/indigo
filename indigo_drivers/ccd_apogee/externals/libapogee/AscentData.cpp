@@ -79,7 +79,7 @@ namespace
 
 ////////////////////////////                            
 // CTOR                                                 
-AscentData::AscentData() : PlatformData(                
+AscentData::AscentData() : PlatformData(               
                                     APN_HBINNING_MAX_ASCENT,      
                                     APN_VBINNING_MAX_ASCENT,      
                                     APN_TIMER_RESOLUTION_ASCENT,

@@ -1291,9 +1291,9 @@ namespace
 
 //////////////////////////// 
 // CTOR 
-AscentBasedUsbIo::AscentBasedUsbIo( const std::string & DeviceEnum ) :
-                                        CamUsbIo( DeviceEnum, MAX_USB_BUFFER_SIZE, false ),
-                                        m_fileName( __FILE__)
+AscentBasedUsbIo::AscentBasedUsbIo(const std::string & DeviceEnum) :
+                                        CamUsbIo(DeviceEnum, MAX_USB_BUFFER_SIZE, false),
+                                        m_fileName(__FILE__)
 { 
 
 } 
@@ -1310,9 +1310,9 @@ AscentBasedUsbIo::~AscentBasedUsbIo()
 void AscentBasedUsbIo::SetSerialNumber(const std::string & num)
 {
     std::vector< std::string > result = ReadStrDatabase();
-    CamInfo::StrDb db =  CamInfo::MkStrDbFromStrVect( result );
+    CamInfo::StrDb db =  CamInfo::MkStrDbFromStrVect(result);
     db.CustomerSn = num;
-    WriteStrDatabase(  CamInfo::MkStrVectFromStrDb( db ) );
+    WriteStrDatabase( CamInfo::MkStrVectFromStrDb(db ));
 }
 
 //////////////////////////// 
@@ -1321,7 +1321,7 @@ std::string AscentBasedUsbIo::GetSerialNumber()
 {
     std::vector< std::string > result = ReadStrDatabase();
 
-    CamInfo::StrDb infoStruct =  CamInfo::MkStrDbFromStrVect( result );
+    CamInfo::StrDb infoStruct =  CamInfo::MkStrDbFromStrVect(result);
 
     return infoStruct.CustomerSn;
 }
@@ -1329,17 +1329,17 @@ std::string AscentBasedUsbIo::GetSerialNumber()
 
 //////////////////////////// 
 //      WRITE        STR     DATABASE
-void AscentBasedUsbIo::WriteStrDatabase( const std::vector<std::string> & info )
+void AscentBasedUsbIo::WriteStrDatabase(const std::vector<std::string> & info)
 {
  
-  std::vector<uint8_t> buffer =  CamStrDb::PackStrings( info );
+  std::vector<uint8_t> buffer =  CamStrDb::PackStrings(info);
   
-  PromFx2Io pf( m_Usb,
+  PromFx2Io pf(m_Usb,
         ASCENT_EEPROM_MAX_BLOCKS,
-        ASCENT_EEPROM_MAX_BANKS );
+        ASCENT_EEPROM_MAX_BANKS);
 
-  pf.BufferWriteEeprom( STR_DB_PROM_BANK, STR_DB_PROM_BLOCK,
-    STR_DB_PROM_ADDR, buffer );
+  pf.BufferWriteEeprom(STR_DB_PROM_BANK, STR_DB_PROM_BLOCK,
+    STR_DB_PROM_ADDR, buffer);
  
 }
 
@@ -1347,16 +1347,16 @@ void AscentBasedUsbIo::WriteStrDatabase( const std::vector<std::string> & info )
 //      READ       STR     DATABASE
 std::vector<std::string> AscentBasedUsbIo::ReadStrDatabase()
 {
-   std::vector<uint8_t> buffer( CamStrDb::MAX_STR_DB_BYTES );
+   std::vector<uint8_t> buffer(CamStrDb::MAX_STR_DB_BYTES);
 
-   PromFx2Io pf( m_Usb,
+   PromFx2Io pf(m_Usb,
         ASCENT_EEPROM_MAX_BLOCKS,
-        ASCENT_EEPROM_MAX_BANKS );
+        ASCENT_EEPROM_MAX_BANKS);
 
-   pf.BufferReadEeprom( STR_DB_PROM_BANK, STR_DB_PROM_BLOCK,
-    STR_DB_PROM_ADDR, buffer );
+   pf.BufferReadEeprom(STR_DB_PROM_BANK, STR_DB_PROM_BLOCK,
+    STR_DB_PROM_ADDR, buffer);
 
-   std::vector<std::string> out = CamStrDb::UnpackStrings( buffer );
+   std::vector<std::string> out = CamStrDb::UnpackStrings(buffer);
 
    return out;
 }
@@ -1366,25 +1366,25 @@ std::vector<std::string> AscentBasedUsbIo::ReadStrDatabase()
 void AscentBasedUsbIo::DownloadFirmware()
 {
     std::vector<UsbFrmwr::IntelHexRec> frmwr = 
-        UsbFrmwr::MakeRecVect( firmware );
+        UsbFrmwr::MakeRecVect(firmware);
 
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         ASCENT_EEPROM_MAX_BLOCKS,
-        ASCENT_EEPROM_MAX_BANKS );
+        ASCENT_EEPROM_MAX_BANKS);
 
-    pf.FirmwareDownload( frmwr );
+    pf.FirmwareDownload(frmwr);
 }
 
 //////////////////////////// 
 //      READ      HEADER
-void AscentBasedUsbIo::ReadHeader( Eeprom::Header & hdr )
+void AscentBasedUsbIo::ReadHeader(Eeprom::Header & hdr)
 {
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         ASCENT_EEPROM_MAX_BLOCKS,
-        ASCENT_EEPROM_MAX_BANKS );
+        ASCENT_EEPROM_MAX_BANKS);
 
-    pf.ReadEepromHdr( hdr, HEADER_PROM_BANK,
-        HEADER_PROM_BLOCK, HEADER_PROM_ADDR );
+    pf.ReadEepromHdr(hdr, HEADER_PROM_BANK,
+        HEADER_PROM_BLOCK, HEADER_PROM_ADDR);
 }
 
  //////////////////////////// 
@@ -1400,32 +1400,32 @@ void AscentBasedUsbIo::Program(const std::string & FilenameFpga,
     uint16_t Vid  = 0; 
     uint16_t Pid = 0;
     uint16_t Did = 0;
-    GetUsbVendorInfo( Vid, Pid, Did );
-    if ( UsbFrmwr::CYPRESS_VID == Vid )
+    GetUsbVendorInfo(Vid, Pid, Did);
+    if (UsbFrmwr::CYPRESS_VID == Vid)
 	{
         DownloadFirmware();
     }
 
-    Progress2StdOut( 16 );
+    Progress2StdOut(16);
 
     //STEP 2
     // initialize prom header information
 	Eeprom::Header hdr;
-    memset(&hdr, 0, sizeof( hdr ) );
-    hdr.Size = sizeof( hdr );
+    memset(&hdr, 0, sizeof(hdr ));
+    hdr.Size = sizeof(hdr);
     hdr.Version = Eeprom::HEADER_VERSION;
 
-    Progress2StdOut( 32 );
+    Progress2StdOut(32);
 
     //STEP 3
     //program fpga bits
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         ASCENT_EEPROM_MAX_BLOCKS,
-        ASCENT_EEPROM_MAX_BANKS );
+        ASCENT_EEPROM_MAX_BANKS);
 
     uint32_t fgpaDownloadSize = 0;
-    pf.WriteFile2Eeprom( FilenameFpga, FPGA_PROM_BANK, 
-        FPGA_PROM_BLOCK, FPGA_PROM_ADDR, fgpaDownloadSize );
+    pf.WriteFile2Eeprom(FilenameFpga, FPGA_PROM_BANK, 
+        FPGA_PROM_BLOCK, FPGA_PROM_ADDR, fgpaDownloadSize);
 
     //xlinix firmware bits programmed set the "buf con" size and
     //valid bits.  for the ascent and the gee the buf con prom header is overloaded
@@ -1434,35 +1434,35 @@ void AscentBasedUsbIo::Program(const std::string & FilenameFpga,
     hdr.BufConSize = fgpaDownloadSize;
     hdr.Fields |= Eeprom::HEADER_BUFCON_VALID_BIT;
 
-    Progress2StdOut( 48 );
+    Progress2StdOut(48);
 
     //STEP 4
     //download the fx2
     uint32_t DownloadSize = 0;
-    pf.WriteFile2Eeprom( FilenameFx2, FX2_PROM_BANK,
-        FX2_PROM_BLOCK, FX2_PROM_ADDR, DownloadSize );
+    pf.WriteFile2Eeprom(FilenameFx2, FX2_PROM_BANK,
+        FX2_PROM_BLOCK, FX2_PROM_ADDR, DownloadSize);
 
     hdr.Fields |= Eeprom::HEADER_BOOTROM_VALID_BIT;
 
-    Progress2StdOut( 64 );
+    Progress2StdOut(64);
 
     //STEP 5
     //download usb descriptors
-    pf.WriteFile2Eeprom( FilenameDescriptor, DSCR_PROM_BANK,
-        DSCR_PROM_BLOCK, DSCR_PROM_ADDR, DownloadSize );
+    pf.WriteFile2Eeprom(FilenameDescriptor, DSCR_PROM_BANK,
+        DSCR_PROM_BLOCK, DSCR_PROM_ADDR, DownloadSize);
 
      hdr.Fields |= Eeprom::HEADER_DESCRIPTOR_VALID_BIT;
 
-     Progress2StdOut( 80 );
+     Progress2StdOut(80);
 
     //STEP 6
     //write the header
-    hdr.CheckSum = Eeprom::CalcHdrCheckSum( hdr );
+    hdr.CheckSum = Eeprom::CalcHdrCheckSum(hdr);
 
-    pf.WriteEepromHdr( hdr, HEADER_PROM_BANK,
+    pf.WriteEepromHdr(hdr, HEADER_PROM_BANK,
         HEADER_PROM_BLOCK, HEADER_PROM_ADDR);
 
-    Progress2StdOut( 100 );
+    Progress2StdOut(100);
 
     //turn this off on exit
     m_Print2StdOut = false;

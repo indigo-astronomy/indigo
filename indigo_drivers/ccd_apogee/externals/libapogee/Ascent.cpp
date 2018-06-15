@@ -39,14 +39,14 @@ namespace
         return result;
     }
 
-    Ascent::FilterWheelInfo GetFilterWheelInfo( const Ascent::FilterWheelType type )
+    Ascent::FilterWheelInfo GetFilterWheelInfo(const Ascent::FilterWheelType type)
     {
         std::map<Ascent::FilterWheelType, Ascent::FilterWheelInfo> fwMap = GetInfoMap();
 
          std::map<Ascent::FilterWheelType, Ascent::FilterWheelInfo>::iterator iter =
-            fwMap.find( type);
+            fwMap.find(type);
 
-        if( iter != fwMap.end() )
+        if (iter != fwMap.end())
         {
             return (*iter).second;
         }
@@ -54,11 +54,11 @@ namespace
         return fwMap[ Ascent::FW_UNKNOWN_TYPE ];
     }
 
-    double GetFwMoveTime( const uint16_t numMoves )
+    double GetFwMoveTime(const uint16_t numMoves)
     {
         double result = 3.6;
 
-        switch( numMoves )
+        switch(numMoves)
         {
             case 0:
                 result = 0.0;
@@ -107,10 +107,10 @@ namespace
 // CTOR 
 Ascent::Ascent() : 
                 CamGen2Base(CamModel::ASCENT),
-                m_fileName( __FILE__ ),
-                m_filterWheelType( Ascent::FW_UNKNOWN_TYPE ),
-                m_FwDiffTime( 0.0 ),
-				m_FwTimer( new ApgTimer )
+                m_fileName(__FILE__),
+                m_filterWheelType(Ascent::FW_UNKNOWN_TYPE),
+                m_FwDiffTime(0.0),
+				m_FwTimer(new ApgTimer)
 { 
 
     // ticket 54
@@ -118,7 +118,7 @@ Ascent::Ascent() :
     m_FwTimer->Start();
     
     //alloc and set the camera constants
-    m_CameraConsts = std::shared_ptr<PlatformData>( new AscentData() );
+    m_CameraConsts = std::shared_ptr<PlatformData>(new AscentData());
 
 }
 
@@ -128,41 +128,41 @@ Ascent::~Ascent()
 { 
     // trying to leave the camera in a good imaging state
     // from Ticket #111 in the Alta project and ticket #87 in Zenith
-    if( m_IsConnected )
+    if (m_IsConnected)
     {
         try
         {
             CloseConnection();
         }
-        catch( std::exception & err )
+        catch(std::exception & err)
         {
-            std::string msg ("Exception caught in ~Ascent msg = " );
-            msg.append( err.what() );
+            std::string msg ("Exception caught in ~Ascent msg = ");
+            msg.append(err.what());
             ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"error",
                 msg);
         }
-        catch( ... )
+        catch(...)
         {
             ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"error",
-            "Unknown exception caught stopping exposure in ~Ascent" );
+            "Unknown exception caught stopping exposure in ~Ascent");
         }
     }
 } 
 
 //////////////////////////// 
 // OPEN     CONNECTION
-void Ascent::OpenConnection( const std::string & ioType,
+void Ascent::OpenConnection(const std::string & ioType,
              const std::string & DeviceAddr,
              const uint16_t FirmwareRev,
-             const uint16_t Id )
+             const uint16_t Id)
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::OpenConnection -> ioType= %s, DeviceAddr = %s, FW = %d, ID = %d", 
-        ioType.c_str(), DeviceAddr.c_str(), FirmwareRev,Id  );
+    apgHelper::DebugMsg("Ascent::OpenConnection -> ioType= %s, DeviceAddr = %s, FW = %d, ID = %d", 
+        ioType.c_str(), DeviceAddr.c_str(), FirmwareRev,Id );
 #endif
 
     //create the camera interface
-    CreateCamIo( ioType, DeviceAddr );
+    CreateCamIo(ioType, DeviceAddr);
 
     // save the input data
     m_FirmwareVersion =  FirmwareRev;
@@ -175,23 +175,23 @@ void Ascent::OpenConnection( const std::string & ioType,
     VerifyCamId();
 
     //create the ccd specific object
-    CfgCamFromId( m_Id );
+    CfgCamFromId(m_Id);
 
     // overwrite cfg matrix data with
     // information from the camera
     UpdateCfgWithStrDbInfo();
 
     //set the camera mode fsm
-    m_CamMode = std::shared_ptr<ModeFsm>( new CamGen2ModeFsm(m_CamIo,
-        m_CamCfgData, m_FirmwareVersion) );
+    m_CamMode = std::shared_ptr<ModeFsm>(new CamGen2ModeFsm(m_CamIo,
+        m_CamCfgData, m_FirmwareVersion));
 
     //create the adc and pattern file handler object
-    m_CcdAcqSettings = std::shared_ptr<CcdAcqParams>( 
-        new CamGen2CcdAcqParams(m_CamCfgData,m_CamIo,m_CameraConsts) );
+    m_CcdAcqSettings = std::shared_ptr<CcdAcqParams>(
+        new CamGen2CcdAcqParams(m_CamCfgData,m_CamIo,m_CameraConsts));
 
     
     m_IsConnected = true;
-    LogConnectAndDisconnect( true );
+    LogConnectAndDisconnect(true);
 }
 
 //////////////////////////// 
@@ -199,7 +199,7 @@ void Ascent::OpenConnection( const std::string & ioType,
 void Ascent::CloseConnection()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::DefaultCloseConnection");
+    apgHelper::DebugMsg("Ascent::DefaultCloseConnection");
 #endif
 
     DefaultCloseConnection();
@@ -207,17 +207,17 @@ void Ascent::CloseConnection()
 
 //////////////////////////// 
 //      FILTER       WHEEL      OPEN
- void Ascent::FilterWheelOpen( Ascent::FilterWheelType type )
+ void Ascent::FilterWheelOpen(Ascent::FilterWheelType type)
  {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::FilterWheelOpen -> type = %d", type );
+    apgHelper::DebugMsg("Ascent::FilterWheelOpen -> type = %d", type);
 #endif
 
-    if ( Ascent::FW_UNKNOWN_TYPE == type )
+    if (Ascent::FW_UNKNOWN_TYPE == type)
     {
-        apgHelper::throwRuntimeException( m_fileName, 
+        apgHelper::throwRuntimeException(m_fileName, 
             "FilterWheelOpen failed.  Invalid input type.", 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
 
     m_filterWheelType = type;
@@ -228,7 +228,7 @@ void Ascent::CloseConnection()
  void Ascent::FilterWheelClose()
  {
 #ifdef DEBUGGING_CAMERA
-     apgHelper::DebugMsg( "Ascent::FilterWheelClose" );
+     apgHelper::DebugMsg("Ascent::FilterWheelClose");
  #endif
 
      m_filterWheelType = Ascent::FW_UNKNOWN_TYPE;
@@ -237,31 +237,31 @@ void Ascent::CloseConnection()
 
 //////////////////////////// 
 //  SET     FILTER       WHEEL       POS
-void Ascent::SetFilterWheelPos( const uint16_t pos )
+void Ascent::SetFilterWheelPos(const uint16_t pos)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::SetFilterWheelPos -> pos = %d", pos );
+    apgHelper::DebugMsg("Ascent::SetFilterWheelPos -> pos = %d", pos);
 #endif
 
-    if ( Ascent::FW_UNKNOWN_TYPE == m_filterWheelType )
+    if (Ascent::FW_UNKNOWN_TYPE == m_filterWheelType)
     {
-        apgHelper::throwRuntimeException( m_fileName, "SetFilterWheelPos failed.  No filter wheel connected", 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+        apgHelper::throwRuntimeException(m_fileName, "SetFilterWheelPos failed.  No filter wheel connected", 
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
 
     // if the firmware does not have the fw status bit, use the guestiamate timer
-    if( m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES )
+    if (m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES)
     {
-        StartFwTimer( pos );
+        StartFwTimer(pos);
     }
 
     const uint16_t FilterMask = CameraRegs::OP_C_FILTER_1_BIT |
             CameraRegs::OP_C_FILTER_2_BIT |
             CameraRegs::OP_C_FILTER_3_BIT;
 
-    const uint16_t value = ( pos << 8 ) & FilterMask ;
+    const uint16_t value = (pos << 8) & FilterMask ;
 
-    const uint16_t curReg = ReadReg( CameraRegs::OP_C );
+    const uint16_t curReg = ReadReg(CameraRegs::OP_C);
 
     const uint16_t curRegFilterCleared = curReg & ~FilterMask;
 
@@ -274,7 +274,7 @@ void Ascent::SetFilterWheelPos( const uint16_t pos )
 
 //////////////////////////// 
 //      START      FW           TIMER
-void Ascent::StartFwTimer( const uint16_t pos )
+void Ascent::StartFwTimer(const uint16_t pos)
 {
     // ticket 54
     //cacluate the estimated time to go from one position to 
@@ -284,17 +284,17 @@ void Ascent::StartFwTimer( const uint16_t pos )
     uint16_t posWalk = GetFilterWheelPos();
     uint16_t numMoves = 0;
 
-    while( posWalk != pos )
+    while(posWalk != pos)
     {
         ++numMoves;
         ++posWalk;
-        if( posWalk >= maxPos )
+        if (posWalk >= maxPos)
         {
             posWalk = 0;
         }
     }
    
-    m_FwDiffTime = GetFwMoveTime( numMoves );
+    m_FwDiffTime = GetFwMoveTime(numMoves);
     m_FwTimer->Start();
 }
 
@@ -303,22 +303,22 @@ void Ascent::StartFwTimer( const uint16_t pos )
 uint16_t Ascent::GetFilterWheelPos()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::GetFilterWheelPos" );
+    apgHelper::DebugMsg("Ascent::GetFilterWheelPos");
 #endif
 
-    if ( Ascent::FW_UNKNOWN_TYPE == m_filterWheelType )
+    if (Ascent::FW_UNKNOWN_TYPE == m_filterWheelType)
     {
-        apgHelper::throwRuntimeException( m_fileName, "GetFilterWheelPos failed.  No filter wheel connected", 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+        apgHelper::throwRuntimeException(m_fileName, "GetFilterWheelPos failed.  No filter wheel connected", 
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
 
-    const uint16_t value = ReadReg( CameraRegs::OP_C );
+    const uint16_t value = ReadReg(CameraRegs::OP_C);
 
     const uint16_t FilterMask = CameraRegs::OP_C_FILTER_1_BIT |
             CameraRegs::OP_C_FILTER_2_BIT |
             CameraRegs::OP_C_FILTER_3_BIT;
 
-    return (value & FilterMask ) >> 8;
+    return (value & FilterMask) >> 8;
 }
 
 //////////////////////////// 
@@ -326,16 +326,16 @@ uint16_t Ascent::GetFilterWheelPos()
 ApogeeFilterWheel::Status Ascent::GetFilterWheelStatus()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::GetFilterWheelStatus" );
+    apgHelper::DebugMsg("Ascent::GetFilterWheelStatus");
 #endif
 
-    if ( Ascent::FW_UNKNOWN_TYPE == m_filterWheelType )
+    if (Ascent::FW_UNKNOWN_TYPE == m_filterWheelType)
     {
         return ApogeeFilterWheel::NOT_CONNECTED;
     }
 
     // if the firmware does not have the fw status bit, use the guestiamate timer
-    if( m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES )
+    if (m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES)
     {
         return FwStatusFromTimer();
     }
@@ -350,7 +350,7 @@ ApogeeFilterWheel::Status Ascent::FwStatusFromTimer()
     //ticket 54
     m_FwTimer->Stop();
 
-    if( m_FwTimer->GetTimeInSec() > m_FwDiffTime )
+    if (m_FwTimer->GetTimeInSec() > m_FwDiffTime)
     {
         m_FwDiffTime = 0.0;
         return ApogeeFilterWheel::READY;
@@ -365,11 +365,11 @@ ApogeeFilterWheel::Status Ascent::FwStatusFromTimer()
 //      FW       STATUS    FROM   CAMERA
 ApogeeFilterWheel::Status Ascent::FwStatusFromCamera()
 {
-    const uint16_t RegVal = ReadReg( CameraRegs::STATUS );
+    const uint16_t RegVal = ReadReg(CameraRegs::STATUS);
 
     const uint16_t fwStatus = RegVal & CameraRegs::STATUS_FILTER_SENSE_BIT;
 
-    return (  fwStatus ?  ApogeeFilterWheel::ACTIVE :  ApogeeFilterWheel::READY );
+    return ( fwStatus ?  ApogeeFilterWheel::ACTIVE :  ApogeeFilterWheel::READY);
 }
 
 //////////////////////////// 
@@ -377,10 +377,10 @@ ApogeeFilterWheel::Status Ascent::FwStatusFromCamera()
 std::string Ascent::GetFilterWheelName()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::GetFilterWheelName" );
+    apgHelper::DebugMsg("Ascent::GetFilterWheelName");
 #endif
 
-    Ascent::FilterWheelInfo info = GetFilterWheelInfo(  m_filterWheelType );
+    Ascent::FilterWheelInfo info = GetFilterWheelInfo( m_filterWheelType);
     return info.name;
 }
 
@@ -389,10 +389,10 @@ std::string Ascent::GetFilterWheelName()
 uint16_t Ascent::GetFilterWheelMaxPositions()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::GetFilterWheelMaxPositions" );
+    apgHelper::DebugMsg("Ascent::GetFilterWheelMaxPositions");
 #endif
 
-    Ascent::FilterWheelInfo info = GetFilterWheelInfo(  m_filterWheelType );
+    Ascent::FilterWheelInfo info = GetFilterWheelInfo( m_filterWheelType);
     return info.maxPositions;
 }
 
@@ -402,25 +402,25 @@ void Ascent::CreateCamIo(const std::string & ioType,
      const std::string & DeviceAddr)
 {
         
-    CamModel::InterfaceType type = InterfaceHelper::DetermineInterfaceType( ioType );
+    CamModel::InterfaceType type = InterfaceHelper::DetermineInterfaceType(ioType);
 
-    m_CamIo = std::shared_ptr<CameraIo>( new AscentBasedIo( type,DeviceAddr ) );
+    m_CamIo = std::shared_ptr<CameraIo>(new AscentBasedIo(type,DeviceAddr ));
 
-    if( !m_CamIo )
+    if (!m_CamIo)
     {
         std::string errStr("failed to create a camera interface io object");
-        apgHelper::throwRuntimeException( m_fileName, errStr, __LINE__,
-            Apg::ErrorType_Connection );
+        apgHelper::throwRuntimeException(m_fileName, errStr, __LINE__,
+            Apg::ErrorType_Connection);
     }
 
 }
 
 //////////////////////////// 
 // CFG      CAM       FROM  ID
-void Ascent::CfgCamFromId( const uint16_t CameraId )
+void Ascent::CfgCamFromId(const uint16_t CameraId)
 {
      //create and set the camera's cfg data
-    DefaultCfgCamFromId( CameraId );
+    DefaultCfgCamFromId(CameraId);
 }
 
 //////////////////////////// 
@@ -430,27 +430,27 @@ void Ascent::UpdateCfgWithStrDbInfo()
     CamInfo::StrDb infoStruct = std::dynamic_pointer_cast<AscentBasedIo>(
         m_CamIo)->ReadStrDatabase();
 
-    if( 0 != infoStruct.Ad1Gain.compare("Not Set") )
+    if (0 != infoStruct.Ad1Gain.compare("Not Set"))
     {
-        std::stringstream ss( infoStruct.Ad1Gain );
+        std::stringstream ss(infoStruct.Ad1Gain);
         ss >> m_CamCfgData->m_MetaData.DefaultGainLeft;
     }
 
-    if( 0 != infoStruct.Ad1Offset.compare("Not Set") )
+    if (0 != infoStruct.Ad1Offset.compare("Not Set"))
     {
-        std::stringstream ss( infoStruct.Ad1Offset );
+        std::stringstream ss(infoStruct.Ad1Offset);
         ss >> m_CamCfgData->m_MetaData.DefaultOffsetLeft;
     }
 
-    if( 0 != infoStruct.Ad2Gain.compare("Not Set") )
+    if (0 != infoStruct.Ad2Gain.compare("Not Set"))
     {
-        std::stringstream ss( infoStruct.Ad2Gain );
+        std::stringstream ss(infoStruct.Ad2Gain);
         ss >> m_CamCfgData->m_MetaData.DefaultGainRight;
     }
 
-    if( 0 != infoStruct.Ad2Offset.compare("Not Set") )
+    if (0 != infoStruct.Ad2Offset.compare("Not Set"))
     {
-        std::stringstream ss( infoStruct.Ad2Offset );
+        std::stringstream ss(infoStruct.Ad2Offset);
         ss >> m_CamCfgData->m_MetaData.DefaultOffsetRight;
     }
 
@@ -462,41 +462,41 @@ void Ascent::VerifyCamId()
 {
     const uint16_t id = m_CamIo->GetId();
 
-    if( id != m_Id )
+    if (id != m_Id)
     {
         std::stringstream msg;
         msg << "Error: Expected camera id of " << m_Id << ". Read from camera id of " << id;
-        apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-            __LINE__, Apg::ErrorType_Connection );
+        apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+            __LINE__, Apg::ErrorType_Connection);
     }
 }
 
 //////////////////////////// 
 //      FIX      IMG        FROM          CAMERA
-void Ascent::FixImgFromCamera( const std::vector<uint16_t> & data,
+void Ascent::FixImgFromCamera(const std::vector<uint16_t> & data,
                               std::vector<uint16_t> & out,  const int32_t rows, 
-                              const int32_t cols )
+                              const int32_t cols)
 {
     int32_t offset = 0; 
 
-    switch( m_CamCfgData->m_MetaData.NumAdOutputs )
+    switch(m_CamCfgData->m_MetaData.NumAdOutputs)
     {
         case 1:
             offset = m_CcdAcqSettings->GetPixelShift();
-            ImgFix::SingleOuputCopy( data, out, rows, cols, offset );
+            ImgFix::SingleOuputCopy(data, out, rows, cols, offset);
         break;
 
         case 2:
             offset = m_CcdAcqSettings->GetPixelShift() * 2;
-            ImgFix::DualOuputFix( data, out, rows, cols, offset );
+            ImgFix::DualOuputFix(data, out, rows, cols, offset);
         break;
 
         default:
         {
             std::stringstream msg;
             msg << "Invaild number of ad ouputs = " << m_CamCfgData->m_MetaData.NumAdOutputs;
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
@@ -504,35 +504,35 @@ void Ascent::FixImgFromCamera( const std::vector<uint16_t> & data,
 
 //////////////////////////// 
 //      START        EXPOSURE
-void Ascent::StartExposure( const double Duration, const bool IsLight )
+void Ascent::StartExposure(const double Duration, const bool IsLight)
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::StartExposure -> Duration = %d, Light -> %d", Duration, IsLight  );
+    apgHelper::DebugMsg("Ascent::StartExposure -> Duration = %d, Light -> %d", Duration, IsLight );
 #endif
 
     bool IssueReset = false;
 
-    if( m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES )
+    if (m_FirmwareVersion <= CamconFrmwr::ASC_BASED_BASIC_FEATURES)
     {
         IssueReset = true;
     }
 
      // if this is a dual read out camera make sure the columns
     // are centered
-    if( 2 == m_CamCfgData->m_MetaData.NumAdOutputs )
+    if (2 == m_CamCfgData->m_MetaData.NumAdOutputs)
     {
-        if( !AreColsCentered() )
+        if (!AreColsCentered())
         {
             std::stringstream msg;
             msg << "Colmns not centered on dual readout system: ";
             msg << "; start col = " << GetRoiStartCol();
             msg << "; # roi cols = " << GetRoiNumCols();
-            apgHelper::throwRuntimeException( m_fileName, msg.str(), 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, msg.str(), 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
     }
  
-    DefaultStartExposure( Duration, IsLight, IssueReset );
+    DefaultStartExposure(Duration, IsLight, IssueReset);
 }
 
 //////////////////////////// 
@@ -543,7 +543,7 @@ bool Ascent::AreColsCentered()
 
     const int32_t START_DIFF = GetRoiStartCol() - CENTER;
 
-    if( START_DIFF >= 0 )
+    if (START_DIFF >= 0)
     {
         return false;
     }
@@ -554,15 +554,15 @@ bool Ascent::AreColsCentered()
 
     const int32_t END_DIFF = CENTER - END_POS;
 
-    if( END_DIFF >= 0 )
+    if (END_DIFF >= 0)
     {
         return false;
     }
 
     // off by plus minus one ok because of odd column
     // rois
-    if( END_DIFF < (START_DIFF-1) || 
-        END_DIFF > (START_DIFF+1)  )
+    if (END_DIFF < (START_DIFF-1) || 
+        END_DIFF > (START_DIFF+1) )
     {
         return false;
     }
@@ -575,14 +575,14 @@ bool Ascent::AreColsCentered()
 void Ascent::ExposureAndGetImgRC(uint16_t & r, uint16_t & c)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "CamGen2Base::ExposureAndGetImgRC" );
+    apgHelper::DebugMsg("CamGen2Base::ExposureAndGetImgRC");
 #endif
 
     //detemine the exposure height
     r = m_CcdAcqSettings->GetRoiNumRows();
 
     //detemine the exposure width
-    if( 2 == m_CamCfgData->m_MetaData.NumAdOutputs )
+    if (2 == m_CamCfgData->m_MetaData.NumAdOutputs)
     {
         // if this is an odd number of cols, then we are actually
         // requesting 1 less column than desired, see how
@@ -607,7 +607,7 @@ void Ascent::ExposureAndGetImgRC(uint16_t & r, uint16_t & c)
 int32_t Ascent::GetNumAdChannels() 
 { 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::GetNumAdChannels" );
+    apgHelper::DebugMsg("Ascent::GetNumAdChannels");
 #endif
     return 1; 
 }  
@@ -619,22 +619,22 @@ int32_t Ascent::GetNumAdChannels()
 void Ascent::UpdateCamRegIfNeeded()
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::UpdateCamRegIfNeeded" );
+    apgHelper::DebugMsg("Ascent::UpdateCamRegIfNeeded");
 #endif
 
-    if( m_FirmwareVersion >  CamconFrmwr::ASC_BASED_BASIC_FEATURES )
+    if (m_FirmwareVersion >  CamconFrmwr::ASC_BASED_BASIC_FEATURES)
     {
         CamInfo::StrDb db = std::dynamic_pointer_cast<AscentBasedIo>(
             m_CamIo)->ReadStrDatabase();
 
-        if( 0 != db.Id.compare("Not Set") )
+        if (0 != db.Id.compare("Not Set"))
         {
             uint16_t id = 0;
-            std::stringstream ss( db.Id );
+            std::stringstream ss(db.Id);
             ss >> id;
 
-            m_CamIo->WriteReg( CameraRegs::ID_FROM_PROM,
-                m_Id );
+            m_CamIo->WriteReg(CameraRegs::ID_FROM_PROM,
+                m_Id);
         }
     }
 }
@@ -644,21 +644,21 @@ void Ascent::UpdateCamRegIfNeeded()
 void Ascent::SetIsInterlineBit()
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::SetIsInterlineBit" );
+    apgHelper::DebugMsg("Ascent::SetIsInterlineBit");
 #endif
 
-    if( m_FirmwareVersion >  CamconFrmwr::ASC_BASED_BASIC_FEATURES )
+    if (m_FirmwareVersion >  CamconFrmwr::ASC_BASED_BASIC_FEATURES)
     {
-        if( m_CamCfgData->m_MetaData.InterlineCCD )
+        if (m_CamCfgData->m_MetaData.InterlineCCD)
         {
             //set high this is an interline ccd
-            m_CamIo->ReadOrWriteReg( CameraRegs::OP_C,
+            m_CamIo->ReadOrWriteReg(CameraRegs::OP_C,
                 CameraRegs::OP_C_IS_INTERLINE_BIT);
         }
         else
         {
-             m_CamIo->ReadAndWriteReg( CameraRegs::OP_C,
-                 static_cast<uint16_t>(~CameraRegs::OP_C_IS_INTERLINE_BIT) );
+             m_CamIo->ReadAndWriteReg(CameraRegs::OP_C,
+                 static_cast<uint16_t>(~CameraRegs::OP_C_IS_INTERLINE_BIT));
         }
     }
     	
@@ -669,13 +669,13 @@ void Ascent::SetIsInterlineBit()
 void Ascent::SetIsAscentBit()
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::SetIsAscentBit" );
+    apgHelper::DebugMsg("Ascent::SetIsAscentBit");
 #endif
-    if( m_FirmwareVersion > CamconFrmwr::ASC_BASED_BASIC_FEATURES )
+    if (m_FirmwareVersion > CamconFrmwr::ASC_BASED_BASIC_FEATURES)
     {
         //set high this is an ascent camera
-        m_CamIo->ReadOrWriteReg( CameraRegs::OP_C,
-            CameraRegs::OP_C_IS_ASCENT_BIT );
+        m_CamIo->ReadOrWriteReg(CameraRegs::OP_C,
+            CameraRegs::OP_C_IS_ASCENT_BIT);
     }
 }
 
@@ -684,14 +684,14 @@ void Ascent::SetIsAscentBit()
 void Ascent::Init()
 {
  #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::Init" );
+    apgHelper::DebugMsg("Ascent::Init");
 #endif
     DefaultInit();
     SetIsInterlineBit();
     SetIsAscentBit();
 
     //single readout by default
-     SetDualReadout( false );
+     SetDualReadout(false);
 
     // for ascents without dip switch
     // write the id cam into the camera
@@ -702,8 +702,8 @@ void Ascent::Init()
 //      IS         DUAL      READOUT          SUPPORTED
 bool Ascent::IsDualReadoutSupported()
 {
-    if( m_FirmwareVersion > CamconFrmwr::ASC_BASED_BASIC_FEATURES &&
-        m_CamCfgData->m_MetaData.SupportsSingleDualReadoutSwitching )
+    if (m_FirmwareVersion > CamconFrmwr::ASC_BASED_BASIC_FEATURES &&
+        m_CamCfgData->m_MetaData.SupportsSingleDualReadoutSwitching)
     {
         return true;
     }
@@ -713,25 +713,25 @@ bool Ascent::IsDualReadoutSupported()
 
 //////////////////////////// 
 //      SET    DUAL       READOUT
-void Ascent::SetDualReadout( const bool TurnOn )
+void Ascent::SetDualReadout(const bool TurnOn)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::SetDualReadout -> TurnOn = %d", TurnOn);
+    apgHelper::DebugMsg("Ascent::SetDualReadout -> TurnOn = %d", TurnOn);
 #endif
 
     //exit if camera is already in the desired state
-    if( GetDualReadout() == TurnOn )
+    if (GetDualReadout() == TurnOn)
     {
         return;
     }
 
-    if( TurnOn )
+    if (TurnOn)
     {
-        if( !IsDualReadoutSupported() )
+        if (!IsDualReadoutSupported())
         {
-            apgHelper::throwRuntimeException( m_fileName, 
+            apgHelper::throwRuntimeException(m_fileName, 
                 "Dual read out not supported on this camera", 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         
         //set R12B3 high to turn on
@@ -743,8 +743,8 @@ void Ascent::SetDualReadout( const bool TurnOn )
     else
     {
         //set R12B3 low to turn off
-        m_CamIo->ReadMirrorAndWriteReg( CameraRegs::OP_D,
-            static_cast<uint16_t>(~CameraRegs::OP_D_DUALREADOUT_BIT) );
+        m_CamIo->ReadMirrorAndWriteReg(CameraRegs::OP_D,
+            static_cast<uint16_t>(~CameraRegs::OP_D_DUALREADOUT_BIT));
 
         m_CamCfgData->m_MetaData.NumAdOutputs = 1;
 
@@ -753,23 +753,23 @@ void Ascent::SetDualReadout( const bool TurnOn )
     // load the correct pattern files for dual or single mode
     // setting
     const Apg::AdcSpeed curSpeed = m_CcdAcqSettings->GetSpeed();
-    m_CcdAcqSettings->SetSpeed( curSpeed );
+    m_CcdAcqSettings->SetSpeed(curSpeed);
 }
 
 //////////////////////////// 
 //      GET        DUAL       READOUT
 bool Ascent::GetDualReadout()
 {
-    return( 2 == m_CamCfgData->m_MetaData.NumAdOutputs ? true : false );
+    return(2 == m_CamCfgData->m_MetaData.NumAdOutputs ? true : false);
 }
 
 //////////////////////////// 
 //  SET      FAN       MODE
-void Ascent::SetFanMode( const Apg::FanMode mode, const bool PreCondCheck )
+void Ascent::SetFanMode(const Apg::FanMode mode, const bool PreCondCheck)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::SetFanMode -> mode = %d, PreCondCheck =%d ", 
-        mode, PreCondCheck );
+    apgHelper::DebugMsg("Ascent::SetFanMode -> mode = %d, PreCondCheck =%d ", 
+        mode, PreCondCheck);
 #endif
     // no op on purpose, no fan control for ascent based cameras
     // just ignore request...
@@ -781,7 +781,7 @@ void Ascent::SetFanMode( const Apg::FanMode mode, const bool PreCondCheck )
 Apg::FanMode Ascent::GetFanMode()
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "Ascent::GetFanMode" );
+    apgHelper::DebugMsg("Ascent::GetFanMode");
 #endif
 
     // no fan control on ascent based cameras

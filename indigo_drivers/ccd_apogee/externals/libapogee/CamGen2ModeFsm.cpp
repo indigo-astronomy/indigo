@@ -21,7 +21,7 @@
 
 //////////////////////////// 
 // CTOR 
-CamGen2ModeFsm::CamGen2ModeFsm( std::shared_ptr<CameraIo> & io,
+CamGen2ModeFsm::CamGen2ModeFsm(std::shared_ptr<CameraIo> & io,
              std::shared_ptr<CApnCamData> & camData,
              uint16_t rev):
             ModeFsm(io, camData, rev),
@@ -40,9 +40,9 @@ CamGen2ModeFsm::~CamGen2ModeFsm()
 // IS      TDI      AVAILABLE 
 bool CamGen2ModeFsm::IsTdiAvailable()
 { // TODO - Ascents don't support this
-	if( IsInterlineCcd() )
+	if (IsInterlineCcd())
 	{
-        std::string vinfo = apgHelper::mkMsg( m_fileName, "Interline ccds do not support TDI mode.", __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, "Interline ccds do not support TDI mode.", __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
         return false;
 	}
@@ -54,9 +54,9 @@ bool CamGen2ModeFsm::IsTdiAvailable()
 // IS      KINETICS      AVAILABLE 
 bool CamGen2ModeFsm::IsKineticsAvailable()
 { // TODO - Ascents don't support this
-	if( IsInterlineCcd() )
+	if (IsInterlineCcd())
 	{
-        std::string vinfo = apgHelper::mkMsg( m_fileName, "Interline ccds do not support Kinetics mode.", __LINE__);
+        std::string vinfo = apgHelper::mkMsg(m_fileName, "Interline ccds do not support Kinetics mode.", __LINE__);
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"warn",vinfo);
         return false;
 	}
@@ -73,11 +73,11 @@ bool CamGen2ModeFsm::IsContinuousImagingAvailable()
 
 //////////////////////////// 
 // IS      EXTERNAL        TRIGGER       AVAILABLE
-bool CamGen2ModeFsm::IsExternalTriggerAvailable( const Apg::TriggerMode trigMode )
+bool CamGen2ModeFsm::IsExternalTriggerAvailable(const Apg::TriggerMode trigMode)
 {
     //No io port on HiC camera, so cannot set the triggers
     const uint16_t HIC_ID = 511;
-    return ( HIC_ID != m_CamData->m_MetaData.CameraId ? true : false );
+    return (HIC_ID != m_CamData->m_MetaData.CameraId ? true : false);
    
 
     /*
@@ -88,14 +88,14 @@ bool CamGen2ModeFsm::IsExternalTriggerAvailable( const Apg::TriggerMode trigMode
 
     //make sure tdi and kinetics are supported before
     //allowing the Apg::TriggerMode_TdiKinetics  trigger mode
-    if( Apg::TriggerMode_TdiKinetics == trigMode )
+    if (Apg::TriggerMode_TdiKinetics == trigMode)
     {
-        if( !IsTdiAvailable() )
+        if (!IsTdiAvailable())
         {
             result = false;
         }
         
-         if( !IsKineticsAvailable() )
+         if (!IsKineticsAvailable())
         {
             result = false;
         }
@@ -110,7 +110,7 @@ bool CamGen2ModeFsm::IsExternalTriggerAvailable( const Apg::TriggerMode trigMode
 bool CamGen2ModeFsm::IsTriggerNormEachOn()
 {
 
-    const uint16_t value = m_CamIo->ReadReg( CameraRegs::OP_C );
+    const uint16_t value = m_CamIo->ReadReg(CameraRegs::OP_C);
     return (value & CameraRegs::OP_C_IMAGE_TRIGGER_EACH_BIT ? true : false);
 }
         
@@ -118,14 +118,14 @@ bool CamGen2ModeFsm::IsTriggerNormEachOn()
 //  IS     TRIGGER   NORM    GROUP       ON
 bool CamGen2ModeFsm::IsTriggerNormGroupOn()
 {
-    const uint16_t value = m_CamIo->ReadReg( CameraRegs::OP_C );
+    const uint16_t value = m_CamIo->ReadReg(CameraRegs::OP_C);
     return (value & CameraRegs::OP_C_IMAGE_TRIGGER_GROUP_BIT ? true : false);
 }
 //////////////////////////// 
 //  IS     TRIGGER   TDIKIN    EACH     ON
 bool CamGen2ModeFsm::IsTriggerTdiKinEachOn()
 {
-    const uint16_t value = m_CamIo->ReadReg( CameraRegs::OP_C );
+    const uint16_t value = m_CamIo->ReadReg(CameraRegs::OP_C);
     return (value & CameraRegs::OP_C_TDI_TRIGGER_EACH_BIT ? true : false);
 }
 
@@ -133,7 +133,7 @@ bool CamGen2ModeFsm::IsTriggerTdiKinEachOn()
 //  IS     TRIGGER   TDIKIN    GROUP     ON
 bool CamGen2ModeFsm::IsTriggerTdiKinGroupOn()
 {
-    const uint16_t value = m_CamIo->ReadReg( CameraRegs::OP_C );
+    const uint16_t value = m_CamIo->ReadReg(CameraRegs::OP_C);
     return (value & CameraRegs::OP_C_TDI_TRIGGER_GROUP_BIT ? true : false);
 }
 
@@ -147,7 +147,7 @@ bool CamGen2ModeFsm::IsTriggerExternalShutterOn()
     uint16_t RegVal = m_CamIo->ReadMirrorReg(
         CameraRegs::OP_A);
 
-    return( (RegVal & CameraRegs::OP_A_SHUTTER_SOURCE_BIT) ?  true : false );
+    return((RegVal & CameraRegs::OP_A_SHUTTER_SOURCE_BIT) ?  true : false);
 }
 
 //////////////////////////// 
@@ -157,5 +157,5 @@ bool CamGen2ModeFsm::IsTriggerExternalReadoutOn()
     uint16_t RegVal = m_CamIo->ReadReg(
         CameraRegs::OP_A);
 
-    return( (RegVal & CameraRegs::OP_A_EXTERNAL_READOUT_BIT) ?  true : false );
+    return((RegVal & CameraRegs::OP_A_EXTERNAL_READOUT_BIT) ?  true : false);
 }

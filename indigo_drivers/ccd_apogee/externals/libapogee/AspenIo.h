@@ -17,7 +17,7 @@
 #include "CameraInfo.h" 
 #include <string>
 
-class DLL_EXPORT AspenIo : public CameraIo
+class AspenIo : public CameraIo
 { 
     public: 
         AspenIo(CamModel::InterfaceType type, 
@@ -36,13 +36,13 @@ class DLL_EXPORT AspenIo : public CameraIo
 
         std::string GetMacAddress();
 
-        void WriteStrDatabase( const CamInfo::StrDb & info );
+        void WriteStrDatabase(const CamInfo::StrDb & info);
         CamInfo::StrDb ReadStrDatabase();
 
-        void WriteNetDatabase( const CamInfo::NetDb & input );
+        void WriteNetDatabase(const CamInfo::NetDb & input);
         CamInfo::NetDb ReadNetDatabase();
 
-        std::vector<uint8_t> GetFlashBuffer( uint32_t StartAddr, uint32_t numBytes );
+        std::vector<uint8_t> GetFlashBuffer(uint32_t StartAddr, uint32_t numBytes);
 
         private:
             std::string m_fileName;

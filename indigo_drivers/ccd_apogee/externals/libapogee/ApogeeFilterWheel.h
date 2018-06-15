@@ -17,14 +17,15 @@
 #include <stdint.h>
 #include <string>
 
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
-
-#include "DefDllExport.h"
-
+#endif
 
 class FilterWheelIo;
 
-class DLL_EXPORT ApogeeFilterWheel
+class ApogeeFilterWheel
 { 
     public: 
          /*! */
@@ -74,8 +75,8 @@ class DLL_EXPORT ApogeeFilterWheel
          * \param [in] DeviceAddr specifies the address of the filter wheel on the USB buss
          * \exception std::runtime_error
          */
-        void Init( const ApogeeFilterWheel::Type type, 
-            const std::string & DeviceAddr );
+        void Init(const ApogeeFilterWheel::Type type, 
+            const std::string & DeviceAddr);
 
         /*! 
          * Closes the USB connection to the filter wheel
@@ -135,7 +136,7 @@ class DLL_EXPORT ApogeeFilterWheel
          * \param [in]  Position Desired position.  Valid range is 1 to GetMaxPositions()
          * \exception std::runtime_error
          */
-        void	SetPosition( uint16_t Position );
+        void	SetPosition(uint16_t Position);
 
         /*! 
          * Returns the current filter wheel position
@@ -144,14 +145,6 @@ class DLL_EXPORT ApogeeFilterWheel
         uint16_t GetPosition();
 
     protected:
-//this code removes vc++ compiler warning C4251
-//from http://www.unknownroad.com/rtfm/VisualStudio/warningC4251.html
-#ifdef WIN_OS
-#if _MSC_VER < 1600
-        template class DLL_EXPORT std::shared_ptr<FilterWheelIo>;
-#endif
-#endif
-
         std::shared_ptr<FilterWheelIo> m_Usb;
 
     private:

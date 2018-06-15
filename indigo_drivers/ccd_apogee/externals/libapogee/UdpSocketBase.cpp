@@ -14,18 +14,17 @@
 #include <sstream>
 #include <cstring> //for memset
 
-#if defined (WIN_OS)
-    #include "winsock2.h"
-#else
-    #include <netinet/in.h>
-    #include <sys/socket.h>
-    #include <sys/select.h>
-    #include <netdb.h>
-    #include <stdexcept>
-	const int32_t SOCKET_ERROR = -1;
-    const int32_t INVALID_SOCKET = -1;
+#ifdef __APPLE__
+#include <sys/select.h>
 #endif
 
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <stdexcept>
+
+const int32_t SOCKET_ERROR = -1;
+const int32_t INVALID_SOCKET = -1;
 
 namespace
 {
@@ -57,7 +56,7 @@ std::vector<std::string> UdpSocketBase::Search4ApogeeDevices(const std::string &
                                            const uint16_t portNum)
 {
 
-    CreateSocket( portNum );
+    CreateSocket(portNum);
 
     SetSocketOptions();
 
@@ -81,9 +80,9 @@ std::vector<std::string> UdpSocketBase::Search4ApogeeDevices(const std::string &
 //  CREATE  SOCKET
 void UdpSocketBase::CreateSocket(uint16_t portNum)
 {
-    m_SocketDescriptor = socket( AF_INET, SOCK_DGRAM, 0 );
+    m_SocketDescriptor = socket(AF_INET, SOCK_DGRAM, 0);
 
-    if( INVALID_SOCKET == m_SocketDescriptor )
+    if (INVALID_SOCKET == m_SocketDescriptor)
     {
         std::string errMsg("Failed to create a socket");
         apgHelper::throwRuntimeException(m_fileName, errMsg, 
@@ -93,15 +92,15 @@ void UdpSocketBase::CreateSocket(uint16_t portNum)
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
 	addr.sin_family	= AF_INET;
-	addr.sin_port	 = htons( portNum );
+	addr.sin_port	 = htons(portNum);
     //INADDR_ANY puts your IP address automatically 
 	addr.sin_addr.s_addr = INADDR_ANY;  
 
     //bind the socket to the input port number
     const int32_t result = bind(m_SocketDescriptor,reinterpret_cast<sockaddr *>(&addr),
-        sizeof(struct sockaddr) );
+        sizeof(struct sockaddr));
 
-    if(-1 == result )
+    if(-1 == result)
     {
         apgHelper::throwRuntimeException(m_fileName, "Binding socket failed", 
             __LINE__, Apg::ErrorType_Connection);
@@ -116,18 +115,18 @@ void UdpSocketBase::SetSocketOptions()
 	int32_t OptVal = 1;  
     const int32_t OptLen = sizeof(int32_t);
 
-    int32_t result = setsockopt( m_SocketDescriptor, 
+    int32_t result = setsockopt(m_SocketDescriptor, 
         SOL_SOCKET, SO_BROADCAST, 
         reinterpret_cast<char*>(&OptVal), OptLen);
 
-    if( result )
+    if (result)
 	{
         std::stringstream ss;
         ss << result;
 		
         std::string errMsg = "setsockopt failed with error " + ss.str();
         apgHelper::throwRuntimeException(m_fileName, errMsg, __LINE__,
-            Apg::ErrorType_Connection );
+            Apg::ErrorType_Connection);
 	}
 }
 
@@ -170,9 +169,9 @@ void UdpSocketBase::BroadcastMsg(const std::string & subnet,
             uint16_t portNum)
 {
 
-    struct hostent *he = gethostbyname( subnet.c_str() );
+    struct hostent *he = gethostbyname(subnet.c_str());
 
-    if( !he )
+    if (!he)
     {
         std::string errMsg = "Failed to create hostent structure";
         apgHelper::throwRuntimeException(m_fileName, errMsg, 
@@ -182,23 +181,23 @@ void UdpSocketBase::BroadcastMsg(const std::string & subnet,
     struct sockaddr_in servaddr;
     memset(&servaddr, 0, sizeof(servaddr));
 	servaddr.sin_family	= AF_INET;
-	servaddr.sin_port	= htons( portNum );
-	servaddr.sin_addr	= *(reinterpret_cast<in_addr *>(he->h_addr) );
+	servaddr.sin_port	= htons(portNum);
+	servaddr.sin_addr	= *(reinterpret_cast<in_addr *>(he->h_addr));
 
-    int32_t result = sendto( m_SocketDescriptor, m_udpPacket.c_str(), 
-        apgHelper::SizeT2Int32( m_udpPacket.size() ), 
+    int32_t result = sendto(m_SocketDescriptor, m_udpPacket.c_str(), 
+        apgHelper::SizeT2Int32(m_udpPacket.size()), 
         0, 
         reinterpret_cast<sockaddr *>(&servaddr), 
-        sizeof(servaddr) );
+        sizeof(servaddr));
 
-    if( SOCKET_ERROR == result ) 
+    if (SOCKET_ERROR == result) 
     {
         std::stringstream ss;
         ss << result;
 
         std::string errMsg = "sendto failed with error " + ss.str();
         apgHelper::throwRuntimeException(m_fileName, errMsg, 
-            __LINE__, Apg::ErrorType_Connection );
+            __LINE__, Apg::ErrorType_Connection);
     }
 }
 
@@ -215,8 +214,8 @@ std::vector<std::string> UdpSocketBase::GetReturnedMsgs()
     //wait for responses
     for(m_elapsedSec = 0; m_elapsedSec < m_timeout; ++m_elapsedSec)
    {
-        FD_ZERO( &rset );
-		FD_SET( m_SocketDescriptor, &rset );
+        FD_ZERO(&rset);
+		FD_SET(m_SocketDescriptor, &rset);
 
 		//LT: putting this here, because it appears that
 		//the structure is getting set to zero after the first
@@ -224,9 +223,9 @@ std::vector<std::string> UdpSocketBase::GetReturnedMsgs()
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 
-        int32_t result = select( m_SocketDescriptor + 1, &rset, 0, 0, &tv );
+     int32_t result = select(m_SocketDescriptor + 1, &rset, 0, 0, &tv);
         
-    	if( SOCKET_ERROR == result ) 
+    	if (SOCKET_ERROR == result) 
 		{
            std::stringstream ss;
            ss << result;
@@ -240,9 +239,9 @@ std::vector<std::string> UdpSocketBase::GetReturnedMsgs()
         // return of > 0 total number of socket handles 
         // that are ready and contained in fd_set
         // there is data so lets go fectch it
-        if( result > 0 )
+        if (result > 0)
         {
-            returnedStrs.push_back( FetchMsgFromSocket() );
+            returnedStrs.push_back(FetchMsgFromSocket());
         }
 
     }
@@ -259,18 +258,18 @@ std::string UdpSocketBase::FetchMsgFromSocket()
 
     int32_t value = recvfrom(m_SocketDescriptor, 
         &(*returnedMsg.begin()), 
-        apgHelper::SizeT2Int32( returnedMsg.size() ), 
+        apgHelper::SizeT2Int32(returnedMsg.size()), 
         0, 
         0,
         0);
 
-    if( SOCKET_ERROR == value ) 
+    if (SOCKET_ERROR == value) 
     {
         std::string errMsg = "recvfrom socket operation failed";
         apgHelper::throwRuntimeException(m_fileName, errMsg, 
-            __LINE__, Apg::ErrorType_Connection );
+            __LINE__, Apg::ErrorType_Connection);
     }
 
-    std::string msg( &(*returnedMsg.begin()) );
+    std::string msg(&(*returnedMsg.begin()));
     return msg;
 }

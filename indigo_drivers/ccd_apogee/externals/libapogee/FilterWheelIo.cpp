@@ -16,11 +16,7 @@
 #include "ApnUsbSys.h"
 #include "helpers.h" 
 
-#ifdef WIN_OS
-   #include "GenTwoWinUSB.h" 
-#else
-    #include "linux/GenOneLinuxUSB.h"
-#endif
+#include "linux/GenOneLinuxUSB.h"
 
 #include <cstring>  //for memset
 
@@ -1290,14 +1286,10 @@ namespace
 
 //////////////////////////// 
 // CTOR 
-FilterWheelIo::FilterWheelIo( const std::string & DeviceAddr ) : m_fileName( __FILE__)
+FilterWheelIo::FilterWheelIo(const std::string & DeviceAddr) : m_fileName(__FILE__)
 { 
-    const uint16_t deviceNum = help::Str2uShort( DeviceAddr );
-    #ifdef WIN_OS
-        m_Usb =  std::shared_ptr<IUsb>(new GenTwoWinUSB( deviceNum ) );
-#else
-        m_Usb =  std::shared_ptr<IUsb>(new GenOneLinuxUSB( deviceNum ) );
-#endif
+    const uint16_t deviceNum = help::Str2uShort(DeviceAddr);
+        m_Usb =  std::shared_ptr<IUsb>(new GenOneLinuxUSB(deviceNum ));
 
 } 
 
@@ -1313,26 +1305,26 @@ FilterWheelIo::~FilterWheelIo()
 void FilterWheelIo::DownloadFirmware()
 {
     std::vector<UsbFrmwr::IntelHexRec> frmwr = 
-        UsbFrmwr::MakeRecVect( firmware );
+        UsbFrmwr::MakeRecVect(firmware);
 
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         FILTERWHEEL_EEPROM_MAX_BLOCKS,
-        FILTERWHEEL_EEPROM_MAX_BANKS );
+        FILTERWHEEL_EEPROM_MAX_BANKS);
 
-    pf.FirmwareDownload( frmwr );
+    pf.FirmwareDownload(frmwr);
 }
 
 //////////////////////////// 
 //      PROGRAM    
-void FilterWheelIo::Program( const std::string & FilenameFx2, const std::string & FilenameDescriptor)
+void FilterWheelIo::Program(const std::string & FilenameFx2, const std::string & FilenameDescriptor)
 {
     //STEP 1
     //download usb firmware if we have to
     uint16_t Vid  = 0; 
     uint16_t Pid = 0;
     uint16_t Did = 0;
-    m_Usb->GetVendorInfo( Vid, Pid, Did );
-    if ( UsbFrmwr::CYPRESS_VID == Vid )
+    m_Usb->GetVendorInfo(Vid, Pid, Did);
+    if (UsbFrmwr::CYPRESS_VID == Vid)
 	{
         DownloadFirmware();
     }
@@ -1340,34 +1332,34 @@ void FilterWheelIo::Program( const std::string & FilenameFx2, const std::string 
     //STEP 2
     // initialize prom header information
 	Eeprom::Header hdr;
-    memset(&hdr, 0, sizeof( hdr ) );
-    hdr.Size = sizeof( hdr );
+    memset(&hdr, 0, sizeof(hdr ));
+    hdr.Size = sizeof(hdr);
     hdr.Version = Eeprom::HEADER_VERSION;
 
     //STEP 3
     //download the fx2
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         FILTERWHEEL_EEPROM_MAX_BLOCKS,
-        FILTERWHEEL_EEPROM_MAX_BANKS );
+        FILTERWHEEL_EEPROM_MAX_BANKS);
 
     uint32_t DownloadSize = 0;
-    pf.WriteFile2Eeprom( FilenameFx2, FX2_PROM_BANK,
-        FX2_PROM_BLOCK, FX2_PROM_ADDR, DownloadSize );
+    pf.WriteFile2Eeprom(FilenameFx2, FX2_PROM_BANK,
+        FX2_PROM_BLOCK, FX2_PROM_ADDR, DownloadSize);
 
     hdr.Fields |= Eeprom::HEADER_BOOTROM_VALID_BIT;
 
     //STEP 4
     //download usb descriptors
-    pf.WriteFile2Eeprom( FilenameDescriptor, DSCR_PROM_BANK,
-        DSCR_PROM_BLOCK, DSCR_PROM_ADDR, DownloadSize );
+    pf.WriteFile2Eeprom(FilenameDescriptor, DSCR_PROM_BANK,
+        DSCR_PROM_BLOCK, DSCR_PROM_ADDR, DownloadSize);
 
      hdr.Fields |= Eeprom::HEADER_DESCRIPTOR_VALID_BIT;
 
     //STEP 5
     //write the header
-    hdr.CheckSum = Eeprom::CalcHdrCheckSum( hdr );
+    hdr.CheckSum = Eeprom::CalcHdrCheckSum(hdr);
 
-    pf.WriteEepromHdr( hdr, HEADER_PROM_BANK,
+    pf.WriteEepromHdr(hdr, HEADER_PROM_BANK,
         HEADER_PROM_BLOCK, HEADER_PROM_ADDR);
 }
 
@@ -1377,7 +1369,7 @@ uint16_t FilterWheelIo::GetVendorId()
 {
     uint16_t VendorId = 0, ProductId = 0, DeviceId = 0;
 
-    m_Usb->GetVendorInfo( VendorId, ProductId, DeviceId );
+    m_Usb->GetVendorInfo(VendorId, ProductId, DeviceId);
 
     return VendorId;
 }
@@ -1388,7 +1380,7 @@ uint16_t FilterWheelIo::GetProductId()
 {
     uint16_t VendorId = 0, ProductId = 0, DeviceId = 0;
 
-    m_Usb->GetVendorInfo( VendorId, ProductId, DeviceId );
+    m_Usb->GetVendorInfo(VendorId, ProductId, DeviceId);
 
     return ProductId;
 }
@@ -1399,7 +1391,7 @@ uint16_t FilterWheelIo::GetDeviceId()
 {
     uint16_t VendorId = 0, ProductId = 0, DeviceId = 0;
 
-    m_Usb->GetVendorInfo( VendorId, ProductId, DeviceId );
+    m_Usb->GetVendorInfo(VendorId, ProductId, DeviceId);
 
     return DeviceId;
 }
@@ -1410,40 +1402,40 @@ std::string FilterWheelIo::GetUsbFirmwareRev()
 {
      std::vector<char> data(UsbFrmwr::REV_LENGTH+1, 0);
 
-     m_Usb->GetUsbFirmwareVersion( reinterpret_cast<int8_t*>(&data.at(0)), UsbFrmwr::REV_LENGTH );
+     m_Usb->GetUsbFirmwareVersion(reinterpret_cast<int8_t*>(&data.at(0)), UsbFrmwr::REV_LENGTH);
 
-    std::string version( &data.at(0) );
+    std::string version(&data.at(0));
 
     return version;
 }
 
 //////////////////////////// 
 //          READ      CTRL      PORT
-void FilterWheelIo::ReadCtrlPort( uint8_t & control, uint8_t & pin )
+void FilterWheelIo::ReadCtrlPort(uint8_t & control, uint8_t & pin)
 {
     uint16_t value = 0;
 
-    m_Usb->UsbRequestIn( VND_APOGEE_CONTROL_PORT,
+    m_Usb->UsbRequestIn(VND_APOGEE_CONTROL_PORT,
 					                       0,
 					                       USB_CTRL_PORT_VALUE,
                                             reinterpret_cast<uint8_t*>(&value),
-                                           sizeof(uint16_t) );
+                                           sizeof(uint16_t));
 
-    pin = help::GetHighByte( value );
-    control = help::GetLowByte( value );
+    pin = help::GetHighByte(value);
+    control = help::GetLowByte(value);
 }
 
 
 //////////////////////////// 
 //      WRITE     CTRL      PORT
-void FilterWheelIo::WriteCtrlPort( const uint8_t control, const uint8_t pin )
+void FilterWheelIo::WriteCtrlPort(const uint8_t control, const uint8_t pin)
 {
-	uint16_t value = static_cast<uint16_t>( ( pin << 8 ) | control );
+	uint16_t value = static_cast<uint16_t>( (pin << 8) | control);
 
-	 m_Usb->UsbRequestOut( VND_APOGEE_CONTROL_PORT,
+	 m_Usb->UsbRequestOut(VND_APOGEE_CONTROL_PORT,
 								               0,
 								               USB_CTRL_PORT_VALUE,
                                                reinterpret_cast<uint8_t*>(&value),
-                                               sizeof(uint16_t) );
+                                               sizeof(uint16_t));
 
  }

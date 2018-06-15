@@ -122,7 +122,7 @@ class PlatformData
                      const uint16_t CoolerDriveMax,
                      const double CoolerDriveOffset,
                      const double CoolerDriveDivisor
-                     );
+                    );
 
              
 

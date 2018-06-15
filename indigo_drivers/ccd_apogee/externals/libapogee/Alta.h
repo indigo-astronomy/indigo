@@ -18,54 +18,54 @@
 #include "ApogeeCam.h" 
 
 
-class DLL_EXPORT Alta : public ApogeeCam
+class Alta : public ApogeeCam
 { 
     public: 
         Alta();
 
         virtual ~Alta(); 
 
-        void OpenConnection( const std::string & ioType,
+        void OpenConnection(const std::string & ioType,
              const std::string & DeviceAddr,
              const uint16_t FirmwareRev,
-             const uint16_t Id );
+             const uint16_t Id);
 
         void CloseConnection();
 
         void Init();
 
-        void StartExposure( double Duration, bool IsLight );
+        void StartExposure(double Duration, bool IsLight);
 
         CameraStatusRegs GetStatus();
         Apg::Status GetImagingStatus();
       
-        void GetImage( std::vector<uint16_t> & out );
+        void GetImage(std::vector<uint16_t> & out);
 
-        void StopExposure( bool Digitize );
+        void StopExposure(bool Digitize);
 
         uint32_t GetAvailableMemory();
 
         /*! 
          * Sets the analog to digital converter gain value for the 12 bit ADC.
          * \param [in] gain The new gain value. 0-1023 is a valid range.
-         * Calling ApogeeCam::SetAdcGain( gain, 1, 0 ) is equivalent to this function
+         * Calling ApogeeCam::SetAdcGain(gain, 1, 0) is equivalent to this function
          * and is recommended for use.
          * \exception std::runtime_error
          */
-        void SetCcdAdc12BitGain( uint16_t gain );
+        void SetCcdAdc12BitGain(uint16_t gain);
 
          /*! 
          * Sets the analog to digital converter offset vaule for the 12 bit ADC.
          * \param [in] gain The new offset value. 0-255 is a valid range. 
-         * Calling ApogeeCam::SetAdcOffset( offset, 1, 0 ) is equivalent to this function
+         * Calling ApogeeCam::SetAdcOffset(offset, 1, 0) is equivalent to this function
          * and is recommended for use.
          * \exception std::runtime_error
          */
-        void SetCcdAdc12BitOffset( uint16_t offset );    
+        void SetCcdAdc12BitOffset(uint16_t offset);    
 
         /*! 
          * Returns the analog to digital converter gain value for the 12 bit ADC.
-         * Calling ApogeeCam::GetAdcGain( 1, 0 ) is equivalent to this function
+         * Calling ApogeeCam::GetAdcGain(1, 0) is equivalent to this function
          * and is recommended for use.
          * \exception std::runtime_error
          */
@@ -73,7 +73,7 @@ class DLL_EXPORT Alta : public ApogeeCam
 
          /*! 
          * Returns the analog to digital converter offset value for the 12 bit ADC.
-         * Calling ApogeeCam::GetAdcOffset( 1, 0 ) is equivalent to this function
+         * Calling ApogeeCam::GetAdcOffset(1, 0) is equivalent to this function
          * and is recommended for use.
          * \exception std::runtime_error
          */
@@ -81,7 +81,7 @@ class DLL_EXPORT Alta : public ApogeeCam
 
         /*! 
          * Returns the analog to digital converter gain value for the 16 bit ADC.
-         * Calling ApogeeCam::GetAdcOffset( 0, 0 ) is equivalent to this function
+         * Calling ApogeeCam::GetAdcOffset(0, 0) is equivalent to this function
          * and is recommended for use.
          * \exception std::runtime_error
          */
@@ -96,7 +96,7 @@ class DLL_EXPORT Alta : public ApogeeCam
          *
          * \exception std::runtime_error
          */
-        void SetFanMode( Apg::FanMode mode, bool PreCondCheck = true );
+        void SetFanMode(Apg::FanMode mode, bool PreCondCheck = true);
 
         /*! 
          *
@@ -120,14 +120,14 @@ class DLL_EXPORT Alta : public ApogeeCam
         * \param [in] PortId port A = 0, port B = 1
         * \exception std::runtime_error
         */
-        void OpenSerial( uint16_t PortId );
+        void OpenSerial(uint16_t PortId);
 
        /*! 
         * Closes the connection to serial port on the AltaU/E camera
         * \param [in] PortId port A = 0, port B = 1
         * \exception std::runtime_error
         */
-        void CloseSerial( uint16_t PortId );
+        void CloseSerial(uint16_t PortId);
 
         /*! 
         * Sets the serial port's baud rate
@@ -136,7 +136,7 @@ class DLL_EXPORT Alta : public ApogeeCam
         * \exception std::runtime_error
         */
 
-        void SetSerialBaudRate( uint16_t PortId , uint32_t BaudRate );
+        void SetSerialBaudRate(uint16_t PortId , uint32_t BaudRate);
 
        /*! 
         * Returns the serial port's baud rate
@@ -144,7 +144,7 @@ class DLL_EXPORT Alta : public ApogeeCam
         * \return baud rate
         * \exception std::runtime_error
         */
-        uint32_t GetSerialBaudRate(  uint16_t PortId  );
+        uint32_t GetSerialBaudRate( uint16_t PortId );
 
        /*! 
         * Returns serial port's flow control type
@@ -152,7 +152,7 @@ class DLL_EXPORT Alta : public ApogeeCam
         * \return current flow control type
         * \exception std::runtime_error
         */
-        Apg::SerialFC GetSerialFlowControl( uint16_t PortId );
+        Apg::SerialFC GetSerialFlowControl(uint16_t PortId);
 
        /*! 
         * Sets serial port's flow control type
@@ -160,8 +160,8 @@ class DLL_EXPORT Alta : public ApogeeCam
         * \param [in] FlowControl flow control type to set
         * \exception std::runtime_error
         */
-        void SetSerialFlowControl( uint16_t PortId, 
-            Apg::SerialFC FlowControl );
+        void SetSerialFlowControl(uint16_t PortId, 
+            Apg::SerialFC FlowControl);
 
        /*! 
         * Get serial port's parity
@@ -169,7 +169,7 @@ class DLL_EXPORT Alta : public ApogeeCam
         * \return  Input port's current parity type to set
         * \exception std::runtime_error
         */
-        Apg::SerialParity GetSerialParity( uint16_t PortId );
+        Apg::SerialParity GetSerialParity(uint16_t PortId);
         
        /*! 
         * Sets serial port's parity
@@ -177,14 +177,14 @@ class DLL_EXPORT Alta : public ApogeeCam
         * \param [in]  Parity  parity type to set
         * \exception std::runtime_error
         */
-        void SetSerialParity( uint16_t PortId, Apg::SerialParity Parity );
+        void SetSerialParity(uint16_t PortId, Apg::SerialParity Parity);
         
        /*!
         * Read data from the camera's serial port
         * \param [in] PortId port A = 0, port B = 1
         * \exception std::runtime_error
         */
-        std::string ReadSerial( uint16_t PortId );
+        std::string ReadSerial(uint16_t PortId);
         
        /*!
         * Data to sent out of the camera's serial port
@@ -192,7 +192,7 @@ class DLL_EXPORT Alta : public ApogeeCam
         * \parm[in] buffer data to send out of the serial port
         * \exception std::runtime_error
         */
-        void WriteSerial( uint16_t PortId, const std::string & buffer );
+        void WriteSerial(uint16_t PortId, const std::string & buffer);
 
     protected:
         Alta(const std::string & ioType,
@@ -205,20 +205,20 @@ class DLL_EXPORT Alta : public ApogeeCam
         void CreateCamIo(const std::string & ioType,
             const std::string & DeviceAddr);
 
-        void FixImgFromCamera( const std::vector<uint16_t> & data,
+        void FixImgFromCamera(const std::vector<uint16_t> & data,
             std::vector<uint16_t> & out,  int32_t rows, int32_t cols);
 
     private:
         
         void VerifyCamId();
-        void CfgCamFromId( uint16_t CameraId );
+        void CfgCamFromId(uint16_t CameraId);
         uint16_t GetPixelShift();
 
         void Init12BitCcdAdc();
-        void StopExposureImageReady( bool Digitize );
-        void StopExposureModeTdiKinetics( bool Digitize );
+        void StopExposureImageReady(bool Digitize);
+        void StopExposureModeTdiKinetics(bool Digitize);
         
-        bool IsSerialPortOpen( uint16_t PortId );
+        bool IsSerialPortOpen(uint16_t PortId);
         const std::string m_fileName;
 
 

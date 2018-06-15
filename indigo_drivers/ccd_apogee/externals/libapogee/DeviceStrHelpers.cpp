@@ -15,20 +15,20 @@
 
 //----------------------------------------------
 //      GET    DEVICE       VECT
-std::vector<std::string> DeviceStr::GetVect( std::string data )
+std::vector<std::string> DeviceStr::GetVect(std::string data)
 {
-    std::string pattern( "<d>(.*?)</d>" );
-    std::regex re( pattern );
-    std::sregex_iterator m1( data.begin(), data.end(), re );
+    std::string pattern("<d>(.*?)</d>");
+    std::regex re(pattern);
+    std::sregex_iterator m1(data.begin(), data.end(), re);
     std::sregex_iterator m2;
 
     std::sregex_iterator iter;
     std::vector<std::string> matchStrs;
     for(iter = m1; iter != m2; ++iter)
     {
-        if( (*iter)[1].str().size() )
+        if ((*iter)[1].str().size())
         {
-            matchStrs.push_back( (*iter)[1].str() ); 
+            matchStrs.push_back((*iter)[1].str()); 
         }
     }
 
@@ -37,19 +37,19 @@ std::vector<std::string> DeviceStr::GetVect( std::string data )
 
 //----------------------------------------------
 //      GET    CAMERAS       VECT
-std::vector<std::string> DeviceStr::GetCameras( std::string data  )
+std::vector<std::string> DeviceStr::GetCameras(std::string data )
 {
-    std::vector<std::string> devices = DeviceStr::GetVect( data );
+    std::vector<std::string> devices = DeviceStr::GetVect(data);
 
     std::vector<std::string>::iterator iter;
     std::vector<std::string> cameras;
     std::string c("camera");
-    for( iter = devices.begin(); iter != devices.end(); ++iter )
+    for(iter = devices.begin(); iter != devices.end(); ++iter)
     {
-        std::string type =  DeviceStr::GetType( (*iter) );
-        if( 0 == type.compare( c ) )
+        std::string type =  DeviceStr::GetType((*iter));
+        if (0 == type.compare(c ))
         {
-            cameras.push_back( (*iter) );
+            cameras.push_back((*iter));
         }
     }
 
@@ -58,32 +58,32 @@ std::vector<std::string> DeviceStr::GetCameras( std::string data  )
 
 //----------------------------------------------
 //      GET    DEVICE   TYPE
-std::string DeviceStr::GetType( const std::string & data )
+std::string DeviceStr::GetType(const std::string & data)
 {
-    return help::GetItemFromFindStr( data, "deviceType=" );
+    return help::GetItemFromFindStr(data, "deviceType=");
 }
 
 //----------------------------------------------
 //      GET    DEVICE   NAME
-std::string DeviceStr::GetName( const std::string & data )
+std::string DeviceStr::GetName(const std::string & data)
 {
-    return help::GetItemFromFindStr( data, "model=" );
+    return help::GetItemFromFindStr(data, "model=");
 }
 
 //----------------------------------------------
 //      GET    DEVICE  ADDR (id 1)
-std::string DeviceStr::GetAddr( const std::string & data )
+std::string DeviceStr::GetAddr(const std::string & data)
 {
-    return help::GetItemFromFindStr( data, "address=" );
+    return help::GetItemFromFindStr(data, "address=");
 }
 
 //----------------------------------------------
 //      GET    DEVICE     PORT (id 2)
-std::string DeviceStr::GetPort( const std::string & data )
+std::string DeviceStr::GetPort(const std::string & data)
 {
-      std::string port = help::GetItemFromFindStr( data, "port=" );
+      std::string port = help::GetItemFromFindStr(data, "port=");
 
-        if( port.size() )
+        if (port.size())
         {
             return port;    
         }
@@ -95,15 +95,15 @@ std::string DeviceStr::GetPort( const std::string & data )
 
 //----------------------------------------------
 //      GET    DEVICE       INTERFACE
-std::string DeviceStr::GetInterface( const std::string & data )
+std::string DeviceStr::GetInterface(const std::string & data)
 {
-    return help::GetItemFromFindStr( data, "interface=" );
+    return help::GetItemFromFindStr(data, "interface=");
 }
 
 //----------------------------------------------
 //      GET    FW       VER
-uint16_t DLL_EXPORT DeviceStr::GetFwVer( const std::string & data )
+uint16_t DeviceStr::GetFwVer(const std::string & data)
 {
-    std::string fwVerStr = help::GetItemFromFindStr( data, "firmwareRev=" );
-    return help::Str2uShort( fwVerStr, true);
+    std::string fwVerStr = help::GetItemFromFindStr(data, "firmwareRev=");
+    return help::Str2uShort(fwVerStr, true);
 }

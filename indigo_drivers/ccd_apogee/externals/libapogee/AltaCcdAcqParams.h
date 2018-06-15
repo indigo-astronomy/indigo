@@ -27,9 +27,9 @@ class AltaCcdAcqParams : public CcdAcqParams
 
         void Init();
 
-       void SetResolution( Apg::Resolution res );
+       void SetResolution(Apg::Resolution res);
 
-        void SetSpeed( Apg::AdcSpeed speed );
+        void SetSpeed(Apg::AdcSpeed speed);
 
         void Set12BitGain(uint16_t gain);
 
@@ -43,10 +43,10 @@ class AltaCcdAcqParams : public CcdAcqParams
 
         bool IsAdsSimModeOn();
 
-        void SetAdcGain( uint16_t gain, int32_t ad, int32_t channel );
-        uint16_t GetAdcGain( int32_t ad, int32_t channel );
-        void SetAdcOffset( uint16_t offset, int32_t ad, int32_t channel );
-        uint16_t GetAdcOffset( int32_t ad, int32_t channel );
+        void SetAdcGain(uint16_t gain, int32_t ad, int32_t channel);
+        uint16_t GetAdcGain(int32_t ad, int32_t channel);
+        void SetAdcOffset(uint16_t offset, int32_t ad, int32_t channel);
+        uint16_t GetAdcOffset(int32_t ad, int32_t channel);
         uint16_t GetPixelShift();
 
     protected:
@@ -56,12 +56,12 @@ class AltaCcdAcqParams : public CcdAcqParams
         uint16_t GetCcdImgBinCols() { return m_NumCols2Bin;}
         uint16_t GetTotalCcdCols();
         uint16_t CalcHPostRoiSkip(uint16_t HPreRoiSkip,
-            uint16_t UnbinnedRoiCols );
-        bool IsColCalcGood( uint16_t UnbinnedRoiCols, uint16_t PreRoiSkip, 
+            uint16_t UnbinnedRoiCols);
+        bool IsColCalcGood(uint16_t UnbinnedRoiCols, uint16_t PreRoiSkip, 
             uint16_t PostRoiSkip);
 
-        CamCfg::APN_HPATTERN_FILE GetHPattern( Apg::AdcSpeed speed,
-            CcdAcqParams::HPatternType ptype );
+        CamCfg::APN_HPATTERN_FILE GetHPattern(Apg::AdcSpeed speed,
+            CcdAcqParams::HPatternType ptype);
 
     private:
         std::string m_fileName;

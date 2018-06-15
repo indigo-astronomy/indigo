@@ -54,13 +54,13 @@ namespace
         return result;
     }
 
-    FwInfo GetInfo( const ApogeeFilterWheel::Type type )
+    FwInfo GetInfo(const ApogeeFilterWheel::Type type)
     {
         std::map<ApogeeFilterWheel::Type, FwInfo> filterMap = GetInfoMap();
         std::map<ApogeeFilterWheel::Type, FwInfo>::iterator iter =
-                    filterMap.find( type);
+                    filterMap.find(type);
 
-        if( iter != filterMap.end() )
+        if (iter != filterMap.end())
         {
                 return (*iter).second;
         }
@@ -72,8 +72,8 @@ namespace
 
 //////////////////////////// 
 // CTOR 
-ApogeeFilterWheel::ApogeeFilterWheel() : m_type( ApogeeFilterWheel::UNKNOWN_TYPE ),
-                                           m_connected( false )
+ApogeeFilterWheel::ApogeeFilterWheel() : m_type(ApogeeFilterWheel::UNKNOWN_TYPE),
+                                           m_connected(false)
 { 
 
 } 
@@ -87,36 +87,36 @@ ApogeeFilterWheel::~ApogeeFilterWheel()
 
 //////////////////////////// 
 //      INIT
-void ApogeeFilterWheel::Init( const ApogeeFilterWheel::Type type, 
-            const std::string & DeviceAddr )
+void ApogeeFilterWheel::Init(const ApogeeFilterWheel::Type type, 
+            const std::string & DeviceAddr)
 {
-    if( ApogeeFilterWheel::UNKNOWN_TYPE == type )
+    if (ApogeeFilterWheel::UNKNOWN_TYPE == type)
     {
-        apgHelper::throwRuntimeException( __FILE__, 
+        apgHelper::throwRuntimeException(__FILE__, 
             "Invalid input filter wheel type", __LINE__,
-            Apg::ErrorType_InvalidUsage );
+            Apg::ErrorType_InvalidUsage);
     }
 
-    m_Usb =  std::shared_ptr<FilterWheelIo>(new FilterWheelIo( DeviceAddr ) );
+    m_Usb =  std::shared_ptr<FilterWheelIo>(new FilterWheelIo(DeviceAddr ));
     m_type = type;
     m_connected = true;
 
     std::stringstream msg;
     msg << "Successfully connected to filter wheel " << m_type << " at address " << DeviceAddr.c_str();
 
-    ApgLogger::Instance().Write( ApgLogger::LEVEL_RELEASE,"info",msg.str() ); 
+    ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",msg.str()); 
 }
 
 //////////////////////////// 
 //    CLOSE
 void ApogeeFilterWheel::Close()
 {
-    if( IsConnected() )
+    if (IsConnected())
     {
         std::stringstream msg;
         msg << "Closing connection to filter wheel " << m_type;
 
-        ApgLogger::Instance().Write( ApgLogger::LEVEL_RELEASE,"info",msg.str() ); 
+        ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",msg.str()); 
 
         m_Usb.reset();
         m_connected = false;
@@ -156,7 +156,7 @@ std::string ApogeeFilterWheel::GetUsbFirmwareRev()
 //          GET    TYPE       NAME
 std::string	ApogeeFilterWheel::GetName()
 {
-    FwInfo info = GetInfo( m_type );
+    FwInfo info = GetInfo(m_type);
     return info.name;
 }
 
@@ -164,7 +164,7 @@ std::string	ApogeeFilterWheel::GetName()
 //          GET    MAX     POSITIONS
 uint16_t ApogeeFilterWheel::GetMaxPositions()
 {
-    FwInfo info = GetInfo( m_type );
+    FwInfo info = GetInfo(m_type);
     return info.maxPositions;
 }
 
@@ -172,41 +172,41 @@ uint16_t ApogeeFilterWheel::GetMaxPositions()
 //          GET     STATUS
 ApogeeFilterWheel::Status ApogeeFilterWheel::GetStatus()
 {
-    if( !IsConnected() )
+    if (!IsConnected())
     {
         return ApogeeFilterWheel::NOT_CONNECTED;
     }
 
     uint8_t control = 0, pin = 0;
-    m_Usb->ReadCtrlPort( control, pin );
+    m_Usb->ReadCtrlPort(control, pin);
 
     const uint8_t ACTIVE_MASK = 0x01;
 
-    return(  (pin & ACTIVE_MASK) ? ApogeeFilterWheel::ACTIVE : ApogeeFilterWheel::READY );
+    return( (pin & ACTIVE_MASK) ? ApogeeFilterWheel::ACTIVE : ApogeeFilterWheel::READY);
 }
 
 //////////////////////////// 
 //      SET     POSITION
-void	ApogeeFilterWheel::SetPosition( const uint16_t Position )
+void	ApogeeFilterWheel::SetPosition(const uint16_t Position)
 {
-    if( Position < 1 ) 
+    if (Position < 1) 
 	{
-		apgHelper::throwRuntimeException( __FILE__, 
+		apgHelper::throwRuntimeException(__FILE__, 
             "Cannot set filter to position 0", __LINE__,
-            Apg::ErrorType_InvalidUsage );
+            Apg::ErrorType_InvalidUsage);
 	}
 
-    if( Position > GetMaxPositions() ) 
+    if (Position > GetMaxPositions()) 
 	{
-		apgHelper::throwRuntimeException( __FILE__, 
+		apgHelper::throwRuntimeException(__FILE__, 
             "Input filter position greater than max positions available", 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+            __LINE__, Apg::ErrorType_InvalidUsage);
 	}
 
     // hardware is zero-based
     // ui is one based that is why there is a minus 1
-    const uint8_t control = help::GetLowByte( Position ) - 1;
-    m_Usb->WriteCtrlPort( control, 0 );
+    const uint8_t control = help::GetLowByte(Position) - 1;
+    m_Usb->WriteCtrlPort(control, 0);
 }
 
 //////////////////////////// 
@@ -214,7 +214,7 @@ void	ApogeeFilterWheel::SetPosition( const uint16_t Position )
 uint16_t ApogeeFilterWheel::GetPosition()
 {
      uint8_t control = 0, pin = 0;
-    m_Usb->ReadCtrlPort( control, pin );
+    m_Usb->ReadCtrlPort(control, pin);
 
      // hardware is zero-based
      // ui is one based that is why there is a plus 1

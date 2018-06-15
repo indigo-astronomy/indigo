@@ -16,21 +16,21 @@
 #include "CamGen2Base.h" 
 #include <string>
 
-class DLL_EXPORT Aspen : public CamGen2Base
+class Aspen : public CamGen2Base
 { 
     public: 
         Aspen();
 
         virtual ~Aspen(); 
 
-        void OpenConnection( const std::string & ioType,
+        void OpenConnection(const std::string & ioType,
              const std::string & DeviceAddr,
              const uint16_t FirmwareRev,
-             const uint16_t Id );
+             const uint16_t Id);
 
         void CloseConnection();
 
-        void StartExposure( double Duration, bool IsLight );
+        void StartExposure(double Duration, bool IsLight);
 
         int32_t GetNumAdChannels();
 
@@ -46,7 +46,7 @@ class DLL_EXPORT Aspen : public CamGen2Base
         void Init();
 
         Apg::FanMode GetFanMode();
-        void SetFanMode( Apg::FanMode mode, bool PreCondCheck = true );
+        void SetFanMode(Apg::FanMode mode, bool PreCondCheck = true);
 
         /*! 
          * Returns true if dual readout is support on this
@@ -63,7 +63,7 @@ class DLL_EXPORT Aspen : public CamGen2Base
          *  \param [in] TurnOn true to activate, false to deactivate (single readout mode)
          * \exception std::runtime_error
          */
-         void SetDualReadout( bool TurnOn );
+         void SetDualReadout(bool TurnOn);
 
          /*! 
          * \return true if dual readout is on, false if it is off (single readout mode)
@@ -74,8 +74,8 @@ class DLL_EXPORT Aspen : public CamGen2Base
         Aspen(const std::string & ioType,
              const std::string & DeviceAddr);
 
-        void FixImgFromCamera( const std::vector<uint16_t> & data,
-            std::vector<uint16_t> & out,  int32_t rows, int32_t cols );
+        void FixImgFromCamera(const std::vector<uint16_t> & data,
+            std::vector<uint16_t> & out,  int32_t rows, int32_t cols);
 
         void CreateCamIo(const std::string & ioType,
             const std::string & DeviceAddr);
@@ -86,7 +86,7 @@ class DLL_EXPORT Aspen : public CamGen2Base
 
         void VerifyCamId();
 
-        void CfgCamFromId( uint16_t CameraId );
+        void CfgCamFromId(uint16_t CameraId);
 
         void WriteId2CamReg();
 

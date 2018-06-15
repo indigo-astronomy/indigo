@@ -14,7 +14,7 @@
 
 //////////////////////////// 
 //      CLEAR
-void CamCfg::Clear( CamCfg::APN_CAMERA_METADATA & data )
+void CamCfg::Clear(CamCfg::APN_CAMERA_METADATA & data)
 {
     data.Sensor.clear();
     data.CameraId = ID_NO_OP;
@@ -81,7 +81,7 @@ void CamCfg::Clear( CamCfg::APN_CAMERA_METADATA & data )
 
 //////////////////////////// 
 //      CLEAR
-void CamCfg::Clear( CamCfg::APN_VPATTERN_FILE & data )
+void CamCfg::Clear(CamCfg::APN_VPATTERN_FILE & data)
 {
     data.Mask = 0;
     data.PatternData.clear();
@@ -89,7 +89,7 @@ void CamCfg::Clear( CamCfg::APN_VPATTERN_FILE & data )
 
 //////////////////////////// 
 //      CLEAR
-void CamCfg::Clear( CamCfg::APN_HPATTERN_FILE & data )
+void CamCfg::Clear(CamCfg::APN_HPATTERN_FILE & data)
 {
     data.Mask = 0;
     data.RefPatternData.clear();
@@ -103,7 +103,7 @@ CamCfg::ApnAdType CamCfg::ConvertInt2ApnAdType(const int32_t value)
 {
     CamCfg::ApnAdType result = CamCfg::ApnAdType_None;
 
-    switch( value )
+    switch(value)
     {
         case 0:
             result = ApnAdType_None;
@@ -125,7 +125,7 @@ CamCfg::ApnAdType CamCfg::ConvertInt2ApnAdType(const int32_t value)
         {
             std::stringstream msg;
             msg << __FILE__ << "(" << __LINE__ << "):Undefine ApnAdType: " << value;
-            std::runtime_error except( msg.str() );
+            std::runtime_error except(msg.str());
             throw except;
         }
         break;
@@ -136,24 +136,24 @@ CamCfg::ApnAdType CamCfg::ConvertInt2ApnAdType(const int32_t value)
 
 //////////////////////////// 
 //  APN    AD    TYPE      2      STR
-std::string CamCfg::ApnAdType2Str( const CamCfg::ApnAdType in )
+std::string CamCfg::ApnAdType2Str(const CamCfg::ApnAdType in)
 {
-    switch( in )
+    switch(in)
     {
-        case( CamCfg::ApnAdType_None ):
+        case(CamCfg::ApnAdType_None):
         default:
             return "CamCfg::ApnAdType_None";
         break;
 
-        case( CamCfg::ApnAdType_Alta_Sixteen ):
+        case(CamCfg::ApnAdType_Alta_Sixteen):
             return "CamCfg::ApnAdType_Alta_Sixteen";
         break;
 
-        case( CamCfg::ApnAdType_Alta_Twelve ):
+        case(CamCfg::ApnAdType_Alta_Twelve):
             return "CamCfg::ApnAdType_Alta_Twelve";
         break;
 
-        case( CamCfg::ApnAdType_Ascent_Sixteen ):
+        case(CamCfg::ApnAdType_Ascent_Sixteen):
             return "CamCfg::ApnAdType_Ascent_Sixteen";
         break;   
     }

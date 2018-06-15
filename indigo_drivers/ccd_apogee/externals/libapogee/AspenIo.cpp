@@ -19,33 +19,33 @@
 
 //////////////////////////// 
 // CTOR 
-AspenIo::AspenIo( CamModel::InterfaceType type, 
-               const std::string & deviceAddr ) :
-                CameraIo( type ),
-                m_fileName( __FILE__ )
+AspenIo::AspenIo(CamModel::InterfaceType type, 
+               const std::string & deviceAddr) :
+                CameraIo(type),
+                m_fileName(__FILE__)
 { 
 
      //log that we are trying to connect
     std::string msg = "Try to connection to device " + deviceAddr;
     ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"info",
-      apgHelper::mkMsg ( m_fileName, msg, __LINE__) ); 
+      apgHelper::mkMsg (m_fileName, msg, __LINE__)); 
 
      //create the camera interface
-    switch( m_type )
+    switch(m_type)
     {
         case CamModel::ETHERNET:
-              m_Interface = std::shared_ptr<ICamIo>( new AspenEthernetIo( deviceAddr ) );
+              m_Interface = std::shared_ptr<ICamIo>(new AspenEthernetIo(deviceAddr ));
         break;
 
         case CamModel::USB:
-            m_Interface = std::shared_ptr<ICamIo>( new AspenUsbIo( deviceAddr ) );
+            m_Interface = std::shared_ptr<ICamIo>(new AspenUsbIo(deviceAddr ));
         break;
 
         default:
         {
             std::string errStr("Undefined camera interface type");
-            apgHelper::throwRuntimeException( m_fileName, errStr, 
-                __LINE__, Apg::ErrorType_InvalidUsage );
+            apgHelper::throwRuntimeException(m_fileName, errStr, 
+                __LINE__, Apg::ErrorType_InvalidUsage);
         }
         break;
     }
@@ -66,16 +66,16 @@ void AspenIo::Program(const std::string & FilenameFpga,
             const std::string & FilenameWebPage, const std::string & FilenameWebServer,
             const std::string & FilenameWebCfg, bool Print2StdOut)
 {
-    if( CamModel::ETHERNET == m_type )
+    if (CamModel::ETHERNET == m_type)
     {
          std::string errStr("cannot program camera via ethernet");
-        apgHelper::throwRuntimeException( m_fileName, errStr, 
-         __LINE__, Apg::ErrorType_InvalidOperation );
+        apgHelper::throwRuntimeException(m_fileName, errStr, 
+         __LINE__, Apg::ErrorType_InvalidOperation);
     }
 
       std::dynamic_pointer_cast<AspenUsbIo>(m_Interface)->Program(
           FilenameFpga, FilenameFx2, FilenameDescriptor, FilenameWebPage,
-          FilenameWebServer, FilenameWebCfg, Print2StdOut );
+          FilenameWebServer, FilenameWebCfg, Print2StdOut);
 }
 
 //////////////////////////// 
@@ -83,7 +83,7 @@ void AspenIo::Program(const std::string & FilenameFpga,
 uint16_t AspenIo::GetId()
 {
     const uint16_t rawId = GetIdFromReg();
-    return( rawId & CamModel::GEN2_CAMERA_ID_MASK );
+    return(rawId & CamModel::GEN2_CAMERA_ID_MASK);
 }
 
 //////////////////////////// 
@@ -92,10 +92,10 @@ uint16_t AspenIo::GetIdFromStrDB()
 {
     CamInfo::StrDb db = ReadStrDatabase();
     
-    if( 0 != db.Id.compare("Not Set") )
+    if (0 != db.Id.compare("Not Set"))
     {
             uint16_t id = 0;
-            std::stringstream ss( db.Id );
+            std::stringstream ss(db.Id);
             ss >> id;
             return id;
     }
@@ -107,34 +107,34 @@ uint16_t AspenIo::GetIdFromStrDB()
 // GET   MAC   ADDRESS
 std::string AspenIo::GetMacAddress()
 {
-    if( CamModel::ETHERNET != m_type )
+    if (CamModel::ETHERNET != m_type)
     {
          std::string errStr("cannot read mac address via usb");
-        apgHelper::throwRuntimeException( m_fileName, errStr, 
-         __LINE__, Apg::ErrorType_InvalidOperation );
+        apgHelper::throwRuntimeException(m_fileName, errStr, 
+         __LINE__, Apg::ErrorType_InvalidOperation);
     }
 
     std::string result;
     std::dynamic_pointer_cast<AspenEthernetIo>(
-            m_Interface)->GetMacAddress( result );
+            m_Interface)->GetMacAddress(result);
 
     return result;
 }
 
 //////////////////////////// 
 //      WRITE        STR         DATA      BASE
-void AspenIo::WriteStrDatabase( const CamInfo::StrDb & info )
+void AspenIo::WriteStrDatabase(const CamInfo::StrDb & info)
 {
-    if( CamModel::ETHERNET == m_type )
+    if (CamModel::ETHERNET == m_type)
     {
          std::string errStr("cannot write string db via ethernet");
-        apgHelper::throwRuntimeException( m_fileName, errStr, 
-         __LINE__, Apg::ErrorType_InvalidOperation );
+        apgHelper::throwRuntimeException(m_fileName, errStr, 
+         __LINE__, Apg::ErrorType_InvalidOperation);
     }
 
     std::dynamic_pointer_cast<AspenUsbIo>(
-        m_Interface)->WriteStrDatabase( 
-         CamInfo::MkStrVectFromStrDb( info )  );
+        m_Interface)->WriteStrDatabase(
+         CamInfo::MkStrVectFromStrDb(info) );
 }
 
 //////////////////////////// 
@@ -143,7 +143,7 @@ CamInfo::StrDb AspenIo::ReadStrDatabase()
 {
      std::vector<std::string> result;
      
-    if( CamModel::ETHERNET == m_type )
+    if (CamModel::ETHERNET == m_type)
     {
         result = std::dynamic_pointer_cast<AspenEthernetIo>(
            m_Interface)->ReadStrDatabase();
@@ -154,21 +154,21 @@ CamInfo::StrDb AspenIo::ReadStrDatabase()
            m_Interface)->ReadStrDatabase();
     }
 
-     return(  CamInfo::MkStrDbFromStrVect( result ) );
+     return( CamInfo::MkStrDbFromStrVect(result ));
 }
 
 
- std::vector<uint8_t>  AspenIo::GetFlashBuffer( const uint32_t StartAddr, const uint32_t numBytes )
+ std::vector<uint8_t>  AspenIo::GetFlashBuffer(const uint32_t StartAddr, const uint32_t numBytes)
  {
-      if( CamModel::ETHERNET == m_type )
+      if (CamModel::ETHERNET == m_type)
     {
          std::string errStr("cannot read flash ethernet");
-        apgHelper::throwRuntimeException( m_fileName, errStr, 
-         __LINE__, Apg::ErrorType_InvalidOperation );
+        apgHelper::throwRuntimeException(m_fileName, errStr, 
+         __LINE__, Apg::ErrorType_InvalidOperation);
     }
 
     return std::dynamic_pointer_cast<AspenUsbIo>(
-        m_Interface)->GetFlashBuffer( StartAddr, numBytes );
+        m_Interface)->GetFlashBuffer(StartAddr, numBytes);
  }
  
 //////////////////////////// 
@@ -177,11 +177,11 @@ CamInfo::NetDb AspenIo::ReadNetDatabase()
 {
      CamInfo::NetDb result;
      
-    if( CamModel::ETHERNET == m_type )
+    if (CamModel::ETHERNET == m_type)
     { // this can be done, but has not been implemented yet.
          std::string errStr("cannot write net db via ethernet");
-        apgHelper::throwRuntimeException( m_fileName, errStr, 
-         __LINE__, Apg::ErrorType_InvalidOperation );
+        apgHelper::throwRuntimeException(m_fileName, errStr, 
+         __LINE__, Apg::ErrorType_InvalidOperation);
     }
 
     result = std::dynamic_pointer_cast<AspenUsbIo>(
@@ -192,15 +192,15 @@ CamInfo::NetDb AspenIo::ReadNetDatabase()
 
 //////////////////////////// 
 //      WRITE        NET         DATA      BASE
-void AspenIo::WriteNetDatabase( const CamInfo::NetDb & input )
+void AspenIo::WriteNetDatabase(const CamInfo::NetDb & input)
 {
-    if( CamModel::ETHERNET == m_type )
+    if (CamModel::ETHERNET == m_type)
     { // this can be done, but has not been implemented yet.
          std::string errStr("cannot write net db via ethernet");
-        apgHelper::throwRuntimeException( m_fileName, errStr, 
-         __LINE__, Apg::ErrorType_InvalidOperation );
+        apgHelper::throwRuntimeException(m_fileName, errStr, 
+         __LINE__, Apg::ErrorType_InvalidOperation);
     }
 
     std::dynamic_pointer_cast<AspenUsbIo>(
-        m_Interface)->WriteNetDatabase( input );
+        m_Interface)->WriteNetDatabase(input);
 }

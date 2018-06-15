@@ -16,11 +16,10 @@
 
 #include <string>
 #include <stdint.h>
-#include "DefDllExport.h"
 
 class UdpSocketBase;
 
-class DLL_EXPORT FindDeviceEthernet 
+class FindDeviceEthernet 
 { 
     public: 
 
@@ -53,12 +52,12 @@ class DLL_EXPORT FindDeviceEthernet
         int32_t GetTimeout();
     private:
         std::string MakeDeviceStr(const std::string & input);
-        void GetId( const std::string & input, std::string & id );
-        void GetFirmwareRev( const std::string & input, std::string & firmwareRev );
-        void GetIpAddr( const std::string & input, std::string & ipAddr );
-        void GetPort( const std::string & input, std::string & port );
-        void GetMacAddr( const std::string & input, std::string & mac );
-        void GetInterfaceStatus( const std::string & input, std::string & interfaceStatus );
+        void GetId(const std::string & input, std::string & id);
+        void GetFirmwareRev(const std::string & input, std::string & firmwareRev);
+        void GetIpAddr(const std::string & input, std::string & ipAddr);
+        void GetPort(const std::string & input, std::string & port);
+        void GetMacAddr(const std::string & input, std::string & mac);
+        void GetInterfaceStatus(const std::string & input, std::string & interfaceStatus);
         std::string CameraInfo(const std::string & rawIdStr, 
                                            const std::string & frmwRevStr);
 

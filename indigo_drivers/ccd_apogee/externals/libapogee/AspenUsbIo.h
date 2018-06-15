@@ -19,7 +19,7 @@
 class AspenUsbIo : public CamUsbIo
 { 
     public: 
-        AspenUsbIo( const std::string & DeviceEnum );
+        AspenUsbIo(const std::string & DeviceEnum);
         virtual ~AspenUsbIo(); 
 
          void Program(const std::string & FilenameFpga,
@@ -33,18 +33,18 @@ class AspenUsbIo : public CamUsbIo
             const std::string & FilenameWebCfg, const std::vector<uint8_t> & StrDb,
             bool Print2StdOut=false);
 
-        void ReadHeader( Eeprom::Header & hdr );
+        void ReadHeader(Eeprom::Header & hdr);
 
         void SetSerialNumber(const std::string & num);
         std::string GetSerialNumber();
 
-        void WriteStrDatabase( const std::vector<std::string> & info );
+        void WriteStrDatabase(const std::vector<std::string> & info);
         std::vector<std::string> ReadStrDatabase();
 
-        void WriteNetDatabase( const CamInfo::NetDb & input );
+        void WriteNetDatabase(const CamInfo::NetDb & input);
         CamInfo::NetDb ReadNetDatabase();
 
-        std::vector<uint8_t> GetFlashBuffer( uint32_t StartAddr, uint32_t numBytes );
+        std::vector<uint8_t> GetFlashBuffer(uint32_t StartAddr, uint32_t numBytes);
 
         private:
             void EraseEntireFlash();

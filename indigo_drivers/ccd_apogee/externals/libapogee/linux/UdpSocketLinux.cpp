@@ -37,6 +37,6 @@ UdpSocketLinux::~UdpSocketLinux()
 // CLOSE    SOCKET 
 void UdpSocketLinux::CloseSocket()
 {
-    close( m_SocketDescriptor );
+    close(m_SocketDescriptor);
     m_SocketDescriptor = INVALID_SOCKET;
 }

@@ -37,14 +37,14 @@ class CamGen2CcdAcqParams : public CcdAcqParams
 
         void Init();
 
-      void SetResolution( Apg::Resolution res );
+      void SetResolution(Apg::Resolution res);
 
-        void SetSpeed( Apg::AdcSpeed speed );
+        void SetSpeed(Apg::AdcSpeed speed);
 
-        void SetAdcGain( uint16_t gain, int32_t ad, int32_t channel );
-        uint16_t GetAdcGain( int32_t ad, int32_t channel );
-        void SetAdcOffset( uint16_t offset, int32_t ad, int32_t channel );
-        uint16_t GetAdcOffset( int32_t ad, int32_t channel );
+        void SetAdcGain(uint16_t gain, int32_t ad, int32_t channel);
+        uint16_t GetAdcGain(int32_t ad, int32_t channel);
+        void SetAdcOffset(uint16_t offset, int32_t ad, int32_t channel);
+        uint16_t GetAdcOffset(int32_t ad, int32_t channel);
 
        bool IsAdsSimModeOn();
        uint16_t GetPixelShift();
@@ -58,12 +58,12 @@ class CamGen2CcdAcqParams : public CcdAcqParams
         uint16_t GetCcdImgBinCols();
         uint16_t GetTotalCcdCols();
         uint16_t CalcHPostRoiSkip(uint16_t HPreRoiSkip,
-            uint16_t UnbinnedRoiCols );
-        bool IsColCalcGood( uint16_t UnbinnedRoiCols, uint16_t PreRoiSkip, 
+            uint16_t UnbinnedRoiCols);
+        bool IsColCalcGood(uint16_t UnbinnedRoiCols, uint16_t PreRoiSkip, 
             uint16_t PostRoiSkip);
         
-        CamCfg::APN_HPATTERN_FILE GetHPattern( Apg::AdcSpeed speed,
-            CcdAcqParams::HPatternType ptype );
+        CamCfg::APN_HPATTERN_FILE GetHPattern(Apg::AdcSpeed speed,
+            CcdAcqParams::HPatternType ptype);
 
     private:
         std::string m_fileName;
@@ -71,16 +71,16 @@ class CamGen2CcdAcqParams : public CcdAcqParams
         std::map< std::pair<int32_t, int32_t>, 
             CamGen2CcdAcqParams::AdcParams > m_adcParamMap;
 
-        CamGen2CcdAcqParams::AdcParams GetAdcParams( int32_t ad, int32_t channel );
-        void SetAdcParams( int32_t ad, int32_t channel, 
-            const CamGen2CcdAcqParams::AdcParams & params );
+        CamGen2CcdAcqParams::AdcParams GetAdcParams(int32_t ad, int32_t channel);
+        void SetAdcParams(int32_t ad, int32_t channel, 
+            const CamGen2CcdAcqParams::AdcParams & params);
 
-        void SetAdcCfgAndMux( int32_t ad, int32_t channel );
+        void SetAdcCfgAndMux(int32_t ad, int32_t channel);
        
-        void Write2AdcReg( uint16_t value2Write );
+        void Write2AdcReg(uint16_t value2Write);
 
-        uint16_t SelectAd( int32_t ad, int32_t channel );
-        void RestoreAdSelect( const uint16_t value );
+        uint16_t SelectAd(int32_t ad, int32_t channel);
+        void RestoreAdSelect(const uint16_t value);
 
         
         //disabling the copy ctor and assignment operator

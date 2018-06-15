@@ -305,8 +305,8 @@ namespace Eeprom
     const uint16_t HEADER_DESCRIPTOR_VALID_BIT = 0x100;
 
 
-    uint8_t CalcHdrCheckSum( const Eeprom::Header & hdr );
-    bool VerifyHdrCheckSum( const Eeprom::Header & hdr );
+    uint8_t CalcHdrCheckSum(const Eeprom::Header & hdr);
+    bool VerifyHdrCheckSum(const Eeprom::Header & hdr);
 }
 
 namespace CamStrDb
@@ -314,8 +314,8 @@ namespace CamStrDb
     const size_t MAX_STR_DB_BYTES = 8192;
     const size_t MAX_NUM_STR = 256;
     const size_t MAX_STR_SIZE = 256;
-    std::vector<uint8_t> PackStrings( const std::vector<std::string> & info );
-    std::vector<std::string> UnpackStrings( const std::vector<uint8_t> & data );
+    std::vector<uint8_t> PackStrings(const std::vector<std::string> & info);
+    std::vector<std::string> UnpackStrings(const std::vector<uint8_t> & data);
 }
 
 namespace CamconFrmwr

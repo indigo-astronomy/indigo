@@ -19,7 +19,11 @@
 #include <map>
 #include <stdint.h>
 
+#ifdef __linux__
+#include <tr1/memory>
+#else
 #include <memory>
+#endif
 
 class CameraIo;
 class CApnCamData;
@@ -29,31 +33,31 @@ class ModeFsm
     public: 
     
 
-        ModeFsm( std::shared_ptr<CameraIo> & io,
+        ModeFsm(std::shared_ptr<CameraIo> & io,
              std::shared_ptr<CApnCamData> & camData,
              uint16_t rev);
         virtual ~ModeFsm();
 
         Apg::CameraMode GetMode() { return m_mode; }
-        void SetMode( Apg::CameraMode newMode );
+        void SetMode(Apg::CameraMode newMode);
 
-        void SetBulkDownload( bool TurnOn );
+        void SetBulkDownload(bool TurnOn);
         bool IsBulkDownloadOn() { return m_IsBulkDownloadOn; }
 
-        void SetPipelineDownload( bool TurnOn );
+        void SetPipelineDownload(bool TurnOn);
         bool IsPipelineDownloadOn() { return m_IsPipelineDownloadOn; }
 
-        void SetExternalTrigger( bool TurnOn, Apg::TriggerMode trigMode,
+        void SetExternalTrigger(bool TurnOn, Apg::TriggerMode trigMode,
             Apg::TriggerType trigType);
 
         std::vector< std::pair<Apg::TriggerMode,Apg::TriggerType> > GetTrigsThatAreOn();
 
-        void SetFastSequence( bool TurnOn );
+        void SetFastSequence(bool TurnOn);
         bool IsFastSequenceOn();
 
-        void UpdateApnCamData( std::shared_ptr<CApnCamData> & newCamData );
+        void UpdateApnCamData(std::shared_ptr<CApnCamData> & newCamData);
 
-        void SetTdiRows( uint16_t rows );
+        void SetTdiRows(uint16_t rows);
         uint16_t GetTdiRows() { return m_TdiRows; }
 
         // ****** PURE VIRTUAL INTERFACE ********
@@ -69,13 +73,13 @@ class ModeFsm
 
     protected:
 
-         bool IsModeValid( Apg::CameraMode newMode );
+         bool IsModeValid(Apg::CameraMode newMode);
          void ExitOldMode();
 
-        void EnterNewMode( Apg::CameraMode newMode );
-        uint16_t GetNormTrigMask( 
+        void EnterNewMode(Apg::CameraMode newMode);
+        uint16_t GetNormTrigMask(
             Apg::TriggerType trigType);
-        uint16_t GetTdiKinTrigMask( 
+        uint16_t GetTdiKinTrigMask(
             Apg::TriggerType trigType);
         void TurnTrigOn(uint16_t mask);
         void TurnTrigOff(uint16_t mask);
@@ -84,21 +88,21 @@ class ModeFsm
         void DisableIoPortBit();
         bool IsInterlineCcd();
 
-        void SetNormTdiKinTriggers( bool TurnOn, 
+        void SetNormTdiKinTriggers(bool TurnOn, 
                                  Apg::TriggerMode trigMode,
                                  Apg::TriggerType trigType);
 
-        void SetShutterTrigger( bool TurnOn );
-        void SetReadoutIoTrigger( bool TurnOn );
+        void SetShutterTrigger(bool TurnOn);
+        void SetReadoutIoTrigger(bool TurnOn);
 
-        void SetNormTrigger( const bool TurnOn, 
+        void SetNormTrigger(const bool TurnOn, 
                                  const Apg::TriggerType trigType);
 
-        void SetTdiKinTrigger( const bool TurnOn, 
+        void SetTdiKinTrigger(const bool TurnOn, 
                                  const Apg::TriggerType trigType);
 
          // ****** PURE VIRTUAL INTERFACE ********
-        virtual bool IsExternalTriggerAvailable( Apg::TriggerMode trigMode ) = 0;
+        virtual bool IsExternalTriggerAvailable(Apg::TriggerMode trigMode) = 0;
 
         Apg::CameraMode m_mode;
         std::shared_ptr<CameraIo> m_CamIo;

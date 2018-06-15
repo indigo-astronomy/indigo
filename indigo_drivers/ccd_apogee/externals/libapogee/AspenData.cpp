@@ -79,7 +79,7 @@ namespace
 
 ////////////////////////////                            
 // CTOR                                                 
-AspenData::AspenData() : PlatformData(                
+AspenData::AspenData() : PlatformData(               
                                     APN_HBINNING_MAX_ASPEN,      
                                     APN_VBINNING_MAX_ASPEN,      
                                     APN_TIMER_RESOLUTION_ASPEN,

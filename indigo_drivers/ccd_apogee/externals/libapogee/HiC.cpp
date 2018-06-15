@@ -23,10 +23,10 @@
 //////////////////////////// 
 // CTOR 
 HiC::HiC() : Quad(),
-                    m_fileName( __FILE__ )
+                    m_fileName(__FILE__)
 
 {
-    SetPixelReorder( false );
+    SetPixelReorder(false);
     m_PlatformType = CamModel::HIC;
 } 
 
@@ -40,7 +40,7 @@ HiC::~HiC()
 //      SET     SERIAL       NUMBER
 void HiC::SetSerialNumber(const std::string & num)
 {
-    m_CamIo->SetSerialNumber( num );
+    m_CamIo->SetSerialNumber(num);
 }
 
 //////////////////////////// 
@@ -53,18 +53,18 @@ CamInfo::StrDb HiC::GetCamInfo()
        
 //////////////////////////// 
 //  SET        CAM        INFO 
-void HiC::SetCamInfo( CamInfo::StrDb & info )
+void HiC::SetCamInfo(CamInfo::StrDb & info)
 {
 	std::dynamic_pointer_cast<AscentBasedIo>(
-        m_CamIo)->WriteStrDatabase( info );
+        m_CamIo)->WriteStrDatabase(info);
 }
 
 //////////////////////////// 
 //      GET    4K        BY       4K        IMAGE
-void HiC::Get4kby4kImage( std::vector<uint16_t> & out )
+void HiC::Get4kby4kImage(std::vector<uint16_t> & out)
 {
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "HiC::Get4kby4kImage -> BEGIN" );
+    apgHelper::DebugMsg("HiC::Get4kby4kImage -> BEGIN");
 #endif
 
     ApgLogger::Instance().Write(ApgLogger::LEVEL_DEBUG,"info","Getting Image.");
@@ -72,13 +72,13 @@ void HiC::Get4kby4kImage( std::vector<uint16_t> & out )
     //pre-condition make sure the image is ready
     Apg::Status actualStatus = Apg::Status_Idle;
 
-    if( !CheckAndWaitForStatus( Apg::Status_ImageReady, actualStatus ) )
+    if (!CheckAndWaitForStatus(Apg::Status_ImageReady, actualStatus ))
     {
         std::stringstream msg;
         msg << "Invalid imaging status, " << actualStatus;
         msg << ", for getting image data.";
         apgHelper::throwRuntimeException(m_fileName, msg.str(), 
-            __LINE__, Apg::ErrorType_InvalidMode );
+            __LINE__, Apg::ErrorType_InvalidMode);
     }
 
 
@@ -89,36 +89,36 @@ void HiC::Get4kby4kImage( std::vector<uint16_t> & out )
     // to fetch from the camera into the user supplied
     // vector
     uint16_t r=0, c= 0;
-    ExposureAndGetImgRC( r, c );
+    ExposureAndGetImgRC(r, c);
     const uint16_t z = GetImageZ();
-    std::vector<uint16_t>  datafromCam( r*c*z );
+    std::vector<uint16_t>  datafromCam(r*c*z);
 
     const int32_t dataLen = GetRoiNumRows()*z;
     const int32_t numCols = GetRoiNumCols();
     
     try
     {
-        m_CamIo->GetImageData( datafromCam );
+        m_CamIo->GetImageData(datafromCam);
     }
-    catch(std::exception & err )
+    catch(std::exception & err)
     {
         m_ImageInProgress = false;
         // logging and at a minimum removing the AD garbage pixels at the end of every row
-        std::string msg( "Removing AD latency pixels in exception handler" );
+        std::string msg("Removing AD latency pixels in exception handler");
         ApgLogger::Instance().Write(ApgLogger::LEVEL_RELEASE,"error",
-        apgHelper::mkMsg( m_fileName, msg, __LINE__) );
+        apgHelper::mkMsg(m_fileName, msg, __LINE__));
 
-        FixImgFromCamera( datafromCam, out, dataLen, numCols );
+        FixImgFromCamera(datafromCam, out, dataLen, numCols);
         throw;
     }
         
     ++m_NumImgsDownloaded;
 
-    if( IsBulkDownloadOn() )
+    if (IsBulkDownloadOn())
     {
         m_ImageInProgress = false;
     }
-    else if( GetImageCount() == m_NumImgsDownloaded )
+    else if (GetImageCount() == m_NumImgsDownloaded)
     {
         m_ImageInProgress = false;
     }
@@ -126,10 +126,10 @@ void HiC::Get4kby4kImage( std::vector<uint16_t> & out )
     // at a minimum removing the AD garbage pixels at the end of every row
     const uint16_t HIC_ROWS = 4096;
     const uint16_t HIC_COLS = 4096;
-    if( HIC_ROWS*HIC_COLS != out.size() )
+    if (HIC_ROWS*HIC_COLS != out.size())
     {
         out.clear();
-        out.resize( HIC_ROWS*HIC_COLS );
+        out.resize(HIC_ROWS*HIC_COLS);
     }
 
     // first see if the buffer from the camera is a good size
@@ -142,45 +142,45 @@ void HiC::Get4kby4kImage( std::vector<uint16_t> & out )
     const int32_t LATENCY_PIXELS =  c - numCols;
 
     // if the data from the camera is bigger than the
-    if( datafromCam.size() > out.size() )
+    if (datafromCam.size() > out.size())
     {
         // TODO - copy some data into the output buffer
         // before throw
         std::stringstream msg;
         msg << "Invalid buffer size from camera " << datafromCam.size();
         apgHelper::throwRuntimeException(m_fileName, msg.str(), 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
 
     // if the number of columns is not 4096
-    if( HIC_COLS != numCols )
+    if (HIC_COLS != numCols)
     {
         // TODO - copy some data into the output buffer 
         // before throw
         std::stringstream msg;
         msg << "Invalid number of columns " << numCols;
         apgHelper::throwRuntimeException(m_fileName, msg.str(), 
-            __LINE__, Apg::ErrorType_InvalidUsage );
+            __LINE__, Apg::ErrorType_InvalidUsage);
     }
 
     //we are good.  now deal with the data
     const int32_t OUTPUT_OFFSET =  
-    ( (m_CamCfgData->m_MetaData.ImagingRows - r) / 2 ) * numCols;
+    ((m_CamCfgData->m_MetaData.ImagingRows - r) / 2) * numCols;
 
-    ImgFix::QuadOuputCopy( datafromCam, out, dataLen, 
-        numCols, LATENCY_PIXELS, OUTPUT_OFFSET );
+    ImgFix::QuadOuputCopy(datafromCam, out, dataLen, 
+        numCols, LATENCY_PIXELS, OUTPUT_OFFSET);
 
-    if( IsPixelReorderOn() )
+    if (IsPixelReorderOn())
     {
         std::vector<uint16_t> temp = out;
         //already removed latency pixels above
-        ImgFix::QuadOuputFix( temp, out, dataLen, numCols, 0 );
+        ImgFix::QuadOuputFix(temp, out, dataLen, numCols, 0);
     }
    
    ApgLogger::Instance().Write(ApgLogger::LEVEL_DEBUG,"info","Get Image Completed.");
 
 #ifdef DEBUGGING_CAMERA
-    apgHelper::DebugMsg( "HiC::Get4kby4kImage -> END" );
+    apgHelper::DebugMsg("HiC::Get4kby4kImage -> END");
 #endif
 
 }

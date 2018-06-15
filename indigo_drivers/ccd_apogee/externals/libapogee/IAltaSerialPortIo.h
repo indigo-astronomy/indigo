@@ -24,22 +24,22 @@ class IAltaSerialPortIo
     public: 
         virtual ~IAltaSerialPortIo() = 0;
         
-        virtual void SetSerialBaudRate( uint16_t PortId , uint32_t BaudRate ) = 0;
+        virtual void SetSerialBaudRate(uint16_t PortId , uint32_t BaudRate) = 0;
 
-        virtual uint32_t GetSerialBaudRate(  uint16_t PortId  ) = 0;
+        virtual uint32_t GetSerialBaudRate( uint16_t PortId ) = 0;
 
-        virtual Apg::SerialFC GetSerialFlowControl( uint16_t PortId ) = 0;
+        virtual Apg::SerialFC GetSerialFlowControl(uint16_t PortId) = 0;
 
-        virtual void SetSerialFlowControl( uint16_t PortId, 
-            Apg::SerialFC FlowControl ) = 0;
+        virtual void SetSerialFlowControl(uint16_t PortId, 
+            Apg::SerialFC FlowControl) = 0;
 
-        virtual  Apg::SerialParity GetSerialParity( uint16_t PortId ) = 0;
+        virtual  Apg::SerialParity GetSerialParity(uint16_t PortId) = 0;
         
-        virtual void SetSerialParity( uint16_t PortId, Apg::SerialParity Parity ) = 0;
+        virtual void SetSerialParity(uint16_t PortId, Apg::SerialParity Parity) = 0;
         
-        virtual void ReadSerial( uint16_t PortId, std::string & buffer ) = 0;
+        virtual void ReadSerial(uint16_t PortId, std::string & buffer) = 0;
         
-        virtual void WriteSerial( uint16_t PortId, const std::string & buffer ) = 0;
+        virtual void WriteSerial(uint16_t PortId, const std::string & buffer) = 0;
 }; 
 
 #endif

@@ -15,11 +15,10 @@
 
 #include <string>
 #include <vector>
-
 #ifdef OSX_EMBEDED_MODE
-	#include <libusb.h>
+#include <libusb.h>
 #else
-	#include <libusb-1.0/libusb.h>
+#include <libusb-1.0/libusb.h>
 #endif
 
 #include "../IUsb.h"
@@ -27,13 +26,13 @@
 class GenOneLinuxUSB : public IUsb
 { 
     public: 
-		GenOneLinuxUSB( const uint16_t DeviceNum );
+		GenOneLinuxUSB(const uint16_t DeviceNum);
 		virtual ~GenOneLinuxUSB();
 
 		uint16_t ReadReg(uint16_t FpgaReg);
 
 		void WriteReg(uint16_t FpgaReg,
-			const uint16_t FpgaData );
+			const uint16_t FpgaData);
 
 		void GetVendorInfo(uint16_t & VendorId,
 			uint16_t & ProductId, uint16_t  & DeviceId);
@@ -74,8 +73,8 @@ class GenOneLinuxUSB : public IUsb
             uint16_t Index, uint16_t	Value,
             const uint8_t * ioBuf, uint32_t BufSzInBytes);
 
-        void ReadSerialPort( uint16_t PortId, 
-            uint8_t * ioBuf, uint16_t BufSzInBytes );
+        void ReadSerialPort(uint16_t PortId, 
+            uint8_t * ioBuf, uint16_t BufSzInBytes);
 
     private:
 		 bool OpenDeviceHandle(const uint16_t DeviceNum, std::string & err);

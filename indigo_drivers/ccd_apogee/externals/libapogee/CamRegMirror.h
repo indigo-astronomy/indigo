@@ -21,7 +21,7 @@ class CamRegMirror
         CamRegMirror();
         virtual ~CamRegMirror(); 
 
-        uint16_t Read( uint16_t reg );
+        uint16_t Read(uint16_t reg);
         void Write(uint16_t reg, uint16_t val);
 
         void Clear();

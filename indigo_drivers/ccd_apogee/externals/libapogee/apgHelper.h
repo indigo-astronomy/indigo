@@ -34,7 +34,7 @@
 namespace apgHelper 
 { 
 
-    void DebugMsg( const char *fmt, ... );
+    void DebugMsg(const char *fmt, ...);
     void LogDebugMsg(const int size, const char *fmt, va_list ap);
 	void LogVerboseMsg(const std::string & fileName,
 	const std::string & msg, const int32_t lineNum, const std::string & type);
@@ -82,18 +82,18 @@ namespace apgHelper
         const int32_t lineNum,
         const Apg::ErrorType errType);
 
-    void ApogeeSleep( uint32_t TimeInMs );
+    void ApogeeSleep(uint32_t TimeInMs);
 
-     Apg::LedState ConvertUShort2ApnLedState( const uint16_t value );
+     Apg::LedState ConvertUShort2ApnLedState(const uint16_t value);
 
      bool IsEqual(double x, double y);
 
-     uint32_t SizeT2Uint32( size_t value );
-     int32_t SizeT2Int32( size_t value );
-     uint16_t SizeT2Uint16( size_t value );
-     uint8_t SizeT2Uint8( size_t value );
+     uint32_t SizeT2Uint32(size_t value);
+     int32_t SizeT2Int32(size_t value);
+     uint16_t SizeT2Uint16(size_t value);
+     uint8_t SizeT2Uint8(size_t value);
 
-     int32_t OsInt2Int32( int value );
+     int32_t OsInt2Int32(int value);
 
      std::string GetCfgFileName();
      std::string GetCamCfgDir();

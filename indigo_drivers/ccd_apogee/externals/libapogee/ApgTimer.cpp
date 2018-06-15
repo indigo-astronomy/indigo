@@ -9,28 +9,16 @@
 * 
 */ 
 
-#include "ApgTimer.h" 
-
+#include "ApgTimer.h"
 #include "ITimer.h"
-
-#ifdef WIN_OS
-#include "WinTimer.h"
-#else
 #include "LinuxTimer.h"
-#endif
 
 //////////////////////////// 
 // CTOR 
 ApgTimer::ApgTimer() 
 { 
-
-#ifdef WIN_OS
-    m_timer = std::shared_ptr<ITimer>( new WinTimer );
-#else
-    m_timer = std::shared_ptr<ITimer>( new LinuxTimer );
-#endif
-
-} 
+    m_timer = std::shared_ptr<ITimer>(new LinuxTimer);
+}
 
 //////////////////////////// 
 // DTOR 

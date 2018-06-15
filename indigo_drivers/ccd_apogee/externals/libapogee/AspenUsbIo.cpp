@@ -2529,9 +2529,9 @@ namespace
 
 //////////////////////////// 
 // CTOR 
-AspenUsbIo::AspenUsbIo( const std::string & DeviceEnum ) :
-                                        CamUsbIo( DeviceEnum, MAX_USB_BUFFER_SIZE, false ),
-                                        m_fileName( __FILE__)
+AspenUsbIo::AspenUsbIo(const std::string & DeviceEnum) :
+                                        CamUsbIo(DeviceEnum, MAX_USB_BUFFER_SIZE, false),
+                                        m_fileName(__FILE__)
 {
 }
 
@@ -2547,13 +2547,13 @@ AspenUsbIo::~AspenUsbIo()
 void AspenUsbIo::DownloadFirmware()
 {
     std::vector<UsbFrmwr::IntelHexRec> frmwr = 
-        UsbFrmwr::MakeRecVect( firmware );
+        UsbFrmwr::MakeRecVect(firmware);
 
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         ASPEN_EEPROM_MAX_BLOCKS,
-        ASPEN_EEPROM_MAX_BANKS );
+        ASPEN_EEPROM_MAX_BANKS);
     
-    pf.FirmwareDownload( frmwr );
+    pf.FirmwareDownload(frmwr);
 }
 
 //////////////////////////// 
@@ -2581,7 +2581,7 @@ void AspenUsbIo::DisableFlashProgramMode()
         0, 0, 0, 0);
 
 	// wait to return until the fpga configuration is loaded
-	apgHelper::ApogeeSleep( 5000 ); 
+	apgHelper::ApogeeSleep(5000); 
 }
 
 //////////////////////////// 
@@ -2591,19 +2591,19 @@ void AspenUsbIo::WriteFlash(const uint32_t StartAddr,
 {
 
     //make sure we have a enough space
-    const uint32_t StopAddr = StartAddr + apgHelper::SizeT2Uint32( data.size() );
+    const uint32_t StopAddr = StartAddr + apgHelper::SizeT2Uint32(data.size());
 
-    if( StopAddr > ASPEN_FLASH_SIZE )
+    if (StopAddr > ASPEN_FLASH_SIZE)
     {
         apgHelper::throwRuntimeException(m_fileName, 
             "File exceeds flash memory size", __LINE__,
-            Apg::ErrorType_InvalidOperation );
+            Apg::ErrorType_InvalidOperation);
     }
 
     EnableFlashProgramMode();
 
-    const uint32_t chunk = std::min( 
-        static_cast<uint32_t>(data.size()), MAX_FLASH_XFER_SIZE  );
+    const uint32_t chunk = std::min(
+        static_cast<uint32_t>(data.size()), MAX_FLASH_XFER_SIZE );
     
     const uint32_t remainder = data.size() % chunk;
 
@@ -2613,17 +2613,17 @@ void AspenUsbIo::WriteFlash(const uint32_t StartAddr,
 
     for(iter = data.begin(); iter != data.end() - remainder; iter += chunk, Addr += chunk)
     {
-        const uint16_t Index = static_cast<uint16_t>( (Addr >> 16) );
-	    const uint16_t Value =static_cast<uint16_t>( (Addr & 0x0000FFFF) );
+        const uint16_t Index = static_cast<uint16_t>((Addr >> 16));
+	    const uint16_t Value =static_cast<uint16_t>((Addr & 0x0000FFFF));
 
         m_Usb->UsbRequestOut(VND_APOGEE_DFRW, Index, Value,
             &(*iter), chunk);
     }
   
-	 if( remainder )
+	 if (remainder)
      {
-        const uint16_t Index = static_cast<uint16_t>( (Addr >> 16) );
-        const uint16_t Value =static_cast<uint16_t>( (Addr & 0x0000FFFF) );
+        const uint16_t Index = static_cast<uint16_t>((Addr >> 16));
+        const uint16_t Value =static_cast<uint16_t>((Addr & 0x0000FFFF));
 
         iter = data.end() - remainder;
         m_Usb->UsbRequestOut(VND_APOGEE_DFRW, Index, Value,
@@ -2639,20 +2639,20 @@ void AspenUsbIo::ReadFlash(const uint32_t StartAddr,
             std::vector<uint8_t> & data)
 {
     uint32_t NumBytesExpected = 
-        apgHelper::SizeT2Uint32( data.size() );
+        apgHelper::SizeT2Uint32(data.size());
 
     std::vector<uint8_t>::iterator iter = data.begin();
     uint32_t Addr = StartAddr;
 
     EnableFlashProgramMode();
 
-    while( NumBytesExpected > 0 )
+    while(NumBytesExpected > 0)
     {
         uint32_t SizeToRead = std::min<uint32_t>(NumBytesExpected,
-            MAX_FLASH_XFER_SIZE );
+            MAX_FLASH_XFER_SIZE);
 
-        const uint16_t Index = static_cast<uint16_t>( (Addr >> 16) );
-	    const uint16_t Value =static_cast<uint16_t>( (Addr & 0x0000FFFF) );
+        const uint16_t Index = static_cast<uint16_t>((Addr >> 16));
+	    const uint16_t Value =static_cast<uint16_t>((Addr & 0x0000FFFF));
 
         m_Usb->UsbRequestIn(VND_APOGEE_DFRW, Index, Value,
             &(*iter), SizeToRead);
@@ -2675,9 +2675,9 @@ void AspenUsbIo::Program(const std::string & FilenameFpga,
 
     //read what is currently in the string db, b/c the whole flash memory
     //will be erased
-    std::vector<uint8_t> StrDb( CamStrDb::MAX_STR_DB_BYTES );
+    std::vector<uint8_t> StrDb(CamStrDb::MAX_STR_DB_BYTES);
 
-    ReadFlash( STR_DB_FLASH_ADDR, StrDb );
+    ReadFlash(STR_DB_FLASH_ADDR, StrDb);
 
    //now program the camera including the string database
    Program(FilenameFpga, FilenameFx2, FilenameDescriptor,
@@ -2701,65 +2701,65 @@ void AspenUsbIo::Program(const std::string & FilenameFpga,
     uint16_t Vid = 0; 
     uint16_t Pid = 0;
     uint16_t Did = 0;
-    GetUsbVendorInfo(Vid, Pid, Did );
-    if ( UsbFrmwr::CYPRESS_VID == Vid )
+    GetUsbVendorInfo(Vid, Pid, Did);
+    if (UsbFrmwr::CYPRESS_VID == Vid)
 	{
         DownloadFirmware();
     }
 
-    Progress2StdOut( 10 );
+    Progress2StdOut(10);
 
     //STEP 2
     // initialize prom header information
 	Eeprom::Header hdr;
-    memset(&hdr, 0, sizeof( hdr ) );
-    hdr.Size = sizeof( hdr );
+    memset(&hdr, 0, sizeof(hdr ));
+    hdr.Size = sizeof(hdr);
     hdr.Version = Eeprom::HEADER_VERSION;
 
-    Progress2StdOut( 20 );
+    Progress2StdOut(20);
 
     //STEP 3
     //erase entire the flash device
     EraseEntireFlash();
 
-    Progress2StdOut( 30 );
+    Progress2StdOut(30);
 
     //STEP 4
     //program fpga bits
-     PromFx2Io pf( m_Usb,
+     PromFx2Io pf(m_Usb,
         ASPEN_EEPROM_MAX_BLOCKS,
-        ASPEN_EEPROM_MAX_BANKS );
+        ASPEN_EEPROM_MAX_BANKS);
 
-    std::vector<uint8_t> fpgaData = pf.ReadFirmwareFile( FilenameFpga );
-    WriteFlash( FPGA_BIN_FLASH_ADDR, fpgaData );
+    std::vector<uint8_t> fpgaData = pf.ReadFirmwareFile(FilenameFpga);
+    WriteFlash(FPGA_BIN_FLASH_ADDR, fpgaData);
 
-    Progress2StdOut( 40 );
+    Progress2StdOut(40);
 
     //STEP 5
     //program webserver
-    std::vector<uint8_t> serverData = pf.ReadFirmwareFile( FilenameWebServer );
-    WriteFlash( WEBSERVER_BIN_FLASH_ADDR, serverData );
+    std::vector<uint8_t> serverData = pf.ReadFirmwareFile(FilenameWebServer);
+    WriteFlash(WEBSERVER_BIN_FLASH_ADDR, serverData);
 
-    Progress2StdOut( 50 );
+    Progress2StdOut(50);
 
     //STEP 6
     //program web page
-    std::vector<uint8_t> pageData = pf.ReadFirmwareFile( FilenameWebPage );
-    WriteFlash( WEBPAGE_BIN_FLASH_ADDR, pageData );
+    std::vector<uint8_t> pageData = pf.ReadFirmwareFile(FilenameWebPage);
+    WriteFlash(WEBPAGE_BIN_FLASH_ADDR, pageData);
 
-    Progress2StdOut( 60 );
+    Progress2StdOut(60);
 
     //STEP 7
     //program net config
-    std::vector<uint8_t> cfgData = pf.ReadFirmwareFile( FilenameWebCfg );
-    WriteFlash( NETCONF_BIN_FLASH_ADDR, cfgData );
+    std::vector<uint8_t> cfgData = pf.ReadFirmwareFile(FilenameWebCfg);
+    WriteFlash(NETCONF_BIN_FLASH_ADDR, cfgData);
 
     //STEP 8
     //download the string db - b/c of the full erase of the flash
     //earlier
-    WriteFlash( STR_DB_FLASH_ADDR, StrDb );
+    WriteFlash(STR_DB_FLASH_ADDR, StrDb);
 
-    Progress2StdOut( 70 );
+    Progress2StdOut(70);
 
     //xlinix firmware bits programmed set the "buf con" size and
     //valid bits.  for the gee the buf con prom header is overloaded
@@ -2771,30 +2771,30 @@ void AspenUsbIo::Program(const std::string & FilenameFpga,
     //STEP 9
     //download the fx2
     uint32_t DownloadSize = 0;
-    pf.WriteFile2Eeprom( FilenameFx2, FX2_PROM_BANK,
-        FX2_PROM_BLOCK, FX2_PROM_ADDR, DownloadSize );
+    pf.WriteFile2Eeprom(FilenameFx2, FX2_PROM_BANK,
+        FX2_PROM_BLOCK, FX2_PROM_ADDR, DownloadSize);
 
     hdr.Fields |= Eeprom::HEADER_BOOTROM_VALID_BIT;
 
-    Progress2StdOut( 80 );
+    Progress2StdOut(80);
 
     //STEP 10
     //download usb descriptors
-     pf.WriteFile2Eeprom( FilenameDescriptor, DSCR_PROM_BANK,
-        DSCR_PROM_BLOCK, DSCR_PROM_ADDR, DownloadSize );
+     pf.WriteFile2Eeprom(FilenameDescriptor, DSCR_PROM_BANK,
+        DSCR_PROM_BLOCK, DSCR_PROM_ADDR, DownloadSize);
 
      hdr.Fields |= Eeprom::HEADER_DESCRIPTOR_VALID_BIT;
 
-     Progress2StdOut( 90 );
+     Progress2StdOut(90);
 
     //STEP 11
     //write the header
-    hdr.CheckSum = Eeprom::CalcHdrCheckSum( hdr );
+    hdr.CheckSum = Eeprom::CalcHdrCheckSum(hdr);
 
-    pf.WriteEepromHdr( hdr, HEADER_PROM_BANK,
+    pf.WriteEepromHdr(hdr, HEADER_PROM_BANK,
         HEADER_PROM_BLOCK, HEADER_PROM_ADDR);
 
-    Progress2StdOut( 100 );
+    Progress2StdOut(100);
 
      //turn this off on exit
     m_Print2StdOut = false;
@@ -2802,14 +2802,14 @@ void AspenUsbIo::Program(const std::string & FilenameFpga,
 
 //////////////////////////// 
 //      READ      HEADER
-void AspenUsbIo::ReadHeader( Eeprom::Header & hdr )
+void AspenUsbIo::ReadHeader(Eeprom::Header & hdr)
 {
-    PromFx2Io pf( m_Usb,
+    PromFx2Io pf(m_Usb,
         ASPEN_EEPROM_MAX_BLOCKS,
-        ASPEN_EEPROM_MAX_BANKS );
+        ASPEN_EEPROM_MAX_BANKS);
 
-    pf.ReadEepromHdr( hdr, HEADER_PROM_BANK,
-        HEADER_PROM_BLOCK, HEADER_PROM_ADDR );
+    pf.ReadEepromHdr(hdr, HEADER_PROM_BANK,
+        HEADER_PROM_BLOCK, HEADER_PROM_ADDR);
 }
 
 
@@ -2818,9 +2818,9 @@ void AspenUsbIo::ReadHeader( Eeprom::Header & hdr )
 void AspenUsbIo::SetSerialNumber(const std::string & num)
 {
     std::vector< std::string > result = ReadStrDatabase();
-    CamInfo::StrDb db =  CamInfo::MkStrDbFromStrVect( result );
+    CamInfo::StrDb db =  CamInfo::MkStrDbFromStrVect(result);
     db.CustomerSn = num;
-    WriteStrDatabase(  CamInfo::MkStrVectFromStrDb( db ) );
+    WriteStrDatabase( CamInfo::MkStrVectFromStrDb(db ));
 }
 
 //////////////////////////// 
@@ -2829,21 +2829,21 @@ std::string AspenUsbIo::GetSerialNumber()
 {
     std::vector< std::string > result = ReadStrDatabase();
 
-    CamInfo::StrDb infoStruct =  CamInfo::MkStrDbFromStrVect( result );
+    CamInfo::StrDb infoStruct =  CamInfo::MkStrDbFromStrVect(result);
 
     return infoStruct.CustomerSn;
 }
 
 //////////////////////////// 
 //      WRITE        STR     DATABASE
-void AspenUsbIo::WriteStrDatabase( const std::vector<std::string> & info )
+void AspenUsbIo::WriteStrDatabase(const std::vector<std::string> & info)
 {
-    std::vector<uint8_t> buffer =  CamStrDb::PackStrings( info );
+    std::vector<uint8_t> buffer =  CamStrDb::PackStrings(info);
     
     EraseStrDb();
 
     // write the string DB to flash
-    WriteFlash( STR_DB_FLASH_ADDR, buffer );
+    WriteFlash(STR_DB_FLASH_ADDR, buffer);
 }
 
 //////////////////////////// 
@@ -2890,22 +2890,22 @@ void AspenUsbIo::EraseNetDb()
 //      READ       STR     DATABASE
 std::vector<std::string> AspenUsbIo::ReadStrDatabase()
 {
-   std::vector<uint8_t> buffer( CamStrDb::MAX_STR_DB_BYTES );
+   std::vector<uint8_t> buffer(CamStrDb::MAX_STR_DB_BYTES);
 
-   ReadFlash( STR_DB_FLASH_ADDR, buffer );
+   ReadFlash(STR_DB_FLASH_ADDR, buffer);
 
-   std::vector<std::string> out = CamStrDb::UnpackStrings( buffer );
+   std::vector<std::string> out = CamStrDb::UnpackStrings(buffer);
 
    return out;
 }
 
 //////////////////////////// 
 //      GET      FLASH  BUFFER
- std::vector<uint8_t>  AspenUsbIo::GetFlashBuffer( const uint32_t StartAddr, const uint32_t numBytes )
+ std::vector<uint8_t>  AspenUsbIo::GetFlashBuffer(const uint32_t StartAddr, const uint32_t numBytes)
  {
-    std::vector<uint8_t> buffer( numBytes );
+    std::vector<uint8_t> buffer(numBytes);
 
-    ReadFlash( StartAddr, buffer );
+    ReadFlash(StartAddr, buffer);
 
     return buffer;
  }
@@ -2916,14 +2916,14 @@ CamInfo::NetDb AspenUsbIo::ReadNetDatabase()
 {
 	CamInfo::NetDb out;
 
-	std::vector<uint8_t> buffer( sizeof(out) );
+	std::vector<uint8_t> buffer(sizeof(out));
 
-	ReadFlash( NETCONF_BIN_FLASH_ADDR_USER, buffer );
-	out = CamInfo::MkNetDbFromU8Vect( buffer );
-	if ( out.Magic != CamInfo::NET_MAGIC_VALID ) 
+	ReadFlash(NETCONF_BIN_FLASH_ADDR_USER, buffer);
+	out = CamInfo::MkNetDbFromU8Vect(buffer);
+	if (out.Magic != CamInfo::NET_MAGIC_VALID) 
 	{
-		ReadFlash( NETCONF_BIN_FLASH_ADDR_FACTORY, buffer );
-		out = CamInfo::MkNetDbFromU8Vect( buffer );
+		ReadFlash(NETCONF_BIN_FLASH_ADDR_FACTORY, buffer);
+		out = CamInfo::MkNetDbFromU8Vect(buffer);
 	}
 
 	return out;
@@ -2931,13 +2931,13 @@ CamInfo::NetDb AspenUsbIo::ReadNetDatabase()
 
 //////////////////////////// 
 //      WRITE       NET     DATABASE
-void AspenUsbIo::WriteNetDatabase( const CamInfo::NetDb & input )
+void AspenUsbIo::WriteNetDatabase(const CamInfo::NetDb & input)
 {
-    std::vector<uint8_t> buffer =  CamInfo::MkU8VectFromNetDb( input );
+    std::vector<uint8_t> buffer =  CamInfo::MkU8VectFromNetDb(input);
     
     EraseNetDb();
 
     // write the Net DB to flash
-    WriteFlash( NETCONF_BIN_FLASH_ADDR_USER, buffer );
+    WriteFlash(NETCONF_BIN_FLASH_ADDR_USER, buffer);
 }
 

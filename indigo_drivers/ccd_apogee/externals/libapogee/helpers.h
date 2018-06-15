@@ -48,16 +48,16 @@ namespace help
 
     std::string FixPath(const std::string & inDir);
 
-    uint16_t GetHighWord( uint32_t value);
-    uint16_t GetLowWord( uint32_t value);
+    uint16_t GetHighWord(uint32_t value);
+    uint16_t GetLowWord(uint32_t value);
 
-    uint8_t GetLowByte( uint16_t value );
-    uint8_t GetHighByte( uint16_t value );
+    uint8_t GetLowByte(uint16_t value);
+    uint8_t GetHighByte(uint16_t value);
 
-    std::string GetItemFromFindStr( const std::string & msg,
-                                     const std::string & item );
+    std::string GetItemFromFindStr(const std::string & msg,
+                                     const std::string & item);
 
-    uint32_t SizeT2Uint32( size_t value );
+    uint32_t SizeT2Uint32(size_t value);
 
 }
 

@@ -25,7 +25,7 @@ static int32_t vectWriter(uint8_t *data, size_t size, size_t nmemb,
                   std::vector<uint8_t> &bufferVect) 
 {
 	const int32_t numBytes = apgHelper::SizeT2Int32(size) * apgHelper::SizeT2Int32(nmemb);
-	bufferVect.insert( bufferVect.end(), &data[0], &data[numBytes] );
+	bufferVect.insert(bufferVect.end(), &data[0], &data[numBytes]);
 	return numBytes;
 }
  
@@ -39,9 +39,9 @@ static int32_t strWriter(char *data, size_t size, size_t nmemb,
  
     const size_t numBytes = size * nmemb;
 
-    bufferStr.append( data, numBytes );
+    bufferStr.append(data, numBytes);
 
-    return apgHelper::SizeT2Int32( numBytes );
+    return apgHelper::SizeT2Int32(numBytes);
 }
 
 //////////////////////////// 
@@ -53,16 +53,16 @@ namespace
 
 //////////////////////////// 
 // CTOR 
-CLibCurlWrap::CLibCurlWrap() : m_curlHandle( 0 ),
-                               m_fileName( __FILE__ )
+CLibCurlWrap::CLibCurlWrap() : m_curlHandle(0),
+                               m_fileName(__FILE__)
 { 
     m_curlHandle = curl_easy_init();
 	m_timeout = OPERATION_TIMEOUT;
-    if( !m_curlHandle )
+    if (!m_curlHandle)
     {
         std::string errStr("curl_easy_init failed");
-         apgHelper::throwRuntimeException( m_fileName, 
-             errStr, __LINE__, Apg::ErrorType_Connection );
+         apgHelper::throwRuntimeException(m_fileName, 
+             errStr, __LINE__, Apg::ErrorType_Connection);
     }
 } 
 
@@ -70,7 +70,7 @@ CLibCurlWrap::CLibCurlWrap() : m_curlHandle( 0 ),
 // DTOR 
 CLibCurlWrap::~CLibCurlWrap() 
 { 
-    curl_easy_cleanup( m_curlHandle );
+    curl_easy_cleanup(m_curlHandle);
 } 
 
 
@@ -80,7 +80,7 @@ CLibCurlWrap::~CLibCurlWrap()
 void CLibCurlWrap::HttpGet(const std::string & url,
                             std::string & result)
 {
-    CurlSetupStrWrite ( url );
+    CurlSetupStrWrite (url);
     result = ExecuteStr();
 }
 
@@ -89,8 +89,8 @@ void CLibCurlWrap::HttpGet(const std::string & url,
 void CLibCurlWrap::HttpGet(const std::string & url,
             std::vector<uint8_t> & result)
 {
-    CurlSetupVectWrite ( url, result );
-    ExecuteVect( result );
+    CurlSetupVectWrite (url, result);
+    ExecuteVect(result);
 }
 
 //////////////////////////// 
@@ -99,7 +99,7 @@ void CLibCurlWrap::HttpPost(const std::string & url,
                             const std::string & postFields,
                             std::string & result)
 {
-    CurlSetupStrWrite ( url );
+    CurlSetupStrWrite (url);
     curl_easy_setopt(m_curlHandle, CURLOPT_POSTFIELDS, postFields.c_str());
 
     result = ExecuteStr();
@@ -111,10 +111,10 @@ void CLibCurlWrap::HttpPost(const std::string & url,
             const std::string & postFields, 
             std::vector<uint8_t> & result)
 {
-    CurlSetupVectWrite ( url, result );
+    CurlSetupVectWrite (url, result);
     curl_easy_setopt(m_curlHandle, CURLOPT_POSTFIELDS, postFields.c_str());
 
-    ExecuteVect( result );
+    ExecuteVect(result);
 }
 
 
@@ -153,12 +153,12 @@ std::string CLibCurlWrap::ExecuteStr()
     //perform the transfer
     const CURLcode result = curl_easy_perform(m_curlHandle);
 
-    if( CURLE_OK != result )
+    if (CURLE_OK != result)
     {
-        std::string curlError( errorBuffer );
+        std::string curlError(errorBuffer);
 
-        apgHelper::throwRuntimeException( m_fileName, curlError, 
-            __LINE__, Apg::ErrorType_Critical );
+        apgHelper::throwRuntimeException(m_fileName, curlError, 
+            __LINE__, Apg::ErrorType_Critical);
     }
 
     return bufferStr;
@@ -166,7 +166,7 @@ std::string CLibCurlWrap::ExecuteStr()
 
 //////////////////////////// 
 // EXECUTE  VECT
-void CLibCurlWrap::ExecuteVect( std::vector<uint8_t> & result )
+void CLibCurlWrap::ExecuteVect(std::vector<uint8_t> & result)
 {
     //clear out the vector
     result.resize(0);
@@ -174,19 +174,19 @@ void CLibCurlWrap::ExecuteVect( std::vector<uint8_t> & result )
 	//perform the transfer
     const CURLcode returnCode = curl_easy_perform(m_curlHandle);
 
-    if( CURLE_OK != returnCode )
+    if (CURLE_OK != returnCode)
     {
-        std::string curlError( errorBuffer );
+        std::string curlError(errorBuffer);
 
-        apgHelper::throwRuntimeException( m_fileName, curlError, 
-            __LINE__, Apg::ErrorType_Critical );
+        apgHelper::throwRuntimeException(m_fileName, curlError, 
+            __LINE__, Apg::ErrorType_Critical);
     }
 
 }
 
 //////////////////////////// 
 //      SET TIMEOUT
-void CLibCurlWrap::setTimeout( int timeout )
+void CLibCurlWrap::setTimeout(int timeout)
 {
     if (timeout < 0)
 	{
@@ -209,6 +209,6 @@ unsigned int CLibCurlWrap::getTimeout()
 //      GET    DRIVER   VERSION
 std::string CLibCurlWrap::GetVerison()
 {
-    std::string version( curl_version() );
+    std::string version(curl_version());
     return version;
 }
