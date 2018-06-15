@@ -34,8 +34,6 @@
 #include <assert.h>
 
 #include <sstream>
-//#include <iostream>
-//#include <fstream>
 #include <stdexcept>
 
 #include <pthread.h>
@@ -94,6 +92,7 @@ typedef struct {
 } apogee_private_data;
 
 
+//------------------- Routines to deal with discovery string, mostly taken from libapogee examples.
 std::vector<std::string> GetDeviceVector( const std::string & msg ) {
 	std::vector<std::string> devices;
 	const std::string startDelim("<d>");
@@ -106,151 +105,111 @@ std::vector<std::string> GetDeviceVector( const std::string & msg ) {
 		if( std::string::npos == posStart ) {
 			break;
 		}
-		size_t posStop = msg.find( stopDelim, posStart+1 );
-		if( std::string::npos == posStop ) {
+		size_t posStop = msg.find(stopDelim, posStart + 1);
+		if(std::string::npos == posStop) {
 			break;
 		}
 		size_t strLen = (posStop - posStart) - startDelim.size();
-		std::string sub = msg.substr( posStart+startDelim.size(), strLen );
-		devices.push_back( sub );
+		std::string sub = msg.substr(posStart + startDelim.size(), strLen);
+		devices.push_back(sub);
 		pos = 1+posStop;
 	}
 	return devices;
 }
 
-std::vector<std::string> MakeTokens(const std::string &str, const std::string &separator)
-{
+
+std::vector<std::string> MakeTokens(const std::string &str, const std::string &separator) {
 	std::vector<std::string> returnVector;
 	std::string::size_type start = 0;
 	std::string::size_type end = 0;
 
-	while( (end = str.find(separator, start)) != std::string::npos)
-	{
-		returnVector.push_back (str.substr (start, end-start));
+	while((end = str.find(separator, start)) != std::string::npos) {
+		returnVector.push_back (str.substr (start, end - start));
 		start = end + separator.size();
 	}
 
-	returnVector.push_back( str.substr(start) );
+	returnVector.push_back(str.substr(start));
 
 	return returnVector;
 }
 
-///////////////////////////
-//	GET    ITEM    FROM     FIND       STR
-std::string GetItemFromFindStr( const std::string & msg,
-				const std::string & item )
-{
 
+std::string GetItemFromFindStr(const std::string & msg, const std::string & item) {
 	//search the single device input string for the requested item
     std::vector<std::string> params = MakeTokens( msg, "," );
 	std::vector<std::string>::iterator iter;
 
-	for(iter = params.begin(); iter != params.end(); ++iter)
-	{
-	   if( std::string::npos != (*iter).find( item ) )
-	   {
-		 std::string result = MakeTokens( (*iter), "=" ).at(1);
-
-		 return result;
-	   }
+	for(iter = params.begin(); iter != params.end(); ++iter) {
+		if( std::string::npos != (*iter).find(item)) {
+			std::string result = MakeTokens((*iter), "=").at(1);
+			return result;
+		}
 	} //for
 
 	std::string noOp;
 	return noOp;
 }
 
-////////////////////////////
-//	GET		INTERFACE
-std::string GetInterface( const std::string & msg )
-{
-    return GetItemFromFindStr( msg, "interface=" );
+
+std::string GetInterface(const std::string & msg) {
+	return GetItemFromFindStr(msg, "interface=");
 }
 
-////////////////////////////
-//	GET		USB  ADDRESS
-std::string GetUsbAddress( const std::string & msg )
-{
-    return GetItemFromFindStr( msg, "address=" );
-}
-////////////////////////////
-//	GET		ETHERNET  ADDRESS
-std::string GetEthernetAddress( const std::string & msg )
-{
-    std::string addr = GetItemFromFindStr( msg, "address=" );
-    addr.append(":");
-    addr.append( GetItemFromFindStr( msg, "port=" ) );
-    return addr;
-}
-////////////////////////////
-//	GET		ID
-uint16_t GetID( const std::string & msg )
-{
-    std::string str = GetItemFromFindStr( msg, "id=" );
-    uint16_t id = 0;
-    std::stringstream ss;
-    ss << std::hex << std::showbase << str.c_str();
-    ss >> id;
 
-    return id;
+std::string GetUsbAddress(const std::string & msg) {
+	return GetItemFromFindStr(msg, "address=");
 }
 
-////////////////////////////
-//	GET		FRMWR       REV
-uint16_t GetFrmwrRev( const std::string & msg )
-{
-    std::string str = GetItemFromFindStr(  msg, "firmwareRev=" );
 
-    uint16_t rev = 0;
-    std::stringstream ss;
-    ss << std::hex << std::showbase << str.c_str();
-    ss >> rev;
-
-    return rev;
+std::string GetEthernetAddress(const std::string & msg) {
+	std::string addr = GetItemFromFindStr(msg, "address=");
+	addr.append(":");
+	addr.append(GetItemFromFindStr(msg, "port="));
+	return addr;
 }
 
-CamModel::PlatformType GetModel(const std::string &msg)
-{
-    return CamModel::GetPlatformType(GetItemFromFindStr(msg, "model="));
+
+uint16_t GetID(const std::string & msg) {
+	std::string str = GetItemFromFindStr(msg, "id=");
+	uint16_t id = 0;
+	std::stringstream ss;
+	ss << std::hex << std::showbase << str.c_str();
+	ss >> id;
+
+	return id;
 }
 
-std::string GetModelName(const std::string &msg)
-{
-    return GetItemFromFindStr(msg, "model=");
+
+uint16_t GetFrmwrRev(const std::string & msg) {
+	std::string str = GetItemFromFindStr(msg, "firmwareRev=");
+
+	uint16_t rev = 0;
+	std::stringstream ss;
+	ss << std::hex << std::showbase << str.c_str();
+	ss >> rev;
+
+	return rev;
 }
 
-////////////////////////////
-//	        IS      DEVICE      FILTER      WHEEL
-bool IsDeviceFilterWheel( const std::string & msg )
-{
-    std::string str = GetItemFromFindStr(  msg, "deviceType=" );
 
-    return ( 0 == str.compare("filterWheel") ? true : false );
+CamModel::PlatformType GetModel(const std::string &msg) {
+	return CamModel::GetPlatformType(GetItemFromFindStr(msg, "model="));
 }
 
-////////////////////////////
-//	        IS  	ASCENT
-bool IsAscent( const std::string & msg )
-{
-	std::string model = GetItemFromFindStr(  msg, "model=" );
-	std::string ascent("Ascent");
-    return( 0 == model .compare( 0, ascent.size(), ascent ) ? true : false );
+
+std::string GetModelName(const std::string &msg) {
+	return GetItemFromFindStr(msg, "model=");
 }
 
-////////////////////////////
-//	        IS  	ASPEN
-bool IsAspen( const std::string & msg )
-{
-	std::string model = GetItemFromFindStr(  msg, "model=" );
-	std::string aspen("Aspen");
-    return( 0 == model .compare( 0, aspen.size(), aspen ) ? true : false );
+
+bool IsDeviceFilterWheel(const std::string & msg) {
+	std::string str = GetItemFromFindStr(msg, "deviceType=");
+	return ( 0 == str.compare("filterWheel") ? true : false );
 }
 
-////////////////////////////
-//		CHECK	STATUS
-void checkStatus( const Apg::Status status )
-{
-	switch( status )
-	{
+
+void checkStatus(const Apg::Status status) {
+	switch(status) {
 		case Apg::Status_ConnectionError:
 		{
 			std::string errMsg("Status_ConnectionError");
@@ -290,6 +249,7 @@ void checkStatus( const Apg::Status status )
 }
 
 
+// -------------------------------------------------------------------------------- INDIGO device implementation
 static bool apogee_open(indigo_device *device) {
 	uint16_t id = GetID(PRIVATE_DATA->discovery_string);
 	uint16_t frmwrRev = GetFrmwrRev(PRIVATE_DATA->discovery_string);
@@ -365,6 +325,7 @@ static bool apogee_open(indigo_device *device) {
 	return true;
 }
 
+
 static bool apogee_setup_exposure(indigo_device *device, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
 	ApogeeCam *camera = PRIVATE_DATA->camera;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -392,6 +353,7 @@ static bool apogee_setup_exposure(indigo_device *device, int frame_left, int fra
 	return true;
 }
 
+
 static bool apogee_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
 	ApogeeCam *camera = PRIVATE_DATA->camera;
 	if (!apogee_setup_exposure(device, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
@@ -409,6 +371,7 @@ static bool apogee_start_exposure(indigo_device *device, double exposure, bool d
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
+
 
 static bool apogee_read_pixels(indigo_device *device) {
 	ApogeeCam *camera = PRIVATE_DATA->camera;
@@ -462,6 +425,7 @@ static bool apogee_abort_exposure(indigo_device *device) {
 	if(res) return false;
 	else return true;
 }
+
 
 static bool apogee_set_cooler(indigo_device *device, bool status, double target, double *current, long *cooler_power) {
 	long current_status;
