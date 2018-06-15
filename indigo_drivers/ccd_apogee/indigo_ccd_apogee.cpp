@@ -365,52 +365,48 @@ static bool apogee_open(indigo_device *device) {
 	return true;
 }
 
-static bool apogee_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-	/* int id = PRIVATE_DATA->dev_id;
-	ASI_ERROR_CODE res;
+static bool apogee_setup_exposure(indigo_device *device, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
+	ApogeeCam *camera = PRIVATE_DATA->camera;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = ASISetROIFormat(id, frame_width/horizontal_bin, frame_height/vertical_bin,  horizontal_bin, get_pixel_format(device));
-	if (res) {
+	try {
+		camera->SetRoiBinCol(horizontal_bin);
+		camera->SetRoiBinRow(vertical_bin);
+		camera->SetRoiStartCol(frame_left);
+		camera->SetRoiStartRow(frame_top);
+		camera->SetRoiNumCols(frame_width);
+		camera->SetRoiNumRows(frame_height);
+		camera->SetImageCount(1);
+	} catch (std::runtime_error err) {
+		std::string text = err.what();
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure setup: %s", text.c_str());
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetROIFormat(%d) = %d", id, res);
 		return false;
 	}
-	res = ASISetStartPos(id, frame_left/horizontal_bin, frame_top/vertical_bin);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetStartPos(%d) = %d", id, res);
-		return false;
-	}
-	res = ASISetControlValue(id, ASI_EXPOSURE, (long)s2us(exposure), ASI_FALSE);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
-		return false;
-	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
 	PRIVATE_DATA->exp_bin_x = horizontal_bin;
 	PRIVATE_DATA->exp_bin_y = vertical_bin;
 	PRIVATE_DATA->exp_frame_width = frame_width;
 	PRIVATE_DATA->exp_frame_height = frame_height;
-	PRIVATE_DATA->exp_bpp = (int)CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	*/
+
 	return true;
 }
 
 static bool apogee_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
-	//int id = PRIVATE_DATA->dev_id;
-	//ASI_ERROR_CODE res;
-	if (!apogee_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
+	ApogeeCam *camera = PRIVATE_DATA->camera;
+	if (!apogee_setup_exposure(device, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
 		return false;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	//res = ASIStartExposure(id, dark);
+	try {
+		camera->StartExposure(exposure, dark);
+	} catch (std::runtime_error err) {
+		std::string text = err.what();
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Start Exposure: %s", text.c_str());
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return false;
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	//if (res) {
-	//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStartExposure(%d) = %d", id, res);
-	//	return false;
-	//}
-
 	return true;
 }
 
@@ -626,6 +622,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						max_bin_x = camera->GetMaxBinCols();
 						max_bin_y = camera->GetMaxBinCols();
 						serial_no = camera->GetSerialNumber();
+						CCD_EXPOSURE_ITEM->number.min = camera->GetMinExposureTime();
+						CCD_EXPOSURE_ITEM->number.max = camera->GetMaxExposureTime();
 					} catch (std::runtime_error err) {
 							std::string text = err.what();
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get camera info: %s", text.c_str());
