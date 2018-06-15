@@ -337,13 +337,12 @@ std::string apgHelper::GetCfgFileName()
     return std::string ("apnmatrix.txt");
 }
 
-const char apogee_sysconfdir[2048] = "/usr/local/etc/";
+char apogee_sysconfdir[2048] = "/usr/local/etc/apogee";
 
 //----------------------------------------------
 //  GET    CAM        CFG    PATH
 std::string apgHelper::GetCamCfgDir()
 {
-	std::string path(help::FixPath(apogee_sysconfdir ));
-	path.append("apogee/");
+	std::string path(help::FixPath(apogee_sysconfdir));
 	return path;
 }

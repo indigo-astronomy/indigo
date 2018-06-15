@@ -1096,6 +1096,10 @@ indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info 
 
 		switch (action) {
 			case INDIGO_DRIVER_INIT: {
+				char firmware_base_dir[1024] = "/usr/local/etc/apogee";
+				if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
+					strncpy(firmware_base_dir, getenv("INDIGO_FIRMWARE_BASE"), 1024);
+				}				
 				for (int i = 0; i < MAXCAMERAS; i++) {
 					devices[i] = NULL;
 				}
