@@ -411,35 +411,43 @@ static bool apogee_start_exposure(indigo_device *device, double exposure, bool d
 }
 
 static bool apogee_read_pixels(indigo_device *device) {
-	/* ASI_ERROR_CODE res;
-	ASI_EXPOSURE_STATUS status;
-	int wait_cycles = 9000;    /* 9000*2000us = 18s
-	status = ASI_EXP_WORKING;
+	ApogeeCam *camera = PRIVATE_DATA->camera;
+	int wait_cycles = 9000;    /* 9000*2000us = 18s */
 
-	// wait for the exposure to complete
-	while((status == ASI_EXP_WORKING) && wait_cycles--) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	Apg::Status status = camera->GetImagingStatus();
+	while ((status != Apg::Status_ImageReady) || wait_cycles--) {
+		try {
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			status = camera->GetImagingStatus();
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Start Exposure: %s", text.c_str());
+			break;
+		}
 		usleep(2000);
 	}
-	if(status == ASI_EXP_SUCCESS) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res);
+
+	std::vector<uint16_t> image_data;
+	if (status == Apg::Status_ImageReady) {
+		try {
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			camera->GetImage(image_data);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Read Exposure: %s", text.c_str());
 			return false;
 		}
-		if (PRIVATE_DATA->is_asi120)
-			usleep(150000);
-		return true;
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed: %s with status=%d", device->name, status);
 		return false;
 	}
-	*/
+
+	std::copy(image_data.begin(), image_data.end(), (uint16_t *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE));
+	return true;
 }
+
 
 static bool apogee_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
