@@ -20,6 +20,8 @@
 
 #include "CameraInfo.h" 
 
+extern char apogee_sysconfdir[2048];
+
 //#define DEBUGGING_CAMERA
 //#define DEBUGGING_CAMERA_STATUS
 
