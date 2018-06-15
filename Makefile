@@ -667,10 +667,10 @@ $(BUILD_DRIVERS)/indigo_ccd_apogee.a: indigo_drivers/ccd_apogee/indigo_ccd_apoge
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_ccd_apogee: indigo_drivers/ccd_apogee/indigo_ccd_apogee_main.o $(BUILD_DRIVERS)/indigo_ccd_apogee.a $(BUILD_LIB)/libapogee.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo -lcurl -lboost_regex
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo -lcurl -lboost_regex $(BUILD_LIB)/libapogee.a
 
 $(BUILD_DRIVERS)/indigo_ccd_apogee.$(SOEXT): indigo_drivers/ccd_apogee/indigo_ccd_apogee.o $(BUILD_LIB)/libapogee.a
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo -lcurl
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lstdc++ -lindigo -lcurl -lboost_regex $(BUILD_LIB)/libapogee.a
 
 #---------------------------------------------------------------------
 #
