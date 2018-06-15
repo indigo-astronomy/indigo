@@ -399,7 +399,7 @@ static bool apogee_start_exposure(indigo_device *device, double exposure, bool d
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	try {
-		camera->StartExposure(exposure, dark);
+		camera->StartExposure(exposure, !dark);
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Start Exposure: %s", text.c_str());
