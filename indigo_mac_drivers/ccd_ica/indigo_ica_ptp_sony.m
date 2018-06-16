@@ -465,8 +465,9 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       if (request.parameter1 == 0xffffc002) {
         if (liveView) {
           if (response.responseCode == PTPResponseCodeAccessDenied) {
-            if (retryCount < 30) {
+            if (retryCount < 100) {
               retryCount++;
+              usleep(100000);
               [self getPreviewImage];
             } else {
               liveView = false;
@@ -475,6 +476,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
           } else {
             uint8 *start = (uint8 *)data.bytes;
             unsigned long i = data.length;
+            retryCount = 0;
             while (i > 0) {
               if (start[0] == 0xFF && start[1] == 0xD8) {
                 uint8 *end = start + 2;
