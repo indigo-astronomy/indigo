@@ -16,6 +16,7 @@
 		5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
 		5911F7B41F02E1400053F3CA /* libdsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7B01F02E1330053F3CA /* libdsi.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
+		59292E5720D4224F0042E939 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 59292E5620D4224F0042E939 /* libcurl.tbd */; };
 		593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 593AD1011EF8399500C059BC /* indigo_guider_asi.c */; };
 		593AD10A1EF839F200C059BC /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 593AD1081EF839EF00C059BC /* libUSB2ST4Conv.a */; };
 		593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */ = {isa = PBXBuildFile; fileRef = 593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */; };
@@ -105,6 +106,130 @@
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D4D64B220A9D947008ECE4B /* indigo_guider_eqmac.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D4D64AE20A9D946008ECE4B /* indigo_guider_eqmac.h */; };
 		9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D4D64B020A9D946008ECE4B /* indigo_guider_eqmac.c */; };
+		9D59D5E320D3F829009EA8FF /* helpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3C320D3F828009EA8FF /* helpers.cpp */; };
+		9D59D5E420D3F829009EA8FF /* AltaIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3C420D3F828009EA8FF /* AltaIo.h */; };
+		9D59D5E520D3F829009EA8FF /* PromFx2Io.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3C520D3F828009EA8FF /* PromFx2Io.h */; };
+		9D59D5E620D3F829009EA8FF /* CamUsbIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3C620D3F828009EA8FF /* CamUsbIo.cpp */; };
+		9D59D5E720D3F829009EA8FF /* ModeFsm.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3C720D3F828009EA8FF /* ModeFsm.h */; };
+		9D59D5E820D3F829009EA8FF /* AltaData.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3C820D3F828009EA8FF /* AltaData.h */; };
+		9D59D5E920D3F829009EA8FF /* LoggerException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3C920D3F828009EA8FF /* LoggerException.cpp */; };
+		9D59D5EA20D3F829009EA8FF /* DeviceStrHelpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3CA20D3F828009EA8FF /* DeviceStrHelpers.cpp */; };
+		9D59D5EB20D3F829009EA8FF /* CameraIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3CC20D3F828009EA8FF /* CameraIo.h */; };
+		9D59D5EC20D3F829009EA8FF /* Alta.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3CD20D3F828009EA8FF /* Alta.h */; };
+		9D59D5ED20D3F829009EA8FF /* CamGen2ModeFsm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3CE20D3F828009EA8FF /* CamGen2ModeFsm.cpp */; };
+		9D59D5EE20D3F829009EA8FF /* ApgLogger.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3CF20D3F828009EA8FF /* ApgLogger.h */; };
+		9D59D5EF20D3F829009EA8FF /* CameraInfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3D020D3F828009EA8FF /* CameraInfo.cpp */; };
+		9D59D5F020D3F829009EA8FF /* ICamIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3D220D3F828009EA8FF /* ICamIo.h */; };
+		9D59D5F120D3F829009EA8FF /* ITimer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3D320D3F828009EA8FF /* ITimer.h */; };
+		9D59D5F220D3F829009EA8FF /* Alta.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3D420D3F828009EA8FF /* Alta.cpp */; };
+		9D59D5F320D3F829009EA8FF /* COMHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3D520D3F828009EA8FF /* COMHelper.h */; };
+		9D59D5F420D3F829009EA8FF /* CameraIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3D720D3F828009EA8FF /* CameraIo.cpp */; };
+		9D59D5F520D3F829009EA8FF /* AspenUsbIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3D820D3F828009EA8FF /* AspenUsbIo.cpp */; };
+		9D59D5F620D3F829009EA8FF /* IUsb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3D920D3F828009EA8FF /* IUsb.cpp */; };
+		9D59D5F720D3F829009EA8FF /* AspenIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3DA20D3F828009EA8FF /* AspenIo.cpp */; };
+		9D59D5F820D3F829009EA8FF /* CamCfgMatrix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3DC20D3F828009EA8FF /* CamCfgMatrix.cpp */; };
+		9D59D5F920D3F829009EA8FF /* CamCfgMatrix.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3DD20D3F828009EA8FF /* CamCfgMatrix.h */; };
+		9D59D5FA20D3F829009EA8FF /* AltaF.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3DE20D3F828009EA8FF /* AltaF.cpp */; };
+		9D59D5FB20D3F829009EA8FF /* CcdAcqParams.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3DF20D3F828009EA8FF /* CcdAcqParams.h */; };
+		9D59D5FC20D3F829009EA8FF /* CcdAcqParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3E020D3F828009EA8FF /* CcdAcqParams.cpp */; };
+		9D59D5FD20D3F829009EA8FF /* ApnCamData.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3E120D3F828009EA8FF /* ApnCamData.h */; };
+		9D59D5FE20D3F829009EA8FF /* Quad.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3E220D3F828009EA8FF /* Quad.h */; };
+		9D59D60020D3F829009EA8FF /* ApogeeFilterWheel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3E420D3F828009EA8FF /* ApogeeFilterWheel.cpp */; };
+		9D59D60120D3F829009EA8FF /* UdpSocketBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3E520D3F828009EA8FF /* UdpSocketBase.cpp */; };
+		9D59D60220D3F829009EA8FF /* CamGen2CcdAcqParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3E620D3F828009EA8FF /* CamGen2CcdAcqParams.cpp */; };
+		9D59D60320D3F829009EA8FF /* FilterWheelIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3E720D3F828009EA8FF /* FilterWheelIo.cpp */; };
+		9D59D61120D3F829009EA8FF /* UdpSocketBase.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3F620D3F828009EA8FF /* UdpSocketBase.h */; };
+		9D59D61220D3F829009EA8FF /* HiC.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3F720D3F828009EA8FF /* HiC.cpp */; };
+		9D59D61320D3F829009EA8FF /* CamGen2Base.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3F820D3F828009EA8FF /* CamGen2Base.cpp */; };
+		9D59D61420D3F829009EA8FF /* libCurlWrap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3F920D3F828009EA8FF /* libCurlWrap.cpp */; };
+		9D59D61520D3F829009EA8FF /* AscentBasedUsbIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3FA20D3F828009EA8FF /* AscentBasedUsbIo.cpp */; };
+		9D59D61720D3F829009EA8FF /* ApogeeFilterWheel.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3FC20D3F828009EA8FF /* ApogeeFilterWheel.h */; };
+		9D59D61820D3F829009EA8FF /* Ascent.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3FD20D3F828009EA8FF /* Ascent.h */; };
+		9D59D61920D3F829009EA8FF /* AltaModeFsm.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3FE20D3F828009EA8FF /* AltaModeFsm.h */; };
+		9D59D61A20D3F829009EA8FF /* AltaModeFsm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3FF20D3F828009EA8FF /* AltaModeFsm.cpp */; };
+		9D59D61B20D3F829009EA8FF /* CamGen2Base.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D40020D3F828009EA8FF /* CamGen2Base.h */; };
+		9D59D61C20D3F829009EA8FF /* Quad.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D40120D3F828009EA8FF /* Quad.cpp */; };
+		9D59D61D20D3F829009EA8FF /* AscentBasedIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D40220D3F828009EA8FF /* AscentBasedIo.h */; };
+		9D59D61E20D3F829009EA8FF /* AspenUsbIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D40320D3F828009EA8FF /* AspenUsbIo.h */; };
+		9D59D61F20D3F829009EA8FF /* ApgLogger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D40420D3F828009EA8FF /* ApgLogger.cpp */; };
+		9D59D62020D3F829009EA8FF /* CameraInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D40520D3F828009EA8FF /* CameraInfo.h */; };
+		9D59D62120D3F829009EA8FF /* Aspen.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D40620D3F828009EA8FF /* Aspen.h */; };
+		9D59D62220D3F829009EA8FF /* AltaUsbIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D40720D3F828009EA8FF /* AltaUsbIo.cpp */; };
+		9D59D62320D3F829009EA8FF /* FilterWheelIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D40920D3F828009EA8FF /* FilterWheelIo.h */; };
+		9D59D62420D3F829009EA8FF /* FindDeviceUsb.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D40A20D3F828009EA8FF /* FindDeviceUsb.h */; };
+		9D59D62520D3F829009EA8FF /* ITimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D40C20D3F828009EA8FF /* ITimer.cpp */; };
+		9D59D62620D3F829009EA8FF /* HiC.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D40D20D3F828009EA8FF /* HiC.h */; };
+		9D59D62720D3F829009EA8FF /* CamRegMirror.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D40F20D3F828009EA8FF /* CamRegMirror.h */; };
+		9D59D62820D3F829009EA8FF /* AltaCcdAcqParams.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D41020D3F828009EA8FF /* AltaCcdAcqParams.h */; };
+		9D59D62920D3F829009EA8FF /* AscentData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D41220D3F828009EA8FF /* AscentData.cpp */; };
+		9D59D62A20D3F829009EA8FF /* ApgTimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D41320D3F828009EA8FF /* ApgTimer.cpp */; };
+		9D59D62B20D3F829009EA8FF /* AltaF.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D41420D3F828009EA8FF /* AltaF.h */; };
+		9D59D62C20D3F829009EA8FF /* FindDeviceEthernet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D41520D3F828009EA8FF /* FindDeviceEthernet.cpp */; };
+		9D59D62D20D3F829009EA8FF /* CamHelpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D41620D3F828009EA8FF /* CamHelpers.cpp */; };
+		9D59D62E20D3F829009EA8FF /* Ascent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D41720D3F828009EA8FF /* Ascent.cpp */; };
+		9D59D62F20D3F829009EA8FF /* ApnUsbSys.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D41820D3F828009EA8FF /* ApnUsbSys.h */; };
+		9D59D63020D3F829009EA8FF /* AltaUsbIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D41920D3F828009EA8FF /* AltaUsbIo.h */; };
+		9D59D63120D3F829009EA8FF /* PlatformData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D41A20D3F828009EA8FF /* PlatformData.cpp */; };
+		9D59D63220D3F829009EA8FF /* DeviceStrHelpers.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D41B20D3F828009EA8FF /* DeviceStrHelpers.h */; };
+		9D59D63320D3F829009EA8FF /* AltaCcdAcqParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D41C20D3F828009EA8FF /* AltaCcdAcqParams.cpp */; };
+		9D59D63420D3F829009EA8FF /* versionNo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D41D20D3F828009EA8FF /* versionNo.h */; };
+		9D59D63520D3F829009EA8FF /* Aspen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D41E20D3F828009EA8FF /* Aspen.cpp */; };
+		9D59D63620D3F829009EA8FF /* LoggerException.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D42020D3F828009EA8FF /* LoggerException.h */; };
+		9D59D63720D3F829009EA8FF /* AspenFx2.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D42120D3F828009EA8FF /* AspenFx2.h */; };
+		9D59D63820D3F829009EA8FF /* CameraStatusRegs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D42220D3F828009EA8FF /* CameraStatusRegs.cpp */; };
+		9D59D63920D3F829009EA8FF /* ApogeeCam.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D42320D3F828009EA8FF /* ApogeeCam.cpp */; };
+		9D59D63A20D3F829009EA8FF /* PlatformData.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D42420D3F828009EA8FF /* PlatformData.h */; };
+		9D59D63B20D3F829009EA8FF /* AscentData.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D42520D3F828009EA8FF /* AscentData.h */; };
+		9D59D63C20D3F829009EA8FF /* libCurlWrap.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D42620D3F828009EA8FF /* libCurlWrap.h */; };
+		9D59D63D20D3F829009EA8FF /* linuxHelpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D42820D3F828009EA8FF /* linuxHelpers.cpp */; };
+		9D59D63E20D3F829009EA8FF /* LinuxTimer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D42920D3F828009EA8FF /* LinuxTimer.h */; };
+		9D59D63F20D3F829009EA8FF /* LoggerSyslog.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D42A20D3F828009EA8FF /* LoggerSyslog.h */; };
+		9D59D64020D3F829009EA8FF /* UdpSocketLinux.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D42B20D3F828009EA8FF /* UdpSocketLinux.cpp */; };
+		9D59D64120D3F829009EA8FF /* GenOneLinuxUSB.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D42C20D3F828009EA8FF /* GenOneLinuxUSB.cpp */; };
+		9D59D64220D3F829009EA8FF /* LinuxTimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D42D20D3F828009EA8FF /* LinuxTimer.cpp */; };
+		9D59D64320D3F829009EA8FF /* GenOneLinuxUSB.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D42E20D3F828009EA8FF /* GenOneLinuxUSB.h */; };
+		9D59D64420D3F829009EA8FF /* LoggerSyslog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D42F20D3F828009EA8FF /* LoggerSyslog.cpp */; };
+		9D59D64520D3F829009EA8FF /* UdpSocketLinux.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43020D3F828009EA8FF /* UdpSocketLinux.h */; };
+		9D59D64620D3F829009EA8FF /* linuxHelpers.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43120D3F828009EA8FF /* linuxHelpers.h */; };
+		9D59D64720D3F829009EA8FF /* AscentBasedIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D43220D3F828009EA8FF /* AscentBasedIo.cpp */; };
+		9D59D64820D3F829009EA8FF /* AscentBasedUsbIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43320D3F828009EA8FF /* AscentBasedUsbIo.h */; };
+		9D59D64920D3F829009EA8FF /* parseCfgTabDelim.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43420D3F828009EA8FF /* parseCfgTabDelim.h */; };
+		9D59D64B20D3F829009EA8FF /* ICamIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D43720D3F828009EA8FF /* ICamIo.cpp */; };
+		9D59D64C20D3F829009EA8FF /* AspenEthernetIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43820D3F828009EA8FF /* AspenEthernetIo.h */; };
+		9D59D64D20D3F829009EA8FF /* FindDeviceEthernet.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43920D3F828009EA8FF /* FindDeviceEthernet.h */; };
+		9D59D64E20D3F829009EA8FF /* ApgTimer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43A20D3F828009EA8FF /* ApgTimer.h */; };
+		9D59D64F20D3F829009EA8FF /* AspenIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43B20D3F828009EA8FF /* AspenIo.h */; };
+		9D59D65020D3F829009EA8FF /* parseCfgTabDelim.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D43C20D3F828009EA8FF /* parseCfgTabDelim.cpp */; };
+		9D59D65120D3F829009EA8FF /* CamGen2ModeFsm.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43D20D3F828009EA8FF /* CamGen2ModeFsm.h */; };
+		9D59D65220D3F829009EA8FF /* CamGen2CcdAcqParams.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43E20D3F828009EA8FF /* CamGen2CcdAcqParams.h */; };
+		9D59D65320D3F829009EA8FF /* CamUsbIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D43F20D3F828009EA8FF /* CamUsbIo.h */; };
+		9D59D65420D3F829009EA8FF /* ILog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D44020D3F828009EA8FF /* ILog.cpp */; };
+		9D59D65520D3F829009EA8FF /* ApogeeCam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D44120D3F828009EA8FF /* ApogeeCam.h */; };
+		9D59D65620D3F829009EA8FF /* ImgFix.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D44220D3F828009EA8FF /* ImgFix.h */; };
+		9D59D65720D3F829009EA8FF /* AspenData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D44320D3F828009EA8FF /* AspenData.cpp */; };
+		9D59D65820D3F829009EA8FF /* AltaData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D44520D3F828009EA8FF /* AltaData.cpp */; };
+		9D59D65920D3F829009EA8FF /* AltaEthernetIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D44620D3F828009EA8FF /* AltaEthernetIo.h */; };
+		9D59D65A20D3F829009EA8FF /* CamHelpers.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D44720D3F828009EA8FF /* CamHelpers.h */; };
+		9D59D65B20D3F829009EA8FF /* AltaIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D44820D3F828009EA8FF /* AltaIo.cpp */; };
+		9D59D65C20D3F829009EA8FF /* FindDeviceUsb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D44920D3F828009EA8FF /* FindDeviceUsb.cpp */; };
+		9D59D65D20D3F829009EA8FF /* IUsb.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D44A20D3F828009EA8FF /* IUsb.h */; };
+		9D59D65E20D3F829009EA8FF /* apgHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D44B20D3F828009EA8FF /* apgHelper.cpp */; };
+		9D59D65F20D3F829009EA8FF /* CamRegMirror.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D44C20D3F828009EA8FF /* CamRegMirror.cpp */; };
+		9D59D66020D3F82A009EA8FF /* apgHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D44D20D3F828009EA8FF /* apgHelper.h */; };
+		9D59D66120D3F82A009EA8FF /* IAltaSerialPortIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D44E20D3F828009EA8FF /* IAltaSerialPortIo.cpp */; };
+		9D59D66420D3F82A009EA8FF /* helpers.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D5D420D3F829009EA8FF /* helpers.h */; };
+		9D59D66520D3F82A009EA8FF /* AspenEthernetIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D5D520D3F829009EA8FF /* AspenEthernetIo.cpp */; };
+		9D59D66620D3F82A009EA8FF /* AltaEthernetIo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D5D620D3F829009EA8FF /* AltaEthernetIo.cpp */; };
+		9D59D66720D3F82A009EA8FF /* IAltaSerialPortIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D5D720D3F829009EA8FF /* IAltaSerialPortIo.h */; };
+		9D59D66820D3F82A009EA8FF /* ILog.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D5D820D3F829009EA8FF /* ILog.h */; };
+		9D59D66920D3F82A009EA8FF /* ApnCamData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D5D920D3F829009EA8FF /* ApnCamData.cpp */; };
+		9D59D66A20D3F82A009EA8FF /* CameraStatusRegs.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D5DA20D3F829009EA8FF /* CameraStatusRegs.h */; };
+		9D59D66B20D3F82A009EA8FF /* ImgFix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D5DB20D3F829009EA8FF /* ImgFix.cpp */; };
+		9D59D66C20D3F82A009EA8FF /* ModeFsm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D5DC20D3F829009EA8FF /* ModeFsm.cpp */; };
+		9D59D66D20D3F82A009EA8FF /* PromFx2Io.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D5DD20D3F829009EA8FF /* PromFx2Io.cpp */; };
+		9D59D66E20D3F82A009EA8FF /* AspenData.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D5DE20D3F829009EA8FF /* AspenData.h */; };
+		9D59D66F20D3F82A009EA8FF /* indigo_ccd_apogee.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D5E020D3F829009EA8FF /* indigo_ccd_apogee.cpp */; };
+		9D59D67020D3F82A009EA8FF /* indigo_ccd_apogee.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D5E120D3F829009EA8FF /* indigo_ccd_apogee.h */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
 		9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */; };
 		9D976FDC1DD0C69D00782B32 /* dc1394.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FDA1DD0C69D00782B32 /* dc1394.h */; };
@@ -322,6 +447,7 @@
 		5925E3491E982BE800FF373F /* jquery.min.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = jquery.min.js; sourceTree = "<group>"; };
 		592662AD1D9590630021746A /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
 		592662B01D9590630021746A /* test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		59292E5620D4224F0042E939 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
 		593AD1011EF8399500C059BC /* indigo_guider_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_asi.c; sourceTree = "<group>"; };
 		593AD1031EF8399500C059BC /* indigo_guider_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_asi_main.c; sourceTree = "<group>"; };
 		593AD1041EF8399500C059BC /* indigo_guider_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_asi.h; sourceTree = "<group>"; };
@@ -533,6 +659,520 @@
 		9D4D64AE20A9D946008ECE4B /* indigo_guider_eqmac.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_eqmac.h; sourceTree = "<group>"; };
 		9D4D64AF20A9D946008ECE4B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D4D64B020A9D946008ECE4B /* indigo_guider_eqmac.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_eqmac.c; sourceTree = "<group>"; };
+		9D59D3C320D3F828009EA8FF /* helpers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpers.cpp; sourceTree = "<group>"; };
+		9D59D3C420D3F828009EA8FF /* AltaIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AltaIo.h; sourceTree = "<group>"; };
+		9D59D3C520D3F828009EA8FF /* PromFx2Io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PromFx2Io.h; sourceTree = "<group>"; };
+		9D59D3C620D3F828009EA8FF /* CamUsbIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CamUsbIo.cpp; sourceTree = "<group>"; };
+		9D59D3C720D3F828009EA8FF /* ModeFsm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ModeFsm.h; sourceTree = "<group>"; };
+		9D59D3C820D3F828009EA8FF /* AltaData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AltaData.h; sourceTree = "<group>"; };
+		9D59D3C920D3F828009EA8FF /* LoggerException.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LoggerException.cpp; sourceTree = "<group>"; };
+		9D59D3CA20D3F828009EA8FF /* DeviceStrHelpers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DeviceStrHelpers.cpp; sourceTree = "<group>"; };
+		9D59D3CC20D3F828009EA8FF /* CameraIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CameraIo.h; sourceTree = "<group>"; };
+		9D59D3CD20D3F828009EA8FF /* Alta.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Alta.h; sourceTree = "<group>"; };
+		9D59D3CE20D3F828009EA8FF /* CamGen2ModeFsm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CamGen2ModeFsm.cpp; sourceTree = "<group>"; };
+		9D59D3CF20D3F828009EA8FF /* ApgLogger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ApgLogger.h; sourceTree = "<group>"; };
+		9D59D3D020D3F828009EA8FF /* CameraInfo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CameraInfo.cpp; sourceTree = "<group>"; };
+		9D59D3D220D3F828009EA8FF /* ICamIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ICamIo.h; sourceTree = "<group>"; };
+		9D59D3D320D3F828009EA8FF /* ITimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ITimer.h; sourceTree = "<group>"; };
+		9D59D3D420D3F828009EA8FF /* Alta.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Alta.cpp; sourceTree = "<group>"; };
+		9D59D3D520D3F828009EA8FF /* COMHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = COMHelper.h; sourceTree = "<group>"; };
+		9D59D3D720D3F828009EA8FF /* CameraIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CameraIo.cpp; sourceTree = "<group>"; };
+		9D59D3D820D3F828009EA8FF /* AspenUsbIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AspenUsbIo.cpp; sourceTree = "<group>"; };
+		9D59D3D920D3F828009EA8FF /* IUsb.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IUsb.cpp; sourceTree = "<group>"; };
+		9D59D3DA20D3F828009EA8FF /* AspenIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AspenIo.cpp; sourceTree = "<group>"; };
+		9D59D3DC20D3F828009EA8FF /* CamCfgMatrix.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CamCfgMatrix.cpp; sourceTree = "<group>"; };
+		9D59D3DD20D3F828009EA8FF /* CamCfgMatrix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CamCfgMatrix.h; sourceTree = "<group>"; };
+		9D59D3DE20D3F828009EA8FF /* AltaF.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AltaF.cpp; sourceTree = "<group>"; };
+		9D59D3DF20D3F828009EA8FF /* CcdAcqParams.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CcdAcqParams.h; sourceTree = "<group>"; };
+		9D59D3E020D3F828009EA8FF /* CcdAcqParams.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CcdAcqParams.cpp; sourceTree = "<group>"; };
+		9D59D3E120D3F828009EA8FF /* ApnCamData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ApnCamData.h; sourceTree = "<group>"; };
+		9D59D3E220D3F828009EA8FF /* Quad.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Quad.h; sourceTree = "<group>"; };
+		9D59D3E420D3F828009EA8FF /* ApogeeFilterWheel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ApogeeFilterWheel.cpp; sourceTree = "<group>"; };
+		9D59D3E520D3F828009EA8FF /* UdpSocketBase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = UdpSocketBase.cpp; sourceTree = "<group>"; };
+		9D59D3E620D3F828009EA8FF /* CamGen2CcdAcqParams.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CamGen2CcdAcqParams.cpp; sourceTree = "<group>"; };
+		9D59D3E720D3F828009EA8FF /* FilterWheelIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FilterWheelIo.cpp; sourceTree = "<group>"; };
+		9D59D3F620D3F828009EA8FF /* UdpSocketBase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UdpSocketBase.h; sourceTree = "<group>"; };
+		9D59D3F720D3F828009EA8FF /* HiC.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HiC.cpp; sourceTree = "<group>"; };
+		9D59D3F820D3F828009EA8FF /* CamGen2Base.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CamGen2Base.cpp; sourceTree = "<group>"; };
+		9D59D3F920D3F828009EA8FF /* libCurlWrap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = libCurlWrap.cpp; sourceTree = "<group>"; };
+		9D59D3FA20D3F828009EA8FF /* AscentBasedUsbIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AscentBasedUsbIo.cpp; sourceTree = "<group>"; };
+		9D59D3FC20D3F828009EA8FF /* ApogeeFilterWheel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ApogeeFilterWheel.h; sourceTree = "<group>"; };
+		9D59D3FD20D3F828009EA8FF /* Ascent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Ascent.h; sourceTree = "<group>"; };
+		9D59D3FE20D3F828009EA8FF /* AltaModeFsm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AltaModeFsm.h; sourceTree = "<group>"; };
+		9D59D3FF20D3F828009EA8FF /* AltaModeFsm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AltaModeFsm.cpp; sourceTree = "<group>"; };
+		9D59D40020D3F828009EA8FF /* CamGen2Base.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CamGen2Base.h; sourceTree = "<group>"; };
+		9D59D40120D3F828009EA8FF /* Quad.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Quad.cpp; sourceTree = "<group>"; };
+		9D59D40220D3F828009EA8FF /* AscentBasedIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AscentBasedIo.h; sourceTree = "<group>"; };
+		9D59D40320D3F828009EA8FF /* AspenUsbIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AspenUsbIo.h; sourceTree = "<group>"; };
+		9D59D40420D3F828009EA8FF /* ApgLogger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ApgLogger.cpp; sourceTree = "<group>"; };
+		9D59D40520D3F828009EA8FF /* CameraInfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CameraInfo.h; sourceTree = "<group>"; };
+		9D59D40620D3F828009EA8FF /* Aspen.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Aspen.h; sourceTree = "<group>"; };
+		9D59D40720D3F828009EA8FF /* AltaUsbIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AltaUsbIo.cpp; sourceTree = "<group>"; };
+		9D59D40920D3F828009EA8FF /* FilterWheelIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FilterWheelIo.h; sourceTree = "<group>"; };
+		9D59D40A20D3F828009EA8FF /* FindDeviceUsb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FindDeviceUsb.h; sourceTree = "<group>"; };
+		9D59D40C20D3F828009EA8FF /* ITimer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ITimer.cpp; sourceTree = "<group>"; };
+		9D59D40D20D3F828009EA8FF /* HiC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HiC.h; sourceTree = "<group>"; };
+		9D59D40F20D3F828009EA8FF /* CamRegMirror.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CamRegMirror.h; sourceTree = "<group>"; };
+		9D59D41020D3F828009EA8FF /* AltaCcdAcqParams.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AltaCcdAcqParams.h; sourceTree = "<group>"; };
+		9D59D41220D3F828009EA8FF /* AscentData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AscentData.cpp; sourceTree = "<group>"; };
+		9D59D41320D3F828009EA8FF /* ApgTimer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ApgTimer.cpp; sourceTree = "<group>"; };
+		9D59D41420D3F828009EA8FF /* AltaF.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AltaF.h; sourceTree = "<group>"; };
+		9D59D41520D3F828009EA8FF /* FindDeviceEthernet.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FindDeviceEthernet.cpp; sourceTree = "<group>"; };
+		9D59D41620D3F828009EA8FF /* CamHelpers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CamHelpers.cpp; sourceTree = "<group>"; };
+		9D59D41720D3F828009EA8FF /* Ascent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Ascent.cpp; sourceTree = "<group>"; };
+		9D59D41820D3F828009EA8FF /* ApnUsbSys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ApnUsbSys.h; sourceTree = "<group>"; };
+		9D59D41920D3F828009EA8FF /* AltaUsbIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AltaUsbIo.h; sourceTree = "<group>"; };
+		9D59D41A20D3F828009EA8FF /* PlatformData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PlatformData.cpp; sourceTree = "<group>"; };
+		9D59D41B20D3F828009EA8FF /* DeviceStrHelpers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DeviceStrHelpers.h; sourceTree = "<group>"; };
+		9D59D41C20D3F828009EA8FF /* AltaCcdAcqParams.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AltaCcdAcqParams.cpp; sourceTree = "<group>"; };
+		9D59D41D20D3F828009EA8FF /* versionNo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = versionNo.h; sourceTree = "<group>"; };
+		9D59D41E20D3F828009EA8FF /* Aspen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Aspen.cpp; sourceTree = "<group>"; };
+		9D59D41F20D3F828009EA8FF /* 99-apogee.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "99-apogee.rules"; sourceTree = "<group>"; };
+		9D59D42020D3F828009EA8FF /* LoggerException.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoggerException.h; sourceTree = "<group>"; };
+		9D59D42120D3F828009EA8FF /* AspenFx2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AspenFx2.h; sourceTree = "<group>"; };
+		9D59D42220D3F828009EA8FF /* CameraStatusRegs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CameraStatusRegs.cpp; sourceTree = "<group>"; };
+		9D59D42320D3F828009EA8FF /* ApogeeCam.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ApogeeCam.cpp; sourceTree = "<group>"; };
+		9D59D42420D3F828009EA8FF /* PlatformData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlatformData.h; sourceTree = "<group>"; };
+		9D59D42520D3F828009EA8FF /* AscentData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AscentData.h; sourceTree = "<group>"; };
+		9D59D42620D3F828009EA8FF /* libCurlWrap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libCurlWrap.h; sourceTree = "<group>"; };
+		9D59D42820D3F828009EA8FF /* linuxHelpers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = linuxHelpers.cpp; sourceTree = "<group>"; };
+		9D59D42920D3F828009EA8FF /* LinuxTimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LinuxTimer.h; sourceTree = "<group>"; };
+		9D59D42A20D3F828009EA8FF /* LoggerSyslog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoggerSyslog.h; sourceTree = "<group>"; };
+		9D59D42B20D3F828009EA8FF /* UdpSocketLinux.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = UdpSocketLinux.cpp; sourceTree = "<group>"; };
+		9D59D42C20D3F828009EA8FF /* GenOneLinuxUSB.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GenOneLinuxUSB.cpp; sourceTree = "<group>"; };
+		9D59D42D20D3F828009EA8FF /* LinuxTimer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LinuxTimer.cpp; sourceTree = "<group>"; };
+		9D59D42E20D3F828009EA8FF /* GenOneLinuxUSB.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GenOneLinuxUSB.h; sourceTree = "<group>"; };
+		9D59D42F20D3F828009EA8FF /* LoggerSyslog.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LoggerSyslog.cpp; sourceTree = "<group>"; };
+		9D59D43020D3F828009EA8FF /* UdpSocketLinux.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UdpSocketLinux.h; sourceTree = "<group>"; };
+		9D59D43120D3F828009EA8FF /* linuxHelpers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = linuxHelpers.h; sourceTree = "<group>"; };
+		9D59D43220D3F828009EA8FF /* AscentBasedIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AscentBasedIo.cpp; sourceTree = "<group>"; };
+		9D59D43320D3F828009EA8FF /* AscentBasedUsbIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AscentBasedUsbIo.h; sourceTree = "<group>"; };
+		9D59D43420D3F828009EA8FF /* parseCfgTabDelim.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = parseCfgTabDelim.h; sourceTree = "<group>"; };
+		9D59D43720D3F828009EA8FF /* ICamIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ICamIo.cpp; sourceTree = "<group>"; };
+		9D59D43820D3F828009EA8FF /* AspenEthernetIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AspenEthernetIo.h; sourceTree = "<group>"; };
+		9D59D43920D3F828009EA8FF /* FindDeviceEthernet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FindDeviceEthernet.h; sourceTree = "<group>"; };
+		9D59D43A20D3F828009EA8FF /* ApgTimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ApgTimer.h; sourceTree = "<group>"; };
+		9D59D43B20D3F828009EA8FF /* AspenIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AspenIo.h; sourceTree = "<group>"; };
+		9D59D43C20D3F828009EA8FF /* parseCfgTabDelim.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = parseCfgTabDelim.cpp; sourceTree = "<group>"; };
+		9D59D43D20D3F828009EA8FF /* CamGen2ModeFsm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CamGen2ModeFsm.h; sourceTree = "<group>"; };
+		9D59D43E20D3F828009EA8FF /* CamGen2CcdAcqParams.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CamGen2CcdAcqParams.h; sourceTree = "<group>"; };
+		9D59D43F20D3F828009EA8FF /* CamUsbIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CamUsbIo.h; sourceTree = "<group>"; };
+		9D59D44020D3F828009EA8FF /* ILog.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ILog.cpp; sourceTree = "<group>"; };
+		9D59D44120D3F828009EA8FF /* ApogeeCam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ApogeeCam.h; sourceTree = "<group>"; };
+		9D59D44220D3F828009EA8FF /* ImgFix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImgFix.h; sourceTree = "<group>"; };
+		9D59D44320D3F828009EA8FF /* AspenData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AspenData.cpp; sourceTree = "<group>"; };
+		9D59D44520D3F828009EA8FF /* AltaData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AltaData.cpp; sourceTree = "<group>"; };
+		9D59D44620D3F828009EA8FF /* AltaEthernetIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AltaEthernetIo.h; sourceTree = "<group>"; };
+		9D59D44720D3F828009EA8FF /* CamHelpers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CamHelpers.h; sourceTree = "<group>"; };
+		9D59D44820D3F828009EA8FF /* AltaIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AltaIo.cpp; sourceTree = "<group>"; };
+		9D59D44920D3F828009EA8FF /* FindDeviceUsb.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FindDeviceUsb.cpp; sourceTree = "<group>"; };
+		9D59D44A20D3F828009EA8FF /* IUsb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IUsb.h; sourceTree = "<group>"; };
+		9D59D44B20D3F828009EA8FF /* apgHelper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = apgHelper.cpp; sourceTree = "<group>"; };
+		9D59D44C20D3F828009EA8FF /* CamRegMirror.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CamRegMirror.cpp; sourceTree = "<group>"; };
+		9D59D44D20D3F828009EA8FF /* apgHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = apgHelper.h; sourceTree = "<group>"; };
+		9D59D44E20D3F828009EA8FF /* IAltaSerialPortIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IAltaSerialPortIo.cpp; sourceTree = "<group>"; };
+		9D59D45220D3F828009EA8FF /* NF9R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF9R.txt; sourceTree = "<group>"; };
+		9D59D45320D3F828009EA8FF /* K12HS4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS4.txt; sourceTree = "<group>"; };
+		9D59D45420D3F828009EA8FF /* FKHR1B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR1B.txt; sourceTree = "<group>"; };
+		9D59D45520D3F828009EA8FF /* NF77S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF77S.txt; sourceTree = "<group>"; };
+		9D59D45620D3F828009EA8FF /* H16HSi.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H16HSi.txt; sourceTree = "<group>"; };
+		9D59D45720D3F828009EA8FF /* AV4D.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV4D.txt; sourceTree = "<group>"; };
+		9D59D45820D3F828009EA8FF /* M16HR230.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR230.txt; sourceTree = "<group>"; };
+		9D59D45920D3F828009EA8FF /* M16HR3C.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR3C.txt; sourceTree = "<group>"; };
+		9D59D45A20D3F828009EA8FF /* AV5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV5.txt; sourceTree = "<group>"; };
+		9D59D45B20D3F828009EA8FF /* NoOpV.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NoOpV.txt; sourceTree = "<group>"; };
+		9D59D45C20D3F828009EA8FF /* NCG77S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG77S.txt; sourceTree = "<group>"; };
+		9D59D45D20D3F828009EA8FF /* M16HR3B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR3B.txt; sourceTree = "<group>"; };
+		9D59D45E20D3F828009EA8FF /* AV5V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV5V.txt; sourceTree = "<group>"; };
+		9D59D45F20D3F828009EA8FF /* AV4E.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV4E.txt; sourceTree = "<group>"; };
+		9D59D46020D3F828009EA8FF /* MV7i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV7i.txt; sourceTree = "<group>"; };
+		9D59D46120D3F828009EA8FF /* FCG285.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG285.txt; sourceTree = "<group>"; };
+		9D59D46220D3F828009EA8FF /* FEV1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEV1.txt; sourceTree = "<group>"; };
+		9D59D46320D3F828009EA8FF /* NF77R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF77R.txt; sourceTree = "<group>"; };
+		9D59D46420D3F828009EA8FF /* AR4V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR4V.txt; sourceTree = "<group>"; };
+		9D59D46520D3F828009EA8FF /* NCG8050S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG8050S.txt; sourceTree = "<group>"; };
+		9D59D46620D3F828009EA8FF /* K12HC2B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HC2B.txt; sourceTree = "<group>"; };
+		9D59D46720D3F828009EA8FF /* FKHR1c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR1c.txt; sourceTree = "<group>"; };
+		9D59D46820D3F828009EA8FF /* K12HS5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS5.txt; sourceTree = "<group>"; };
+		9D59D46920D3F828009EA8FF /* NF9S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF9S.txt; sourceTree = "<group>"; };
+		9D59D46A20D3F828009EA8FF /* K12HS7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS7.txt; sourceTree = "<group>"; };
+		9D59D46B20D3F828009EA8FF /* K12HR3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR3.txt; sourceTree = "<group>"; };
+		9D59D46C20D3F828009EA8FF /* FKHR1A.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR1A.txt; sourceTree = "<group>"; };
+		9D59D46D20D3F828009EA8FF /* M12HCi.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HCi.txt; sourceTree = "<group>"; };
+		9D59D46E20D3F828009EA8FF /* FKHR3i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR3i.txt; sourceTree = "<group>"; };
+		9D59D46F20D3F828009EA8FF /* AR2Vb.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR2Vb.txt; sourceTree = "<group>"; };
+		9D59D47020D3F828009EA8FF /* MV230b.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV230b.txt; sourceTree = "<group>"; };
+		9D59D47120D3F828009EA8FF /* K16HR31.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR31.txt; sourceTree = "<group>"; };
+		9D59D47220D3F828009EA8FF /* K12HS10B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS10B.txt; sourceTree = "<group>"; };
+		9D59D47320D3F828009EA8FF /* FF8300R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF8300R.txt; sourceTree = "<group>"; };
+		9D59D47420D3F828009EA8FF /* KV6B2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV6B2.txt; sourceTree = "<group>"; };
+		9D59D47520D3F828009EA8FF /* AV6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV6.txt; sourceTree = "<group>"; };
+		9D59D47620D3F828009EA8FF /* NR3041.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NR3041.txt; sourceTree = "<group>"; };
+		9D59D47720D3F828009EA8FF /* F16HR1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F16HR1.txt; sourceTree = "<group>"; };
+		9D59D47820D3F828009EA8FF /* NF6RA.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF6RA.txt; sourceTree = "<group>"; };
+		9D59D47920D3F828009EA8FF /* KV3B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV3B.txt; sourceTree = "<group>"; };
+		9D59D47A20D3F828009EA8FF /* NCG8300.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG8300.txt; sourceTree = "<group>"; };
+		9D59D47B20D3F828009EA8FF /* AV7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV7.txt; sourceTree = "<group>"; };
+		9D59D47C20D3F828009EA8FF /* K16HR2B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR2B.txt; sourceTree = "<group>"; };
+		9D59D47D20D3F828009EA8FF /* FEV2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEV2.txt; sourceTree = "<group>"; };
+		9D59D47E20D3F828009EA8FF /* MV230t.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV230t.txt; sourceTree = "<group>"; };
+		9D59D47F20D3F828009EA8FF /* FKHS1B8.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS1B8.txt; sourceTree = "<group>"; };
+		9D59D48020D3F828009EA8FF /* K12HS6B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS6B.txt; sourceTree = "<group>"; };
+		9D59D48120D3F828009EA8FF /* AR5F.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR5F.txt; sourceTree = "<group>"; };
+		9D59D48220D3F828009EA8FF /* K12HR2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR2.txt; sourceTree = "<group>"; };
+		9D59D48320D3F828009EA8FF /* K12HS6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS6.txt; sourceTree = "<group>"; };
+		9D59D48420D3F828009EA8FF /* M16HR3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR3.txt; sourceTree = "<group>"; };
+		9D59D48520D3F828009EA8FF /* M16HS7i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HS7i.txt; sourceTree = "<group>"; };
+		9D59D48620D3F828009EA8FF /* M16HS7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HS7.txt; sourceTree = "<group>"; };
+		9D59D48720D3F828009EA8FF /* K12HS2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS2.txt; sourceTree = "<group>"; };
+		9D59D48820D3F828009EA8FF /* K12HR6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR6.txt; sourceTree = "<group>"; };
+		9D59D48920D3F828009EA8FF /* FEHS2c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEHS2c.txt; sourceTree = "<group>"; };
+		9D59D48A20D3F828009EA8FF /* M16HR7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR7.txt; sourceTree = "<group>"; };
+		9D59D48B20D3F828009EA8FF /* AR5FL.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR5FL.txt; sourceTree = "<group>"; };
+		9D59D48C20D3F828009EA8FF /* FKHR1D.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR1D.txt; sourceTree = "<group>"; };
+		9D59D48D20D3F828009EA8FF /* AR4F.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR4F.txt; sourceTree = "<group>"; };
+		9D59D48E20D3F828009EA8FF /* NCG77SREGA.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG77SREGA.txt; sourceTree = "<group>"; };
+		9D59D48F20D3F828009EA8FF /* MV4B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV4B.txt; sourceTree = "<group>"; };
+		9D59D49020D3F828009EA8FF /* FF77S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF77S.txt; sourceTree = "<group>"; };
+		9D59D49120D3F828009EA8FF /* FKHR4BQ.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR4BQ.txt; sourceTree = "<group>"; };
+		9D59D49220D3F828009EA8FF /* AV4B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV4B.txt; sourceTree = "<group>"; };
+		9D59D49320D3F828009EA8FF /* NA674R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NA674R.txt; sourceTree = "<group>"; };
+		9D59D49420D3F828009EA8FF /* NS3041.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NS3041.txt; sourceTree = "<group>"; };
+		9D59D49520D3F828009EA8FF /* K16HS5B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS5B.txt; sourceTree = "<group>"; };
+		9D59D49620D3F828009EA8FF /* FKHR1Db.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR1Db.txt; sourceTree = "<group>"; };
+		9D59D49720D3F828009EA8FF /* apnmatrix.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = apnmatrix.txt; sourceTree = "<group>"; };
+		9D59D49820D3F828009EA8FF /* NF47S12.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF47S12.txt; sourceTree = "<group>"; };
+		9D59D49920D3F828009EA8FF /* AV2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV2.txt; sourceTree = "<group>"; };
+		9D59D49A20D3F828009EA8FF /* F16HS1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F16HS1.txt; sourceTree = "<group>"; };
+		9D59D49B20D3F828009EA8FF /* F47V12.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F47V12.txt; sourceTree = "<group>"; };
+		9D59D49C20D3F828009EA8FF /* KV2B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV2B.txt; sourceTree = "<group>"; };
+		9D59D49D20D3F828009EA8FF /* NCG16.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG16.txt; sourceTree = "<group>"; };
+		9D59D49E20D3F828009EA8FF /* FF77R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF77R.txt; sourceTree = "<group>"; };
+		9D59D49F20D3F828009EA8FF /* KV9.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV9.txt; sourceTree = "<group>"; };
+		9D59D4A020D3F828009EA8FF /* CG42AIMOV.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CG42AIMOV.txt; sourceTree = "<group>"; };
+		9D59D4A120D3F828009EA8FF /* NCG77REGA.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG77REGA.txt; sourceTree = "<group>"; };
+		9D59D4A220D3F828009EA8FF /* K12HR7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR7.txt; sourceTree = "<group>"; };
+		9D59D4A320D3F828009EA8FF /* K12HS3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS3.txt; sourceTree = "<group>"; };
+		9D59D4A420D3F828009EA8FF /* K12HR5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR5.txt; sourceTree = "<group>"; };
+		9D59D4A520D3F828009EA8FF /* AR5V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR5V.txt; sourceTree = "<group>"; };
+		9D59D4A620D3F828009EA8FF /* FF6RA.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF6RA.txt; sourceTree = "<group>"; };
+		9D59D4A720D3F828009EA8FF /* FF50100RD.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF50100RD.txt; sourceTree = "<group>"; };
+		9D59D4A820D3F828009EA8FF /* NA814R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NA814R.txt; sourceTree = "<group>"; };
+		9D59D4A920D3F828009EA8FF /* AR4Vb.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR4Vb.txt; sourceTree = "<group>"; };
+		9D59D4AA20D3F828009EA8FF /* AV4V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV4V.txt; sourceTree = "<group>"; };
+		9D59D4AB20D3F828009EA8FF /* AV4A.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV4A.txt; sourceTree = "<group>"; };
+		9D59D4AC20D3F828009EA8FF /* NCG285SA.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG285SA.txt; sourceTree = "<group>"; };
+		9D59D4AD20D3F828009EA8FF /* M16HR3F.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR3F.txt; sourceTree = "<group>"; };
+		9D59D4AE20D3F828009EA8FF /* K12HR3i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR3i.txt; sourceTree = "<group>"; };
+		9D59D4AF20D3F828009EA8FF /* AV1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV1.txt; sourceTree = "<group>"; };
+		9D59D4B020D3F828009EA8FF /* AS2S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AS2S.txt; sourceTree = "<group>"; };
+		9D59D4B120D3F828009EA8FF /* NCG77V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG77V.txt; sourceTree = "<group>"; };
+		9D59D4B220D3F828009EA8FF /* F30V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F30V.txt; sourceTree = "<group>"; };
+		9D59D4B320D3F828009EA8FF /* AV5S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV5S.txt; sourceTree = "<group>"; };
+		9D59D4B420D3F828009EA8FF /* H16HRi.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H16HRi.txt; sourceTree = "<group>"; };
+		9D59D4B520D3F828009EA8FF /* CG47V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CG47V.txt; sourceTree = "<group>"; };
+		9D59D4B620D3F828009EA8FF /* AR4D.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR4D.txt; sourceTree = "<group>"; };
+		9D59D4B720D3F828009EA8FF /* M16HS1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HS1.txt; sourceTree = "<group>"; };
+		9D59D4B820D3F828009EA8FF /* FKHS3c8.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS3c8.txt; sourceTree = "<group>"; };
+		9D59D4B920D3F828009EA8FF /* M16HR5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR5.txt; sourceTree = "<group>"; };
+		9D59D4BA20D3F828009EA8FF /* K12HR4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR4.txt; sourceTree = "<group>"; };
+		9D59D4BB20D3F828009EA8FF /* K16HR7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR7.txt; sourceTree = "<group>"; };
+		9D59D4BC20D3F828009EA8FF /* K16HS3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS3.txt; sourceTree = "<group>"; };
+		9D59D4BD20D3F828009EA8FF /* FCG42S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG42S.txt; sourceTree = "<group>"; };
+		9D59D4BE20D3F828009EA8FF /* M12HR.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HR.txt; sourceTree = "<group>"; };
+		9D59D4BF20D3F828009EA8FF /* FV1B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FV1B.txt; sourceTree = "<group>"; };
+		9D59D4C020D3F828009EA8FF /* NCG285A.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG285A.txt; sourceTree = "<group>"; };
+		9D59D4C120D3F828009EA8FF /* NF47R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF47R.txt; sourceTree = "<group>"; };
+		9D59D4C220D3F828009EA8FF /* FKHS1A.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS1A.txt; sourceTree = "<group>"; };
+		9D59D4C320D3F828009EA8FF /* FKHS3i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS3i.txt; sourceTree = "<group>"; };
+		9D59D4C420D3F828009EA8FF /* FV1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FV1.txt; sourceTree = "<group>"; };
+		9D59D4C520D3F828009EA8FF /* AS5F.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AS5F.txt; sourceTree = "<group>"; };
+		9D59D4C620D3F828009EA8FF /* K12HR6B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR6B.txt; sourceTree = "<group>"; };
+		9D59D4C720D3F828009EA8FF /* M16HR7i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR7i.txt; sourceTree = "<group>"; };
+		9D59D4C820D3F828009EA8FF /* K16HS2B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS2B.txt; sourceTree = "<group>"; };
+		9D59D4C920D3F828009EA8FF /* M12HS.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HS.txt; sourceTree = "<group>"; };
+		9D59D4CA20D3F828009EA8FF /* K16HS2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS2.txt; sourceTree = "<group>"; };
+		9D59D4CB20D3F828009EA8FF /* K16HR6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR6.txt; sourceTree = "<group>"; };
+		9D59D4CC20D3F828009EA8FF /* M12HR7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HR7.txt; sourceTree = "<group>"; };
+		9D59D4CD20D3F828009EA8FF /* KV5ns.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV5ns.txt; sourceTree = "<group>"; };
+		9D59D4CE20D3F828009EA8FF /* M16HS1i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HS1i.txt; sourceTree = "<group>"; };
+		9D59D4CF20D3F828009EA8FF /* H12HRi.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H12HRi.txt; sourceTree = "<group>"; };
+		9D59D4D020D3F828009EA8FF /* M12HRC.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HRC.txt; sourceTree = "<group>"; };
+		9D59D4D120D3F828009EA8FF /* NF50100S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF50100S.txt; sourceTree = "<group>"; };
+		9D59D4D220D3F828009EA8FF /* K12HC9.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HC9.txt; sourceTree = "<group>"; };
+		9D59D4D320D3F828009EA8FF /* FCG77.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG77.txt; sourceTree = "<group>"; };
+		9D59D4D420D3F828009EA8FF /* FF4000R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF4000R.txt; sourceTree = "<group>"; };
+		9D59D4D520D3F828009EA8FF /* F47DDV.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F47DDV.txt; sourceTree = "<group>"; };
+		9D59D4D620D3F828009EA8FF /* AV2S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV2S.txt; sourceTree = "<group>"; };
+		9D59D4D720D3F828009EA8FF /* NF30S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF30S.txt; sourceTree = "<group>"; };
+		9D59D4D820D3F828009EA8FF /* FKHS1B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS1B.txt; sourceTree = "<group>"; };
+		9D59D4D920D3F828009EA8FF /* AS5S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AS5S.txt; sourceTree = "<group>"; };
+		9D59D4DA20D3F828009EA8FF /* FKHS1c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS1c.txt; sourceTree = "<group>"; };
+		9D59D4DB20D3F828009EA8FF /* FS230.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FS230.txt; sourceTree = "<group>"; };
+		9D59D4DC20D3F828009EA8FF /* NF30R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF30R.txt; sourceTree = "<group>"; };
+		9D59D4DD20D3F828009EA8FF /* M16HR5B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR5B.txt; sourceTree = "<group>"; };
+		9D59D4DE20D3F828009EA8FF /* AV4Vb.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV4Vb.txt; sourceTree = "<group>"; };
+		9D59D4DF20D3F828009EA8FF /* NS230b.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NS230b.txt; sourceTree = "<group>"; };
+		9D59D4E020D3F828009EA8FF /* FF4000S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF4000S.txt; sourceTree = "<group>"; };
+		9D59D4E120D3F828009EA8FF /* K16HR10B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR10B.txt; sourceTree = "<group>"; };
+		9D59D4E220D3F828009EA8FF /* M12HC7i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HC7i.txt; sourceTree = "<group>"; };
+		9D59D4E320D3F828009EA8FF /* NCG16070.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG16070.txt; sourceTree = "<group>"; };
+		9D59D4E420D3F828009EA8FF /* MV1i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV1i.txt; sourceTree = "<group>"; };
+		9D59D4E520D3F828009EA8FF /* K16HR5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR5.txt; sourceTree = "<group>"; };
+		9D59D4E620D3F828009EA8FF /* M12HRB.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HRB.txt; sourceTree = "<group>"; };
+		9D59D4E720D3F828009EA8FF /* K16HS1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS1.txt; sourceTree = "<group>"; };
+		9D59D4E820D3F828009EA8FF /* AR2V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR2V.txt; sourceTree = "<group>"; };
+		9D59D4E920D3F828009EA8FF /* AR2a.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR2a.txt; sourceTree = "<group>"; };
+		9D59D4EA20D3F829009EA8FF /* XAV1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = XAV1.txt; sourceTree = "<group>"; };
+		9D59D4EB20D3F829009EA8FF /* FF47R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF47R.txt; sourceTree = "<group>"; };
+		9D59D4EC20D3F829009EA8FF /* K12HS3i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS3i.txt; sourceTree = "<group>"; };
+		9D59D4ED20D3F829009EA8FF /* FKHR6C.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR6C.txt; sourceTree = "<group>"; };
+		9D59D4EE20D3F829009EA8FF /* K12HC5B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HC5B.txt; sourceTree = "<group>"; };
+		9D59D4EF20D3F829009EA8FF /* M12HSB.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HSB.txt; sourceTree = "<group>"; };
+		9D59D4F020D3F829009EA8FF /* K16HS5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS5.txt; sourceTree = "<group>"; };
+		9D59D4F120D3F829009EA8FF /* K16HR1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR1.txt; sourceTree = "<group>"; };
+		9D59D4F220D3F829009EA8FF /* FA694R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FA694R.txt; sourceTree = "<group>"; };
+		9D59D4F320D3F829009EA8FF /* FF9S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF9S.txt; sourceTree = "<group>"; };
+		9D59D4F420D3F829009EA8FF /* M12HC.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HC.txt; sourceTree = "<group>"; };
+		9D59D4F520D3F829009EA8FF /* AV2V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV2V.txt; sourceTree = "<group>"; };
+		9D59D4F620D3F829009EA8FF /* F3041V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F3041V.txt; sourceTree = "<group>"; };
+		9D59D4F720D3F829009EA8FF /* K12HR6B2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR6B2.txt; sourceTree = "<group>"; };
+		9D59D4F820D3F829009EA8FF /* NR230b.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NR230b.txt; sourceTree = "<group>"; };
+		9D59D4F920D3F829009EA8FF /* KV8B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV8B.txt; sourceTree = "<group>"; };
+		9D59D4FA20D3F829009EA8FF /* NF16000R2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF16000R2.txt; sourceTree = "<group>"; };
+		9D59D4FB20D3F829009EA8FF /* FF9R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF9R.txt; sourceTree = "<group>"; };
+		9D59D4FC20D3F829009EA8FF /* NAD814R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NAD814R.txt; sourceTree = "<group>"; };
+		9D59D4FD20D3F829009EA8FF /* F77V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F77V.txt; sourceTree = "<group>"; };
+		9D59D4FE20D3F829009EA8FF /* M12HSC.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HSC.txt; sourceTree = "<group>"; };
+		9D59D4FF20D3F829009EA8FF /* FAD694R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FAD694R.txt; sourceTree = "<group>"; };
+		9D59D50020D3F829009EA8FF /* FKHR6B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR6B.txt; sourceTree = "<group>"; };
+		9D59D50120D3F829009EA8FF /* H12HSi.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H12HSi.txt; sourceTree = "<group>"; };
+		9D59D50220D3F829009EA8FF /* AR2D.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR2D.txt; sourceTree = "<group>"; };
+		9D59D50320D3F829009EA8FF /* MV2CN.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV2CN.txt; sourceTree = "<group>"; };
+		9D59D50420D3F829009EA8FF /* AR2S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR2S.txt; sourceTree = "<group>"; };
+		9D59D50520D3F829009EA8FF /* FF30S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF30S.txt; sourceTree = "<group>"; };
+		9D59D50620D3F829009EA8FF /* FF50100S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF50100S.txt; sourceTree = "<group>"; };
+		9D59D50720D3F829009EA8FF /* NF47R12.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF47R12.txt; sourceTree = "<group>"; };
+		9D59D50820D3F829009EA8FF /* NF1109R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF1109R.txt; sourceTree = "<group>"; };
+		9D59D50920D3F829009EA8FF /* AR2F.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR2F.txt; sourceTree = "<group>"; };
+		9D59D50A20D3F829009EA8FF /* K16HR2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR2.txt; sourceTree = "<group>"; };
+		9D59D50B20D3F829009EA8FF /* K16HS6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS6.txt; sourceTree = "<group>"; };
+		9D59D50C20D3F829009EA8FF /* M12HS7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HS7.txt; sourceTree = "<group>"; };
+		9D59D50D20D3F829009EA8FF /* MV2B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV2B.txt; sourceTree = "<group>"; };
+		9D59D50E20D3F829009EA8FF /* K16HR5B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR5B.txt; sourceTree = "<group>"; };
+		9D59D50F20D3F829009EA8FF /* NCG77.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG77.txt; sourceTree = "<group>"; };
+		9D59D51020D3F829009EA8FF /* FCG16M.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG16M.txt; sourceTree = "<group>"; };
+		9D59D51120D3F829009EA8FF /* NCG285S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG285S.txt; sourceTree = "<group>"; };
+		9D59D51220D3F829009EA8FF /* FEHR2c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEHR2c.txt; sourceTree = "<group>"; };
+		9D59D51320D3F829009EA8FF /* KV4B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV4B.txt; sourceTree = "<group>"; };
+		9D59D51420D3F829009EA8FF /* NAD674R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NAD674R.txt; sourceTree = "<group>"; };
+		9D59D51520D3F829009EA8FF /* MV2C.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV2C.txt; sourceTree = "<group>"; };
+		9D59D51620D3F829009EA8FF /* FEHR1AQ.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEHR1AQ.txt; sourceTree = "<group>"; };
+		9D59D51720D3F829009EA8FF /* K16HS7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS7.txt; sourceTree = "<group>"; };
+		9D59D51820D3F829009EA8FF /* K16HR3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR3.txt; sourceTree = "<group>"; };
+		9D59D51920D3F829009EA8FF /* FKHR6A.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR6A.txt; sourceTree = "<group>"; };
+		9D59D51A20D3F829009EA8FF /* AV2Vb.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AV2Vb.txt; sourceTree = "<group>"; };
+		9D59D51B20D3F829009EA8FF /* FF30R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF30R.txt; sourceTree = "<group>"; };
+		9D59D51C20D3F829009EA8FF /* NS230.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NS230.txt; sourceTree = "<group>"; };
+		9D59D51D20D3F829009EA8FF /* FCG16070.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG16070.txt; sourceTree = "<group>"; };
+		9D59D51E20D3F829009EA8FF /* K12HS2B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS2B.txt; sourceTree = "<group>"; };
+		9D59D51F20D3F829009EA8FF /* M12HR7i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HR7i.txt; sourceTree = "<group>"; };
+		9D59D52020D3F829009EA8FF /* M12HRi.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HRi.txt; sourceTree = "<group>"; };
+		9D59D52120D3F829009EA8FF /* K16HR6B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR6B.txt; sourceTree = "<group>"; };
+		9D59D52220D3F829009EA8FF /* MV1B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV1B.txt; sourceTree = "<group>"; };
+		9D59D52320D3F829009EA8FF /* FS3041.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FS3041.txt; sourceTree = "<group>"; };
+		9D59D52420D3F829009EA8FF /* FA674R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FA674R.txt; sourceTree = "<group>"; };
+		9D59D52520D3F829009EA8FF /* K12HC3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HC3.txt; sourceTree = "<group>"; };
+		9D59D52620D3F829009EA8FF /* A694S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = A694S.txt; sourceTree = "<group>"; };
+		9D59D52720D3F829009EA8FF /* FF6S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF6S.txt; sourceTree = "<group>"; };
+		9D59D52820D3F829009EA8FF /* NCG47.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG47.txt; sourceTree = "<group>"; };
+		9D59D52920D3F829009EA8FF /* M16HR5i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR5i.txt; sourceTree = "<group>"; };
+		9D59D52A20D3F829009EA8FF /* FCG77REGA.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG77REGA.txt; sourceTree = "<group>"; };
+		9D59D52B20D3F829009EA8FF /* H16HR.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H16HR.txt; sourceTree = "<group>"; };
+		9D59D52C20D3F829009EA8FF /* FKHR1B8.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR1B8.txt; sourceTree = "<group>"; };
+		9D59D52D20D3F829009EA8FF /* FF1109R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF1109R.txt; sourceTree = "<group>"; };
+		9D59D52E20D3F829009EA8FF /* FF47R12.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF47R12.txt; sourceTree = "<group>"; };
+		9D59D52F20D3F829009EA8FF /* FKHS1i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS1i.txt; sourceTree = "<group>"; };
+		9D59D53020D3F829009EA8FF /* KV7B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV7B.txt; sourceTree = "<group>"; };
+		9D59D53120D3F829009EA8FF /* K12HR10B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR10B.txt; sourceTree = "<group>"; };
+		9D59D53220D3F829009EA8FF /* AS2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AS2.txt; sourceTree = "<group>"; };
+		9D59D53320D3F829009EA8FF /* H16HS.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H16HS.txt; sourceTree = "<group>"; };
+		9D59D53420D3F829009EA8FF /* FKHR1At.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR1At.txt; sourceTree = "<group>"; };
+		9D59D53520D3F829009EA8FF /* A12HC.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = A12HC.txt; sourceTree = "<group>"; };
+		9D59D53620D3F829009EA8FF /* FF6R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF6R.txt; sourceTree = "<group>"; };
+		9D59D53720D3F829009EA8FF /* FM16HR3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FM16HR3.txt; sourceTree = "<group>"; };
+		9D59D53820D3F829009EA8FF /* K12HC2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HC2.txt; sourceTree = "<group>"; };
+		9D59D53920D3F829009EA8FF /* FAD674R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FAD674R.txt; sourceTree = "<group>"; };
+		9D59D53A20D3F829009EA8FF /* FM12HC.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FM12HC.txt; sourceTree = "<group>"; };
+		9D59D53B20D3F829009EA8FF /* FEHR1BQ.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEHR1BQ.txt; sourceTree = "<group>"; };
+		9D59D53C20D3F829009EA8FF /* FKHR5A.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR5A.txt; sourceTree = "<group>"; };
+		9D59D53D20D3F829009EA8FF /* NCG16070S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG16070S.txt; sourceTree = "<group>"; };
+		9D59D53E20D3F829009EA8FF /* M16HS1B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HS1B.txt; sourceTree = "<group>"; };
+		9D59D53F20D3F829009EA8FF /* FKHR5C.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR5C.txt; sourceTree = "<group>"; };
+		9D59D54020D3F829009EA8FF /* K16HS9.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS9.txt; sourceTree = "<group>"; };
+		9D59D54120D3F829009EA8FF /* A16HR.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = A16HR.txt; sourceTree = "<group>"; };
+		9D59D54220D3F829009EA8FF /* FCG42.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG42.txt; sourceTree = "<group>"; };
+		9D59D54320D3F829009EA8FF /* FA814R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FA814R.txt; sourceTree = "<group>"; };
+		9D59D54420D3F829009EA8FF /* FF16000S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF16000S.txt; sourceTree = "<group>"; };
+		9D59D54520D3F829009EA8FF /* NF32R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF32R.txt; sourceTree = "<group>"; };
+		9D59D54620D3F829009EA8FF /* AR4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR4.txt; sourceTree = "<group>"; };
+		9D59D54720D3F829009EA8FF /* FCG6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG6.txt; sourceTree = "<group>"; };
+		9D59D54820D3F829009EA8FF /* CG42NIMOV.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CG42NIMOV.txt; sourceTree = "<group>"; };
+		9D59D54920D3F829009EA8FF /* FF10140S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF10140S.txt; sourceTree = "<group>"; };
+		9D59D54A20D3F829009EA8FF /* AR4Fb.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR4Fb.txt; sourceTree = "<group>"; };
+		9D59D54B20D3F829009EA8FF /* AR5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR5.txt; sourceTree = "<group>"; };
+		9D59D54C20D3F829009EA8FF /* NF32S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF32S.txt; sourceTree = "<group>"; };
+		9D59D54D20D3F829009EA8FF /* FF16000R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF16000R.txt; sourceTree = "<group>"; };
+		9D59D54E20D3F829009EA8FF /* NF50100RD.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF50100RD.txt; sourceTree = "<group>"; };
+		9D59D54F20D3F829009EA8FF /* FAD814R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FAD814R.txt; sourceTree = "<group>"; };
+		9D59D55020D3F829009EA8FF /* NAD694R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NAD694R.txt; sourceTree = "<group>"; };
+		9D59D55120D3F829009EA8FF /* NCG9S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG9S.txt; sourceTree = "<group>"; };
+		9D59D55220D3F829009EA8FF /* K16HR6B4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR6B4.txt; sourceTree = "<group>"; };
+		9D59D55320D3F829009EA8FF /* M16HS230.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HS230.txt; sourceTree = "<group>"; };
+		9D59D55420D3F829009EA8FF /* A16HS.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = A16HS.txt; sourceTree = "<group>"; };
+		9D59D55520D3F829009EA8FF /* K16HS8.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS8.txt; sourceTree = "<group>"; };
+		9D59D55620D3F829009EA8FF /* H12HC.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H12HC.txt; sourceTree = "<group>"; };
+		9D59D55720D3F829009EA8FF /* AR2FD.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR2FD.txt; sourceTree = "<group>"; };
+		9D59D55820D3F829009EA8FF /* FKHR5B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR5B.txt; sourceTree = "<group>"; };
+		9D59D55920D3F829009EA8FF /* M16HS1C.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HS1C.txt; sourceTree = "<group>"; };
+		9D59D55A20D3F829009EA8FF /* FKV1B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKV1B.txt; sourceTree = "<group>"; };
+		9D59D55B20D3F829009EA8FF /* FM12HS.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FM12HS.txt; sourceTree = "<group>"; };
+		9D59D55C20D3F829009EA8FF /* NF4000R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF4000R.txt; sourceTree = "<group>"; };
+		9D59D55D20D3F829009EA8FF /* K16HR8.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR8.txt; sourceTree = "<group>"; };
+		9D59D55E20D3F829009EA8FF /* K12HC5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HC5.txt; sourceTree = "<group>"; };
+		9D59D55F20D3F829009EA8FF /* FKHR3c8.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR3c8.txt; sourceTree = "<group>"; };
+		9D59D56020D3F829009EA8FF /* FEHR2i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEHR2i.txt; sourceTree = "<group>"; };
+		9D59D56120D3F829009EA8FF /* A12HS.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = A12HS.txt; sourceTree = "<group>"; };
+		9D59D56220D3F829009EA8FF /* AS5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AS5.txt; sourceTree = "<group>"; };
+		9D59D56320D3F829009EA8FF /* AS4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AS4.txt; sourceTree = "<group>"; };
+		9D59D56420D3F829009EA8FF /* A12HR.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = A12HR.txt; sourceTree = "<group>"; };
+		9D59D56520D3F829009EA8FF /* HV1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = HV1.txt; sourceTree = "<group>"; };
+		9D59D56620D3F829009EA8FF /* NCG285.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG285.txt; sourceTree = "<group>"; };
+		9D59D56720D3F829009EA8FF /* K16HS3i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS3i.txt; sourceTree = "<group>"; };
+		9D59D56820D3F829009EA8FF /* FM16HS1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FM16HS1.txt; sourceTree = "<group>"; };
+		9D59D56920D3F829009EA8FF /* F16HS1B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F16HS1B.txt; sourceTree = "<group>"; };
+		9D59D56A20D3F829009EA8FF /* MV2i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV2i.txt; sourceTree = "<group>"; };
+		9D59D56B20D3F829009EA8FF /* K12HC4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HC4.txt; sourceTree = "<group>"; };
+		9D59D56C20D3F829009EA8FF /* K16HR9.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR9.txt; sourceTree = "<group>"; };
+		9D59D56D20D3F829009EA8FF /* NF4000S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF4000S.txt; sourceTree = "<group>"; };
+		9D59D56E20D3F829009EA8FF /* FM12HR.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FM12HR.txt; sourceTree = "<group>"; };
+		9D59D56F20D3F829009EA8FF /* AR2Fa.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR2Fa.txt; sourceTree = "<group>"; };
+		9D59D57020D3F829009EA8FF /* NCG16070B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG16070B.txt; sourceTree = "<group>"; };
+		9D59D57120D3F829009EA8FF /* FCG77S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG77S.txt; sourceTree = "<group>"; };
+		9D59D57220D3F829009EA8FF /* M16HS1F.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HS1F.txt; sourceTree = "<group>"; };
+		9D59D57320D3F829009EA8FF /* FCG285A.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG285A.txt; sourceTree = "<group>"; };
+		9D59D57420D3F829009EA8FF /* FR2F.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FR2F.txt; sourceTree = "<group>"; };
+		9D59D57520D3F829009EA8FF /* FR3041.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FR3041.txt; sourceTree = "<group>"; };
+		9D59D57620D3F829009EA8FF /* H12HS.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H12HS.txt; sourceTree = "<group>"; };
+		9D59D57720D3F829009EA8FF /* A694V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = A694V.txt; sourceTree = "<group>"; };
+		9D59D57820D3F829009EA8FF /* NF16000S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF16000S.txt; sourceTree = "<group>"; };
+		9D59D57920D3F829009EA8FF /* NCG42.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG42.txt; sourceTree = "<group>"; };
+		9D59D57A20D3F829009EA8FF /* KV6B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV6B.txt; sourceTree = "<group>"; };
+		9D59D57B20D3F829009EA8FF /* AR2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR2.txt; sourceTree = "<group>"; };
+		9D59D57C20D3F829009EA8FF /* AR4FD.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR4FD.txt; sourceTree = "<group>"; };
+		9D59D57D20D3F829009EA8FF /* K12HR5B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR5B.txt; sourceTree = "<group>"; };
+		9D59D57E20D3F829009EA8FF /* F10140V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F10140V.txt; sourceTree = "<group>"; };
+		9D59D57F20D3F829009EA8FF /* NF16000R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF16000R.txt; sourceTree = "<group>"; };
+		9D59D58020D3F829009EA8FF /* NF10140S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF10140S.txt; sourceTree = "<group>"; };
+		9D59D58120D3F829009EA8FF /* F6V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F6V.txt; sourceTree = "<group>"; };
+		9D59D58220D3F829009EA8FF /* K12HC7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HC7.txt; sourceTree = "<group>"; };
+		9D59D58320D3F829009EA8FF /* FCG77SREGA.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG77SREGA.txt; sourceTree = "<group>"; };
+		9D59D58420D3F829009EA8FF /* M12HSi.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HSi.txt; sourceTree = "<group>"; };
+		9D59D58520D3F829009EA8FF /* H12HR.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H12HR.txt; sourceTree = "<group>"; };
+		9D59D58620D3F829009EA8FF /* K12HR9.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR9.txt; sourceTree = "<group>"; };
+		9D59D58720D3F829009EA8FF /* K16HS10B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS10B.txt; sourceTree = "<group>"; };
+		9D59D58820D3F829009EA8FF /* FF42R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF42R.txt; sourceTree = "<group>"; };
+		9D59D58920D3F829009EA8FF /* M12HCC.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HCC.txt; sourceTree = "<group>"; };
+		9D59D58A20D3F829009EA8FF /* F30VAIMO.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F30VAIMO.txt; sourceTree = "<group>"; };
+		9D59D58B20D3F829009EA8FF /* H12HCi.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = H12HCi.txt; sourceTree = "<group>"; };
+		9D59D58C20D3F829009EA8FF /* FF16000R2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF16000R2.txt; sourceTree = "<group>"; };
+		9D59D58D20D3F829009EA8FF /* FR230.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FR230.txt; sourceTree = "<group>"; };
+		9D59D58E20D3F829009EA8FF /* KV7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV7.txt; sourceTree = "<group>"; };
+		9D59D58F20D3F829009EA8FF /* FKV6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKV6.txt; sourceTree = "<group>"; };
+		9D59D59020D3F829009EA8FF /* NA694R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NA694R.txt; sourceTree = "<group>"; };
+		9D59D59120D3F829009EA8FF /* MV1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV1.txt; sourceTree = "<group>"; };
+		9D59D59220D3F829009EA8FF /* K16HC2B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HC2B.txt; sourceTree = "<group>"; };
+		9D59D59320D3F829009EA8FF /* K16HR3ns.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR3ns.txt; sourceTree = "<group>"; };
+		9D59D59420D3F829009EA8FF /* FR2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FR2.txt; sourceTree = "<group>"; };
+		9D59D59520D3F829009EA8FF /* NoOpH.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NoOpH.txt; sourceTree = "<group>"; };
+		9D59D59620D3F829009EA8FF /* FKHS6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS6.txt; sourceTree = "<group>"; };
+		9D59D59720D3F829009EA8FF /* KV6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV6.txt; sourceTree = "<group>"; };
+		9D59D59820D3F829009EA8FF /* VF50100.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = VF50100.txt; sourceTree = "<group>"; };
+		9D59D59920D3F829009EA8FF /* M12HCB.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HCB.txt; sourceTree = "<group>"; };
+		9D59D59A20D3F829009EA8FF /* FR230b.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FR230b.txt; sourceTree = "<group>"; };
+		9D59D59B20D3F829009EA8FF /* AR5L.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = AR5L.txt; sourceTree = "<group>"; };
+		9D59D59C20D3F829009EA8FF /* FKV6B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKV6B.txt; sourceTree = "<group>"; };
+		9D59D59D20D3F829009EA8FF /* NCG8300S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG8300S.txt; sourceTree = "<group>"; };
+		9D59D59E20D3F829009EA8FF /* FEHS1A.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEHS1A.txt; sourceTree = "<group>"; };
+		9D59D59F20D3F829009EA8FF /* NCG16M.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG16M.txt; sourceTree = "<group>"; };
+		9D59D5A020D3F829009EA8FF /* FF47S12.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF47S12.txt; sourceTree = "<group>"; };
+		9D59D5A120D3F829009EA8FF /* F29050V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F29050V.txt; sourceTree = "<group>"; };
+		9D59D5A220D3F829009EA8FF /* KV4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV4.txt; sourceTree = "<group>"; };
+		9D59D5A320D3F829009EA8FF /* FKV5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKV5.txt; sourceTree = "<group>"; };
+		9D59D5A420D3F829009EA8FF /* FKHS4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS4.txt; sourceTree = "<group>"; };
+		9D59D5A520D3F829009EA8FF /* FKHR4AQ.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR4AQ.txt; sourceTree = "<group>"; };
+		9D59D5A620D3F829009EA8FF /* M12HS7i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HS7i.txt; sourceTree = "<group>"; };
+		9D59D5A720D3F829009EA8FF /* MV2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV2.txt; sourceTree = "<group>"; };
+		9D59D5A820D3F829009EA8FF /* K16HS6B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HS6B.txt; sourceTree = "<group>"; };
+		9D59D5A920D3F829009EA8FF /* M16HR3i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M16HR3i.txt; sourceTree = "<group>"; };
+		9D59D5AA20D3F829009EA8FF /* K12HR2B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HR2B.txt; sourceTree = "<group>"; };
+		9D59D5AB20D3F829009EA8FF /* MV1nimo.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV1nimo.txt; sourceTree = "<group>"; };
+		9D59D5AC20D3F829009EA8FF /* NCG77VREGA.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG77VREGA.txt; sourceTree = "<group>"; };
+		9D59D5AD20D3F829009EA8FF /* FKHS5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS5.txt; sourceTree = "<group>"; };
+		9D59D5AE20D3F829009EA8FF /* NF29050R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF29050R.txt; sourceTree = "<group>"; };
+		9D59D5AF20D3F829009EA8FF /* FKV4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKV4.txt; sourceTree = "<group>"; };
+		9D59D5B020D3F829009EA8FF /* KV5.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV5.txt; sourceTree = "<group>"; };
+		9D59D5B120D3F829009EA8FF /* FKHR1i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHR1i.txt; sourceTree = "<group>"; };
+		9D59D5B220D3F829009EA8FF /* MV230.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV230.txt; sourceTree = "<group>"; };
+		9D59D5B320D3F829009EA8FF /* M12HC7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = M12HC7.txt; sourceTree = "<group>"; };
+		9D59D5B420D3F829009EA8FF /* FEHS1B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEHS1B.txt; sourceTree = "<group>"; };
+		9D59D5B520D3F829009EA8FF /* K16HC2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HC2.txt; sourceTree = "<group>"; };
+		9D59D5B620D3F829009EA8FF /* NF6R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF6R.txt; sourceTree = "<group>"; };
+		9D59D5B720D3F829009EA8FF /* F29050S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F29050S.txt; sourceTree = "<group>"; };
+		9D59D5B820D3F829009EA8FF /* NCG42S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG42S.txt; sourceTree = "<group>"; };
+		9D59D5B920D3F829009EA8FF /* KV1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV1.txt; sourceTree = "<group>"; };
+		9D59D5BA20D3F829009EA8FF /* NF8300R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF8300R.txt; sourceTree = "<group>"; };
+		9D59D5BB20D3F829009EA8FF /* FKHS1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKHS1.txt; sourceTree = "<group>"; };
+		9D59D5BC20D3F829009EA8FF /* MV7.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV7.txt; sourceTree = "<group>"; };
+		9D59D5BD20D3F829009EA8FF /* NR230.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NR230.txt; sourceTree = "<group>"; };
+		9D59D5BE20D3F829009EA8FF /* NF42R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF42R.txt; sourceTree = "<group>"; };
+		9D59D5BF20D3F829009EA8FF /* FKV1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKV1.txt; sourceTree = "<group>"; };
+		9D59D5C020D3F829009EA8FF /* FCG8300S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG8300S.txt; sourceTree = "<group>"; };
+		9D59D5C120D3F829009EA8FF /* NF8300S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF8300S.txt; sourceTree = "<group>"; };
+		9D59D5C220D3F829009EA8FF /* K12HS5B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS5B.txt; sourceTree = "<group>"; };
+		9D59D5C320D3F829009EA8FF /* FCG8300.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FCG8300.txt; sourceTree = "<group>"; };
+		9D59D5C420D3F829009EA8FF /* K12HC3i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HC3i.txt; sourceTree = "<group>"; };
+		9D59D5C520D3F829009EA8FF /* NF6S.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NF6S.txt; sourceTree = "<group>"; };
+		9D59D5C620D3F829009EA8FF /* FEHS2i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FEHS2i.txt; sourceTree = "<group>"; };
+		9D59D5C720D3F829009EA8FF /* K16HC1.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HC1.txt; sourceTree = "<group>"; };
+		9D59D5C820D3F829009EA8FF /* KV2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV2.txt; sourceTree = "<group>"; };
+		9D59D5C920D3F829009EA8FF /* K12HS6B2.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS6B2.txt; sourceTree = "<group>"; };
+		9D59D5CA20D3F829009EA8FF /* FKV3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FKV3.txt; sourceTree = "<group>"; };
+		9D59D5CB20D3F829009EA8FF /* MV4.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = MV4.txt; sourceTree = "<group>"; };
+		9D59D5CC20D3F829009EA8FF /* NCG6.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = NCG6.txt; sourceTree = "<group>"; };
+		9D59D5CD20D3F829009EA8FF /* K16HR3i.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K16HR3i.txt; sourceTree = "<group>"; };
+		9D59D5CE20D3F829009EA8FF /* FS230b.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FS230b.txt; sourceTree = "<group>"; };
+		9D59D5CF20D3F829009EA8FF /* F16HR1B.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F16HR1B.txt; sourceTree = "<group>"; };
+		9D59D5D020D3F829009EA8FF /* KV3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = KV3.txt; sourceTree = "<group>"; };
+		9D59D5D120D3F829009EA8FF /* K12HS9.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = K12HS9.txt; sourceTree = "<group>"; };
+		9D59D5D220D3F829009EA8FF /* FF29050R.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FF29050R.txt; sourceTree = "<group>"; };
+		9D59D5D320D3F829009EA8FF /* F4000V.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = F4000V.txt; sourceTree = "<group>"; };
+		9D59D5D420D3F829009EA8FF /* helpers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = helpers.h; sourceTree = "<group>"; };
+		9D59D5D520D3F829009EA8FF /* AspenEthernetIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AspenEthernetIo.cpp; sourceTree = "<group>"; };
+		9D59D5D620D3F829009EA8FF /* AltaEthernetIo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AltaEthernetIo.cpp; sourceTree = "<group>"; };
+		9D59D5D720D3F829009EA8FF /* IAltaSerialPortIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IAltaSerialPortIo.h; sourceTree = "<group>"; };
+		9D59D5D820D3F829009EA8FF /* ILog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ILog.h; sourceTree = "<group>"; };
+		9D59D5D920D3F829009EA8FF /* ApnCamData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ApnCamData.cpp; sourceTree = "<group>"; };
+		9D59D5DA20D3F829009EA8FF /* CameraStatusRegs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CameraStatusRegs.h; sourceTree = "<group>"; };
+		9D59D5DB20D3F829009EA8FF /* ImgFix.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ImgFix.cpp; sourceTree = "<group>"; };
+		9D59D5DC20D3F829009EA8FF /* ModeFsm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ModeFsm.cpp; sourceTree = "<group>"; };
+		9D59D5DD20D3F829009EA8FF /* PromFx2Io.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PromFx2Io.cpp; sourceTree = "<group>"; };
+		9D59D5DE20D3F829009EA8FF /* AspenData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AspenData.h; sourceTree = "<group>"; };
+		9D59D5DF20D3F829009EA8FF /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D59D5E020D3F829009EA8FF /* indigo_ccd_apogee.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_apogee.cpp; sourceTree = "<group>"; };
+		9D59D5E120D3F829009EA8FF /* indigo_ccd_apogee.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_apogee.h; sourceTree = "<group>"; };
+		9D59D5E220D3F829009EA8FF /* indigo_ccd_apogee_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_apogee_main.cpp; sourceTree = "<group>"; };
+		9D59D67220D3FA67009EA8FF /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9D658B941DE4A8BC006C9CC5 /* indigo_names.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_names.h; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
@@ -666,6 +1306,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59292E5720D4224F0042E939 /* libcurl.tbd in Frameworks */,
 				59986D751F9BA10900D68DC1 /* libqsiapi.a in Frameworks */,
 				590B59D71F79A68100086FD2 /* libnovas.a in Frameworks */,
 				9DAC59CF1DC0A7B200AE410D /* libatik.a in Frameworks */,
@@ -1205,6 +1846,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9D59D3C020D3F828009EA8FF /* ccd_apogee */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
 				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
 				59DD69C41FC1CF5B00AEF0DF /* gps_nmea */,
@@ -1342,6 +1984,559 @@
 			path = guider_eqmac;
 			sourceTree = "<group>";
 		};
+		9D59D3C020D3F828009EA8FF /* ccd_apogee */ = {
+			isa = PBXGroup;
+			children = (
+				9D59D3C120D3F828009EA8FF /* externals */,
+				9D59D5DF20D3F829009EA8FF /* README.md */,
+				9D59D5E020D3F829009EA8FF /* indigo_ccd_apogee.cpp */,
+				9D59D5E120D3F829009EA8FF /* indigo_ccd_apogee.h */,
+				9D59D5E220D3F829009EA8FF /* indigo_ccd_apogee_main.cpp */,
+			);
+			path = ccd_apogee;
+			sourceTree = "<group>";
+		};
+		9D59D3C120D3F828009EA8FF /* externals */ = {
+			isa = PBXGroup;
+			children = (
+				9D59D3C220D3F828009EA8FF /* libapogee */,
+			);
+			path = externals;
+			sourceTree = "<group>";
+		};
+		9D59D3C220D3F828009EA8FF /* libapogee */ = {
+			isa = PBXGroup;
+			children = (
+				9D59D41F20D3F828009EA8FF /* 99-apogee.rules */,
+				9D59D3D420D3F828009EA8FF /* Alta.cpp */,
+				9D59D3CD20D3F828009EA8FF /* Alta.h */,
+				9D59D41C20D3F828009EA8FF /* AltaCcdAcqParams.cpp */,
+				9D59D41020D3F828009EA8FF /* AltaCcdAcqParams.h */,
+				9D59D44520D3F828009EA8FF /* AltaData.cpp */,
+				9D59D3C820D3F828009EA8FF /* AltaData.h */,
+				9D59D5D620D3F829009EA8FF /* AltaEthernetIo.cpp */,
+				9D59D44620D3F828009EA8FF /* AltaEthernetIo.h */,
+				9D59D3DE20D3F828009EA8FF /* AltaF.cpp */,
+				9D59D41420D3F828009EA8FF /* AltaF.h */,
+				9D59D44820D3F828009EA8FF /* AltaIo.cpp */,
+				9D59D3C420D3F828009EA8FF /* AltaIo.h */,
+				9D59D3FF20D3F828009EA8FF /* AltaModeFsm.cpp */,
+				9D59D3FE20D3F828009EA8FF /* AltaModeFsm.h */,
+				9D59D40720D3F828009EA8FF /* AltaUsbIo.cpp */,
+				9D59D41920D3F828009EA8FF /* AltaUsbIo.h */,
+				9D59D44B20D3F828009EA8FF /* apgHelper.cpp */,
+				9D59D44D20D3F828009EA8FF /* apgHelper.h */,
+				9D59D40420D3F828009EA8FF /* ApgLogger.cpp */,
+				9D59D3CF20D3F828009EA8FF /* ApgLogger.h */,
+				9D59D41320D3F828009EA8FF /* ApgTimer.cpp */,
+				9D59D43A20D3F828009EA8FF /* ApgTimer.h */,
+				9D59D5D920D3F829009EA8FF /* ApnCamData.cpp */,
+				9D59D3E120D3F828009EA8FF /* ApnCamData.h */,
+				9D59D41820D3F828009EA8FF /* ApnUsbSys.h */,
+				9D59D42320D3F828009EA8FF /* ApogeeCam.cpp */,
+				9D59D44120D3F828009EA8FF /* ApogeeCam.h */,
+				9D59D3E420D3F828009EA8FF /* ApogeeFilterWheel.cpp */,
+				9D59D3FC20D3F828009EA8FF /* ApogeeFilterWheel.h */,
+				9D59D41720D3F828009EA8FF /* Ascent.cpp */,
+				9D59D3FD20D3F828009EA8FF /* Ascent.h */,
+				9D59D43220D3F828009EA8FF /* AscentBasedIo.cpp */,
+				9D59D40220D3F828009EA8FF /* AscentBasedIo.h */,
+				9D59D3FA20D3F828009EA8FF /* AscentBasedUsbIo.cpp */,
+				9D59D43320D3F828009EA8FF /* AscentBasedUsbIo.h */,
+				9D59D41220D3F828009EA8FF /* AscentData.cpp */,
+				9D59D42520D3F828009EA8FF /* AscentData.h */,
+				9D59D41E20D3F828009EA8FF /* Aspen.cpp */,
+				9D59D40620D3F828009EA8FF /* Aspen.h */,
+				9D59D44320D3F828009EA8FF /* AspenData.cpp */,
+				9D59D5DE20D3F829009EA8FF /* AspenData.h */,
+				9D59D5D520D3F829009EA8FF /* AspenEthernetIo.cpp */,
+				9D59D43820D3F828009EA8FF /* AspenEthernetIo.h */,
+				9D59D42120D3F828009EA8FF /* AspenFx2.h */,
+				9D59D3DA20D3F828009EA8FF /* AspenIo.cpp */,
+				9D59D43B20D3F828009EA8FF /* AspenIo.h */,
+				9D59D3D820D3F828009EA8FF /* AspenUsbIo.cpp */,
+				9D59D40320D3F828009EA8FF /* AspenUsbIo.h */,
+				9D59D3DC20D3F828009EA8FF /* CamCfgMatrix.cpp */,
+				9D59D3DD20D3F828009EA8FF /* CamCfgMatrix.h */,
+				9D59D3D020D3F828009EA8FF /* CameraInfo.cpp */,
+				9D59D40520D3F828009EA8FF /* CameraInfo.h */,
+				9D59D3D720D3F828009EA8FF /* CameraIo.cpp */,
+				9D59D3CC20D3F828009EA8FF /* CameraIo.h */,
+				9D59D42220D3F828009EA8FF /* CameraStatusRegs.cpp */,
+				9D59D5DA20D3F829009EA8FF /* CameraStatusRegs.h */,
+				9D59D3F820D3F828009EA8FF /* CamGen2Base.cpp */,
+				9D59D40020D3F828009EA8FF /* CamGen2Base.h */,
+				9D59D3E620D3F828009EA8FF /* CamGen2CcdAcqParams.cpp */,
+				9D59D43E20D3F828009EA8FF /* CamGen2CcdAcqParams.h */,
+				9D59D3CE20D3F828009EA8FF /* CamGen2ModeFsm.cpp */,
+				9D59D43D20D3F828009EA8FF /* CamGen2ModeFsm.h */,
+				9D59D41620D3F828009EA8FF /* CamHelpers.cpp */,
+				9D59D44720D3F828009EA8FF /* CamHelpers.h */,
+				9D59D44C20D3F828009EA8FF /* CamRegMirror.cpp */,
+				9D59D40F20D3F828009EA8FF /* CamRegMirror.h */,
+				9D59D3C620D3F828009EA8FF /* CamUsbIo.cpp */,
+				9D59D43F20D3F828009EA8FF /* CamUsbIo.h */,
+				9D59D3E020D3F828009EA8FF /* CcdAcqParams.cpp */,
+				9D59D3DF20D3F828009EA8FF /* CcdAcqParams.h */,
+				9D59D3D520D3F828009EA8FF /* COMHelper.h */,
+				9D59D45120D3F828009EA8FF /* conf */,
+				9D59D3CA20D3F828009EA8FF /* DeviceStrHelpers.cpp */,
+				9D59D41B20D3F828009EA8FF /* DeviceStrHelpers.h */,
+				9D59D3E720D3F828009EA8FF /* FilterWheelIo.cpp */,
+				9D59D40920D3F828009EA8FF /* FilterWheelIo.h */,
+				9D59D41520D3F828009EA8FF /* FindDeviceEthernet.cpp */,
+				9D59D43920D3F828009EA8FF /* FindDeviceEthernet.h */,
+				9D59D44920D3F828009EA8FF /* FindDeviceUsb.cpp */,
+				9D59D40A20D3F828009EA8FF /* FindDeviceUsb.h */,
+				9D59D3C320D3F828009EA8FF /* helpers.cpp */,
+				9D59D5D420D3F829009EA8FF /* helpers.h */,
+				9D59D3F720D3F828009EA8FF /* HiC.cpp */,
+				9D59D40D20D3F828009EA8FF /* HiC.h */,
+				9D59D44E20D3F828009EA8FF /* IAltaSerialPortIo.cpp */,
+				9D59D5D720D3F829009EA8FF /* IAltaSerialPortIo.h */,
+				9D59D43720D3F828009EA8FF /* ICamIo.cpp */,
+				9D59D3D220D3F828009EA8FF /* ICamIo.h */,
+				9D59D44020D3F828009EA8FF /* ILog.cpp */,
+				9D59D5D820D3F829009EA8FF /* ILog.h */,
+				9D59D5DB20D3F829009EA8FF /* ImgFix.cpp */,
+				9D59D44220D3F828009EA8FF /* ImgFix.h */,
+				9D59D40C20D3F828009EA8FF /* ITimer.cpp */,
+				9D59D3D320D3F828009EA8FF /* ITimer.h */,
+				9D59D3D920D3F828009EA8FF /* IUsb.cpp */,
+				9D59D44A20D3F828009EA8FF /* IUsb.h */,
+				9D59D3F920D3F828009EA8FF /* libCurlWrap.cpp */,
+				9D59D42620D3F828009EA8FF /* libCurlWrap.h */,
+				9D59D42720D3F828009EA8FF /* linux */,
+				9D59D3C920D3F828009EA8FF /* LoggerException.cpp */,
+				9D59D42020D3F828009EA8FF /* LoggerException.h */,
+				9D59D67220D3FA67009EA8FF /* Makefile */,
+				9D59D5DC20D3F829009EA8FF /* ModeFsm.cpp */,
+				9D59D3C720D3F828009EA8FF /* ModeFsm.h */,
+				9D59D43C20D3F828009EA8FF /* parseCfgTabDelim.cpp */,
+				9D59D43420D3F828009EA8FF /* parseCfgTabDelim.h */,
+				9D59D41A20D3F828009EA8FF /* PlatformData.cpp */,
+				9D59D42420D3F828009EA8FF /* PlatformData.h */,
+				9D59D5DD20D3F829009EA8FF /* PromFx2Io.cpp */,
+				9D59D3C520D3F828009EA8FF /* PromFx2Io.h */,
+				9D59D40120D3F828009EA8FF /* Quad.cpp */,
+				9D59D3E220D3F828009EA8FF /* Quad.h */,
+				9D59D3E520D3F828009EA8FF /* UdpSocketBase.cpp */,
+				9D59D3F620D3F828009EA8FF /* UdpSocketBase.h */,
+				9D59D41D20D3F828009EA8FF /* versionNo.h */,
+			);
+			path = libapogee;
+			sourceTree = "<group>";
+		};
+		9D59D42720D3F828009EA8FF /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				9D59D42820D3F828009EA8FF /* linuxHelpers.cpp */,
+				9D59D42920D3F828009EA8FF /* LinuxTimer.h */,
+				9D59D42A20D3F828009EA8FF /* LoggerSyslog.h */,
+				9D59D42B20D3F828009EA8FF /* UdpSocketLinux.cpp */,
+				9D59D42C20D3F828009EA8FF /* GenOneLinuxUSB.cpp */,
+				9D59D42D20D3F828009EA8FF /* LinuxTimer.cpp */,
+				9D59D42E20D3F828009EA8FF /* GenOneLinuxUSB.h */,
+				9D59D42F20D3F828009EA8FF /* LoggerSyslog.cpp */,
+				9D59D43020D3F828009EA8FF /* UdpSocketLinux.h */,
+				9D59D43120D3F828009EA8FF /* linuxHelpers.h */,
+			);
+			path = linux;
+			sourceTree = "<group>";
+		};
+		9D59D45120D3F828009EA8FF /* conf */ = {
+			isa = PBXGroup;
+			children = (
+				9D59D45220D3F828009EA8FF /* NF9R.txt */,
+				9D59D45320D3F828009EA8FF /* K12HS4.txt */,
+				9D59D45420D3F828009EA8FF /* FKHR1B.txt */,
+				9D59D45520D3F828009EA8FF /* NF77S.txt */,
+				9D59D45620D3F828009EA8FF /* H16HSi.txt */,
+				9D59D45720D3F828009EA8FF /* AV4D.txt */,
+				9D59D45820D3F828009EA8FF /* M16HR230.txt */,
+				9D59D45920D3F828009EA8FF /* M16HR3C.txt */,
+				9D59D45A20D3F828009EA8FF /* AV5.txt */,
+				9D59D45B20D3F828009EA8FF /* NoOpV.txt */,
+				9D59D45C20D3F828009EA8FF /* NCG77S.txt */,
+				9D59D45D20D3F828009EA8FF /* M16HR3B.txt */,
+				9D59D45E20D3F828009EA8FF /* AV5V.txt */,
+				9D59D45F20D3F828009EA8FF /* AV4E.txt */,
+				9D59D46020D3F828009EA8FF /* MV7i.txt */,
+				9D59D46120D3F828009EA8FF /* FCG285.txt */,
+				9D59D46220D3F828009EA8FF /* FEV1.txt */,
+				9D59D46320D3F828009EA8FF /* NF77R.txt */,
+				9D59D46420D3F828009EA8FF /* AR4V.txt */,
+				9D59D46520D3F828009EA8FF /* NCG8050S.txt */,
+				9D59D46620D3F828009EA8FF /* K12HC2B.txt */,
+				9D59D46720D3F828009EA8FF /* FKHR1c.txt */,
+				9D59D46820D3F828009EA8FF /* K12HS5.txt */,
+				9D59D46920D3F828009EA8FF /* NF9S.txt */,
+				9D59D46A20D3F828009EA8FF /* K12HS7.txt */,
+				9D59D46B20D3F828009EA8FF /* K12HR3.txt */,
+				9D59D46C20D3F828009EA8FF /* FKHR1A.txt */,
+				9D59D46D20D3F828009EA8FF /* M12HCi.txt */,
+				9D59D46E20D3F828009EA8FF /* FKHR3i.txt */,
+				9D59D46F20D3F828009EA8FF /* AR2Vb.txt */,
+				9D59D47020D3F828009EA8FF /* MV230b.txt */,
+				9D59D47120D3F828009EA8FF /* K16HR31.txt */,
+				9D59D47220D3F828009EA8FF /* K12HS10B.txt */,
+				9D59D47320D3F828009EA8FF /* FF8300R.txt */,
+				9D59D47420D3F828009EA8FF /* KV6B2.txt */,
+				9D59D47520D3F828009EA8FF /* AV6.txt */,
+				9D59D47620D3F828009EA8FF /* NR3041.txt */,
+				9D59D47720D3F828009EA8FF /* F16HR1.txt */,
+				9D59D47820D3F828009EA8FF /* NF6RA.txt */,
+				9D59D47920D3F828009EA8FF /* KV3B.txt */,
+				9D59D47A20D3F828009EA8FF /* NCG8300.txt */,
+				9D59D47B20D3F828009EA8FF /* AV7.txt */,
+				9D59D47C20D3F828009EA8FF /* K16HR2B.txt */,
+				9D59D47D20D3F828009EA8FF /* FEV2.txt */,
+				9D59D47E20D3F828009EA8FF /* MV230t.txt */,
+				9D59D47F20D3F828009EA8FF /* FKHS1B8.txt */,
+				9D59D48020D3F828009EA8FF /* K12HS6B.txt */,
+				9D59D48120D3F828009EA8FF /* AR5F.txt */,
+				9D59D48220D3F828009EA8FF /* K12HR2.txt */,
+				9D59D48320D3F828009EA8FF /* K12HS6.txt */,
+				9D59D48420D3F828009EA8FF /* M16HR3.txt */,
+				9D59D48520D3F828009EA8FF /* M16HS7i.txt */,
+				9D59D48620D3F828009EA8FF /* M16HS7.txt */,
+				9D59D48720D3F828009EA8FF /* K12HS2.txt */,
+				9D59D48820D3F828009EA8FF /* K12HR6.txt */,
+				9D59D48920D3F828009EA8FF /* FEHS2c.txt */,
+				9D59D48A20D3F828009EA8FF /* M16HR7.txt */,
+				9D59D48B20D3F828009EA8FF /* AR5FL.txt */,
+				9D59D48C20D3F828009EA8FF /* FKHR1D.txt */,
+				9D59D48D20D3F828009EA8FF /* AR4F.txt */,
+				9D59D48E20D3F828009EA8FF /* NCG77SREGA.txt */,
+				9D59D48F20D3F828009EA8FF /* MV4B.txt */,
+				9D59D49020D3F828009EA8FF /* FF77S.txt */,
+				9D59D49120D3F828009EA8FF /* FKHR4BQ.txt */,
+				9D59D49220D3F828009EA8FF /* AV4B.txt */,
+				9D59D49320D3F828009EA8FF /* NA674R.txt */,
+				9D59D49420D3F828009EA8FF /* NS3041.txt */,
+				9D59D49520D3F828009EA8FF /* K16HS5B.txt */,
+				9D59D49620D3F828009EA8FF /* FKHR1Db.txt */,
+				9D59D49720D3F828009EA8FF /* apnmatrix.txt */,
+				9D59D49820D3F828009EA8FF /* NF47S12.txt */,
+				9D59D49920D3F828009EA8FF /* AV2.txt */,
+				9D59D49A20D3F828009EA8FF /* F16HS1.txt */,
+				9D59D49B20D3F828009EA8FF /* F47V12.txt */,
+				9D59D49C20D3F828009EA8FF /* KV2B.txt */,
+				9D59D49D20D3F828009EA8FF /* NCG16.txt */,
+				9D59D49E20D3F828009EA8FF /* FF77R.txt */,
+				9D59D49F20D3F828009EA8FF /* KV9.txt */,
+				9D59D4A020D3F828009EA8FF /* CG42AIMOV.txt */,
+				9D59D4A120D3F828009EA8FF /* NCG77REGA.txt */,
+				9D59D4A220D3F828009EA8FF /* K12HR7.txt */,
+				9D59D4A320D3F828009EA8FF /* K12HS3.txt */,
+				9D59D4A420D3F828009EA8FF /* K12HR5.txt */,
+				9D59D4A520D3F828009EA8FF /* AR5V.txt */,
+				9D59D4A620D3F828009EA8FF /* FF6RA.txt */,
+				9D59D4A720D3F828009EA8FF /* FF50100RD.txt */,
+				9D59D4A820D3F828009EA8FF /* NA814R.txt */,
+				9D59D4A920D3F828009EA8FF /* AR4Vb.txt */,
+				9D59D4AA20D3F828009EA8FF /* AV4V.txt */,
+				9D59D4AB20D3F828009EA8FF /* AV4A.txt */,
+				9D59D4AC20D3F828009EA8FF /* NCG285SA.txt */,
+				9D59D4AD20D3F828009EA8FF /* M16HR3F.txt */,
+				9D59D4AE20D3F828009EA8FF /* K12HR3i.txt */,
+				9D59D4AF20D3F828009EA8FF /* AV1.txt */,
+				9D59D4B020D3F828009EA8FF /* AS2S.txt */,
+				9D59D4B120D3F828009EA8FF /* NCG77V.txt */,
+				9D59D4B220D3F828009EA8FF /* F30V.txt */,
+				9D59D4B320D3F828009EA8FF /* AV5S.txt */,
+				9D59D4B420D3F828009EA8FF /* H16HRi.txt */,
+				9D59D4B520D3F828009EA8FF /* CG47V.txt */,
+				9D59D4B620D3F828009EA8FF /* AR4D.txt */,
+				9D59D4B720D3F828009EA8FF /* M16HS1.txt */,
+				9D59D4B820D3F828009EA8FF /* FKHS3c8.txt */,
+				9D59D4B920D3F828009EA8FF /* M16HR5.txt */,
+				9D59D4BA20D3F828009EA8FF /* K12HR4.txt */,
+				9D59D4BB20D3F828009EA8FF /* K16HR7.txt */,
+				9D59D4BC20D3F828009EA8FF /* K16HS3.txt */,
+				9D59D4BD20D3F828009EA8FF /* FCG42S.txt */,
+				9D59D4BE20D3F828009EA8FF /* M12HR.txt */,
+				9D59D4BF20D3F828009EA8FF /* FV1B.txt */,
+				9D59D4C020D3F828009EA8FF /* NCG285A.txt */,
+				9D59D4C120D3F828009EA8FF /* NF47R.txt */,
+				9D59D4C220D3F828009EA8FF /* FKHS1A.txt */,
+				9D59D4C320D3F828009EA8FF /* FKHS3i.txt */,
+				9D59D4C420D3F828009EA8FF /* FV1.txt */,
+				9D59D4C520D3F828009EA8FF /* AS5F.txt */,
+				9D59D4C620D3F828009EA8FF /* K12HR6B.txt */,
+				9D59D4C720D3F828009EA8FF /* M16HR7i.txt */,
+				9D59D4C820D3F828009EA8FF /* K16HS2B.txt */,
+				9D59D4C920D3F828009EA8FF /* M12HS.txt */,
+				9D59D4CA20D3F828009EA8FF /* K16HS2.txt */,
+				9D59D4CB20D3F828009EA8FF /* K16HR6.txt */,
+				9D59D4CC20D3F828009EA8FF /* M12HR7.txt */,
+				9D59D4CD20D3F828009EA8FF /* KV5ns.txt */,
+				9D59D4CE20D3F828009EA8FF /* M16HS1i.txt */,
+				9D59D4CF20D3F828009EA8FF /* H12HRi.txt */,
+				9D59D4D020D3F828009EA8FF /* M12HRC.txt */,
+				9D59D4D120D3F828009EA8FF /* NF50100S.txt */,
+				9D59D4D220D3F828009EA8FF /* K12HC9.txt */,
+				9D59D4D320D3F828009EA8FF /* FCG77.txt */,
+				9D59D4D420D3F828009EA8FF /* FF4000R.txt */,
+				9D59D4D520D3F828009EA8FF /* F47DDV.txt */,
+				9D59D4D620D3F828009EA8FF /* AV2S.txt */,
+				9D59D4D720D3F828009EA8FF /* NF30S.txt */,
+				9D59D4D820D3F828009EA8FF /* FKHS1B.txt */,
+				9D59D4D920D3F828009EA8FF /* AS5S.txt */,
+				9D59D4DA20D3F828009EA8FF /* FKHS1c.txt */,
+				9D59D4DB20D3F828009EA8FF /* FS230.txt */,
+				9D59D4DC20D3F828009EA8FF /* NF30R.txt */,
+				9D59D4DD20D3F828009EA8FF /* M16HR5B.txt */,
+				9D59D4DE20D3F828009EA8FF /* AV4Vb.txt */,
+				9D59D4DF20D3F828009EA8FF /* NS230b.txt */,
+				9D59D4E020D3F828009EA8FF /* FF4000S.txt */,
+				9D59D4E120D3F828009EA8FF /* K16HR10B.txt */,
+				9D59D4E220D3F828009EA8FF /* M12HC7i.txt */,
+				9D59D4E320D3F828009EA8FF /* NCG16070.txt */,
+				9D59D4E420D3F828009EA8FF /* MV1i.txt */,
+				9D59D4E520D3F828009EA8FF /* K16HR5.txt */,
+				9D59D4E620D3F828009EA8FF /* M12HRB.txt */,
+				9D59D4E720D3F828009EA8FF /* K16HS1.txt */,
+				9D59D4E820D3F828009EA8FF /* AR2V.txt */,
+				9D59D4E920D3F828009EA8FF /* AR2a.txt */,
+				9D59D4EA20D3F829009EA8FF /* XAV1.txt */,
+				9D59D4EB20D3F829009EA8FF /* FF47R.txt */,
+				9D59D4EC20D3F829009EA8FF /* K12HS3i.txt */,
+				9D59D4ED20D3F829009EA8FF /* FKHR6C.txt */,
+				9D59D4EE20D3F829009EA8FF /* K12HC5B.txt */,
+				9D59D4EF20D3F829009EA8FF /* M12HSB.txt */,
+				9D59D4F020D3F829009EA8FF /* K16HS5.txt */,
+				9D59D4F120D3F829009EA8FF /* K16HR1.txt */,
+				9D59D4F220D3F829009EA8FF /* FA694R.txt */,
+				9D59D4F320D3F829009EA8FF /* FF9S.txt */,
+				9D59D4F420D3F829009EA8FF /* M12HC.txt */,
+				9D59D4F520D3F829009EA8FF /* AV2V.txt */,
+				9D59D4F620D3F829009EA8FF /* F3041V.txt */,
+				9D59D4F720D3F829009EA8FF /* K12HR6B2.txt */,
+				9D59D4F820D3F829009EA8FF /* NR230b.txt */,
+				9D59D4F920D3F829009EA8FF /* KV8B.txt */,
+				9D59D4FA20D3F829009EA8FF /* NF16000R2.txt */,
+				9D59D4FB20D3F829009EA8FF /* FF9R.txt */,
+				9D59D4FC20D3F829009EA8FF /* NAD814R.txt */,
+				9D59D4FD20D3F829009EA8FF /* F77V.txt */,
+				9D59D4FE20D3F829009EA8FF /* M12HSC.txt */,
+				9D59D4FF20D3F829009EA8FF /* FAD694R.txt */,
+				9D59D50020D3F829009EA8FF /* FKHR6B.txt */,
+				9D59D50120D3F829009EA8FF /* H12HSi.txt */,
+				9D59D50220D3F829009EA8FF /* AR2D.txt */,
+				9D59D50320D3F829009EA8FF /* MV2CN.txt */,
+				9D59D50420D3F829009EA8FF /* AR2S.txt */,
+				9D59D50520D3F829009EA8FF /* FF30S.txt */,
+				9D59D50620D3F829009EA8FF /* FF50100S.txt */,
+				9D59D50720D3F829009EA8FF /* NF47R12.txt */,
+				9D59D50820D3F829009EA8FF /* NF1109R.txt */,
+				9D59D50920D3F829009EA8FF /* AR2F.txt */,
+				9D59D50A20D3F829009EA8FF /* K16HR2.txt */,
+				9D59D50B20D3F829009EA8FF /* K16HS6.txt */,
+				9D59D50C20D3F829009EA8FF /* M12HS7.txt */,
+				9D59D50D20D3F829009EA8FF /* MV2B.txt */,
+				9D59D50E20D3F829009EA8FF /* K16HR5B.txt */,
+				9D59D50F20D3F829009EA8FF /* NCG77.txt */,
+				9D59D51020D3F829009EA8FF /* FCG16M.txt */,
+				9D59D51120D3F829009EA8FF /* NCG285S.txt */,
+				9D59D51220D3F829009EA8FF /* FEHR2c.txt */,
+				9D59D51320D3F829009EA8FF /* KV4B.txt */,
+				9D59D51420D3F829009EA8FF /* NAD674R.txt */,
+				9D59D51520D3F829009EA8FF /* MV2C.txt */,
+				9D59D51620D3F829009EA8FF /* FEHR1AQ.txt */,
+				9D59D51720D3F829009EA8FF /* K16HS7.txt */,
+				9D59D51820D3F829009EA8FF /* K16HR3.txt */,
+				9D59D51920D3F829009EA8FF /* FKHR6A.txt */,
+				9D59D51A20D3F829009EA8FF /* AV2Vb.txt */,
+				9D59D51B20D3F829009EA8FF /* FF30R.txt */,
+				9D59D51C20D3F829009EA8FF /* NS230.txt */,
+				9D59D51D20D3F829009EA8FF /* FCG16070.txt */,
+				9D59D51E20D3F829009EA8FF /* K12HS2B.txt */,
+				9D59D51F20D3F829009EA8FF /* M12HR7i.txt */,
+				9D59D52020D3F829009EA8FF /* M12HRi.txt */,
+				9D59D52120D3F829009EA8FF /* K16HR6B.txt */,
+				9D59D52220D3F829009EA8FF /* MV1B.txt */,
+				9D59D52320D3F829009EA8FF /* FS3041.txt */,
+				9D59D52420D3F829009EA8FF /* FA674R.txt */,
+				9D59D52520D3F829009EA8FF /* K12HC3.txt */,
+				9D59D52620D3F829009EA8FF /* A694S.txt */,
+				9D59D52720D3F829009EA8FF /* FF6S.txt */,
+				9D59D52820D3F829009EA8FF /* NCG47.txt */,
+				9D59D52920D3F829009EA8FF /* M16HR5i.txt */,
+				9D59D52A20D3F829009EA8FF /* FCG77REGA.txt */,
+				9D59D52B20D3F829009EA8FF /* H16HR.txt */,
+				9D59D52C20D3F829009EA8FF /* FKHR1B8.txt */,
+				9D59D52D20D3F829009EA8FF /* FF1109R.txt */,
+				9D59D52E20D3F829009EA8FF /* FF47R12.txt */,
+				9D59D52F20D3F829009EA8FF /* FKHS1i.txt */,
+				9D59D53020D3F829009EA8FF /* KV7B.txt */,
+				9D59D53120D3F829009EA8FF /* K12HR10B.txt */,
+				9D59D53220D3F829009EA8FF /* AS2.txt */,
+				9D59D53320D3F829009EA8FF /* H16HS.txt */,
+				9D59D53420D3F829009EA8FF /* FKHR1At.txt */,
+				9D59D53520D3F829009EA8FF /* A12HC.txt */,
+				9D59D53620D3F829009EA8FF /* FF6R.txt */,
+				9D59D53720D3F829009EA8FF /* FM16HR3.txt */,
+				9D59D53820D3F829009EA8FF /* K12HC2.txt */,
+				9D59D53920D3F829009EA8FF /* FAD674R.txt */,
+				9D59D53A20D3F829009EA8FF /* FM12HC.txt */,
+				9D59D53B20D3F829009EA8FF /* FEHR1BQ.txt */,
+				9D59D53C20D3F829009EA8FF /* FKHR5A.txt */,
+				9D59D53D20D3F829009EA8FF /* NCG16070S.txt */,
+				9D59D53E20D3F829009EA8FF /* M16HS1B.txt */,
+				9D59D53F20D3F829009EA8FF /* FKHR5C.txt */,
+				9D59D54020D3F829009EA8FF /* K16HS9.txt */,
+				9D59D54120D3F829009EA8FF /* A16HR.txt */,
+				9D59D54220D3F829009EA8FF /* FCG42.txt */,
+				9D59D54320D3F829009EA8FF /* FA814R.txt */,
+				9D59D54420D3F829009EA8FF /* FF16000S.txt */,
+				9D59D54520D3F829009EA8FF /* NF32R.txt */,
+				9D59D54620D3F829009EA8FF /* AR4.txt */,
+				9D59D54720D3F829009EA8FF /* FCG6.txt */,
+				9D59D54820D3F829009EA8FF /* CG42NIMOV.txt */,
+				9D59D54920D3F829009EA8FF /* FF10140S.txt */,
+				9D59D54A20D3F829009EA8FF /* AR4Fb.txt */,
+				9D59D54B20D3F829009EA8FF /* AR5.txt */,
+				9D59D54C20D3F829009EA8FF /* NF32S.txt */,
+				9D59D54D20D3F829009EA8FF /* FF16000R.txt */,
+				9D59D54E20D3F829009EA8FF /* NF50100RD.txt */,
+				9D59D54F20D3F829009EA8FF /* FAD814R.txt */,
+				9D59D55020D3F829009EA8FF /* NAD694R.txt */,
+				9D59D55120D3F829009EA8FF /* NCG9S.txt */,
+				9D59D55220D3F829009EA8FF /* K16HR6B4.txt */,
+				9D59D55320D3F829009EA8FF /* M16HS230.txt */,
+				9D59D55420D3F829009EA8FF /* A16HS.txt */,
+				9D59D55520D3F829009EA8FF /* K16HS8.txt */,
+				9D59D55620D3F829009EA8FF /* H12HC.txt */,
+				9D59D55720D3F829009EA8FF /* AR2FD.txt */,
+				9D59D55820D3F829009EA8FF /* FKHR5B.txt */,
+				9D59D55920D3F829009EA8FF /* M16HS1C.txt */,
+				9D59D55A20D3F829009EA8FF /* FKV1B.txt */,
+				9D59D55B20D3F829009EA8FF /* FM12HS.txt */,
+				9D59D55C20D3F829009EA8FF /* NF4000R.txt */,
+				9D59D55D20D3F829009EA8FF /* K16HR8.txt */,
+				9D59D55E20D3F829009EA8FF /* K12HC5.txt */,
+				9D59D55F20D3F829009EA8FF /* FKHR3c8.txt */,
+				9D59D56020D3F829009EA8FF /* FEHR2i.txt */,
+				9D59D56120D3F829009EA8FF /* A12HS.txt */,
+				9D59D56220D3F829009EA8FF /* AS5.txt */,
+				9D59D56320D3F829009EA8FF /* AS4.txt */,
+				9D59D56420D3F829009EA8FF /* A12HR.txt */,
+				9D59D56520D3F829009EA8FF /* HV1.txt */,
+				9D59D56620D3F829009EA8FF /* NCG285.txt */,
+				9D59D56720D3F829009EA8FF /* K16HS3i.txt */,
+				9D59D56820D3F829009EA8FF /* FM16HS1.txt */,
+				9D59D56920D3F829009EA8FF /* F16HS1B.txt */,
+				9D59D56A20D3F829009EA8FF /* MV2i.txt */,
+				9D59D56B20D3F829009EA8FF /* K12HC4.txt */,
+				9D59D56C20D3F829009EA8FF /* K16HR9.txt */,
+				9D59D56D20D3F829009EA8FF /* NF4000S.txt */,
+				9D59D56E20D3F829009EA8FF /* FM12HR.txt */,
+				9D59D56F20D3F829009EA8FF /* AR2Fa.txt */,
+				9D59D57020D3F829009EA8FF /* NCG16070B.txt */,
+				9D59D57120D3F829009EA8FF /* FCG77S.txt */,
+				9D59D57220D3F829009EA8FF /* M16HS1F.txt */,
+				9D59D57320D3F829009EA8FF /* FCG285A.txt */,
+				9D59D57420D3F829009EA8FF /* FR2F.txt */,
+				9D59D57520D3F829009EA8FF /* FR3041.txt */,
+				9D59D57620D3F829009EA8FF /* H12HS.txt */,
+				9D59D57720D3F829009EA8FF /* A694V.txt */,
+				9D59D57820D3F829009EA8FF /* NF16000S.txt */,
+				9D59D57920D3F829009EA8FF /* NCG42.txt */,
+				9D59D57A20D3F829009EA8FF /* KV6B.txt */,
+				9D59D57B20D3F829009EA8FF /* AR2.txt */,
+				9D59D57C20D3F829009EA8FF /* AR4FD.txt */,
+				9D59D57D20D3F829009EA8FF /* K12HR5B.txt */,
+				9D59D57E20D3F829009EA8FF /* F10140V.txt */,
+				9D59D57F20D3F829009EA8FF /* NF16000R.txt */,
+				9D59D58020D3F829009EA8FF /* NF10140S.txt */,
+				9D59D58120D3F829009EA8FF /* F6V.txt */,
+				9D59D58220D3F829009EA8FF /* K12HC7.txt */,
+				9D59D58320D3F829009EA8FF /* FCG77SREGA.txt */,
+				9D59D58420D3F829009EA8FF /* M12HSi.txt */,
+				9D59D58520D3F829009EA8FF /* H12HR.txt */,
+				9D59D58620D3F829009EA8FF /* K12HR9.txt */,
+				9D59D58720D3F829009EA8FF /* K16HS10B.txt */,
+				9D59D58820D3F829009EA8FF /* FF42R.txt */,
+				9D59D58920D3F829009EA8FF /* M12HCC.txt */,
+				9D59D58A20D3F829009EA8FF /* F30VAIMO.txt */,
+				9D59D58B20D3F829009EA8FF /* H12HCi.txt */,
+				9D59D58C20D3F829009EA8FF /* FF16000R2.txt */,
+				9D59D58D20D3F829009EA8FF /* FR230.txt */,
+				9D59D58E20D3F829009EA8FF /* KV7.txt */,
+				9D59D58F20D3F829009EA8FF /* FKV6.txt */,
+				9D59D59020D3F829009EA8FF /* NA694R.txt */,
+				9D59D59120D3F829009EA8FF /* MV1.txt */,
+				9D59D59220D3F829009EA8FF /* K16HC2B.txt */,
+				9D59D59320D3F829009EA8FF /* K16HR3ns.txt */,
+				9D59D59420D3F829009EA8FF /* FR2.txt */,
+				9D59D59520D3F829009EA8FF /* NoOpH.txt */,
+				9D59D59620D3F829009EA8FF /* FKHS6.txt */,
+				9D59D59720D3F829009EA8FF /* KV6.txt */,
+				9D59D59820D3F829009EA8FF /* VF50100.txt */,
+				9D59D59920D3F829009EA8FF /* M12HCB.txt */,
+				9D59D59A20D3F829009EA8FF /* FR230b.txt */,
+				9D59D59B20D3F829009EA8FF /* AR5L.txt */,
+				9D59D59C20D3F829009EA8FF /* FKV6B.txt */,
+				9D59D59D20D3F829009EA8FF /* NCG8300S.txt */,
+				9D59D59E20D3F829009EA8FF /* FEHS1A.txt */,
+				9D59D59F20D3F829009EA8FF /* NCG16M.txt */,
+				9D59D5A020D3F829009EA8FF /* FF47S12.txt */,
+				9D59D5A120D3F829009EA8FF /* F29050V.txt */,
+				9D59D5A220D3F829009EA8FF /* KV4.txt */,
+				9D59D5A320D3F829009EA8FF /* FKV5.txt */,
+				9D59D5A420D3F829009EA8FF /* FKHS4.txt */,
+				9D59D5A520D3F829009EA8FF /* FKHR4AQ.txt */,
+				9D59D5A620D3F829009EA8FF /* M12HS7i.txt */,
+				9D59D5A720D3F829009EA8FF /* MV2.txt */,
+				9D59D5A820D3F829009EA8FF /* K16HS6B.txt */,
+				9D59D5A920D3F829009EA8FF /* M16HR3i.txt */,
+				9D59D5AA20D3F829009EA8FF /* K12HR2B.txt */,
+				9D59D5AB20D3F829009EA8FF /* MV1nimo.txt */,
+				9D59D5AC20D3F829009EA8FF /* NCG77VREGA.txt */,
+				9D59D5AD20D3F829009EA8FF /* FKHS5.txt */,
+				9D59D5AE20D3F829009EA8FF /* NF29050R.txt */,
+				9D59D5AF20D3F829009EA8FF /* FKV4.txt */,
+				9D59D5B020D3F829009EA8FF /* KV5.txt */,
+				9D59D5B120D3F829009EA8FF /* FKHR1i.txt */,
+				9D59D5B220D3F829009EA8FF /* MV230.txt */,
+				9D59D5B320D3F829009EA8FF /* M12HC7.txt */,
+				9D59D5B420D3F829009EA8FF /* FEHS1B.txt */,
+				9D59D5B520D3F829009EA8FF /* K16HC2.txt */,
+				9D59D5B620D3F829009EA8FF /* NF6R.txt */,
+				9D59D5B720D3F829009EA8FF /* F29050S.txt */,
+				9D59D5B820D3F829009EA8FF /* NCG42S.txt */,
+				9D59D5B920D3F829009EA8FF /* KV1.txt */,
+				9D59D5BA20D3F829009EA8FF /* NF8300R.txt */,
+				9D59D5BB20D3F829009EA8FF /* FKHS1.txt */,
+				9D59D5BC20D3F829009EA8FF /* MV7.txt */,
+				9D59D5BD20D3F829009EA8FF /* NR230.txt */,
+				9D59D5BE20D3F829009EA8FF /* NF42R.txt */,
+				9D59D5BF20D3F829009EA8FF /* FKV1.txt */,
+				9D59D5C020D3F829009EA8FF /* FCG8300S.txt */,
+				9D59D5C120D3F829009EA8FF /* NF8300S.txt */,
+				9D59D5C220D3F829009EA8FF /* K12HS5B.txt */,
+				9D59D5C320D3F829009EA8FF /* FCG8300.txt */,
+				9D59D5C420D3F829009EA8FF /* K12HC3i.txt */,
+				9D59D5C520D3F829009EA8FF /* NF6S.txt */,
+				9D59D5C620D3F829009EA8FF /* FEHS2i.txt */,
+				9D59D5C720D3F829009EA8FF /* K16HC1.txt */,
+				9D59D5C820D3F829009EA8FF /* KV2.txt */,
+				9D59D5C920D3F829009EA8FF /* K12HS6B2.txt */,
+				9D59D5CA20D3F829009EA8FF /* FKV3.txt */,
+				9D59D5CB20D3F829009EA8FF /* MV4.txt */,
+				9D59D5CC20D3F829009EA8FF /* NCG6.txt */,
+				9D59D5CD20D3F829009EA8FF /* K16HR3i.txt */,
+				9D59D5CE20D3F829009EA8FF /* FS230b.txt */,
+				9D59D5CF20D3F829009EA8FF /* F16HR1B.txt */,
+				9D59D5D020D3F829009EA8FF /* KV3.txt */,
+				9D59D5D120D3F829009EA8FF /* K12HS9.txt */,
+				9D59D5D220D3F829009EA8FF /* FF29050R.txt */,
+				9D59D5D320D3F829009EA8FF /* F4000V.txt */,
+			);
+			path = conf;
+			sourceTree = "<group>";
+		};
 		9D976FD21DD0C46E00782B32 /* ccd_iidc */ = {
 			isa = PBXGroup;
 			children = (
@@ -1443,6 +2638,7 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				59292E5620D4224F0042E939 /* libcurl.tbd */,
 				590B59D61F79A68000086FD2 /* libnovas.a */,
 				595355EC1F6B140300478BEC /* libftd2xx.a */,
 				595355ED1F6B140300478BEC /* libqsiapi.a */,
@@ -1474,38 +2670,102 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D59D61920D3F829009EA8FF /* AltaModeFsm.h in Headers */,
 				599A63B11DEA2F4700ABC827 /* indigo_driver_json.h in Headers */,
 				59DD69CF1FC1D30300AEF0DF /* indigo_dome_driver.h in Headers */,
+				9D59D65520D3F829009EA8FF /* ApogeeCam.h in Headers */,
 				9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */,
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
+				9D59D66720D3F82A009EA8FF /* IAltaSerialPortIo.h in Headers */,
 				59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */,
 				59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */,
+				9D59D63720D3F829009EA8FF /* AspenFx2.h in Headers */,
 				9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */,
 				595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */,
+				9D59D63420D3F829009EA8FF /* versionNo.h in Headers */,
+				9D59D61720D3F829009EA8FF /* ApogeeFilterWheel.h in Headers */,
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
+				9D59D5F920D3F829009EA8FF /* CamCfgMatrix.h in Headers */,
+				9D59D64D20D3F829009EA8FF /* FindDeviceEthernet.h in Headers */,
+				9D59D65220D3F829009EA8FF /* CamGen2CcdAcqParams.h in Headers */,
+				9D59D61820D3F829009EA8FF /* Ascent.h in Headers */,
+				9D59D62F20D3F829009EA8FF /* ApnUsbSys.h in Headers */,
+				9D59D65320D3F829009EA8FF /* CamUsbIo.h in Headers */,
 				9DBC346B1DCB26AC00588DB9 /* EFW_filter.h in Headers */,
 				9D4D64B220A9D947008ECE4B /* indigo_guider_eqmac.h in Headers */,
+				9D59D62420D3F829009EA8FF /* FindDeviceUsb.h in Headers */,
+				9D59D64C20D3F829009EA8FF /* AspenEthernetIo.h in Headers */,
 				59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */,
+				9D59D62720D3F829009EA8FF /* CamRegMirror.h in Headers */,
 				9DB918091DFEA42E00678721 /* indigo_io.h in Headers */,
 				59DD69D61FC1DC4900AEF0DF /* indigo_dome_simulator.h in Headers */,
+				9D59D5EC20D3F829009EA8FF /* Alta.h in Headers */,
+				9D59D65620D3F829009EA8FF /* ImgFix.h in Headers */,
+				9D59D65D20D3F829009EA8FF /* IUsb.h in Headers */,
+				9D59D5E720D3F829009EA8FF /* ModeFsm.h in Headers */,
+				9D59D62820D3F829009EA8FF /* AltaCcdAcqParams.h in Headers */,
+				9D59D66820D3F82A009EA8FF /* ILog.h in Headers */,
 				9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */,
+				9D59D64F20D3F829009EA8FF /* AspenIo.h in Headers */,
+				9D59D64520D3F829009EA8FF /* UdpSocketLinux.h in Headers */,
+				9D59D64620D3F829009EA8FF /* linuxHelpers.h in Headers */,
+				9D59D63B20D3F829009EA8FF /* AscentData.h in Headers */,
 				599A63A81DE8BD1700ABC827 /* indigo_json.h in Headers */,
 				59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */,
+				9D59D64820D3F829009EA8FF /* AscentBasedUsbIo.h in Headers */,
 				9D976FDC1DD0C69D00782B32 /* dc1394.h in Headers */,
+				9D59D61120D3F829009EA8FF /* UdpSocketBase.h in Headers */,
 				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
+				9D59D65A20D3F829009EA8FF /* CamHelpers.h in Headers */,
 				59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */,
+				9D59D5E420D3F829009EA8FF /* AltaIo.h in Headers */,
+				9D59D66420D3F82A009EA8FF /* helpers.h in Headers */,
 				59DD69CA1FC1CF8D00AEF0DF /* indigo_gps_nmea.h in Headers */,
 				9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */,
+				9D59D66E20D3F82A009EA8FF /* AspenData.h in Headers */,
+				9D59D5E820D3F829009EA8FF /* AltaData.h in Headers */,
+				9D59D64320D3F829009EA8FF /* GenOneLinuxUSB.h in Headers */,
+				9D59D5FE20D3F829009EA8FF /* Quad.h in Headers */,
+				9D59D5E520D3F829009EA8FF /* PromFx2Io.h in Headers */,
 				9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */,
+				9D59D63F20D3F829009EA8FF /* LoggerSyslog.h in Headers */,
+				9D59D5F120D3F829009EA8FF /* ITimer.h in Headers */,
+				9D59D63A20D3F829009EA8FF /* PlatformData.h in Headers */,
+				9D59D66A20D3F82A009EA8FF /* CameraStatusRegs.h in Headers */,
+				9D59D64920D3F829009EA8FF /* parseCfgTabDelim.h in Headers */,
+				9D59D63020D3F829009EA8FF /* AltaUsbIo.h in Headers */,
+				9D59D5EE20D3F829009EA8FF /* ApgLogger.h in Headers */,
 				593CFE451DFC8A12003B63D4 /* indigo_wheel_atik.h in Headers */,
+				9D59D5EB20D3F829009EA8FF /* CameraIo.h in Headers */,
+				9D59D62320D3F829009EA8FF /* FilterWheelIo.h in Headers */,
+				9D59D61B20D3F829009EA8FF /* CamGen2Base.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
 				59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */,
+				9D59D5F020D3F829009EA8FF /* ICamIo.h in Headers */,
+				9D59D62120D3F829009EA8FF /* Aspen.h in Headers */,
+				9D59D5FB20D3F829009EA8FF /* CcdAcqParams.h in Headers */,
+				9D59D66020D3F82A009EA8FF /* apgHelper.h in Headers */,
+				9D59D65120D3F829009EA8FF /* CamGen2ModeFsm.h in Headers */,
+				9D59D64E20D3F829009EA8FF /* ApgTimer.h in Headers */,
+				9D59D5F320D3F829009EA8FF /* COMHelper.h in Headers */,
+				9D59D62B20D3F829009EA8FF /* AltaF.h in Headers */,
 				59E38B531F1577A000187839 /* indigo_ica_ptp_canon.h in Headers */,
+				9D59D5FD20D3F829009EA8FF /* ApnCamData.h in Headers */,
 				59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */,
+				9D59D67020D3F82A009EA8FF /* indigo_ccd_apogee.h in Headers */,
+				9D59D61D20D3F829009EA8FF /* AscentBasedIo.h in Headers */,
+				9D59D62020D3F829009EA8FF /* CameraInfo.h in Headers */,
+				9D59D63E20D3F829009EA8FF /* LinuxTimer.h in Headers */,
 				9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */,
 				59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */,
+				9D59D65920D3F829009EA8FF /* AltaEthernetIo.h in Headers */,
+				9D59D62620D3F829009EA8FF /* HiC.h in Headers */,
+				9D59D63620D3F829009EA8FF /* LoggerException.h in Headers */,
+				9D59D63C20D3F829009EA8FF /* libCurlWrap.h in Headers */,
 				9DBC34671DCB267700588DB9 /* indigo_wheel_asi.h in Headers */,
+				9D59D63220D3F829009EA8FF /* DeviceStrHelpers.h in Headers */,
 				9D9EA6B31DBFA30600E11841 /* indigo_ccd_driver.h in Headers */,
+				9D59D61E20D3F829009EA8FF /* AspenUsbIo.h in Headers */,
 				9DDBAE1A1E2D2099004FE70F /* indigo_timer.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1801,35 +3061,64 @@
 			files = (
 				59986D761F9BA11600D68DC1 /* indigo_ccd_qsi.cpp in Sources */,
 				59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */,
+				9D59D65E20D3F829009EA8FF /* apgHelper.cpp in Sources */,
+				9D59D66B20D3F82A009EA8FF /* ImgFix.cpp in Sources */,
+				9D59D65820D3F829009EA8FF /* AltaData.cpp in Sources */,
+				9D59D5F420D3F829009EA8FF /* CameraIo.cpp in Sources */,
+				9D59D62D20D3F829009EA8FF /* CamHelpers.cpp in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
+				9D59D63820D3F829009EA8FF /* CameraStatusRegs.cpp in Sources */,
+				9D59D63D20D3F829009EA8FF /* linuxHelpers.cpp in Sources */,
 				59DD69C91FC1CF8D00AEF0DF /* indigo_gps_nmea.c in Sources */,
 				590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */,
+				9D59D5E320D3F829009EA8FF /* helpers.cpp in Sources */,
+				9D59D66620D3F82A009EA8FF /* AltaEthernetIo.cpp in Sources */,
 				59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */,
 				5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */,
+				9D59D65020D3F829009EA8FF /* parseCfgTabDelim.cpp in Sources */,
 				59C8E7C41DBBB05500AA3F0A /* indigo_ccd_asi.c in Sources */,
+				9D59D66920D3F82A009EA8FF /* ApnCamData.cpp in Sources */,
+				9D59D5E920D3F829009EA8FF /* LoggerException.cpp in Sources */,
 				59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */,
 				59DD69D71FC1DC4900AEF0DF /* indigo_dome_simulator.c in Sources */,
 				9DF7E64F1F6AA17900156652 /* indigo_ccd_qsi_main.cpp in Sources */,
+				9D59D5ED20D3F829009EA8FF /* CamGen2ModeFsm.cpp in Sources */,
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
 				59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */,
 				59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */,
 				599C9A4F1DA022E3008BBCC1 /* indigo_version.c in Sources */,
+				9D59D61C20D3F829009EA8FF /* Quad.cpp in Sources */,
+				9D59D65F20D3F829009EA8FF /* CamRegMirror.cpp in Sources */,
 				59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */,
+				9D59D5F520D3F829009EA8FF /* AspenUsbIo.cpp in Sources */,
 				59F654721EE47516007B8C93 /* indigo_ccd_qhy.cpp in Sources */,
+				9D59D5FC20D3F829009EA8FF /* CcdAcqParams.cpp in Sources */,
 				9DBC34661DCB267700588DB9 /* indigo_wheel_asi.c in Sources */,
 				59019E0B1DE0AC7400CCB3ED /* indigo_client.c in Sources */,
 				9D9EA6A51DBE1F7300E11841 /* indigo_ccd_atik.c in Sources */,
+				9D59D66C20D3F82A009EA8FF /* ModeFsm.cpp in Sources */,
 				5911F7B41F02E1400053F3CA /* libdsi.c in Sources */,
+				9D59D60220D3F829009EA8FF /* CamGen2CcdAcqParams.cpp in Sources */,
+				9D59D60020D3F829009EA8FF /* ApogeeFilterWheel.cpp in Sources */,
+				9D59D5F720D3F829009EA8FF /* AspenIo.cpp in Sources */,
+				9D59D62C20D3F829009EA8FF /* FindDeviceEthernet.cpp in Sources */,
+				9D59D64220D3F829009EA8FF /* LinuxTimer.cpp in Sources */,
+				9D59D64720D3F829009EA8FF /* AscentBasedIo.cpp in Sources */,
+				9D59D66120D3F82A009EA8FF /* IAltaSerialPortIo.cpp in Sources */,
 				59CC779D1F27BD07003AD2DB /* indigo_ica_ptp_sony.m in Sources */,
+				9D59D63520D3F829009EA8FF /* Aspen.cpp in Sources */,
+				9D59D65720D3F829009EA8FF /* AspenData.cpp in Sources */,
 				59DD69CE1FC1D30300AEF0DF /* indigo_dome_driver.c in Sources */,
+				9D59D65420D3F829009EA8FF /* ILog.cpp in Sources */,
 				9D9EA6B21DBFA30600E11841 /* indigo_ccd_driver.c in Sources */,
 				599C9A501DA022E3008BBCC1 /* indigo_xml.c in Sources */,
 				59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */,
 				9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */,
+				9D59D5EA20D3F829009EA8FF /* DeviceStrHelpers.cpp in Sources */,
 				594122A11FD2DE7800D792FF /* indigo_dome_azimuth.c in Sources */,
 				59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */,
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,
@@ -1837,27 +3126,58 @@
 				9D9EA6B61DBFA30600E11841 /* indigo_wheel_driver.c in Sources */,
 				595AA1CD1FC5ED8A00350E7B /* indigo_agent_snoop.c in Sources */,
 				9D9EA6B41DBFA30600E11841 /* indigo_guider_driver.c in Sources */,
+				9D59D5FA20D3F829009EA8FF /* AltaF.cpp in Sources */,
+				9D59D5EF20D3F829009EA8FF /* CameraInfo.cpp in Sources */,
+				9D59D61A20D3F829009EA8FF /* AltaModeFsm.cpp in Sources */,
+				9D59D66520D3F82A009EA8FF /* AspenEthernetIo.cpp in Sources */,
+				9D59D65C20D3F829009EA8FF /* FindDeviceUsb.cpp in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
+				9D59D61520D3F829009EA8FF /* AscentBasedUsbIo.cpp in Sources */,
 				59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */,
+				9D59D61F20D3F829009EA8FF /* ApgLogger.cpp in Sources */,
 				59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */,
 				599A63A71DE8BD1700ABC827 /* indigo_json.c in Sources */,
 				599C9A531DA022E3008BBCC1 /* indigo_server_tcp.c in Sources */,
+				9D59D63920D3F829009EA8FF /* ApogeeCam.cpp in Sources */,
+				9D59D60320D3F829009EA8FF /* FilterWheelIo.cpp in Sources */,
 				595AA1D21FC5EEFE00350E7B /* indigo_agent.c in Sources */,
 				9DB9180A1DFEA71C00678721 /* indigo_mount_nexstar.c in Sources */,
 				59C4C88620CEF107007EE330 /* indigo_focuser_wemacro.c in Sources */,
+				9D59D62920D3F829009EA8FF /* AscentData.cpp in Sources */,
 				5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */,
+				9D59D5F220D3F829009EA8FF /* Alta.cpp in Sources */,
+				9D59D5F620D3F829009EA8FF /* IUsb.cpp in Sources */,
+				9D59D60120D3F829009EA8FF /* UdpSocketBase.cpp in Sources */,
+				9D59D66F20D3F82A009EA8FF /* indigo_ccd_apogee.cpp in Sources */,
 				9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */,
+				9D59D66D20D3F82A009EA8FF /* PromFx2Io.cpp in Sources */,
+				9D59D64020D3F829009EA8FF /* UdpSocketLinux.cpp in Sources */,
+				9D59D64420D3F829009EA8FF /* LoggerSyslog.cpp in Sources */,
+				9D59D5E620D3F829009EA8FF /* CamUsbIo.cpp in Sources */,
+				9D59D63320D3F829009EA8FF /* AltaCcdAcqParams.cpp in Sources */,
+				9D59D63120D3F829009EA8FF /* PlatformData.cpp in Sources */,
 				9DB918031DF8546800678721 /* indigo_mount_lx200.c in Sources */,
 				59E38B561F1577A000187839 /* indigo_ica_ptp_nikon.m in Sources */,
 				593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */,
+				9D59D64B20D3F829009EA8FF /* ICamIo.cpp in Sources */,
 				593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */,
+				9D59D61220D3F829009EA8FF /* HiC.cpp in Sources */,
+				9D59D62A20D3F829009EA8FF /* ApgTimer.cpp in Sources */,
+				9D59D61320D3F829009EA8FF /* CamGen2Base.cpp in Sources */,
 				9DAC59D91DC24E1400AE410D /* indigo_focuser_fcusb.c in Sources */,
+				9D59D61420D3F829009EA8FF /* libCurlWrap.cpp in Sources */,
+				9D59D5F820D3F829009EA8FF /* CamCfgMatrix.cpp in Sources */,
+				9D59D62520D3F829009EA8FF /* ITimer.cpp in Sources */,
 				9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */,
 				5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */,
+				9D59D65B20D3F829009EA8FF /* AltaIo.cpp in Sources */,
+				9D59D62E20D3F829009EA8FF /* Ascent.cpp in Sources */,
 				9DDA7FD21F791F7D0094D65D /* indigo_novas.c in Sources */,
 				9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */,
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
+				9D59D62220D3F829009EA8FF /* AltaUsbIo.cpp in Sources */,
 				591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */,
+				9D59D64120D3F829009EA8FF /* GenOneLinuxUSB.cpp in Sources */,
 				59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */,
 				59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */,
 			);
