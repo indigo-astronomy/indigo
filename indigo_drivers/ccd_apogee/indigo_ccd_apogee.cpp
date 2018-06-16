@@ -349,6 +349,7 @@ static bool apogee_setup_exposure(indigo_device *device, int frame_left, int fra
 	PRIVATE_DATA->exp_bin_y = vertical_bin;
 	PRIVATE_DATA->exp_frame_width = frame_width;
 	PRIVATE_DATA->exp_frame_height = frame_height;
+	PRIVATE_DATA->exp_bpp = 16;
 
 	return true;
 }
@@ -592,8 +593,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						pixel_width = camera->GetPixelWidth();
 						pixel_height = camera->GetPixelHeight();
 						max_bin_x = camera->GetMaxBinCols();
-						max_bin_y = camera->GetMaxBinCols();
-						serial_no = camera->GetSerialNumber();
+						max_bin_y = camera->GetMaxBinRows();
+						// serial_no = camera->GetSerialNumber();  // Breaks ASPEN!!!!
 						CCD_EXPOSURE_ITEM->number.min = camera->GetMinExposureTime();
 						CCD_EXPOSURE_ITEM->number.max = camera->GetMaxExposureTime();
 					} catch (std::runtime_error err) {
