@@ -971,7 +971,6 @@ static struct info {
         NSData *image;
         if ((bytes[64] & 0xFF) == 0xFF && (bytes[65] & 0xFF) == 0xD8) {
           image = [NSData dataWithBytes:bytes + 64 length:data.length - 64];
-          image = [NSData dataWithBytes:bytes + 128 length:data.length - 128];
           unsigned char *buf = (unsigned char *)bytes;
           ptpReadUnsignedShort(&buf); // image width
           ptpReadUnsignedShort(&buf); // image height
