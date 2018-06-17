@@ -330,12 +330,13 @@ static bool apogee_setup_exposure(indigo_device *device, int frame_left, int fra
 	ApogeeCam *camera = PRIVATE_DATA->camera;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	try {
+		//camera->SetCcdAdcSpeed(Apg::AdcSpeed_Fast);
 		camera->SetRoiBinCol(horizontal_bin);
 		camera->SetRoiBinRow(vertical_bin);
-		camera->SetRoiStartCol(frame_left);
-		camera->SetRoiStartRow(frame_top);
-		camera->SetRoiNumCols(frame_width);
-		camera->SetRoiNumRows(frame_height);
+		camera->SetRoiStartCol((uint16_t)(frame_left / horizontal_bin));
+		camera->SetRoiStartRow((uint16_t)(frame_top / vertical_bin));
+		camera->SetRoiNumCols((uint16_t)(frame_width / horizontal_bin));
+		camera->SetRoiNumRows((uint16_t)(frame_height / vertical_bin));
 		camera->SetImageCount(1);
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
@@ -379,7 +380,7 @@ static bool apogee_read_pixels(indigo_device *device) {
 	int wait_cycles = 9000;    /* 9000*2000us = 18s */
 
 	Apg::Status status = camera->GetImagingStatus();
-	while ((status != Apg::Status_ImageReady) || wait_cycles--) {
+	while ((status != Apg::Status_ImageReady) && wait_cycles--) {
 		try {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			status = camera->GetImagingStatus();
@@ -391,8 +392,7 @@ static bool apogee_read_pixels(indigo_device *device) {
 		}
 		usleep(2000);
 	}
-
-	std::vector<uint16_t> image_data;
+	std::vector<uint16_t> image_data(PRIVATE_DATA->exp_frame_width * PRIVATE_DATA->exp_frame_height * PRIVATE_DATA->exp_bpp / 8);
 	if (status == Apg::Status_ImageReady) {
 		try {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -409,6 +409,7 @@ static bool apogee_read_pixels(indigo_device *device) {
 	}
 
 	std::copy(image_data.begin(), image_data.end(), (uint16_t *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE));
+	//memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, (char*)&image_data[0], CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value * 2);
 	return true;
 }
 
@@ -1100,7 +1101,7 @@ indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info 
 				char firmware_base_dir[1024] = "/usr/local/etc/apogee";
 				if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
 					strncpy(firmware_base_dir, getenv("INDIGO_FIRMWARE_BASE"), 1024);
-				}				
+				}
 				for (int i = 0; i < MAXCAMERAS; i++) {
 					devices[i] = NULL;
 				}
