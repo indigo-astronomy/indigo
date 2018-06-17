@@ -392,7 +392,7 @@ static bool apogee_read_pixels(indigo_device *device) {
 		}
 		usleep(2000);
 	}
-	std::vector<uint16_t> image_data(PRIVATE_DATA->exp_frame_width * PRIVATE_DATA->exp_frame_height * PRIVATE_DATA->exp_bpp / 8);
+	std::vector<uint16_t> image_data(PRIVATE_DATA->buffer_size);
 	if (status == Apg::Status_ImageReady) {
 		try {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
