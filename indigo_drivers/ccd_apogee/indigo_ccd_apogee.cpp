@@ -82,7 +82,6 @@ typedef struct {
 	int exp_bpp;
 	double target_temperature, current_temperature;
 	long cooler_power;
-	bool has_temperature_sensor;
 	indigo_timer *exposure_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
 	long int buffer_size;
@@ -429,46 +428,70 @@ static bool apogee_abort_exposure(indigo_device *device) {
 }
 
 
-static bool apogee_set_cooler(indigo_device *device, bool status, double target, double *current, long *cooler_power) {
-	long current_status;
-	long temp_x10;
+static bool apogee_set_cooler(indigo_device *device, bool on, double target, double *current, long *cooler_power) {
+	bool is_on_now;
+	bool cooling_supported = false;
+	bool cooling_regulated = false;
 
+	ApogeeCam *camera = PRIVATE_DATA->camera;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	/*
-	if (PRIVATE_DATA->has_temperature_sensor) {
-		res = ASIGetControlValue(id, ASI_TEMPERATURE, &temp_x10, &unused);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res);
-		*current = temp_x10/10.0;
-	} else {
-		*current = 0;
+	try {
+		*current = camera->GetTempCcd();
+	} catch (std::runtime_error err) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetTempCcd(): %s", err.what());
 	}
 
-	if (!PRIVATE_DATA->info.IsCoolerCam) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		return true;
+	try {
+		cooling_supported = camera->IsCoolingSupported();
+	} catch (std::runtime_error err) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolingSupported(): %s", err.what());
 	}
 
-	res = ASIGetControlValue(id, ASI_COOLER_ON, &current_status, &unused);
-	if(res) {
+	if (!cooling_supported) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
 		return false;
 	}
 
-	if (current_status != status) {
-		res = ASISetControlValue(id, ASI_COOLER_ON, status, false);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
-	} else if(status) {
-		res = ASISetControlValue(id, ASI_TARGET_TEMP, (long)target, false);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+	try {
+		is_on_now = camera->IsCoolerOn();
+	} catch (std::runtime_error err) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolerOn(): %s", err.what());
+		return false;
 	}
 
-	res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, cooler_power, &unused);
-	if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
-	*/
+	if (is_on_now != on) {
+		try {
+			camera->SetCooler(on);
+		} catch (std::runtime_error err) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "setCooler(): %s", err.what());
+		}
+	} else if(on) {
+		try {
+			cooling_regulated = camera->IsCoolingRegulated();
+		} catch (std::runtime_error err) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolingRegulated(): %s", err.what());
+		}
+		try {
+			if (cooling_regulated) camera->SetCoolerSetPoint(target);
+		} catch (std::runtime_error err) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerSetPoint(): %s", err.what());
+		}
+	}
+
+	try {
+		if (cooling_regulated && on) *cooler_power = camera->GetCoolerDrive();
+		else *cooler_power = 0;
+	} catch (std::runtime_error err) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCoolerDrive(): %s", err.what());
+	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetCoolerDrive(): %d", *cooler_power);
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
-}
+}//bool status;
+					//libatik_check_cooler(PRIVATE_DATA->device_context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature);
 
 
 static void apogee_close(indigo_device *device) {
@@ -577,9 +600,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (!device->is_connected) {
 				if (apogee_open(device)) {
-					if (PRIVATE_DATA->has_temperature_sensor) {
-						PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-					}
+					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+
 					ApogeeCam *camera = PRIVATE_DATA->camera;
 					uint16_t image_width = 0;
 					uint16_t image_height = 0;
@@ -587,6 +609,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					double pixel_height = 0;
 					uint16_t max_bin_x = 0;
 					uint16_t max_bin_y = 0;
+					bool cooling_regulated = false;
+					bool cooling_supported = false;
 					std::string serial_no;
 					try {
 						image_width = camera->GetMaxImgCols();
@@ -595,6 +619,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						pixel_height = camera->GetPixelHeight();
 						max_bin_x = camera->GetMaxBinCols();
 						max_bin_y = camera->GetMaxBinRows();
+						cooling_regulated = camera->IsCoolingRegulated();
+						cooling_supported = camera->IsCoolingSupported();
 						// serial_no = camera->GetSerialNumber();  // Breaks ASPEN!!!!
 						CCD_EXPOSURE_ITEM->number.min = camera->GetMinExposureTime();
 						CCD_EXPOSURE_ITEM->number.max = camera->GetMaxExposureTime();
@@ -629,13 +655,22 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_BIN_VERTICAL_ITEM->number.min = CCD_BIN_VERTICAL_ITEM->number.value = 1;
 					CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin_y;
 
-					CCD_COOLER_PROPERTY->hidden = false;
+					if (cooling_supported) CCD_COOLER_PROPERTY->hidden = false;
+					else CCD_COOLER_PROPERTY->hidden = true;
+
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
-					CCD_COOLER_POWER_PROPERTY->hidden = false;
-					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
-					//bool status;
-					//libatik_check_cooler(PRIVATE_DATA->device_context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature);
+
+					if (cooling_regulated && cooling_supported) {
+						CCD_COOLER_POWER_PROPERTY->hidden = false;
+						CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+					} else {
+						CCD_COOLER_POWER_PROPERTY->hidden = true;
+						CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+					}
+
 					PRIVATE_DATA->target_temperature = 0;
+					PRIVATE_DATA->can_check_temperature = true;
 					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 
 					device->is_connected = true;
@@ -702,6 +737,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- GAMMA
