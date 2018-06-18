@@ -924,7 +924,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 }
 
 
-static void usb_hotplug(void *param) {
+static void process_plug_event() {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -936,8 +936,7 @@ static void usb_hotplug(void *param) {
 	std::string msg;
 	std::string discovery_string;
 	std::vector<std::string> device_strings;
-
-	//sleep(3);
+	pthread_mutex_lock(&device_mutex);
 	try {
 		FindDeviceUsb lookUsb;
 		msg = lookUsb.Find();
@@ -947,6 +946,9 @@ static void usb_hotplug(void *param) {
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB hot plug failed  %s", text.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "There is no way to recover. Restarting!");
+		// UGLY hack, but there is no way to recover!
+		exit(0);
 		return;
 	}
 	//msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
@@ -994,21 +996,26 @@ static void usb_hotplug(void *param) {
 			}
 		}
 	}
+	pthread_mutex_unlock(&device_mutex);
 	//ethernet_discover("192.168.0.255",true);
 }
 
-static void usb_hotunplug(void *param) {
+static void process_unplug_event() {
 	std::string discovery_string;
 	std::string msg;
 	std::string interface;
 	std::vector<std::string> device_strings;
-	//sleep(3);
+
+	pthread_mutex_lock(&device_mutex);
 	try {
 		FindDeviceUsb lookUsb;
 		msg = lookUsb.Find();
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB hot unplug failed  %s", text.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "There is no way to recover. Restarting!");
+		// UGLY hack, but there is no way to recover!
+		exit(0);
 		return;
 	}
 	//msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
@@ -1047,9 +1054,62 @@ static void usb_hotunplug(void *param) {
 			devices[j] = NULL;
 		}
 	}
+	pthread_mutex_unlock(&device_mutex);
 	//ethernet_discover("192.168.0.255",false);
 }
 
+
+#ifdef ___LIBUSBFIX__
+static void *plug_thread_func(void *sid) {
+	process_plug_event();
+	pthread_exit(NULL);
+	return NULL;
+}
+
+static void *unplug_thread_func(void *sid) {
+	process_unplug_event();
+	pthread_exit(NULL);
+	return NULL;
+}
+#endif /* ___LIBUSBFIX__ */
+
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+
+	struct libusb_device_descriptor descriptor;
+
+	switch (event) {
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
+			libusb_get_device_descriptor(dev, &descriptor);
+			if (descriptor.idVendor != UsbFrmwr::APOGEE_VID)
+				break;
+#ifdef ___LIBUSBFIX__
+			pthread_t plug_thread;
+			if (pthread_create(&plug_thread, NULL, plug_thread_func, NULL)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for hot plug");
+			}
+#else
+			process_plug_event();
+#endif /* ___LIBUSBFIX__ */
+
+			break;
+		}
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+#ifdef ___LIBUSBFIX__
+			pthread_t unplug_thread;
+			if (pthread_create(&unplug_thread, NULL, unplug_thread_func, NULL)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for hot unplug");
+			}
+#else
+			process_unplug_event();
+#endif /* ___LIBUSBFIX__ */
+		}
+	}
+	return 0;
+};
+
+
+/*
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	struct libusb_device_descriptor descriptor;
 	pthread_mutex_lock(&device_mutex);
@@ -1071,6 +1131,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
+*/
 
 static void remove_all_devices() {
 	for (int i = 0; i < MAXCAMERAS; i++) {
