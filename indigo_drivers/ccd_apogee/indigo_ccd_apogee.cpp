@@ -143,7 +143,7 @@ std::string GetItemFromFindStr(const std::string & msg, const std::string & item
 			std::string result = MakeTokens((*iter), "=").at(1);
 			return result;
 		}
-	} //for
+	}
 
 	std::string noOp;
 	return noOp;
@@ -490,8 +490,7 @@ static bool apogee_set_cooler(indigo_device *device, bool on, double target, dou
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
-}//bool status;
-					//libatik_check_cooler(PRIVATE_DATA->device_context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature);
+}
 
 
 static void apogee_close(indigo_device *device) {
