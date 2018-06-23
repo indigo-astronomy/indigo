@@ -1272,7 +1272,7 @@ static void remove_all_devices() {
 
 static libusb_hotplug_callback_handle callback_handle;
 
-//extern char apogee_sysconfdir[2048];
+extern char apogee_sysconfdir[2048];
 
 indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info *info) {
 		static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -1284,9 +1284,9 @@ indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info 
 
 		switch (action) {
 			case INDIGO_DRIVER_INIT: {
-				//if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
-				//	strncpy(apogee_sysconfdir, getenv("INDIGO_FIRMWARE_BASE"), 2048);
-				//}
+				if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
+					strncpy(apogee_sysconfdir, getenv("INDIGO_FIRMWARE_BASE"), 2048);
+				}
 				for (int i = 0; i < MAXCAMERAS; i++) {
 					devices[i] = NULL;
 				}
