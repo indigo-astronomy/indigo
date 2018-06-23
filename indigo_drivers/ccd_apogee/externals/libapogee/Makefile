@@ -49,6 +49,17 @@ all: $(LIBAPOGEE)
 $(LIBAPOGEE):	Alta.o AltaCcdAcqParams.o AltaData.o AltaEthernetIo.o AltaF.o AltaIo.o AltaModeFsm.o AltaUsbIo.o ApgLogger.o ApgTimer.o ApnCamData.o ApogeeCam.o ApogeeFilterWheel.o Ascent.o AscentBasedIo.o AscentBasedUsbIo.o AscentData.o Aspen.o AspenData.o AspenEthernetIo.o AspenIo.o AspenUsbIo.o CamCfgMatrix.o CamGen2Base.o CamGen2CcdAcqParams.o CamGen2ModeFsm.o CamHelpers.o CamRegMirror.o CamUsbIo.o CameraInfo.o CameraIo.o CameraStatusRegs.o CcdAcqParams.o DeviceStrHelpers.o FilterWheelIo.o FindDeviceEthernet.o FindDeviceUsb.o HiC.o IAltaSerialPortIo.o ICamIo.o ILog.o ITimer.o IUsb.o ImgFix.o LoggerException.o ModeFsm.o PlatformData.o PromFx2Io.o Quad.o UdpSocketBase.o apgHelper.o helpers.o libCurlWrap.o parseCfgTabDelim.o linux/GenOneLinuxUSB.o linux/LinuxTimer.o linux/LoggerSyslog.o linux/UdpSocketLinux.o linux/linuxHelpers.o
 	$(AR) $(ARFLAGS) $@ $^
 
+install-config:
+ifndef CONFIG_PREFIX
+	$(error CONFIG_PREFIX is not set)
+endif
+ifndef RULES_PREFIX
+	$(error RULES_PREFIX is not set)
+endif
+	install -d $(CONFIG_PREFIX)
+	install -D -m 0644 conf/* $(CONFIG_PREFIX)
+	install -D -m 0644 99-apogee.rules $(RULES_PREFIX)/99-indigo_ccd_apogee.rules
+
 clean:
 	rm -f $(LIBAPOGEE) *.o
 	rm -f $(LIBAPOGEE) *.a
