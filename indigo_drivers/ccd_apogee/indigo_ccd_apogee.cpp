@@ -428,7 +428,7 @@ static bool apogee_abort_exposure(indigo_device *device) {
 }
 
 
-static bool apogee_set_cooler(indigo_device *device, bool on, double target, double *current, long *cooler_power) {
+static bool apogee_set_cooler(indigo_device *device, bool on, double target, double *current, long *cooler_power, bool *at_setpoint) {
 	bool is_on_now;
 	bool cooling_supported = false;
 	bool cooling_regulated = false;
@@ -473,7 +473,8 @@ static bool apogee_set_cooler(indigo_device *device, bool on, double target, dou
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolingRegulated(): %s", err.what());
 		}
 		try {
-			if (cooling_regulated) camera->SetCoolerSetPoint(target);
+			if ((cooling_regulated) && (target != camera->GetCoolerSetPoint()))
+				camera->SetCoolerSetPoint(target);
 		} catch (std::runtime_error err) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerSetPoint(): %s", err.what());
 		}
@@ -484,6 +485,13 @@ static bool apogee_set_cooler(indigo_device *device, bool on, double target, dou
 		else *cooler_power = 0;
 	} catch (std::runtime_error err) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCoolerDrive(): %s", err.what());
+	}
+
+	try {
+		if (cooling_regulated && on) *at_setpoint = (camera->GetCoolerStatus() == Apg::CoolerStatus_AtSetPoint) ? true : false;
+		else *at_setpoint = false;
+	} catch (std::runtime_error err) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCoolerStatus(): %s", err.what());
 	}
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetCoolerDrive(): %d", *cooler_power);
@@ -550,10 +558,11 @@ static void clear_reg_timer_callback(indigo_device *device) {
 static void ccd_temperature_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (PRIVATE_DATA->can_check_temperature) {
-		if (apogee_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
+		bool at_setpoint;
+		if (apogee_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power, &at_setpoint)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
 			if (CCD_COOLER_ON_ITEM->sw.value)
-				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+				CCD_TEMPERATURE_PROPERTY->state = at_setpoint ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 			else
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
