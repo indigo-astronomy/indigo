@@ -98,14 +98,14 @@ ifeq ($(OS_DETECTED),Darwin)
 	CFLAGS=$(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS
 	MFLAGS=$(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -fno-common -O3 -fobjc-arc -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Wobjc-property-no-attribute
 	CXXFLAGS=$(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
-	LDFLAGS=-headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -lobjc  -L$(BUILD_LIB) -lusb-1.0
+	LDFLAGS=-headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L$(BUILD_LIB) -lusb-1.0
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi.a
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
 	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
-	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.a $(BUILD_DRIVERS)/indigo_guider_eqmac.a
-	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib
+	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.a $(BUILD_DRIVERS)/indigo_guider_eqmac.a $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.a
+	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.dylib
 endif
 
 #---------------------------------------------------------------------
@@ -964,6 +964,15 @@ $(BUILD_DRIVERS)/indigo_focuser_wemacro: indigo_drivers/focuser_wemacro/indigo_f
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
 $(BUILD_DRIVERS)/indigo_focuser_wemacro.$(SOEXT): indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.o:	indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m
+	$(CC) -c -o $@ $< $(MFLAGS)
+
+$(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.a: indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.dylib: indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 

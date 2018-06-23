@@ -19,12 +19,12 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO WeMacro Rail driver
- \file indigo_focuser_wemacro.c
+/** INDIGO WeMacro Rail bluetooth driver
+ \file indigo_focuser_wemacro_bt.m
  */
 
 #define DRIVER_VERSION 0x0002
-#define DRIVER_NAME "indigo_ccd_wemacro"
+#define DRIVER_NAME "indigo_ccd_wemacro_bt"
 
 #include <stdlib.h>
 #include <string.h>
@@ -35,9 +35,10 @@
 #include <errno.h>
 #include <sys/time.h>
 
+#import <CoreBluetooth/CoreBluetooth.h>
+
 #include "indigo_driver_xml.h"
-#include "indigo_io.h"
-#include "indigo_focuser_wemacro.h"
+#include "indigo_focuser_wemacro_bt.h"
 
 #define PRIVATE_DATA													((wemacro_private_data *)device->private_data)
 
@@ -57,9 +58,7 @@
 #define X_RAIL_EXECUTE_LENGTH_ITEM						(X_RAIL_EXECUTE_PROPERTY->items+3)
 #define X_RAIL_EXECUTE_COUNT_ITEM							(X_RAIL_EXECUTE_PROPERTY->items+4)
 
-
 typedef struct {
-	int handle;
 	int device_count;
 	pthread_t reader;
 	pthread_mutex_t port_mutex;
@@ -68,39 +67,202 @@ typedef struct {
 	indigo_property *move_steps_property;
 } wemacro_private_data;
 
-// -------------------------------------------------------------------------------- INDIGO focuser device implementation
+static indigo_result focuser_attach(indigo_device *device);
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+static indigo_result focuser_detach(indigo_device *device);
 
-static uint8_t wemacro_read(indigo_device *device) {
-	uint8_t in[3] = { 0, 0, 0 };
-	struct timeval tv;
-	fd_set readout;
-	FD_ZERO(&readout);
-	FD_SET(PRIVATE_DATA->handle, &readout);
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-	long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-	if (result < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "select %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-		return 0;
-	}
-	if (result == 0) {
-		return 0;
-	}
-	result = indigo_read(PRIVATE_DATA->handle, (char *)in, sizeof(in));
-	if (result < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "read %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-		return 0;
-	}
-	if (result == sizeof(in)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%02x %02x %02x", in[0], in[1], in[2]);
-		return in[2];
-	}
-	return 0;
+@interface BTDelegate : NSObject<CBCentralManagerDelegate, CBPeripheralDelegate>
+-(void)connect;
+-(void)cmd:(uint8_t)cmd a:(uint8_t)a b:(uint8_t)b c:(uint8_t)c d:(uint32_t)d;
+-(void)disconnect;
+@end
+
+#pragma clang diagnostic ignored "-Wshadow-ivar"
+
+@implementation BTDelegate {
+	CBCentralManager *central;
+	CBPeripheral *hc08;
+	CBCharacteristic *ffe1;
+	bool scanning;
+	wemacro_private_data *private_data;
+	indigo_device *device;
 }
 
-static bool wemacro_write(indigo_device *device, uint8_t cmd, uint8_t a, uint8_t b, uint8_t c, uint32_t d) {
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	bool result = true;
+-(id)init {
+	self = [super init];
+	if (self) {
+		central = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
+		hc08 = nil;
+		ffe1 = nil;
+		scanning = false;
+		private_data = NULL;
+		device = NULL;
+	}
+	return self;
+}
+
+-(void)createDevice {
+	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
+		FOCUSER_WEMACRO_BT_NAME,
+		focuser_attach,
+		focuser_enumerate_properties,
+		focuser_change_property,
+		NULL,
+		focuser_detach
+		);
+	private_data = malloc(sizeof(wemacro_private_data));
+	assert(private_data != NULL);
+	memset(private_data, 0, sizeof(wemacro_private_data));
+	device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
+	memcpy(device, &focuser_template, sizeof(indigo_device));
+	device->private_data = private_data;
+	indigo_attach_device(device);
+}
+
+-(void)deleteDevice {
+	if (device != NULL) {
+		indigo_detach_device(device);
+		free(device);
+		device = NULL;
+	}
+	if (private_data != NULL) {
+		free(private_data);
+		private_data = NULL;
+	}
+}
+
+-(void)centralManagerDidUpdateState:(CBCentralManager *)central {
+	switch (central.state) {
+		case CBManagerStatePoweredOff:
+			@synchronized(self) {
+				if (scanning) {
+					scanning = false;
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Scanning stopped");
+				}
+				[self deleteDevice];
+				hc08 = nil;
+				ffe1 = nil;
+			}
+			break;
+		case CBManagerStatePoweredOn:
+			if (hc08 == nil) {
+				for (CBPeripheral *peripheral in [central retrieveConnectedPeripheralsWithServices:@[[CBUUID UUIDWithString:@"FFE0"]]]) {
+					if ([peripheral.name isEqualToString:@"HC-08"]) {
+						hc08 = peripheral;
+						peripheral.delegate = self;
+						[self createDevice];
+						break;
+					}
+				}
+			}
+			if (hc08 == nil) {
+				@synchronized(self) {
+					if (!scanning) {
+						[central scanForPeripheralsWithServices:nil options:nil];
+						scanning = true;
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Scanning started");
+					}
+				}
+			}
+			break;
+		default:
+			break;
+	}
+}
+
+-(void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
+	if ([peripheral.name isEqualToString:@"HC-08"]) {
+		hc08 = peripheral;
+		peripheral.delegate = self;
+		[self createDevice];
+		if (scanning) {
+			scanning = false;
+			[central stopScan];
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Scanning stopped");
+		}
+	}
+}
+
+-(void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral {
+	[hc08 discoverServices:@[[CBUUID UUIDWithString:@"FFE0"]]];
+}
+
+-(void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
+	indigo_delete_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+	indigo_delete_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
+	indigo_delete_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	//indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", device->name);
+}
+
+-(void)peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error {
+	for (CBService *service in peripheral.services) {
+		if ([service.UUID isEqual:[CBUUID UUIDWithString:@"FFE0"]]) {
+			[peripheral discoverCharacteristics:@[[CBUUID UUIDWithString:@"FFE1"]] forService:service];
+		}
+	}
+}
+
+-(void)peripheral:(CBPeripheral *)peripheral didDiscoverCharacteristicsForService:(CBService *)service error:(NSError *)error {
+	for (CBCharacteristic *characteristic in service.characteristics) {
+		if ([characteristic.UUID isEqual:[CBUUID UUIDWithString:@"FFE1"]]) {
+			ffe1 = characteristic;
+			[peripheral setNotifyValue:true forCharacteristic:characteristic];
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", device->name);
+			indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+			indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
+			indigo_define_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, true);
+			//indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+			[self cmd:0x40 a:0 b:0 c:0 d:0];
+			[self cmd:0x20 a:0 b:0 c:0 d:0];
+			[self cmd:0x40 a:0 b:0 c:0 d:0];
+			usleep(100000);
+			[self cmd:0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0) a:FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0 b:0 c:0 d:0];
+		}
+	}
+}
+
+-(void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+	uint8_t *buffer = (uint8_t *)characteristic.value.bytes;
+	uint8_t state = buffer[2];
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%02x %02x %02x", buffer[0], buffer[1], buffer[2]);
+	if (state) {
+		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (state == 0xf5 || state == 0xf6) {
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			}
+		} else if (X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (state == 0xf7) {
+				X_RAIL_EXECUTE_COUNT_ITEM->number.value--;
+			}
+			if (X_RAIL_CONFIG_BACK_ITEM->sw.value) {
+				if (state == 0xf6)
+					X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
+			} else if (X_RAIL_EXECUTE_COUNT_ITEM->number.value == 0) {
+				X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
+		}
+	}
+}
+
+-(void)connect {
+	if (hc08.state == CBPeripheralStateConnected)
+		[hc08 discoverServices:@[[CBUUID UUIDWithString:@"FFE0"]]];
+	else
+		[central connectPeripheral:hc08 options:nil];
+}
+
+-(void)cmd:(uint8_t)cmd a:(uint8_t)a b:(uint8_t)b c:(uint8_t)c d:(uint32_t)d {
 	uint8_t out[12] = { 0xA5, 0x5A, cmd, a, b, c, (d >> 24 & 0xFF), (d >> 16 & 0xFF), (d >> 8 & 0xFF), (d & 0xFF) };
 	uint16_t crc = 0xFFFF;
 	for (int i = 0; i < 10; i++) {
@@ -114,83 +276,31 @@ static bool wemacro_write(indigo_device *device, uint8_t cmd, uint8_t a, uint8_t
 	}
 	out[10] = crc & 0xFF;
 	out[11] = (crc >> 8) &0xFF;
-	result = indigo_write(PRIVATE_DATA->handle, (char *)out, sizeof(out));
-	if (result) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], out[9], out[10], out[11]);
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "write %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	return result;
+	[hc08 writeValue:[NSData dataWithBytes:out length:12] forCharacteristic:ffe1 type:CBCharacteristicWriteWithoutResponse];
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], out[9], out[10], out[11]);
 }
 
-static char *wemacro_reader(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "started");
-	uint8_t state = wemacro_read(device);
-	if (state == 0xf0) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "initialised");
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "failed, trying reset");
-		wemacro_write(device, 0x40, 0, 0, 0, 0);
-		wemacro_write(device, 0x20, 0, 0, 0, 0);
-		wemacro_write(device, 0x40, 0, 0, 0, 0);
-		state = wemacro_read(device);
-		if (state == 0xf5) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "initialised");
-		} else {
-			indigo_device_disconnect(NULL, device->name);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "WeMacro initialisation failed, no reply from the controller");
-			return NULL;
-		}
-	}
-	wemacro_write(device, 0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0, 0, 0, 0);
-	while (PRIVATE_DATA->handle > 0) {
-		state = wemacro_read(device);
-		if (state) {
-			if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				if (state == 0xf5 || state == 0xf6) {
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-				}
-			} else if (X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE) {
-				if (state == 0xf7) {
-					X_RAIL_EXECUTE_COUNT_ITEM->number.value--;
-				}
-				if (X_RAIL_CONFIG_BACK_ITEM->sw.value) {
-					if (state == 0xf6)
-						X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
-				} else if (X_RAIL_EXECUTE_COUNT_ITEM->number.value == 0) {
-					X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
-				}
-				indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
-			}
-		}
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "finished");
-	return NULL;
+-(void)disconnect {
+	if (hc08.state != CBPeripheralStateDisconnected)
+		[central cancelPeripheralConnection:hc08];
 }
+
+@end
+
+static BTDelegate *delegate;
+
+// -------------------------------------------------------------------------------- INDIGO focuser device implementation
 
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
+		DEVICE_PORT_PROPERTY->hidden = true;
+		DEVICE_PORTS_PROPERTY->hidden = true;
 		FOCUSER_ROTATION_PROPERTY->hidden = false;
 		FOCUSER_POSITION_PROPERTY->hidden = true;
 		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
 		FOCUSER_SPEED_ITEM->number.max = 2;
-#ifdef INDIGO_MACOS
-		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "CH341")) {
-				strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name, INDIGO_VALUE_SIZE);
-				break;
-			}
-		}
-#endif
-#ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/wemacro_rail");
-#endif
 		// -------------------------------------------------------------------------------- X_RAIL_CONFIG
 		X_RAIL_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_CONFIG", X_RAIL_BATCH, "Set configuration", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (X_RAIL_CONFIG_PROPERTY == NULL)
@@ -239,33 +349,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			char *name = DEVICE_PORT_ITEM->text.value;
 			if (PRIVATE_DATA->device_count++ == 0) {
-				PRIVATE_DATA->handle = indigo_open_serial(name);
-			}
-			if (PRIVATE_DATA->handle > 0) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
-				pthread_create(&PRIVATE_DATA->reader, NULL, (void * (*)(void*))wemacro_reader, device);
-				indigo_define_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
-				indigo_define_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
-				indigo_define_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s -> %s (%d)", name, strerror(errno), errno);
-				PRIVATE_DATA->device_count--;
-				indigo_delete_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
-				indigo_delete_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
-				indigo_delete_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				[delegate connect];
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
 		} else {
 			if (--PRIVATE_DATA->device_count == 0) {
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				[delegate disconnect];
+				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
@@ -274,9 +366,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				wemacro_write(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x40 : 0x41, 0, 0, 0, FOCUSER_STEPS_ITEM->number.value);
+				[delegate cmd:FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x40 : 0x41 a:0 b:0 c:0 d:FOCUSER_STEPS_ITEM->number.value];
 			} else {
-				wemacro_write(device, FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x41 : 0x40, 0, 0, 0, FOCUSER_STEPS_ITEM->number.value);
+				[delegate cmd:FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x41 : 0x40 a:0 b:0 c:0 d:FOCUSER_STEPS_ITEM->number.value];
 			}
 		}
 		return INDIGO_OK;
@@ -284,7 +376,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-			wemacro_write(device, 0x20, 0, 0, 0, 0);
+			[delegate cmd:0x20 a:0 b:0 c:0 d:0];
 			X_RAIL_EXECUTE_COUNT_ITEM->number.value = 0;
 			X_RAIL_EXECUTE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
@@ -299,7 +391,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
     if (IS_CONNECTED)
-      wemacro_write(device, 0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0, 0, 0, 0);
+			[delegate cmd:0x80 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0) a:FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0 b:0 c:0 d:0];
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -313,7 +405,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- X_RAIL_SHUTTER
 		indigo_property_copy_values(X_RAIL_SHUTTER_PROPERTY, property, false);
 		if (X_RAIL_SHUTTER_ITEM->sw.value) {
-			wemacro_write(device, 0x04, 0, 0, 0, 0);
+			[delegate cmd:0x04 a:0 b:0 c:0 d:0];
 			X_RAIL_SHUTTER_ITEM->sw.value = false;
 		}
 		X_RAIL_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
@@ -322,9 +414,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(X_RAIL_EXECUTE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIL_EXECUTE
 		indigo_property_copy_values(X_RAIL_EXECUTE_PROPERTY, property, false);
-		wemacro_write(device, 0x80, FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0, 0, 0, (uint32_t)X_RAIL_EXECUTE_LENGTH_ITEM->number.value);
+		[delegate cmd:0x80 a:FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0 b:0 c:0 d:(uint32_t)X_RAIL_EXECUTE_LENGTH_ITEM->number.value];
 		usleep(100000);
-		wemacro_write(device, 0x10 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0), (uint8_t)X_RAIL_EXECUTE_SETTLE_TIME_ITEM->number.value, (uint8_t)X_RAIL_EXECUTE_PER_STEP_ITEM->number.value, (uint8_t)X_RAIL_EXECUTE_INTERVAL_ITEM->number.value, (uint32_t)X_RAIL_EXECUTE_COUNT_ITEM->number.value - 1);
+		[delegate cmd:0x10 | (X_RAIL_CONFIG_BEEP_ITEM->sw.value ? 0x02 : 0) | (X_RAIL_CONFIG_BACK_ITEM->sw.value ? 0x08 : 0) a:(uint8_t)X_RAIL_EXECUTE_SETTLE_TIME_ITEM->number.value b:(uint8_t)X_RAIL_EXECUTE_PER_STEP_ITEM->number.value c:(uint8_t)X_RAIL_EXECUTE_INTERVAL_ITEM->number.value d:(uint32_t)X_RAIL_EXECUTE_COUNT_ITEM->number.value - 1];
 		X_RAIL_EXECUTE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -351,21 +443,10 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static wemacro_private_data *private_data = NULL;
-static indigo_device *focuser = NULL;
-
-indigo_result indigo_focuser_wemacro(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_focuser_wemacro_bt(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		FOCUSER_WEMACRO_NAME,
-		focuser_attach,
-		focuser_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-		);
 	
-	SET_DRIVER_INFO(info, FOCUSER_WEMACRO_NAME, __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, FOCUSER_WEMACRO_BT_NAME, __FUNCTION__, DRIVER_VERSION, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
@@ -373,27 +454,12 @@ indigo_result indigo_focuser_wemacro(indigo_driver_action action, indigo_driver_
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = malloc(sizeof(wemacro_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(wemacro_private_data));
-			focuser = malloc(sizeof(indigo_device));
-			assert(focuser != NULL);
-			memcpy(focuser, &focuser_template, sizeof(indigo_device));
-			focuser->private_data = private_data;
-			indigo_attach_device(focuser);
+			delegate = [[BTDelegate alloc] init];
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
-			if (focuser != NULL) {
-				indigo_detach_device(focuser);
-				free(focuser);
-				focuser = NULL;
-			}
-			if (private_data != NULL) {
-				free(private_data);
-				private_data = NULL;
-			}
+			delegate = nil;
 			break;
 
 	case INDIGO_DRIVER_INFO:
