@@ -953,7 +953,6 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_device *devices[MAXCAMERAS] = {NULL};
 
-
 static void ethernet_discover(char *network, bool cam_found) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
@@ -989,7 +988,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		discovery_string = (*iter);
 		if (IsDeviceFilterWheel(discovery_string)) continue;
 
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST device[%d]: string = %s", i, discovery_string.c_str());
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LIST device[%d]: string = %s", i, discovery_string.c_str());
 		interface = GetInterface(discovery_string);
 		if (interface.compare("ethernet") != 0) continue;
 		uint16_t id = GetID(discovery_string);
@@ -1007,7 +1006,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 			}
 		}
 		if (found) continue;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ATTACH device[%d]: string = %s", i, discovery_string.c_str());
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ATTACH device[%d]: string = %s", i, discovery_string.c_str());
 		apogee_private_data *private_data = (apogee_private_data *)malloc(sizeof(apogee_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(apogee_private_data));
@@ -1038,7 +1037,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 	i = 0;
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST camera[%d]: serial = %s", i, discovery_string.c_str());
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LIST camera[%d]: serial = %s", i, discovery_string.c_str());
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];
 			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) != 0)) continue;
@@ -1052,7 +1051,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		if (device && !PRIVATE_DATA->available) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
 			if (interface.compare("ethernet") != 0) continue;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "DETACH camera[%d]: serial = %s", i, PRIVATE_DATA->discovery_string.c_str());
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DETACH camera[%d]: serial = %s", i, PRIVATE_DATA->discovery_string.c_str());
 			indigo_detach_device(device);
 			free(device->private_data);
 			free(device);
@@ -1074,20 +1073,37 @@ static void process_plug_event() {
 	std::string msg;
 	std::string discovery_string;
 	std::vector<std::string> device_strings;
+	FindDeviceUsb look_usb;
+
 	pthread_mutex_lock(&device_mutex);
 	try {
-		FindDeviceUsb lookUsb;
-		msg = lookUsb.Find();
+		msg = look_usb.Find();
 		//msg  = std::string("<d>address=0,interface=usb,deviceType=camera,id=0x49,firmwareRev=0x21,model=AltaU-"
 		//                   "4020ML,interfaceStatus=NA</d><d>address=1,interface=usb,model=Filter "
 		//                   "Wheel,deviceType=filterWheel,id=0xFFFF,firmwareRev=0xFFEE</d>");
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB hot plug failed  %s", text.c_str());
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "There is no way to recover. Restarting!");
-		// UGLY hack, but there is no way to recover!
-		exit(0);
-		//return;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB hot plug failed: %s", text.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Attempting recovery by disconnecting all cameras...");
+		indigo_device *device;
+		for (int i = 0; i < MAXCAMERAS; i++) {
+			device = devices[i];
+			if (device == NULL)	continue;
+			if (device->is_connected) {
+				CONNECTION_CONNECTED_ITEM->sw.value = false;
+				CONNECTION_DISCONNECTED_ITEM->sw.value = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+			}
+		}
+		try {
+			msg = look_usb.Find();
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "There is no way to recover. Exiting!");
+			// Nothing helped
+			exit(0);
+		}
 	}
 	//msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
 
@@ -1098,7 +1114,7 @@ static void process_plug_event() {
 		discovery_string = (*iter);
 		if (IsDeviceFilterWheel(discovery_string)) continue;
 
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST device[%d]: string = %s", i, discovery_string.c_str());
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LIST device[%d]: string = %s", i, discovery_string.c_str());
 		std::string interface = GetInterface(discovery_string);
 		if (interface.compare("usb") != 0) continue;
 		uint16_t id = GetID(discovery_string);
@@ -1116,7 +1132,7 @@ static void process_plug_event() {
 			}
 		}
 		if (found) continue;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ATTACH device[%d]: string = %s", i, discovery_string.c_str());
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ATTACH device[%d]: string = %s", i, discovery_string.c_str());
 		apogee_private_data *private_data = (apogee_private_data *)malloc(sizeof(apogee_private_data));
 		assert(private_data != NULL);
 		memset(private_data, 0, sizeof(apogee_private_data));
@@ -1143,18 +1159,34 @@ static void process_unplug_event() {
 	std::string msg;
 	std::string interface;
 	std::vector<std::string> device_strings;
-
+	FindDeviceUsb look_usb;
 	pthread_mutex_lock(&device_mutex);
 	try {
-		FindDeviceUsb lookUsb;
-		msg = lookUsb.Find();
+		msg = look_usb.Find();
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB hot unplug failed  %s", text.c_str());
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "There is no way to recover. Restarting!");
-		// UGLY hack, but there is no way to recover!
-		exit(0);
-		//return;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB hot unplug failed: %s", text.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Attempting recovery by disconnecting all cameras...");
+		// UGLY hack, but there is no way to recover without disconnect!
+		indigo_device *device;
+		for (int i = 0; i < MAXCAMERAS; i++) {
+			device = devices[i];
+			if (device == NULL) continue;
+			if (device->is_connected) {
+				CONNECTION_CONNECTED_ITEM->sw.value = false;
+				CONNECTION_DISCONNECTED_ITEM->sw.value = true;
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+			}
+		}
+		try {
+			msg = look_usb.Find();
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "There is no way to recover. Exiting!");
+			// Nothing helped
+			exit(0);
+		}
 	}
 	//msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
 	device_strings = GetDeviceVector( msg );
@@ -1171,7 +1203,7 @@ static void process_unplug_event() {
 	int i = 0;
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "LIST camera[%d]: serial = %s", i, discovery_string.c_str());
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LIST camera[%d]: serial = %s", i, discovery_string.c_str());
 		for (int j = 0; j < MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];
 			if (!device || (discovery_string.compare(PRIVATE_DATA->discovery_string) != 0)) continue;
@@ -1185,7 +1217,7 @@ static void process_unplug_event() {
 		if (device && !PRIVATE_DATA->available) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
 			if (interface.compare("usb") != 0) continue;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "DETACH camera[%d]: serial = %s", i, PRIVATE_DATA->discovery_string.c_str());
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DETACH camera[%d]: serial = %s", i, PRIVATE_DATA->discovery_string.c_str());
 			indigo_detach_device(device);
 			free(device->private_data);
 			free(device);
@@ -1247,30 +1279,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 };
 
 
-/*
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	struct libusb_device_descriptor descriptor;
-	pthread_mutex_lock(&device_mutex);
-	libusb_get_device_descriptor(dev, &descriptor);
-	if (descriptor.idVendor == UsbFrmwr::APOGEE_VID) {
-		switch (event) {
-			case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot-plug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-				indigo_async((void *(*)(void *))usb_hotplug, NULL);
-				break;
-			}
-			case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Hot-unplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
-				indigo_async((void *(*)(void *))usb_hotunplug, NULL);
-				break;
-			}
-		}
-	}
-	pthread_mutex_unlock(&device_mutex);
-	return 0;
-};
-*/
-
 static void remove_all_devices() {
 	for (int i = 0; i < MAXCAMERAS; i++) {
 		indigo_device **device = &devices[i];
@@ -1285,9 +1293,10 @@ static void remove_all_devices() {
 	}
 }
 
+
 static libusb_hotplug_callback_handle callback_handle;
 
-extern char apogee_sysconfdir[2048];
+//extern char apogee_sysconfdir[2048];
 
 indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info *info) {
 		static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -1299,9 +1308,9 @@ indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info 
 
 		switch (action) {
 			case INDIGO_DRIVER_INIT: {
-				if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
-					strncpy(apogee_sysconfdir, getenv("INDIGO_FIRMWARE_BASE"), 2048);
-				}
+				//if (getenv("INDIGO_FIRMWARE_BASE") != NULL) {
+				//	strncpy(apogee_sysconfdir, getenv("INDIGO_FIRMWARE_BASE"), 2048);
+				//}
 				for (int i = 0; i < MAXCAMERAS; i++) {
 					devices[i] = NULL;
 				}
