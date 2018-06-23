@@ -19,8 +19,8 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO WeMacro Rail driver
- \file indigo_focuser_wemacro_main.c
+/** INDIGO WeMacro Rail bluetooth driver
+ \file indigo_focuser_wemacro_main_bt.c
  */
 
 #include <stdio.h>
@@ -28,17 +28,17 @@
 
 #include "indigo_driver_xml.h"
 
-#include "indigo_focuser_wemacro.h"
+#include "indigo_focuser_wemacro_bt.h"
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
-	indigo_focuser_wemacro(INDIGO_DRIVER_INIT, NULL);
+	indigo_focuser_wemacro_bt(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_focuser_wemacro(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_focuser_wemacro_bt(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_stop();
 	return 0;
 }
