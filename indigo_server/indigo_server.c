@@ -80,6 +80,7 @@
 #ifdef INDIGO_MACOS
 #include "ccd_ica/indigo_ccd_ica.h"
 #include "guider_eqmac/indigo_guider_eqmac.h"
+#include "focuser_wemacro_bt/indigo_focuser_wemacro_bt.h"
 #endif
 #include "agent_snoop/indigo_agent_snoop.h"
 #endif
@@ -124,6 +125,7 @@ driver_entry_point static_drivers[] = {
 #ifdef INDIGO_MACOS
 	indigo_ccd_ica,
 	indigo_guider_eqmac,
+	indigo_focuser_wemacro_bt,
 #endif
 	indigo_agent_snoop,
 #endif
