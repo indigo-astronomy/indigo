@@ -66,6 +66,11 @@
 
 #define PRIVATE_DATA              ((apogee_private_data *)device->private_data)
 
+#define APG_ADVANCED_GROUP        "Advanced"
+
+#define APG_ADC_SPEED_PROPERTY    (PRIVATE_DATA->apg_adc_speed_property)
+#define APG_FAN_SPEED_PROPERTY    (PRIVATE_DATA->apg_fan_speed_property)
+
 // gp_bits is used as boolean
 #define is_connected               gp_bits
 
@@ -88,6 +93,8 @@ typedef struct {
 	unsigned char *buffer;
 	char serial[255];
 	bool can_check_temperature;
+	indigo_property *apg_adc_speed_property;
+	indigo_property *apg_fan_speed_property;
 } apogee_private_data;
 
 
@@ -249,6 +256,17 @@ void checkStatus(const Apg::Status status) {
 
 
 // -------------------------------------------------------------------------------- INDIGO device implementation
+static indigo_result apg_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(APG_ADC_SPEED_PROPERTY, property))
+			indigo_define_property(device, APG_ADC_SPEED_PROPERTY, NULL);
+		if (indigo_property_match(APG_FAN_SPEED_PROPERTY, property))
+			indigo_define_property(device, APG_FAN_SPEED_PROPERTY, NULL);
+	}
+	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+}
+
+
 static bool apogee_open(indigo_device *device) {
 	uint16_t id = GetID(PRIVATE_DATA->discovery_string);
 	uint16_t frmwrRev = GetFrmwrRev(PRIVATE_DATA->discovery_string);
@@ -590,6 +608,18 @@ static indigo_result ccd_attach(indigo_device *device) {
 		PRIVATE_DATA->can_check_temperature = true;
 		INFO_PROPERTY->count = 7;
 		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, GetModelName(PRIVATE_DATA->discovery_string).c_str(), INDIGO_VALUE_SIZE);
+
+		// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
+		APG_ADC_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_ADC_SPEED", APG_ADVANCED_GROUP, "ADC speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (APG_ADC_SPEED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+			/* will be populated on connect */
+		// ----------------------------------------------------------------------------------
+		APG_FAN_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_FAN_SPEED", APG_ADVANCED_GROUP, "Fan speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		if (APG_FAN_SPEED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+			/* will be populated on connect */
+		// ----------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -611,6 +641,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 
 					ApogeeCam *camera = PRIVATE_DATA->camera;
+					Apg::AdcSpeed current_adc_speed = Apg::AdcSpeed_Unknown;
+					Apg::FanMode current_fan_speed = Apg::FanMode_Off;
 					uint16_t image_width = 0;
 					uint16_t image_height = 0;
 					double pixel_width = 0;
@@ -621,6 +653,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					bool cooling_supported = false;
 					std::string serial_no;
 					try {
+						current_adc_speed = camera->GetCcdAdcSpeed();
+						current_fan_speed = camera->GetFanMode();
 						image_width = camera->GetMaxImgCols();
 						image_height = camera->GetMaxImgRows();
 						pixel_width = camera->GetPixelWidth();
@@ -679,6 +713,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 					PRIVATE_DATA->target_temperature = 0;
 					PRIVATE_DATA->can_check_temperature = true;
+
+					indigo_init_switch_item(APG_ADC_SPEED_PROPERTY->items + 0, "NORMAL", "Normal", (1 == current_adc_speed));
+					indigo_init_switch_item(APG_ADC_SPEED_PROPERTY->items + 1, "FAST", "Fast", (2 == current_adc_speed));
+					indigo_define_property(device, APG_ADC_SPEED_PROPERTY, NULL);
+
+					indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 0, "OFF", "Off", (0 == current_fan_speed));
+					indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 1, "LOW", "Low", (1 == current_fan_speed));
+					indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 2, "MEDIUM", "Medium", (2 == current_fan_speed));
+					indigo_init_switch_item(APG_FAN_SPEED_PROPERTY->items + 3, "HIGH", "High", (3 == current_fan_speed));
+					indigo_define_property(device, APG_FAN_SPEED_PROPERTY, NULL);
+
 					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
 
 					device->is_connected = true;
@@ -692,6 +737,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if(device->is_connected) {
 				PRIVATE_DATA->can_check_temperature = false;
 				indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
+				indigo_delete_property(device, APG_ADC_SPEED_PROPERTY, NULL);
+				indigo_delete_property(device, APG_FAN_SPEED_PROPERTY, NULL);
 				apogee_close(device);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -811,7 +858,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-		/* NOTE: BPP can not be set directly because can not be linked to PIXEL_FORMAT_PROPERTY */
+		/* NOTE: BPP can not be set */
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
 		if (IS_CONNECTED)
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
@@ -834,10 +881,53 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(APG_ADC_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- APG_ADC_SPEED
+		indigo_property_copy_values(APG_ADC_SPEED_PROPERTY, property, false);
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		for(int i = 0; i < APG_ADC_SPEED_PROPERTY->count; i++) {
+			if(APG_ADC_SPEED_PROPERTY->items[i].sw.value) {
+				try {
+					PRIVATE_DATA->camera->SetCcdAdcSpeed((Apg::AdcSpeed)(i+1));
+				} catch (std::runtime_error err) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCcdAdcSpeed(%d): %s", i+1, err.what());
+					APG_ADC_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+					break;
+				}
+
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC speed set to %d", i+1);
+				APG_ADC_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+				break;
+			}
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		indigo_update_property(device, APG_ADC_SPEED_PROPERTY, NULL);
+	} else if (indigo_property_match(APG_FAN_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- APG_FAN_SPEED
+		indigo_property_copy_values(APG_FAN_SPEED_PROPERTY, property, false);
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		for(int i = 0; i < APG_FAN_SPEED_PROPERTY->count; i++) {
+			if(APG_FAN_SPEED_PROPERTY->items[i].sw.value) {
+				try {
+					PRIVATE_DATA->camera->SetFanMode((Apg::FanMode)i);
+				} catch (std::runtime_error err) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetFanMode(%d): %s", i, err.what());
+					APG_FAN_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+					break;
+				}
+
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FAN speed set to %d", i+1);
+				APG_FAN_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+				break;
+			}
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		indigo_update_property(device, APG_FAN_SPEED_PROPERTY, NULL);
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			//indigo_save_property(device, NULL, PIXEL_FORMAT_PROPERTY);
+			indigo_save_property(device, NULL, APG_ADC_SPEED_PROPERTY);
+			indigo_save_property(device, NULL, APG_FAN_SPEED_PROPERTY);
 		}
 	}
 	return indigo_ccd_change_property(device, client, property);
@@ -849,6 +939,10 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+
+	indigo_release_property(APG_ADC_SPEED_PROPERTY);
+	indigo_release_property(APG_FAN_SPEED_PROPERTY);
+
 	return indigo_ccd_detach(device);
 }
 
@@ -864,7 +958,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
-		indigo_ccd_enumerate_properties,
+		apg_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
@@ -972,7 +1066,7 @@ static void process_plug_event() {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
-		indigo_ccd_enumerate_properties,
+		apg_enumerate_properties,
 		ccd_change_property,
 		NULL,
 		ccd_detach
@@ -993,7 +1087,7 @@ static void process_plug_event() {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "There is no way to recover. Restarting!");
 		// UGLY hack, but there is no way to recover!
 		exit(0);
-		return;
+		//return;
 	}
 	//msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
 
@@ -1060,7 +1154,7 @@ static void process_unplug_event() {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "There is no way to recover. Restarting!");
 		// UGLY hack, but there is no way to recover!
 		exit(0);
-		return;
+		//return;
 	}
 	//msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
 	device_strings = GetDeviceVector( msg );
