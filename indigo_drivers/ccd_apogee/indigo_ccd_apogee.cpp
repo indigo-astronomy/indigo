@@ -928,23 +928,38 @@ static indigo_result ccd_detach(indigo_device *device) {
 }
 
 // -------------------------------------------------------------------------------- Dummy ethernet device
+
+indigo_timer *ethernet_lookup_timer = NULL;
 static void ethernet_discover(char *network, bool cam_found = false);
 
-static indigo_result eth_attach(indigo_device *device) {
+
+static void ethernet_lookup_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Looking up cameras in network %s", DEVICE_PORT_ITEM->text.value);
+	//ethernet_discover(DEVICE_PORT_ITEM->text.value, true);
+	ethernet_discover(DEVICE_PORT_ITEM->text.value);
+	indigo_reschedule_timer(device, 10, &ethernet_lookup_timer);
+}
+
+
+static indigo_result ethernet_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_device_attach(device, (indigo_version)DRIVER_VERSION, 0) == INDIGO_OK) {
 		INFO_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- INFO
+		INFO_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		strncpy(DEVICE_PORT_ITEM->text.value, "192.168.0.255", INDIGO_VALUE_SIZE);
-		strncpy(DEVICE_PORT_PROPERTY->label, "Network broadcast", INDIGO_VALUE_SIZE);
-		strncpy(DEVICE_PORT_ITEM->label, "Network address / Name", INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_PORT_PROPERTY->label, "Network", INDIGO_VALUE_SIZE);
+		strncpy(DEVICE_PORT_ITEM->label, "Broadcast address", INDIGO_VALUE_SIZE);
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
-
+		ethernet_lookup_timer = NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_device_enumerate_properties(device, NULL, NULL);
 	}
@@ -952,7 +967,7 @@ static indigo_result eth_attach(indigo_device *device) {
 }
 
 
-static indigo_result eth_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+static indigo_result ethernet_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
@@ -967,14 +982,15 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 				snprintf(message, 1024, "Probing for cameras in %s. This may take some time...", DEVICE_PORT_ITEM->text.value);
 				indigo_update_property(device, CONNECTION_PROPERTY, message);
 
-				ethernet_discover(DEVICE_PORT_ITEM->text.value, true);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				device->is_connected = true;
 				message[0] = '\0';
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, true);
+				ethernet_lookup_timer = indigo_set_timer(device, 0, ethernet_lookup_callback);
 			}
 		} else { /* disconnect */
 			if (device->is_connected) {
+				indigo_cancel_timer(device, &ethernet_lookup_timer);
 				ethernet_discover(NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				device->is_connected = false;
@@ -988,11 +1004,12 @@ static indigo_result eth_change_property(indigo_device *device, indigo_client *c
 }
 
 
-static indigo_result eth_detach(indigo_device *device) {
+static indigo_result ethernet_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 
+	indigo_cancel_timer(device, &ethernet_lookup_timer);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_device_detach(device);
 }
@@ -1001,9 +1018,10 @@ static indigo_result eth_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- hot-plug support
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t ethernet_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_device *devices[MAXCAMERAS] = {NULL};
-static indigo_device *apogee_eth = NULL;
+static indigo_device *apogee_ethernet = NULL;
 
 static void ethernet_discover(char *network, bool cam_found) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
@@ -1021,22 +1039,25 @@ static void ethernet_discover(char *network, bool cam_found) {
 	std::vector<std::string>::iterator iter;
 	int i;
 
+	pthread_mutex_lock(&ethernet_mutex);
 	if (network == NULL) { // NULL - Remove devices
+		// if the camera is just added it is not removed. we need some small waing time.
+		sleep(1);
 		msg = std::string("");
 	} else {
 		try {
 			FindDeviceEthernet Ethernet;
 			msg = Ethernet.Find(std::string(network));
-			//msg  = std::string("<d>address=0,interface=usb,deviceType=camera,id=0x49,firmwareRev=0x21,model=AltaU-"
-			//                   "4020ML,interfaceStatus=NA</d><d>address=1,interface=usb,model=Filter "
-			//                   "Wheel,deviceType=filterWheel,id=0xFFFF,firmwareRev=0xFFEE</d>");
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Ethernet hot plug failed  %s", text.c_str());
+			pthread_mutex_unlock(&ethernet_mutex);
 			return;
 		}
-		if (cam_found) msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
+		if (cam_found) msg = std::string("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
 	}
+
+	pthread_mutex_lock(&device_mutex);
 	device_strings = GetDeviceVector(msg);
 	i = 0;
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
@@ -1106,7 +1127,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		if (device && !PRIVATE_DATA->available) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
 			if (interface.compare("ethernet") != 0) continue;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DETACH camera[%d]: %s", i, PRIVATE_DATA->discovery_string.c_str());
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DETACH camera[%d]: %s", j, PRIVATE_DATA->discovery_string.c_str());
 			indigo_detach_device(device);
 			apogee_close(device);
 			free(device->private_data);
@@ -1114,6 +1135,8 @@ static void ethernet_discover(char *network, bool cam_found) {
 			devices[j] = NULL;
 		}
 	}
+	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&ethernet_mutex);
 }
 
 
@@ -1242,7 +1265,6 @@ static void process_unplug_event() {
 			exit(0);
 		}
 	}
-	//msg.append("<d>address=192.168.2.22,interface=ethernet,port=80,mac=0009510000FF,deviceType=camera,id=0xfeff,firmwareRev=0x0,model=AltaU-4020ML</d>");
 	device_strings = GetDeviceVector( msg );
 	for (int j = 0; j < MAXCAMERAS; j++) {
 		indigo_device *device = devices[j];
@@ -1271,7 +1293,7 @@ static void process_unplug_event() {
 		if (device && !PRIVATE_DATA->available) {
 			interface = GetInterface(PRIVATE_DATA->discovery_string);
 			if (interface.compare("usb") != 0) continue;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DETACH camera[%d]: %s", i, PRIVATE_DATA->discovery_string.c_str());
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DETACH camera[%d]: %s", j, PRIVATE_DATA->discovery_string.c_str());
 			indigo_detach_device(device);
 			apogee_close(device);
 			free(device->private_data);
@@ -1280,7 +1302,6 @@ static void process_unplug_event() {
 		}
 	}
 	pthread_mutex_unlock(&device_mutex);
-	//ethernet_discover("192.168.0.255",false);
 }
 
 
@@ -1357,13 +1378,13 @@ extern char apogee_sysconfdir[2048];
 indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info *info) {
 		static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-		static indigo_device apogee_eth_template = INDIGO_DEVICE_INITIALIZER(
-			"Apogee Ethernet",
-			eth_attach,
+		static indigo_device apogee_ethernet_template = INDIGO_DEVICE_INITIALIZER(
+			"Apogee Ethernet Manager",
+			ethernet_attach,
 			indigo_device_enumerate_properties,
-			eth_change_property,
+			ethernet_change_property,
 			NULL,
-			eth_detach
+			ethernet_detach
 		);
 
 		SET_DRIVER_INFO(info, "Apogee Camera", __FUNCTION__, DRIVER_VERSION, last_action);
@@ -1382,11 +1403,11 @@ indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info 
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "libapogee version: %d.%d.%d", APOGEE_MAJOR_VERSION, APOGEE_MINOR_VERSION, APOGEE_PATCH_VERSION);
 				last_action = action;
 
-				apogee_eth = (indigo_device*)malloc(sizeof(indigo_device));
-				assert(apogee_eth != NULL);
-				memcpy(apogee_eth, &apogee_eth_template, sizeof(indigo_device));
-				apogee_eth->private_data = NULL;
-				indigo_attach_device(apogee_eth);
+				apogee_ethernet = (indigo_device*)malloc(sizeof(indigo_device));
+				assert(apogee_ethernet != NULL);
+				memcpy(apogee_ethernet, &apogee_ethernet_template, sizeof(indigo_device));
+				apogee_ethernet->private_data = NULL;
+				indigo_attach_device(apogee_ethernet);
 
 				indigo_start_usb_event_handler();
 				int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, UsbFrmwr::APOGEE_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
@@ -1398,8 +1419,8 @@ indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info 
 				libusb_hotplug_deregister_callback(NULL, callback_handle);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 				remove_all_devices();
-				indigo_detach_device(apogee_eth);
-				free(apogee_eth);
+				indigo_detach_device(apogee_ethernet);
+				free(apogee_ethernet);
 				break;
 			}
 			case INDIGO_DRIVER_INFO: {
