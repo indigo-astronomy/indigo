@@ -6,7 +6,7 @@ Apogee Alta, AltaF, Ascent and Aspen cameras.
 
 See https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/ccd_apogee/externals/libapogee/conf/apnmatrix.txt for complete list.
 
-This driver supports hot-plug (multiple devices).
+This driver supports USB and Ethernet hot-plug (multiple devices).
 
 ## Supported platforms
 This driver works on Linux (Intel 32/64 bit and ARM v6+) and MacOS.
