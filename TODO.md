@@ -49,7 +49,7 @@
 5. QSI CCD driver (based on QSI SDK) __PARTIALLY_DONE__ (untested)
 6. FLI CCD driver (based on FLI SDK) __DONE__
 7. SBIG CCD driver (based on SBIG SDK) __DONE__
-8. Apogee CCD driver (based on Apogee SDK)
+8. Apogee CCD driver (based on Random Factory Apogee SDK) __DONE__
 9. Fishcamp CCD driver (based on Fishcamp SDK)
 10. Andor CCD driver (based on Andor SDK - payed (we will require but not provide it) __DONE__
 12. DSI driver. __DONE__
@@ -63,12 +63,13 @@
 4. Nikon driver (based on Nikon SDK)
 5. Sony driver (based on WS API)
 
-#### Wheels
+#### Filter Wheels
 
 1. Atik EFW wheel driver __DONE__
 2. FLI wheel driver (based on FLI SDK) __DONE__
 3. SBIG wheel driver __DONE__
-4. ASI EFW Driver __DONE__
+4. ASI EFW driver __DONE__
+5. Apogee wheel driver (based on Random Factory Apogee SDK)
 
 #### Guiders
 
@@ -94,6 +95,7 @@
 #### GPS
 1. GPS Simulator driver __DOME__
 2. NMEA183 GPS driver __DONE__
+3. GPSD GPS driver
 
 #### Dome
 1. Dome Simulator driver __DONE__
