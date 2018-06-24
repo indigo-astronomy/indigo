@@ -279,7 +279,7 @@ static bool apogee_open(indigo_device *device) {
 	} else {
 		addr = GetEthernetAddress(PRIVATE_DATA->discovery_string);
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening device: interface=%s addr=%s firmware=%d id=%d", interface.c_str(), addr.c_str(), fw_rev, id);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening device %s: interface=%s addr=%s firmware=%d id=%d", device->name, interface.c_str(), addr.c_str(), fw_rev, id);
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	switch (model) {
@@ -319,11 +319,11 @@ static bool apogee_open(indigo_device *device) {
 		image_width = camera->GetMaxImgCols();
 		image_height = camera->GetMaxImgRows();
 	} catch (std::runtime_error &err) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error opening camera: %s", err.what());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error opening camera: %s (%s)", device->name, err.what());
 		try {
 			camera->CloseConnection();
 		} catch (std::runtime_error &err) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error closing camera: %s", err.what());
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error closing camera: %s (%s)", device->name, err.what());
 		}
 		delete(camera);
 		PRIVATE_DATA->camera = NULL;
@@ -353,7 +353,7 @@ static bool apogee_setup_exposure(indigo_device *device, int frame_left, int fra
 		camera->SetImageCount(1);
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure setup: %s", text.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure setup: %s (%s)", device->name, text.c_str());
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
@@ -379,7 +379,7 @@ static bool apogee_start_exposure(indigo_device *device, double exposure, bool d
 		camera->StartExposure(exposure, !dark);
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Start Exposure: %s", text.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Start Exposure: %s (%s)", device->name, text.c_str());
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
@@ -400,7 +400,7 @@ static bool apogee_read_pixels(indigo_device *device) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Start Exposure: %s", text.c_str());
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetImagingStatus(): %s (%s)", device->name, text.c_str());
 			break;
 		}
 		usleep(2000);
@@ -413,7 +413,7 @@ static bool apogee_read_pixels(indigo_device *device) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Read Exposure: %s", text.c_str());
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetImage: %s (%s)", device->name, text.c_str());
 			return false;
 		}
 	} else {
@@ -433,7 +433,7 @@ static bool apogee_abort_exposure(indigo_device *device) {
 		PRIVATE_DATA->camera->StopExposure(false);
 	} catch (std::runtime_error err) {
 		std::string text = err.what();
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StopExposure(): %s", text.c_str());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "StopExposure(): %s (%s)", device->name, text.c_str());
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) return false;
@@ -451,13 +451,13 @@ static bool apogee_set_cooler(indigo_device *device, bool on, double target, dou
 	try {
 		*current = camera->GetTempCcd();
 	} catch (std::runtime_error err) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetTempCcd(): %s", err.what());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetTempCcd(): %s (%s)", device->name, err.what());
 	}
 
 	try {
 		cooling_supported = camera->IsCoolingSupported();
 	} catch (std::runtime_error err) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolingSupported(): %s", err.what());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolingSupported(): %s (%s)", device->name, err.what());
 	}
 
 	if (!cooling_supported) {
@@ -469,45 +469,48 @@ static bool apogee_set_cooler(indigo_device *device, bool on, double target, dou
 		is_on_now = camera->IsCoolerOn();
 	} catch (std::runtime_error err) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolerOn(): %s", err.what());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolerOn(): %s (%s)", device->name, err.what());
 		return false;
 	}
 
 	if (is_on_now != on) {
 		try {
 			camera->SetCooler(on);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SetCooler(): %s ON = %d", device->name, on);
 		} catch (std::runtime_error err) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "setCooler(): %s", err.what());
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCooler(): %s (%s)", device->name, err.what());
 		}
-	} else if(on) {
-		try {
-			cooling_regulated = camera->IsCoolingRegulated();
-		} catch (std::runtime_error err) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolingRegulated(): %s", err.what());
+	}
+	try {
+		cooling_regulated = camera->IsCoolingRegulated();
+	} catch (std::runtime_error err) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "IsCoolingRegulated(): %s (%s)", device->name, err.what());
+	}
+	try {
+		double set_point = camera->GetCoolerSetPoint();
+		if ((cooling_regulated) && (abs(target - set_point) > 0.1)) {
+			camera->SetCoolerSetPoint(target);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SetCoolerSetPoint(): %s TargetT = %.2fC (set_point = %.2f)", device->name, target, set_point);
 		}
-		try {
-			if ((cooling_regulated) && (target != camera->GetCoolerSetPoint()))
-				camera->SetCoolerSetPoint(target);
-		} catch (std::runtime_error err) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerSetPoint(): %s", err.what());
-		}
+	} catch (std::runtime_error err) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCoolerSetPoint(): %s (%s)", device->name, err.what());
 	}
 
 	try {
 		if (cooling_regulated && on) *cooler_power = camera->GetCoolerDrive();
 		else *cooler_power = 0;
 	} catch (std::runtime_error err) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCoolerDrive(): %s", err.what());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCoolerDrive(): %s (%s)", device->name, err.what());
 	}
 
 	try {
 		if (cooling_regulated && on) *at_setpoint = (camera->GetCoolerStatus() == Apg::CoolerStatus_AtSetPoint) ? true : false;
 		else *at_setpoint = false;
 	} catch (std::runtime_error err) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCoolerStatus(): %s", err.what());
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetCoolerStatus(): %s (%s)", device->name, err.what());
 	}
 
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetCoolerDrive(): %d", *cooler_power);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetCoolerDrive(): %s Power=%d%%", device->name, *cooler_power);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -522,7 +525,7 @@ static void apogee_close(indigo_device *device) {
 		try {
 			PRIVATE_DATA->camera->CloseConnection();
 		} catch (std::runtime_error &err) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error closing camera: %s", err.what());
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error closing camera: %s (%s)", device->name, err.what());
 		}
 		delete(PRIVATE_DATA->camera);
 		PRIVATE_DATA->camera = NULL;
@@ -663,7 +666,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						CCD_EXPOSURE_ITEM->number.max = camera->GetMaxExposureTime();
 					} catch (std::runtime_error err) {
 							std::string text = err.what();
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get camera info: %s", text.c_str());
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get camera info: %s (%s)", device->name, text.c_str());
 					}
 					CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = image_width;
 					CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = image_height;
@@ -787,7 +790,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s Target Temperature = %.2f", device->name, PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- OFFSET
@@ -868,12 +871,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				try {
 					PRIVATE_DATA->camera->SetCcdAdcSpeed((Apg::AdcSpeed)(i+1));
 				} catch (std::runtime_error err) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCcdAdcSpeed(%d): %s", i+1, err.what());
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetCcdAdcSpeed(%d): %s (%s)", i+1, device->name, err.what());
 					APG_ADC_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
 
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADC speed set to %d", i+1);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s ADC speed set to %d", device->name, i+1);
 				APG_ADC_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 				break;
 			}
@@ -889,12 +892,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				try {
 					PRIVATE_DATA->camera->SetFanMode((Apg::FanMode)i);
 				} catch (std::runtime_error err) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetFanMode(%d): %s", i, err.what());
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SetFanMode(%d): %s (%s)", i, device->name, err.what());
 					APG_FAN_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
 
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FAN speed set to %d", i+1);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s FAN speed set to %d", device->name, i+1);
 				APG_FAN_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 				break;
 			}
@@ -1244,7 +1247,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 #ifdef ___LIBUSBFIX__
 			pthread_t unplug_thread;
 			if (pthread_create(&unplug_thread, NULL, unplug_thread_func, NULL)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for hot unplug");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error creating thread for hot unplug");
 			}
 #else
 			process_unplug_event();
