@@ -857,6 +857,21 @@ $(BUILD_DRIVERS)/indigo_ccd_iidc.$(SOEXT): indigo_drivers/ccd_iidc/indigo_ccd_ii
 
 #---------------------------------------------------------------------
 #
+#       Build gphoto2 CCD driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a: indigo_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_gphoto2: indigo_drivers/ccd_gphoto2/indigo_ccd_gphoto2_main.o $(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
+	$(CC) -g -O0 $(CFLAGS) -g -O0 -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2
+
+$(BUILD_DRIVERS)/indigo_ccd_gphoto2.$(SOEXT): indigo_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2
+
+#---------------------------------------------------------------------
+#
 #	Build FLI CCD driver
 #
 #---------------------------------------------------------------------
