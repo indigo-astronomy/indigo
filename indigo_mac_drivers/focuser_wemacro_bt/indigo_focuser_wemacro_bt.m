@@ -366,9 +366,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				[delegate cmd:FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x40 : 0x41 a:0 b:0 c:0 d:FOCUSER_STEPS_ITEM->number.value];
-			} else {
 				[delegate cmd:FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x41 : 0x40 a:0 b:0 c:0 d:FOCUSER_STEPS_ITEM->number.value];
+			} else {
+				[delegate cmd:FOCUSER_ROTATION_CLOCKWISE_ITEM->sw.value ? 0x40 : 0x41 a:0 b:0 c:0 d:FOCUSER_STEPS_ITEM->number.value];
 			}
 		}
 		return INDIGO_OK;
