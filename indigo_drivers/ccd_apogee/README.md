@@ -25,7 +25,7 @@ indigo_server indigo_ccd_apogee
 
 ## Status: Stable
 Driver is developed and tested with:
-Apogee Aspen 16M
-Apogee Alta F2000
+Apogee Aspen-16M
+Apogee AltaF-2000
 
 ## NOTES:
