@@ -81,7 +81,7 @@
 
 1. USB Focus v3 __DONE__
 2. FLI focuser driver (based on FLI SDK) __DONE__
-3. SBIG focuser driver (based on SBIG SDK)
+3. SBIG focuser driver (based on SBIG SDK) __DONE__
 
 #### Mounts
 
@@ -99,7 +99,7 @@
 
 #### Dome
 1. Dome Simulator driver __DONE__
-2. UNIWERSAL dome driver
+2. UNIVERSAL dome driver
 
 #### AO
 

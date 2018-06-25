@@ -51,7 +51,7 @@ This is the list of requirements taken into the consideration:
 27. GPS Simulator
 28. NMEA 0183 GPS driver
 29. Andor CCD driver (32/64-bit Intel Linux only)
-30. WeMacro Rail focuser driver
+30. WeMacro Rail focuser driver (platform independent USB & Mac only bluetooth)
 31. EQMac guider driver (Mac only)
 32. Apogee CCD driver
 
@@ -59,6 +59,7 @@ This is the list of requirements taken into the consideration:
 1. ASCOM driver for INDIGO mount
 2. ASCOM driver for INDIGO focuser
 3. Apogee filter wheel driver
+4. GPhoto2 CCD driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO
