@@ -75,7 +75,7 @@ It is advised to remove libraw1394-dev
 
 #### Fedora
 
-`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel boost-devel`
+`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel boost-devel libgphoto2-devel`
 
 It is advised to remove libraw1394-devel
 
