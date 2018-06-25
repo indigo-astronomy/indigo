@@ -20,3 +20,4 @@ indigo_server indigo_guider_eqmac
 
 ## Status: Stable
 
+This driver has only guider interface (IPC messages), the rest is compatible with LX200 driver (localhost at port 4030).

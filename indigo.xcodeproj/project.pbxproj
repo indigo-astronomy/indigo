@@ -662,6 +662,15 @@
 		59F756191DCE4F83002CFC82 /* libusb.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libusb.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
+		9D45254120E0F9A1004D1137 /* indigo_ccd_gphoto2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_gphoto2_main.c; sourceTree = "<group>"; };
+		9D45254220E0F9A1004D1137 /* indigo_ccd_gphoto2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_gphoto2.h; sourceTree = "<group>"; };
+		9D45254320E0F9A1004D1137 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D45254420E0F9A1004D1137 /* indigo_ccd_gphoto2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_gphoto2.c; sourceTree = "<group>"; };
+		9D45254720E0FB20004D1137 /* indigo_ccd_andor_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_andor_main.c; sourceTree = "<group>"; };
+		9D45254820E0FB20004D1137 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9D45254920E0FB20004D1137 /* indigo_ccd_andor.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_andor.c; sourceTree = "<group>"; };
+		9D45254A20E0FB20004D1137 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D45254B20E0FB20004D1137 /* indigo_ccd_andor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_andor.h; sourceTree = "<group>"; };
 		9D4D64AD20A9D946008ECE4B /* indigo_guider_eqmac_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_eqmac_main.c; sourceTree = "<group>"; };
 		9D4D64AE20A9D946008ECE4B /* indigo_guider_eqmac.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_eqmac.h; sourceTree = "<group>"; };
 		9D4D64AF20A9D946008ECE4B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -1420,6 +1429,8 @@
 				5981C8E21DC2A2D300C7705F /* TODO.md */,
 				59D381AF1D95998300E87393 /* indigo_drivers */,
 				59C499DF1EFADF7600E750AA /* indigo_mac_drivers */,
+				9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */,
+				9D45254520E0FB20004D1137 /* indigo_optional_drivers */,
 				59D381A61D9590EA00E87393 /* indigo_libs */,
 				9D1880BF1E534B89002F75D7 /* indigo_tools */,
 				599A63D61DF5D93500ABC827 /* indigo_server */,
@@ -1990,6 +2001,45 @@
 				9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */,
 			);
 			path = indigo_tools;
+			sourceTree = "<group>";
+		};
+		9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */ = {
+			isa = PBXGroup;
+			children = (
+				9D45254020E0F9A1004D1137 /* ccd_gphoto2 */,
+			);
+			path = indigo_linux_drivers;
+			sourceTree = "<group>";
+		};
+		9D45254020E0F9A1004D1137 /* ccd_gphoto2 */ = {
+			isa = PBXGroup;
+			children = (
+				9D45254320E0F9A1004D1137 /* README.md */,
+				9D45254120E0F9A1004D1137 /* indigo_ccd_gphoto2_main.c */,
+				9D45254220E0F9A1004D1137 /* indigo_ccd_gphoto2.h */,
+				9D45254420E0F9A1004D1137 /* indigo_ccd_gphoto2.c */,
+			);
+			path = ccd_gphoto2;
+			sourceTree = "<group>";
+		};
+		9D45254520E0FB20004D1137 /* indigo_optional_drivers */ = {
+			isa = PBXGroup;
+			children = (
+				9D45254620E0FB20004D1137 /* ccd_andor */,
+			);
+			path = indigo_optional_drivers;
+			sourceTree = "<group>";
+		};
+		9D45254620E0FB20004D1137 /* ccd_andor */ = {
+			isa = PBXGroup;
+			children = (
+				9D45254A20E0FB20004D1137 /* README.md */,
+				9D45254820E0FB20004D1137 /* Makefile */,
+				9D45254720E0FB20004D1137 /* indigo_ccd_andor_main.c */,
+				9D45254920E0FB20004D1137 /* indigo_ccd_andor.c */,
+				9D45254B20E0FB20004D1137 /* indigo_ccd_andor.h */,
+			);
+			path = ccd_andor;
 			sourceTree = "<group>";
 		};
 		9D4D64AC20A9D946008ECE4B /* guider_eqmac */ = {
