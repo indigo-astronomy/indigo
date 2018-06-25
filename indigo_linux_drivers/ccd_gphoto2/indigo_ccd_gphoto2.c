@@ -69,6 +69,7 @@ typedef struct {
 	GPContext *context;
 	char *name;
 	char *value;
+	char *lib_version;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
@@ -306,34 +307,45 @@ static int attach_device_in_slot(const int slot, const char *name,
 	gphoto2_private_data *private_data = NULL;
 	indigo_device *device = NULL;
 
-	private_data = malloc(sizeof(gphoto2_private_data));
+	private_data = calloc(1, sizeof(gphoto2_private_data));
 	if (!private_data) {
+		rc = -errno;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", strerror(errno));
-		return -errno;
+		goto err_cleanup;
 	}
-	memset(private_data, 0, sizeof(gphoto2_private_data));
 
-	gp_camera_new(&private_data->camera);
+	/* Create new context to be used by frontend. */
 	private_data->context = gp_context_new();
-	gp_camera_init(private_data->camera, private_data->context);
-	gp_context_set_error_func(private_data->context, ctx_error_func, NULL);
-	gp_context_set_message_func(private_data->context, ctx_status_func, NULL);
+	gp_context_set_error_func(private_data->context,
+				  ctx_error_func, NULL);
+	gp_context_set_message_func(private_data->context,
+				    ctx_status_func, NULL);
+
+	/* Allocate memory for camera. */
+	rc = gp_camera_new(&private_data->camera);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gp_camera_new failed: %d", rc);
+		goto err_cleanup;
+	}
+
+	/* Initiate a connection to the camera. */
+	rc = gp_camera_init(private_data->camera, private_data->context);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gp_camera_init failed: %d", rc);
+		goto err_cleanup;
+	}
 
 	private_data->name = strdup(name);
 	private_data->value = strdup(value);
+	private_data->lib_version = strdup(
+		*gp_library_version(GP_VERSION_SHORT));
 
-	device = malloc(sizeof(indigo_device));
+	device = calloc(1, sizeof(indigo_device));
 	if (!device) {
-		free(private_data->name);
-		private_data->name = NULL;
-		free(private_data->value);
-		private_data->value = NULL;
-		free(private_data);
-
+		rc = -errno;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", strerror(errno));
-		return -errno;
+		goto err_cleanup;
 	}
-	memset(device, 0, sizeof(indigo_device));
 	indigo_device *master_device = device;
 
 	memcpy(device, gphoto2_template, sizeof(indigo_device));
@@ -341,9 +353,41 @@ static int attach_device_in_slot(const int slot, const char *name,
 
 	sprintf(device->name, "%s %s", name, value);
 	device->private_data = private_data;
-	indigo_attach_device(device);
+
+	rc = indigo_attach_device(device);
+	if (rc != INDIGO_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_attach_device failed: %d", rc);
+		rc = -rc;
+		goto err_cleanup;
+	}
 
 	devices[slot] = device;
+
+	return rc;
+
+err_cleanup:
+	if (private_data) {
+		if (private_data->name) {
+			free(private_data->name);
+			private_data->name = NULL;
+		}
+		if (private_data->value) {
+			free(private_data->value);
+			private_data->value = NULL;
+		}
+		if (private_data->lib_version) {
+			free(private_data->lib_version);
+			private_data->lib_version = NULL;
+		}
+		free(private_data);
+		private_data = NULL;
+	}
+	if (device) {
+		free(device);
+		device = NULL;
+	}
+
+	return rc;
 }
 
 static int add_camera_device(CameraList *camera_list, indigo_device *device)
@@ -366,8 +410,8 @@ static int add_camera_device(CameraList *camera_list, indigo_device *device)
 		slot = find_free_slot(name, value);
 		if (slot < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
-					    "no free slot of plugged gphoto2 "
-					    "device %s %s found.", name, value);
+					    "no free slot for plugged "
+					    "device %s %s found", name, value);
 			return -1;
 		}
 
@@ -426,6 +470,8 @@ static int remove_camera_device(CameraList *camera_list)
 				private_data->name = NULL;
 				free(private_data->value);
 				private_data->value = NULL;
+				free(private_data->lib_version);
+				private_data->lib_version = NULL;
 				free(private_data);
 			}
 			free(*device);
@@ -474,6 +520,7 @@ void update_property(indigo_device *device, indigo_property *property,
 		     const char *widget)
 {
 	int rc = GP_ERROR;
+
 	for (int p = 0; p < property->count; p++)
 		if (property->items[p].sw.value)
 			rc = set_key_val_dslr(widget,
