@@ -117,18 +117,20 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
 	ifeq ($(ARCH_DETECTED),arm)
-		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
+		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 	else
-		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
+		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 	endif
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lboost_regex -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
+	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lboost_regex -lgphoto2 -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
 	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
+	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
+	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.so
 endif
 
 #---------------------------------------------------------------------
@@ -861,13 +863,13 @@ $(BUILD_DRIVERS)/indigo_ccd_iidc.$(SOEXT): indigo_drivers/ccd_iidc/indigo_ccd_ii
 #
 #---------------------------------------------------------------------
 
-$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a: indigo_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
+$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a: indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_DRIVERS)/indigo_ccd_gphoto2: indigo_drivers/ccd_gphoto2/indigo_ccd_gphoto2_main.o $(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
+$(BUILD_DRIVERS)/indigo_ccd_gphoto2: indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2_main.o $(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
 	$(CC) -g -O0 $(CFLAGS) -g -O0 -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2
 
-$(BUILD_DRIVERS)/indigo_ccd_gphoto2.$(SOEXT): indigo_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
+$(BUILD_DRIVERS)/indigo_ccd_gphoto2.$(SOEXT): indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2
 
 #---------------------------------------------------------------------

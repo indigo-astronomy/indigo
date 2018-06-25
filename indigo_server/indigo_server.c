@@ -82,6 +82,9 @@
 #include "guider_eqmac/indigo_guider_eqmac.h"
 #include "focuser_wemacro_bt/indigo_focuser_wemacro_bt.h"
 #endif
+#ifdef INDIGO_LINUX
+#include "ccd_gphoto2/indigo_ccd_gphoto2.h"
+#endif
 #include "agent_snoop/indigo_agent_snoop.h"
 #endif
 
@@ -126,6 +129,9 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_ica,
 	indigo_guider_eqmac,
 	indigo_focuser_wemacro_bt,
+#endif
+#ifdef INDIGO_LINUX
+	indigo_ccd_gphoto2,
 #endif
 	indigo_agent_snoop,
 #endif
