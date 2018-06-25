@@ -10,10 +10,7 @@ build/*
 **/.hgignore
 **/*externals/**/*.a
 
-externals/libusb/
-externals/hidapi/
-externals/libjpeg/
-externals/novas/
+externals/
 indigo_drivers/ccd_qsi/externals/
 indigo_drivers/ccd_iidc/externals/
 indigo_drivers/mount_nexstar/externals/libnexstar/
