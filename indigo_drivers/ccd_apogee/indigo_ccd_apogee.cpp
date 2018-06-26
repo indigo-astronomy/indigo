@@ -614,7 +614,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
-		APG_FAN_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_FAN_SPEED", "Cooler", "Fan speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		APG_FAN_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_FAN_SPEED", CCD_COOLER_GROUP, "Fan speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (APG_FAN_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 			/* will be populated on connect */
