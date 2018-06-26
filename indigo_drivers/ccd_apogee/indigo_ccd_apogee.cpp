@@ -62,14 +62,15 @@
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_apogee.h"
 
-#define MAXCAMERAS				32
+#define MAXCAMERAS               32
+#define MIN_CCD_TEMP            -70
 
-#define PRIVATE_DATA              ((apogee_private_data *)device->private_data)
+#define PRIVATE_DATA             ((apogee_private_data *)device->private_data)
 
-#define APG_ADVANCED_GROUP        "Advanced"
+#define APG_ADVANCED_GROUP       "Advanced"
 
-#define APG_ADC_SPEED_PROPERTY    (PRIVATE_DATA->apg_adc_speed_property)
-#define APG_FAN_SPEED_PROPERTY    (PRIVATE_DATA->apg_fan_speed_property)
+#define APG_ADC_SPEED_PROPERTY   (PRIVATE_DATA->apg_adc_speed_property)
+#define APG_FAN_SPEED_PROPERTY   (PRIVATE_DATA->apg_fan_speed_property)
 
 // gp_bits is used as boolean
 #define is_connected               gp_bits
@@ -613,7 +614,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
-		APG_FAN_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_FAN_SPEED", APG_ADVANCED_GROUP, "Fan speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		APG_FAN_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_FAN_SPEED", "Cooler", "Fan speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (APG_FAN_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 			/* will be populated on connect */
@@ -699,6 +700,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					else CCD_COOLER_PROPERTY->hidden = true;
 
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
 
 					if (cooling_regulated && cooling_supported) {
 						CCD_COOLER_POWER_PROPERTY->hidden = false;
