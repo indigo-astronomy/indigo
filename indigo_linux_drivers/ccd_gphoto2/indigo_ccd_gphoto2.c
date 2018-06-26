@@ -47,6 +47,11 @@
 #define INDIGO_NAME_MIRROR_LOCKUP		"Use mirror lockup"
 #define INDIGO_NAME_MIRROR_LOCKUP_LOCK		"Enable"
 #define INDIGO_NAME_MIRROR_LOCKUP_UNLOCK	"Disable"
+#define INDIGO_NAME_LIBGHOTO2			"Gphoto2 library"
+#define INDIGO_NAME_LIBGHOTO2_VERSION		"Version"
+
+#define DSLR_LIBGHOTO2_VERSION_PROPERTY_NAME    "DSLR_LIBGHOTO2_VERSION"
+#define DSLR_LIBGHOTO2_VERSION_ITEM_NAME        "LIBGHOTO2_VERSION"
 
 #define NIKON_BULB				"Bulb"
 #define NIKON_IMGFORMAT				"imagequality"
@@ -65,12 +70,14 @@
 #define UNUSED(x)			(void)(x)
 #define MAX_DEVICES			8
 #define PRIVATE_DATA			((gphoto2_private_data *)device->private_data)
-#define DSLR_ISO_PROPERTY		PRIVATE_DATA->dslr_iso_property
-#define DSLR_SHUTTER_PROPERTY		PRIVATE_DATA->dslr_shutter_property
-#define DSLR_COMPRESSION_PROPERTY	PRIVATE_DATA->dslr_compression_property
+#define DSLR_ISO_PROPERTY		(PRIVATE_DATA->dslr_iso_property)
+#define DSLR_SHUTTER_PROPERTY		(PRIVATE_DATA->dslr_shutter_property)
+#define DSLR_COMPRESSION_PROPERTY	(PRIVATE_DATA->dslr_compression_property)
 #define DSLR_MIRROR_LOCKUP_PROPERTY     (PRIVATE_DATA->dslr_mirror_lockup_property)
 #define DSLR_MIRROR_LOCKUP_LOCK_ITEM    (PRIVATE_DATA->dslr_mirror_lockup_property->items + 0)
 #define DSLR_MIRROR_LOCKUP_UNLOCK_ITEM  (PRIVATE_DATA->dslr_mirror_lockup_property->items + 1)
+#define DSLR_LIBGHOTO2_VERSION_PROPERTY	(PRIVATE_DATA->dslr_libgphoto2_version_property)
+#define DSLR_LIBGHOTO2_VERSION_ITEM	(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
 #define is_connected			gp_bits
 
 typedef struct {
@@ -78,11 +85,12 @@ typedef struct {
 	GPContext *context;
 	char *name;
 	char *value;
-	char *lib_version;
+	char *libgphoto2_version;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
 	indigo_property *dslr_mirror_lockup_property;
+	indigo_property *dslr_libgphoto2_version_property;
 } gphoto2_private_data;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
@@ -355,7 +363,7 @@ static int attach_device_in_slot(const int slot, const char *name,
 
 	private_data->name = strdup(name);
 	private_data->value = strdup(value);
-	private_data->lib_version = strdup(
+	private_data->libgphoto2_version = strdup(
 		*gp_library_version(GP_VERSION_SHORT));
 
 	device = calloc(1, sizeof(indigo_device));
@@ -393,9 +401,9 @@ err_cleanup:
 			free(private_data->value);
 			private_data->value = NULL;
 		}
-		if (private_data->lib_version) {
-			free(private_data->lib_version);
-			private_data->lib_version = NULL;
+		if (private_data->libgphoto2_version) {
+			free(private_data->libgphoto2_version);
+			private_data->libgphoto2_version = NULL;
 		}
 		free(private_data);
 		private_data = NULL;
@@ -488,8 +496,8 @@ static int remove_camera_device(CameraList *camera_list)
 				private_data->name = NULL;
 				free(private_data->value);
 				private_data->value = NULL;
-				free(private_data->lib_version);
-				private_data->lib_version = NULL;
+				free(private_data->libgphoto2_version);
+				private_data->libgphoto2_version = NULL;
 				free(private_data);
 			}
 			free(*device);
@@ -615,6 +623,21 @@ static indigo_result ccd_attach(indigo_device *device)
 					INDIGO_NAME_MIRROR_LOCKUP_UNLOCK,
 					true);
 
+		/*--------------------- LIBGPHOTO2-VERSION --------------------*/
+		DSLR_LIBGHOTO2_VERSION_PROPERTY = indigo_init_text_property(NULL,
+									    device->name,
+									    DSLR_LIBGHOTO2_VERSION_PROPERTY_NAME,
+									    INDIGO_NAME_DSLR,
+									    INDIGO_NAME_LIBGHOTO2,
+									    INDIGO_IDLE_STATE,
+									    INDIGO_RO_PERM,
+									    1);
+		indigo_init_text_item(DSLR_LIBGHOTO2_VERSION_ITEM,
+				      DSLR_LIBGHOTO2_VERSION_ITEM_NAME,
+				      INDIGO_NAME_LIBGHOTO2_VERSION,
+				      "%s",
+				      PRIVATE_DATA->libgphoto2_version);
+
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -635,6 +658,7 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_ISO_PROPERTY);
 	indigo_release_property(DSLR_COMPRESSION_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
+	indigo_release_property(DSLR_LIBGHOTO2_VERSION_PROPERTY);
 
 	return indigo_ccd_detach(device);
 }
@@ -666,12 +690,14 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_LIBGHOTO2_VERSION_PROPERTY, NULL);
 		} else {
 			if (device->is_connected) {
 				indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_LIBGHOTO2_VERSION_PROPERTY, NULL);
 				device->is_connected = false;
 			}
 		}
