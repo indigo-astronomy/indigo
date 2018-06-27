@@ -33,12 +33,22 @@
 #include <errno.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 #include <gphoto2/gphoto2-camera.h>
 #include <gphoto2/gphoto2-list.h>
 #include <gphoto2/gphoto2-version.h>
 #include <gphoto2/gphoto2-list.h>
 #include <libusb-1.0/libusb.h>
 #include "indigo_ccd_gphoto2.h"
+#include "dslr_model_info.h"
+
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
 
 #define INDIGO_NAME_DSLR			"GPhoto2"
 #define INDIGO_NAME_SHUTTER			"Shutter time"
@@ -95,6 +105,50 @@ typedef struct {
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static libusb_hotplug_callback_handle callback_handle;
+
+/*
+  Note: Nikon D50 has gphoto2 widget: "shutterspeed" and "shutterspeed2"
+  and list these widgets as:
+
+  gphoto2 --get-config=shutterspeed
+  Label: Shutter Speed
+  Type: RADIO
+  Current: 0.0002s
+  Choice: 0 0.0002s
+  Choice: 1 0.0003s
+  ...
+  ...
+
+  gphoto2 --get-config=shutterspeed2
+  Label: Shutter Speed 2
+  Type: RADIO
+  Current: 1/4000
+  Choice: 0 1/4000
+  Choice: 1 1/3200
+  ...
+  ...
+
+  However 0.0002s != 1/4000s = 0.00025s
+          0.0003s != 1/3200s = 0.0003125s
+
+  It is recommended to use shutterspeed2 widget.
+ */
+static double parse_shutterspeed(char *str)
+{
+	const char *delim = "/'";
+	uint8_t cnt = 0;
+	char *token;
+	double nom_denom[2] = {0, 0};
+
+	token = strtok(str, delim);
+	while (token != NULL) {
+		nom_denom[cnt++ % 2] = atof(token);
+		token = strtok(NULL, delim);
+	}
+
+	return (nom_denom[1] == 0 ? nom_denom[0] :
+		nom_denom[0] / nom_denom[1]);
+}
 
 static int lookup_widget(CameraWidget *widget, const char *key,
 			 CameraWidget **child)
@@ -638,6 +692,39 @@ static indigo_result ccd_attach(indigo_device *device)
 				      "%s",
 				      PRIVATE_DATA->libgphoto2_version);
 
+		/*--------------------- CCD_EXPOSURE_ITEM --------------------*/
+		double number_min = 3600;
+		double number_max = -number_min;
+		for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
+			/* Skip {B,b}ulb widget. */
+			if (DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'b' ||
+			    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B')
+				continue;
+
+			double number_shutter = parse_shutterspeed(
+				DSLR_SHUTTER_PROPERTY->items[i].name);
+
+			number_min = MIN(number_shutter, number_min);
+			number_max = MAX(number_shutter, number_max);
+		}
+		CCD_EXPOSURE_ITEM->number.min = number_min;
+		CCD_EXPOSURE_ITEM->number.max = number_max;
+
+		/*--------------------- CCD_INFO --------------------*/
+		char *name = PRIVATE_DATA->name;
+		CCD_INFO_PROPERTY->hidden = true;
+		for (int i = 0; name[i]; i++)
+                        name[i] = toupper(name[i]);
+		for (int i = 0; dslr_model_info[i].name; i++) {
+                        if (strstr(name, dslr_model_info[i].name)) {
+				CCD_INFO_WIDTH_ITEM->number.value = dslr_model_info[i].width;
+				CCD_INFO_HEIGHT_ITEM->number.value = dslr_model_info[i].height;
+				CCD_INFO_PIXEL_SIZE_ITEM->number.value = dslr_model_info[i].pixel_size;
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+				CCD_INFO_PROPERTY->hidden = false;
+			}
+		}
+
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -728,6 +815,16 @@ static indigo_result ccd_change_property(indigo_device *device,
 			property->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 		}
+		return INDIGO_OK;
+	}
+	/*--------------------------- CCD-EXPOSURE ---------------------------*/
+	else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+			return INDIGO_OK;
+
+		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		/* TODO: */
 		return INDIGO_OK;
 	}
 
