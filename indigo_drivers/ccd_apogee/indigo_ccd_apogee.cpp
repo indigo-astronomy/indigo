@@ -62,14 +62,15 @@
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_apogee.h"
 
-#define MAXCAMERAS				32
+#define MAXCAMERAS               32
+#define MIN_CCD_TEMP            -70
 
-#define PRIVATE_DATA              ((apogee_private_data *)device->private_data)
+#define PRIVATE_DATA             ((apogee_private_data *)device->private_data)
 
-#define APG_ADVANCED_GROUP        "Advanced"
+#define APG_ADVANCED_GROUP       "Advanced"
 
-#define APG_ADC_SPEED_PROPERTY    (PRIVATE_DATA->apg_adc_speed_property)
-#define APG_FAN_SPEED_PROPERTY    (PRIVATE_DATA->apg_fan_speed_property)
+#define APG_ADC_SPEED_PROPERTY   (PRIVATE_DATA->apg_adc_speed_property)
+#define APG_FAN_SPEED_PROPERTY   (PRIVATE_DATA->apg_fan_speed_property)
 
 // gp_bits is used as boolean
 #define is_connected               gp_bits
@@ -271,9 +272,16 @@ static bool apogee_open(indigo_device *device) {
 	uint16_t id = GetID(PRIVATE_DATA->discovery_string);
 	uint16_t fw_rev = GetFrmwrRev(PRIVATE_DATA->discovery_string);
 	CamModel::PlatformType model = GetModel(PRIVATE_DATA->discovery_string);
-
 	std::string interface = GetItemFromFindStr(PRIVATE_DATA->discovery_string, "interface=");
 	std::string addr;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	if (indigo_try_global_lock(device) != INDIGO_OK) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+		return false;
+	}
+
 	if (!interface.compare("usb")) {
 		addr = GetUsbAddress(PRIVATE_DATA->discovery_string);
 	} else {
@@ -281,7 +289,6 @@ static bool apogee_open(indigo_device *device) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening device %s: interface=%s addr=%s firmware=%d id=%d", device->name, interface.c_str(), addr.c_str(), fw_rev, id);
 
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	switch (model) {
 		case CamModel::ALTAU:
 		case CamModel::ALTAE:
@@ -306,8 +313,8 @@ static bool apogee_open(indigo_device *device) {
 
 		default:
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Model %s is not supported by the INDIGO Apogee driver.", GetItemFromFindStr(PRIVATE_DATA->discovery_string, "model=").c_str());
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			return false;
-			break;
 	}
 
 	ApogeeCam *camera = PRIVATE_DATA->camera;
@@ -327,6 +334,7 @@ static bool apogee_open(indigo_device *device) {
 		}
 		delete(camera);
 		PRIVATE_DATA->camera = NULL;
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
 	}
 
@@ -529,8 +537,8 @@ static void apogee_close(indigo_device *device) {
 		}
 		delete(PRIVATE_DATA->camera);
 		PRIVATE_DATA->camera = NULL;
-		indigo_global_unlock(device);
 	}
+	indigo_global_unlock(device);
 	if (PRIVATE_DATA->buffer != NULL) {
 		free(PRIVATE_DATA->buffer);
 		PRIVATE_DATA->buffer = NULL;
@@ -613,7 +621,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
-		APG_FAN_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_FAN_SPEED", APG_ADVANCED_GROUP, "Fan speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		APG_FAN_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_FAN_SPEED", CCD_COOLER_GROUP, "Fan speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (APG_FAN_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 			/* will be populated on connect */
@@ -699,6 +707,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					else CCD_COOLER_PROPERTY->hidden = true;
 
 					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
 
 					if (cooling_regulated && cooling_supported) {
 						CCD_COOLER_POWER_PROPERTY->hidden = false;
@@ -919,6 +928,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+
+	indigo_global_unlock(device);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(APG_ADC_SPEED_PROPERTY);

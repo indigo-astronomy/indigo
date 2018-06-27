@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -80,7 +80,6 @@ static unsigned int SetHighCapacity(int state) {
 #define BASELINECLAMP_PROPERTY_NAME     "ANDOR_BASELINECLAMP"
 #define BASELINEOFFSET_PROPERTY_NAME    "ANDOR_BASELINEOFFSET"
 
-#define COOLER_GROUP_NAME               "Cooler"
 #define FANCONTROL_PROPERTY_NAME        "ANDOR_FANCONTROL"
 #define COOLERMODE_PROPERTY_NAME        "ANDOR_COOLERMODE"
 
@@ -503,7 +502,7 @@ static void init_baselineoffset_property(indigo_device *device) {
 
 
 static void init_fancontrol_property(indigo_device *device) {
-	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, COOLER_GROUP_NAME, "Fan Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, CCD_COOLER_GROUP, "Fan Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (FANCONTROL_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of FANCONTROL_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -517,7 +516,7 @@ static void init_fancontrol_property(indigo_device *device) {
 
 static void init_coolermode_property(indigo_device *device) {
 	int res;
-	COOLERMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, COOLERMODE_PROPERTY_NAME, COOLER_GROUP_NAME, "Cooling on Shutdown", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	COOLERMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, COOLERMODE_PROPERTY_NAME, CCD_COOLER_GROUP, "Cooling on Shutdown", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	if (COOLERMODE_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of COOLERMODE_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -1419,6 +1418,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
+
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
 		if (CAP_SET_VREADOUT) {
@@ -1449,6 +1449,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 			indigo_release_property(COOLERMODE_PROPERTY);
 		}
 	}
+
+	indigo_global_unlock(device);
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
