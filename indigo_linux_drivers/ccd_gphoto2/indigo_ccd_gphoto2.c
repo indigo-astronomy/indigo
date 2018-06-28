@@ -614,6 +614,20 @@ static void update_property(indigo_device *device, indigo_property *property,
 	}
 }
 
+static void update_ccd_property(indigo_device *device,
+				indigo_property *property)
+{
+	for (int p = 0; p < property->count; p++)
+		if (property->items[p].sw.value) {
+			const double value = parse_shutterspeed(
+				property->items[p].name);
+			CCD_EXPOSURE_ITEM->number.value =
+				CCD_EXPOSURE_ITEM->number.target = value;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY,
+					       NULL);
+		}
+}
+
 static indigo_result ccd_attach(indigo_device *device)
 {
 	assert(device != NULL);
@@ -795,6 +809,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 	else if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property)) {
 			indigo_property_copy_values(DSLR_SHUTTER_PROPERTY, property, false);
 			update_property(device, DSLR_SHUTTER_PROPERTY, EOS_SHUTTERSPEED);
+			update_ccd_property(device, DSLR_SHUTTER_PROPERTY);
 			return INDIGO_OK;
 	}
 	/*------------------------------ ISO ---------------------------------*/
