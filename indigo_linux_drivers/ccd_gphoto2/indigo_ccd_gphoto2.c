@@ -64,15 +64,14 @@
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM_NAME     "LIBGPHOTO2_VERSION"
 
 #define NIKON_BULB				"Bulb"
-#define NIKON_IMGFORMAT				"imagequality"
-#define NIKON_COMPRESSION			NIKON_IMGFORMAT
-#define NIKON_SHUTTERSPEED			"shutterspeed2"
+#define NIKON_ISO				"iso"
+#define NIKON_COMPRESSION			"imagequality"
+#define NIKON_SHUTTERSPEED			"shutterspeed"
 
 #define EOS_BULB				"bulb"
-#define EOS_ISO					"iso"
-#define EOS_IMGFORMAT				"imageformat"
-#define EOS_COMPRESSION				EOS_IMGFORMAT
-#define EOS_SHUTTERSPEED			"shutterspeed"
+#define EOS_ISO					NIKON_ISO
+#define EOS_COMPRESSION				"imageformat"
+#define EOS_SHUTTERSPEED			NIKON_SHUTTERSPEED
 #define EOS_CUSTOMFUNCEX			"customfuncex"
 #define EOS_MIRROR_LOCKUP_ENABLE		"20,1,3,14,1,60f,1,1"
 #define EOS_MIRROR_LOCKUP_DISABLE		"20,1,3,14,1,60f,1,0"
@@ -88,7 +87,14 @@
 #define DSLR_MIRROR_LOCKUP_UNLOCK_ITEM		(PRIVATE_DATA->dslr_mirror_lockup_property->items + 1)
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY	(PRIVATE_DATA->dslr_libgphoto2_version_property)
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM		(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
+#define COMPRESSION                             (PRIVATE_DATA->gphoto2_compression_id)
 #define is_connected				gp_bits
+
+enum vendor {
+	CANON = 0,
+	NIKON,
+	OTHER
+};
 
 typedef struct {
 	Camera *camera;
@@ -96,55 +102,56 @@ typedef struct {
 	char *name;
 	char *value;
 	char *libgphoto2_version;
+
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_libgphoto2_version_property;
+
+	enum vendor vendor;
+	char *gphoto2_compression_id;
 } gphoto2_private_data;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static libusb_hotplug_callback_handle callback_handle;
 
-/*
-  Note: Nikon D50 has gphoto2 widget: "shutterspeed" and "shutterspeed2"
-  and list these widgets as:
-
-  gphoto2 --get-config=shutterspeed
-  Label: Shutter Speed
-  Type: RADIO
-  Current: 0.0002s
-  Choice: 0 0.0002s
-  Choice: 1 0.0003s
-  ...
-  ...
-
-  gphoto2 --get-config=shutterspeed2
-  Label: Shutter Speed 2
-  Type: RADIO
-  Current: 1/4000
-  Choice: 0 1/4000
-  Choice: 1 1/3200
-  ...
-  ...
-
-  However 0.0002s != 1/4000s = 0.00025s
-          0.0003s != 1/3200s = 0.0003125s
-
-  It is recommended to use shutterspeed2 widget.
- */
-static double parse_shutterspeed(char *str)
+static void vendor_identify_widget(indigo_device *device,
+				   const char *property_name)
 {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+
+	if (!strcmp(DSLR_COMPRESSION_PROPERTY_NAME, property_name)) {
+		if (PRIVATE_DATA->vendor == CANON)
+			COMPRESSION = strdup(EOS_COMPRESSION);
+		else if (PRIVATE_DATA->vendor == NIKON)
+			COMPRESSION = strdup(NIKON_COMPRESSION);
+		else		/* EOS fallback. */
+			COMPRESSION = strdup(EOS_COMPRESSION);
+	}
+}
+
+static double parse_shutterspeed(const char *s)
+{
+	if (!s)
+		return 0;
+
 	const char *delim = "/'";
 	uint8_t cnt = 0;
 	char *token;
 	double nom_denom[2] = {0, 0};
+	char *str = NULL;
 
+	str = strdup(s);
 	token = strtok(str, delim);
 	while (token != NULL) {
 		nom_denom[cnt++ % 2] = atof(token);
 		token = strtok(NULL, delim);
 	}
+
+	if (str)
+		free(str);
 
 	return (nom_denom[1] == 0 ? nom_denom[0] :
 		nom_denom[0] / nom_denom[1]);
@@ -162,7 +169,7 @@ static int lookup_widget(CameraWidget *widget, const char *key,
 	return rc;
 }
 
-static int widget_enumerate(const char *key, indigo_device *device,
+static int enumerate_widget(const char *key, indigo_device *device,
 			    indigo_property *property)
 {
 	CameraWidget *widget = NULL, *child = NULL;
@@ -203,15 +210,30 @@ static int widget_enumerate(const char *key, indigo_device *device,
 
 	const int n_choices = rc;
 	const char *widget_choice;
+	int i = 0;
 
-	for (int i = 0; i < n_choices; i++) {
+	while (i < n_choices) {
 		rc = gp_widget_get_choice(child, i, &widget_choice);
 		if (rc < GP_OK) {
 			goto cleanup;
 		}
+
+		char label[96] = {0};
+
+		strncpy(label, widget_choice, sizeof(label));
+		if (!strcmp(property->name, DSLR_SHUTTER_PROPERTY_NAME)) {
+
+			double shutter_d = 0.0;
+			shutter_d = parse_shutterspeed(widget_choice);
+			if (shutter_d > 0.0)
+				snprintf(label, sizeof(label), "%f", shutter_d);
+		}
+
 		indigo_init_switch_item(property->items + i,
 					widget_choice,
-					widget_choice, i == 0);
+					label,
+					false);
+		i++;
 	}
 
 cleanup:
@@ -635,8 +657,31 @@ static indigo_result ccd_attach(indigo_device *device)
 
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 
+		/*--------------------- CCD_INFO --------------------*/
+		char *name = PRIVATE_DATA->name;
+		CCD_INFO_PROPERTY->hidden = true;
+		for (int i = 0; name[i]; i++)
+                        name[i] = toupper(name[i]);
+		for (int i = 0; dslr_model_info[i].name; i++) {
+                        if (strstr(name, dslr_model_info[i].name)) {
+				CCD_INFO_WIDTH_ITEM->number.value = dslr_model_info[i].width;
+				CCD_INFO_HEIGHT_ITEM->number.value = dslr_model_info[i].height;
+				CCD_INFO_PIXEL_SIZE_ITEM->number.value = dslr_model_info[i].pixel_size;
+				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
+				CCD_INFO_PROPERTY->hidden = false;
+			}
+			if (strstr(name, "CANON")) {
+				PRIVATE_DATA->vendor = CANON;
+			}
+			else if (strstr(name, "NIKON"))
+				PRIVATE_DATA->vendor = NIKON;
+			else
+				PRIVATE_DATA->vendor = OTHER;
+		}
+		vendor_identify_widget(device, DSLR_COMPRESSION_PROPERTY_NAME);
+
 		/*------------------------- SHUTTER-TIME -----------------------*/
-		int count = widget_enumerate(EOS_SHUTTERSPEED, device, NULL);
+		int count = enumerate_widget(EOS_SHUTTERSPEED, device, NULL);
 		DSLR_SHUTTER_PROPERTY = indigo_init_switch_property(NULL,
 								    device->name,
 								    DSLR_SHUTTER_PROPERTY_NAME,
@@ -646,10 +691,10 @@ static indigo_result ccd_attach(indigo_device *device)
 								    INDIGO_RW_PERM,
 								    INDIGO_ONE_OF_MANY_RULE,
 								    count);
-		widget_enumerate(EOS_SHUTTERSPEED, device, DSLR_SHUTTER_PROPERTY);
+		enumerate_widget(EOS_SHUTTERSPEED, device, DSLR_SHUTTER_PROPERTY);
 
 		/*---------------------------- ISO -----------------------------*/
-		count = widget_enumerate(EOS_ISO, device, NULL);
+		count = enumerate_widget(EOS_ISO, device, NULL);
 		DSLR_ISO_PROPERTY = indigo_init_switch_property(NULL,
 								device->name,
 								DSLR_ISO_PROPERTY_NAME,
@@ -659,10 +704,10 @@ static indigo_result ccd_attach(indigo_device *device)
 								INDIGO_RW_PERM,
 								INDIGO_ONE_OF_MANY_RULE,
 								count);
-		widget_enumerate(EOS_ISO, device, DSLR_ISO_PROPERTY);
+		enumerate_widget(EOS_ISO, device, DSLR_ISO_PROPERTY);
 
 		/*------------------------ COMPRESSION -------------------------*/
-		count = widget_enumerate(EOS_COMPRESSION, device, NULL);
+		count = enumerate_widget(COMPRESSION, device, NULL);
 		DSLR_COMPRESSION_PROPERTY = indigo_init_switch_property(NULL,
 									device->name,
 									DSLR_COMPRESSION_PROPERTY_NAME,
@@ -672,7 +717,7 @@ static indigo_result ccd_attach(indigo_device *device)
 									INDIGO_RW_PERM,
 									INDIGO_ONE_OF_MANY_RULE,
 									count);
-		widget_enumerate(EOS_COMPRESSION, device, DSLR_COMPRESSION_PROPERTY);
+		enumerate_widget(COMPRESSION, device, DSLR_COMPRESSION_PROPERTY);
 
 		/*------------------------ MIRROR-LOCKUP -----------------------*/
 		DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_switch_property(NULL,
@@ -726,21 +771,6 @@ static indigo_result ccd_attach(indigo_device *device)
 		CCD_EXPOSURE_ITEM->number.min = number_min;
 		CCD_EXPOSURE_ITEM->number.max = number_max;
 
-		/*--------------------- CCD_INFO --------------------*/
-		char *name = PRIVATE_DATA->name;
-		CCD_INFO_PROPERTY->hidden = true;
-		for (int i = 0; name[i]; i++)
-                        name[i] = toupper(name[i]);
-		for (int i = 0; dslr_model_info[i].name; i++) {
-                        if (strstr(name, dslr_model_info[i].name)) {
-				CCD_INFO_WIDTH_ITEM->number.value = dslr_model_info[i].width;
-				CCD_INFO_HEIGHT_ITEM->number.value = dslr_model_info[i].height;
-				CCD_INFO_PIXEL_SIZE_ITEM->number.value = dslr_model_info[i].pixel_size;
-				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
-				CCD_INFO_PROPERTY->hidden = false;
-			}
-		}
-
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -762,6 +792,9 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_COMPRESSION_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
 	indigo_release_property(GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY);
+
+	if (COMPRESSION)
+		free(COMPRESSION);
 
 	return indigo_ccd_detach(device);
 }
@@ -821,7 +854,8 @@ static indigo_result ccd_change_property(indigo_device *device,
 	/*--------------------------- COMPRESSION ----------------------------*/
 	else if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property)) {
 		indigo_property_copy_values(DSLR_COMPRESSION_PROPERTY, property, false);
-		update_property(device, DSLR_COMPRESSION_PROPERTY, EOS_COMPRESSION);
+		update_property(device, DSLR_COMPRESSION_PROPERTY,
+				COMPRESSION);
 		return INDIGO_OK;
 	}
 	/*-------------------------- MIRROR-LOCKUP ---------------------------*/
