@@ -59,6 +59,11 @@
 #define GPHOTO2_NAME_MIRROR_LOCKUP_UNLOCK	"Disable"
 #define GPHOTO2_NAME_LIBGPHOTO2			"Gphoto2 library"
 #define GPHOTO2_NAME_LIBGPHOTO2_VERSION		"Version"
+#define GPHOTO2_NAME_DELETE_IMAGE               "Delete downloaded image"
+#define GPHOTO2_NAME_DELETE_IMAGE_ON_ITEM       "ON"
+#define GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM      "OFF"
+#define GPHOTO2_NAME_DELETE_IMAGE_ON            "On"
+#define GPHOTO2_NAME_DELETE_IMAGE_OFF           "Off"
 
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY_NAME "GPHOTO2_LIBGPHOTO2_VERSION"
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM_NAME     "LIBGPHOTO2_VERSION"
@@ -85,6 +90,9 @@
 #define DSLR_MIRROR_LOCKUP_PROPERTY		(PRIVATE_DATA->dslr_mirror_lockup_property)
 #define DSLR_MIRROR_LOCKUP_LOCK_ITEM		(PRIVATE_DATA->dslr_mirror_lockup_property->items + 0)
 #define DSLR_MIRROR_LOCKUP_UNLOCK_ITEM		(PRIVATE_DATA->dslr_mirror_lockup_property->items + 1)
+#define DSLR_DELETE_IMAGE_PROPERTY		(PRIVATE_DATA->dslr_delete_image_property)
+#define DSLR_DELETE_IMAGE_ON_ITEM		(PRIVATE_DATA->dslr_delete_image_property->items + 0)
+#define DSLR_DELETE_IMAGE_OFF_ITEM		(PRIVATE_DATA->dslr_delete_image_property->items + 1)
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY	(PRIVATE_DATA->dslr_libgphoto2_version_property)
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM		(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
 #define COMPRESSION                             (PRIVATE_DATA->gphoto2_compression_id)
@@ -102,13 +110,13 @@ typedef struct {
 	char *name;
 	char *value;
 	char *libgphoto2_version;
-
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
 	indigo_property *dslr_mirror_lockup_property;
+	indigo_property *dslr_delete_image_property;
 	indigo_property *dslr_libgphoto2_version_property;
-
+	bool delete_downloaded_image;
 	enum vendor vendor;
 	char *gphoto2_compression_id;
 } gphoto2_private_data;
@@ -738,6 +746,25 @@ static indigo_result ccd_attach(indigo_device *device)
 					GPHOTO2_NAME_MIRROR_LOCKUP_UNLOCK,
 					true);
 
+		/*------------------------ DELETE-IMAGE -----------------------*/
+		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL,
+									 device->name,
+									 DSLR_DELETE_IMAGE_PROPERTY_NAME,
+									 GPHOTO2_NAME_DSLR,
+									 GPHOTO2_NAME_DELETE_IMAGE,
+									 INDIGO_IDLE_STATE,
+									 INDIGO_RW_PERM,
+									 INDIGO_ONE_OF_MANY_RULE,
+									 2);
+		indigo_init_switch_item(DSLR_DELETE_IMAGE_ON_ITEM,
+					GPHOTO2_NAME_DELETE_IMAGE_ON_ITEM,
+					GPHOTO2_NAME_DELETE_IMAGE_ON,
+					false);
+		indigo_init_switch_item(DSLR_DELETE_IMAGE_OFF_ITEM,
+					GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM,
+					GPHOTO2_NAME_DELETE_IMAGE_OFF,
+					true);
+
 		/*--------------------- LIBGPHOTO2-VERSION --------------------*/
 		GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY = indigo_init_text_property(NULL,
 										device->name,
@@ -791,6 +818,7 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_ISO_PROPERTY);
 	indigo_release_property(DSLR_COMPRESSION_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
+	indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
 	indigo_release_property(GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY);
 
 	if (COMPRESSION)
@@ -826,6 +854,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 			indigo_define_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
 		} else {
 			if (device->is_connected) {
@@ -833,6 +862,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 				indigo_delete_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
 				device->is_connected = false;
 			}
@@ -863,9 +893,18 @@ static indigo_result ccd_change_property(indigo_device *device,
 		indigo_property_copy_values(DSLR_MIRROR_LOCKUP_PROPERTY, property, false);
 		int rc = eos_mirror_lockup(DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value, device);
 		if (rc == GP_OK) {
-			property->state = INDIGO_OK_STATE;
+			DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 		}
+		return INDIGO_OK;
+	}
+	/*--------------------------- DELETE-IMAGE ---------------------------*/
+	else if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_DELETE_IMAGE_PROPERTY, property, false);
+		PRIVATE_DATA->delete_downloaded_image = DSLR_DELETE_IMAGE_ON_ITEM->sw.value;
+		DSLR_DELETE_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+
 		return INDIGO_OK;
 	}
 	/*--------------------------- CCD-EXPOSURE ---------------------------*/
