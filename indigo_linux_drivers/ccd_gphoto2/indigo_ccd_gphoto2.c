@@ -88,6 +88,8 @@
 #define EOS_MIRROR_LOCKUP_ENABLE		"20,1,3,14,1,60f,1,1"
 #define EOS_MIRROR_LOCKUP_DISABLE		"20,1,3,14,1,60f,1,0"
 
+#define TIMER_THROTTLE_USEC                     1000 /* 1 milliseconds */
+
 #define UNUSED(x)				(void)(x)
 #define MAX_DEVICES				8
 #define PRIVATE_DATA				((gphoto2_private_data *)device->private_data)
@@ -123,6 +125,7 @@ typedef struct {
 	char filename[128];
 	enum vendor vendor;
 	char *gphoto2_compression_id;
+	bool mirror_lockup;
 	bool bulb;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
@@ -386,6 +389,16 @@ static void ctx_status_func(GPContext *context, const char *str, void *data)
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", str);
 }
 
+static long elapsed_time(struct timespec *tp_start)
+{
+        struct timespec tp_current;
+
+        clock_gettime(CLOCK_MONOTONIC, &tp_current);
+
+        return (tp_current.tv_sec * 1000000000L + tp_current.tv_nsec) -
+                (tp_start->tv_sec * 1000000000L + tp_start->tv_nsec);
+}
+
 static int eos_mirror_lockup(const bool enable, indigo_device *device)
 {
 	return gphoto2_set_key_val(EOS_CUSTOMFUNCEX, enable ?
@@ -422,8 +435,8 @@ static int capture(indigo_device *device)
 		goto cleanup;
 	}
 
-	/* Mirror-lockup EOS. */
-	if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
+	/* Mirror-lockup EOS (2500ms). */
+	if (PRIVATE_DATA->mirror_lockup) {
 		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
 					 device);
 		if (rc < GP_OK) {
@@ -450,11 +463,34 @@ static int capture(indigo_device *device)
 					    EOS_RELEASE_FULL);
 			goto cleanup;
 		}
-		usleep(1000 * 5000);	/* 5000ms */
+		usleep(1000 * 2500);	/* 2500ms */
 	}
 
-	/* Capture image, the function will release the shutter,
-	   so no need to call dslr_shutter_release_full(). */
+	/* Bulb capture. */
+	if (PRIVATE_DATA->bulb) {
+		struct timespec tp;
+		long wait_nsec = CCD_EXPOSURE_ITEM->number.value * 1000000000L;
+
+		clock_gettime(CLOCK_MONOTONIC, &tp);
+		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
+					 device);
+		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p] "
+					    "gphoto2_set_key_val %s %s", rc,
+					    rc,
+					    PRIVATE_DATA->camera,
+					    PRIVATE_DATA->context,
+					    EOS_REMOTE_RELEASE,
+					    EOS_PRESS_FULL);
+			goto cleanup;
+		}
+
+		while(elapsed_time(&tp) < wait_nsec)
+			usleep(TIMER_THROTTLE_USEC);
+	}
+
+	/* Capture image, the function will release the shutter. */
 	rc = gp_camera_capture(PRIVATE_DATA->camera, GP_CAPTURE_IMAGE,
 			       &camera_file_path,
 			       PRIVATE_DATA->context);
@@ -767,16 +803,28 @@ out:
 static void update_property(indigo_device *device, indigo_property *property,
 			    const char *widget)
 {
-	int rc = GP_ERROR;
+	int rc;
 
-	for (int p = 0; p < property->count; p++)
-		if (property->items[p].sw.value)
+	for (int p = 0; p < property->count; p++) {
+		if (property->items[p].sw.value) {
 			rc = gphoto2_set_key_val(widget,
 						 property->items[p].name,
 						 device);
-	if (rc == GP_OK) {
-		property->state = INDIGO_OK_STATE;
-		indigo_update_property(device, property, NULL);
+			if (rc == GP_OK) {
+				property->state = INDIGO_OK_STATE;
+				indigo_update_property(device, property, NULL);
+
+				/* Bulb check and set/unset. */
+				if (!strncmp(property->name,
+					     DSLR_SHUTTER_PROPERTY_NAME,
+					     INDIGO_NAME_SIZE))
+					if (property->items[p].name[0] == 'b' ||
+					    property->items[p].name[0] == 'B')
+						PRIVATE_DATA->bulb = true;
+					else
+						PRIVATE_DATA->bulb = false;
+			}
+		}
 	}
 }
 
@@ -1034,6 +1082,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 		if (rc == GP_OK) {
 			DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+			PRIVATE_DATA->mirror_lockup = DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value;
 		}
 		return INDIGO_OK;
 	}
