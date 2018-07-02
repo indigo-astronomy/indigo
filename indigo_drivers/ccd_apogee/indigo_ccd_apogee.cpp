@@ -24,7 +24,7 @@
  \file indigo_ccd_apogee.cpp
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	   "indigo_ccd_apogee"
 
 #include <stdlib.h>
@@ -415,7 +415,15 @@ static bool apogee_read_pixels(indigo_device *device) {
 	ApogeeCam *camera = PRIVATE_DATA->camera;
 	int wait_cycles = 9000;    /* 9000*2000us = 18s */
 
-	Apg::Status status = camera->GetImagingStatus();
+	Apg::Status status;
+	try {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		status = camera->GetImagingStatus();
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	} catch (std::runtime_error err) {
+		std::string text = err.what();
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetImagingStatus(): %s (%s)", device->name, text.c_str());
+	}
 	while ((status != Apg::Status_ImageReady) && wait_cycles--) {
 		try {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
