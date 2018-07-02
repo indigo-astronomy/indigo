@@ -33,9 +33,9 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	CC=gcc
 	ifeq ($(ARCH_DETECTED),arm)
-		CPPFLAGS=-fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -Ilinux -std=gnu++11 -pthread -march=armv6 -mfpu=vfp -mfloat-abi=hard
+		CPPFLAGS=-fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -Ilinux -I../boost_regex -std=gnu++11 -pthread -march=armv6 -mfpu=vfp -mfloat-abi=hard
 	else
-		CPPFLAGS=-fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -Ilinux -std=gnu++11 -pthread
+		CPPFLAGS=-fPIC -O3 -I $(INDIGO_ROOT)/build/include -I. -Ilinux -I../boost_regex -std=gnu++11 -pthread
 	endif
 	LDFLAGS=-lm -lrt -lusb-1.0 -Llib/Linux/$(ARCH_DETECTED) -lhidapi-libusb
 	AR=ar
