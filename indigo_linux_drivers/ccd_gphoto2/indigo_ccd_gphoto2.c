@@ -72,11 +72,18 @@
 #define NIKON_ISO				"iso"
 #define NIKON_COMPRESSION			"imagequality"
 #define NIKON_SHUTTERSPEED			"shutterspeed"
+#define NIKON_CAPTURE_TARGET			"capturetarget"
+#define NIKON_MEMORY_CARD			"Memory card"
 
 #define EOS_BULB				"bulb"
 #define EOS_ISO					NIKON_ISO
 #define EOS_COMPRESSION				"imageformat"
 #define EOS_SHUTTERSPEED			NIKON_SHUTTERSPEED
+#define EOS_CAPTURE_TARGET			NIKON_CAPTURE_TARGET
+#define EOS_MEMORY_CARD				NIKON_MEMORY_CARD
+#define EOS_REMOTE_RELEASE		        "eosremoterelease"
+#define EOS_PRESS_FULL			        "Press Full"
+#define EOS_RELEASE_FULL		        "Release Full"
 #define EOS_CUSTOMFUNCEX			"customfuncex"
 #define EOS_MIRROR_LOCKUP_ENABLE		"20,1,3,14,1,60f,1,1"
 #define EOS_MIRROR_LOCKUP_DISABLE		"20,1,3,14,1,60f,1,0"
@@ -110,15 +117,19 @@ typedef struct {
 	char *name;
 	char *value;
 	char *libgphoto2_version;
+	bool delete_downloaded_image;
+	char *buffer;
+	unsigned long int buffer_size;
+	char filename[128];
+	enum vendor vendor;
+	char *gphoto2_compression_id;
+	bool bulb;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_delete_image_property;
 	indigo_property *dslr_libgphoto2_version_property;
-	bool delete_downloaded_image;
-	enum vendor vendor;
-	char *gphoto2_compression_id;
 } gphoto2_private_data;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
@@ -381,6 +392,131 @@ static int eos_mirror_lockup(const bool enable, indigo_device *device)
 				   EOS_MIRROR_LOCKUP_ENABLE :
 				   EOS_MIRROR_LOCKUP_DISABLE,
 				   device);
+}
+
+static int capture(indigo_device *device)
+{
+	int rc;
+	CameraFile *camera_file = NULL;
+	CameraFilePath camera_file_path;
+
+	/* Store images on memory card. */
+	rc = gphoto2_set_key_val(EOS_CAPTURE_TARGET, EOS_MEMORY_CARD, device);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
+				    "gphoto2_set_key_val %s %s", rc,
+				    PRIVATE_DATA->camera,
+				    PRIVATE_DATA->context,
+				    EOS_CAPTURE_TARGET,
+				    EOS_MEMORY_CARD);
+		goto cleanup;
+	}
+
+	rc = gp_file_new(&camera_file);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p] gp_file_new",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    PRIVATE_DATA->context);
+		goto cleanup;
+	}
+
+	/* Mirror-lockup EOS. */
+	if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
+		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
+					 device);
+		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p] "
+					    "gphoto2_set_key_val %s %s", rc,
+					    rc,
+					    PRIVATE_DATA->camera,
+					    PRIVATE_DATA->context,
+					    EOS_REMOTE_RELEASE,
+					    EOS_PRESS_FULL);
+			goto cleanup;
+		}
+		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_RELEASE_FULL,
+					 device);
+		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p] "
+					    "gphoto2_set_key_val %s %s", rc,
+					    rc,
+					    PRIVATE_DATA->camera,
+					    PRIVATE_DATA->context,
+					    EOS_REMOTE_RELEASE,
+					    EOS_RELEASE_FULL);
+			goto cleanup;
+		}
+		usleep(1000 * 5000);	/* 5000ms */
+	}
+
+	/* Capture image, the function will release the shutter,
+	   so no need to call dslr_shutter_release_full(). */
+	rc = gp_camera_capture(PRIVATE_DATA->camera, GP_CAPTURE_IMAGE,
+			       &camera_file_path,
+			       PRIVATE_DATA->context);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p]"
+				    " gp_camera_capture",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    PRIVATE_DATA->context);
+		goto cleanup;
+	}
+
+	rc = gp_camera_file_get(PRIVATE_DATA->camera, camera_file_path.folder,
+				camera_file_path.name, GP_FILE_TYPE_NORMAL,
+				camera_file, PRIVATE_DATA->context);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p]"
+				    " gp_camera_file_get",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    PRIVATE_DATA->context);
+		goto cleanup;
+	}
+
+	/* Memory of buffer free'd by gp_file_unref(). */
+	rc = gp_file_get_data_and_size(camera_file,
+				       (const char**)&PRIVATE_DATA->buffer,
+				       &PRIVATE_DATA->buffer_size);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
+				    "gp_file_get_data_and_size",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    PRIVATE_DATA->context);
+		goto cleanup;
+	}
+
+	memset(PRIVATE_DATA->filename, 0, sizeof(PRIVATE_DATA->filename));
+	snprintf(PRIVATE_DATA->filename,
+		 sizeof(PRIVATE_DATA->filename), "/%s", camera_file_path.name);
+
+	if (PRIVATE_DATA->delete_downloaded_image) {
+		rc = gp_camera_file_delete(PRIVATE_DATA->camera,
+					   camera_file_path.folder,
+					   camera_file_path.name,
+					   PRIVATE_DATA->context);
+		if (rc < GP_OK)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p] "
+					    "gp_camera_file_delete",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    PRIVATE_DATA->context);
+	}
+
+cleanup:
+	if (camera_file)
+		gp_file_unref(camera_file);
+
+	return rc;
 }
 
 static int find_slot_of_device(const char *name, const char *value)
@@ -737,6 +873,9 @@ static indigo_result ccd_attach(indigo_device *device)
 									  INDIGO_RW_PERM,
 									  INDIGO_ONE_OF_MANY_RULE,
 									  2);
+		int rc;
+
+		rc = eos_mirror_lockup(false, device);
 		indigo_init_switch_item(DSLR_MIRROR_LOCKUP_LOCK_ITEM,
 					DSLR_MIRROR_LOCKUP_LOCK_ITEM_NAME,
 					GPHOTO2_NAME_MIRROR_LOCKUP_LOCK,
@@ -744,7 +883,7 @@ static indigo_result ccd_attach(indigo_device *device)
 		indigo_init_switch_item(DSLR_MIRROR_LOCKUP_UNLOCK_ITEM,
 					DSLR_MIRROR_LOCKUP_UNLOCK_ITEM_NAME,
 					GPHOTO2_NAME_MIRROR_LOCKUP_UNLOCK,
-					true);
+					!rc);
 
 		/*------------------------ DELETE-IMAGE -----------------------*/
 		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL,
@@ -913,8 +1052,28 @@ static indigo_result ccd_change_property(indigo_device *device,
 			return INDIGO_OK;
 
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		/* TODO: */
+		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+
+		int rc;
+
+		rc = capture(device);
+		if (rc < GP_OK) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			return INDIGO_FAILED;
+		}
+
+		/* TODO: exposure_timer callback to download image. */
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+
 		return INDIGO_OK;
 	}
 
