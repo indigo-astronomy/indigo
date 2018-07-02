@@ -1179,7 +1179,7 @@ indigo_result indigo_ccd_gphoto2(indigo_driver_action action, indigo_driver_info
 		int rc = libusb_hotplug_register_callback(NULL,
 							  LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED |
 							  LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
-							  LIBUSB_HOTPLUG_NO_FLAGS, /* LIBUSB_HOTPLUG_ENUMERATE, */
+							  0, /* The flag is not defined on some libusbs so better use 0 */ /* LIBUSB_HOTPLUG_ENUMERATE, */
 							  LIBUSB_HOTPLUG_MATCH_ANY,
 							  LIBUSB_HOTPLUG_MATCH_ANY,
 							  LIBUSB_HOTPLUG_MATCH_ANY,
