@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION := 2.0
-INDIGO_BUILD := 70
+INDIGO_BUILD := 71
 INDIGO_ROOT := $(shell pwd)
 
 DEBUG_BUILD=-g
@@ -1279,7 +1279,7 @@ $(PACKAGE_NAME).deb: package-prepare
 	sudo chown root /tmp/$(PACKAGE_NAME)
 	dpkg --build /tmp/$(PACKAGE_NAME)
 	mv /tmp/$(PACKAGE_NAME).deb .
-	#sudo rm -rf /tmp/$(PACKAGE_NAME)
+	sudo rm -rf /tmp/$(PACKAGE_NAME)
 
 packages: package fliusb-package
 
