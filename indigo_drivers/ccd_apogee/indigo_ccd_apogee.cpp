@@ -24,7 +24,7 @@
  \file indigo_ccd_apogee.cpp
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	   "indigo_ccd_apogee"
 
 #include <stdlib.h>
@@ -96,6 +96,7 @@ typedef struct {
 	double target_temperature, current_temperature;
 	long cooler_power;
 	bool can_check_temperature;
+	bool abort_in_progress;
 	pthread_mutex_t usb_mutex;
 	indigo_timer *exposure_timer, *temperature_timer;
 	long int buffer_size;
@@ -457,7 +458,7 @@ static bool apogee_read_pixels(indigo_device *device) {
 }
 
 
-static bool apogee_abort_exposure(indigo_device *device) {
+static void abort_exposure_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int res;
 	try {
@@ -466,9 +467,29 @@ static bool apogee_abort_exposure(indigo_device *device) {
 		std::string text = err.what();
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "StopExposure(): %s (%s)", device->name, text.c_str());
 	}
+
+	Apg::Status status =  Apg::Status_Idle;
+	while (status < Apg::Status_ImageReady) {
+		try {
+			status = PRIVATE_DATA->camera->GetImagingStatus();
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetImagingStatus(): %s = %d", device->name, status);
+		} catch (std::runtime_error err) {
+			std::string text = err.what();
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetImagingStatus(): %s (%s)", device->name, text.c_str());
+			break;
+		}
+		usleep(20000);
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res) return false;
-	else return true;
+
+	PRIVATE_DATA->can_check_temperature = true;
+	PRIVATE_DATA->abort_in_progress = false;
+
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+
+	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 }
 
 
@@ -828,8 +849,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
+		if (PRIVATE_DATA->abort_in_progress) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Abort in progress.");
+			return INDIGO_OK;
+		}
+
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
+
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		apogee_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
@@ -850,14 +878,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+		if (PRIVATE_DATA->abort_in_progress)
+			return INDIGO_OK;
+
+		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
-			apogee_abort_exposure(device);
-		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-			CCD_STREAMING_COUNT_ITEM->number.value = 0;
+
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+
+			CCD_EXPOSURE_ITEM->number.value = 0;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+
+			PRIVATE_DATA->abort_in_progress = true;
+			/* As Abort needs some time on camera like ASPEN we do it in another thread */
+			indigo_set_timer(device, 0, abort_exposure_callback);
+			return INDIGO_OK;
 		}
-		PRIVATE_DATA->can_check_temperature = true;
-		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
