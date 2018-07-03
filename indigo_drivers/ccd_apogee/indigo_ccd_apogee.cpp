@@ -488,6 +488,7 @@ static void abort_exposure_callback(indigo_device *device) {
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 
+	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 }
@@ -886,6 +887,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 			indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 
 			CCD_EXPOSURE_ITEM->number.value = 0;
