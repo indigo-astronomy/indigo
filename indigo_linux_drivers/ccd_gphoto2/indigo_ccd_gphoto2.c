@@ -206,6 +206,7 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	CameraWidget *widget = NULL, *child = NULL;
 	CameraWidgetType type;
 	int rc;
+	char *val = NULL;
 
 	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
 				  PRIVATE_DATA->context);
@@ -224,6 +225,13 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	if (rc < GP_OK) {
 		goto cleanup;
 	}
+
+	/* Get the actual set value on camera. */
+	rc = gp_widget_get_value(child, &val);
+	if (rc < GP_OK) {
+		goto cleanup;
+	}
+
 	if (type != GP_WIDGET_RADIO) {
 		rc = GP_ERROR_BAD_PARAMETERS;
 		goto cleanup;
@@ -260,10 +268,11 @@ static int enumerate_widget(const char *key, indigo_device *device,
 				snprintf(label, sizeof(label), "%f", shutter_d);
 		}
 
+		/* Init and set value same as on camera. */
 		indigo_init_switch_item(property->items + i,
 					widget_choice,
 					label,
-					false);
+					val && !strcmp(val, widget_choice));
 		i++;
 	}
 
