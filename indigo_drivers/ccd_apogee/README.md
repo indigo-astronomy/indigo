@@ -9,7 +9,7 @@ See https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/ccd_ap
 This driver supports USB and Ethernet hot-plug (multiple devices).
 
 ## Supported platforms
-This driver works on Linux (Intel 32/64 bit and ARM v6+) and MacOS.
+This driver works on Linux (Intel 32/64 bit) and MacOSX.
 
 ## License
 INDIGO Astronomy open-source license.
@@ -20,7 +20,7 @@ Apogee SDK is subject to the terms of the Mozilla Public License, v. 2.0
 In case Apogee configuration files are not in the default location, INDIGO_FIRMWARE_BASE
 environment variable must be set to the correct path before starting indigo_server.
 The default INDIGO_FIRMWARE_BASE is: "/usr/local/etc/" and configuration files should be in:
-""$INDIGO_FIRMWARE_BASE/apogee"
+"$INDIGO_FIRMWARE_BASE/apogee"
 
 indigo_server indigo_ccd_apogee
 
