@@ -34,6 +34,8 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
+#include <math.h>
+#include <pthread.h>
 #include <gphoto2/gphoto2-camera.h>
 #include <gphoto2/gphoto2-list.h>
 #include <gphoto2/gphoto2-version.h>
@@ -88,7 +90,8 @@
 #define EOS_MIRROR_LOCKUP_ENABLE		"20,1,3,14,1,60f,1,1"
 #define EOS_MIRROR_LOCKUP_DISABLE		"20,1,3,14,1,60f,1,0"
 
-#define TIMER_THROTTLE_USEC                     1000 /* 1 milliseconds */
+#define TIMER_THROTTLE_USEC                     10000 /* 10 ms. */
+#define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
 
 #define UNUSED(x)				(void)(x)
 #define MAX_DEVICES				8
@@ -122,7 +125,7 @@ typedef struct {
 	bool delete_downloaded_image;
 	char *buffer;
 	unsigned long int buffer_size;
-	char filename[128];
+	char filename_suffix[9];
 	enum vendor vendor;
 	char *gphoto2_compression_id;
 	bool mirror_lockup;
@@ -133,8 +136,15 @@ typedef struct {
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_delete_image_property;
 	indigo_property *dslr_libgphoto2_version_property;
+	indigo_timer *exposure_timer, *counter_timer;
 } gphoto2_private_data;
 
+struct capture_abort {
+	CameraFile *camera_file;
+	indigo_device *device;
+};
+
+static pthread_t thread_id_capture;
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static libusb_hotplug_callback_handle callback_handle;
 
@@ -156,8 +166,7 @@ static void vendor_identify_widget(indigo_device *device,
 
 static double parse_shutterspeed(const char *s)
 {
-	if (!s)
-		return 0;
+	assert(s != NULL);
 
 	const char *delim = "/'";
 	uint8_t cnt = 0;
@@ -197,6 +206,7 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	CameraWidget *widget = NULL, *child = NULL;
 	CameraWidgetType type;
 	int rc;
+	char *val = NULL;
 
 	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
 				  PRIVATE_DATA->context);
@@ -215,6 +225,13 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	if (rc < GP_OK) {
 		goto cleanup;
 	}
+
+	/* Get the actual set value on camera. */
+	rc = gp_widget_get_value(child, &val);
+	if (rc < GP_OK) {
+		goto cleanup;
+	}
+
 	if (type != GP_WIDGET_RADIO) {
 		rc = GP_ERROR_BAD_PARAMETERS;
 		goto cleanup;
@@ -251,10 +268,11 @@ static int enumerate_widget(const char *key, indigo_device *device,
 				snprintf(label, sizeof(label), "%f", shutter_d);
 		}
 
+		/* Init and set value same as on camera. */
 		indigo_init_switch_item(property->items + i,
 					widget_choice,
 					label,
-					false);
+					val && !strcmp(val, widget_choice));
 		i++;
 	}
 
@@ -407,17 +425,116 @@ static int eos_mirror_lockup(const bool enable, indigo_device *device)
 				   device);
 }
 
-static int capture(indigo_device *device)
+static void counter_timer_callback(indigo_device *device)
+{
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
+
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (CCD_EXPOSURE_ITEM->number.value - TIMER_COUNTER_STEP_SEC > 0) {
+			CCD_EXPOSURE_ITEM->number.value -= TIMER_COUNTER_STEP_SEC;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_reschedule_timer(device,
+						TIMER_COUNTER_STEP_SEC,
+						&PRIVATE_DATA->counter_timer);
+		}
+	}
+}
+
+static void exposure_timer_callback(indigo_device *device)
+{
+	int rc;
+	void *retval;
+
+	PRIVATE_DATA->counter_timer = NULL;
+	PRIVATE_DATA->exposure_timer = NULL;
+
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
+
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_EXPOSURE_ITEM->number.value = 0;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+
+		rc = pthread_join(thread_id_capture, &retval);
+		if (rc) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] pthread_join");
+			return;
+		} else {
+			if (retval == PTHREAD_CANCELED) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME,
+						  "capture thread was cancelled");
+				return;
+			} else
+				INDIGO_DRIVER_LOG(DRIVER_NAME,
+						  "capture thread terminated normally");
+		}
+		indigo_process_dslr_image(device,
+					  PRIVATE_DATA->buffer,
+					  PRIVATE_DATA->buffer_size,
+					  PRIVATE_DATA->filename_suffix);
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	} else {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY,
+				       "exposure failed");
+	}
+}
+
+static void thread_capture_abort(void *user_data)
+{
+	int rc;
+	struct capture_abort *capture_abort;
+	indigo_device *device;
+
+	capture_abort = (struct capture_abort *)user_data;
+	device = capture_abort->device;
+
+	rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_RELEASE_FULL,
+				 device);
+	if (rc < GP_OK)
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p] "
+				    "gphoto2_set_key_val %s %s",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    PRIVATE_DATA->context,
+				    EOS_REMOTE_RELEASE,
+				    EOS_RELEASE_FULL);
+
+
+	if (capture_abort->camera_file)
+		gp_file_unref(capture_abort->camera_file);
+
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "capture thread aborted");
+}
+
+static void *thread_capture(void *user_data)
 {
 	int rc;
 	CameraFile *camera_file = NULL;
 	CameraFilePath camera_file_path;
+	indigo_device *device;
+	struct capture_abort capture_abort;
+	struct timespec tp;
+
+	device = (indigo_device *)user_data;
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "capture thread started");
+
+	rc = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	if (rc) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] pthread_setcancelstate");
+		rc = -EINVAL;
+		goto cleanup;
+	}
 
 	/* Store images on memory card. */
 	rc = gphoto2_set_key_val(EOS_CAPTURE_TARGET, EOS_MEMORY_CARD, device);
 	if (rc < GP_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
-				    "gphoto2_set_key_val %s %s", rc,
+				    "gphoto2_set_key_val %s %s",
+				    rc,
 				    PRIVATE_DATA->camera,
 				    PRIVATE_DATA->context,
 				    EOS_CAPTURE_TARGET,
@@ -435,6 +552,10 @@ static int capture(indigo_device *device)
 		goto cleanup;
 	}
 
+	capture_abort.camera_file = camera_file;
+	capture_abort.device = device;
+	pthread_cleanup_push(thread_capture_abort, &capture_abort);
+
 	/* Mirror-lockup EOS (2500ms). */
 	if (PRIVATE_DATA->mirror_lockup) {
 		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
@@ -442,7 +563,7 @@ static int capture(indigo_device *device)
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val %s %s", rc,
+					    "gphoto2_set_key_val %s %s",
 					    rc,
 					    PRIVATE_DATA->camera,
 					    PRIVATE_DATA->context,
@@ -450,12 +571,13 @@ static int capture(indigo_device *device)
 					    EOS_PRESS_FULL);
 			goto cleanup;
 		}
+
 		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_RELEASE_FULL,
 					 device);
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val %s %s", rc,
+					    "gphoto2_set_key_val %s %s",
 					    rc,
 					    PRIVATE_DATA->camera,
 					    PRIVATE_DATA->context,
@@ -463,13 +585,26 @@ static int capture(indigo_device *device)
 					    EOS_RELEASE_FULL);
 			goto cleanup;
 		}
-		usleep(1000 * 2500);	/* 2500ms */
+
+		/* Seems to be more precise than a simple usleep(). */
+		clock_gettime(CLOCK_MONOTONIC, &tp);
+		while(elapsed_time(&tp) < 2500000000L) /* 2500 ms. */
+			usleep(TIMER_THROTTLE_USEC);
 	}
+
+	PRIVATE_DATA->counter_timer =
+		indigo_set_timer(device, TIMER_COUNTER_STEP_SEC,
+				 counter_timer_callback);
+
+	PRIVATE_DATA->exposure_timer =
+		indigo_set_timer(device,
+				 CCD_EXPOSURE_ITEM->number.target,
+				 exposure_timer_callback);
 
 	/* Bulb capture. */
 	if (PRIVATE_DATA->bulb) {
-		struct timespec tp;
-		long wait_nsec = CCD_EXPOSURE_ITEM->number.value * 1000000000L;
+
+		long wait_nsec = CCD_EXPOSURE_ITEM->number.target * 1000000000L;
 
 		clock_gettime(CLOCK_MONOTONIC, &tp);
 		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
@@ -477,7 +612,7 @@ static int capture(indigo_device *device)
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val %s %s", rc,
+					    "gphoto2_set_key_val %s %s",
 					    rc,
 					    PRIVATE_DATA->camera,
 					    PRIVATE_DATA->context,
@@ -530,9 +665,14 @@ static int capture(indigo_device *device)
 		goto cleanup;
 	}
 
-	memset(PRIVATE_DATA->filename, 0, sizeof(PRIVATE_DATA->filename));
-	snprintf(PRIVATE_DATA->filename,
-		 sizeof(PRIVATE_DATA->filename), "/%s", camera_file_path.name);
+	char *suffix = NULL;
+
+	memset(PRIVATE_DATA->filename_suffix, 0,
+	       sizeof(PRIVATE_DATA->filename_suffix));
+	suffix = strstr(camera_file_path.name, ".");
+	if (suffix)
+		strncpy(PRIVATE_DATA->filename_suffix, suffix,
+			sizeof(PRIVATE_DATA->filename_suffix));
 
 	if (PRIVATE_DATA->delete_downloaded_image) {
 		rc = gp_camera_file_delete(PRIVATE_DATA->camera,
@@ -552,7 +692,9 @@ cleanup:
 	if (camera_file)
 		gp_file_unref(camera_file);
 
-	return rc;
+	pthread_cleanup_pop(0);
+
+	return NULL;
 }
 
 static int find_slot_of_device(const char *name, const char *value)
@@ -835,11 +977,66 @@ static void update_ccd_property(indigo_device *device,
 		if (property->items[p].sw.value) {
 			const double value = parse_shutterspeed(
 				property->items[p].name);
-			CCD_EXPOSURE_ITEM->number.value =
-				CCD_EXPOSURE_ITEM->number.target = value;
+			CCD_EXPOSURE_ITEM->number.target = value;
+
+			if (!PRIVATE_DATA->bulb)
+				CCD_EXPOSURE_ITEM->number.value = value;
+
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY,
 					       NULL);
 		}
+}
+
+static void shutterspeed_closest(indigo_device *device)
+{
+	const double val = CCD_EXPOSURE_ITEM->number.value;
+	double number_shutter;
+
+	if (PRIVATE_DATA->bulb) {
+		CCD_EXPOSURE_ITEM->number.target = val;
+		return;
+	}
+
+	if (val < 0)
+		return;
+	if (val == 0) {
+		CCD_EXPOSURE_ITEM->number.target =
+			CCD_EXPOSURE_ITEM->number.value =
+			CCD_EXPOSURE_ITEM->number.min;
+	} else {
+		double number_closest = 3600;
+		int pos_new = 0;
+		int pos_old;
+		for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
+
+			if (DSLR_SHUTTER_PROPERTY->items[i].sw.value)
+				pos_old = i;
+
+			/* Skip {B,b}ulb widget. */
+			if (DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'b' ||
+			    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B')
+				continue;
+
+			number_shutter = parse_shutterspeed(
+				DSLR_SHUTTER_PROPERTY->items[i].name);
+			double abs_diff = fabs(CCD_EXPOSURE_ITEM->number.value
+					       - number_shutter);
+
+			if (abs_diff < number_closest) {
+				number_closest = abs_diff;
+				pos_new = i;
+			}
+		}
+
+	        DSLR_SHUTTER_PROPERTY->items[pos_old].sw.value = false;
+		DSLR_SHUTTER_PROPERTY->items[pos_new].sw.value = true;
+
+		number_shutter = parse_shutterspeed(
+			DSLR_SHUTTER_PROPERTY->items[pos_new].name);
+
+		CCD_EXPOSURE_ITEM->number.target =
+			CCD_EXPOSURE_ITEM->number.value = number_shutter;
+	}
 }
 
 static indigo_result ccd_attach(indigo_device *device)
@@ -921,9 +1118,7 @@ static indigo_result ccd_attach(indigo_device *device)
 									  INDIGO_RW_PERM,
 									  INDIGO_ONE_OF_MANY_RULE,
 									  2);
-		int rc;
-
-		rc = eos_mirror_lockup(false, device);
+		int rc = eos_mirror_lockup(false, device);
 		indigo_init_switch_item(DSLR_MIRROR_LOCKUP_LOCK_ITEM,
 					DSLR_MIRROR_LOCKUP_LOCK_ITEM_NAME,
 					GPHOTO2_NAME_MIRROR_LOCKUP_LOCK,
@@ -983,8 +1178,10 @@ static indigo_result ccd_attach(indigo_device *device)
 			number_max = MAX(number_shutter, number_max);
 		}
 		CCD_EXPOSURE_ITEM->number.min = number_min;
+		/* We could exposure actually until the universe collapses. */
+#ifdef UNIVERSE_COLLAPSES
 		CCD_EXPOSURE_ITEM->number.max = number_max;
-
+#endif
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -1101,15 +1298,19 @@ static indigo_result ccd_change_property(indigo_device *device,
 			return INDIGO_OK;
 
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+		/* Find non-bulb shutterspeed closest to desired client value. */
+		shutterspeed_closest(device);
+		indigo_use_shortest_exposure_if_bias(device);
+		update_property(device, DSLR_SHUTTER_PROPERTY, EOS_SHUTTERSPEED);
+
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 
-		int rc;
-
-		rc = capture(device);
-		if (rc < GP_OK) {
+		int rc = pthread_create(&thread_id_capture, NULL,
+					thread_capture, device);
+		if (rc) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1117,13 +1318,31 @@ static indigo_result ccd_change_property(indigo_device *device,
 			return INDIGO_FAILED;
 		}
 
-		/* TODO: exposure_timer callback to download image. */
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		CCD_ABORT_EXPOSURE_PROPERTY->state =
+			INDIGO_IDLE_STATE;
+		indigo_update_property(device,
+				       CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+
 
 		return INDIGO_OK;
+	}
+	/*------------------------ CCD-ABORT-EXPOSURE ------------------------*/
+	else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			/* Only bulb captures can be abort. */
+			if (PRIVATE_DATA->bulb) {
+				indigo_cancel_timer(device,
+						    &PRIVATE_DATA->exposure_timer);
+				pthread_cancel(thread_id_capture);
+			} else {
+				CCD_ABORT_EXPOSURE_PROPERTY->state =
+					INDIGO_ALERT_STATE;
+				indigo_update_property(device,
+						       CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+				return INDIGO_FAILED;
+			}
+		}
 	}
 
 	return indigo_ccd_change_property(device, client, property);
