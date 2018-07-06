@@ -466,7 +466,7 @@ static void exposure_timer_callback(indigo_device *device)
 
 		rc = pthread_join(thread_id_capture, &retval);
 		if (rc) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] pthread_join");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] pthread_join", rc);
 			return;
 		} else {
 			if (retval == PTHREAD_CANCELED) {
@@ -476,6 +476,13 @@ static void exposure_timer_callback(indigo_device *device)
 			} else
 				INDIGO_DRIVER_LOG(DRIVER_NAME,
 						  "capture thread terminated normally");
+		}
+		if (!PRIVATE_DATA->buffer || PRIVATE_DATA->buffer_size == 0) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY,
+					       "exposure failed");
+			return;
+
 		}
 		indigo_process_dslr_image(device,
 					  PRIVATE_DATA->buffer,
@@ -1069,8 +1076,8 @@ static indigo_result ccd_change_property(indigo_device *device,
 
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		/* Find non-bulb shutterspeed closest to desired client value. */
-		shutterspeed_closest(device);
 		indigo_use_shortest_exposure_if_bias(device);
+		shutterspeed_closest(device);
 		update_property(device, DSLR_SHUTTER_PROPERTY, EOS_SHUTTERSPEED);
 
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
