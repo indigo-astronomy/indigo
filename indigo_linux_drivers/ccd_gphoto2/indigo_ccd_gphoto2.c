@@ -1076,8 +1076,8 @@ static indigo_result ccd_change_property(indigo_device *device,
 
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		/* Find non-bulb shutterspeed closest to desired client value. */
-		shutterspeed_closest(device);
 		indigo_use_shortest_exposure_if_bias(device);
+		shutterspeed_closest(device);
 		update_property(device, DSLR_SHUTTER_PROPERTY, EOS_SHUTTERSPEED);
 
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
