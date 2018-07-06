@@ -116,12 +116,19 @@ enum vendor {
 	OTHER
 };
 
+struct gphoto2_id_s {
+	char name[32];
+	char name_extended[128];
+	uint8_t bus;
+	uint8_t port;
+	uint16_t vendor;
+	uint16_t product;
+};
+
 typedef struct {
 	Camera *camera;
-	GPContext *context;
-	char *name;
-	char *value;
-	char *libgphoto2_version;
+	struct gphoto2_id_s gphoto2_id;
+	char libgphoto2_version[16];
 	bool delete_downloaded_image;
 	char *buffer;
 	unsigned long int buffer_size;
@@ -144,6 +151,7 @@ struct capture_abort {
 	indigo_device *device;
 };
 
+static GPContext *context = NULL;
 static pthread_t thread_id_capture;
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static libusb_hotplug_callback_handle callback_handle;
@@ -209,7 +217,7 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	char *val = NULL;
 
 	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
-				  PRIVATE_DATA->context);
+				  context);
 	if (rc < GP_OK) {
 		goto cleanup;
 	}
@@ -290,7 +298,7 @@ static int gphoto2_set_key_val(const char *key, const char *val,
 	int rc;
 
 	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
-				  PRIVATE_DATA->context);
+				  context);
 	if (rc < GP_OK) {
 		return rc;
 	}
@@ -313,7 +321,7 @@ static int gphoto2_set_key_val(const char *key, const char *val,
 	default:
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
 				    "[camera:%p,context:%p] widget has bad type",
-				    PRIVATE_DATA->camera, PRIVATE_DATA->context);
+				    PRIVATE_DATA->camera, context);
 		rc = GP_ERROR_BAD_PARAMETERS;
 		goto cleanup;
 	}
@@ -327,7 +335,7 @@ static int gphoto2_set_key_val(const char *key, const char *val,
 	}
 	/* This stores it on the camera again */
 	rc = gp_camera_set_config(PRIVATE_DATA->camera, widget,
-				  PRIVATE_DATA->context);
+				  context);
 	if (rc < GP_OK) {
 		return rc;
 	}
@@ -347,7 +355,7 @@ static int gphoto2_get_key_val(const char *key, char **str,
 	char *val;
 
 	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
-				  PRIVATE_DATA->context);
+				  context);
 	if (rc < GP_OK) {
 		return rc;
 	}
@@ -370,7 +378,7 @@ static int gphoto2_get_key_val(const char *key, char **str,
 	default:
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
 				    "[camera:%p,context:%p] widget has bad type",
-				    PRIVATE_DATA->camera, PRIVATE_DATA->context);
+				    PRIVATE_DATA->camera, context);
 		rc = GP_ERROR_BAD_PARAMETERS;
 		goto cleanup;
 	}
@@ -496,10 +504,10 @@ static void thread_capture_abort(void *user_data)
 	if (rc < GP_OK)
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
 				    "[rc:%d,camera:%p,context:%p] "
-				    "gphoto2_set_key_val %s %s",
+				    "gphoto2_set_key_val '%s' '%s'",
 				    rc,
 				    PRIVATE_DATA->camera,
-				    PRIVATE_DATA->context,
+				    context,
 				    EOS_REMOTE_RELEASE,
 				    EOS_RELEASE_FULL);
 
@@ -533,10 +541,10 @@ static void *thread_capture(void *user_data)
 	rc = gphoto2_set_key_val(EOS_CAPTURE_TARGET, EOS_MEMORY_CARD, device);
 	if (rc < GP_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
-				    "gphoto2_set_key_val %s %s",
+				    "gphoto2_set_key_val '%s' '%s'",
 				    rc,
 				    PRIVATE_DATA->camera,
-				    PRIVATE_DATA->context,
+				    context,
 				    EOS_CAPTURE_TARGET,
 				    EOS_MEMORY_CARD);
 		goto cleanup;
@@ -548,7 +556,7 @@ static void *thread_capture(void *user_data)
 				    "[rc:%d,camera:%p,context:%p] gp_file_new",
 				    rc,
 				    PRIVATE_DATA->camera,
-				    PRIVATE_DATA->context);
+				    context);
 		goto cleanup;
 	}
 
@@ -563,10 +571,10 @@ static void *thread_capture(void *user_data)
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val %s %s",
+					    "gphoto2_set_key_val '%s' '%s'",
 					    rc,
 					    PRIVATE_DATA->camera,
-					    PRIVATE_DATA->context,
+					    context,
 					    EOS_REMOTE_RELEASE,
 					    EOS_PRESS_FULL);
 			goto cleanup;
@@ -577,10 +585,10 @@ static void *thread_capture(void *user_data)
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val %s %s",
+					    "gphoto2_set_key_val '%s' '%s'",
 					    rc,
 					    PRIVATE_DATA->camera,
-					    PRIVATE_DATA->context,
+					    context,
 					    EOS_REMOTE_RELEASE,
 					    EOS_RELEASE_FULL);
 			goto cleanup;
@@ -612,10 +620,10 @@ static void *thread_capture(void *user_data)
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val %s %s",
+					    "gphoto2_set_key_val '%s' '%s'",
 					    rc,
 					    PRIVATE_DATA->camera,
-					    PRIVATE_DATA->context,
+					    context,
 					    EOS_REMOTE_RELEASE,
 					    EOS_PRESS_FULL);
 			goto cleanup;
@@ -628,27 +636,27 @@ static void *thread_capture(void *user_data)
 	/* Capture image, the function will release the shutter. */
 	rc = gp_camera_capture(PRIVATE_DATA->camera, GP_CAPTURE_IMAGE,
 			       &camera_file_path,
-			       PRIVATE_DATA->context);
+			       context);
 	if (rc < GP_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
 				    "[rc:%d,camera:%p,context:%p]"
 				    " gp_camera_capture",
 				    rc,
 				    PRIVATE_DATA->camera,
-				    PRIVATE_DATA->context);
+				    context);
 		goto cleanup;
 	}
 
 	rc = gp_camera_file_get(PRIVATE_DATA->camera, camera_file_path.folder,
 				camera_file_path.name, GP_FILE_TYPE_NORMAL,
-				camera_file, PRIVATE_DATA->context);
+				camera_file, context);
 	if (rc < GP_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
 				    "[rc:%d,camera:%p,context:%p]"
 				    " gp_camera_file_get",
 				    rc,
 				    PRIVATE_DATA->camera,
-				    PRIVATE_DATA->context);
+				    context);
 		goto cleanup;
 	}
 
@@ -661,7 +669,7 @@ static void *thread_capture(void *user_data)
 				    "gp_file_get_data_and_size",
 				    rc,
 				    PRIVATE_DATA->camera,
-				    PRIVATE_DATA->context);
+				    context);
 		goto cleanup;
 	}
 
@@ -678,14 +686,14 @@ static void *thread_capture(void *user_data)
 		rc = gp_camera_file_delete(PRIVATE_DATA->camera,
 					   camera_file_path.folder,
 					   camera_file_path.name,
-					   PRIVATE_DATA->context);
+					   context);
 		if (rc < GP_OK)
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
 					    "gp_camera_file_delete",
 					    rc,
 					    PRIVATE_DATA->camera,
-					    PRIVATE_DATA->context);
+					    context);
 	}
 
 cleanup:
@@ -697,254 +705,13 @@ cleanup:
 	return NULL;
 }
 
-static int find_slot_of_device(const char *name, const char *value)
-{
-	if (!name || !value)
-		return -1;
-
-	for (uint8_t slot = 0; slot < MAX_DEVICES; slot++) {
-		indigo_device *device = devices[slot];
-
-		if (devices[slot] && !strcmp(name, PRIVATE_DATA->name) &&
-		    !strcmp(value, PRIVATE_DATA->value))
-			return slot;
-	}
-
-	return -1;
-}
-
-static int find_free_slot(const char *name, const char *value)
-{
-	if (!name || !value)
-		return -1;
-
-	for (uint8_t slot = 0; slot < MAX_DEVICES; slot++)
-		if (!devices[slot])
-			return slot;
-
-	return -1;
-}
-
-static int attach_device_in_slot(const int slot, const char *name,
-				 const char *value,
-				 indigo_device *gphoto2_template)
-{
-	int rc;
-	gphoto2_private_data *private_data = NULL;
-	indigo_device *device = NULL;
-
-	private_data = calloc(1, sizeof(gphoto2_private_data));
-	if (!private_data) {
-		rc = -errno;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", strerror(errno));
-		goto err_cleanup;
-	}
-
-	/* Create new context to be used by frontend. */
-	private_data->context = gp_context_new();
-	gp_context_set_error_func(private_data->context,
-				  ctx_error_func, NULL);
-	gp_context_set_message_func(private_data->context,
-				    ctx_status_func, NULL);
-
-	/* Allocate memory for camera. */
-	rc = gp_camera_new(&private_data->camera);
-	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gp_camera_new failed: %d", rc);
-		goto err_cleanup;
-	}
-
-	/* Initiate a connection to the camera. */
-	rc = gp_camera_init(private_data->camera, private_data->context);
-	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gp_camera_init failed: %d", rc);
-		goto err_cleanup;
-	}
-
-	private_data->name = strdup(name);
-	private_data->value = strdup(value);
-	private_data->libgphoto2_version = strdup(
-		*gp_library_version(GP_VERSION_SHORT));
-
-	device = calloc(1, sizeof(indigo_device));
-	if (!device) {
-		rc = -errno;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", strerror(errno));
-		goto err_cleanup;
-	}
-	indigo_device *master_device = device;
-
-	memcpy(device, gphoto2_template, sizeof(indigo_device));
-	device->master_device = master_device;
-
-	sprintf(device->name, "%s %s", name, value);
-	device->private_data = private_data;
-
-	rc = indigo_attach_device(device);
-	if (rc != INDIGO_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_attach_device failed: %d", rc);
-		rc = -rc;
-		goto err_cleanup;
-	}
-
-	devices[slot] = device;
-
-	return rc;
-
-err_cleanup:
-	if (private_data) {
-		if (private_data->name) {
-			free(private_data->name);
-			private_data->name = NULL;
-		}
-		if (private_data->value) {
-			free(private_data->value);
-			private_data->value = NULL;
-		}
-		if (private_data->libgphoto2_version) {
-			free(private_data->libgphoto2_version);
-			private_data->libgphoto2_version = NULL;
-		}
-		free(private_data);
-		private_data = NULL;
-	}
-	if (device) {
-		free(device);
-		device = NULL;
-	}
-
-	return rc;
-}
-
-static int add_camera_device(CameraList *camera_list, indigo_device *device)
-{
-	int rc = -1;
-
-	for (int n = 0; n < gp_list_count(camera_list); n++) {
-
-		int slot;
-		const char *name = NULL;
-		const char *value = NULL;
-
-		gp_list_get_name(camera_list, n, &name);
-		gp_list_get_value(camera_list, n, &value);
-
-		/* Device already exists in devices[...]. */
-		if (find_slot_of_device(name, value) >= 0)
-			continue;
-
-		slot = find_free_slot(name, value);
-		if (slot < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME,
-					    "no free slot for plugged "
-					    "device %s %s found", name, value);
-			return -1;
-		}
-
-		rc = attach_device_in_slot(slot, name, value, device);
-		if (rc < 0)
-			return rc;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s %s in slot: %d",
-				    name, value, slot);
-	}
-
-	return rc;
-}
-
-static int remove_camera_device(CameraList *camera_list)
-{
-	int rc = -1;
-	bool devices_keep[MAX_DEVICES] = {false};
-
-	for (int c = 0; c < gp_list_count(camera_list); c++) {
-
-		int slot;
-		const char *name = NULL;
-		const char *value = NULL;
-
-		gp_list_get_name(camera_list, c, &name);
-		gp_list_get_value(camera_list, c, &value);
-
-		slot = find_slot_of_device(name, value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "slot: %d %s %s",
-				    slot, name, value);
-		if (slot >= 0)
-			devices_keep[slot] = true;
-	}
-
-	gphoto2_private_data *private_data = NULL;
-
-	for (uint8_t slot = 0; slot < MAX_DEVICES; slot++) {
-		if (!devices_keep[slot] && devices[slot]) {
-
-			indigo_device **device = &devices[slot];
-
-			indigo_detach_device(*device);
-			if ((*device)->private_data) {
-				private_data = (*device)->private_data;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "remove camera: %s %s",
-						    private_data->name,
-						    private_data->value);
-			}
-			if (private_data) {
-				gp_camera_exit(private_data->camera, private_data->context);
-				gp_camera_unref(private_data->camera);
-				private_data->camera = NULL;
-				gp_context_unref(private_data->context);
-				private_data->context = NULL;
-				free(private_data->name);
-				private_data->name = NULL;
-				free(private_data->value);
-				private_data->value = NULL;
-				free(private_data->libgphoto2_version);
-				private_data->libgphoto2_version = NULL;
-				free(private_data);
-			}
-			free(*device);
-			*device = NULL;
-			rc = 0;
-		}
-	}
-
-	return rc;
-}
-
-static int detect_camera_device(indigo_device *device,
-				const libusb_hotplug_flag flag)
-{
-	int rc;
-	CameraList *list = NULL;
-	const char *name = NULL;
-	const char *value = NULL;
-
-	rc = gp_list_new(&list);
-	if (rc < GP_OK)
-		goto out;
-
-	rc = gp_camera_autodetect(list, NULL);
-	if (rc < GP_OK)
-		goto out;
-
-	for (int c = 0; c < gp_list_count(list); c++) {
-		gp_list_get_name(list, c, &name);
-		gp_list_get_value(list, c, &value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME,
-				    "detected camera: %s %s", name, value);
-	}
-
-	rc = flag == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED ?
-		add_camera_device(list, device) :
-		remove_camera_device(list);
-out:
-	if (list)
-		gp_list_free(list);
-
-	return rc;
-}
-
 static void update_property(indigo_device *device, indigo_property *property,
 			    const char *widget)
 {
+	assert(device != NULL);
+	if (!property || !widget)
+		return;
+
 	int rc;
 
 	for (int p = 0; p < property->count; p++) {
@@ -989,6 +756,9 @@ static void update_ccd_property(indigo_device *device,
 
 static void shutterspeed_closest(indigo_device *device)
 {
+	if (!CCD_EXPOSURE_ITEM || !DSLR_SHUTTER_PROPERTY)
+		return;
+
 	const double val = CCD_EXPOSURE_ITEM->number.value;
 	double number_shutter;
 
@@ -1047,7 +817,7 @@ static indigo_result ccd_attach(indigo_device *device)
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 
 		/*--------------------- CCD_INFO --------------------*/
-		char *name = PRIVATE_DATA->name;
+		char *name = PRIVATE_DATA->gphoto2_id.name;
 		CCD_INFO_PROPERTY->hidden = true;
 		for (int i = 0; name[i]; i++)
                         name[i] = toupper(name[i]);
@@ -1231,7 +1001,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 		indigo_property_copy_values(CONNECTION_PROPERTY, property,
 					    false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			device->is_connected = !!(PRIVATE_DATA->camera && PRIVATE_DATA->context);
+			device->is_connected = !!(PRIVATE_DATA->camera && context);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
 			indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
@@ -1348,28 +1118,247 @@ static indigo_result ccd_change_property(indigo_device *device,
 	return indigo_ccd_change_property(device, client, property);
 }
 
+static int find_available_device_slot(void)
+{
+	for (uint8_t slot = 0; slot < MAX_DEVICES; slot++)
+		if (!devices[slot])
+			return slot;
+
+	return -1;
+}
+
+static int find_device_slot(const struct gphoto2_id_s *gphoto2_id)
+{
+	for (uint8_t slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+
+		if (device &&
+			(gphoto2_id->vendor == PRIVATE_DATA->gphoto2_id.vendor) &&
+			(gphoto2_id->product == PRIVATE_DATA->gphoto2_id.product) &&
+			(gphoto2_id->bus == PRIVATE_DATA->gphoto2_id.bus) &&
+			(gphoto2_id->port == PRIVATE_DATA->gphoto2_id.port))
+			return slot;
+	}
+
+	return -1;
+}
+
+static int device_connect(indigo_device *gphoto2_template,
+			  const struct gphoto2_id_s *gphoto2_id, const int slot)
+{
+	int rc;
+	gphoto2_private_data *private_data = NULL;
+	indigo_device *device = NULL;
+
+	private_data = calloc(1, sizeof(gphoto2_private_data));
+	if (!private_data) {
+		rc = -errno;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", strerror(errno));
+		goto cleanup;
+	}
+
+	/* All devices share the same context. */
+	if (!context) {
+		context = gp_context_new();
+		gp_context_set_error_func(context,
+					  ctx_error_func, NULL);
+		gp_context_set_message_func(context,
+					    ctx_status_func, NULL);
+	}
+
+	/* Allocate memory for camera. */
+	rc = gp_camera_new(&private_data->camera);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gp_camera_new failed: %d", rc);
+		goto cleanup;
+	}
+
+	/* Initiate a connection to the camera. */
+	rc = gp_camera_init(private_data->camera, context);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gp_camera_init failed: %d", rc);
+		goto cleanup;
+	}
+
+	memcpy(&private_data->gphoto2_id, gphoto2_id, sizeof(struct gphoto2_id_s));
+	strncpy(private_data->libgphoto2_version, *gp_library_version(GP_VERSION_SHORT),
+		sizeof(private_data->libgphoto2_version));
+
+	device = calloc(1, sizeof(indigo_device));
+	if (!device) {
+		rc = -errno;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", strerror(errno));
+		goto cleanup;
+	}
+
+	indigo_device *master_device = device;
+	memcpy(device, gphoto2_template, sizeof(indigo_device));
+	device->master_device = master_device;
+
+	sprintf(device->name, "%s", gphoto2_id->name);
+	device->private_data = private_data;
+
+	indigo_async((void *)(void *)indigo_attach_device, device);
+	devices[slot] = device;
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "attach device '%s' in slot '%d'",
+		gphoto2_id->name_extended, slot);
+
+	return rc;
+
+cleanup:
+	if (private_data) {
+		free(private_data);
+		private_data = NULL;
+	}
+	if (device) {
+		free(device);
+		device = NULL;
+	}
+
+	return rc;
+}
+
+static int device_attach(indigo_device *gphoto2_template,
+			 struct gphoto2_id_s *gphoto2_id)
+{
+	int rc;
+	int slot;
+	CameraList *list = NULL;
+	const char *name = NULL;
+	const char *value = NULL;
+	char value_libusb[12] = {0};
+
+	snprintf(value_libusb, sizeof(value_libusb), "usb:%03d,%03d",
+		 gphoto2_id->bus, gphoto2_id->port);
+
+	rc = gp_list_new(&list);
+	if (rc < GP_OK)
+		goto out;
+
+	rc = gp_camera_autodetect(list, context);
+	if (rc < GP_OK)
+		goto out;
+
+	for (int c = 0; c < gp_list_count(list); c++) {
+		gp_list_get_name(list, c, &name);
+		gp_list_get_value(list, c, &value);
+
+		if (strcmp(value, value_libusb))
+			continue;
+
+		strncpy(gphoto2_id->name, name, sizeof(gphoto2_id->name));
+		snprintf(gphoto2_id->name_extended, sizeof(gphoto2_id->name_extended),
+			 "%s %04x:%04x (bus %03d, device %03d)",
+			 name, gphoto2_id->vendor, gphoto2_id->product,
+			 gphoto2_id->bus, gphoto2_id->port);
+
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "auto-detected device '%s'",
+				  gphoto2_id->name_extended);
+
+		/* Device already exists in devices[...]. */
+		if (find_device_slot(gphoto2_id) >= 0)
+			continue;
+
+		/* Find free slot to attach device to. */
+		slot = find_available_device_slot();
+		if (slot < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "no free slot for plugged "
+					    "device '%s' found", gphoto2_id->name_extended);
+			goto out;
+
+		}
+		rc = device_connect(gphoto2_template, gphoto2_id, slot);
+		if (rc)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "connecting failed slot '%d' device '%s'",
+					    slot, gphoto2_id->name_extended);
+	}
+
+out:
+	if (list)
+		gp_list_free(list);
+
+	return rc;
+}
+
+static int device_detach(const struct gphoto2_id_s *gphoto2_id)
+{
+	int rc, slot;
+	gphoto2_private_data *private_data = NULL;
+
+	slot = find_device_slot(gphoto2_id);
+	if (slot < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "no slot found for device %04x:%04x "
+				    "(bus %03d, device %03d) to be detached",
+				    gphoto2_id->vendor, gphoto2_id->product,
+				    gphoto2_id->bus, gphoto2_id->port);
+		return slot;
+	}
+
+	indigo_device **device = &devices[slot];
+
+	if (*device && (*device)->private_data) {
+		rc = indigo_detach_device(*device);
+		if (rc) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%] failed detaching device: '%s'",
+					    rc, private_data->gphoto2_id.name_extended);
+			return -rc;
+		}
+
+		private_data = (*device)->private_data;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "detach device '%s' from slot '%d'",
+				  private_data->gphoto2_id.name_extended, slot);
+
+		gp_camera_exit(private_data->camera, context);
+		gp_camera_unref(private_data->camera);
+		private_data->camera = NULL;
+		free(private_data);
+		private_data = NULL;
+		free(*device);
+		*device = NULL;
+		rc = 0;
+	}
+
+	return rc;
+}
+
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev,
 			    libusb_hotplug_event event, void *user_data) {
 
 	UNUSED(ctx);
 
-	indigo_device *gphoto2_template = (indigo_device *)user_data;
+	int rc;
 	struct libusb_device_descriptor descriptor;
-	memset(&descriptor, 0, sizeof(descriptor));
+	struct gphoto2_id_s gphoto2_id;
+	indigo_device *gphoto2_template = (indigo_device *)user_data;
+
+	memset(&gphoto2_id, 0, sizeof(struct gphoto2_id_s));
+	memset(&descriptor, 0, sizeof(struct libusb_device_descriptor));
+
+	rc = libusb_get_device_descriptor(dev, &descriptor);
+	if (LIBUSB_SUCCESS != rc) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "error getting device descriptor: %d", rc);
+		return rc;
+	}
+
+	gphoto2_id.bus = libusb_get_bus_number(dev);
+	gphoto2_id.port = libusb_get_device_address(dev);
+	gphoto2_id.vendor = descriptor.idVendor;
+	gphoto2_id.product = descriptor.idProduct;
 
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			libusb_get_device_descriptor(dev, &descriptor);
-			detect_camera_device(gphoto2_template,
-					     LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+			device_attach(gphoto2_template, &gphoto2_id);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			detect_camera_device(gphoto2_template,
-					     LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT);
+			device_detach(&gphoto2_id);
 			break;
 		}
 	}
+
 	return 0;
 }
 
@@ -1398,7 +1387,7 @@ indigo_result indigo_ccd_gphoto2(indigo_driver_action action, indigo_driver_info
 		int rc = libusb_hotplug_register_callback(NULL,
 							  LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED |
 							  LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
-							  0, /* The flag is not defined on some libusbs so better use 0 */ /* LIBUSB_HOTPLUG_ENUMERATE, */
+							  LIBUSB_HOTPLUG_ENUMERATE,
 							  LIBUSB_HOTPLUG_MATCH_ANY,
 							  LIBUSB_HOTPLUG_MATCH_ANY,
 							  LIBUSB_HOTPLUG_MATCH_ANY,
@@ -1414,6 +1403,7 @@ indigo_result indigo_ccd_gphoto2(indigo_driver_action action, indigo_driver_info
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+		gp_context_unref(context);
 		break;
 
 	case INDIGO_DRIVER_INFO:
