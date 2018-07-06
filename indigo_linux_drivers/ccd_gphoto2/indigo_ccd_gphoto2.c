@@ -466,7 +466,7 @@ static void exposure_timer_callback(indigo_device *device)
 
 		rc = pthread_join(thread_id_capture, &retval);
 		if (rc) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] pthread_join");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] pthread_join", rc);
 			return;
 		} else {
 			if (retval == PTHREAD_CANCELED) {
