@@ -477,6 +477,13 @@ static void exposure_timer_callback(indigo_device *device)
 				INDIGO_DRIVER_LOG(DRIVER_NAME,
 						  "capture thread terminated normally");
 		}
+		if (!PRIVATE_DATA->buffer || PRIVATE_DATA->buffer_size == 0) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY,
+					       "exposure failed");
+			return;
+
+		}
 		indigo_process_dslr_image(device,
 					  PRIVATE_DATA->buffer,
 					  PRIVATE_DATA->buffer_size,
