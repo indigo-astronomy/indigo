@@ -62,7 +62,7 @@ pthread_mutex_t cancel_timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void *timer_func(indigo_timer *timer) {
 	while (true) {
 		while (timer->scheduled) {
-			INDIGO_DEBUG(indigo_debug("timer #%d (of %d) used for %gs", timer->timer_id, timer_count, timer->delay));
+			INDIGO_TRACE(indigo_trace("timer #%d (of %d) used for %gs", timer->timer_id, timer_count, timer->delay));
 			if (timer->delay > 0) {
 				struct timespec end;
 				utc_time(&end);
@@ -84,7 +84,7 @@ static void *timer_func(indigo_timer *timer) {
 			}
 		}
 
-		INDIGO_DEBUG(indigo_debug("timer #%d done", timer->timer_id));
+		INDIGO_TRACE(indigo_trace("timer #%d done", timer->timer_id));
 
 		pthread_mutex_lock(&cancel_timer_mutex);
 		indigo_device *device = timer->device;
