@@ -402,11 +402,11 @@ static void set_property(parser_context *context, indigo_property *other, char *
 									property_item->number.step = other_item->number.step;
 								if (property_item->number.value < property_item->number.min) {
 									property_item->number.value = property_item->number.min;
-									indigo_error("%s.%s value out of range", property->name, property_item->name);
+									indigo_debug("%s.%s value out of range", property->name, property_item->name);
 								}
 								if (property_item->number.value > property_item->number.max) {
 									property_item->number.value = property_item->number.max;
-									indigo_error("%s.%s value out of range", property->name, property_item->name);
+									indigo_debug("%s.%s value out of range", property->name, property_item->name);
 								}
 								property_item->number.target = other_item->number.target;
 								break;
