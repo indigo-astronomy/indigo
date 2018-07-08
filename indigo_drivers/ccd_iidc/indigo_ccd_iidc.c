@@ -167,7 +167,7 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 	dc1394error_t err = dc1394_feature_get(PRIVATE_DATA->camera, &info);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_get(%s) -> %s", f, dc1394_error_get_string(err));
 	if (err == DC1394_SUCCESS && info.available) {
-		if (info.is_on != DC1394_ON) {
+		if (info.is_on != DC1394_ON && info.on_off_capable) {
 			err = dc1394_feature_set_power(PRIVATE_DATA->camera, feature, DC1394_ON);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_power(%s, DC1394_ON) -> %s", f, dc1394_error_get_string(err));
 		}
@@ -615,11 +615,25 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 							err = dc1394_video_set_iso_speed(camera, DC1394_ISO_SPEED_400);
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_iso_speed(DC1394_ISO_SPEED_400) -> %s", dc1394_error_get_string(err));
 						}
-						INDIGO_DEBUG_DRIVER(dc1394_camera_print_info(camera, stderr));
+						
+						INDIGO_DEBUG_DRIVER(FILE *tmp = tmpfile());
+						INDIGO_DEBUG_DRIVER(dc1394_camera_print_info(camera, tmp));
 						INDIGO_DEBUG_DRIVER(dc1394featureset_t features);
 						INDIGO_DEBUG_DRIVER(dc1394_feature_get_all(camera, &features));
-						INDIGO_DEBUG_DRIVER(dc1394_feature_print_all(&features, stderr));
-
+						INDIGO_DEBUG_DRIVER(dc1394_feature_print_all(&features, tmp));
+						INDIGO_DEBUG_DRIVER(rewind(tmp));
+						INDIGO_DEBUG_DRIVER(char *line = malloc(1024));
+						INDIGO_DEBUG_DRIVER(size_t line_max_length = 1024);
+            INDIGO_DEBUG_DRIVER(size_t line_length);
+						while ((line_length = getline(&line, &line_max_length, tmp)) != -1) {
+              if (line_length > 2) {
+                line[line_length - 1] = 0;
+                INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", line);
+              }
+            }
+						INDIGO_DEBUG_DRIVER(free(line));
+						INDIGO_DEBUG_DRIVER(fclose(tmp));
+						
 						iidc_private_data *private_data = malloc(sizeof(iidc_private_data));
 						assert(private_data != NULL);
 						memset(private_data, 0, sizeof(iidc_private_data));
@@ -629,7 +643,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						indigo_device *device = malloc(sizeof(indigo_device));
 						assert(device != NULL);
 						memcpy(device, &ccd_template, sizeof(indigo_device));
-						snprintf(device->name, INDIGO_NAME_SIZE, "%s #%0lx", camera->model, camera->guid);
+						snprintf(device->name, INDIGO_NAME_SIZE, "%s #%0llx", camera->model, camera->guid);
 						device->private_data = private_data;
 						for (int j = 0; j < MAX_DEVICES; j++) {
 							if (devices[j] == NULL) {
