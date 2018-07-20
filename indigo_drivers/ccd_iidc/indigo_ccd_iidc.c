@@ -53,14 +53,14 @@ struct {
 	unsigned bits_per_pixel;
 } COLOR_CODING[] = {
 	{ "MONO 8", 8 },
-	{ "YUV 4:1:1", 12 },
-	{ "YUV 4:2:2", 16 },
+	{ "YUV 4:1:1", 24 },
+	{ "YUV 4:2:2", 24 },
 	{ "YUV 4:4:4", 24 },
-	{ "RGB 8", 8 },
+	{ "RGB 8", 24 },
 	{ "MONO 16", 16 },
-	{ "RGB 16", 16 },
+	{ "RGB 16", 48 },
 	{ "MONO 16S", 16 },
-	{ "RGB 16S", 16 },
+	{ "RGB 16S", 48 },
 	{ "RAW 8", 8 },
 	{ "RAW 16", 16 }
 };
@@ -70,25 +70,25 @@ struct {
 	unsigned width, height, bits_per_pixel;
 } LEGACY_MODE[] = {
 	{ "YUV 4:4:4 160x120", 160, 120, 24 },
-	{ "YUV 4:2:2 320x240", 320, 240, 16 },
-	{ "YUV 4:1:1 640x480", 640, 480, 12 },
-	{ "YUV 4:2:2 640x480", 640, 480, 16 },
-	{ "RGB 8 640x480", 640, 480, 8 },
+	{ "YUV 4:2:2 320x240", 320, 240, 24 },
+	{ "YUV 4:1:1 640x480", 640, 480, 24 },
+	{ "YUV 4:2:2 640x480", 640, 480, 24 },
+	{ "RGB 8 640x480", 640, 480, 24 },
 	{ "MONO 8 640x480", 640, 480, 8 },
 	{ "MONO 16 640x480", 640, 480, 16 },
-	{ "YUV 4:2:2 800x600", 800, 600, 16 },
-	{ "RGB 8 800x600", 800, 600, 8 },
+	{ "YUV 4:2:2 800x600", 800, 600, 24 },
+	{ "RGB 8 800x600", 800, 600, 24 },
 	{ "MONO 8 800x600", 800, 600, 8 },
-	{ "YUV 4:2:2 1024x768", 1024, 768, 16 },
-	{ "RGB 8 1024x768", 1024, 768, 8 },
+	{ "YUV 4:2:2 1024x768", 1024, 768, 24 },
+	{ "RGB 8 1024x768", 1024, 768, 24 },
 	{ "MONO 8 1024x768", 1024, 768, 8 },
 	{ "MONO 16 800x600", 800, 600, 16 },
 	{ "MONO 16 1024x768", 1024, 768, 16 },
-	{ "YUV 4:2:2 1280x960", 1280, 960, 16 },
-	{ "RGB 8 1280x960", 1280, 960, 8 },
+	{ "YUV 4:2:2 1280x960", 1280, 960, 24 },
+	{ "RGB 8 1280x960", 1280, 960, 24 },
 	{ "MONO 8 1280x960", 1280, 960, 8 },
-	{ "YUV 4:2:2 1600x1200", 1600, 1200, 16 },
-	{ "RGB 8 1600x1200", 1600, 1200, 8 },
+	{ "YUV 4:2:2 1600x1200", 1600, 1200, 24 },
+	{ "RGB 8 1600x1200", 1600, 1200, 24 },
 	{ "MONO 8 1600x1200", 1600, 1200, 8 },
 	{ "MONO 16 1280x960", 1280, 960, 16 },
 	{ "MONO 16 1600x1200", 1600, 1200, 16 }
@@ -210,15 +210,23 @@ static void exposure_timer_callback(indigo_device *device) {
 		err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_dequeue() -> %s", dc1394_error_get_string(err));
 		if (err == DC1394_SUCCESS) {
-			void *data = frame->image;
-			assert(data != NULL);
-      int width = frame->size[0];
-      int height = frame->size[1];
-      int size = frame->image_bytes;
-			memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
+			if (dc1394_capture_is_frame_corrupt(PRIVATE_DATA->camera, frame) != DC1394_FALSE) {
+				void *data = frame->image;
+				assert(data != NULL);
+				int width = frame->size[0];
+				int height = frame->size[1];
+				int size = frame->image_bytes;
+				if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
+					dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
+				} else {
+					memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
+				}
+				indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Corrupted frame received");
+			}
       err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
       INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-			indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
@@ -242,15 +250,23 @@ static void streaming_timer_callback(indigo_device *device) {
 		err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_dequeue() -> %s", dc1394_error_get_string(err));
 		if (err == DC1394_SUCCESS) {
-			void *data = frame->image;
-			assert(data != NULL);
-      int width = frame->size[0];
-      int height = frame->size[1];
-      int size = frame->image_bytes;
-			memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
+			if (dc1394_capture_is_frame_corrupt(PRIVATE_DATA->camera, frame) != DC1394_FALSE) {
+				void *data = frame->image;
+				assert(data != NULL);
+				int width = frame->size[0];
+				int height = frame->size[1];
+				int size = frame->image_bytes;
+				if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
+					dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
+				} else {
+					memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
+				}
+				indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Corrupted frame received");
+			}
       err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
       INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-			indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
 		} else {
 			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 			break;
@@ -408,7 +424,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(FITS_HEADER_SIZE + 2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value);
+			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(FITS_HEADER_SIZE + (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value / 8) * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value);
 			assert(PRIVATE_DATA->buffer != NULL);
 			if (PRIVATE_DATA->temperature_is_present) {
 				PRIVATE_DATA->temperture_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
