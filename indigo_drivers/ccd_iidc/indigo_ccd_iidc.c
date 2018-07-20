@@ -131,7 +131,7 @@ static void stop_camera(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-static void setup_camera(indigo_device *device) {
+static bool setup_camera(indigo_device *device) {
 	stop_camera(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (!PRIVATE_DATA->connected) {
@@ -152,11 +152,12 @@ static void setup_camera(indigo_device *device) {
 			err = dc1394_format7_set_packet_size(PRIVATE_DATA->camera, mode, packet_size);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_format7_set_packet_size(%d) -> %s", packet_size, dc1394_error_get_string(err));
 		}
-		err = dc1394_capture_setup(PRIVATE_DATA->camera, 2, DC1394_CAPTURE_FLAGS_DEFAULT);
+		err = dc1394_capture_setup(PRIVATE_DATA->camera, 5, DC1394_CAPTURE_FLAGS_DEFAULT);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_setup() -> %s", dc1394_error_get_string(err));
-		PRIVATE_DATA->connected = true;
+		PRIVATE_DATA->connected = (err == DC1394_SUCCESS);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	return PRIVATE_DATA->connected;
 }
 
 static bool setup_feature(indigo_device *device, indigo_item *item, dc1394feature_t feature) {
@@ -203,36 +204,46 @@ static void exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_EXPOSURE_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) -> %s", CCD_EXPOSURE_ITEM->number.value, dc1394_error_get_string(err));
-		setup_camera(device);
-		err = dc1394_video_set_one_shot(PRIVATE_DATA->camera, DC1394_ON);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_one_shot(DC1394_ON) -> %s", dc1394_error_get_string(err));
-		dc1394video_frame_t *frame;
-		err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_dequeue() -> %s", dc1394_error_get_string(err));
-		if (err == DC1394_SUCCESS) {
-			if (dc1394_capture_is_frame_corrupt(PRIVATE_DATA->camera, frame) != DC1394_FALSE) {
-				void *data = frame->image;
-				assert(data != NULL);
-				int width = frame->size[0];
-				int height = frame->size[1];
-				int size = frame->image_bytes;
-				if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
-					dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
+		if (setup_camera(device)) {
+			err = dc1394_video_set_one_shot(PRIVATE_DATA->camera, DC1394_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_one_shot(DC1394_ON) -> %s", dc1394_error_get_string(err));
+			dc1394video_frame_t *frame;
+			pthread_mutex_lock(&PRIVATE_DATA->mutex);
+			err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_dequeue() -> %s", dc1394_error_get_string(err));
+			if (err == DC1394_SUCCESS) {
+				if (dc1394_capture_is_frame_corrupt(PRIVATE_DATA->camera, frame) == DC1394_FALSE) {
+					void *data = frame->image;
+					assert(data != NULL);
+					int width = frame->size[0];
+					int height = frame->size[1];
+					int size = frame->image_bytes;
+					if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
+						dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
+					} else {
+						memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
+					}
+					err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
+					indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
 				} else {
-					memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Corrupted frame received");
+					err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
 				}
-				indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Corrupted frame received");
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 			}
-      err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
-      INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		} else {
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
+	} else {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Capture setup failed");
 	}
 	stop_camera(device);
 }
@@ -241,42 +252,52 @@ static void streaming_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_STREAMING_EXPOSURE_ITEM->number.value);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) -> %s", CCD_STREAMING_EXPOSURE_ITEM->number.value, dc1394_error_get_string(err));
-	setup_camera(device);
-	err = dc1394_video_set_transmission(PRIVATE_DATA->camera, DC1394_ON);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_transmission(DC1394_ON) -> %s", dc1394_error_get_string(err));
-	CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
-	while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-		dc1394video_frame_t *frame;
-		err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_dequeue() -> %s", dc1394_error_get_string(err));
-		if (err == DC1394_SUCCESS) {
-			if (dc1394_capture_is_frame_corrupt(PRIVATE_DATA->camera, frame) != DC1394_FALSE) {
-				void *data = frame->image;
-				assert(data != NULL);
-				int width = frame->size[0];
-				int height = frame->size[1];
-				int size = frame->image_bytes;
-				if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
-					dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
+	if (setup_camera(device)) {
+		err = dc1394_video_set_transmission(PRIVATE_DATA->camera, DC1394_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_transmission(DC1394_ON) -> %s", dc1394_error_get_string(err));
+		CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
+		while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
+			dc1394video_frame_t *frame;
+      pthread_mutex_lock(&PRIVATE_DATA->mutex);
+			err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_dequeue() -> %s", dc1394_error_get_string(err));
+			if (err == DC1394_SUCCESS) {
+				if (dc1394_capture_is_frame_corrupt(PRIVATE_DATA->camera, frame) == DC1394_FALSE) {
+					void *data = frame->image;
+					assert(data != NULL);
+					int width = frame->size[0];
+					int height = frame->size[1];
+					int size = frame->image_bytes;
+					if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
+						dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
+					} else {
+						memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
+					}
+          err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
+          pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+          INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
+					indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
 				} else {
-					memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Corrupted frame received");
+          err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
+          pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+          INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
 				}
-				indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
 			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Corrupted frame received");
+        pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+				break;
 			}
-      err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
-      INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-		} else {
-			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-			break;
+			if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+				CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+			CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		}
-		if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
-			CCD_STREAMING_COUNT_ITEM->number.value -= 1;
-		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+	} else {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Capture setup failed");
 	}
-  stop_camera(device);
+	stop_camera(device);
 	CCD_STREAMING_COUNT_ITEM->number.value = 0;
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
@@ -549,8 +570,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-      dc1394error_t err = dc1394_video_set_transmission(PRIVATE_DATA->camera, DC1394_OFF);
-      INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_transmission(DC1394_OFF) -> %s", dc1394_error_get_string(err));
+//      dc1394error_t err = dc1394_video_set_transmission(PRIVATE_DATA->camera, DC1394_OFF);
+//      INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_transmission(DC1394_OFF) -> %s", dc1394_error_get_string(err));
 			stop_camera(device);
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
