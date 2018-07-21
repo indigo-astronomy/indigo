@@ -25,3 +25,4 @@ indigo_server indigo_ccd_iidc
 Driver is developed and tested with:
 * Atik GP (USB)
 * PTGrey Flea2 (firewire)
+* Imaging Source DMK 31BF03 (firewire)
