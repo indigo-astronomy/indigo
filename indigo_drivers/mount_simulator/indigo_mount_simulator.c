@@ -41,7 +41,7 @@
 
 typedef struct {
 	bool parked;
-	indigo_timer *slew_timer, *guider_timer;
+	indigo_timer *slew_timer, *move_timer, *guider_timer;
 } simulator_private_data;
 
 	// -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -69,6 +69,40 @@ static void slew_timer_callback(indigo_device *device) {
 			MOUNT_RAW_COORDINATES_DEC_ITEM->number.value -= speedDec;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->slew_timer);
+	}
+	indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+	indigo_update_coordinates(device, NULL);
+	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
+}
+
+static void move_timer_callback(indigo_device *device) {
+	double speed = 0;
+	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value)
+		speed = 0.01;
+	else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
+		speed = 0.025;
+	else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value)
+		speed = 0.1;
+	else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value)
+		speed = 0.5;
+	double decStep = 0;
+	if (MOUNT_MOTION_NORTH_ITEM->sw.value)
+		decStep = speed * 15;
+	else if (MOUNT_MOTION_SOUTH_ITEM->sw.value)
+		decStep = -speed * 15;
+	double raStep = 0;
+	if (MOUNT_MOTION_WEST_ITEM->sw.value)
+		raStep = speed;
+	else if (MOUNT_MOTION_EAST_ITEM->sw.value)
+		raStep = -speed;
+	if (raStep == 0 && decStep == 0) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		PRIVATE_DATA->move_timer = NULL;
+	} else {
+		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = fmod(MOUNT_RAW_COORDINATES_RA_ITEM->number.value + raStep * speed + 24, 24);
+		MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = fmod(MOUNT_RAW_COORDINATES_DEC_ITEM->number.value + decStep * speed + 360 + 180, 360) - 180;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->move_timer);
 	}
 	indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 	indigo_update_coordinates(device, NULL);
@@ -160,10 +194,38 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0, slew_timer_callback);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
+		indigo_cancel_timer(device, &PRIVATE_DATA->move_timer);
+		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
+		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+		PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
+			// -------------------------------------------------------------------------------- MOUNT_MOTION_RA
+		indigo_cancel_timer(device, &PRIVATE_DATA->move_timer);
+		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
+		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+		PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 		if (indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer)) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_coordinates(device, NULL);
+		}
+		if (indigo_cancel_timer(device, &PRIVATE_DATA->move_timer)) {
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+			MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+			MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+			MOUNT_MOTION_EAST_ITEM->sw.value = false;
+			MOUNT_MOTION_WEST_ITEM->sw.value = false;
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_coordinates(device, NULL);
 		}
