@@ -229,6 +229,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_coordinates(device, NULL);
 		}
+		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		return INDIGO_OK;
