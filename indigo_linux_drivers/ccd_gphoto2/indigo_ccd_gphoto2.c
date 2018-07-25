@@ -56,6 +56,11 @@
 #define GPHOTO2_NAME_SHUTTER			"Shutter time"
 #define GPHOTO2_NAME_ISO			"ISO"
 #define GPHOTO2_NAME_COMPRESSION		"Compression"
+#define GPHOTO2_NAME_ZOOM_PREVIEW               "Liveview zoom"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM       "5"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM      "1"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_ON            "On"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF           "Off"
 #define GPHOTO2_NAME_MIRROR_LOCKUP		"Use mirror lockup"
 #define GPHOTO2_NAME_MIRROR_LOCKUP_LOCK		"Enable"
 #define GPHOTO2_NAME_MIRROR_LOCKUP_UNLOCK	"Disable"
@@ -83,12 +88,14 @@
 #define EOS_SHUTTERSPEED			NIKON_SHUTTERSPEED
 #define EOS_CAPTURE_TARGET			NIKON_CAPTURE_TARGET
 #define EOS_MEMORY_CARD				NIKON_MEMORY_CARD
+#define EOS_ZOOM_PREVIEW                        "eoszoom"
 #define EOS_REMOTE_RELEASE		        "eosremoterelease"
 #define EOS_PRESS_FULL			        "Press Full"
 #define EOS_RELEASE_FULL		        "Release Full"
 #define EOS_CUSTOMFUNCEX			"customfuncex"
 #define EOS_MIRROR_LOCKUP_ENABLE		"20,1,3,14,1,60f,1,1"
 #define EOS_MIRROR_LOCKUP_DISABLE		"20,1,3,14,1,60f,1,0"
+#define EOS_VIEWFINDER                          "viewfinder"
 
 #define TIMER_THROTTLE_USEC                     10000 /* 10 ms. */
 #define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
@@ -108,6 +115,9 @@
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY	(PRIVATE_DATA->dslr_libgphoto2_version_property)
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM		(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
 #define COMPRESSION                             (PRIVATE_DATA->gphoto2_compression_id)
+#define DSLR_ZOOM_PREVIEW_PROPERTY              (PRIVATE_DATA->dslr_zoom_preview_property)
+#define DSLR_ZOOM_PREVIEW_ON_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 0)
+#define DSLR_ZOOM_PREVIEW_OFF_ITEM		(PRIVATE_DATA->dslr_zoom_preview_property->items + 1)
 #define is_connected				gp_bits
 
 enum vendor {
@@ -140,10 +150,12 @@ typedef struct {
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
+	indigo_property *dslr_zoom_preview_property;
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_delete_image_property;
 	indigo_property *dslr_libgphoto2_version_property;
 	indigo_timer *exposure_timer, *counter_timer;
+	pthread_mutex_t usb_mutex;
 } gphoto2_private_data;
 
 struct capture_abort {
@@ -216,27 +228,37 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	int rc;
 	char *val = NULL;
 
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
 	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
 				  context);
 	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[camera:%p,context:%p] camera get config failed",
+				    PRIVATE_DATA->camera, context);
 		goto cleanup;
 	}
 
 	rc = lookup_widget(widget, key, &child);
-	if (rc < GP_OK) {
+	if (rc < GP_OK)
 		goto cleanup;
-	}
 
 	/* This type check is optional, if you know what type the label
 	 * has already. If you are not sure, better check. */
 	rc = gp_widget_get_type(child, &type);
 	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[camera:%p,context:%p] widget get type failed",
+				    PRIVATE_DATA->camera, context);
 		goto cleanup;
 	}
 
 	/* Get the actual set value on camera. */
 	rc = gp_widget_get_value(child, &val);
 	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[camera:%p,context:%p] widget get value failed",
+				    PRIVATE_DATA->camera, context);
 		goto cleanup;
 	}
 
@@ -247,6 +269,10 @@ static int enumerate_widget(const char *key, indigo_device *device,
 
 	rc = gp_widget_count_choices(child);
 	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[camera:%p,context:%p] widget count "
+				    "choices failed",
+				    PRIVATE_DATA->camera, context);
 		goto cleanup;
 	}
 
@@ -262,6 +288,10 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	while (i < n_choices) {
 		rc = gp_widget_get_choice(child, i, &widget_choice);
 		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[camera:%p,context:%p] widget get "
+					    "choice failed",
+					    PRIVATE_DATA->camera, context);
 			goto cleanup;
 		}
 
@@ -287,20 +317,28 @@ static int enumerate_widget(const char *key, indigo_device *device,
 cleanup:
 	gp_widget_free(widget);
 
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
 	return rc;
 }
 
-static int gphoto2_set_key_val(const char *key, const char *val,
+static int gphoto2_set_key_val(const char *key, const void *val,
+			       CameraWidgetType widget_type,
 			       indigo_device *device)
 {
 	CameraWidget *widget = NULL, *child = NULL;
 	CameraWidgetType type;
 	int rc;
 
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
 	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
 				  context);
 	if (rc < GP_OK) {
-		return rc;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[camera:%p,context:%p] camera get config failed",
+				    PRIVATE_DATA->camera, context);
+		goto cleanup;
 	}
 	rc = lookup_widget(widget, key, &child);
 	if (rc < GP_OK) {
@@ -311,12 +349,16 @@ static int gphoto2_set_key_val(const char *key, const char *val,
 	 * has already. If you are not sure, better check. */
 	rc = gp_widget_get_type(child, &type);
 	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[camera:%p,context:%p] widget get type failed",
+				    PRIVATE_DATA->camera, context);
 		goto cleanup;
 	}
 	switch (type) {
 	case GP_WIDGET_MENU:
 	case GP_WIDGET_RADIO:
 	case GP_WIDGET_TEXT:
+	case GP_WIDGET_TOGGLE:
 		break;
 	default:
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
@@ -336,14 +378,36 @@ static int gphoto2_set_key_val(const char *key, const char *val,
 	/* This stores it on the camera again */
 	rc = gp_camera_set_config(PRIVATE_DATA->camera, widget,
 				  context);
-	if (rc < GP_OK) {
-		return rc;
-	}
+	if (rc < GP_OK)
+		goto cleanup;
 
 cleanup:
 	gp_widget_free(widget);
 
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
 	return rc;
+}
+
+static int gphoto2_set_key_val_char(const char *key, const char *val,
+				    indigo_device *device)
+{
+	/* char* := {GP_WIDGET_TEXT, GP_WIDGET_RADIO, GP_WIDGET_MENU}. */
+	return gphoto2_set_key_val(key, val, GP_WIDGET_TEXT, device);
+}
+
+static int gphoto2_set_key_val_int(const char *key, const int val,
+				   indigo_device *device)
+{
+	/* int := {GP_WIDGET_TOGGLE, GP_WIDGET_DATE}. */
+	return gphoto2_set_key_val(key, &val, GP_WIDGET_TOGGLE, device);
+}
+
+static int gphoto2_set_key_val_float(const char *key, const float val,
+				     indigo_device *device)
+{
+	/* float := {GP_WIDGET_RANGE}. */
+	return gphoto2_set_key_val(key, &val, GP_WIDGET_RANGE, device);
 }
 
 static int gphoto2_get_key_val(const char *key, char **str,
@@ -427,10 +491,19 @@ static long elapsed_time(struct timespec *tp_start)
 
 static int eos_mirror_lockup(const bool enable, indigo_device *device)
 {
-	return gphoto2_set_key_val(EOS_CUSTOMFUNCEX, enable ?
+	return gphoto2_set_key_val_char(EOS_CUSTOMFUNCEX, enable ?
 				   EOS_MIRROR_LOCKUP_ENABLE :
 				   EOS_MIRROR_LOCKUP_DISABLE,
 				   device);
+}
+
+static bool can_preview(indigo_device *device)
+{
+	int rc;
+
+	rc = gphoto2_set_key_val_int(EOS_VIEWFINDER, 0, device);
+
+	return (rc == GP_OK);
 }
 
 static void counter_timer_callback(indigo_device *device)
@@ -497,6 +570,114 @@ static void exposure_timer_callback(indigo_device *device)
 	}
 }
 
+static void streaming_timer_callback(indigo_device *device)
+{
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
+
+	int rc = 0;
+	CameraFile *camera_file = NULL;
+
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "streaming timer callback started");
+
+	rc = gp_file_new(&camera_file);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p] gp_file_new",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    context);
+		goto cleanup;
+	}
+
+	rc = gp_file_set_mime_type(camera_file, GP_MIME_JPEG);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p] gp_file_set_mime_type",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    context);
+		goto cleanup;
+	}
+
+	rc = gphoto2_set_key_val_int(EOS_VIEWFINDER, 1, device);
+	if (rc < GP_OK)
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p] "
+				    "gphoto2_set_key_val_int '%s' '%d'",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    context,
+				    EOS_VIEWFINDER,
+				    1);
+
+	while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
+
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+		rc = gp_camera_capture_preview(PRIVATE_DATA->camera,
+					       camera_file,
+					       context);
+		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p] "
+					    "gp_camera_capture_preview",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			goto cleanup;
+		}
+
+		/* Memory of buffer free'd by gp_file_unref(). */
+		rc = gp_file_get_data_and_size(camera_file,
+					       (const char**)&PRIVATE_DATA->buffer,
+					       &PRIVATE_DATA->buffer_size);
+		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
+					    "gp_file_get_data_and_size",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			goto cleanup;
+		}
+
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+		*CCD_IMAGE_ITEM->blob.url = 0;
+		CCD_IMAGE_ITEM->blob.value = PRIVATE_DATA->buffer;
+		CCD_IMAGE_ITEM->blob.size = PRIVATE_DATA->buffer_size;
+		strncpy(CCD_IMAGE_ITEM->blob.format, ".jpeg", INDIGO_NAME_SIZE);
+		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+
+		if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+			CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+
+		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+	}
+
+	rc = gphoto2_set_key_val_int(EOS_VIEWFINDER, 0, device);
+	if (rc < GP_OK)
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p] "
+				    "gphoto2_set_key_val_int '%s' '%d'",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    context,
+				    EOS_VIEWFINDER,
+				    0);
+
+cleanup:
+	if (camera_file)
+		gp_file_unref(camera_file);
+
+	CCD_STREAMING_PROPERTY->state = rc ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+}
+
 static void thread_capture_abort(void *user_data)
 {
 	int rc;
@@ -506,18 +687,17 @@ static void thread_capture_abort(void *user_data)
 	capture_abort = (struct capture_abort *)user_data;
 	device = capture_abort->device;
 
-	rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_RELEASE_FULL,
+	rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_RELEASE_FULL,
 				 device);
 	if (rc < GP_OK)
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
 				    "[rc:%d,camera:%p,context:%p] "
-				    "gphoto2_set_key_val '%s' '%s'",
+				    "gphoto2_set_key_val_char '%s' '%s'",
 				    rc,
 				    PRIVATE_DATA->camera,
 				    context,
 				    EOS_REMOTE_RELEASE,
 				    EOS_RELEASE_FULL);
-
 
 	if (capture_abort->camera_file)
 		gp_file_unref(capture_abort->camera_file);
@@ -545,10 +725,10 @@ static void *thread_capture(void *user_data)
 	}
 
 	/* Store images on memory card. */
-	rc = gphoto2_set_key_val(EOS_CAPTURE_TARGET, EOS_MEMORY_CARD, device);
+	rc = gphoto2_set_key_val_char(EOS_CAPTURE_TARGET, EOS_MEMORY_CARD, device);
 	if (rc < GP_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
-				    "gphoto2_set_key_val '%s' '%s'",
+				    "gphoto2_set_key_val_char '%s' '%s'",
 				    rc,
 				    PRIVATE_DATA->camera,
 				    context,
@@ -573,12 +753,12 @@ static void *thread_capture(void *user_data)
 
 	/* Mirror-lockup EOS (2500ms). */
 	if (PRIVATE_DATA->mirror_lockup) {
-		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
+		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
 					 device);
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val '%s' '%s'",
+					    "gphoto2_set_key_val_char '%s' '%s'",
 					    rc,
 					    PRIVATE_DATA->camera,
 					    context,
@@ -587,12 +767,12 @@ static void *thread_capture(void *user_data)
 			goto cleanup;
 		}
 
-		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_RELEASE_FULL,
+		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_RELEASE_FULL,
 					 device);
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val '%s' '%s'",
+					    "gphoto2_set_key_val_char '%s' '%s'",
 					    rc,
 					    PRIVATE_DATA->camera,
 					    context,
@@ -622,12 +802,12 @@ static void *thread_capture(void *user_data)
 		long wait_nsec = CCD_EXPOSURE_ITEM->number.target * 1000000000L;
 
 		clock_gettime(CLOCK_MONOTONIC, &tp);
-		rc = gphoto2_set_key_val(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
+		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
 					 device);
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val '%s' '%s'",
+					    "gphoto2_set_key_val_char '%s' '%s'",
 					    rc,
 					    PRIVATE_DATA->camera,
 					    context,
@@ -723,9 +903,9 @@ static void update_property(indigo_device *device, indigo_property *property,
 
 	for (int p = 0; p < property->count; p++) {
 		if (property->items[p].sw.value) {
-			rc = gphoto2_set_key_val(widget,
-						 property->items[p].name,
-						 device);
+			rc = gphoto2_set_key_val_char(widget,
+						      property->items[p].name,
+						      device);
 			if (rc == GP_OK) {
 				property->state = INDIGO_OK_STATE;
 				indigo_update_property(device, property, NULL);
@@ -885,6 +1065,27 @@ static indigo_result ccd_attach(indigo_device *device)
 									count);
 		enumerate_widget(COMPRESSION, device, DSLR_COMPRESSION_PROPERTY);
 
+		/*----------------------- ZOOM-PREVIEW -----------------------*/
+		DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL,
+									 device->name,
+									 DSLR_ZOOM_PREVIEW_PROPERTY_NAME,
+									 GPHOTO2_NAME_DSLR,
+									 GPHOTO2_NAME_ZOOM_PREVIEW,
+									 INDIGO_IDLE_STATE,
+									 INDIGO_RW_PERM,
+									 INDIGO_ONE_OF_MANY_RULE,
+									 2);
+		indigo_init_switch_item(DSLR_ZOOM_PREVIEW_ON_ITEM,
+					GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM,
+					GPHOTO2_NAME_ZOOM_PREVIEW_ON,
+					false);
+		indigo_init_switch_item(DSLR_ZOOM_PREVIEW_OFF_ITEM,
+					GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM,
+					GPHOTO2_NAME_ZOOM_PREVIEW_OFF,
+					false);
+		if (!can_preview(device))
+			DSLR_ZOOM_PREVIEW_PROPERTY->hidden = true;
+
 		/*------------------------ MIRROR-LOCKUP -----------------------*/
 		DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_switch_property(NULL,
 									  device->name,
@@ -959,6 +1160,13 @@ static indigo_result ccd_attach(indigo_device *device)
 #ifdef UNIVERSE_COLLAPSES
 		CCD_EXPOSURE_ITEM->number.max = number_max;
 #endif
+
+		/*----------------------- CCD-STREAMING ----------------------*/
+		if (can_preview(device)) {
+			CCD_MODE_PROPERTY->count = 1;
+			CCD_STREAMING_PROPERTY->hidden = false;
+		}
+
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -978,6 +1186,7 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_SHUTTER_PROPERTY);
 	indigo_release_property(DSLR_ISO_PROPERTY);
 	indigo_release_property(DSLR_COMPRESSION_PROPERTY);
+	indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
 	indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
 	indigo_release_property(GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY);
@@ -1014,6 +1223,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 			indigo_define_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
@@ -1022,6 +1232,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 				indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 				indigo_delete_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
@@ -1049,6 +1260,13 @@ static indigo_result ccd_change_property(indigo_device *device,
 				COMPRESSION);
 		return INDIGO_OK;
 	}
+	/*--------------------------- ZOOM-PREVIEW ---------------------------*/
+	else if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property) &&
+		 CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_property_copy_values(DSLR_ZOOM_PREVIEW_PROPERTY, property, false);
+		update_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, EOS_ZOOM_PREVIEW);
+		return INDIGO_OK;
+	}
 	/*-------------------------- MIRROR-LOCKUP ---------------------------*/
 	else if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property)) {
 		indigo_property_copy_values(DSLR_MIRROR_LOCKUP_PROPERTY, property, false);
@@ -1071,7 +1289,8 @@ static indigo_result ccd_change_property(indigo_device *device,
 	}
 	/*--------------------------- CCD-EXPOSURE ---------------------------*/
 	else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ||
+		    CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
@@ -1119,7 +1338,35 @@ static indigo_result ccd_change_property(indigo_device *device,
 						       CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 				return INDIGO_FAILED;
 			}
+		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE &&
+			   CCD_STREAMING_COUNT_ITEM->number.value != 0) {
+			CCD_STREAMING_COUNT_ITEM->number.value = 0;
+
+			/* Streaming stops, set preview zoom (on/off) to false. */
+			DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value = false;
+			DSLR_ZOOM_PREVIEW_OFF_ITEM->sw.value = false;
+			indigo_update_property(device,
+					       DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 		}
+	}
+	/*---------------------------- CCD-STREAMING -------------------------*/
+	else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ||
+		    CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+			return INDIGO_OK;
+
+		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
+		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+
+		CCD_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.value;
+		indigo_use_shortest_exposure_if_bias(device);
+		shutterspeed_closest(device);
+		update_property(device, DSLR_SHUTTER_PROPERTY, EOS_SHUTTERSPEED);
+
+		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0,
+								streaming_timer_callback);
+		return INDIGO_OK;
 	}
 
 	return indigo_ccd_change_property(device, client, property);
@@ -1176,14 +1423,14 @@ static int device_connect(indigo_device *gphoto2_template,
 	/* Allocate memory for camera. */
 	rc = gp_camera_new(&private_data->camera);
 	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gp_camera_new failed: %d", rc);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] gp_camera_new failed", rc);
 		goto cleanup;
 	}
 
 	/* Initiate a connection to the camera. */
 	rc = gp_camera_init(private_data->camera, context);
 	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "gp_camera_init failed: %d", rc);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d] gp_camera_init failed", rc);
 		goto cleanup;
 	}
 
