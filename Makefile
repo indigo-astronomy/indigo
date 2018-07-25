@@ -16,7 +16,8 @@ ENABLE_SHARED=yes
 BUILD_ROOT=build
 BUILD_BIN=$(BUILD_ROOT)/bin
 BUILD_DRIVERS=$(BUILD_ROOT)/drivers
-BUILD_LIB=$(BUILD_ROOT)/lib
+LIB_DIR=lib
+BUILD_LIB=$(BUILD_ROOT)/$(LIB_DIR)
 BUILD_INCLUDE=$(BUILD_ROOT)/include
 BUILD_SHARE=$(BUILD_ROOT)/share
 
@@ -124,7 +125,7 @@ ifeq ($(OS_DETECTED),Linux)
 		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
 		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 	endif
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lgphoto2 -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
+	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lgphoto2 -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../$(LIB_DIR),-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
@@ -225,7 +226,7 @@ externals/libusb/configure: externals/libusb/configure.ac
 	cd externals/libusb; autoreconf -fiv; cd ../..
 
 externals/libusb/Makefile: externals/libusb/configure
-	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)" --with-pic; cd ../..
+	cd externals/libusb; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)" --with-pic; cd ../..
 
 $(BUILD_LIB)/libusb-1.0.$(SOEXT): externals/libusb/Makefile
 	cd externals/libusb; make; make install; cd ../..
@@ -240,7 +241,7 @@ externals/hidapi/configure: externals/hidapi/configure.ac
 	cd externals/hidapi; autoreconf -fiv; cd ../..
 
 externals/hidapi/Makefile: externals/hidapi/configure
-	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)" --with-pic; cd ../..
+	cd externals/hidapi; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)" --with-pic; cd ../..
 
 $(LIBHIDAPI): externals/hidapi/Makefile
 	cd externals/hidapi; make; make install; cd ../..
@@ -256,9 +257,9 @@ indigo_drivers/ccd_iidc/externals/libdc1394/configure: indigo_drivers/ccd_iidc/e
 
 indigo_drivers/ccd_iidc/externals/libdc1394/Makefile: indigo_drivers/ccd_iidc/externals/libdc1394/configure
 ifeq ($(OS_DETECTED),Darwin)
-	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)" LIBUSB_CFLAGS="$(LIBUSB_CFLAGS)" LIBUSB_LIBS="$(LIBUSB_LIBS)"; cd ../../../..
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)" LIBUSB_CFLAGS="$(LIBUSB_CFLAGS)" LIBUSB_LIBS="$(LIBUSB_LIBS)"; cd ../../../..
 else
-	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)"; cd ../../../..
+	cd indigo_drivers/ccd_iidc/externals/libdc1394; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --disable-libraw1394 --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS) $(UINT)"; cd ../../../..
 endif
 
 $(BUILD_LIB)/libdc1394.a: indigo_drivers/ccd_iidc/externals/libdc1394/Makefile
@@ -285,7 +286,7 @@ $(BUILD_LIB)/libnovas.a: externals/novas/novas.o externals/novas/eph_manager.o e
 #---------------------------------------------------------------------
 
 externals/libjpeg/Makefile: externals/libjpeg/configure
-	cd externals/libjpeg; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)"; cd ../..
+	cd externals/libjpeg; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)"; cd ../..
 
 $(BUILD_LIB)/libjpeg.a: externals/libjpeg/Makefile
 	cd externals/libjpeg; make install; cd ../..
@@ -389,7 +390,7 @@ indigo_drivers/mount_nexstar/externals/libnexstar/configure: indigo_drivers/moun
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; autoreconf -fiv; cd ../../../..
 
 indigo_drivers/mount_nexstar/externals/libnexstar/Makefile: indigo_drivers/mount_nexstar/externals/libnexstar/configure
-	cd indigo_drivers/mount_nexstar/externals/libnexstar; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)"; cd ../../../..
+	cd indigo_drivers/mount_nexstar/externals/libnexstar; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) CFLAGS="$(CFLAGS)"; cd ../../../..
 
 $(BUILD_LIB)/libnexstar.a: indigo_drivers/mount_nexstar/externals/libnexstar/Makefile
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make install; cd ../../../..
@@ -1096,7 +1097,7 @@ indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/configure:
 	rm /tmp/qsiapi-7.6.0.tar.gz
 
 indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/configure
-	cd indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; cd ../../../..
+	cd indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; cd ../../../..
 
 $(BUILD_LIB)/libqsiapi.a: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile
 	cd indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib; make; make install; cd ../../../../..
@@ -1296,7 +1297,7 @@ fliusb-package:
 
 clean: init
 	rm -rf $(BUILD_ROOT)/bin/indigo_server*
-	rm -rf $(BUILD_ROOT)/lib/libindigo*
+	rm -rf $(BUILD_LIB)/libindigo*
 	rm -rf $(BUILD_ROOT)/drivers
 	rm -f indigo_libs/*.o
 	rm -f indigo_server/*.o
