@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_qhy"
 
 #include <stdlib.h>
@@ -129,7 +129,6 @@ typedef struct {
 
 	/* Filter wheel specific */
 	indigo_timer *wheel_timer;
-	int fw_device;
 	int fw_count;
 	int fw_current_slot;
 	int fw_target_slot;
@@ -1287,39 +1286,24 @@ static indigo_result guider_detach(indigo_device *device) {
 
 static void wheel_timer_callback(indigo_device *device) {
 	int res;
+	char currentpos[64];
 
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
-	pthread_mutex_lock(&driver_mutex);
-	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-	if ( res != CE_NO_ERROR ) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
-		pthread_mutex_unlock(&driver_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	res = GetQHYCCDCFWStatus(PRIVATE_DATA->handle, currentpos);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+	if (res != QHYCCD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) = %d.", PRIVATE_DATA->dev_sid, res);
 		return;
 	}
 
-	CFWParams cfwp = {
-		.cfwModel = PRIVATE_DATA->fw_device,
-		.cfwCommand = CFWC_QUERY
-	};
-	CFWResults cfwr;
-	res = sbig_command(CC_CFW, &cfwp, &cfwr);
-	if (res != CE_NO_ERROR) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_QUERY error = %d (%s).", res, sbig_error_string(res));
-		pthread_mutex_unlock(&driver_mutex);
-		return;
-	}
-	pthread_mutex_unlock(&driver_mutex);
-
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_QUERY cfwr.cfwPosition = %d", cfwr.cfwPosition);
-
-	PRIVATE_DATA->fw_current_slot = cfwr.cfwPosition;
-	if ((cfwr.cfwStatus == CFWS_IDLE) && (cfwr.cfwPosition == 0)) {
-		/* Some FWs do not report their position */
-		PRIVATE_DATA->fw_current_slot = PRIVATE_DATA->fw_target_slot;
-	}
+	PRIVATE_DATA->fw_current_slot = currentpos[0] + 1 - '0';
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
-	if (cfwr.cfwStatus == CFWS_IDLE) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_current_slot = %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot);
+
+	if (PRIVATE_DATA->fw_current_slot == PRIVATE_DATA->fw_target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->wheel_timer));
@@ -1348,97 +1332,41 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!DEVICE_CONNECTED) {
+			if (!device->is_connected) {
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				if (sbig_open(device)) {
-					pthread_mutex_lock(&driver_mutex);
-					res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-					if ( res != CE_NO_ERROR ) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
-						pthread_mutex_unlock(&driver_mutex);
-						return INDIGO_FAILED;
-					}
-
-					CFWParams cfwp = {
-						.cfwModel = PRIVATE_DATA->fw_device,
-						.cfwCommand = CFWC_OPEN_DEVICE
-					};
-					CFWResults cfwr;
-					res = sbig_command(CC_CFW, &cfwp, &cfwr);
-					if (res != CE_NO_ERROR) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_OPEN_DEVICE error = %d (%s).", res, sbig_error_string(res));
+				if (qhy_open(device)) {
+					char currentpos[64];
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					res = GetQHYCCDCFWStatus(PRIVATE_DATA->handle, currentpos);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					if (res != QHYCCD_SUCCESS) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) = %d.", PRIVATE_DATA->dev_sid, res);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-						pthread_mutex_unlock(&driver_mutex);
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						return INDIGO_FAILED;
 					}
+					PRIVATE_DATA->fw_current_slot = currentpos[0] + 1 - '0';
+					PRIVATE_DATA->fw_count = 5;
+					PRIVATE_DATA->fw_target_slot = PRIVATE_DATA->fw_current_slot;
 
 					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->fw_count;
-					cfwp.cfwCommand = CFWC_QUERY;
-					res = sbig_command(CC_CFW, &cfwp, &cfwr);
-					if (res != CE_NO_ERROR) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_QUERY error = %d (%s).", res, sbig_error_string(res));
-						cfwp.cfwCommand = CFWC_CLOSE_DEVICE;
-						sbig_command(CC_CFW, &cfwp, &cfwr);
-						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-						pthread_mutex_unlock(&driver_mutex);
-						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-						return INDIGO_FAILED;
-					}
-
-					if (cfwr.cfwPosition == 0) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "The attached filter wheel does not report current filter.");
-						/*  Attached filter wheel does not report current poition => GOTO filter 1 */
-						PRIVATE_DATA->fw_target_slot = 1;
-						cfwp.cfwCommand = CFWC_GOTO;
-						cfwp.cfwParam1 = PRIVATE_DATA->fw_target_slot;
-						res = sbig_command(CC_CFW, &cfwp, &cfwr);
-						if (res != CE_NO_ERROR) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_GOTO error = %d (%s).", res, sbig_error_string(res));
-							cfwp.cfwCommand = CFWC_CLOSE_DEVICE;
-							sbig_command(CC_CFW, &cfwp, &cfwr);
-							CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-							pthread_mutex_unlock(&driver_mutex);
-							indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-							return INDIGO_FAILED;
-						}
-						/* set position to 1 */
-						cfwr.cfwPosition = 1;
-					}
-
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_QUERY at connect cfwr.cfwPosition = %d", cfwr.cfwPosition);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_current_slot = %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-					pthread_mutex_unlock(&driver_mutex);
 					PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
-					set_connected_flag(device);
+					device->is_connected = true;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				}
 			}
 		} else { /* disconnect */
-			if(DEVICE_CONNECTED) {
-				pthread_mutex_lock(&driver_mutex);
-				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-				if ( res != CE_NO_ERROR ) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
-					pthread_mutex_unlock(&driver_mutex);
-					return INDIGO_FAILED;
-				}
-				CFWParams cfwp = {
-					.cfwModel = PRIVATE_DATA->fw_device,
-					.cfwCommand = CFWC_CLOSE_DEVICE
-				};
-				CFWResults cfwr;
-				sbig_command(CC_CFW, &cfwp, &cfwr);
-				pthread_mutex_unlock(&driver_mutex);
-				sbig_close(device);
+			if(device->is_connected) {
+				qhy_close(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				clear_connected_flag(device);
+				device->is_connected = false;
 			}
 		}
-
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
@@ -1452,33 +1380,19 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->fw_target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
 
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Requested filter %d", PRIVATE_DATA->fw_target_slot);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Requested filter %d", PRIVATE_DATA->fw_target_slot);
+			char targetpos = '0' + (PRIVATE_DATA->fw_target_slot - 1);
 
-			pthread_mutex_lock(&driver_mutex);
-			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-			if ( res != CE_NO_ERROR ) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			res = SendOrder2QHYCCDCFW(PRIVATE_DATA->handle, &targetpos, 1);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			if (res != QHYCCD_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SendOrder2QHYCCDCFW(%s) = %d.", PRIVATE_DATA->dev_sid, res);
 				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-				pthread_mutex_unlock(&driver_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				return INDIGO_FAILED;
 			}
-
-			CFWParams cfwp = {
-				.cfwModel = PRIVATE_DATA->fw_device,
-				.cfwCommand = CFWC_GOTO,
-				.cfwParam1 = PRIVATE_DATA->fw_target_slot
-			};
-			CFWResults cfwr;
-			res = sbig_command(CC_CFW, &cfwp, &cfwr);
-			if (res != CE_NO_ERROR) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_GOTO error = %d (%s).", res, sbig_error_string(res));
-				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-				pthread_mutex_unlock(&driver_mutex);
-				return INDIGO_FAILED;
-			}
-			pthread_mutex_unlock(&driver_mutex);
 			PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
