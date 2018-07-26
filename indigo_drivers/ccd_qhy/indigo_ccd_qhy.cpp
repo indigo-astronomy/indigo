@@ -1380,8 +1380,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->fw_target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
 
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Requested filter %d", PRIVATE_DATA->fw_target_slot);
 			char targetpos = '0' + (PRIVATE_DATA->fw_target_slot - 1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Requested filter %d %c", PRIVATE_DATA->fw_target_slot, targetpos);
 
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = SendOrder2QHYCCDCFW(PRIVATE_DATA->handle, &targetpos, 1);
