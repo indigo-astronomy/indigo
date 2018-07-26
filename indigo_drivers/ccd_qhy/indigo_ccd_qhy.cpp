@@ -1299,7 +1299,7 @@ static void wheel_timer_callback(indigo_device *device) {
 		return;
 	}
 
-	PRIVATE_DATA->fw_current_slot = currentpos[0] + 1 - '0';
+	PRIVATE_DATA->fw_current_slot = currentpos[0] + 2 - '0';
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_current_slot = %d %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot, currentpos[0]);
 
@@ -1346,7 +1346,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						return INDIGO_FAILED;
 					}
-					PRIVATE_DATA->fw_current_slot = currentpos[0] + 1 - '0';
+					PRIVATE_DATA->fw_current_slot = currentpos[0] + 2 - '0';
 					PRIVATE_DATA->fw_count = 5;
 					PRIVATE_DATA->fw_target_slot = PRIVATE_DATA->fw_current_slot;
 
