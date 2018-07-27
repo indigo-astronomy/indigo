@@ -131,7 +131,7 @@ typedef struct {
 	indigo_timer *wheel_timer;
 	int fw_count;
 	int fw_current_slot;
-	int fw_target_slot;
+	char fw_target_slot;
 
 	indigo_property *pixel_format_property;
 	indigo_property *qhy_advanced_property;
@@ -1290,24 +1290,26 @@ static void wheel_timer_callback(indigo_device *device) {
 
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = GetQHYCCDCFWStatus(PRIVATE_DATA->handle, currentpos);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	int checktimes = 0;
+	while(checktimes < 90) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = GetQHYCCDCFWStatus(PRIVATE_DATA->handle, currentpos);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-	if (res != QHYCCD_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) = %d.", PRIVATE_DATA->dev_sid, res);
-		return;
+		if (res != QHYCCD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) = %d.", PRIVATE_DATA->dev_sid, res);
+			return;
+		}
+		PRIVATE_DATA->fw_current_slot = WHEEL_SLOT_ITEM->number.value;
+		//WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_current_slot = %d %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot, currentpos[0]);
+
+		if (currentpos[0] == (PRIVATE_DATA->fw_target_slot + 1)) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BREAK");
+			break;
+		}
 	}
-
-	PRIVATE_DATA->fw_current_slot = currentpos[0] + 2 - '0';
-	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_current_slot = %d %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot, currentpos[0]);
-
-	if (PRIVATE_DATA->fw_current_slot == PRIVATE_DATA->fw_target_slot) {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->wheel_timer));
-	}
+	WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
@@ -1336,22 +1338,22 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (qhy_open(device)) {
-					char currentpos[64];
+					char targetpos = '0';
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					res = GetQHYCCDCFWStatus(PRIVATE_DATA->handle, currentpos);
+					res = SendOrder2QHYCCDCFW(PRIVATE_DATA->handle, &targetpos, 1);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res != QHYCCD_SUCCESS) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) = %d.", PRIVATE_DATA->dev_sid, res);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SendOrder2QHYCCDCFW(%s) = %d.", PRIVATE_DATA->dev_sid, res);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						return INDIGO_FAILED;
 					}
-					PRIVATE_DATA->fw_current_slot = currentpos[0] + 2 - '0';
+					PRIVATE_DATA->fw_current_slot = -1;
 					PRIVATE_DATA->fw_count = 5;
-					PRIVATE_DATA->fw_target_slot = PRIVATE_DATA->fw_current_slot;
+					PRIVATE_DATA->fw_target_slot = '0';
 
 					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->fw_count;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_current_slot = %d %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot, currentpos[0]);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_current_slot = %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					PRIVATE_DATA->wheel_timer = indigo_set_timer(device, 0.5, wheel_timer_callback);
 					device->is_connected = true;
@@ -1373,15 +1375,14 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->fw_current_slot) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->fw_target_slot = WHEEL_SLOT_ITEM->number.value;
+			int fw_target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
 
-			char targetpos = '0' + (PRIVATE_DATA->fw_target_slot - 1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Requested filter %d %c", PRIVATE_DATA->fw_target_slot, targetpos);
+			char targetpos = '0' + (fw_target_slot - 1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Requested filter %d %c", fw_target_slot, targetpos);
+			PRIVATE_DATA->fw_target_slot = targetpos;
 
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = SendOrder2QHYCCDCFW(PRIVATE_DATA->handle, &targetpos, 1);
