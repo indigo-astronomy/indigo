@@ -1339,7 +1339,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (qhy_open(device)) {
-					char targetpos = '0';
+					char targetpos = '1';
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = SendOrder2QHYCCDCFW(PRIVATE_DATA->handle, &targetpos, 1);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1351,7 +1351,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 					}
 					PRIVATE_DATA->fw_current_slot = -1;
 					PRIVATE_DATA->fw_count = 5;
-					PRIVATE_DATA->fw_target_slot = '1';
+					PRIVATE_DATA->fw_target_slot = targetpos;
 
 					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->fw_count;
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SendOrder2QHYCCDCFW(%s) fw_current_slot = %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot);
