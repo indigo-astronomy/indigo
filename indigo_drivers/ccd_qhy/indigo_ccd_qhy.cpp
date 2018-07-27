@@ -1302,7 +1302,7 @@ static void wheel_timer_callback(indigo_device *device) {
 		}
 		PRIVATE_DATA->fw_current_slot = WHEEL_SLOT_ITEM->number.value;
 		//WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_current_slot = %d %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot, currentpos[0]);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_target_slot = %d %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_target_slot, currentpos[0]);
 
 		if (currentpos[0] == (PRIVATE_DATA->fw_target_slot + 1)) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BREAK");
