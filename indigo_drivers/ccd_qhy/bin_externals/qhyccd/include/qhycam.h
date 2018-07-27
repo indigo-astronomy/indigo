@@ -26,62 +26,61 @@
  * @file qhycam.h
  * @brief QHYCAM class define
  */
+#ifndef _QHYCAM_H_
+#define _QHYCAM_H_
 
 #include <math.h>
 #include "qhyccdstruct.h"
+#include "unlockimagequeue.h"
 
 #ifdef WIN32
 #include "CyAPI.h"
 #include <process.h>
-
-#else
-
+#else // Linux & Mac 
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <libusb-1.0/libusb.h>
-
-#endif
+#endif // WIN32
 
 #include "stdint.h"
-
-#ifndef __QHYCAMDEF_H__
-#define __QHYCAMDEF_H__
-
 
 #define IDLE 0
 #define EXPOSING 1
 #define DOWNLOADING 2
 
+#define QHYCCD_USBTYPE_NONE    (0xFF)
+#define QHYCCD_USBTYPE_CYUSB   (0x00)
+#define QHYCCD_USBTYPE_WINUSB  (0x01)
 
-#define QHYCCD_USBTYPE_NONE    0xFF
-#define QHYCCD_USBTYPE_CYUSB   0x00
-#define QHYCCD_USBTYPE_WINUSB  0x01
+#define LIBUSB_PACKET_LENGTH  (4096)
+#define LIBUSB_WR_TIMEOUT  (5000)
 
-#define USB_PACKET_LENGTH  4096
-#define USB_TIMEOUT  1000
-#define USB_ENDPOINT  0x81
-#define CAM_16_BITS  16
+#define LIBUSB_CONTROL_TRANSFER_RD_TIMEOUT (5000)
+#define LIBUSB_CONTROL_TRANSFER_WR_TIMEOUT (1000)
 
-/**
- * typedef the libusb_deivce qhyccd_device
- */
-#ifdef LINUX
-typedef struct libusb_device qhyccd_device;
-#endif
+#define LIBUSB_BULK_TRANSFER_RD_TIMEOUT  (5000) 
+#define LIBUSB_BULK_TRANSFER_WR_TIMEOUT  (1000) 
+
+#define LIBUSB_ASYNC_BULK_TRANSFER_TIMEOUT (3600000)
+
+#define EVENT_TIMEOUT_SEC (5)
+#define EVENT_TIMEOUT_USEC (0);
+
+#define USB_ENDPOINT  (0x81)
+#define CAM_16_BITS  (16)
+
 #ifdef WIN32
-typedef void* qhyccd_device;
-#endif
 
-/**
- * typedef the libusb_deivce_handle qhyccd_handle
- */
-#ifdef LINUX
-typedef struct libusb_device_handle qhyccd_handle;
-#endif
-#ifdef WIN32
+typedef void *qhyccd_device;
 typedef CCyUSBDevice qhyccd_handle;
-#endif
+
+#else // Linux & Mac
+
+typedef struct libusb_device qhyccd_device;
+typedef struct libusb_device_handle qhyccd_handle;
+
+#endif // WIN32
 
 /**
  * @brief QHYCAM class define
@@ -93,7 +92,25 @@ public:
 
     QHYCAM(); 
     virtual ~QHYCAM();
-
+    
+    //inline UnlockImageQueue *GetImageQueue() {
+    //	return m_pImageQueue;
+    //}
+    
+    //static void* EventThreadFunc(void *arg);
+    //static void AsyImageDataCallBack(struct libusb_transfer *transfer);
+    
+    //int AllocFillSubmitBulkTransfers(qhyccd_handle *pCamera);        
+    //int32_t InitAsyQCamLive2(qhyccd_handle *pDevHandle, int32_t x, int32_t y, int32_t depth, int32_t frameSize);
+    //bool BeginAsyQCamLive2(qhyccd_handle *pDevHandle);
+    //void StopAsyQCamLive2(qhyccd_handle *pDevHandle);
+    //uint32_t ReadAsyQCamLiveFrame2(qhyccd_handle *pDevHandle, uint8_t *pBuffer, int32_t *pFrameFlag);   
+    //void SetFlagRawExit2(bool value);
+    //int GetEventCount2();
+    //int IncreaseEventCount2();
+    //int DecreaseEventCount2();
+    //bool IsFlagRawExit2();
+    
     /**
      @fn uint32_t openCamera(qhyccd_deivce *d,qhyccd_handle **h)
      @brief open the camera,open the device handle
@@ -519,7 +536,7 @@ public:
     static void *pollHandleEvents(void *arg);
     static void findCompleteFrame(uint8_t *rawarray, uint32_t length);
     static void asyImageDataCallBack(struct libusb_transfer *transfer);
-
+    
     uint32_t camstatus; // the camera current status
     uint32_t ep1num; // ep1in transfer data length
     uint32_t usbintrep; // usb interrupt read endpoint
@@ -536,16 +553,18 @@ public:
     uint8_t usbintwep; // usb interrupt write endpoint
     uint8_t intepflag;
     uint8_t usbtype;
-    uint8_t m_UsbPacket[USB_PACKET_LENGTH];
+    uint8_t m_UsbPacket[LIBUSB_PACKET_LENGTH];
     
     CCDREG ccdreg; // ccd registers params
     BIOREG imgreg; // bioccd registers params 
+    char timeStampStr[128];
 
 #ifdef WIN32
     CRITICAL_SECTION csep;
 #else
     pthread_mutex_t mutex;
 #endif
+    
 };
 
 #endif
