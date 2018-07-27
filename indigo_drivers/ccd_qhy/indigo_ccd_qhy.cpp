@@ -1351,7 +1351,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 					}
 					PRIVATE_DATA->fw_current_slot = -1;
 					PRIVATE_DATA->fw_count = 5;
-					PRIVATE_DATA->fw_target_slot = '0';
+					PRIVATE_DATA->fw_target_slot = '1';
 
 					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = PRIVATE_DATA->fw_count;
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SendOrder2QHYCCDCFW(%s) fw_current_slot = %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_current_slot);
