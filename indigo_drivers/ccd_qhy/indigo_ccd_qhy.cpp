@@ -1349,7 +1349,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						return INDIGO_FAILED;
 					}
-					PRIVATE_DATA->fw_current_slot = -1;
+					PRIVATE_DATA->fw_current_slot = 1;
 					PRIVATE_DATA->fw_count = 5;
 					PRIVATE_DATA->fw_target_slot = targetpos;
 
