@@ -1550,7 +1550,9 @@ static void process_plug_event() {
 		return;
 	}
 	int check_st4 = IsQHYCCDControlAvailable(handle, CONTROL_ST4PORT);
-	int check_wheel = IsQHYCCDControlAvailable(handle, CONTROL_CFWPORT);
+	int check_wheel = QHYCCD_ERROR;
+	if (IsQHYCCDControlAvailable(handle, CONTROL_CFWPORT) == QHYCCD_SUCCESS)
+		check_wheel = IsQHYCCDCFWPlugged(handle);
 	indigo_get_usb_path(libusb_get_device(handle), dev_usbpath);
 	CloseQHYCCD(handle);
 
