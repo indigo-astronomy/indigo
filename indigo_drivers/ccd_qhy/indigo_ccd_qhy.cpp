@@ -1291,7 +1291,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
 	int checktimes = 0;
-	while(checktimes < 90) {
+	while(checktimes++ < 90) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = GetQHYCCDCFWStatus(PRIVATE_DATA->handle, currentpos);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
