@@ -1379,7 +1379,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			int fw_target_slot = WHEEL_SLOT_ITEM->number.value;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
+			PRIVATE_DATA->fw_current_slot = WHEEL_SLOT_ITEM->number.value;
 
 			char targetpos = '0' + (fw_target_slot - 1);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Requested filter %d %c", fw_target_slot, targetpos);
