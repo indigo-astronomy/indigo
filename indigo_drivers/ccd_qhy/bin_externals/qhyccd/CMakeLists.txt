@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 PROJECT(libqhy C CXX)
 
-set(SBIG_VERSION "2.84")
-set(SBIG_SOVERSION "2")
-
 set(FIRMWARE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/firmware/qhy/")
 set(UDEVRULES_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/udev/rules.d" CACHE STRING "Base directory for udev rules")
 set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib")
