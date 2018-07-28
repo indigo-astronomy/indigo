@@ -105,6 +105,11 @@
 		59F756261DCE5043002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
 		59F756271DCE5049002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
 		59F756281DCE504D002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
+		59FC2EB2210CA58500730343 /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FC2EB1210CA58400730343 /* libgxccd.a */; };
+		59FC2EB4210CA58C00730343 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB3210CA58C00730343 /* gxccd.h */; };
+		59FC2EBA210CA76200730343 /* indigo_ccd_mi_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */; };
+		59FC2EBB210CA76200730343 /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
+		59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */; };
 		9D1880B31E534B5E002F75D7 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D4D64B220A9D947008ECE4B /* indigo_guider_eqmac.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D4D64AE20A9D946008ECE4B /* indigo_guider_eqmac.h */; };
@@ -660,6 +665,13 @@
 		59F654711EE47484007B8C93 /* qhyccd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = qhyccd.h; path = include/qhyccd.h; sourceTree = "<group>"; };
 		59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libhidapi.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		59F756191DCE4F83002CFC82 /* libusb.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libusb.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		59FC2EB1210CA58400730343 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgxccd.a; path = lib/macOS/libgxccd.a; sourceTree = "<group>"; };
+		59FC2EB3210CA58C00730343 /* gxccd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gxccd.h; path = include/gxccd.h; sourceTree = "<group>"; };
+		59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_mi_main.c; sourceTree = "<group>"; };
+		59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_mi.c; sourceTree = "<group>"; };
+		59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_mi.h; sourceTree = "<group>"; };
+		59FC2EB8210CA76200730343 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59FC2EB9210CA76200730343 /* indigo_ccd_mi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_mi.rules; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
 		9D45254120E0F9A1004D1137 /* indigo_ccd_gphoto2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_gphoto2_main.c; sourceTree = "<group>"; };
@@ -1281,6 +1293,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9DB9180C1DFEC19E00678721 /* libnexstar.a in Frameworks */,
+				59FC2EB2210CA58500730343 /* libgxccd.a in Frameworks */,
 				59F654731EE4755F007B8C93 /* libqhy.a in Frameworks */,
 				595AA1D41FC5F26600350E7B /* libnmea.a in Frameworks */,
 				5992F7B71E1EC8EF0035242E /* libfli.a in Frameworks */,
@@ -1876,6 +1889,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				59FC2E90210CA26D00730343 /* ccd_mi */,
 				9D59D3C020D3F828009EA8FF /* ccd_apogee */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
 				59DD69C41FC1CF5B00AEF0DF /* gps_nmea */,
@@ -1993,6 +2007,36 @@
 				59F654711EE47484007B8C93 /* qhyccd.h */,
 			);
 			path = qhyccd;
+			sourceTree = "<group>";
+		};
+		59FC2E90210CA26D00730343 /* ccd_mi */ = {
+			isa = PBXGroup;
+			children = (
+				59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */,
+				59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */,
+				59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */,
+				59FC2EB9210CA76200730343 /* indigo_ccd_mi.rules */,
+				59FC2EB8210CA76200730343 /* README.md */,
+				59FC2E91210CA26D00730343 /* bin_externals */,
+			);
+			path = ccd_mi;
+			sourceTree = "<group>";
+		};
+		59FC2E91210CA26D00730343 /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				59FC2EAC210CA35100730343 /* libgxccd */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		59FC2EAC210CA35100730343 /* libgxccd */ = {
+			isa = PBXGroup;
+			children = (
+				59FC2EB3210CA58C00730343 /* gxccd.h */,
+				59FC2EB1210CA58400730343 /* libgxccd.a */,
+			);
+			path = libgxccd;
 			sourceTree = "<group>";
 		};
 		9D1880BF1E534B89002F75D7 /* indigo_tools */ = {
@@ -2808,6 +2852,7 @@
 				593CFE451DFC8A12003B63D4 /* indigo_wheel_atik.h in Headers */,
 				9D59D5EB20D3F829009EA8FF /* CameraIo.h in Headers */,
 				9D59D62320D3F829009EA8FF /* FilterWheelIo.h in Headers */,
+				59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */,
 				9D59D61B20D3F829009EA8FF /* CamGen2Base.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
 				59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */,
@@ -2829,6 +2874,7 @@
 				9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */,
 				59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */,
 				9D59D65920D3F829009EA8FF /* AltaEthernetIo.h in Headers */,
+				59FC2EB4210CA58C00730343 /* gxccd.h in Headers */,
 				9D59D62620D3F829009EA8FF /* HiC.h in Headers */,
 				9D59D63620D3F829009EA8FF /* LoggerException.h in Headers */,
 				9D59D63C20D3F829009EA8FF /* libCurlWrap.h in Headers */,
@@ -3153,7 +3199,9 @@
 				9D59D5E920D3F829009EA8FF /* LoggerException.cpp in Sources */,
 				59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */,
 				59463C1A20DE6781004950F2 /* indigo_focuser_wemacro_main_bt.c in Sources */,
+				59FC2EBB210CA76200730343 /* indigo_ccd_mi.c in Sources */,
 				59DD69D71FC1DC4900AEF0DF /* indigo_dome_simulator.c in Sources */,
+				59FC2EBA210CA76200730343 /* indigo_ccd_mi_main.c in Sources */,
 				9DF7E64F1F6AA17900156652 /* indigo_ccd_qsi_main.cpp in Sources */,
 				9D59D5ED20D3F829009EA8FF /* CamGen2ModeFsm.cpp in Sources */,
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
@@ -3558,6 +3606,12 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/mac",
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac",
 					"$(PROJECT_DIR)/indigo_drivers/gps_nmea/externals/nmealib/lib",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/Linux/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/Linux/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/Linux/arm",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -3573,6 +3627,12 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/mac",
 					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac",
 					"$(PROJECT_DIR)/indigo_drivers/gps_nmea/externals/nmealib/lib",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/Linux/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/Linux/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/Linux/arm",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
