@@ -1267,6 +1267,7 @@ install:
 	sudo install -D -m 0644 indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/USB2ST4.rules /lib/udev/rules.d/99-indigo_guider_asi.rules
 	sudo install -D -m 0644 indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.rules /lib/udev/rules.d/99-indigo_focuser_usbv3.rules
 	sudo install -D -m 0644 indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.rules /lib/udev/rules.d/99-indigo_focuser_wemacro.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_mi/indigo_ccd_mi.rules /lib/udev/rules.d/99-indigo_ccd_mi.rules
 	sudo udevadm control --reload-rules
 
 #---------------------------------------------------------------------
