@@ -52,6 +52,7 @@ endif
 
 ifeq ($(OS_DETECTED),Darwin)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS/libatik.a
+	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/macOS/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
 	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
 	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac/libASICamera2.a
@@ -65,6 +66,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
+	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/Linux/$(ARCH_DETECTED)/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
 	ifeq ($(ARCH_DETECTED),arm)
 		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/armv6/libEFWFilter.a
@@ -105,7 +107,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
+	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.a $(BUILD_DRIVERS)/indigo_guider_eqmac.a $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.dylib
 endif
@@ -130,7 +132,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(LIBBOOST-REGEX)
+	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(LIBBOOST-REGEX)
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.so
 endif
@@ -304,6 +306,20 @@ $(BUILD_INCLUDE)/libatik/libatik.h: indigo_drivers/ccd_atik/bin_externals/libati
 $(BUILD_LIB)/libatik.a: $(BUILD_INCLUDE)/libatik/libatik.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBATIK) $(BUILD_LIB)
+
+#---------------------------------------------------------------------
+#
+#	Install libgxccd
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/gxccd.h: indigo_drivers/ccd_mi/bin_externals/libgxccd/include/gxccd.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_mi/bin_externals/libgxccd/include/gxccd.h $(BUILD_INCLUDE)
+
+$(BUILD_LIB)/libgxccd.a: $(BUILD_INCLUDE)/gxccd.h
+	install -d $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBGX) $(BUILD_LIB)
 
 #---------------------------------------------------------------------
 #
@@ -782,6 +798,21 @@ $(BUILD_DRIVERS)/indigo_wheel_atik: indigo_drivers/wheel_atik/indigo_wheel_atik_
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
 $(BUILD_DRIVERS)/indigo_wheel_atik.$(SOEXT): indigo_drivers/wheel_atik/indigo_wheel_atik.o $(BUILD_LIB)/libatik.a $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build MI CCD driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_ccd_mi.a: indigo_drivers/ccd_mi/indigo_ccd_mi.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_mi: indigo_drivers/ccd_mi/indigo_ccd_mi_main.o $(BUILD_DRIVERS)/indigo_ccd_mi.a $(BUILD_LIB)/libgxccd.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_ccd_mi.$(SOEXT): indigo_drivers/ccd_mi/indigo_ccd_mi.o $(BUILD_LIB)/libgxccd.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 

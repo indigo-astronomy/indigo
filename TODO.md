@@ -42,10 +42,10 @@
 
 #### CCDs
 
-1. QHY CCD driver __DONE__
+1. QHY CCD driver __DONE__ (unstable SDK)
 2. ASI CCD driver __DONE__
 3. IIDC CCD driver (based on libdc1394) __DONE__
-4. MI CCD driver (based on MI SDK)
+4. MI CCD driver (based on MI SDK) __PARTIALLY_DONE__ (under development)
 5. QSI CCD driver (based on QSI SDK) __PARTIALLY_DONE__ (untested)
 6. FLI CCD driver (based on FLI SDK) __DONE__
 7. SBIG CCD driver (based on SBIG SDK) __DONE__
@@ -76,6 +76,7 @@
 1. CGUSBST4 guider driver
 2. GPUSB guider driver
 3. ZWO USB-ST4 __DONE__
+7. EQMac protocol driver __DONE__
 
 #### Focusers
 

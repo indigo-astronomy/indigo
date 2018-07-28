@@ -59,10 +59,8 @@ void indigo_ccd_resume_countdown(indigo_device *device) {
 
 void indigo_use_shortest_exposure_if_bias(indigo_device *device) {
 	if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value) {
-		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min;
-		CCD_EXPOSURE_ITEM->number.target = CCD_EXPOSURE_ITEM->number.min;
-		CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.min;
-		CCD_STREAMING_EXPOSURE_ITEM->number.target = CCD_EXPOSURE_ITEM->number.min;
+		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = CCD_EXPOSURE_ITEM->number.min;
+		CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target = CCD_EXPOSURE_ITEM->number.min;
 	}
 }
 

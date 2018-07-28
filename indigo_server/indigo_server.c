@@ -71,6 +71,7 @@
 #include "ccd_apogee/indigo_ccd_apogee.h"
 #include "focuser_usbv3/indigo_focuser_usbv3.h"
 #include "focuser_wemacro/indigo_focuser_wemacro.h"
+#include "ccd_mi/indigo_ccd_mi.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -118,6 +119,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_apogee,
 	indigo_focuser_usbv3,
 	indigo_focuser_wemacro,
+	indigo_ccd_mi,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif
