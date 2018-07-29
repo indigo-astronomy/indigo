@@ -1,10 +1,10 @@
-# QHY CCD driver
+# QHY CCD and Filter Wheel driver
 
 http://www.qhyccd.com
 
 ## Supported devices
 
-All QHY cameras.
+All QHY cameras and filter wheels plugged in to the camera.
 
 This driver supports hot-plug (multiple devices).
 
@@ -28,6 +28,7 @@ Driver is developed and tested with:
 * QHY 6
 * QHY 8 Pro
 * QHY 5III 178
+* QHY 9 + Filter wheel
 
 ## NOTES
 ### Firmware path (MacOS only)
