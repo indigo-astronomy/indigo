@@ -26,6 +26,7 @@
 #define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_ccd_mi"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
