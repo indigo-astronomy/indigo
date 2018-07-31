@@ -157,6 +157,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = 90;
 			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &MOUNT_RAW_COORDINATES_RA_ITEM->number.value, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.value);
 			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
+			indigo_update_coordinates(device, NULL);
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 			PRIVATE_DATA->parked = true;
@@ -171,7 +172,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked");
+		} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 			if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
 				indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 				MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
@@ -196,42 +200,57 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
-		indigo_cancel_timer(device, &PRIVATE_DATA->move_timer);
-		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
-		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-		PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
+		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked");
+		} else {
+			indigo_cancel_timer(device, &PRIVATE_DATA->move_timer);
+			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
+			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+			PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- MOUNT_MOTION_RA
-		indigo_cancel_timer(device, &PRIVATE_DATA->move_timer);
-		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
-		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-		PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
+		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked");
+		} else {
+			indigo_cancel_timer(device, &PRIVATE_DATA->move_timer);
+			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
+			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+			PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
-		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-		if (indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer)) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_coordinates(device, NULL);
+		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked");
+		} else {
+			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
+			if (indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer)) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_coordinates(device, NULL);
+			}
+			if (indigo_cancel_timer(device, &PRIVATE_DATA->move_timer)) {
+				MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+				MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+				MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+				MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+				MOUNT_MOTION_EAST_ITEM->sw.value = false;
+				MOUNT_MOTION_WEST_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_coordinates(device, NULL);
+			}
+			MOUNT_ABORT_MOTION_ITEM->sw.value = false;
+			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		}
-		if (indigo_cancel_timer(device, &PRIVATE_DATA->move_timer)) {
-			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-			MOUNT_MOTION_NORTH_ITEM->sw.value = false;
-			MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
-			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-			MOUNT_MOTION_EAST_ITEM->sw.value = false;
-			MOUNT_MOTION_WEST_ITEM->sw.value = false;
-			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_coordinates(device, NULL);
-		}
-		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
-		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		return INDIGO_OK;
 			// --------------------------------------------------------------------------------
 	}
