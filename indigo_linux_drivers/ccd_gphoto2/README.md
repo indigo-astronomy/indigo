@@ -22,4 +22,6 @@ indigo_server indigo_ccd_gphoto2
 
 Driver is developed and tested with:
 * Nikon D50 (USB)
-* Canon 700D (USB)
+* Nikon D7000 (USB)
+* Canon EOS 700D (USB)
+* Canon EOS 1100D (USB)
