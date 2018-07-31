@@ -28,7 +28,7 @@ Driver is developed and tested with:
 * QHY 6
 * QHY 8 Pro
 * QHY 5III 178
-* QHY 9 + Filter wheel
+* QHY 9M & CFW
 
 ## NOTES
 ### Firmware path (MacOS only)
