@@ -41,6 +41,7 @@
 #include <gphoto2/gphoto2-version.h>
 #include <gphoto2/gphoto2-list.h>
 #include <libusb-1.0/libusb.h>
+#include <libraw/libraw.h>
 #include "indigo_ccd_gphoto2.h"
 #include "dslr_model_info.h"
 
@@ -168,6 +169,152 @@ static GPContext *context = NULL;
 static pthread_t thread_id_capture;
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static libusb_hotplug_callback_handle callback_handle;
+
+static int progress_cb(void *callback_data,
+		       enum LibRaw_progress stage, int iteration, int expected)
+{
+	(void)callback_data;
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libraw: %s, step %i/%i",
+			    libraw_strprogress(stage), iteration, expected);
+
+	return 0;
+}
+
+static void process_dslr_image_debayer(indigo_device *device,
+				       void *buffer, size_t buffer_size)
+{
+        int rc;
+        libraw_data_t *raw_data;
+        libraw_processed_image_t *processed_image = NULL;
+
+        raw_data = libraw_init(0);
+
+	/* Linear 8-bit output. */
+	raw_data->params.output_bps = 8;
+	/* Debayer algorithm, linear interpolation. */
+	raw_data->params.user_qual = 0;
+	/* Disable four color space. */
+	raw_data->params.four_color_rgb = 0;
+	/* Disable LibRaw's default histogram transformation. */
+	raw_data->params.no_auto_bright = 1;
+	/* Disable LibRaw's default gamma curve transformation, */
+	raw_data->params.gamm[0] = raw_data->params.gamm[1] = 1.0;
+	/* Do not apply an embedded color profile, enabled by LibRaw by default. */
+	raw_data->params.use_camera_matrix = 0;
+	/* Disable automatic white balance obtained after averaging over the entire image. */
+	raw_data->params.use_auto_wb = 0;
+	/* Disable white balance from the camera (if possible). */
+	raw_data->params.use_camera_wb = 0;
+
+	rc = libraw_open_buffer(raw_data, buffer, buffer_size);
+	if (rc != LIBRAW_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d] libraw_open_buffer "
+				    "failed: '%s'",
+				    rc, libraw_strerror(rc));
+		goto cleanup;
+	}
+
+	rc = libraw_unpack(raw_data);
+	if (rc != LIBRAW_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d] libraw_unpack "
+				    "failed: '%s'",
+				    rc, libraw_strerror(rc));
+		goto cleanup;
+	}
+
+	libraw_set_progress_handler(raw_data, &progress_cb, NULL);
+
+	rc = libraw_raw2image(raw_data);
+	if (rc != LIBRAW_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "rc:%d] libraw_raw2image "
+				    "failed: '%s'",
+				    rc, libraw_strerror(rc));
+		goto cleanup;
+	}
+
+	rc = libraw_dcraw_process(raw_data);
+	if (rc != LIBRAW_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d] libraw_dcraw_process "
+				    "failed: '%s'",
+				    rc, libraw_strerror(rc));
+		goto cleanup;
+	}
+
+	processed_image = libraw_dcraw_make_mem_image(raw_data, &rc);
+	if (!processed_image) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d] libraw_dcraw_make_mem_image "
+				    "failed: '%s'",
+				    rc, libraw_strerror(rc));
+		goto cleanup;
+	}
+
+	if (processed_image->type != LIBRAW_IMAGE_BITMAP) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "input data is not of type "
+				    "LIBRAW_IMAGE_BITMAP");
+		goto cleanup;
+	}
+
+	if (processed_image->colors != 3) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "debayered data has not 3 colors");
+		goto cleanup;
+	}
+
+	void *data;
+	if (processed_image->bits == 8)
+		data = (unsigned char *)processed_image->data;
+	else if (processed_image->bits == 16)
+		data = (unsigned short *)processed_image->data;
+	else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "8 or 16 bit is supported only\n");
+		goto cleanup;
+	}
+
+	indigo_fits_keyword keywords[] = {
+		{ INDIGO_FITS_STRING, "CTYPE3",
+		  .string = "rgb",
+		  "coordinate axis red=1, green=2, blue=3" },
+		{ INDIGO_FITS_NUMBER, "ISOSPEED",
+		  .number = raw_data->other.iso_speed,
+		  "ISO camera setting" },
+		{ 0 }
+	};
+
+	unsigned long int data_size = processed_image->data_size +
+		FITS_HEADER_SIZE;
+	int mod2880 = data_size % 2880;
+	if (mod2880)
+		data_size = data_size + 2880 - mod2880;
+
+	if (data_size > PRIVATE_DATA->buffer_size_max) {
+		PRIVATE_DATA->buffer_size_max = data_size;
+		PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer,
+					       data_size);
+	}
+	memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
+	       data, data_size - FITS_HEADER_SIZE);
+	PRIVATE_DATA->buffer_size = data_size;
+
+	indigo_process_image(device, PRIVATE_DATA->buffer,
+                             processed_image->width, processed_image->height,
+                             processed_image->bits * processed_image->colors,
+                             false, /* little_endian */
+                             keywords);
+
+cleanup:
+	libraw_dcraw_clear_mem(processed_image);
+	libraw_free_image(raw_data);
+	libraw_recycle(raw_data);
+        libraw_close(raw_data);
+}
 
 static void vendor_identify_widget(indigo_device *device,
 				   const char *property_name)
@@ -558,10 +705,21 @@ static void exposure_timer_callback(indigo_device *device)
 			return;
 
 		}
-		indigo_process_dslr_image(device,
-					  PRIVATE_DATA->buffer,
-					  PRIVATE_DATA->buffer_size,
-					  PRIVATE_DATA->filename_suffix);
+		if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value ||
+		    CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value)
+			indigo_process_dslr_image(device,
+						  PRIVATE_DATA->buffer,
+						  PRIVATE_DATA->buffer_size,
+						  PRIVATE_DATA->filename_suffix);
+		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value)
+			process_dslr_image_debayer(device,
+						   PRIVATE_DATA->buffer,
+						   PRIVATE_DATA->buffer_size);
+
+		/* TODO: Deal with conflicting formats, e.g.
+		   CCD_IMAGE_FORMAT_FITS_ITEM && COMPRESSION == JPEG,
+		   that is, DSLR JPEG -> FITS. */
+
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	} else {
