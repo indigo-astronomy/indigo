@@ -142,6 +142,7 @@ typedef struct {
 	bool delete_downloaded_image;
 	char *buffer;
 	unsigned long int buffer_size;
+	unsigned long int buffer_size_max;
 	char filename_suffix[9];
 	enum vendor vendor;
 	char *gphoto2_compression_id;
@@ -155,7 +156,7 @@ typedef struct {
 	indigo_property *dslr_delete_image_property;
 	indigo_property *dslr_libgphoto2_version_property;
 	indigo_timer *exposure_timer, *counter_timer;
-	pthread_mutex_t usb_mutex;
+	pthread_mutex_t driver_mutex;
 } gphoto2_private_data;
 
 struct capture_abort {
@@ -228,7 +229,7 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	int rc;
 	char *val = NULL;
 
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
 
 	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
 				  context);
@@ -317,7 +318,7 @@ static int enumerate_widget(const char *key, indigo_device *device,
 cleanup:
 	gp_widget_free(widget);
 
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 
 	return rc;
 }
@@ -330,7 +331,7 @@ static int gphoto2_set_key_val(const char *key, const void *val,
 	CameraWidgetType type;
 	int rc;
 
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
 
 	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
 				  context);
@@ -384,7 +385,7 @@ static int gphoto2_set_key_val(const char *key, const void *val,
 cleanup:
 	gp_widget_free(widget);
 
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 
 	return rc;
 }
@@ -577,6 +578,8 @@ static void streaming_timer_callback(indigo_device *device)
 
 	int rc = 0;
 	CameraFile *camera_file = NULL;
+	char *buffer = NULL;
+	unsigned long int buffer_size = 0;
 
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "streaming timer callback started");
 
@@ -613,7 +616,7 @@ static void streaming_timer_callback(indigo_device *device)
 
 	while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
 
 		rc = gp_camera_capture_preview(PRIVATE_DATA->camera,
 					       camera_file,
@@ -625,25 +628,34 @@ static void streaming_timer_callback(indigo_device *device)
 					    rc,
 					    PRIVATE_DATA->camera,
 					    context);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 			goto cleanup;
 		}
 
 		/* Memory of buffer free'd by gp_file_unref(). */
 		rc = gp_file_get_data_and_size(camera_file,
-					       (const char**)&PRIVATE_DATA->buffer,
-					       &PRIVATE_DATA->buffer_size);
+					       (const char**)&buffer,
+					       &buffer_size);
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
 					    "gp_file_get_data_and_size",
 					    rc,
 					    PRIVATE_DATA->camera,
 					    context);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 			goto cleanup;
 		}
 
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (buffer_size > PRIVATE_DATA->buffer_size_max) {
+			PRIVATE_DATA->buffer_size_max = buffer_size;
+			PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer,
+						       PRIVATE_DATA->
+						       buffer_size_max);
+		}
+		memcpy(PRIVATE_DATA->buffer, buffer, buffer_size);
+		PRIVATE_DATA->buffer_size = buffer_size;
+
+		pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 
 		*CCD_IMAGE_ITEM->blob.url = 0;
 		CCD_IMAGE_ITEM->blob.value = PRIVATE_DATA->buffer;
@@ -713,6 +725,8 @@ static void *thread_capture(void *user_data)
 	indigo_device *device;
 	struct capture_abort capture_abort;
 	struct timespec tp;
+	char *buffer = NULL;
+	unsigned long int buffer_size = 0;
 
 	device = (indigo_device *)user_data;
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "capture thread started");
@@ -737,6 +751,7 @@ static void *thread_capture(void *user_data)
 		goto cleanup;
 	}
 
+	/* This sets also camera_file->accesstype = GP_FILE_ACCESSTYPE_MEMORY. */
 	rc = gp_file_new(&camera_file);
 	if (rc < GP_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
@@ -847,10 +862,9 @@ static void *thread_capture(void *user_data)
 		goto cleanup;
 	}
 
-	/* Memory of buffer free'd by gp_file_unref(). */
-	rc = gp_file_get_data_and_size(camera_file,
-				       (const char**)&PRIVATE_DATA->buffer,
-				       &PRIVATE_DATA->buffer_size);
+	/* Memory of buffer free'd by this function when previously allocated. */
+	rc = gp_file_get_data_and_size(camera_file, (const char**)&buffer,
+				       &buffer_size);
 	if (rc < GP_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[rc:%d,camera:%p,context:%p] "
 				    "gp_file_get_data_and_size",
@@ -859,6 +873,17 @@ static void *thread_capture(void *user_data)
 				    context);
 		goto cleanup;
 	}
+
+	/* If new image is larger than current buffer, then
+	   increase buffer size. Otherwise it will fit in the old buffer. */
+	if (buffer_size > PRIVATE_DATA->buffer_size_max) {
+		PRIVATE_DATA->buffer_size_max = buffer_size;
+		PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer,
+					       PRIVATE_DATA->
+					       buffer_size_max);
+	}
+	memcpy(PRIVATE_DATA->buffer, buffer, buffer_size);
+	PRIVATE_DATA->buffer_size = buffer_size;
 
 	char *suffix = NULL;
 
@@ -884,6 +909,8 @@ static void *thread_capture(void *user_data)
 	}
 
 cleanup:
+	/* If GP_FILE_ACCESSTYPE_MEMORY (which it is), then gp_file_unref
+	   free's buffer and set buffer_size = 0, when reference counter == 0. */
 	if (camera_file)
 		gp_file_unref(camera_file);
 
@@ -1167,6 +1194,10 @@ static indigo_result ccd_attach(indigo_device *device)
 			CCD_STREAMING_PROPERTY->hidden = false;
 		}
 
+		PRIVATE_DATA->buffer = NULL;
+		PRIVATE_DATA->buffer_size = 0;
+		PRIVATE_DATA->buffer_size_max = 0;
+
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -1193,6 +1224,13 @@ static indigo_result ccd_detach(indigo_device *device)
 
 	if (COMPRESSION)
 		free(COMPRESSION);
+
+	if (PRIVATE_DATA->buffer) {
+		free(PRIVATE_DATA->buffer);
+		PRIVATE_DATA->buffer = NULL;
+		PRIVATE_DATA->buffer_size = 0;
+		PRIVATE_DATA->buffer_size_max = 0;
+	}
 
 	return indigo_ccd_detach(device);
 }
