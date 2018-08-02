@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -194,11 +194,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_COOLER, &bool_value);
 				if (bool_value) {
 					CCD_COOLER_PROPERTY->hidden = false;
-					CCD_TEMPERATURE_PROPERTY->hidden = false;
 					PRIVATE_DATA->target_temperature = 0;
-					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
-					PRIVATE_DATA->can_check_temperature = true;
+				} else {
+					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 				}
+				CCD_TEMPERATURE_PROPERTY->hidden = false;
+				PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 0, ccd_temperature_callback);
+				PRIVATE_DATA->can_check_temperature = true;
 
 				gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_GAIN, &bool_value);
 				if (bool_value) {
