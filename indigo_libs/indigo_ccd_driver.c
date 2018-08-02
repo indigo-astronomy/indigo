@@ -866,7 +866,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		free(mem);
 		INDIGO_DEBUG(indigo_debug("RAW to JPEG conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
-	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
 		char *suffix;
@@ -961,7 +961,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, 
 	assert(data != NULL);
 	INDIGO_DEBUG(clock_t start = clock());
 
-	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
+	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		char *dir = CCD_LOCAL_MODE_DIR_ITEM->text.value;
 		char *prefix = CCD_LOCAL_MODE_PREFIX_ITEM->text.value;
 		int handle = 0;
