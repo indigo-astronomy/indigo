@@ -185,6 +185,18 @@ extern "C" {
  */
 #define CCD_MODE_ITEM											(CCD_MODE_PROPERTY->items+0)
 
+/** CCD_READ_MODE property pointer, property is optional.
+ */
+#define CCD_READ_MODE_PROPERTY						(CCD_CONTEXT->ccd_read_mode_property)
+	
+/** CCD_READ_MODE.HIGH_SPEED property item pointer.
+ */
+#define CCD_READ_MODE_HIGH_SPEED_ITEM			(CCD_READ_MODE_PROPERTY->items+0)
+	
+/** CCD_READ_MODE.LOW_NOISE property item pointer.
+ */
+#define CCD_READ_MODE_LOW_NOISE_ITEM			(CCD_READ_MODE_PROPERTY->items+1)
+	
 /** CCD_GAIN property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_GAIN_PROPERTY                 (CCD_CONTEXT->ccd_gain_property)
@@ -322,6 +334,7 @@ typedef struct {
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
 	indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer
 	indigo_property *ccd_mode_property;	          ///< CCD_MODE property pointer
+	indigo_property *ccd_read_mode_property;	  	///< CCD_READ_MODE property pointer
 	indigo_property *ccd_exposure_property;       ///< CCD_EXPOSURE property pointer
 	indigo_property *ccd_streaming_property;      ///< CCD_STREAMING property pointer
 	indigo_property *ccd_abort_exposure_property; ///< CCD_ABORT_EXPOSURE property pointer

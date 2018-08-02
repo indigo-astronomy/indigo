@@ -326,6 +326,19 @@
 #define CCD_MODE_PROPERTY_NAME								"CCD_MODE"
 
 //----------------------------------------------------------------------
+/** CCD_READ_MODE property name.
+ */
+#define CCD_READ_MODE_PROPERTY_NAME						"CCD_READ_MODE"
+
+/** CCD_READ_MODE.HIGH_SPEED property item name.
+ */
+#define CCD_READ_MODE_HIGH_SPEED_ITEM_NAME    "HIGH_SPEED"
+
+/** CCD_READ_MODE.LOW_NOISE property item name.
+ */
+#define CCD_READ_MODE_LOW_NOISE_ITEM_NAME    	"LOW_NOISE"
+
+//----------------------------------------------------------------------
 /** CCD_GAIN property name.
  */
 #define CCD_GAIN_PROPERTY_NAME                "CCD_GAIN"
