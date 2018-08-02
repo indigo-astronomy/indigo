@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -66,7 +66,7 @@ typedef struct {
 
 static void mi_report_error(indigo_device *device, indigo_property *property) {
 	char buffer[128];
-	gxccd_get_last_error(PRIVATE_DATA->camera, buffer, sizeof(128));
+	gxccd_get_last_error(PRIVATE_DATA->camera, buffer, sizeof(buffer));
 	property->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, property, buffer);
 }
@@ -163,11 +163,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(int_value / 100.0) / 10.0;
 				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_BINNING_X, &int_value);
-				CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = int_value;
-				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_BINNING_Y, &int_value);
-				CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = int_value;
-				
+				if (device->name[4] == '0' || device->name[4] == '1') { // Temporary hack
+					CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 1;
+					CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 1;
+				} else {
+					gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_BINNING_X, &int_value);
+					CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = int_value;
+					gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_BINNING_Y, &int_value);
+					CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = int_value;
+				}
 				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MINIMAL_EXPOSURE, &int_value);
 				if (int_value > 0)
 					CCD_EXPOSURE_ITEM->number.min = int_value / 1000000.0;
