@@ -127,7 +127,7 @@ ifeq ($(OS_DETECTED),Linux)
 		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
 		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 	endif
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lgphoto2 -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../$(LIB_DIR),-rpath=\$$ORIGIN/../drivers,-rpath=.
+	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lgphoto2 -lraw -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../$(LIB_DIR),-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
@@ -903,10 +903,10 @@ $(BUILD_DRIVERS)/indigo_ccd_gphoto2.a: indigo_linux_drivers/ccd_gphoto2/indigo_c
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_ccd_gphoto2: indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2_main.o $(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2 -lraw
 
 $(BUILD_DRIVERS)/indigo_ccd_gphoto2.$(SOEXT): indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2 -lraw
 
 #---------------------------------------------------------------------
 #
