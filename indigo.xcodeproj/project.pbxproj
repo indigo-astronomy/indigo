@@ -112,6 +112,8 @@
 		59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */; };
 		9D1880B31E534B5E002F75D7 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
+		9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */; };
+		9D3BBBA921147EB500800FB0 /* indigo_agent_lx200_server.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */; };
 		9D4D64B220A9D947008ECE4B /* indigo_guider_eqmac.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D4D64AE20A9D946008ECE4B /* indigo_guider_eqmac.h */; };
 		9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D4D64B020A9D946008ECE4B /* indigo_guider_eqmac.c */; };
 		9D59D5E320D3F829009EA8FF /* helpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3C320D3F828009EA8FF /* helpers.cpp */; };
@@ -674,6 +676,9 @@
 		59FC2EB9210CA76200730343 /* indigo_ccd_mi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_mi.rules; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
+		9D3BBBA521147EB500800FB0 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_lx200_server.c; sourceTree = "<group>"; };
+		9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_lx200_server.h; sourceTree = "<group>"; };
 		9D45254120E0F9A1004D1137 /* indigo_ccd_gphoto2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_gphoto2_main.c; sourceTree = "<group>"; };
 		9D45254220E0F9A1004D1137 /* indigo_ccd_gphoto2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_gphoto2.h; sourceTree = "<group>"; };
 		9D45254320E0F9A1004D1137 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -1889,6 +1894,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
 				59FC2E90210CA26D00730343 /* ccd_mi */,
 				9D59D3C020D3F828009EA8FF /* ccd_apogee */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
@@ -2045,6 +2051,16 @@
 				9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */,
 			);
 			path = indigo_tools;
+			sourceTree = "<group>";
+		};
+		9D3BBBA421147E2700800FB0 /* agent_lx200_server */ = {
+			isa = PBXGroup;
+			children = (
+				9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */,
+				9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */,
+				9D3BBBA521147EB500800FB0 /* README.md */,
+			);
+			path = agent_lx200_server;
 			sourceTree = "<group>";
 		};
 		9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */ = {
@@ -2872,6 +2888,7 @@
 				9D59D62020D3F829009EA8FF /* CameraInfo.h in Headers */,
 				9D59D63E20D3F829009EA8FF /* LinuxTimer.h in Headers */,
 				9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */,
+				9D3BBBA921147EB500800FB0 /* indigo_agent_lx200_server.h in Headers */,
 				59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */,
 				9D59D65920D3F829009EA8FF /* AltaEthernetIo.h in Headers */,
 				59FC2EB4210CA58C00730343 /* gxccd.h in Headers */,
@@ -3220,6 +3237,7 @@
 				59019E0B1DE0AC7400CCB3ED /* indigo_client.c in Sources */,
 				9D9EA6A51DBE1F7300E11841 /* indigo_ccd_atik.c in Sources */,
 				9D59D66C20D3F82A009EA8FF /* ModeFsm.cpp in Sources */,
+				9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */,
 				5911F7B41F02E1400053F3CA /* libdsi.c in Sources */,
 				9D59D60220D3F829009EA8FF /* CamGen2CcdAcqParams.cpp in Sources */,
 				9D59D60020D3F829009EA8FF /* ApogeeFilterWheel.cpp in Sources */,
