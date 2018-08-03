@@ -32,6 +32,12 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <errno.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <netinet/in.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_agent_lx200_server.h"
@@ -51,9 +57,94 @@ typedef struct {
 	indigo_property *server_property;
 	indigo_device *device;
 	indigo_client *client;
+	struct sockaddr_in server_address;
+	int server_socket;
+	bool shutdown_initiated;
 } agent_private_data;
 
+typedef struct {
+	int client_socket;
+	indigo_device *device;
+} handler_data;
+
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+// -------------------------------------------------------------------------------- LX200 server implementation
+
+static void start_worker_thread(handler_data *data) {
+	indigo_device *device = data->device;
+	int client_socket = data->client_socket;
+	
+	close(client_socket);
+	free(data);
+}
+
+bool start_server(indigo_device *device) {
+	int client_socket;
+	int port = atoi(LX200_SERVER_PORT_ITEM->text.value);
+	int reuse = 1;
+	struct sockaddr_in client_name;
+	unsigned int name_len = sizeof(client_name);
+	DEVICE_PRIVATE_DATA->shutdown_initiated = false;
+	DEVICE_PRIVATE_DATA->server_socket = socket(PF_INET, SOCK_STREAM, 0);
+	if (DEVICE_PRIVATE_DATA->server_socket == -1) {
+		INDIGO_DRIVER_ERROR(LX200_SERVER_AGENT_NAME, "Can't open server socket (%s)", strerror(errno));
+		return false;
+	}
+	DEVICE_PRIVATE_DATA->server_address.sin_family = AF_INET;
+	DEVICE_PRIVATE_DATA->server_address.sin_port = htons(port);
+	DEVICE_PRIVATE_DATA->server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (setsockopt(DEVICE_PRIVATE_DATA->server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+		INDIGO_DRIVER_ERROR(LX200_SERVER_AGENT_NAME, "Can't open server socket (%s)", strerror(errno));
+		return false;
+	}
+	if (bind(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&(DEVICE_PRIVATE_DATA->server_address), sizeof(struct sockaddr_in)) < 0) {
+		INDIGO_DRIVER_ERROR(LX200_SERVER_AGENT_NAME, "Can't bind server socket (%s)", strerror(errno));
+		return false;
+	}
+	unsigned int length = sizeof(DEVICE_PRIVATE_DATA->server_address);
+	if (getsockname(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&(DEVICE_PRIVATE_DATA->server_address), &length) == -1) {
+		close(DEVICE_PRIVATE_DATA->server_socket);
+		return false;
+	}
+	if (listen(DEVICE_PRIVATE_DATA->server_socket, 5) < 0) {
+		INDIGO_DRIVER_ERROR(LX200_SERVER_AGENT_NAME, "Can't listen on server socket (%s)", strerror(errno));
+		close(DEVICE_PRIVATE_DATA->server_socket);
+		return false;
+	}
+	if (port == 0) {
+		sprintf(LX200_SERVER_PORT_ITEM->text.value, "%d", port = ntohs(DEVICE_PRIVATE_DATA->server_address.sin_port));
+		LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, LX200_SERVER_PROPERTY, NULL);
+	}
+	INDIGO_DRIVER_LOG(LX200_SERVER_AGENT_NAME, "Server started on %d", port);
+	signal(SIGPIPE, SIG_IGN);
+	while (1) {
+		client_socket = accept(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&client_name, &name_len);
+		if (client_socket == -1) {
+			if (DEVICE_PRIVATE_DATA->shutdown_initiated)
+				break;
+			INDIGO_DRIVER_ERROR(LX200_SERVER_AGENT_NAME, "Can't accept connection (%s)", strerror(errno));
+		} else {
+			pthread_t thread;
+			handler_data *data = malloc(sizeof(handler_data));
+			data->client_socket = client_socket;
+			data->device = device;
+			if (pthread_create(&thread , NULL, (void *(*)(void *))&start_worker_thread, data) != 0)
+				INDIGO_DRIVER_ERROR(LX200_SERVER_AGENT_NAME, "Can't create worker thread for connection (%s)", strerror(errno));
+		}
+	}
+	DEVICE_PRIVATE_DATA->shutdown_initiated = false;
+	return true;
+}
+
+void shutdown_server(indigo_device *device) {
+	if (!DEVICE_PRIVATE_DATA->shutdown_initiated) {
+		DEVICE_PRIVATE_DATA->shutdown_initiated = true;
+		shutdown(DEVICE_PRIVATE_DATA->server_socket, SHUT_RDWR);
+		close(DEVICE_PRIVATE_DATA->server_socket);
+	}
+}
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
