@@ -1,4 +1,4 @@
-// Copyright (c) 2017 CloudMakers, s. r. o.
+// Copyright (c) 2018 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -19,12 +19,12 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Snoop agent
- \file indigo_agent_snoop.h
+/** INDIGO LX200 Server agent
+ \file indigo_agent_lx200_server.h
  */
 
-#ifndef agent_snoop_h
-#define agent_snoop_h
+#ifndef agent_lx200_server_h
+#define agent_lx200_server_h
 
 #include "indigo_agent.h"
 
@@ -33,14 +33,14 @@ extern "C" {
 #endif
 
 	
-/** Create Snoop agent instance
+/** Create LX200 server instance
  */
 
-extern indigo_result indigo_agent_snoop(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_agent_lx200_server(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* agent_snoop_h */
+#endif /* agent_lx200_server_h */
 

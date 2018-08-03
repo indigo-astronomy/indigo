@@ -1162,6 +1162,18 @@ $(BUILD_DRIVERS)/indigo_agent_snoop.$(SOEXT): indigo_drivers/agent_snoop/indigo_
 
 #---------------------------------------------------------------------
 #
+#	Build LX200 server agent
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_agent_lx200_server.a: indigo_drivers/agent_lx200_server/indigo_agent_lx200_server.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_agent_lx200_server.$(SOEXT): indigo_drivers/agent_lx200_server/indigo_agent_lx200_server.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------

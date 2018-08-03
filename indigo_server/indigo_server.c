@@ -87,6 +87,7 @@
 #include "ccd_gphoto2/indigo_ccd_gphoto2.h"
 #endif
 #include "agent_snoop/indigo_agent_snoop.h"
+#include "agent_lx200_server/indigo_agent_lx200_server.h"
 #endif
 
 #define MDNS_INDIGO_TYPE    "_indigo._tcp"
@@ -136,6 +137,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_gphoto2,
 #endif
 	indigo_agent_snoop,
+	indigo_agent_lx200_server,
 #endif
 	NULL
 };
