@@ -32,6 +32,7 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <signal.h>
 #include <errno.h>
 
 #include <sys/types.h>
