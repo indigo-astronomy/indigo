@@ -256,8 +256,10 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 	struct sockaddr_in client_name;
 	unsigned int name_len = sizeof(client_name);
 	server_socket = socket(PF_INET, SOCK_STREAM, 0);
-	if (server_socket == -1)
+	if (server_socket == -1) {
 		indigo_error("Can't open server socket (%s)", strerror(errno));
+		return INDIGO_CANT_START_SERVER;
+	}
 	server_address.sin_family = AF_INET;
 	server_address.sin_port = htons(indigo_server_tcp_port);
 	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
