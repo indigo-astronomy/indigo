@@ -818,6 +818,15 @@ void indigo_set_switch(indigo_property *property, indigo_item *item, bool value)
 	item->sw.value = value;
 }
 
+indigo_item *indigo_get_item(indigo_property *property, char *item_name) {
+	assert(property != NULL);
+	assert(item_name != NULL);
+	for (int i = 0; i < property->count; i++)
+		if (!strcmp(property->items[i].name, item_name))
+			return property->items + i;
+	return NULL;
+}
+
 bool indigo_get_switch(indigo_property *property, char *item_name) {
 	assert(property != NULL);
 	assert(property->type == INDIGO_SWITCH_VECTOR);

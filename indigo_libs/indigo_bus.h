@@ -455,6 +455,10 @@ extern bool indigo_switch_match(indigo_item *item, indigo_property *other);
  */
 extern void indigo_set_switch(indigo_property *property, indigo_item *item, bool value);
 
+/** Get item.
+ */
+extern indigo_item *indigo_get_item(indigo_property *property, char *item_name);
+
 /** Get switch item value.
  */
 extern bool indigo_get_switch(indigo_property *property, char *item_name);
