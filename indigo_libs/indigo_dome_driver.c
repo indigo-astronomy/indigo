@@ -75,7 +75,7 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 			if (DOME_EQUATORIAL_COORDINATES_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(DOME_EQUATORIAL_COORDINATES_RA_ITEM, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
-			indigo_init_number_item(DOME_EQUATORIAL_COORDINATES_DEC_ITEM, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, "Declination (-180 to 180°)", -180, 180, 0, 90);
+			indigo_init_number_item(DOME_EQUATORIAL_COORDINATES_DEC_ITEM, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
 			// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 			DOME_HORIZONTAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_MAIN_GROUP, "Absolute position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (DOME_HORIZONTAL_COORDINATES_PROPERTY == NULL)
