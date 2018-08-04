@@ -76,14 +76,12 @@
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY_NAME "GPHOTO2_LIBGPHOTO2_VERSION"
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM_NAME     "LIBGPHOTO2_VERSION"
 
-#define NIKON_BULB				"Bulb"
 #define NIKON_ISO				"iso"
 #define NIKON_COMPRESSION			"imagequality"
 #define NIKON_SHUTTERSPEED			"shutterspeed"
 #define NIKON_CAPTURE_TARGET			"capturetarget"
 #define NIKON_MEMORY_CARD			"Memory card"
 
-#define EOS_BULB				"bulb"
 #define EOS_ISO					NIKON_ISO
 #define EOS_COMPRESSION				"imageformat"
 #define EOS_SHUTTERSPEED			NIKON_SHUTTERSPEED
@@ -307,6 +305,11 @@ static void process_dslr_image_debayer(indigo_device *device,
                              processed_image->bits * processed_image->colors,
                              false, /* little_endian */
                              keywords);
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "unpacked and debayered input data: "
+			    "%d bytes -> output data: %d bytes, colors: %d, "
+			    "bits: %d", buffer_size, processed_image->data_size,
+			    processed_image->colors, processed_image->bits);
 
 cleanup:
 	libraw_dcraw_clear_mem(processed_image);
@@ -972,7 +975,6 @@ static void *thread_capture(void *user_data)
 					    EOS_PRESS_FULL);
 			goto cleanup;
 		}
-
 
 		while (CCD_EXPOSURE_ITEM->number.value)
 			usleep(250);
