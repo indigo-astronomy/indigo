@@ -98,7 +98,6 @@
 #define EOS_MIRROR_LOCKUP_DISABLE		"20,1,3,14,1,60f,1,0"
 #define EOS_VIEWFINDER                          "viewfinder"
 
-#define TIMER_THROTTLE_USEC                     10000 /* 10 ms. */
 #define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
 
 #define UNUSED(x)				(void)(x)
@@ -627,16 +626,6 @@ static void ctx_status_func(GPContext *context, const char *str, void *data)
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", str);
 }
 
-static long elapsed_time(struct timespec *tp_start)
-{
-        struct timespec tp_current;
-
-        clock_gettime(CLOCK_MONOTONIC, &tp_current);
-
-        return (tp_current.tv_sec * 1000000000L + tp_current.tv_nsec) -
-                (tp_start->tv_sec * 1000000000L + tp_start->tv_nsec);
-}
-
 static int eos_mirror_lockup(const bool enable, indigo_device *device)
 {
 	return gphoto2_set_key_val_char(EOS_CUSTOMFUNCEX, enable ?
@@ -666,7 +655,8 @@ static void counter_timer_callback(indigo_device *device)
 			indigo_reschedule_timer(device,
 						TIMER_COUNTER_STEP_SEC,
 						&PRIVATE_DATA->counter_timer);
-		}
+		} else
+			CCD_EXPOSURE_ITEM->number.value = 0;
 	}
 }
 
@@ -954,10 +944,7 @@ static void *thread_capture(void *user_data)
 			goto cleanup;
 		}
 
-		/* Seems to be more precise than a simple usleep(). */
-		clock_gettime(CLOCK_MONOTONIC, &tp);
-		while(elapsed_time(&tp) < 2500000000L) /* 2500 ms. */
-			usleep(TIMER_THROTTLE_USEC);
+		usleep(2500000);
 	}
 
 	PRIVATE_DATA->counter_timer =
@@ -972,9 +959,6 @@ static void *thread_capture(void *user_data)
 	/* Bulb capture. */
 	if (PRIVATE_DATA->bulb) {
 
-		long wait_nsec = CCD_EXPOSURE_ITEM->number.target * 1000000000L;
-
-		clock_gettime(CLOCK_MONOTONIC, &tp);
 		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
 					 device);
 		if (rc < GP_OK) {
@@ -989,8 +973,9 @@ static void *thread_capture(void *user_data)
 			goto cleanup;
 		}
 
-		while(elapsed_time(&tp) < wait_nsec)
-			usleep(TIMER_THROTTLE_USEC);
+
+		while (CCD_EXPOSURE_ITEM->number.value)
+			usleep(250);
 	}
 
 	/* Capture image, the function will release the shutter. */
@@ -1331,8 +1316,10 @@ static indigo_result ccd_attach(indigo_device *device)
 		for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
 			/* Skip {B,b}ulb widget. */
 			if (DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'b' ||
-			    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B')
+			    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B') {
+				PRIVATE_DATA->bulb = true;
 				continue;
+			}
 
 			double number_shutter = parse_shutterspeed(
 				DSLR_SHUTTER_PROPERTY->items[i].name);
