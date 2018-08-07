@@ -132,7 +132,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(LIBBOOST-REGEX)
+	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(LIBBOOST-REGEX)
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.so
 endif
@@ -292,6 +292,21 @@ externals/libjpeg/Makefile: externals/libjpeg/configure
 
 $(BUILD_LIB)/libjpeg.a: externals/libjpeg/Makefile
 	cd externals/libjpeg; make install; cd ../..
+
+#---------------------------------------------------------------------
+#
+#	Build libraw
+#
+#---------------------------------------------------------------------
+
+indigo_linux_drivers/ccd_gphoto2/externals/libraw/configure: indigo_linux_drivers/ccd_gphoto2/externals/libraw/configure.ac
+	cd indigo_linux_drivers/ccd_gphoto2/externals/libraw; autoreconf -fiv; cd ../../../..
+
+indigo_linux_drivers/ccd_gphoto2/externals/libraw/Makefile: indigo_linux_drivers/ccd_gphoto2/externals/libraw/configure
+	cd indigo_linux_drivers/ccd_gphoto2/externals/libraw; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --enable-shared=$(ENABLE_SHARED) --enable-static=$(ENABLE_STATIC) --disable-jasper --disable-lcms --disable-examples --disable-jpeg --disable-openmp CFLAGS="$(CFLAGS)"; cd ../../../..
+
+$(BUILD_LIB)/libraw.a: indigo_linux_drivers/ccd_gphoto2/externals/libraw/Makefile
+	cd indigo_linux_drivers/ccd_gphoto2/externals/libraw; make install; cd ../../../..
 
 #---------------------------------------------------------------------
 #
@@ -467,7 +482,7 @@ $(BUILD_LIB)/libfli.a: $(BUILD_INCLUDE)/libfli/libfli.h
 
 #---------------------------------------------------------------------
 #
-#	indtall sbigudrv
+#	install sbigudrv
 #
 #---------------------------------------------------------------------
 
@@ -506,6 +521,14 @@ ifeq ("$(wildcard externals/libjpeg)","")
 	cd externals; git clone https://github.com/indigo-astronomy/libjpeg.git; cd ../..
 else
 	cd externals/libjpeg; git pull; cd ../..
+endif
+ifeq ("$(indigo_linux_drivers/ccd_gphoto2/externals)","")
+	mkdir indigo_linux_drivers/ccd_gphoto2/externals
+endif
+ifeq ("$(indigo_linux_drivers/ccd_gphoto2/externals/libraw)","")
+	cd indigo_linux_drivers/ccd_gphoto2/externals; git clone https://github.com/LibRaw/LibRaw.git libraw; cd ../..
+else
+	cd indigo_linux_drivers/ccd_gphoto2/externals/libraw; git pull; cd ../..
 endif
 ifeq ("$(wildcard indigo_drivers/ccd_iidc/externals)","")
 	mkdir indigo_drivers/ccd_iidc/externals
@@ -1366,6 +1389,7 @@ clean-all: clean
 	cd indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223; make clean; cd ../../../..
 	cd indigo_drivers/ccd_qsi/externals; rm -rf qsiapi-7.6.0; cd ../../..
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make clean; cd ../../../..
+	cd indigo_linux_drivers/ccd_gphoto2/externals/libraw; make maintainer-clean; rm configure; cd ../../../..
 
 #---------------------------------------------------------------------
 #
