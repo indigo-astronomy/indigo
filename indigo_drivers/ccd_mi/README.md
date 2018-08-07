@@ -1,10 +1,10 @@
-# Moravian Instruments CCD driver
+# Moravian Instruments CCD and filter wheel driver
 
 https://www.gxccd.com
 
 ## Supported devices
 
-This device supports all USB (TBD Ethernet devices).
+This device supports all USB devices (TBD Ethernet devices).
 
 This driver supports hot-plug (multiple devices).
 
@@ -24,3 +24,4 @@ indigo_server indigo_ccd_mi
 
 Driver is developed and tested with:
 * MI 0-300
+* MI G3-16200 with internal filter wheel

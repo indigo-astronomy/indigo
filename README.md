@@ -54,6 +54,7 @@ This is the list of requirements taken into the consideration:
 30. WeMacro Rail focuser driver (platform independent USB & Mac only bluetooth)
 31. EQMac guider driver (Mac only)
 32. Apogee CCD driver
+33. Moravian Intruments CCD and filter wheel driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
