@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -979,17 +979,9 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 	);
 
 	if (ok) {
-		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		} else {
-			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		}
-
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+
 		if (CCD_EXPOSURE_ITEM->number.target > 4) {
 			PRIVATE_DATA->imager_ccd_exposure_timer = indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback);
 		} else {
