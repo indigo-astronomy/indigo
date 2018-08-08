@@ -202,7 +202,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 							indigo_printf(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob.format, item->blob.size);
 							handle2 = dup(handle);
 							fh = fdopen(handle2, "w");
-							if (property->version >= INDIGO_VERSION_2_0) {
+							if (client->version >= INDIGO_VERSION_2_0) {
 								while (input_length) {
 									char encoded_data[BASE64_BUF_SIZE + 1];
 									long len = (RAW_BUF_SIZE < input_length) ?  RAW_BUF_SIZE : input_length;

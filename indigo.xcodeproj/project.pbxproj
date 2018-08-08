@@ -541,6 +541,8 @@
 		595355D61F6AD79100478BEC /* VidPid.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VidPid.cpp; path = lib/VidPid.cpp; sourceTree = "<group>"; };
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
 		595355ED1F6B140300478BEC /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libqsiapi.a; path = build/lib/libqsiapi.a; sourceTree = "<group>"; };
+		59588C9F211B4A0200E9FC27 /* indigo.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = indigo.js; sourceTree = "<group>"; };
+		59588CA0211B4ACA00E9FC27 /* wheel_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = wheel_test.html; sourceTree = "<group>"; };
 		595AA1CA1FC5ED8A00350E7B /* indigo_agent_snoop.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_snoop.c; sourceTree = "<group>"; };
 		595AA1CB1FC5ED8A00350E7B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_snoop.h; sourceTree = "<group>"; };
@@ -1486,7 +1488,9 @@
 			children = (
 				592662B01D9590630021746A /* test.c */,
 				59D382161D97348500E87393 /* client.c */,
+				59588C9F211B4A0200E9FC27 /* indigo.js */,
 				599A63AD1DEA070E00ABC827 /* websocket_test.html */,
+				59588CA0211B4ACA00E9FC27 /* wheel_test.html */,
 			);
 			path = indigo_test;
 			sourceTree = "<group>";
