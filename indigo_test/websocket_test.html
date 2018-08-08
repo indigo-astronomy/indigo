@@ -21,9 +21,9 @@
 
 	function onOpen(evt) {
 		writeToScreen("CONNECTED");
-		doSend('{ "getProperties": { "version": 512 } }');
-		doSend('{ "newSwitchVector": { "device": "CCD Imager Simulator", "name": "CONNECTION", "oneSwitch": [ { "name": "CONNECTED", "value": true } ] } }');
-		doSend('{ "newNumberVector": { "device": "CCD Imager Simulator", "name": "CCD_EXPOSURE", "oneNumber": [ { "name": "EXPOSURE", "value": 5 } ] } }');
+		getProperties();
+		newSwitchVector("CCD Imager Simulator", "CONNECTION", { "CONNECTED": true });
+		newNumberVector("CCD Imager Simulator", "CCD_EXPOSURE", { "EXPOSURE": 5 });
 	}
 
 	function onClose(evt) {
@@ -41,6 +41,38 @@
 	function doSend(message) {
 		writeToScreen('<span style="color: green;">SENT: ' + JSON.stringify(JSON.parse(message), null, 2)+'</span>');
 		websocket.send(message);
+	}
+
+	function getProperties() {
+		message = { "getProperties": { "version": 512 } };
+		doSend(JSON.stringify(message));
+	}
+
+	function newTextVector(deviceName, propertyName, values) {
+		items = []
+		for (name in values)
+		items.push({ "name": name, "value": values[name] });
+		property = { "device": deviceName, "name": propertyName, "items": items };
+		message = { "newTextVector": property };
+		doSend(JSON.stringify(message));
+	}
+
+	function newNumberVector(deviceName, propertyName, values) {
+		items = []
+		for (name in values)
+		items.push({ "name": name, "value": values[name] });
+		property = { "device": deviceName, "name": propertyName, "items": items };
+		message = { "newNumberVector": property };
+		doSend(JSON.stringify(message));
+	}
+
+	function newSwitchVector(deviceName, propertyName, values) {
+		items = []
+		for (name in values)
+		items.push({ "name": name, "value": values[name] });
+		property = { "device": deviceName, "name": propertyName, "items": items };
+		message = { "newSwitchVector": property };
+		doSend(JSON.stringify(message));
 	}
 
 	function writeToScreen(message) {
