@@ -1,0 +1,62 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>INDIGO Wheel driver conformance test</title>
+<script language="javascript" type="text/javascript" src="indigo.js"></script>
+<script language="javascript" type="text/javascript">
+	
+	URL = "ws://localhost:7624/";
+	DEVICE = "CCD Imager Simulator (wheel)";
+	STEP = 0;
+	
+	defineProperty = function (property) {
+		var device = property.device;
+		var name = property.name;
+		if (device == DEVICE) {
+			if (name == "CONNECTION") {
+				if (STEP == 0) {
+					if (property.values["CONNECTED"]) {
+						writeAlert(DEVICE + " - already connected <BR> DEFINITION: " + JSON.stringify(property, null, 2));
+						STEP = -1;
+						return;
+					} else {
+						writeOK(DEVICE + " - not connected <BR> DEFINITION: " + JSON.stringify(property, null, 2));
+						STEP = 1;
+						changeProperty(DEVICE, "CONNECTION", { "CONNECTED": true });
+						return;
+					}
+				}
+			}
+		}
+	}
+
+	updateProperty = function (property) {
+		var device = property.device;
+		var name = property.name;
+		if (device == DEVICE) {
+			if (name == "CONNECTION") {
+				if (STEP == 1) {
+					if (property.values["CONNECTED"]) {
+						writeOK(DEVICE + " - sucessfuly connected <BR> UPDATE: " + JSON.stringify(property, null, 2));
+						STEP = 10000;
+						changeProperty(DEVICE, "CONNECTION", { "DISCONNECTED": true });
+						return;
+					}
+				} else if (STEP = 10000) {
+					writeOK(DEVICE + " - sucessfuly disconnected <BR> UPDATE: " + JSON.stringify(property, null, 2));
+					STEP = -1;
+					return;
+				}
+			}
+			writeAlert(DEVICE + " - unexpected update (STEP " + STEP + ") <BR> UPDATE: " + JSON.stringify(property, null, 2));
+			STEP = -1;
+		}
+	}
+
+	deleteProperty = function (property) {
+	}
+
+	window.addEventListener("load", init, false);
+
+</script>
+<div id="output"></div>

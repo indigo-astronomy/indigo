@@ -270,7 +270,6 @@ indigo_result indigo_start() {
 		memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
 		memset(blobs, 0, MAX_BLOBS * sizeof(indigo_property *));
 		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
-		INDIGO_ALL_PROPERTIES.version = INDIGO_VERSION_CURRENT;
 		is_started = true;
 	}
 	pthread_mutex_unlock(&client_mutex);
@@ -352,7 +351,6 @@ indigo_result indigo_detach_client(indigo_client *client) {
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
 	if (!is_started)
 		return INDIGO_FAILED;
-	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property enumeration request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -371,8 +369,6 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-
-	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -391,8 +387,6 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-
-	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: enable BLOB mode change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -421,7 +415,6 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 			va_end(args);
 		}
-		property->version = device ? device->version : INDIGO_VERSION_CURRENT;
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->define_property != NULL)
@@ -444,7 +437,6 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 			va_end(args);
 		}
-		property->version = device ? device->version : INDIGO_VERSION_CURRENT;
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->update_property != NULL)
@@ -467,7 +459,6 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
 			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 			va_end(args);
 		}
-		property->version = device ? device->version : INDIGO_VERSION_CURRENT;
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->delete_property != NULL)

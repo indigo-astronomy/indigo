@@ -1,87 +1,19 @@
 <!DOCTYPE html>
 <meta charset="utf-8" />
 <title>WebSocket Test</title>
+<script language="javascript" type="text/javascript" src="indigo.js"></script>
 <script language="javascript" type="text/javascript">
 	
-	var wsUri = "ws://localhost:7624/";
-	var output;
+	URL = "ws://localhost:7624/";
+	DEVICE = "CCD Imager Simulator";
 
-	function init() {
-		output = document.getElementById("output");
-		testWebSocket();
-	}
-
-	function testWebSocket() {
-		websocket = new WebSocket(wsUri);
-		websocket.onopen = function(evt) { onOpen(evt) };
-		websocket.onclose = function(evt) { onClose(evt) };
-		websocket.onmessage = function(evt) { onMessage(evt) };
-		websocket.onerror = function(evt) { onError(evt) };
-	}
-
-	function onOpen(evt) {
+	onOpen = function(evt) {
 		writeToScreen("CONNECTED");
-		getProperties();
-		newSwitchVector("CCD Imager Simulator", "CONNECTION", { "CONNECTED": true });
-		newNumberVector("CCD Imager Simulator", "CCD_EXPOSURE", { "EXPOSURE": 5 });
+		enumerateProperties();
+		changeProperty(DEVICE, "CONNECTION", { "CONNECTED": true });
+		changeProperty(DEVICE, "CCD_EXPOSURE", { "EXPOSURE": 5 });
 	}
 
-	function onClose(evt) {
-		writeToScreen("DISCONNECTED");
-	}
-
-	function onMessage(evt) {
-		writeToScreen('<span style="color: blue;">RECEIVED: ' + JSON.stringify(JSON.parse(evt.data), null, 2)+'</span>');
-	}
-
-	function onError(evt) {
-		writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
-	}
-
-	function doSend(message) {
-		writeToScreen('<span style="color: green;">SENT: ' + JSON.stringify(JSON.parse(message), null, 2)+'</span>');
-		websocket.send(message);
-	}
-
-	function getProperties() {
-		message = { "getProperties": { "version": 512 } };
-		doSend(JSON.stringify(message));
-	}
-
-	function newTextVector(deviceName, propertyName, values) {
-		items = []
-		for (name in values)
-		items.push({ "name": name, "value": values[name] });
-		property = { "device": deviceName, "name": propertyName, "items": items };
-		message = { "newTextVector": property };
-		doSend(JSON.stringify(message));
-	}
-
-	function newNumberVector(deviceName, propertyName, values) {
-		items = []
-		for (name in values)
-		items.push({ "name": name, "value": values[name] });
-		property = { "device": deviceName, "name": propertyName, "items": items };
-		message = { "newNumberVector": property };
-		doSend(JSON.stringify(message));
-	}
-
-	function newSwitchVector(deviceName, propertyName, values) {
-		items = []
-		for (name in values)
-		items.push({ "name": name, "value": values[name] });
-		property = { "device": deviceName, "name": propertyName, "items": items };
-		message = { "newSwitchVector": property };
-		doSend(JSON.stringify(message));
-	}
-
-	function writeToScreen(message) {
-		var pre = document.createElement("pre");
-		pre.style.wordWrap = "break-word";
-		pre.innerHTML = message;
-		output.appendChild(pre);
-		pre.scrollIntoView(false);
-	}
 
 	window.addEventListener("load", init, false);
 
