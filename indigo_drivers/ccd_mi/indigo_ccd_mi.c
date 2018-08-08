@@ -61,6 +61,7 @@ typedef struct {
 	indigo_timer *exposure_timer, *temperature_timer, *power_util_timer, *guider_timer;
 	float target_temperature, current_temperature;
 	unsigned char *buffer;
+	int rm_preview, rm_low_noise;
 	int image_width;
 	int image_height;
 	bool downloading;
@@ -206,6 +207,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_READ_MODE_PROPERTY->hidden = false;
+				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_PREVIEW_READ_MODE, &PRIVATE_DATA->rm_preview);
+				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_DEFAULT_READ_MODE, &PRIVATE_DATA->rm_low_noise);
 
 				gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_COOLER, &bool_value);
 				if (bool_value) {
@@ -278,7 +281,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		int height = PRIVATE_DATA->image_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin_y;
 		int state = gxccd_set_binning(PRIVATE_DATA->camera, bin_x, bin_y);
 		if (state != -1)
-			state = gxccd_set_read_mode(PRIVATE_DATA->camera, CCD_READ_MODE_LOW_NOISE_ITEM->sw.value ? 1 : 0);
+			state = gxccd_set_read_mode(PRIVATE_DATA->camera, CCD_READ_MODE_LOW_NOISE_ITEM->sw.value ? PRIVATE_DATA->rm_low_noise : PRIVATE_DATA->rm_preview);
 		if (state != -1)
 			state = gxccd_start_exposure(PRIVATE_DATA->camera, CCD_EXPOSURE_ITEM->number.target, !CCD_FRAME_TYPE_DARK_ITEM->sw.value, left, top, width, height);
 		if (state != -1)
