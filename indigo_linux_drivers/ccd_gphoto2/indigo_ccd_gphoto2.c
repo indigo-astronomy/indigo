@@ -920,7 +920,7 @@ static void *thread_capture(void *user_data)
 	/* Mirror-lockup EOS (2500ms). */
 	if (PRIVATE_DATA->mirror_lockup) {
 		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
-					 device);
+					      device);
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
@@ -934,7 +934,7 @@ static void *thread_capture(void *user_data)
 		}
 
 		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_RELEASE_FULL,
-					 device);
+					      device);
 		if (rc < GP_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,
 					    "[rc:%d,camera:%p,context:%p] "
@@ -959,28 +959,26 @@ static void *thread_capture(void *user_data)
 				 CCD_EXPOSURE_ITEM->number.target,
 				 exposure_timer_callback);
 
-	/* Bulb capture. */
-	if (PRIVATE_DATA->bulb) {
-
-		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
-					 device);
-		if (rc < GP_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME,
-					    "[rc:%d,camera:%p,context:%p] "
-					    "gphoto2_set_key_val_char '%s' '%s'",
-					    rc,
-					    PRIVATE_DATA->camera,
-					    context,
-					    EOS_REMOTE_RELEASE,
-					    EOS_PRESS_FULL);
-			goto cleanup;
-		}
-
-		while (CCD_EXPOSURE_ITEM->number.value)
-			usleep(250);
+	rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
+				      device);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[rc:%d,camera:%p,context:%p] "
+				    "gphoto2_set_key_val_char '%s' '%s'",
+				    rc,
+				    PRIVATE_DATA->camera,
+				    context,
+				    EOS_REMOTE_RELEASE,
+				    EOS_PRESS_FULL);
+		goto cleanup;
 	}
 
-	/* Capture image, the function will release the shutter. */
+	/* Bulb capture. */
+	if (PRIVATE_DATA->bulb)
+		while (CCD_EXPOSURE_ITEM->number.value)
+			usleep(TIMER_COUNTER_STEP_SEC * 1000000UL);
+
+	/* Function will release the shutter. */
 	rc = gp_camera_capture(PRIVATE_DATA->camera, GP_CAPTURE_IMAGE,
 			       &camera_file_path,
 			       context);
@@ -1552,6 +1550,23 @@ static indigo_result ccd_change_property(indigo_device *device,
 		PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0,
 								streaming_timer_callback);
 		return INDIGO_OK;
+	}
+	/*--------------------------------- CONFIG ---------------------------*/
+	else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL,
+					     CCD_IMAGE_FORMAT_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_ISO_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_SHUTTER_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_COMPRESSION_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_MIRROR_LOCKUP_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_DELETE_IMAGE_PROPERTY);
+		}
 	}
 
 	return indigo_ccd_change_property(device, client, property);
