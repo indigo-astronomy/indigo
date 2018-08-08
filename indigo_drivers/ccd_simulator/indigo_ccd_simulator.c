@@ -437,7 +437,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_COOLER_PROPERTY->hidden = false;
 			CCD_TEMPERATURE_PROPERTY->hidden = false;
 			CCD_COOLER_POWER_PROPERTY->hidden = false;
-			indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
 			PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 			CCD_COOLER_POWER_ITEM->number.value = 0;

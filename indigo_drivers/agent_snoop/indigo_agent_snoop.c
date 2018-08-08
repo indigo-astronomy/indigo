@@ -53,8 +53,6 @@
 
 #define SNOOP_RULES_PROPERTY										(DEVICE_PRIVATE_DATA->rules_property)
 
-#define SNOOP_GROUP															"Snoop"
-
 typedef struct rule {
 	char source_device_name[INDIGO_NAME_SIZE];
 	char source_property_name[INDIGO_NAME_SIZE];
@@ -121,21 +119,21 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(DEVICE_PRIVATE_DATA != NULL);
 	if (indigo_agent_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		SNOOP_ADD_RULE_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_ADD_RULE_PROPERTY_NAME, SNOOP_GROUP, "Add rule", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
+		SNOOP_ADD_RULE_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_ADD_RULE_PROPERTY_NAME, MAIN_GROUP, "Add rule", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
 		if (SNOOP_ADD_RULE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(SNOOP_ADD_RULE_SOURCE_DEVICE_ITEM, SNOOP_ADD_RULE_SOURCE_DEVICE_ITEM_NAME, "Source device", "Mount Simulator");
 		indigo_init_text_item(SNOOP_ADD_RULE_SOURCE_PROPERTY_ITEM, SNOOP_ADD_RULE_SOURCE_PROPERTY_ITEM_NAME, "Source property", "MOUNT_EQUATORIAL_COORDINATES");
 		indigo_init_text_item(SNOOP_ADD_RULE_TARGET_DEVICE_ITEM, SNOOP_ADD_RULE_TARGET_DEVICE_ITEM_NAME, "Target device", "Dome Simulator");
 		indigo_init_text_item(SNOOP_ADD_RULE_TARGET_PROPERTY_ITEM, SNOOP_ADD_RULE_TARGET_PROPERTY_ITEM_NAME, "Target property", "DOME_EQUATORIAL_COORDINATES");
-		SNOOP_REMOVE_RULE_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_REMOVE_RULE_PROPERTY_NAME, SNOOP_GROUP, "Remove rule", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
+		SNOOP_REMOVE_RULE_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_REMOVE_RULE_PROPERTY_NAME, MAIN_GROUP, "Remove rule", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
 		if (SNOOP_REMOVE_RULE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(SNOOP_REMOVE_RULE_SOURCE_DEVICE_ITEM, SNOOP_REMOVE_RULE_SOURCE_DEVICE_ITEM_NAME, "Source device", "Mount Simulator");
 		indigo_init_text_item(SNOOP_REMOVE_RULE_SOURCE_PROPERTY_ITEM, SNOOP_REMOVE_RULE_SOURCE_PROPERTY_ITEM_NAME, "Source property", "MOUNT_EQUATORIAL_COORDINATES");
 		indigo_init_text_item(SNOOP_REMOVE_RULE_TARGET_DEVICE_ITEM, SNOOP_REMOVE_RULE_TARGET_DEVICE_ITEM_NAME, "Target device", "Dome Simulator");
 		indigo_init_text_item(SNOOP_REMOVE_RULE_TARGET_PROPERTY_ITEM, SNOOP_REMOVE_RULE_TARGET_PROPERTY_ITEM_NAME, "Target property", "DOME_EQUATORIAL_COORDINATES");
-		SNOOP_RULES_PROPERTY = indigo_init_light_property(NULL, device->name, SNOOP_RULES_PROPERTY_NAME, SNOOP_GROUP, "Rules", INDIGO_IDLE_STATE, 0);
+		SNOOP_RULES_PROPERTY = indigo_init_light_property(NULL, device->name, SNOOP_RULES_PROPERTY_NAME, MAIN_GROUP, "Rules", INDIGO_IDLE_STATE, 0);
 		if (SNOOP_RULES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
