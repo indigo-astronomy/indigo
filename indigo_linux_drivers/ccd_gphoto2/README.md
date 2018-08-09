@@ -62,6 +62,18 @@ and for disabling mirror lockup:
 >gphoto2 --set-config customfuncex=20,1,3,14,1,60f,1,0
 ```
 
+### FITS format and debayering
+FITS conversion and debayering is performed with library [LibRaw](https://github.com/LibRaw/LibRaw).
+The debayering options are currently fixed and set as follows:
+* Linear interpolation.
+* Disable LibRaw's default histogram transformation.
+* Disable LibRaw's default gamma curve transformation.
+* Disable automatic white balance obtained after averaging over the entire image.
+* Disable white balance from the camera (if possible).
+* No embedded color profile application.
+
+This FITS output is currently 3 colors (RGB) each 8-bit.
+
 ## Status: Development
 
 Driver is developed and tested with:
