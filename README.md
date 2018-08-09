@@ -61,6 +61,7 @@ This is the list of requirements taken into the consideration:
 2. ASCOM driver for INDIGO focuser
 3. Apogee filter wheel driver
 4. GPhoto2 CCD driver
+5. HID Joystick AUX driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO

@@ -161,7 +161,8 @@ DRIVERS=\
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/mount_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/dome_*))) \
-	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*)))
+	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*))) \
+	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/aux_*)))
 
 DRIVER_LIBS=$(PLATFORM_DRIVER_LIBS)\
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/ccd_*)))) \
@@ -171,6 +172,7 @@ DRIVER_LIBS=$(PLATFORM_DRIVER_LIBS)\
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/dome_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*)))) \
+	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/aux_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/agent_*))))
 
 DRIVER_SOLIBS=$(PLATFORM_DRIVER_SOLIBS)\
@@ -181,6 +183,7 @@ DRIVER_SOLIBS=$(PLATFORM_DRIVER_SOLIBS)\
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/dome_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*)))) \
+	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/aux_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/agent_*))))
 
 ifeq ($(ARCH_DETECTED),arm64)
@@ -1085,6 +1088,22 @@ $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib: indigo_mac_drivers/guider_eqmac/indi
 
 #---------------------------------------------------------------------
 #
+#	Build HID Joystick driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_aux_joystick.a: indigo_drivers/aux_joystick/indigo_aux_joystick.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_aux_joystick: indigo_drivers/aux_joystick/indigo_aux_joystick_main.o $(BUILD_DRIVERS)/indigo_aux_joystick.a $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_aux_joystick.$(SOEXT): indigo_drivers/aux_joystick/indigo_aux_joystick.o $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+
+#---------------------------------------------------------------------
+#
 #	Install libftd2xx
 #
 #---------------------------------------------------------------------
@@ -1381,7 +1400,9 @@ clean-all: clean
 	cd indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223; make clean; cd ../../../..
 	cd indigo_drivers/ccd_qsi/externals; rm -rf qsiapi-7.6.0; cd ../../..
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make clean; cd ../../../..
+ifeq ($(OS_DETECTED),Linux)
 	cd indigo_linux_drivers/ccd_gphoto2/externals/libraw; make maintainer-clean; rm configure; cd ../../../..
+endif
 
 #---------------------------------------------------------------------
 #
