@@ -116,18 +116,44 @@ extern "C" {
 #define MOUNT_SET_HOST_TIME_ITEM											(MOUNT_SET_HOST_TIME_PROPERTY->items+0)
 
 //----------------------------------------------
-/** MOUNT_PARK property pointer, property is mandatory, property change request should be fully handled by device driver.
+/** MOUNT_PARK_SET property pointer, property is optional, property change request should be fully handled by indigo_mount_change_property.
  */
+#define MOUNT_PARK_SET_PROPERTY												(MOUNT_CONTEXT->mount_set_park_property)
+
+/** MOUNT_PARK_SET.DEFAULT property item pointer.
+ */
+#define MOUNT_PARK_SET_DEFAULT_ITEM										(MOUNT_PARK_SET_PROPERTY->items+0)
+
+/** MOUNT_PARK_SET.CURRENT property item pointer.
+ */
+#define MOUNT_PARK_SET_CURRENT_ITEM										(MOUNT_PARK_SET_PROPERTY->items+1)
+
+//----------------------------------------------
+/** MOUNT_PARK_POSITION property pointer, property is optional, property change request should be fully handled by indigo_mount_change_property.
+*/
+#define MOUNT_PARK_POSITION_PROPERTY									(MOUNT_CONTEXT->mount_park_position_property)
+
+/** MOUNT_PARK_POSITION.RA property item pointer.
+*/
+#define MOUNT_PARK_POSITION_RA_ITEM										(MOUNT_PARK_POSITION_PROPERTY->items+0)
+
+/** MOUNT_PARK_POSITION.DEC property item pointer.
+*/
+#define MOUNT_PARK_POSITION_DEC_ITEM									(MOUNT_PARK_POSITION_PROPERTY->items+1)
+	
+//----------------------------------------------
+/** MOUNT_PARK property pointer, property is optional, property change request should be fully handled by device driver.
+*/
 #define MOUNT_PARK_PROPERTY														(MOUNT_CONTEXT->mount_park_property)
 
 /** MOUNT_PARK.PARKED property item pointer.
- */
+*/
 #define MOUNT_PARK_PARKED_ITEM												(MOUNT_PARK_PROPERTY->items+0)
 
 /** MOUNT_PARK.UNPARKED property item pointer.
- */
+*/
 #define MOUNT_PARK_UNPARKED_ITEM											(MOUNT_PARK_PROPERTY->items+1)
-
+	
 //----------------------------------------------
 /** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
@@ -338,6 +364,8 @@ typedef struct {
 	indigo_property *mount_utc_time_property;               ///< MOUNT_UTC_TIME property_pointer
 	indigo_property *mount_set_host_time_property;          ///< MOUNT_UTC_FROM_HOST property_pointer
 	indigo_property *mount_park_property;										///< MOUNT_PARK property pointer
+	indigo_property *mount_set_park_property;								///< MOUNT_PARK_SET property pointer
+	indigo_property *mount_park_position_property;					///< MOUNT_PARK_POSITION property pointer
 	indigo_property *mount_on_coordinates_set_property;			///< MOUNT_ON_COORDINATES_SET property pointer
 	indigo_property *mount_slew_rate_property;							///< MOUNT_SLEW_RATE property pointer
 	indigo_property *mount_track_rate_property;							///< MOUNT_TRACK_RATE property pointer
