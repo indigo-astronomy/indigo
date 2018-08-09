@@ -962,6 +962,32 @@
 #define MOUNT_PARK_UNPARKED_ITEM_NAME						"UNPARKED"
 
 //----------------------------------------------------------------------
+/** MOUNT_PARK_SET property name.
+ */
+#define MOUNT_PARK_SET_PROPERTY_NAME						"MOUNT_PARK_SET"
+
+/** MOUNT_PARK.PARKED property item name.
+ */
+#define MOUNT_PARK_SET_DEFAULT_ITEM_NAME				"DEFAULT"
+
+/** MOUNT_PARK.UNPARKED property item name.
+ */
+#define MOUNT_PARK_SET_CURRENT_ITEM_NAME				"CURRENT"
+
+//----------------------------------------------------------------------
+/** MOUNT_PARK_POSITION property name.
+ */
+#define MOUNT_PARK_POSITION_PROPERTY_NAME				"MOUNT_PARK_POSITION"
+
+/** MOUNT_GUIDE_RATE.RA property item name.
+ */
+#define MOUNT_PARK_POSITION_RA_ITEM_NAME				"RA"
+
+/** MOUNT_GUIDE_RATE.DEC property item name.
+ */
+#define MOUNT_PARK_POSITION_DEC_ITEM_NAME				"DEC"
+
+//----------------------------------------------------------------------
 /** MOUNT_ON_COORDINATES_SET property name.
  */
 #define MOUNT_ON_COORDINATES_SET_PROPERTY_NAME	"MOUNT_ON_COORDINATES_SET"
