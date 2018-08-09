@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <meta charset="utf-8" />
 <title>WebSocket Test</title>
+<style>
+	body { font-size: 10pt; }
+	div.Alert { background-color: red; color: white; }
+	div.Busy { background-color: orange; color: white; }
+	div.Ok { background-color: green; color: white; }
+	div.Idle { background-color: green; color: white; }
+	span.Alert { color: red; }
+	span.Warning { color: orange; }
+	span.Ok { color: green; }
+	span.Idle { color: green; }
+	</style>
 <script language="javascript" type="text/javascript" src="indigo.js"></script>
 <script language="javascript" type="text/javascript">
 	
@@ -8,12 +19,11 @@
 	DEVICE = "CCD Imager Simulator";
 
 	onOpen = function(evt) {
-		writeToScreen("CONNECTED");
+		writeOK('CONNECTED to ' + URL);
 		enumerateProperties();
 		changeProperty(DEVICE, "CONNECTION", { "CONNECTED": true });
 		changeProperty(DEVICE, "CCD_EXPOSURE", { "EXPOSURE": 5 });
 	}
-
 
 	window.addEventListener("load", init, false);
 

@@ -105,7 +105,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			CCD_MODE_PROPERTY->count = 1;
 			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 			indigo_init_switch_item(CCD_MODE_ITEM, "DEFAULT_MODE", "Default mode", true);
-			// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
+			// -------------------------------------------------------------------------------- CCD_READ_MODE
 			CCD_READ_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_READ_MODE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Read mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (CCD_READ_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
