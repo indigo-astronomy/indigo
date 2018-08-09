@@ -1,31 +1,101 @@
 
 <!DOCTYPE html>
-<meta charset="utf-8" />
+<meta charset='utf-8' />
 <title>INDIGO Wheel driver conformance test</title>
-<script language="javascript" type="text/javascript" src="indigo.js"></script>
-<script language="javascript" type="text/javascript">
+<style>
+	body { font: 10px arial, sans-serif; padding: 20pt; }
+	div.Alert { background-color: red; color: white; }
+	div.Busy { background-color: orange; color: white; }
+	div.Ok { background-color: green; color: white; }
+	div.Idle { background-color: green; color: white; }
+	span.Alert { color: red; }
+	span.Warning { color: orange; }
+	span.Ok { color: green; }
+	span.Idle { color: green; }
+</style>
+<script language='javascript' type='text/javascript' src='indigo.js'></script>
+<script language='javascript' type='text/javascript'>
 	
-	URL = "ws://localhost:7624/";
-	DEVICE = "CCD Imager Simulator (wheel)";
+	URL = 'ws://localhost:7624/';
+	DEVICE = 'CCD Imager Simulator (wheel)';
 	STEP = 0;
+	
+	var infoIsPresent = false;
+	var simulationIsPresent = false;
+	var configIsPresent = false;
+	var profileIsPresent = false;
+	var devicePortIsPresent = false;
+	var devicePortsIsPresent = false;
+	var wheelSlotPresent = false;
+	var wheelSlotNamePresent = false;
+	
+	var backup;
 	
 	defineProperty = function (property) {
 		var device = property.device;
 		var name = property.name;
 		if (device == DEVICE) {
-			if (name == "CONNECTION") {
-				if (STEP == 0) {
-					if (property.values["CONNECTED"]) {
-						writeAlert(DEVICE + " - already connected <BR> DEFINITION: " + JSON.stringify(property, null, 2));
+			if (STEP == 0) {
+				if (name == 'CONNECTION') {
+					if (property.values['CONNECTED']) {
+						writeAlert(DEVICE + ' - device is already connected\n\nDEFINE: ' + JSON.stringify(property, null, 2));
 						STEP = -1;
-						return;
 					} else {
-						writeOK(DEVICE + " - not connected <BR> DEFINITION: " + JSON.stringify(property, null, 2));
+						writeOK(DEVICE + ' - mandatory CONNECT is present\n\nDEFINE: ' + JSON.stringify(property, null, 2));
+						if (!infoIsPresent) {
+							writeAlert(DEVICE + ' - mandatory INFO is not present');
+						}
+						if (!simulationIsPresent) {
+							writeWarning(DEVICE + ' - optional SIMULATION is not present');
+						}
+						if (!configIsPresent) {
+							writeAlert(DEVICE + ' - mandatory CONFIG is not present');
+						}
+						if (!profileIsPresent) {
+							writeAlert(DEVICE + ' - mandatory PROFILE is not present');
+						}
+						if (!devicePortIsPresent) {
+							writeWarning(DEVICE + ' - optional DEVICE_PORT is not present');
+						}
+						if (!devicePortsIsPresent) {
+							writeWarning(DEVICE + ' - optional DEVICE_PORTS is not present');
+						}
 						STEP = 1;
-						changeProperty(DEVICE, "CONNECTION", { "CONNECTED": true });
-						return;
+						changeProperty(DEVICE, 'CONFIG', { 'LOAD': true });
 					}
+				} else if (name == 'INFO') {
+					writeOK(DEVICE + ' - mandatory INFO is present\n\nDEFINE: ' + JSON.stringify(property, null, 2));
+					infoIsPresent = true;
+				} else if (name == 'SIMULATION') {
+					writeOK(DEVICE + ' - optional SIMULATION is present\n\nDEFINE: ' + JSON.stringify(property, null, 2));
+					simulationIsPresent = true;
+				} else if (name == 'CONFIG') {
+					writeOK(DEVICE + ' - mandatory CONFIG is present\n\nDEFINE: ' + JSON.stringify(property, null, 2));
+					configIsPresent = true;
+				} else if (name == 'PROFILE') {
+					writeOK(DEVICE + ' - mandatory PROFILE is present\n\nDEFINE: ' + JSON.stringify(property, null, 2));
+					profileIsPresent = true;
+				} else if (name == 'DEVICE_PORT') {
+					writeOK(DEVICE + ' - optional DEVICE_PORT is present\n\nDEFINE: ' + JSON.stringify(property, null, 2));
+					devicePortIsPresent = true;
+				} else if (name == 'DEVICE_PORTS') {
+					writeOK(DEVICE + ' - optional DEVICE_PORTS is present\n\nDEFINE: ' + JSON.stringify(property, null, 2));
+					devicePortsIsPresent = true;
+				} else {
+					writeProperty(DEVICE + ' - non-standard ' + name + ' is present\n\nDEFINE:', property);
 				}
+			} else if (STEP == 2) {
+				if (name == 'WHEEL_SLOT') {
+					writeOK(DEVICE + ' - mandatory WHEEL_SLOT is present\n\nDEFINE: ' + JSON.stringify(property, null, 2));
+					wheelSlotPresent = true;
+				} else if (name == 'WHEEL_SLOT_NAME') {
+						writeOK(DEVICE + ' - mandatory WHEEL_SLOT_NAME is present\n\nDEFINE: ' + JSON.stringify(property, null, 2));
+						wheelSlotNamePresent = true;
+				} else {
+					writeProperty(DEVICE + ' - non-standard ' + name + ' is present\n\nDEFINE:', property);
+				}
+			} else {
+				writeAlert(DEVICE + ' -  '+ name +' is defined out of sequence\n\nDEFINE: ' + JSON.stringify(property, null, 2));
 			}
 		}
 	}
@@ -34,29 +104,176 @@
 		var device = property.device;
 		var name = property.name;
 		if (device == DEVICE) {
-			if (name == "CONNECTION") {
-				if (STEP == 1) {
-					if (property.values["CONNECTED"]) {
-						writeOK(DEVICE + " - sucessfuly connected <BR> UPDATE: " + JSON.stringify(property, null, 2));
-						STEP = 10000;
-						changeProperty(DEVICE, "CONNECTION", { "DISCONNECTED": true });
-						return;
+			if (STEP == 1) {
+				if (name == 'CONFIG') {
+					if (property.state == 'Ok') {
+						writeOK(DEVICE + ' - configuration sucessfuly loaded\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+					} else {
+						writeAlert(DEVICE + ' - failed to load configuration\n\nUPDATE: ' + JSON.stringify(property, null, 2));
 					}
-				} else if (STEP = 10000) {
-					writeOK(DEVICE + " - sucessfuly disconnected <BR> UPDATE: " + JSON.stringify(property, null, 2));
-					STEP = -1;
-					return;
+					STEP = 2;
+					changeProperty(DEVICE, 'CONNECTION', { 'CONNECTED': true });
+				} else {
+					writeProperty(DEVICE + ' - CONFIG.LOAD side effect\n\nUPDATE:', property);
 				}
+			} else if (STEP == 2) {
+				if (name == 'CONNECTION') {
+					if (property.state == 'Ok' && property.values['CONNECTED']) {
+						writeOK(DEVICE + ' - sucessfuly connected\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						if (!wheelSlotPresent) {
+							writeAlert(DEVICE + ' - mandatory WHEEL_SLOT is not present');
+						}
+						if (!wheelSlotNamePresent) {
+							writeAlert(DEVICE + ' - mandatory WHEEL_SLOT_NAME is not present');
+						}
+						STEP = 3;
+						changeProperty(DEVICE, 'PROFILE', { 'PROFILE_1': true });
+					} else {
+						writeAlert(DEVICE + ' - failed to connect\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						STEP = -1;
+					}
+				} else {
+					writeProperty(DEVICE + ' - CONNECTION.CONNECTED side effect\n\nUPDATE:', property);
+				}
+			} else if (STEP == 3) {
+				if (name == 'PROFILE') {
+					if (property.values['PROFILE_1']) {
+						writeOK(DEVICE + ' - profile set to #1\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						STEP = 4;
+						changeProperty(DEVICE, 'CONFIG', { 'LOAD': true });
+					} else {
+						writeOK(DEVICE + ' - failed to set profile to #1\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						STEP = -1;
+					}
+				}
+				
+			} else if (STEP == 4) {
+				if (name == 'CONFIG') {
+					if (property.state == 'Ok') {
+						writeOK(DEVICE + ' - configuration sucessfuly loaded\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+					} else {
+						writeAlert(DEVICE + ' - failed to load configuration\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+					}
+					STEP = 5;
+					backup = devices[DEVICE]['WHEEL_SLOT_NAME'].values['SLOT_NAME_1'];
+					changeProperty(DEVICE, 'WHEEL_SLOT_NAME', { 'SLOT_NAME_1': 'XXXX' });
+				} else {
+					writeProperty(DEVICE + ' - CONFIG.LOAD side effect\n\nUPDATE:', property);
+				}
+			} else if (STEP == 5) {
+				if (name == 'WHEEL_SLOT_NAME') {
+					if (property.state == 'Ok' && property.values['SLOT_NAME_1'] == 'XXXX') {
+						writeOK(DEVICE + ' - slot name sucessfuly set\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						STEP = 6;
+						changeProperty(DEVICE, 'WHEEL_SLOT_NAME', { 'SLOT_NAME_1': backup });
+					} else {
+						writeAlert(DEVICE + ' - failed to set slot name\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						STEP = 7;
+						changeProperty(DEVICE, 'WHEEL_SLOT', { 'SLOT': 3 });
+					}
+				} else {
+					writeProperty(DEVICE + ' - WHEEL_SLOT_NAME.SLOT_NAME_1 update side effect\n\nUPDATE:', property);
+				}
+			} else if (STEP == 6) {
+				if (name == 'WHEEL_SLOT_NAME') {
+					if (property.state == 'Ok') {
+						writeOK(DEVICE + ' - slot name sucessfuly restored\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+					} else {
+						writeAlert(DEVICE + ' - failed to restore slot name\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+					}
+					STEP = 7;
+					changeProperty(DEVICE, 'WHEEL_SLOT', { 'SLOT': 3 });
+				} else {
+					writeProperty(DEVICE + ' - WHEEL_SLOT_NAME.SLOT_NAME_1 update side effect\n\nUPDATE:', property);
+				}
+			} else if (STEP == 7) {
+				if (name == 'WHEEL_SLOT') {
+					if (property.state == 'Ok' && property.values['SLOT'] == 3) {
+						writeOK(DEVICE + ' - slot  sucessfuly set\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						STEP = 8;
+						changeProperty(DEVICE, 'WHEEL_SLOT', { 'SLOT': 1 });
+					} else if (property.state == 'Busy') {
+						writeWarning(DEVICE + ' - slot change in progress\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+					} else {
+						writeAlert(DEVICE + ' - failed to change slot\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						STEP = 9;
+						changeProperty(DEVICE, 'CONNECTION', { 'DISCONNECTED': true });
+					}
+				} else {
+					writeProperty(DEVICE + ' - WHEEL_SLOT.SLOT update side effect\n\nUPDATE:', property);
+				}
+			} else if (STEP == 8) {
+				if (name == 'WHEEL_SLOT') {
+					if (property.state == 'Ok' && property.values['SLOT'] == 1) {
+						writeOK(DEVICE + ' - slot  sucessfuly set\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						STEP = 9;
+						changeProperty(DEVICE, 'CONNECTION', { 'DISCONNECTED': true });
+					} else if (property.state == 'Busy') {
+						writeWarning(DEVICE + ' - slot change in progress\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+					} else {
+						writeAlert(DEVICE + ' - failed to change slot\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						STEP = 9;
+						changeProperty(DEVICE, 'CONNECTION', { 'DISCONNECTED': true });
+					}
+				} else {
+					writeProperty(DEVICE + ' - WHEEL_SLOT.SLOT update side effect\n\nUPDATE:', property);
+				}
+			} else if (STEP == 9) {
+				if (name == 'CONNECTION') {
+					if (property.state == 'Ok' && property.values['DISCONNECTED']) {
+						writeOK(DEVICE + ' - sucessfuly disconnected\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+						for (var name in devices[DEVICE]) {
+							if (name == 'CONNECTION' || name == 'INFO' || name == 'SIMULATION' || name == 'CONFIG' || name == 'PROFILE' || name == 'DEVICE_PORT' || name == 'DEVICE_PORTS') {
+								continue;
+							}
+							writeAlert(DEVICE + ' - property ' + name + ' is not removed');
+						}
+					} else {
+						writeOK(DEVICE + ' - failed to disconnect\n\nUPDATE: ' + JSON.stringify(property, null, 2));
+					}
+					STEP = -1;
+				}
+			} else {
+				writeAlert(DEVICE + ' -  '+ name +' is updated out of sequence\n\nUPDATE: ' + JSON.stringify(property, null, 2));
 			}
-			writeAlert(DEVICE + " - unexpected update (STEP " + STEP + ") <BR> UPDATE: " + JSON.stringify(property, null, 2));
-			STEP = -1;
 		}
 	}
 
 	deleteProperty = function (property) {
+		var device = property.device;
+		var name = property.name;
+		if (device == DEVICE) {
+			if (STEP == 9) {
+				if (name == 'WHEEL_SLOT') {
+					writeOK(DEVICE + ' - mandatory WHEEL_SLOT is deleted\n\nDELETE: ' + JSON.stringify(property, null, 2));
+				} else if (name == 'WHEEL_SLOT_NAME') {
+					writeOK(DEVICE + ' - mandatory WHEEL_SLOT_NAME is deleted\n\nDELETE: ' + JSON.stringify(property, null, 2));
+				} else {
+					writeProperty(DEVICE + ' - CONNECTION.DISCONNECTED side effect\n\nDELETE:', property);
+				}
+			} else {
+				writeAlert(DEVICE + ' -  '+ name +' is deleted out of sequence\n\nDELETE: ' + JSON.stringify(property, null, 2));
+			}
+		}
 	}
 
-	window.addEventListener("load", init, false);
+	window.addEventListener('load', init, false);
 
 </script>
-<div id="output"></div>
+<div id='output'>
+	<h1>INDIGO Wheel driver conformance test</h1>
+	<p>Scenario:</p>
+	<ul>
+		<li>Connect to a webservice</li>
+		<li>Enumerate properties and check for mandatory and optional properties</li>
+		<li>Load configuration</li>
+		<li>Connect and check for mandatory properties</li>
+		<li>Select profile #1</li>
+		<li>Load configuration</li>
+		<li>Change slot #1 name</li>
+		<li>Restore slot #1 name</li>
+		<li>Set slot #3</li>
+		<li>Set slot #1</li>
+		<li>Disconnect</li>
+	</ul>
+</div>

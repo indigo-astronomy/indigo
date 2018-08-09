@@ -1,14 +1,14 @@
 var onOpen = function (evt) {
-	writeToScreen("CONNECTED");
+	writeOK('CONNECTED to ' + URL);
 	enumerateProperties();
 }
 
 var onClose = function (evt) {
-	writeToScreen("DISCONNECTED");
+	writeOK('DISCONNECTED from ' + URL);
 }
 
 var onError = function (evt) {
-	writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
+	writeAlert('ERROR' + evt.data);
 }
 
 var onMessage = function (evt) {
@@ -46,15 +46,15 @@ var onMessage = function (evt) {
 var devices = {};
 
 var defineProperty = function (property) {
-	writeToScreen('<span style="color: blue;">DEFINE: ' + JSON.stringify(property, null, 2) + '</span>');
+	writeProperty('DEFINE:', property);
 }
 
 var updateProperty = function (property) {
-	writeToScreen('<span style="color: blue;">UPDATE: ' + JSON.stringify(property, null, 2) + '</span>');
+	writeProperty('UPDATE:', property);
 }
 
 var deleteProperty = function (property) {
-	writeToScreen('<span style="color: blue;">DELETE: ' + JSON.stringify(property, null, 2) + '</span>');
+	writeProperty('DELETE:', property);
 }
 
 var output;
@@ -77,13 +77,21 @@ function writeToScreen(message) {
 	pre.scrollIntoView(false);
 }
 
-function writeAlert(text) {
-	writeToScreen('<div style="background-color: red; color: white;"> Alert - ' + text + '</div>');
+function writeProperty(text, property) {
+	writeToScreen('<div class="'+property.state+'">' + text + ' ' + JSON.stringify(property, null, 2) + '</div>');
 }
 
 
+function writeAlert(text) {
+	writeToScreen('<div class="Alert">' + text + '</div>');
+}
+
+function writeWarning(text) {
+	writeToScreen('<div class="Busy">' + text + '</div>');
+}
+
 function writeOK(text) {
-	writeToScreen('<div style="background-color: green; color: white;"> OK - ' + text + '</div>');
+	writeToScreen('<div class="Ok">' + text + '</div>');
 }
 
 function doSend(message) {
@@ -151,7 +159,7 @@ function processDeleteProperty(property) {
 
 function enumerateProperties() {
 	var message = { "getProperties": { "version": 0x200 } };
-	writeToScreen('<span style="color: green;">ENUMERATE: ' + JSON.stringify(message.getProperties, null, 2) + '</span>');
+	writeToScreen('<span class="Ok">ENUMERATE: ' + JSON.stringify(message.getProperties, null, 2) + '</span>');
 	doSend(JSON.stringify(message));
 }
 
@@ -160,7 +168,7 @@ function changeProperty(deviceName, propertyName, values) {
 	for (var name in values)
 		items.push({ "name": name, "value": value = values[name] });
 	property = { "device": deviceName, "name": propertyName, "items": items };
-	writeToScreen('<span style="color: green;">CHANGE: ' + JSON.stringify(property, null, 2) + '</span>');
+	writeToScreen('<span class="Ok">CHANGE: ' + JSON.stringify(property, null, 2) + '</span>');
 	if (typeof value == "string")
 		message = { "newTextVector": property };
 	else if (typeof value == "number")
