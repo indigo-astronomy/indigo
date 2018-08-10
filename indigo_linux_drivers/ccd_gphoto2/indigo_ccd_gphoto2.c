@@ -81,6 +81,8 @@
 #define NIKON_SHUTTERSPEED			"shutterspeed"
 #define NIKON_CAPTURE_TARGET			"capturetarget"
 #define NIKON_MEMORY_CARD			"Memory card"
+#define NIKON_BULB_MODE                         "bulb"
+#define NIKON_BULB_MODE_LABEL                   "Bulb Mode"
 
 #define EOS_ISO					NIKON_ISO
 #define EOS_COMPRESSION				"imageformat"
@@ -95,6 +97,9 @@
 #define EOS_MIRROR_LOCKUP_ENABLE		"20,1,3,14,1,60f,1,1"
 #define EOS_MIRROR_LOCKUP_DISABLE		"20,1,3,14,1,60f,1,0"
 #define EOS_VIEWFINDER                          "viewfinder"
+#define EOS_REMOTE_RELEASE_LABEL                "Canon EOS Remote Release"
+#define EOS_BULB_MODE                           NIKON_BULB_MODE
+#define EOS_BULB_MODE_LABEL                     NIKON_BULB_MODE_LABEL
 
 #define TIMER_COUNTER_STEP_SEC                  0.1   /* 100 ms. */
 
@@ -145,7 +150,9 @@ typedef struct {
 	enum vendor vendor;
 	char *gphoto2_compression_id;
 	bool mirror_lockup;
-	bool bulb;
+	bool shutterspeed_bulb;
+	bool has_single_bulb_mode;
+	bool has_eos_remote_release;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
@@ -178,7 +185,7 @@ static int progress_cb(void *callback_data,
 	return 0;
 }
 
-static void process_dslr_image_debayer(indigo_device *device,
+static int process_dslr_image_debayer(indigo_device *device,
 				       void *buffer, size_t buffer_size)
 {
         int rc;
@@ -255,23 +262,26 @@ static void process_dslr_image_debayer(indigo_device *device,
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
 				    "input data is not of type "
 				    "LIBRAW_IMAGE_BITMAP");
+		rc = LIBRAW_UNSPECIFIED_ERROR;
 		goto cleanup;
 	}
 
 	if (processed_image->colors != 3) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
 				    "debayered data has not 3 colors");
+		rc = LIBRAW_UNSPECIFIED_ERROR;
 		goto cleanup;
 	}
 
-	void *data;
+	void *data = NULL;
 	if (processed_image->bits == 8)
 		data = (unsigned char *)processed_image->data;
 	else if (processed_image->bits == 16)
 		data = (unsigned short *)processed_image->data;
 	else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
-				    "8 or 16 bit is supported only\n");
+				    "8 or 16 bit is supported only");
+		rc = LIBRAW_UNSPECIFIED_ERROR;
 		goto cleanup;
 	}
 
@@ -285,19 +295,21 @@ static void process_dslr_image_debayer(indigo_device *device,
 		{ 0 }
 	};
 
-	unsigned long int data_size = processed_image->data_size +
+        unsigned long int data_size = processed_image->data_size +
 		FITS_HEADER_SIZE;
-	int mod2880 = data_size % 2880;
+	int padding = 0;
+        int mod2880 = data_size % 2880;
 	if (mod2880)
-		data_size = data_size + 2880 - mod2880;
+		padding = 2880 - mod2880;
+	data_size += padding;
 
 	if (data_size > PRIVATE_DATA->buffer_size_max) {
 		PRIVATE_DATA->buffer_size_max = data_size;
 		PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer,
 					       data_size);
 	}
-	memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
-	       data, data_size - FITS_HEADER_SIZE);
+	memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE + padding,
+	       data, data_size - (FITS_HEADER_SIZE + padding));
 	PRIVATE_DATA->buffer_size = data_size;
 
 	indigo_process_image(device, PRIVATE_DATA->buffer,
@@ -306,8 +318,9 @@ static void process_dslr_image_debayer(indigo_device *device,
                              false, /* little_endian */
                              keywords);
 
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "unpacked and debayered input data: "
-			    "%d bytes -> output data: %d bytes, colors: %d, "
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "input data: "
+			    "%d bytes -> unpacked and debayered output data: "
+			    "%d bytes, colors: %d, "
 			    "bits: %d", buffer_size, processed_image->data_size,
 			    processed_image->colors, processed_image->bits);
 
@@ -316,6 +329,8 @@ cleanup:
 	libraw_free_image(raw_data);
 	libraw_recycle(raw_data);
         libraw_close(raw_data);
+
+	return rc;
 }
 
 static void vendor_identify_widget(indigo_device *device,
@@ -366,6 +381,34 @@ static int lookup_widget(CameraWidget *widget, const char *key,
 	rc = gp_widget_get_child_by_name(widget, key, child);
 	if (rc < GP_OK)
 		rc = gp_widget_get_child_by_label(widget, key, child);
+
+	return rc;
+}
+
+static int exists_widget_label(const char *key, indigo_device *device)
+{
+	CameraWidget *widget = NULL, *child = NULL;
+	int rc;
+
+	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+
+	rc = gp_camera_get_config(PRIVATE_DATA->camera, &widget,
+				  context);
+	if (rc < GP_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,
+				    "[camera:%p,context:%p] camera get config failed",
+				    PRIVATE_DATA->camera, context);
+		goto cleanup;
+	}
+
+	rc = lookup_widget(widget, key, &child);
+	if (rc < GP_OK)
+		goto cleanup;
+
+cleanup:
+	gp_widget_free(widget);
+
+	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 
 	return rc;
 }
@@ -704,15 +747,20 @@ static void exposure_timer_callback(indigo_device *device)
 						  PRIVATE_DATA->buffer,
 						  PRIVATE_DATA->buffer_size,
 						  PRIVATE_DATA->filename_suffix);
-		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value)
-			process_dslr_image_debayer(device,
-						   PRIVATE_DATA->buffer,
-						   PRIVATE_DATA->buffer_size);
-
-		/* TODO: Deal with conflicting formats, e.g.
-		   CCD_IMAGE_FORMAT_FITS_ITEM && COMPRESSION == JPEG,
-		   that is, DSLR JPEG -> FITS. */
-
+		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
+			/* TODO: Deal with conflicting formats, e.g.
+			   CCD_IMAGE_FORMAT_FITS_ITEM && COMPRESSION == JPEG,
+			   that is, DSLR JPEG -> FITS. */
+			rc = process_dslr_image_debayer(device,
+							PRIVATE_DATA->buffer,
+							PRIVATE_DATA->buffer_size);
+			if (rc) {
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY,
+						       "debayer failed");
+				return;
+			}
+		}
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	} else {
@@ -959,22 +1007,25 @@ static void *thread_capture(void *user_data)
 				 CCD_EXPOSURE_ITEM->number.target,
 				 exposure_timer_callback);
 
-	rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
-				      device);
-	if (rc < GP_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME,
-				    "[rc:%d,camera:%p,context:%p] "
-				    "gphoto2_set_key_val_char '%s' '%s'",
-				    rc,
-				    PRIVATE_DATA->camera,
-				    context,
-				    EOS_REMOTE_RELEASE,
-				    EOS_PRESS_FULL);
-		goto cleanup;
+	if (PRIVATE_DATA->has_eos_remote_release) {
+		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE,
+					      EOS_PRESS_FULL,
+					      device);
+		if (rc < GP_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,
+					    "[rc:%d,camera:%p,context:%p] "
+					    "gphoto2_set_key_val_char '%s' '%s'",
+					    rc,
+					    PRIVATE_DATA->camera,
+					    context,
+					    EOS_REMOTE_RELEASE,
+					    EOS_PRESS_FULL);
+			goto cleanup;
+		}
 	}
 
 	/* Bulb capture. */
-	if (PRIVATE_DATA->bulb)
+	if (PRIVATE_DATA->shutterspeed_bulb)
 		while (CCD_EXPOSURE_ITEM->number.value)
 			usleep(TIMER_COUNTER_STEP_SEC * 1000000UL);
 
@@ -1066,8 +1117,8 @@ static void update_property(indigo_device *device, indigo_property *property,
 			    const char *widget)
 {
 	assert(device != NULL);
-	if (!property || !widget)
-		return;
+	assert(property != NULL);
+	assert(widget != NULL);
 
 	int rc;
 
@@ -1086,9 +1137,9 @@ static void update_property(indigo_device *device, indigo_property *property,
 					     INDIGO_NAME_SIZE))
 					if (property->items[p].name[0] == 'b' ||
 					    property->items[p].name[0] == 'B')
-						PRIVATE_DATA->bulb = true;
+						PRIVATE_DATA->shutterspeed_bulb = true;
 					else
-						PRIVATE_DATA->bulb = false;
+						PRIVATE_DATA->shutterspeed_bulb = false;
 			}
 		}
 	}
@@ -1103,7 +1154,7 @@ static void update_ccd_property(indigo_device *device,
 				property->items[p].name);
 			CCD_EXPOSURE_ITEM->number.target = value;
 
-			if (!PRIVATE_DATA->bulb)
+			if (!PRIVATE_DATA->shutterspeed_bulb)
 				CCD_EXPOSURE_ITEM->number.value = value;
 
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY,
@@ -1113,16 +1164,13 @@ static void update_ccd_property(indigo_device *device,
 
 static void shutterspeed_closest(indigo_device *device)
 {
+	assert(device != NULL);
+
 	if (!CCD_EXPOSURE_ITEM || !DSLR_SHUTTER_PROPERTY)
 		return;
 
 	const double val = CCD_EXPOSURE_ITEM->number.value;
 	double number_shutter;
-
-	if (PRIVATE_DATA->bulb) {
-		CCD_EXPOSURE_ITEM->number.target = val;
-		return;
-	}
 
 	if (val < 0)
 		return;
@@ -1135,15 +1183,16 @@ static void shutterspeed_closest(indigo_device *device)
 		int pos_new = 0;
 		int pos_old;
 		for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
-
-			if (DSLR_SHUTTER_PROPERTY->items[i].sw.value)
+			if (DSLR_SHUTTER_PROPERTY->items[i].sw.value) {
+				/* If shutter is on bulb */
+				if (DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'b' ||
+				    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B') {
+					CCD_EXPOSURE_ITEM->number.target =
+						CCD_EXPOSURE_ITEM->number.value;
+					return;
+				}
 				pos_old = i;
-
-			/* Skip {B,b}ulb widget. */
-			if (DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'b' ||
-			    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B')
-				continue;
-
+			}
 			number_shutter = parse_shutterspeed(
 				DSLR_SHUTTER_PROPERTY->items[i].name);
 			double abs_diff = fabs(CCD_EXPOSURE_ITEM->number.value
@@ -1194,7 +1243,19 @@ static indigo_result ccd_attach(indigo_device *device)
 			else
 				PRIVATE_DATA->vendor = OTHER;
 		}
+
+		/*----------------------- IDENTIFY-VENDIR --------------------*/
 		vendor_identify_widget(device, DSLR_COMPRESSION_PROPERTY_NAME);
+
+		/*-------------------- HAS-SINGLE-BULB-MODE ------------------*/
+		PRIVATE_DATA->has_single_bulb_mode =
+			exists_widget_label(EOS_BULB_MODE_LABEL,
+					    device) == 0;
+
+		/*------------------- HAS-EOS-REMOTE-RELEASE -----------------*/
+		PRIVATE_DATA->has_eos_remote_release =
+			exists_widget_label(EOS_REMOTE_RELEASE_LABEL,
+					    device) == 0;
 
 		/*------------------------- SHUTTER-TIME -----------------------*/
 		int count = enumerate_widget(EOS_SHUTTERSPEED, device, NULL);
@@ -1316,10 +1377,8 @@ static indigo_result ccd_attach(indigo_device *device)
 		for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
 			/* Skip {B,b}ulb widget. */
 			if (DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'b' ||
-			    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B') {
-				PRIVATE_DATA->bulb = true;
+			    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B')
 				continue;
-			}
 
 			double number_shutter = parse_shutterspeed(
 				DSLR_SHUTTER_PROPERTY->items[i].name);
@@ -1477,7 +1536,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 			return INDIGO_OK;
 
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		/* Find non-bulb shutterspeed closest to desired client value. */
+		/* Find non-bulb shutterspeed closest to client value. */
 		indigo_use_shortest_exposure_if_bias(device);
 		shutterspeed_closest(device);
 		update_property(device, DSLR_SHUTTER_PROPERTY, EOS_SHUTTERSPEED);
@@ -1510,7 +1569,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			/* Only bulb captures can be abort. */
-			if (PRIVATE_DATA->bulb) {
+			if (PRIVATE_DATA->shutterspeed_bulb) {
 				indigo_cancel_timer(device,
 						    &PRIVATE_DATA->exposure_timer);
 				pthread_cancel(thread_id_capture);
