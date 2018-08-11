@@ -351,14 +351,14 @@ static indigo_device *allocate_device(const char *name, long index, int button_c
 		NULL,
 		aux_detach
 		);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "joystick %s #%d with %d buttons and %d axes detected", name, index, button_count, axis_count + 2 * pov_count);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "joystick %s #%08x with %d buttons and %d axes detected", name, index, button_count, axis_count + 2 * pov_count);
 	joystick_private_data *private_data = malloc(sizeof(joystick_private_data));
 	assert(private_data != NULL);
 	memset(private_data, 0, sizeof(joystick_private_data));
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &aux_template, sizeof(indigo_device));
-	snprintf(device->name, INDIGO_NAME_SIZE, "%s #%ld", name, index);
+	snprintf(device->name, INDIGO_NAME_SIZE, "%s #%08lx", name, index);
 	private_data->index = index;
 	private_data->button_count = button_count;
 	private_data->axis_count = axis_count;
@@ -382,20 +382,37 @@ static void event_axis(indigo_device *device, int axis, int value) {
 	if (JOYSTICK_MAPPING_MOTION_DEC_ITEM->number.value == axis) {
 		if (JOYSTICK_OPTIONS_ANALOG_STICK_ITEM->sw.value) {
 			if (value != 0 && abs(value) > PRIVATE_DATA->ra_slew_rate) {
-				indigo_set_switch(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SLEW_RATE_PROPERTY->items + abs(value) - 1, true);
-				MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
+        indigo_item *item = MOUNT_SLEW_RATE_PROPERTY->items + abs(value) - 1;
+        if (!item->sw.value) {
+          indigo_set_switch(MOUNT_SLEW_RATE_PROPERTY, item, true);
+          MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
+          indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
+        }
 			}
 		}
 		PRIVATE_DATA->dec_slew_rate = abs(value);
-		MOUNT_MOTION_NORTH_ITEM->sw.value = false;
-		MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
-		if (value < 0)
-			(JOYSTICK_OPTIONS_SWAP_DEC_ITEM->sw.value ? MOUNT_MOTION_SOUTH_ITEM : MOUNT_MOTION_NORTH_ITEM)->sw.value = true;
-		else  if (value > 0)
-			(JOYSTICK_OPTIONS_SWAP_DEC_ITEM->sw.value ? MOUNT_MOTION_NORTH_ITEM : MOUNT_MOTION_SOUTH_ITEM)->sw.value = true;
-		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+    if (value < 0) {
+			indigo_item *item = JOYSTICK_OPTIONS_SWAP_DEC_ITEM->sw.value ? MOUNT_MOTION_SOUTH_ITEM : MOUNT_MOTION_NORTH_ITEM;
+      if (!item->sw.value) {
+        item->sw.value = true;
+        MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+        indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+      }
+    } else  if (value > 0) {
+      indigo_item *item = JOYSTICK_OPTIONS_SWAP_DEC_ITEM->sw.value ? MOUNT_MOTION_NORTH_ITEM : MOUNT_MOTION_SOUTH_ITEM;
+      if (!item->sw.value) {
+        item->sw.value = true;
+        MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+        indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+      }
+    } else {
+      if (MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value) {
+        MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+        MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+        MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+        indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+      }
+    }
 	} else if (JOYSTICK_MAPPING_MOTION_RA_ITEM->number.value == axis) {
 		if (JOYSTICK_OPTIONS_ANALOG_STICK_ITEM->sw.value) {
 			if (value != 0 && abs(value) > PRIVATE_DATA->dec_slew_rate) {
@@ -407,10 +424,28 @@ static void event_axis(indigo_device *device, int axis, int value) {
 		PRIVATE_DATA->ra_slew_rate = abs(value);
 		MOUNT_MOTION_EAST_ITEM->sw.value = false;
 		MOUNT_MOTION_WEST_ITEM->sw.value = false;
-		if (value < 0)
-			(JOYSTICK_OPTIONS_SWAP_RA_ITEM->sw.value ? MOUNT_MOTION_EAST_ITEM : MOUNT_MOTION_WEST_ITEM)->sw.value = true;
-		else  if (value > 0)
-			(JOYSTICK_OPTIONS_SWAP_RA_ITEM->sw.value ? MOUNT_MOTION_WEST_ITEM : MOUNT_MOTION_EAST_ITEM)->sw.value = true;
+    if (value < 0) {
+			indigo_item *item = JOYSTICK_OPTIONS_SWAP_RA_ITEM->sw.value ? MOUNT_MOTION_EAST_ITEM : MOUNT_MOTION_WEST_ITEM;
+      if (!item->sw.value) {
+        item->sw.value = true;
+        MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+        indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+      }
+    } else  if (value > 0) {
+			indigo_item *item = JOYSTICK_OPTIONS_SWAP_RA_ITEM->sw.value ? MOUNT_MOTION_WEST_ITEM : MOUNT_MOTION_EAST_ITEM;
+      if (!item->sw.value) {
+        item->sw.value = true;
+        MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+        indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+      }
+    } else {
+      if (MOUNT_MOTION_EAST_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value) {
+        MOUNT_MOTION_EAST_ITEM->sw.value = false;
+        MOUNT_MOTION_WEST_ITEM->sw.value = false;
+        MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+        indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+      }
+    }
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 	}
@@ -589,8 +624,6 @@ static NSMutableArray *wrappers = nil;
 		}
 	}
 }
-
-
 
 -(id)initWidth:(void *)device {
 	self = [super init];
