@@ -73,6 +73,7 @@ static struct property_mapping legacy[] = {
 			{ "ACTIVE_FOCUSER", SNOOP_FOCUSER_ITEM_NAME },
 			{ "ACTIVE_DOME", SNOOP_DOME_ITEM_NAME },
 			{ "ACTIVE_GPS", SNOOP_GPS_ITEM_NAME },
+			{ "ACTIVE_JOYSTICK", SNOOP_JOYSTICK_ITEM_NAME },
 			NULL
 		}
 	},

@@ -179,14 +179,18 @@ extern "C" {
  */
 #define DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM		(DOME_GEOGRAPHIC_COORDINATES_PROPERTY->items+2)
 
-/** SNOOP_DEVICES property pointer, property is optional.
+/** DOME_SNOOP_DEVICES property pointer, property is optional.
  */
-#define SNOOP_DEVICES_PROPERTY					(DOME_CONTEXT->snoop_devices_property)
+#define DOME_SNOOP_DEVICES_PROPERTY					(DOME_CONTEXT->dome_snoop_devices_property)
 	
-/** SNOOP_DEVICES_PROPERTY.MOUNT property item pointer.
+/** DOME_SNOOP_DEVICES_PROPERTY.MOUNT property item pointer.
  */
-#define SNOOP_MOUNT_ITEM		(SNOOP_DEVICES_PROPERTY->items+0)
+#define DOME_SNOOP_MOUNT_ITEM					(DOME_SNOOP_DEVICES_PROPERTY->items+0)
 
+/** DOME_SNOOP_DEVICES_PROPERTY.GPS property item pointer.
+ */
+#define DOME_SNOOP_GPS_ITEM					(DOME_SNOOP_DEVICES_PROPERTY->items+1)
+	
 
 /** Dome device context structure.
  */
@@ -197,13 +201,13 @@ typedef struct {
 	indigo_property *dome_steps_property;										///< DOME_STEPS property pointer
 	indigo_property *dome_equatorial_coordinates_property; 	///< DOME_EQUATORIAL_COORDINATES property pointer
 	indigo_property *dome_horizontal_coordinates_property;	///< DOME_HORIZONTAL_COORDINATES property pointer
-	indigo_property *dome_sync_property;					///< DOME_SYNC property pointer
+	indigo_property *dome_sync_property;										///< DOME_SYNC property pointer
 	indigo_property *dome_abort_motion_property;						///< DOME_ABORT_MOTION property pointer
 	indigo_property *dome_shutter_property;									///< DOME_SHUTTER_PROPERTY pointer
 	indigo_property *dome_park_property;										///< DOME_PARK property pointer
 	indigo_property *dome_measurement_property;							///< DOME_PARK property pointer
 	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
-	indigo_property *snoop_devices_property;								///< SNOOP_DEVICES property pointer
+	indigo_property *dome_snoop_devices_property;								///< DOME_SNOOP_DEVICES property pointer
 	indigo_timer *sync_timer;
 } indigo_dome_context;
 

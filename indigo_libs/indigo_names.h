@@ -142,7 +142,11 @@
 #define GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME	"ACCURACY"
 
 //----------------------------------------------------------------------
-/** SNOOP_DEVICES property name.
+/** DOME_SNOOP_DEVICES property name.
+ */
+#define SNOOP_DEVICES_PROPERTY_NAME	"SNOOP_DEVICES"
+
+/** MOUNT_SNOOP_DEVICES property name.
  */
 #define SNOOP_DEVICES_PROPERTY_NAME	"SNOOP_DEVICES"
 
@@ -169,6 +173,10 @@
 /** SNOOP_DEVICES.FOCUSER property item name.
  */
 #define SNOOP_FOCUSER_ITEM_NAME					"FOCUSER"
+
+/** SNOOP_DEVICES.JOYSTICK property item name.
+ */
+#define SNOOP_JOYSTICK_ITEM_NAME					"JOYSTICK"
 
 
 //----------------------------------------------------------------------
@@ -901,23 +909,6 @@
 #define MOUNT_INFO_FIRMWARE_ITEM_NAME					"FIRMWARE_VERSION"
 
 //----------------------------------------------------------------------
-/** MOUNT_GEOGRAPHIC_COORDINATES property name.
- */
-#define MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY_NAME	GEOGRAPHIC_COORDINATES_PROPERTY_NAME
-
-/** MOUNT_GEOGRAPHIC_COORDINATES.LATITUDE property item name.
- */
-#define MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME		GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME
-
-/** MOUNT_GEOGRAPHIC_COORDINATES.LONGITUDE property item name.
- */
-#define MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME	GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME
-
-/** MOUNT_GEOGRAPHIC_COORDINATES.ELEVATION property item name.
- */
-#define MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME	GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME
-
-//----------------------------------------------------------------------
 /** MOUNT_LST_TIME property name.
  */
 #define MOUNT_LST_TIME_PROPERTY_NAME						"MOUNT_LST_TIME"
@@ -925,19 +916,6 @@
 /** MOUNT_TIME.TIME property item name.
  */
 #define MOUNT_LST_TIME_ITEM_NAME								"TIME"
-
-//----------------------------------------------------------------------
-/** MOUNT_UTC_TIME property name.
- */
-#define MOUNT_UTC_TIME_PROPERTY_NAME						UTC_TIME_PROPERTY_NAME
-
-/** MOUNT_UTC_TIME.UTC property item name.
- */
-#define MOUNT_UTC_TIME_ITEM_NAME							UTC_TIME_ITEM_NAME
-
-/** MOUNT_UTC_TIME.OFFSET property item name.
- */
-#define MOUNT_UTC_OFFSET_ITEM_NAME							UTC_OFFSET_ITEM_NAME
 
 //----------------------------------------------------------------------
 /** MOUNT_SET_HOST_TIME property name.
@@ -1170,40 +1148,6 @@
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
 
 //----------------------------------------------------------------------
-/** GPS_GEOGRAPHIC_COORDINATES property name.
- */
-#define GPS_GEOGRAPHIC_COORDINATES_PROPERTY_NAME	GEOGRAPHIC_COORDINATES_PROPERTY_NAME
-
-/** GPS_GEOGRAPHIC_COORDINATES.LATITUDE property item name.
- */
-#define GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME	GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME
-
-/** GPS_GEOGRAPHIC_COORDINATES.LONGITUDE property item name.
- */
-#define GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME	GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME
-
-/** GPS_GEOGRAPHIC_COORDINATES.ELEVATION property item name.
- */
-#define GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME	GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME
-
-/** GPS_GEOGRAPHIC_COORDINATES.ACCURACY property item name.
- */
-#define GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME	GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME
-
-//----------------------------------------------------------------------
-/** GPS_UTC_TIME property name.
- */
-#define GPS_UTC_TIME_PROPERTY_NAME						UTC_TIME_PROPERTY_NAME
-
-/** GPS_UTC_TIME.UTC property item name.
- */
-#define GPS_UTC_TIME_ITEM_NAME								UTC_TIME_ITEM_NAME
-
-/** GPS_UTC_TIME.OFFSET property item name.
- */
-#define GPS_UTC_OFFSET_ITEM_NAME							UTC_OFFSET_ITEM_NAME
-
-//----------------------------------------------------------------------
 /** GPS_STATUS property name.
  */
 #define GPS_STATUS_PROPERTY_NAME                "GPS_STATUS"
@@ -1401,23 +1345,6 @@
 /** DOME_DIMENSION.MOUNT_PIVOT_OTA_OFFSET property item name.
  */
 #define DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM_NAME						"MOUNT_PIVOT_OTA_OFFSET"
-
-//----------------------------------------------------------------------
-/** DOME_GEOGRAPHIC_COORDINATES property name.
- */
-#define DOME_GEOGRAPHIC_COORDINATES_PROPERTY_NAME	GEOGRAPHIC_COORDINATES_PROPERTY_NAME
-
-/** DOME_GEOGRAPHIC_COORDINATES.LATITUDE property item name.
- */
-#define DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME		GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME
-
-/** DOME_GEOGRAPHIC_COORDINATES.LONGITUDE property item name.
- */
-#define DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME	GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME
-
-/** DOME_GEOGRAPHIC_COORDINATES.ELEVATION property item name.
- */
-#define DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME	GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME
 
 #define SNOOP_AGENT_NAME															"Snoop Agent"
 

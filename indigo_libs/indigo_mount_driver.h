@@ -336,10 +336,23 @@ extern "C" {
  */
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY				(MOUNT_CONTEXT->mount_alignment_delete_points_property)
 
+/** MOUNT_SNOOP_DEVICES property pointer, property is optional.
+*/
+#define MOUNT_SNOOP_DEVICES_PROPERTY									(MOUNT_CONTEXT->mount_snoop_devices_property)
+
+/** MOUNT_SNOOP_DEVICES_PROPERTY.JOYSTICK property item pointer.
+*/
+#define MOUNT_SNOOP_JOYSTICK_ITEM														(MOUNT_SNOOP_DEVICES_PROPERTY->items+0)
+
+/** MOUNT_SNOOP_DEVICES_PROPERTY.GPS property item pointer.
+ */
+#define MOUNT_SNOOP_GPS_ITEM																(MOUNT_SNOOP_DEVICES_PROPERTY->items+1)
+	
+
 //------------------------------------------------
 /** Max number of alignment points.
  */
-
+	
 #define MOUNT_MAX_ALIGNMENT_POINTS										10
 
 /** Aligment point structure.
@@ -380,6 +393,7 @@ typedef struct {
 	indigo_property *mount_raw_coordinates_property;				///< MOUNT_RAW_COORDINATES property pointer
 	indigo_property *mount_alignment_select_points_property;///< MOUNT_ALIGNMENT_SELECT_POINTS property pointer
 	indigo_property *mount_alignment_delete_points_property;///< MOUNT_ALIGNMENT_DELETE_POINTS property pointer
+	indigo_property *mount_snoop_devices_property;					///< MOUNT_SNOOP_DEVICES property pointer
 } indigo_mount_context;
 
 /** Attach callback function.
