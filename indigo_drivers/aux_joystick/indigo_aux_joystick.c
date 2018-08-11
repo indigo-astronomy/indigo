@@ -40,9 +40,19 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#if defined(INDIGO_MACOS)
+#ifdef INDIGO_MACOS
 #import <Cocoa/Cocoa.h>
 #import "DDHidJoystick.h"
+#endif
+
+#ifdef INDIGO_LINUX
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <float.h>
+#include <errno.h>
+#include <linux/joystick.h>
 #endif
 
 #include "indigo_driver_xml.h"
@@ -102,6 +112,7 @@
 #define MOUNT_TRACKING_OFF_ITEM												(MOUNT_TRACKING_PROPERTY->items+1)
 
 typedef struct {
+	long index;
 	int button_count;
 	int axis_count;
 	int pov_count;
@@ -117,7 +128,16 @@ typedef struct {
 	indigo_property *mount_motion_ra_property;
 	indigo_property *mount_abort_motion_property;
 	indigo_property *mount_tracking_property;
+#ifdef INDIGO_LINUX
+	int fd;
+	pthread_t thread;
+	bool *last_button_state;
+	int *last_axis_value;
+#endif
 } joystick_private_data;
+
+static bool open_joystick(indigo_device *device);
+static void close_joystick(indigo_device *device);
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
@@ -253,17 +273,23 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			indigo_define_property(device, JOYSTICK_AXES_PROPERTY, NULL);
-			indigo_define_property(device, JOYSTICK_BUTTONS_PROPERTY, NULL);
-			indigo_define_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
-			indigo_define_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_PARK_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+			if (open_joystick(device)) {
+				indigo_define_property(device, JOYSTICK_AXES_PROPERTY, NULL);
+				indigo_define_property(device, JOYSTICK_BUTTONS_PROPERTY, NULL);
+				indigo_define_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
+				indigo_define_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
+				indigo_define_property(device, MOUNT_PARK_PROPERTY, NULL);
+				indigo_define_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
+				indigo_define_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+				indigo_define_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+				indigo_define_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		} else {
+			close_joystick(device);
 			indigo_delete_property(device, JOYSTICK_AXES_PROPERTY, NULL);
 			indigo_delete_property(device, JOYSTICK_BUTTONS_PROPERTY, NULL);
 			indigo_delete_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
@@ -274,8 +300,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(JOYSTICK_MAPPING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- JOYSTICK_MAPPING
 		indigo_property_copy_values(JOYSTICK_MAPPING_PROPERTY, property, false);
@@ -316,7 +342,7 @@ static indigo_result aux_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- platform implementation glue
 
-static indigo_device *allocate_device(const char *name, int button_count, int axis_count, int pov_count) {
+static indigo_device *allocate_device(const char *name, long index, int button_count, int axis_count, int pov_count) {
 	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		aux_attach,
@@ -325,14 +351,15 @@ static indigo_device *allocate_device(const char *name, int button_count, int ax
 		NULL,
 		aux_detach
 		);
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "joystick %s with %d buttons and %d axes detected", name, button_count, axis_count + 2 * pov_count);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "joystick %s #%d with %d buttons and %d axes detected", name, index, button_count, axis_count + 2 * pov_count);
 	joystick_private_data *private_data = malloc(sizeof(joystick_private_data));
 	assert(private_data != NULL);
 	memset(private_data, 0, sizeof(joystick_private_data));
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &aux_template, sizeof(indigo_device));
-	strncpy(device->name, name, INDIGO_NAME_SIZE);
+	snprintf(device->name, INDIGO_NAME_SIZE, "%s #%ld", name, index);
+	private_data->index = index;
 	private_data->button_count = button_count;
 	private_data->axis_count = axis_count;
 	private_data->pov_count = pov_count;
@@ -482,9 +509,11 @@ static void release_device(indigo_device *device) {
 	free(device);
 }
 
-#if defined(INDIGO_MACOS)
+#ifdef INDIGO_MACOS
 
 // -------------------------------------------------------------------------------- DDHidLib wrapper
+
+static NSMutableArray *wrappers = nil;
 
 @interface DDHidJoystickWrapper: NSObject
 @end
@@ -493,8 +522,6 @@ static void release_device(indigo_device *device) {
 	indigo_device *device;
 	DDHidJoystick *joystick;
 }
-
-static NSMutableArray *wrappers = nil;
 
 +(void)rescan {
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
@@ -527,7 +554,7 @@ static NSMutableArray *wrappers = nil;
 					pov_count = stick.countOfPovElements;
 				}
 				
-				wrapper->device = allocate_device([[NSString stringWithFormat:@"%@ #%08lx", joystick.productName, joystick.locationId] cStringUsingEncoding:NSASCIIStringEncoding], joystick.numberOfButtons, axis_count, pov_count);
+				wrapper->device = allocate_device([joystick.productName cStringUsingEncoding:NSASCIIStringEncoding], joystick.locationId, joystick.numberOfButtons, axis_count, pov_count);
 				wrapper->joystick = joystick;
 				[joystick setDelegate:wrapper];
 				[joystick startListening];
@@ -547,6 +574,24 @@ static NSMutableArray *wrappers = nil;
 	}
 }
 
++(void)startDevice:(indigo_device *)device {
+	for (DDHidJoystickWrapper *wrapper in wrappers) {
+		if (wrapper->device == device) {
+			[wrapper->joystick startListening];
+		}
+	}
+}
+
++(void)stopDevice:(indigo_device *)device {
+	for (DDHidJoystickWrapper *wrapper in wrappers) {
+		if (wrapper->device == device) {
+			[wrapper->joystick stopListening];
+		}
+	}
+}
+
+
+
 -(id)initWidth:(void *)device {
 	self = [super init];
 	if (self) {
@@ -556,20 +601,167 @@ static NSMutableArray *wrappers = nil;
 	return nil;
 }
 
--(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick xChanged: (int) value { event_axis(self->device, 0, value); }
--(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick yChanged: (int) value { event_axis(self->device, 1, value); }
--(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick otherAxis: (unsigned) otherAxis valueChanged: (int) value { event_axis(self->device, otherAxis + 2, value); }
--(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick povNumber: (unsigned) povNumber valueChanged: (int) value { event_pov(self->device, povNumber, value); }
--(void)ddhidJoystick: (DDHidJoystick *) joystick buttonDown: (unsigned) buttonNumber { event_button(self->device, buttonNumber, 1); }
--(void)ddhidJoystick: (DDHidJoystick *) joystick buttonUp: (unsigned) buttonNumber { event_button(self->device, buttonNumber, 0); }
+-(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick xChanged: (int) value {
+	indigo_device *device = self->device;
+	if (IS_CONNECTED)
+		event_axis(device, 0, value);
+}
+
+-(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick yChanged: (int) value {
+	indigo_device *device = self->device;
+	if (IS_CONNECTED)
+		event_axis(device, 1, value);
+}
+
+-(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick otherAxis: (unsigned) otherAxis valueChanged: (int) value {
+	indigo_device *device = self->device;
+	if (IS_CONNECTED)
+		event_axis(device, otherAxis + 2, value);
+}
+
+-(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick povNumber: (unsigned) povNumber valueChanged: (int) value {
+	indigo_device *device = self->device;
+	if (IS_CONNECTED)
+		event_pov(device, povNumber, value);
+}
+-(void)ddhidJoystick: (DDHidJoystick *) joystick buttonDown: (unsigned) buttonNumber {
+	indigo_device *device = self->device;
+	if (IS_CONNECTED)
+		event_button(device, buttonNumber, 1);
+}
+-(void)ddhidJoystick: (DDHidJoystick *) joystick buttonUp: (unsigned) buttonNumber {
+	indigo_device *device = self->device;
+	if (IS_CONNECTED)
+		event_button(device, buttonNumber, 0);
+}
 
 @end
+
+static bool open_joystick(indigo_device *device) {
+	[DDHidJoystickWrapper startDevice:device];
+	return true;
+}
+
+static void close_joystick(indigo_device *device) {
+	[DDHidJoystickWrapper stopDevice:device];
+}
+
+#endif
+
+#ifdef INDIGO_LINUX
+
+// -------------------------------------------------------------------------------- Linux wrapper
+
+#define MAX_DEVICES		5
+
+static indigo_device *devices[MAX_DEVICES];
+
+static void *poll(indigo_device *device) {
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Joystick #%ld poll thread started", PRIVATE_DATA->index);
+	char path[128];
+	sprintf(path, "/dev/input/js%ld", PRIVATE_DATA->index);
+	if ((PRIVATE_DATA->fd = open(path, O_RDONLY)) == -1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't access %s (%s)", path, strerror(errno));
+	} else {
+		int joy_fd, axis_count=0, button_count=0;
+		struct js_event js;
+		ioctl(joy_fd, JSIOCGAXES, &axis_count);
+		ioctl(joy_fd, JSIOCGBUTTONS, &button_count);
+		PRIVATE_DATA->last_button_state = malloc(button_count * sizeof(bool));
+		memset(PRIVATE_DATA->last_button_state, 0, button_count * sizeof(bool));
+		PRIVATE_DATA->last_axis_value = malloc(axis_count * sizeof(int));
+		memset(PRIVATE_DATA->last_axis_value, 0, axis_count * sizeof(int));
+		fcntl(PRIVATE_DATA->fd, F_SETFL, O_NONBLOCK);
+		while (PRIVATE_DATA->fd) {
+			read(PRIVATE_DATA->fd, &js, sizeof(struct js_event));
+			switch (js.type) {
+				case JS_EVENT_AXIS:
+					if (PRIVATE_DATA->last_axis_value[js.number] != js.value) {
+						event_axis(device, js.number, 2 * js.value);
+						PRIVATE_DATA->last_axis_value[js.number] = js.value;
+					}
+					break;
+				case JS_EVENT_BUTTON:
+					if (PRIVATE_DATA->last_button_state[js.number] != js.value) {
+						event_button(device, js.number, js.value);
+						PRIVATE_DATA->last_button_state[js.number] = js.value;
+					}
+					break;
+			}
+			usleep(100000);
+		}
+		free(PRIVATE_DATA->last_button_state);
+		free(PRIVATE_DATA->last_axis_value);
+	}
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Joystick #%ld poll thread finished", PRIVATE_DATA->index);
+}
+
+static void rescan() {
+	DIR *dev_input = opendir("/dev/input");
+	if (dev_input == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No folder /dev/input");
+		return;
+	}
+	struct dirent * dir;
+	bool found[MAX_DEVICES];
+	for (int i = 0; i < MAX_DEVICES; i++)
+		found[i] = false;
+	while ((dir = readdir(dev_input)) != NULL) {
+		int index;
+		if (sscanf(dir->d_name, "js%d", &index) == 1) {
+			found[index] = true;
+			if (devices[index])
+				continue;
+			int joy_fd, axis_count=0, button_count=0;
+			char name[80];
+			sprintf(name, "/dev/input/%s", dir->d_name);
+			if ((joy_fd = open(name, O_RDONLY)) == -1) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't access %s (%s)", name, strerror(errno));
+				return;
+			}
+			ioctl(joy_fd, JSIOCGAXES, &axis_count);
+			ioctl(joy_fd, JSIOCGBUTTONS, &button_count);
+			ioctl(joy_fd, JSIOCGNAME(80), &name);
+			close(joy_fd);
+			devices[index] = allocate_device(name, index, button_count, axis_count, 0);
+		}
+	}
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		if (devices[i] && !found[i]) {
+			release_device(devices[i]);
+			devices[i] = NULL;
+		}
+	}
+}
+
+static void shutdown() {
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		if (devices[i]) {
+			release_device(devices[i]);
+			devices[i] = NULL;
+		}
+	}
+}
+
+static bool open_joystick(indigo_device *device) {
+	pthread_create(&(PRIVATE_DATA->thread), NULL, (void *(*)(void *))poll, device);
+	return true;
+}
+
+static void close_joystick(indigo_device *device) {
+	close(PRIVATE_DATA->fd);
+	PRIVATE_DATA->fd = 0;
+}
 
 #endif
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-#if defined(INDIGO_MACOS)
+#ifdef INDIGO_MACOS
 	[DDHidJoystickWrapper rescan];
+#endif
+#ifdef INDIGO_LINUX
+	usleep(500000);
+	rescan();
 #endif
 	return 0;
 };
@@ -587,8 +779,11 @@ indigo_result indigo_aux_joystick(indigo_driver_action action, indigo_driver_inf
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-#if defined(INDIGO_MACOS)
+#ifdef INDIGO_MACOS
 		[DDHidJoystickWrapper rescan];
+#endif
+#ifdef INDIGO_LINUX
+			rescan();
 #endif
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_NO_FLAGS, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
@@ -599,8 +794,11 @@ indigo_result indigo_aux_joystick(indigo_driver_action action, indigo_driver_inf
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-#if defined(INDIGO_MACOS)
+#ifdef INDIGO_MACOS
 		[DDHidJoystickWrapper shutdown];
+#endif
+#ifdef INDIGO_LINUX
+			shutdown();
 #endif
 		break;
 

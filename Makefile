@@ -1079,7 +1079,7 @@ $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib: indigo_mac_drivers/guider_eqmac/indi
 
 ifeq ($(OS_DETECTED),Darwin)
 indigo_drivers/aux_joystick/indigo_aux_joystick.o: indigo_drivers/aux_joystick/indigo_aux_joystick.m
-	$(CC) -c -o $@ $< -Iindigo_drivers/aux_joystick/external/DDHidLib $(MFLAGS)
+	$(CC) $(MFLAGS) -c -o $@ $< -Iindigo_drivers/aux_joystick/external/DDHidLib
 
 $(BUILD_DRIVERS)/indigo_aux_joystick.a: indigo_drivers/aux_joystick/indigo_aux_joystick.o $(addsuffix .o, $(basename $(wildcard indigo_drivers/aux_joystick/external/DDHidLib/*.m)))
 	$(AR) $(ARFLAGS) $@ $^
@@ -1091,7 +1091,10 @@ $(BUILD_DRIVERS)/indigo_aux_joystick.$(SOEXT): indigo_drivers/aux_joystick/indig
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 endif
 ifeq ($(OS_DETECTED),Linux)
-$(BUILD_DRIVERS)/indigo_aux_joystick.a: indigo_drivers/aux_joystick/indigo_aux_joystick.c
+indigo_drivers/aux_joystick/indigo_aux_joystick.o: indigo_drivers/aux_joystick/indigo_aux_joystick.c
+	$(CC)  $(CFLAGS) -c -o $@ $<
+
+$(BUILD_DRIVERS)/indigo_aux_joystick.a: indigo_drivers/aux_joystick/indigo_aux_joystick.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_aux_joystick: indigo_drivers/aux_joystick/indigo_aux_joystick_main.o $(BUILD_DRIVERS)/indigo_aux_joystick.a
