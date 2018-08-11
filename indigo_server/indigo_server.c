@@ -154,6 +154,10 @@ static indigo_property *log_level_property;
 static DNSServiceRef sd_http;
 static DNSServiceRef sd_indigo;
 
+#ifdef INDIGO_MACOS
+static bool runLoop = true;
+#endif
+
 #define LOG_LEVEL_ERROR_ITEM        (log_level_property->items + 0)
 #define LOG_LEVEL_INFO_ITEM         (log_level_property->items + 1)
 #define LOG_LEVEL_DEBUG_ITEM        (log_level_property->items + 2)
@@ -466,7 +470,20 @@ static void server_main() {
 	}
 
 	indigo_attach_device(&server_device);
+	
+#ifdef INDIGO_LINUX
 	indigo_server_start(server_callback);
+#endif
+#ifdef INDIGO_MACOS
+	pthread_t server_thread;
+	if (pthread_create(&server_thread, NULL, (void * (*)(void *))indigo_server_start, server_callback)) {
+		INDIGO_ERROR(indigo_error("Error creating thread for server"));
+	}
+	runLoop = true;
+	while (runLoop) {
+		CFRunLoopRunResult result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, true);
+	}
+#endif
 
 #ifdef INDIGO_MACOS
 	DNSServiceRefDeallocate(sd_indigo);
@@ -501,6 +518,9 @@ static void signal_handler(int signo) {
 		}
 		INDIGO_LOG(indigo_log("Shutdown initiated (signal %d)...", signo));
 		indigo_server_shutdown();
+#ifdef INDIGO_MACOS
+		runLoop = false;
+#endif
 	} else {
 		INDIGO_LOG(indigo_log("Signal %d received...", signo));
 		keep_server_running = (signo == SIGHUP);
@@ -558,17 +578,8 @@ int main(int argc, const char * argv[]) {
 				prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
 				/* Linux requires additional step to change process name */
 				prctl(PR_SET_NAME, process_name, 0, 0, 0);
+#endif
 				server_main();
-#endif
-#ifdef INDIGO_MACOS
-				pthread_t server_thread;
-				if (pthread_create(&server_thread, NULL, (void * (*)(void *))server_main, NULL)) {
-					INDIGO_ERROR(indigo_error("Error creating thread for server"));
-				}
-				while (true) {
-					CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false);
-				}
-#endif
 				return EXIT_SUCCESS;
 			} else {
 				if (waitpid(server_pid, NULL, 0) == -1 ) {
@@ -584,17 +595,6 @@ int main(int argc, const char * argv[]) {
 		}
 		INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 	} else {
-#ifdef INDIGO_LINUX
 		server_main();
-#endif
-#ifdef INDIGO_MACOS
-		pthread_t server_thread;
-		if (pthread_create(&server_thread, NULL, (void * (*)(void *))server_main, NULL)) {
-			INDIGO_ERROR(indigo_error("Error creating thread for server"));
-		}
-		while (true) {
-			CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false);
-		}
-#endif
 	}
 }

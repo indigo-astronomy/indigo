@@ -202,6 +202,9 @@ SO_LIBS= $(wildcard $(BUILD_LIB)/*.$(SOEXT))
 
 .PHONY: init submodule-init clean macfixpath
 
+%.o:	%.m
+	$(CC) -c -o $@ $< $(MFLAGS)
+
 #---------------------------------------------------------------------
 #
 #	Default target
@@ -1037,9 +1040,6 @@ $(BUILD_DRIVERS)/indigo_focuser_wemacro: indigo_drivers/focuser_wemacro/indigo_f
 $(BUILD_DRIVERS)/indigo_focuser_wemacro.$(SOEXT): indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
-indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.o:	indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m
-	$(CC) -c -o $@ $< $(MFLAGS)
-
 $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.a: indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.o
 	$(AR) $(ARFLAGS) $@ $^
 
@@ -1052,21 +1052,6 @@ $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.dylib: indigo_mac_drivers/focuser_wem
 #	Build ICA CCD driver
 #
 #---------------------------------------------------------------------
-
-indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o:	indigo_mac_drivers/ccd_ica/indigo_ccd_ica.m
-	$(CC) -c -o $@ $< $(MFLAGS)
-
-indigo_mac_drivers/ccd_ica/indigo_ica_ptp.o:	indigo_mac_drivers/ccd_ica/indigo_ica_ptp.m
-	$(CC) -c -o $@ $< $(MFLAGS)
-
-indigo_mac_drivers/ccd_ica/indigo_ica_ptp_nikon.o:	indigo_mac_drivers/ccd_ica/indigo_ica_ptp_nikon.m
-	$(CC) -c -o $@ $< $(MFLAGS)
-
-indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.o:	indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.m
-	$(CC) -c -o $@ $< $(MFLAGS)
-
-indigo_mac_drivers/ccd_ica/indigo_ica_ptp_sony.o:	indigo_mac_drivers/ccd_ica/indigo_ica_ptp_sony.m
-	$(CC) -c -o $@ $< $(MFLAGS)
 
 $(BUILD_DRIVERS)/indigo_ccd_ica.a: indigo_mac_drivers/ccd_ica/indigo_ccd_ica.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_nikon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_canon.o indigo_mac_drivers/ccd_ica/indigo_ica_ptp_sony.o
 	$(AR) $(ARFLAGS) $@ $^
@@ -1092,15 +1077,29 @@ $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib: indigo_mac_drivers/guider_eqmac/indi
 #
 #---------------------------------------------------------------------
 
-$(BUILD_DRIVERS)/indigo_aux_joystick.a: indigo_drivers/aux_joystick/indigo_aux_joystick.o
+ifeq ($(OS_DETECTED),Darwin)
+indigo_drivers/aux_joystick/indigo_aux_joystick.o: indigo_drivers/aux_joystick/indigo_aux_joystick.m
+	$(CC) -c -o $@ $< -Iindigo_drivers/aux_joystick/external/DDHidLib $(MFLAGS)
+
+$(BUILD_DRIVERS)/indigo_aux_joystick.a: indigo_drivers/aux_joystick/indigo_aux_joystick.o $(addsuffix .o, $(basename $(wildcard indigo_drivers/aux_joystick/external/DDHidLib/*.m)))
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_DRIVERS)/indigo_aux_joystick: indigo_drivers/aux_joystick/indigo_aux_joystick_main.o $(BUILD_DRIVERS)/indigo_aux_joystick.a $(LIBHIDAPI)
+$(BUILD_DRIVERS)/indigo_aux_joystick: indigo_drivers/aux_joystick/indigo_aux_joystick_main.o $(BUILD_DRIVERS)/indigo_aux_joystick.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_aux_joystick.$(SOEXT): indigo_drivers/aux_joystick/indigo_aux_joystick.o $(LIBHIDAPI)
+$(BUILD_DRIVERS)/indigo_aux_joystick.$(SOEXT): indigo_drivers/aux_joystick/indigo_aux_joystick.o $(addsuffix .o, $(basename $(wildcard indigo_drivers/aux_joystick/external/DDHidLib/*.m)))
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+endif
+ifeq ($(OS_DETECTED),Linux)
+$(BUILD_DRIVERS)/indigo_aux_joystick.a: indigo_drivers/aux_joystick/indigo_aux_joystick.c
+	$(AR) $(ARFLAGS) $@ $^
 
+$(BUILD_DRIVERS)/indigo_aux_joystick: indigo_drivers/aux_joystick/indigo_aux_joystick_main.o $(BUILD_DRIVERS)/indigo_aux_joystick.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_aux_joystick.$(SOEXT): indigo_drivers/aux_joystick/indigo_aux_joystick.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+endif
 
 #---------------------------------------------------------------------
 #
