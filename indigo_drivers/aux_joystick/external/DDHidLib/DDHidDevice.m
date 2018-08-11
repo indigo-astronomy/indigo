@@ -201,7 +201,7 @@
 
 - (void) close;
 {
-    NSXThrowError((*mDeviceInterface)->close(mDeviceInterface));
+    (*mDeviceInterface)->close(mDeviceInterface);
 }
 
 - (DDHidQueue *) createQueueWithSize: (unsigned) size;
