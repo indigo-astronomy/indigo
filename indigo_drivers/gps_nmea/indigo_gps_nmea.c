@@ -126,18 +126,63 @@ static void gps_refresh_callback(indigo_device *device) {
 	while (device->is_connected) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		size = indigo_read(PRIVATE_DATA->handle, &buff[0], 100);
-
-        nmea_parse(&PRIVATE_DATA->parser, &buff[0], size, &PRIVATE_DATA->info);
+		nmea_parse(&PRIVATE_DATA->parser, &buff[0], size, &PRIVATE_DATA->info);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-        nmea_info2pos(&PRIVATE_DATA->info, &dpos);
+		nmea_info2pos(&PRIVATE_DATA->info, &dpos);
 
-		if(prev_sec != PRIVATE_DATA->info.utc.sec) {
+		if (prev_sec != PRIVATE_DATA->info.utc.sec) {
 			prev_sec = PRIVATE_DATA->info.utc.sec;
 
+			if (PRIVATE_DATA->info.fix == NMEA_FIX_BAD) {
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+			}
+			if ( PRIVATE_DATA->info.fix == NMEA_FIX_2D) {
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
+				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			}
+			if (PRIVATE_DATA->info.fix == NMEA_FIX_3D) {
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
+			}
+			GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+			if (prev_fix != PRIVATE_DATA->info.fix) {
+				prev_fix = PRIVATE_DATA->info.fix;
+				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+			}
+
 			if (PRIVATE_DATA->info.fix != NMEA_FIX_BAD) {
-				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = rad2deg*dpos.lon;
-				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = rad2deg*dpos.lat;
-				GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = PRIVATE_DATA->info.elv;
+				sprintf(
+								GPS_UTC_ITEM->text.value,
+								"%04d-%02d-%02dT%02d:%02d:%02d.%02d",
+								PRIVATE_DATA->info.utc.year+1900,
+								PRIVATE_DATA->info.utc.mon,
+								PRIVATE_DATA->info.utc.day,
+								PRIVATE_DATA->info.utc.hour,
+								PRIVATE_DATA->info.utc.min,
+								PRIVATE_DATA->info.utc.sec,
+								PRIVATE_DATA->info.utc.hsec
+								);
+				GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+
+				double lon = rad2deg*dpos.lon;
+				double lat = rad2deg*dpos.lat;
+				double elv = PRIVATE_DATA->info.elv;
+				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat || GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value != elv) {
+					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+					GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elv;
+					GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+				}
 			}
 
 			GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = PRIVATE_DATA->info.satinfo.inuse;
@@ -145,54 +190,9 @@ static void gps_refresh_callback(indigo_device *device) {
 			GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = PRIVATE_DATA->info.PDOP;
 			GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = PRIVATE_DATA->info.HDOP;
 			GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = PRIVATE_DATA->info.VDOP;
-
-			sprintf(
-				GPS_UTC_ITEM->text.value,
-				"%04d-%02d-%02dT%02d:%02d:%02d.%02d",
-				PRIVATE_DATA->info.utc.year+1900,
-				PRIVATE_DATA->info.utc.mon,
-				PRIVATE_DATA->info.utc.day,
-				PRIVATE_DATA->info.utc.hour,
-				PRIVATE_DATA->info.utc.min,
-				PRIVATE_DATA->info.utc.sec,
-				PRIVATE_DATA->info.utc.hsec
-			);
-
-			if (PRIVATE_DATA->info.fix == NMEA_FIX_BAD) {
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_PROPERTY->state = INDIGO_ALERT_STATE;
-				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				GPS_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-
-			if ( PRIVATE_DATA->info.fix == NMEA_FIX_2D) {
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
-				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-				GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-			}
-
-			if (PRIVATE_DATA->info.fix == NMEA_FIX_3D) {
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
-				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-			}
-
-			indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-			indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+			GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 			if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
 				indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
-			}
-			if (prev_fix != PRIVATE_DATA->info.fix) {
-				prev_fix = PRIVATE_DATA->info.fix;
-				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 			}
 		}
 	}
