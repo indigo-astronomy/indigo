@@ -62,6 +62,7 @@ int indigo_open_serial(const char *dev_file) {
 	options.c_cflag &= ~CSTOPB;
 	options.c_cflag &= ~CSIZE;
 	options.c_cflag |= CS8;
+	options.c_cflag |= CLOCAL;
 	options.c_cc[VMIN]  = 0;
 	options.c_cc[VTIME] = 50;
 	if (tcsetattr(dev_fd,TCSANOW, &options) != 0) {
