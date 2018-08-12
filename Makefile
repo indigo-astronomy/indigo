@@ -924,7 +924,8 @@ $(BUILD_DRIVERS)/indigo_ccd_gphoto2.a: indigo_linux_drivers/ccd_gphoto2/indigo_c
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_ccd_gphoto2: indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2_main.o $(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2 $(BUILD_LIB)/libraw.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2
+#	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2 $(BUILD_LIB)/libraw.a
 
 $(BUILD_DRIVERS)/indigo_ccd_gphoto2.$(SOEXT): indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2 $(BUILD_LIB)/libraw.a
