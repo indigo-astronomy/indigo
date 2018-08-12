@@ -74,6 +74,8 @@ indigo_result indigo_agent_detach(indigo_device *device) {
 }
 
 indigo_result indigo_add_snoop_rule(indigo_property *target, const char *source_device, const char *source_property) {
+	if (*source_device == 0)
+		return INDIGO_OK;
 	indigo_property *property = indigo_init_text_property(NULL, SNOOP_AGENT_NAME, SNOOP_ADD_RULE_PROPERTY_NAME, NULL, NULL, INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
 	if (property == NULL)
 		return INDIGO_FAILED;
@@ -87,6 +89,8 @@ indigo_result indigo_add_snoop_rule(indigo_property *target, const char *source_
 }
 
 indigo_result indigo_remove_snoop_rule(indigo_property *target, const char *source_device, const char *source_property) {
+	if (*source_device == 0)
+		return INDIGO_OK;
 	indigo_property *property = indigo_init_text_property(NULL, SNOOP_AGENT_NAME, SNOOP_REMOVE_RULE_PROPERTY_NAME, NULL, NULL, INDIGO_IDLE_STATE, INDIGO_RW_PERM, 4);
 	if (property == NULL)
 		return INDIGO_FAILED;

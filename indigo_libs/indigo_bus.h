@@ -487,6 +487,10 @@ extern indigo_result indigo_device_connect(indigo_client *client, char *device);
  */
 extern indigo_result indigo_device_disconnect(indigo_client *client, char *device);
 
+/** Trim " @ local_service_name" from the string.
+ */
+extern void indigo_trim_local_service(char *device_name);
+	
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
 extern indigo_property INDIGO_ALL_PROPERTIES;
