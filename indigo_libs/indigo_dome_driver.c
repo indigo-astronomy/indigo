@@ -87,7 +87,7 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 			DOME_SYNC_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_SYNC_PROPERTY_NAME, DOME_MAIN_GROUP, "Synchronize with mount", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 			if (DOME_SYNC_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(DOME_SYNC_THRESHOLD_ITEM, DOME_SYNC_THRESHOLD_ITEM_NAME, "Sync threshold (0 to 20°)", 0, 20, 0, 0);
+			indigo_init_number_item(DOME_SYNC_THRESHOLD_ITEM, DOME_SYNC_THRESHOLD_ITEM_NAME, "Sync threshold (0 to 20°)", 0, 20, 0, 1);
 			// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 			DOME_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_MAIN_GROUP, "Abort motion", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 			if (DOME_ABORT_MOTION_PROPERTY == NULL)
@@ -126,8 +126,8 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 			DOME_SNOOP_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_DEVICES_PROPERTY_NAME, MAIN_GROUP, "Snoop devices", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (DOME_SNOOP_DEVICES_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_text_item(DOME_SNOOP_MOUNT_ITEM, SNOOP_MOUNT_ITEM_NAME, "Mount", "Mount Simulator");
-			indigo_init_text_item(DOME_SNOOP_GPS_ITEM, SNOOP_GPS_ITEM_NAME, "GPS", "GPS Simulator");
+			indigo_init_text_item(DOME_SNOOP_MOUNT_ITEM, SNOOP_MOUNT_ITEM_NAME, "Mount", "");
+			indigo_init_text_item(DOME_SNOOP_GPS_ITEM, SNOOP_GPS_ITEM_NAME, "GPS", "");
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -252,6 +252,8 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		indigo_remove_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 		indigo_remove_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
 		indigo_property_copy_values(DOME_SNOOP_DEVICES_PROPERTY, property, false);
+		indigo_trim_local_service(DOME_SNOOP_MOUNT_ITEM->text.value);
+		indigo_trim_local_service(DOME_SNOOP_GPS_ITEM->text.value);
 		indigo_add_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 		indigo_add_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
 		DOME_SNOOP_DEVICES_PROPERTY->state = INDIGO_OK_STATE;
@@ -280,10 +282,6 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 indigo_result indigo_fix_dome_coordinates(indigo_device *device, double ra, double dec, double *alt, double *az) {
 	if (!DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
 		double threshold = DOME_SYNC_THRESHOLD_ITEM->number.value;
-		if (threshold == 0) {
-			/* Do not symchronize dome */
-			return INDIGO_OK;
-		}
 		static double az_prev = 0;
 		double az_now;
 		double lst = indigo_lst(DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);

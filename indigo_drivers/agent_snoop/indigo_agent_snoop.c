@@ -265,7 +265,8 @@ static indigo_result agent_define_property(struct indigo_client *client, struct 
 			if (r->source_property && r->target_property) {
 				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_OK_STATE;
 				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, "Rule '%s'.%s > '%s'.%s is active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
-				forward_property(device, client, r);
+				if (r->source_property->state != INDIGO_ALERT_STATE)
+					forward_property(device, client, r);
 			} else {
 				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_BUSY_STATE;
 				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, NULL);
@@ -279,6 +280,8 @@ static indigo_result agent_define_property(struct indigo_client *client, struct 
 
 static indigo_result agent_update_property(struct indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message) {
 	if (device == CLIENT_PRIVATE_DATA->device)
+		return INDIGO_OK;
+	if (property->state == INDIGO_ALERT_STATE)
 		return INDIGO_OK;
 	rule *r = CLIENT_PRIVATE_DATA->rules;
 	while (r) {

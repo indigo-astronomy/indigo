@@ -915,3 +915,15 @@ indigo_result indigo_device_disconnect(indigo_client *client, char *device) {
 	static bool values[] = { false, true };
 	return indigo_change_switch_property(client, device, CONNECTION_PROPERTY_NAME, 2, items, values);
 }
+
+void indigo_trim_local_service(char *device_name) {
+	while (*device_name) {
+		if (strncmp(device_name, " @ ", 3) == 0) {
+			if (strcmp(device_name + 3, indigo_local_service_name) == 0) {
+				*device_name = 0;
+			}
+			return;
+		}
+		device_name++;
+	}
+}
