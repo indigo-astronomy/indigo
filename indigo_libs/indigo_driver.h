@@ -311,6 +311,10 @@ void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len);
  */
 time_t indigo_isototime(char *isotime);
 
+/** Enumerate serial ports.
+ */
+	void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);
+	
 #ifdef __cplusplus
 }
 #endif
