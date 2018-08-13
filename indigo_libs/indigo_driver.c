@@ -156,7 +156,7 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 			if (cfs) {
 				CFStringGetCString(cfs, name, INDIGO_VALUE_SIZE, kCFStringEncodingASCII);
 				if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port") && strcmp(name, "/dev/cu.SSDC") && strstr(name, "-WirelessiAP") == NULL) {
-					int i = DEVICE_PORTS_PROPERTY->count++;
+					int i = property->count++;
 					indigo_init_switch_item(property->items + i, name, name, false);
 				}
 				CFRelease(cfs);
