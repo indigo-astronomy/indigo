@@ -692,13 +692,13 @@ $(BUILD_DRIVERS)/indigo_mount_lx200.$(SOEXT): indigo_drivers/mount_lx200/indigo_
 #
 #---------------------------------------------------------------------
 
-$(BUILD_DRIVERS)/indigo_mount_synscan.a: indigo_drivers/mount_synscan/indigo_mount_synscan.o
+$(BUILD_DRIVERS)/indigo_mount_synscan.a: indigo_drivers/mount_synscan/indigo_mount_synscan.o indigo_drivers/mount_synscan/indigo_mount_synscan_protocol.o indigo_drivers/mount_synscan/indigo_mount_synscan_driver.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_mount_synscan: indigo_drivers/mount_synscan/indigo_mount_synscan_main.o $(BUILD_DRIVERS)/indigo_mount_synscan.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_mount_synscan.$(SOEXT): indigo_drivers/mount_synscan/indigo_mount_synscan.o
+$(BUILD_DRIVERS)/indigo_mount_synscan.$(SOEXT): indigo_drivers/mount_synscan/indigo_mount_synscan.o indigo_drivers/mount_synscan/indigo_mount_synscan_protocol.o indigo_drivers/mount_synscan/indigo_mount_synscan_driver.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------

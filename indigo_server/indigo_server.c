@@ -73,6 +73,7 @@
 #include "focuser_wemacro/indigo_focuser_wemacro.h"
 #include "ccd_mi/indigo_ccd_mi.h"
 #include "aux_joystick/indigo_aux_joystick.h"
+#include "mount_synscan/indigo_mount_synscan.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -123,6 +124,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_wemacro,
 	indigo_ccd_mi,
 	indigo_aux_joystick,
+	indigo_mount_synscan,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif
