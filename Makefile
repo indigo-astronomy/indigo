@@ -688,6 +688,21 @@ $(BUILD_DRIVERS)/indigo_mount_lx200.$(SOEXT): indigo_drivers/mount_lx200/indigo_
 
 #---------------------------------------------------------------------
 #
+#	Build mount ioptron driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_mount_ioptron.a: indigo_drivers/mount_ioptron/indigo_mount_ioptron.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_mount_ioptron: indigo_drivers/mount_ioptron/indigo_mount_ioptron_main.o $(BUILD_DRIVERS)/indigo_mount_ioptron.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_mount_ioptron.$(SOEXT): indigo_drivers/mount_ioptron/indigo_mount_ioptron.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build mount synscan driver
 #
 #---------------------------------------------------------------------

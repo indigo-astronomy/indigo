@@ -298,6 +298,8 @@
 		9DAD522621246C18002FCC79 /* indigo_mount_synscan_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD521E21246C17002FCC79 /* indigo_mount_synscan_driver.c */; };
 		9DAD522721246C18002FCC79 /* indigo_mount_synscan.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD521F21246C17002FCC79 /* indigo_mount_synscan.h */; };
 		9DAD522821246C18002FCC79 /* indigo_mount_synscan_protocol.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD522021246C17002FCC79 /* indigo_mount_synscan_protocol.h */; };
+		9DAD522F21246EB5002FCC79 /* indigo_mount_ioptron.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD522B21246EB5002FCC79 /* indigo_mount_ioptron.h */; };
+		9DAD523121246EB5002FCC79 /* indigo_mount_ioptron.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */; };
 		9DB918031DF8546800678721 /* indigo_mount_lx200.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918001DF8546800678721 /* indigo_mount_lx200.c */; };
 		9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DB918011DF8546800678721 /* indigo_mount_lx200.h */; };
 		9DB918081DFEA42E00678721 /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
@@ -860,7 +862,6 @@
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
 		59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb_utils.c; sourceTree = "<group>"; };
-		59BFB3DB1E11845900064E9C /* iOptron Telescope RS-232 Command language.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "iOptron Telescope RS-232 Command language.pdf"; sourceTree = "<group>"; };
 		59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ica.h; sourceTree = "<group>"; };
 		59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ccd_ica.m; sourceTree = "<group>"; };
 		59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp.h; sourceTree = "<group>"; };
@@ -1529,6 +1530,11 @@
 		9DAD521E21246C17002FCC79 /* indigo_mount_synscan_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_synscan_driver.c; sourceTree = "<group>"; };
 		9DAD521F21246C17002FCC79 /* indigo_mount_synscan.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_synscan.h; sourceTree = "<group>"; };
 		9DAD522021246C17002FCC79 /* indigo_mount_synscan_protocol.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_synscan_protocol.h; sourceTree = "<group>"; };
+		9DAD522B21246EB5002FCC79 /* indigo_mount_ioptron.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_ioptron.h; sourceTree = "<group>"; };
+		9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_ioptron_main.c; sourceTree = "<group>"; };
+		9DAD522D21246EB5002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_ioptron.c; sourceTree = "<group>"; };
+		9DAD523221246FA9002FCC79 /* iOptron Telescope RS-232 Command language.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "iOptron Telescope RS-232 Command language.pdf"; sourceTree = "<group>"; };
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
@@ -2672,6 +2678,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9DAD522921246EB5002FCC79 /* mount_ioptron */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
 				59588CA1211CBEB100E9FC27 /* aux_joystick */,
 				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
@@ -3520,6 +3527,18 @@
 			path = mount_synscan;
 			sourceTree = "<group>";
 		};
+		9DAD522921246EB5002FCC79 /* mount_ioptron */ = {
+			isa = PBXGroup;
+			children = (
+				9DAD522D21246EB5002FCC79 /* README.md */,
+				9DAD522B21246EB5002FCC79 /* indigo_mount_ioptron.h */,
+				9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */,
+				9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */,
+				9DAD523221246FA9002FCC79 /* iOptron Telescope RS-232 Command language.pdf */,
+			);
+			path = mount_ioptron;
+			sourceTree = "<group>";
+		};
 		9DB917FE1DF8543800678721 /* mount_lx200 */ = {
 			isa = PBXGroup;
 			children = (
@@ -3528,7 +3547,6 @@
 				9DB918001DF8546800678721 /* indigo_mount_lx200.c */,
 				9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */,
 				9DB918051DF8647800678721 /* TelescopeProtocol_2010-10.pdf */,
-				59BFB3DB1E11845900064E9C /* iOptron Telescope RS-232 Command language.pdf */,
 			);
 			path = mount_lx200;
 			sourceTree = "<group>";
@@ -3658,6 +3676,7 @@
 				59019E101DE112A600CCB3ED /* ASICamera2.h in Headers */,
 				9D59D5E420D3F829009EA8FF /* AltaIo.h in Headers */,
 				9D59D66420D3F82A009EA8FF /* helpers.h in Headers */,
+				9DAD522F21246EB5002FCC79 /* indigo_mount_ioptron.h in Headers */,
 				59DD69CA1FC1CF8D00AEF0DF /* indigo_gps_nmea.h in Headers */,
 				595F2925211E211200380EF4 /* DDHidUsage.h in Headers */,
 				9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */,
@@ -4023,6 +4042,7 @@
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
 				9D59D63820D3F829009EA8FF /* CameraStatusRegs.cpp in Sources */,
 				9D59D63D20D3F829009EA8FF /* linuxHelpers.cpp in Sources */,
+				9DAD523121246EB5002FCC79 /* indigo_mount_ioptron.c in Sources */,
 				59DD69C91FC1CF8D00AEF0DF /* indigo_gps_nmea.c in Sources */,
 				590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */,
 				595F292E211E211200380EF4 /* DDHidElement.m in Sources */,
