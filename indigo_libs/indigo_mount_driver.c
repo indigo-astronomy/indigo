@@ -169,9 +169,9 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			MOUNT_ALIGNMENT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Alignment mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 			if (MOUNT_ALIGNMENT_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM, MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM_NAME, "Mount controller", true); // check MOUNT_ALIGNMENT_SELECT_POINTS and MOUNT_ALIGNMENT_DELETE_POINTS if default is changed
 			indigo_init_switch_item(MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM, MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM_NAME, "Single point", false);
 			indigo_init_switch_item(MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM, MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM_NAME, "Multi point", false);
+			indigo_init_switch_item(MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM, MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM_NAME, "Mount controller", true); // check MOUNT_ALIGNMENT_SELECT_POINTS and MOUNT_ALIGNMENT_DELETE_POINTS if default is changed
 			// -------------------------------------------------------------------------------- MOUNT_RAW_COORDINATES
 			MOUNT_RAW_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Raw coordinates", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
 			if (MOUNT_RAW_COORDINATES_PROPERTY == NULL)
@@ -183,13 +183,13 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Select alignment points", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MOUNT_MAX_ALIGNMENT_POINTS);
 			if (MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = true;
+			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = 0;
 			// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_DELETE_POINTS
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Delete alignment points", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MOUNT_MAX_ALIGNMENT_POINTS);
 			if (MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = true;
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = 0;
 			// -------------------------------------------------------------------------------- SNOOP_DEVICES
 			MOUNT_SNOOP_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_DEVICES_PROPERTY_NAME, MAIN_GROUP, "Snoop devices", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
