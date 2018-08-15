@@ -89,9 +89,10 @@
 1. NexStar protocol mount driver (based on libnexstar) __DONE__
 2. NexStar EVO protocol mount driver
 3. LX200 protocol mount driver __DONE__
-4. EQMod mount driver
+4. SysScan (EQMod) mount driver
 5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft)
 6. Temma protocol mount driver __DONE__
+7. IEQ protocol (LX200 with extensions) mount driver
 
 #### GPS
 1. GPS Simulator driver __DOME__
@@ -101,6 +102,10 @@
 #### Dome
 1. Dome Simulator driver __DONE__
 2. UNIVERSAL dome driver
+
+#### AUX
+
+1. HID joystick driver __DONE__
 
 #### AO
 
