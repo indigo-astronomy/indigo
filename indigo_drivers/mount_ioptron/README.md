@@ -2,7 +2,7 @@
 
 ## Supported devices
 
-Any iOptron protocol compatible mount connected over serial port or network.
+iOptron ZEQ25, iEQ30, iEQ45 or SmartEQ mount connected over serial port or network.
 
 Single device is present on startup (no hot-plug support).
 
