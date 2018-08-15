@@ -232,7 +232,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
-		MOUNT_TRACK_RATE_PROPERTY->hidden = true;
+		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
 		ALIGNMENT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Alignment mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (ALIGNMENT_MODE_PROPERTY == NULL)
@@ -271,31 +271,37 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				result = meade_open(device);
 			}
 			if (result) {
-				char response[128];
-				if (meade_command(device, ":GVP#", response, 127, 0)) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "product:  %s", response);
-					strncpy(PRIVATE_DATA->product, response, 64);
+				char response[128] = "";
+				if (meade_command(device, ":V#", response, 127, 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", response);
 				}
-				ALIGNMENT_MODE_PROPERTY->hidden = true;
-				if (!strcmp(PRIVATE_DATA->product, "EQMac")) {
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
-					MOUNT_UTC_TIME_PROPERTY->hidden = true;
-					MOUNT_TRACKING_PROPERTY->hidden = true;
-					MOUNT_PARK_PROPERTY->count = 2; // Can unpark!
-					meade_get_coords(device);
-					if (PRIVATE_DATA->currentRA == 0 && PRIVATE_DATA->currentDec == 0) {
-						MOUNT_PARK_PARKED_ITEM->sw.value = true;
-						MOUNT_PARK_UNPARKED_ITEM->sw.value = false;
-						PRIVATE_DATA->parked = true;
-					} else {
-						MOUNT_PARK_PARKED_ITEM->sw.value = false;
-						MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
-						PRIVATE_DATA->parked = false;
+				if (*response == 'V') {
+					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "iOptron");
+					if (meade_command(device, ":MountInfo#", response, 127, 0)) {
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "product:  %s", response);
+						strncpy(PRIVATE_DATA->product, response, 64);
+						if (!strcmp(PRIVATE_DATA->product, "8407")) {
+							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 EQ/iEQ30");
+						} else if (!strcmp(PRIVATE_DATA->product, "8497")) {
+							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 AA");
+						} else if (!strcmp(PRIVATE_DATA->product, "8408")) {
+							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "ZEQ25");
+						} else if (!strcmp(PRIVATE_DATA->product, "8498")) {
+							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "SmartEQ");
+						} else {
+							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Unknown");
+						}
 					}
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Generic");
-					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "EQMac");
-					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-				} else {
+					if (meade_command(device, "FW1#", response, 127, 0)) {
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware #1:  %s", response);
+						strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+						if (meade_command(device, "FW2#", response, 127, 0)) {
+							INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware #2:  %s", response);
+							strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, " / ");
+							strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+						}
+					}
+
 					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 					MOUNT_UTC_TIME_PROPERTY->hidden = false;
 					MOUNT_PARK_PARKED_ITEM->sw.value = false;
