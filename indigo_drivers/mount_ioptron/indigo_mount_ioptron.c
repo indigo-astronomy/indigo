@@ -48,14 +48,6 @@
 #define RA_MIN_DIF					0.1
 #define DEC_MIN_DIF					0.1
 
-#define ALIGNMENT_MODE_PROPERTY					(PRIVATE_DATA->alignment_mode_property)
-#define POLAR_MODE_ITEM                 (ALIGNMENT_MODE_PROPERTY->items+0)
-#define ALTAZ_MODE_ITEM                 (ALIGNMENT_MODE_PROPERTY->items+1)
-
-#define ALIGNMENT_MODE_PROPERTY_NAME		"X_ALIGNMENT_MODE"
-#define POLAR_MODE_ITEM_NAME            "POLAR"
-#define ALTAZ_MODE_ITEM_NAME            "ALTAZ"
-
 typedef struct {
 	bool parked;
 	int handle;
@@ -64,11 +56,10 @@ typedef struct {
 	double currentDec;
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
-	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
+	char lastSlewRate, lastTrackRate;
 	double lastRA, lastDec;
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
-	indigo_property *alignment_mode_property;
 } ioptron_private_data;
 
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep);
@@ -220,26 +211,14 @@ static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- SIMULATION
+		// --------------------------------------------------------------------------------
 		SIMULATION_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- MOUNT_PARK
-		MOUNT_PARK_PROPERTY->count = 1;
-		MOUNT_PARK_PARKED_ITEM->sw.value = false;
-		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
-		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
 		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
-		ALIGNMENT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Alignment mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (ALIGNMENT_MODE_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_switch_item(POLAR_MODE_ITEM, POLAR_MODE_ITEM_NAME, "Polar mode", false);
-		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
-		ALIGNMENT_MODE_PROPERTY->hidden = true;
+		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -249,10 +228,6 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
-		if (indigo_property_match(ALIGNMENT_MODE_PROPERTY, property) && !ALIGNMENT_MODE_PROPERTY->hidden)
-			indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
-	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
@@ -260,6 +235,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
+	char response[128] = "";
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -271,82 +247,66 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				result = meade_open(device);
 			}
 			if (result) {
-				char response[128] = "";
 				if (meade_command(device, ":V#", response, 127, 0)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", response);
 				}
-				if (*response == 'V') {
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "iOptron");
-					if (meade_command(device, ":MountInfo#", response, 127, 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "product:  %s", response);
-						strncpy(PRIVATE_DATA->product, response, 64);
-						if (!strcmp(PRIVATE_DATA->product, "8407")) {
-							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 EQ/iEQ30");
-						} else if (!strcmp(PRIVATE_DATA->product, "8497")) {
-							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 AA");
-						} else if (!strcmp(PRIVATE_DATA->product, "8408")) {
-							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "ZEQ25");
-						} else if (!strcmp(PRIVATE_DATA->product, "8498")) {
-							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "SmartEQ");
-						} else {
-							strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Unknown");
-						}
-					}
-					if (meade_command(device, "FW1#", response, 127, 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware #1:  %s", response);
-						strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
-						if (meade_command(device, "FW2#", response, 127, 0)) {
-							INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware #2:  %s", response);
-							strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, " / ");
-							strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
-						}
-					}
-
-					MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
-					MOUNT_UTC_TIME_PROPERTY->hidden = false;
-					MOUNT_PARK_PARKED_ITEM->sw.value = false;
-					MOUNT_TRACKING_PROPERTY->hidden = false;
-					PRIVATE_DATA->parked = false;
-					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Meade");
-					if (meade_command(device, ":GVF#", response, 127, 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", response);
-						char *sep = strchr(response, '|');
-						if (sep != NULL)
-							*sep = 0;
-						strncpy(MOUNT_INFO_MODEL_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "iOptron");
+				if (meade_command(device, ":MountInfo#", response, 127, 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "product:  %s", response);
+					strncpy(PRIVATE_DATA->product, response, 64);
+					if (!strcmp(PRIVATE_DATA->product, "8407")) {
+						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 EQ/iEQ30");
+					} else if (!strcmp(PRIVATE_DATA->product, "8497")) {
+						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 Alt/Az");
+					} else if (!strcmp(PRIVATE_DATA->product, "8408")) {
+						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "ZEQ25");
+					} else if (!strcmp(PRIVATE_DATA->product, "8498")) {
+						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "SmartEQ");
 					} else {
-						strncpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, INDIGO_VALUE_SIZE);
+						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Unknown");
 					}
-					if (meade_command(device, ":GVN#", response, 127, 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware: %s", response);
-						strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response, INDIGO_VALUE_SIZE);
-					}
-					if (meade_command(device, ":GW#", response, 127, 0)) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "status:   %s", response);
-						ALIGNMENT_MODE_PROPERTY->hidden = false;
-						if (*response == 'P') {
-							POLAR_MODE_ITEM->sw.value = true;
-							MOUNT_TRACKING_ON_ITEM->sw.value = true;
-							MOUNT_TRACKING_OFF_ITEM->sw.value = false;
-						} else if (*response == 'A') {
-							ALTAZ_MODE_ITEM->sw.value = true;
-							MOUNT_TRACKING_ON_ITEM->sw.value = true;
-							MOUNT_TRACKING_OFF_ITEM->sw.value = false;
-						} else {
-							ALTAZ_MODE_ITEM->sw.value = true;
-							MOUNT_TRACKING_ON_ITEM->sw.value = false;
-							MOUNT_TRACKING_OFF_ITEM->sw.value = true;
-						}
-
-						indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
-					}
-					if (meade_command(device, ":Gt#", response, 127, 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (meade_command(device, ":Gg#", response, 127, 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = indigo_stod(response);
-					meade_get_coords(device);
-					meade_get_utc(device);
 				}
+				if (meade_command(device, ":FW1#", response, 127, 0)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware #1:  %s", response);
+					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+					if (meade_command(device, ":FW2#", response, 127, 0)) {
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "firmware #2:  %s", response);
+						strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, " / ");
+						strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+					}
+				}
+				if (meade_command(device, ":AP#", response, 1, 1)) {
+					if (*response == '0') {
+						indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+					} else {
+						indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+					}
+				}
+				if (meade_command(device, ":AT#", response, 1, 1)) {
+					if (*response == '0') {
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+					} else {
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+					}
+				}
+				if (meade_command(device, ":QT#", response, 1, 1)) {
+					if (*response == '0') {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+					} else if (*response == '1') {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+					} else if (*response == '2') {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+					} else {
+						meade_command(device, ":RT0#", response, 1, 1);
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+					}
+				}
+				if (meade_command(device, ":Gt#", response, 127, 0))
+					MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
+				if (meade_command(device, ":Gg#", response, 127, 0))
+					MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = indigo_stod(response);
+				meade_get_coords(device);
+				meade_get_utc(device);
 				if (!PRIVATE_DATA->parked)
 					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -361,21 +321,19 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (--PRIVATE_DATA->device_count == 0) {
 				meade_close(device);
 			}
-			if (!ALIGNMENT_MODE_PROPERTY->hidden)
-				indigo_delete_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if (!PRIVATE_DATA->parked && MOUNT_PARK_PARKED_ITEM->sw.value) {
-			meade_command(device, ":hP#", NULL, 0, 0);
+			meade_command(device, ":MP1#", response, 1, 1);
 			PRIVATE_DATA->parked = true;
 			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 		}
 		if (PRIVATE_DATA->parked && MOUNT_PARK_UNPARKED_ITEM->sw.value) {
-			meade_command(device, ":hU#", NULL, 0, 0);
+			meade_command(device, ":MP0#", response, 1, 1);
 			PRIVATE_DATA->parked = false;
 			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
@@ -389,7 +347,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		char command[128], response[128];
 		sprintf(command, ":St%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d"));
-		if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+		if (!meade_command(device, command, response, 1, 1) || *response != '1') {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
@@ -397,7 +355,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (longitude > 360)
 				longitude -= 360;
 			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%0d*%02d"));
-			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+			if (!meade_command(device, command, response, 1, 1) || *response != '1') {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -412,29 +370,29 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-				if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'q') {
-					meade_command(device, ":TQ#", NULL, 0, 0);
-					PRIVATE_DATA->lastTrackRate = 'q';
-				} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 's') {
-					meade_command(device, ":TS#", NULL, 0, 0);
-					PRIVATE_DATA->lastTrackRate = 's';
-				} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'l') {
-					meade_command(device, ":TL#", NULL, 0, 0);
-					PRIVATE_DATA->lastTrackRate = 'l';
+				if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '0') {
+					meade_command(device, ":RT0#", response, 1, 1);
+					PRIVATE_DATA->lastTrackRate = '0';
+				} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '1') {
+					meade_command(device, ":RT1", response, 1, 1);
+					PRIVATE_DATA->lastTrackRate = '1';
+				} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '2') {
+					meade_command(device, ":RT2#", response, 1, 1);
+					PRIVATE_DATA->lastTrackRate = '2';
 				}
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				char command[128], response[128];
 				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
-				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+				if (!meade_command(device, command, response, 1, 1) || *response != '1') {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
-					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+					if (!meade_command(device, command, response, 1, 1) || *response != '1') {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
-						if (!meade_command(device, ":MS#", response, 1, 100000) || *response != '0') {
+						if (!meade_command(device, ":MS#", response, 1, 100000) || *response != '1') {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed");
 							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 						}
@@ -443,16 +401,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 				char command[128], response[128];
 				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
-				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+				if (!meade_command(device, command, response, 1, 1) || *response != '1') {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
-					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+					if (!meade_command(device, command, response, 1, 1) || *response != '1') {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
-						if (!meade_command(device, ":CM#", response, 127, 100000) || *response == 0) {
+						if (!meade_command(device, ":CM#", response, 1, 1) || *response != '1') {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed");
 							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 						}
@@ -472,7 +430,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 				if (indigo_cancel_timer(device, &PRIVATE_DATA->position_timer)) {
 					PRIVATE_DATA->position_timer = NULL;
-					meade_command(device, ":Q#", NULL, 0, 0);
+					meade_command(device, ":Q#", response, 1, 1);
+					meade_command(device, ":q#", NULL, 0, 0);
 					MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 					MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 					MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -487,7 +446,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_update_coordinates(device, NULL);
 				}
 				MOUNT_ABORT_MOTION_ITEM->sw.value = false;
-				MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+				MOUNT_ABORT_MOTION_PROPERTY->state = *response == '1';
 				indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 			}
 		}
@@ -499,30 +458,24 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mout is parked!");
 		} else {
 			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
-			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
-				meade_command(device, ":RG#", NULL, 0, 0);
-				PRIVATE_DATA->lastSlewRate = 'g';
-			} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'c') {
-				meade_command(device, ":RC#", NULL, 0, 0);
-				PRIVATE_DATA->lastSlewRate = 'c';
-			} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
-				meade_command(device, ":RM#", NULL, 0, 0);
-				PRIVATE_DATA->lastSlewRate = 'm';
-			} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
-				meade_command(device, ":RS#", NULL, 0, 0);
-				PRIVATE_DATA->lastSlewRate = 's';
+			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '1') {
+				meade_command(device, ":SR1#", response, 1, 1);
+				PRIVATE_DATA->lastSlewRate = '1';
+			} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '3') {
+				meade_command(device, ":SR3#", response, 1, 1);
+				PRIVATE_DATA->lastSlewRate = '3';
+			} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '5') {
+				meade_command(device, ":SR5#", response, 1, 1);
+				PRIVATE_DATA->lastSlewRate = '5';
+			} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '9') {
+				meade_command(device, ":SR9#", response, 1, 1);
+				PRIVATE_DATA->lastSlewRate = '9';
 			}
-			if (PRIVATE_DATA->lastMotionNS == 'n') {
-				meade_command(device, ":Qn#", NULL, 0, 0);
-			} else if (PRIVATE_DATA->lastMotionNS == 's') {
-				meade_command(device, ":Qs#", NULL, 0, 0);
-			}
+			meade_command(device, ":q#", NULL, 0, 0);
 			if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
-				PRIVATE_DATA->lastMotionNS = 'n';
-				meade_command(device, ":Mn#", NULL, 0, 0);
+				meade_command(device, ":mn#", NULL, 0, 0);
 			} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
-				PRIVATE_DATA->lastMotionNS = 's';
-				meade_command(device, ":Ms#", NULL, 0, 0);
+				meade_command(device, ":ms#", NULL, 0, 0);
 			}
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
@@ -535,30 +488,24 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mout is parked!");
 		} else {
 			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
-			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
-				meade_command(device, ":RG#", NULL, 0, 0);
-				PRIVATE_DATA->lastSlewRate = 'g';
-			} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'c') {
-				meade_command(device, ":RC#", NULL, 0, 0);
-				PRIVATE_DATA->lastSlewRate = 'c';
-			} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
-				meade_command(device, ":RM#", NULL, 0, 0);
-				PRIVATE_DATA->lastSlewRate = 'm';
-			} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
-				meade_command(device, ":RS#", NULL, 0, 0);
-				PRIVATE_DATA->lastSlewRate = 's';
+			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '1') {
+				meade_command(device, ":SR1#", response, 1, 1);
+				PRIVATE_DATA->lastSlewRate = '1';
+			} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '3') {
+				meade_command(device, ":SR3#", response, 1, 1);
+				PRIVATE_DATA->lastSlewRate = '3';
+			} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '5') {
+				meade_command(device, ":SR5#", response, 1, 1);
+				PRIVATE_DATA->lastSlewRate = '5';
+			} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != '9') {
+				meade_command(device, ":SR9#", response, 1, 1);
+				PRIVATE_DATA->lastSlewRate = '9';
 			}
-			if (PRIVATE_DATA->lastMotionWE == 'w') {
-				meade_command(device, ":Qw#", NULL, 0, 0);
-			} else if (PRIVATE_DATA->lastMotionWE == 'e') {
-				meade_command(device, ":Qe#", NULL, 0, 0);
-			}
+			meade_command(device, ":q#", NULL, 0, 0);
 			if (MOUNT_MOTION_WEST_ITEM->sw.value) {
-				PRIVATE_DATA->lastMotionWE = 'w';
-				meade_command(device, ":Mwn#", NULL, 0, 0);
+				meade_command(device, ":mn#", NULL, 0, 0);
 			} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
-				PRIVATE_DATA->lastMotionWE = 'e';
-				meade_command(device, ":Me#", NULL, 0, 0);
+				meade_command(device, ":me#", NULL, 0, 0);
 			}
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
@@ -572,7 +519,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			struct tm tm = *localtime(&secs);
 			char command[20], response[2];
 			sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
-			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+			if (!meade_command(device, command, response, 1, 1) || *response != '1') {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
@@ -596,7 +543,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			struct tm tm = *localtime(&secs);
 			char command[20], response[2];
 			sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
-			if (!meade_command(device, command, response, 1, 0) || *response != '1')
+			if (!meade_command(device, command, response, 1, 1) || *response != '1')
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			else
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
@@ -605,32 +552,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
-		if (MOUNT_TRACKING_ON_ITEM->sw.value) {
-			if (ALTAZ_MODE_ITEM->sw.value) {
-				meade_command(device, ":AA#", NULL, 0, 0);
-				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-			} else if (POLAR_MODE_ITEM->sw.value) {
-				meade_command(device, ":AP#", NULL, 0, 0);
-				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-		} else {
-			meade_command(device, ":AL#", NULL, 0, 0);
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-		}
+		if (MOUNT_TRACKING_ON_ITEM->sw.value)
+			meade_command(device, ":ST1#", response, 1, 1);
+		else
+			meade_command(device, ":ST0#", response, 1, 1);
+		MOUNT_TRACKING_PROPERTY->state = *response == '1';
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match(ALIGNMENT_MODE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
-		indigo_property_copy_values(ALIGNMENT_MODE_PROPERTY, property, false);
-		if (ALTAZ_MODE_ITEM->sw.value) {
-			meade_command(device, ":AA#", NULL, 0, 0);
-		} else if (POLAR_MODE_ITEM->sw.value) {
-			meade_command(device, ":AP#", NULL, 0, 0);
-		}
-		ALIGNMENT_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
@@ -641,7 +568,6 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	indigo_release_property(ALIGNMENT_MODE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
@@ -690,10 +616,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		char command[128];
 		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-			sprintf(command, ":Mgn%4.0f#", GUIDER_GUIDE_NORTH_ITEM->number.value);
+			sprintf(command, ":Mn%05d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 			meade_command(device, command, NULL, 0, 0);
 		} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-			sprintf(command, ":Mgs%4.0f#", GUIDER_GUIDE_SOUTH_ITEM->number.value);
+			sprintf(command, ":Ms%05d#", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 			meade_command(device, command, NULL, 0, 0);
 		}
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -705,10 +631,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		char command[128];
 		if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
-			sprintf(command, ":Mgw%4.0f#", GUIDER_GUIDE_WEST_ITEM->number.value);
+			sprintf(command, ":Mw%05d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
 			meade_command(device, command, NULL, 0, 0);
 		} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
-			sprintf(command, ":Mge%4.0f#", GUIDER_GUIDE_EAST_ITEM->number.value);
+			sprintf(command, ":Me%05d#", (int)GUIDER_GUIDE_EAST_ITEM->number.value);
 			meade_command(device, command, NULL, 0, 0);
 		}
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
