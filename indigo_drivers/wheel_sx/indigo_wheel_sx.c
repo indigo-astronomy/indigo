@@ -131,8 +131,6 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			sx_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
