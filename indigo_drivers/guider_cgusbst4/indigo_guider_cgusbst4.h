@@ -20,11 +20,11 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO cgusbst4 driver
- \file indigo_mount_cgusbst4.h
+ \file indigo_guider_cgusbst4.h
  */
 
-#ifndef mount_cgusbst4_h
-#define mount_cgusbst4_h
+#ifndef guider_cgusbst4_h
+#define guider_cgusbst4_h
 
 #include "indigo_driver.h"
 #include "indigo_guider_driver.h"
@@ -45,5 +45,5 @@ extern indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_
 }
 #endif
 
-#endif /* mount_cgusbst4_h */
+#endif /* guider_cgusbst4_h */
 

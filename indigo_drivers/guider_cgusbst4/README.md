@@ -1,4 +1,4 @@
-# CG-USB-ST4 mount driver
+# CG-USB-ST4 guider driver
 
 ## Supported devices
 
@@ -16,7 +16,7 @@ INDIGO Astronomy open-source license.
 
 ## Use
 
-indigo_server indigo_mount_cgusbst4
+indigo_server indigo_guider_cgusbst4
 
 ## Comments
 
