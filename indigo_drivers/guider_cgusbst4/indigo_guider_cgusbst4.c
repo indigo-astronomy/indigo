@@ -20,7 +20,7 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO CGUSBST4 driver
- \file indigo_mount_cgusbst4.c
+ \file indigo_guider_cgusbst4.c
  */
 
 #define DRIVER_VERSION 0x0001

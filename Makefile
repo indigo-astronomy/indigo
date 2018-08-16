@@ -703,6 +703,21 @@ $(BUILD_DRIVERS)/indigo_mount_ioptron.$(SOEXT): indigo_drivers/mount_ioptron/ind
 
 #---------------------------------------------------------------------
 #
+#	Build CG-USB-ST4 guider driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_guider_cgusbst4.a: indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_guider_cgusbst4: indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4_main.o $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_guider_cgusbst4.$(SOEXT): indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build mount synscan driver
 #
 #---------------------------------------------------------------------
