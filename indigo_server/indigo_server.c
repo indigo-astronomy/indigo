@@ -75,6 +75,7 @@
 #include "aux_joystick/indigo_aux_joystick.h"
 #include "mount_synscan/indigo_mount_synscan.h"
 #include "mount_ioptron/indigo_mount_ioptron.h"
+#include "guider_cgusbst4/indigo_guider_cgusbst4.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -127,6 +128,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_joystick,
 	indigo_mount_synscan,
 	indigo_mount_ioptron,
+	indigo_guider_cgusbst4,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif
