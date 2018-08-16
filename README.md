@@ -56,6 +56,7 @@ This is the list of requirements taken into the consideration:
 32. Apogee CCD driver
 33. Moravian Intruments CCD and filter wheel driver
 34. HID Joystick AUX driver
+35. CGUSBST4 guider driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
