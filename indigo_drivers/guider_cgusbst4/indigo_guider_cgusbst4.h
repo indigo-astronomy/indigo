@@ -1,4 +1,4 @@
-// Copyright (c) 2016 Rumen G. Bogdanovski
+// Copyright (c) 2016 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -8,7 +8,7 @@
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
 // ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTnexstarIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
 // GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
@@ -16,29 +16,34 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 // version history
-// 2.0 by Rumen G. Bogdanovski
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO mount nexstar driver main
- \file indigo_mount_nexstar_main.c
+/** INDIGO cgusbst4 driver
+ \file indigo_mount_cgusbst4.h
  */
 
-#include <stdio.h>
+#ifndef mount_cgusbst4_h
+#define mount_cgusbst4_h
 
-#include "indigo_driver_xml.h"
+#include "indigo_driver.h"
+#include "indigo_guider_driver.h"
 
-#include "indigo_mount_nexstar.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-int main(int argc, const char * argv[]) {
-	indigo_main_argc = argc;
-	indigo_main_argv = argv;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
-	indigo_start();
-	indigo_guider_nexstar(INDIGO_DRIVER_INIT, NULL);
-	indigo_attach_client(protocol_adapter);
-	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_guider_nexstar(INDIGO_DRIVER_SHUTDOWN, NULL);
-	indigo_stop();
-	return 0;
+#define MOUNT_CGUSBST4_GUIDER_NAME       "CG-USB-ST4 Adapter"
+
+
+/** Create mount CGUSBST4 device instance
+ */
+
+extern indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* mount_cgusbst4_h */
+

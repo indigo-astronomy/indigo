@@ -300,6 +300,8 @@
 		9DAD522821246C18002FCC79 /* indigo_mount_synscan_protocol.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD522021246C17002FCC79 /* indigo_mount_synscan_protocol.h */; };
 		9DAD522F21246EB5002FCC79 /* indigo_mount_ioptron.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD522B21246EB5002FCC79 /* indigo_mount_ioptron.h */; };
 		9DAD523121246EB5002FCC79 /* indigo_mount_ioptron.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */; };
+		9DAD523D21258801002FCC79 /* indigo_guider_cgusbst4.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD523921258801002FCC79 /* indigo_guider_cgusbst4.c */; };
+		9DAD523E21258801002FCC79 /* indigo_guider_cgusbst4.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD523B21258801002FCC79 /* indigo_guider_cgusbst4.h */; };
 		9DB918031DF8546800678721 /* indigo_mount_lx200.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918001DF8546800678721 /* indigo_mount_lx200.c */; };
 		9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DB918011DF8546800678721 /* indigo_mount_lx200.h */; };
 		9DB918081DFEA42E00678721 /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
@@ -1535,6 +1537,10 @@
 		9DAD522D21246EB5002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_ioptron.c; sourceTree = "<group>"; };
 		9DAD523221246FA9002FCC79 /* iOptron Telescope RS-232 Command language.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "iOptron Telescope RS-232 Command language.pdf"; sourceTree = "<group>"; };
+		9DAD523821258801002FCC79 /* indigo_guider_cgusbst4_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_cgusbst4_main.c; sourceTree = "<group>"; };
+		9DAD523921258801002FCC79 /* indigo_guider_cgusbst4.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_cgusbst4.c; sourceTree = "<group>"; };
+		9DAD523A21258801002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DAD523B21258801002FCC79 /* indigo_guider_cgusbst4.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_cgusbst4.h; sourceTree = "<group>"; };
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
@@ -2678,6 +2684,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9DAD523721258801002FCC79 /* guider_cgusbst4 */,
 				9DAD522921246EB5002FCC79 /* mount_ioptron */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
 				59588CA1211CBEB100E9FC27 /* aux_joystick */,
@@ -3539,6 +3546,17 @@
 			path = mount_ioptron;
 			sourceTree = "<group>";
 		};
+		9DAD523721258801002FCC79 /* guider_cgusbst4 */ = {
+			isa = PBXGroup;
+			children = (
+				9DAD523A21258801002FCC79 /* README.md */,
+				9DAD523B21258801002FCC79 /* indigo_guider_cgusbst4.h */,
+				9DAD523921258801002FCC79 /* indigo_guider_cgusbst4.c */,
+				9DAD523821258801002FCC79 /* indigo_guider_cgusbst4_main.c */,
+			);
+			path = guider_cgusbst4;
+			sourceTree = "<group>";
+		};
 		9DB917FE1DF8543800678721 /* mount_lx200 */ = {
 			isa = PBXGroup;
 			children = (
@@ -3656,6 +3674,7 @@
 				59DD69D61FC1DC4900AEF0DF /* indigo_dome_simulator.h in Headers */,
 				9D59D5EC20D3F829009EA8FF /* Alta.h in Headers */,
 				9D59D65620D3F829009EA8FF /* ImgFix.h in Headers */,
+				9DAD523E21258801002FCC79 /* indigo_guider_cgusbst4.h in Headers */,
 				9D59D65D20D3F829009EA8FF /* IUsb.h in Headers */,
 				9D59D5E720D3F829009EA8FF /* ModeFsm.h in Headers */,
 				9D59D62820D3F829009EA8FF /* AltaCcdAcqParams.h in Headers */,
@@ -4106,6 +4125,7 @@
 				599C9A501DA022E3008BBCC1 /* indigo_xml.c in Sources */,
 				595F2934211E211200380EF4 /* DDHidQueue.m in Sources */,
 				59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */,
+				9DAD523D21258801002FCC79 /* indigo_guider_cgusbst4.c in Sources */,
 				9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */,
 				9D59D5EA20D3F829009EA8FF /* DeviceStrHelpers.cpp in Sources */,
 				594122A11FD2DE7800D792FF /* indigo_dome_azimuth.c in Sources */,

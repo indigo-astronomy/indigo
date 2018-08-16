@@ -22,6 +22,4 @@ indigo_server indigo_mount_ioptron
 
 Use URL in form ieq://host:port to connect to the mount over network (default port is 4030).
 
-A non-standard switch property "Alignment mode" is provided by this driver.
-
 ## Status: Under development
