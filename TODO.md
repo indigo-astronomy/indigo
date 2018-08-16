@@ -73,7 +73,7 @@
 
 #### Guiders
 
-1. CGUSBST4 guider driver
+1. CGUSBST4 guider driver __DONE__
 2. GPUSB guider driver
 3. ZWO USB-ST4 __DONE__
 7. EQMac protocol driver __DONE__
