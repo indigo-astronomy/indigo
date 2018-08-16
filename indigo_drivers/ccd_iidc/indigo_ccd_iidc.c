@@ -216,7 +216,7 @@ static void exposure_timer_callback(indigo_device *device) {
         int width = frame->size[0];
         int height = frame->size[1];
         int size = frame->image_bytes;
-				int bpp = 8;
+				int bpp = frame->data_depth;
         if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
           dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
 					bpp = 24;
@@ -262,7 +262,7 @@ static void streaming_timer_callback(indigo_device *device) {
         int width = frame->size[0];
         int height = frame->size[1];
         int size = frame->image_bytes;
-				int bpp = 8;
+				int bpp = frame->data_depth;
         if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
           dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
 					bpp = 24;
