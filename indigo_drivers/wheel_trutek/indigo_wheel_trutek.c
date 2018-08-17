@@ -78,7 +78,6 @@ static void trutek_query(indigo_device *device) {
 			if (buffer[0] == 0xA5 && buffer[1] == 0x82) {
 				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2] - 0x30;
 				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-				return;
 			}
 		}
 	}
@@ -98,7 +97,6 @@ static void trutek_goto(indigo_device *device) {
 			INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d → %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3])
 			if (buffer[0] == 0xA5 && buffer[1] == 0x81) {
 				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-				return;
 			}
 		}
 	}
