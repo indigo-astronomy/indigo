@@ -79,6 +79,7 @@
 #include "wheel_quantum/indigo_wheel_quantum.h"
 #include "wheel_trutek/indigo_wheel_trutek.h"
 #include "wheel_xagyl/indigo_wheel_xagyl.h"
+#include "wheel_optec/indigo_wheel_optec.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -135,6 +136,7 @@ driver_entry_point static_drivers[] = {
 	indigo_wheel_quantum,
 	indigo_wheel_trutek,
 	indigo_wheel_xagyl,
+	indigo_wheel_optec,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif

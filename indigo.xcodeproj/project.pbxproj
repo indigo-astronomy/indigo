@@ -13,6 +13,8 @@
 		59019E131DE112B700CCB3ED /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59019E111DE112B000CCB3ED /* libASICamera2.a */; };
 		590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */ = {isa = PBXBuildFile; fileRef = 590B59D11F78544000086FD2 /* indigo_mount_temma.c */; };
 		590B59D71F79A68100086FD2 /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 590B59D61F79A68000086FD2 /* libnovas.a */; };
+		590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 590DD8772127590600F2B978 /* indigo_wheel_optec.c */; };
+		590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */ = {isa = PBXBuildFile; fileRef = 590DD87A2127590600F2B978 /* indigo_wheel_optec.h */; };
 		5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
 		5911F7B41F02E1400053F3CA /* libdsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7B01F02E1330053F3CA /* libdsi.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
@@ -676,6 +678,11 @@
 		590DD859212057FE00F2B978 /* parse.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = parse.c; sourceTree = "<group>"; };
 		590DD85A212057FE00F2B978 /* parser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = parser.c; sourceTree = "<group>"; };
 		590DD85B212057FE00F2B978 /* nmea.vcproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = nmea.vcproj; sourceTree = "<group>"; };
+		590DD8772127590600F2B978 /* indigo_wheel_optec.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_optec.c; sourceTree = "<group>"; };
+		590DD8782127590600F2B978 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		590DD8792127590600F2B978 /* indigo_wheel_optec_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_optec_main.c; sourceTree = "<group>"; };
+		590DD87A2127590600F2B978 /* indigo_wheel_optec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_optec.h; sourceTree = "<group>"; };
+		590DD8812127597A00F2B978 /* 17350_manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = 17350_manual.pdf; sourceTree = "<group>"; };
 		5911F7AC1F02E1330053F3CA /* indigo_ccd_dsi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_dsi_main.c; sourceTree = "<group>"; };
 		5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_dsi.c; sourceTree = "<group>"; };
 		5911F7AE1F02E1330053F3CA /* indigo_ccd_dsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_dsi.h; sourceTree = "<group>"; };
@@ -2156,6 +2163,18 @@
 			path = src;
 			sourceTree = "<group>";
 		};
+		590DD8752127590600F2B978 /* wheel_optec */ = {
+			isa = PBXGroup;
+			children = (
+				590DD8782127590600F2B978 /* README.md */,
+				590DD87A2127590600F2B978 /* indigo_wheel_optec.h */,
+				590DD8772127590600F2B978 /* indigo_wheel_optec.c */,
+				590DD8792127590600F2B978 /* indigo_wheel_optec_main.c */,
+				590DD8812127597A00F2B978 /* 17350_manual.pdf */,
+			);
+			path = wheel_optec;
+			sourceTree = "<group>";
+		};
 		5911F7AB1F02E10B0053F3CA /* ccd_dsi */ = {
 			isa = PBXGroup;
 			children = (
@@ -2704,6 +2723,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				590DD8752127590600F2B978 /* wheel_optec */,
 				9DAD52512126FFC1002FCC79 /* wheel_xagyl */,
 				9DAD52492126E88B002FCC79 /* wheel_trutek */,
 				9DAD52412126BD98002FCC79 /* wheel_quantum */,
@@ -3713,6 +3733,7 @@
 				9D59D5F920D3F829009EA8FF /* CamCfgMatrix.h in Headers */,
 				9D59D64D20D3F829009EA8FF /* FindDeviceEthernet.h in Headers */,
 				9D59D65220D3F829009EA8FF /* CamGen2CcdAcqParams.h in Headers */,
+				590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */,
 				59588CB1211CC30C00E9FC27 /* indigo_aux_driver.h in Headers */,
 				595F292A211E211200380EF4 /* DDHidJoystick.h in Headers */,
 				9D59D61820D3F829009EA8FF /* Ascent.h in Headers */,
@@ -4183,6 +4204,7 @@
 				59DD69CE1FC1D30300AEF0DF /* indigo_dome_driver.c in Sources */,
 				595F2927211E211200380EF4 /* DDHidKeyboard.m in Sources */,
 				9D59D65420D3F829009EA8FF /* ILog.cpp in Sources */,
+				590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */,
 				9D9EA6B21DBFA30600E11841 /* indigo_ccd_driver.c in Sources */,
 				9DAD524F2126E88B002FCC79 /* indigo_wheel_trutek_main.c in Sources */,
 				599C9A501DA022E3008BBCC1 /* indigo_xml.c in Sources */,

@@ -1302,6 +1302,22 @@ $(BUILD_DRIVERS)/indigo_wheel_xagyl.$(SOEXT): indigo_drivers/wheel_xagyl/indigo_
 
 #---------------------------------------------------------------------
 #
+#	Build Optec filter wheel driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_wheel_optec.a: indigo_drivers/wheel_optec/indigo_wheel_optec.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_wheel_optec: indigo_drivers/wheel_optec/indigo_wheel_optec_main.o $(BUILD_DRIVERS)/indigo_wheel_optec.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_wheel_optec.$(SOEXT): indigo_drivers/wheel_optec/indigo_wheel_optec.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------
