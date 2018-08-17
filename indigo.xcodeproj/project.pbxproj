@@ -307,6 +307,8 @@
 		9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD524A2126E88B002FCC79 /* indigo_wheel_trutek.c */; };
 		9DAD524F2126E88B002FCC79 /* indigo_wheel_trutek_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD524C2126E88B002FCC79 /* indigo_wheel_trutek_main.c */; };
 		9DAD52502126E88B002FCC79 /* indigo_wheel_trutek.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD524D2126E88B002FCC79 /* indigo_wheel_trutek.h */; };
+		9DAD52582126FFC2002FCC79 /* indigo_wheel_xagyl.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD52532126FFC2002FCC79 /* indigo_wheel_xagyl.h */; };
+		9DAD52592126FFC2002FCC79 /* indigo_wheel_xagyl.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD52562126FFC2002FCC79 /* indigo_wheel_xagyl.c */; };
 		9DB918031DF8546800678721 /* indigo_mount_lx200.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918001DF8546800678721 /* indigo_mount_lx200.c */; };
 		9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DB918011DF8546800678721 /* indigo_mount_lx200.h */; };
 		9DB918081DFEA42E00678721 /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
@@ -1554,6 +1556,11 @@
 		9DAD524B2126E88B002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DAD524C2126E88B002FCC79 /* indigo_wheel_trutek_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_trutek_main.c; sourceTree = "<group>"; };
 		9DAD524D2126E88B002FCC79 /* indigo_wheel_trutek.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_trutek.h; sourceTree = "<group>"; };
+		9DAD52522126FFC1002FCC79 /* indigo_wheel_xagyl_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_xagyl_main.c; sourceTree = "<group>"; };
+		9DAD52532126FFC2002FCC79 /* indigo_wheel_xagyl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_xagyl.h; sourceTree = "<group>"; };
+		9DAD52542126FFC2002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DAD52552126FFC2002FCC79 /* FW5125_User_Manual-3.1.5.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "FW5125_User_Manual-3.1.5.pdf"; sourceTree = "<group>"; };
+		9DAD52562126FFC2002FCC79 /* indigo_wheel_xagyl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_xagyl.c; sourceTree = "<group>"; };
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
@@ -2697,6 +2704,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9DAD52512126FFC1002FCC79 /* wheel_xagyl */,
 				9DAD52492126E88B002FCC79 /* wheel_trutek */,
 				9DAD52412126BD98002FCC79 /* wheel_quantum */,
 				9DAD523721258801002FCC79 /* guider_cgusbst4 */,
@@ -3594,6 +3602,18 @@
 			path = wheel_trutek;
 			sourceTree = "<group>";
 		};
+		9DAD52512126FFC1002FCC79 /* wheel_xagyl */ = {
+			isa = PBXGroup;
+			children = (
+				9DAD52542126FFC2002FCC79 /* README.md */,
+				9DAD52522126FFC1002FCC79 /* indigo_wheel_xagyl_main.c */,
+				9DAD52532126FFC2002FCC79 /* indigo_wheel_xagyl.h */,
+				9DAD52562126FFC2002FCC79 /* indigo_wheel_xagyl.c */,
+				9DAD52552126FFC2002FCC79 /* FW5125_User_Manual-3.1.5.pdf */,
+			);
+			path = wheel_xagyl;
+			sourceTree = "<group>";
+		};
 		9DB917FE1DF8543800678721 /* mount_lx200 */ = {
 			isa = PBXGroup;
 			children = (
@@ -3686,6 +3706,7 @@
 				595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */,
 				9D59D63420D3F829009EA8FF /* versionNo.h in Headers */,
 				9D59D61720D3F829009EA8FF /* ApogeeFilterWheel.h in Headers */,
+				9DAD52582126FFC2002FCC79 /* indigo_wheel_xagyl.h in Headers */,
 				595F291B211E211100380EF4 /* DDHidKeyboard.h in Headers */,
 				595F2928211E211200380EF4 /* DDHidEvent.h in Headers */,
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
@@ -4206,6 +4227,7 @@
 				9D59D66D20D3F82A009EA8FF /* PromFx2Io.cpp in Sources */,
 				9D59D64020D3F829009EA8FF /* UdpSocketLinux.cpp in Sources */,
 				9D59D64420D3F829009EA8FF /* LoggerSyslog.cpp in Sources */,
+				9DAD52592126FFC2002FCC79 /* indigo_wheel_xagyl.c in Sources */,
 				9D59D5E620D3F829009EA8FF /* CamUsbIo.cpp in Sources */,
 				9D59D63320D3F829009EA8FF /* AltaCcdAcqParams.cpp in Sources */,
 				59588CB0211CC30C00E9FC27 /* indigo_aux_driver.c in Sources */,
