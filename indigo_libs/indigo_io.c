@@ -43,6 +43,10 @@
 #include "indigo_io.h"
 
 int indigo_open_serial(const char *dev_file) {
+	return indigo_open_serial_with_speed(dev_file, 9600);
+}
+
+int indigo_open_serial_with_speed(const char *dev_file, int speed) {
 	int dev_fd;
 	struct termios options;
 	if ((dev_fd = open(dev_file, O_RDWR | O_NOCTTY | O_SYNC)) == -1) {
@@ -53,8 +57,8 @@ int indigo_open_serial(const char *dev_file) {
 		close(dev_fd);
 		return -1;
 	}
-	cfsetispeed(&options,B9600);
-	cfsetospeed(&options,B9600);
+	cfsetispeed(&options, speed);
+	cfsetospeed(&options, speed);
 	options.c_lflag &= ~(ICANON|ECHO|ECHOE|ISIG|IEXTEN);
 	options.c_oflag &= ~(OPOST);
 	options.c_iflag &= ~(INLCR|ICRNL|IXON|IXOFF|IXANY|IMAXBEL);
@@ -164,4 +168,17 @@ bool indigo_printf(int handle, const char *format, ...) {
 	va_end(args);
 	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, buffer));
 	return indigo_write(handle, buffer, length);
+}
+
+
+int indigo_scanf(int handle, const char *format, ...) {
+	char buffer[1024];
+	if (indigo_read(handle, buffer, sizeof(buffer)) <= 0)
+		return 0;
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
+	va_list args;
+	va_start(args, format);
+	int count = vsscanf(buffer, format, args);
+	va_end(args);
+	return count;
 }

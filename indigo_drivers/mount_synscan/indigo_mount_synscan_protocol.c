@@ -10,6 +10,8 @@
 #include <pthread.h>
 #include <string.h>
 #include <termios.h>
+#include <unistd.h>
+#include <sys/time.h>
 #include "indigo_driver.h"
 #include "indigo_io.h"
 #include "indigo_mount_synscan_private.h"

@@ -73,6 +73,13 @@
 #include "focuser_wemacro/indigo_focuser_wemacro.h"
 #include "ccd_mi/indigo_ccd_mi.h"
 #include "aux_joystick/indigo_aux_joystick.h"
+#include "mount_synscan/indigo_mount_synscan.h"
+#include "mount_ioptron/indigo_mount_ioptron.h"
+#include "guider_cgusbst4/indigo_guider_cgusbst4.h"
+#include "wheel_quantum/indigo_wheel_quantum.h"
+#include "wheel_trutek/indigo_wheel_trutek.h"
+#include "wheel_xagyl/indigo_wheel_xagyl.h"
+#include "wheel_optec/indigo_wheel_optec.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -123,6 +130,13 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_wemacro,
 	indigo_ccd_mi,
 	indigo_aux_joystick,
+	indigo_mount_synscan,
+	indigo_mount_ioptron,
+	indigo_guider_cgusbst4,
+	indigo_wheel_quantum,
+	indigo_wheel_trutek,
+	indigo_wheel_xagyl,
+	indigo_wheel_optec,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif

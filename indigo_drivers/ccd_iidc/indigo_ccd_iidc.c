@@ -23,7 +23,7 @@
  \file indigo_ccd_iidc.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_iidc"
 
 #include <stdlib.h>
@@ -216,14 +216,16 @@ static void exposure_timer_callback(indigo_device *device) {
         int width = frame->size[0];
         int height = frame->size[1];
         int size = frame->image_bytes;
+				int bpp = frame->data_depth;
         if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
           dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
+					bpp = 24;
         } else {
           memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
         }
         err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
         INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-        indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
+        indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, frame->little_endian, NULL);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			} else {
@@ -260,14 +262,16 @@ static void streaming_timer_callback(indigo_device *device) {
         int width = frame->size[0];
         int height = frame->size[1];
         int size = frame->image_bytes;
+				int bpp = frame->data_depth;
         if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
           dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
+					bpp = 24;
         } else {
           memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
         }
         err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
         INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-        indigo_process_image(device, PRIVATE_DATA->buffer, width, height, frame->data_depth, frame->little_endian, NULL);
+        indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, frame->little_endian, NULL);
 			} else {
         if (frame != NULL) {
           err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);

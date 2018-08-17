@@ -56,12 +56,15 @@ This is the list of requirements taken into the consideration:
 32. Apogee CCD driver
 33. Moravian Intruments CCD and filter wheel driver
 34. HID Joystick AUX driver
+35. CGUSBST4 guider driver
+36. Brightstar Quantum filter wheel driver (untested)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
 2. ASCOM driver for INDIGO focuser
 3. Apogee filter wheel driver
 4. GPhoto2 CCD driver
+5. SynScan (EQMod) mount driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO
