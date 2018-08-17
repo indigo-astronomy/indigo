@@ -86,7 +86,8 @@ static void trutek_query(indigo_device *device) {
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
-static void trutek_goto(indigo_device *device, int slot) {
+static void trutek_goto(indigo_device *device) {
+	int slot = WHEEL_SLOT_ITEM->number.target;
 	unsigned char buffer[4] = { 0xA5, 0x01, slot, 0xA5 + 0x01 + slot };
 	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -102,7 +103,6 @@ static void trutek_goto(indigo_device *device, int slot) {
 		}
 	}
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-	indigo_set_timer(device, 1, trutek_query);
 }
 
 static void trutek_close(indigo_device *device) {
@@ -136,8 +136,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (trutek_open(device)) {
-				trutek_query(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_set_timer(device, 0, trutek_query);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -156,7 +156,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-			trutek_goto(device, WHEEL_SLOT_ITEM->number.target);
+			indigo_set_timer(device, 0, trutek_goto);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
