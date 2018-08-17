@@ -26,8 +26,6 @@
 #define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_ccd_gphoto2"
 
-//#define FITS_SUPPORT
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -43,9 +41,7 @@
 #include <gphoto2/gphoto2-version.h>
 #include <gphoto2/gphoto2-list.h>
 #include <libusb-1.0/libusb.h>
-#ifdef FITS_SUPPORT
 #include <libraw/libraw.h>
-#endif
 #include "indigo_ccd_gphoto2.h"
 #include "dslr_model_info.h"
 
@@ -178,7 +174,6 @@ static pthread_t thread_id_capture;
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static libusb_hotplug_callback_handle callback_handle;
 
-#ifdef FITS_SUPPORT
 static int progress_cb(void *callback_data,
 		       enum LibRaw_progress stage, int iteration, int expected)
 {
@@ -337,7 +332,6 @@ cleanup:
 
 	return rc;
 }
-#endif
 
 static void vendor_identify_widget(indigo_device *device,
 				   const char *property_name)
@@ -753,7 +747,6 @@ static void exposure_timer_callback(indigo_device *device)
 						  PRIVATE_DATA->buffer,
 						  PRIVATE_DATA->buffer_size,
 						  PRIVATE_DATA->filename_suffix);
-#ifdef FITS_SUPPORT
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 			/* TODO: Deal with conflicting formats, e.g.
 			   CCD_IMAGE_FORMAT_FITS_ITEM && COMPRESSION == JPEG,
@@ -768,7 +761,6 @@ static void exposure_timer_callback(indigo_device *device)
 				return;
 			}
 		}
-#endif
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	} else {
