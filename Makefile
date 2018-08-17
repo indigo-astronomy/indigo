@@ -1286,6 +1286,21 @@ $(BUILD_DRIVERS)/indigo_wheel_trutek.$(SOEXT): indigo_drivers/wheel_trutek/indig
 
 #---------------------------------------------------------------------
 #
+#	Build Xagyl filter wheel driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_wheel_xagyl.a: indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_wheel_xagyl: indigo_drivers/wheel_xagyl/indigo_wheel_xagyl_main.o $(BUILD_DRIVERS)/indigo_wheel_xagyl.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_wheel_xagyl.$(SOEXT): indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------
