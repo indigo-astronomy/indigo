@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -190,20 +190,31 @@ static void ieq_get_utc(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
-		ieq_get_coords(device);
-		double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - PRIVATE_DATA->currentRA);
-		double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - PRIVATE_DATA->currentDec);
-		if (diffRA <= RA_MIN_DIF && diffDec <= DEC_MIN_DIF)
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
-		indigo_update_coordinates(device, NULL);
-		ieq_get_utc(device);
-		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-		indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
+	if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->parked) {
+			char response[128];
+			if (ieq_command(device, ":AH#", response, 1, 1) && *response == '1') {
+				ieq_command(device, ":MP1#", response, 1, 1);
+				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
+			} else {
+				indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
+			}
+		} else {
+			ieq_get_coords(device);
+			double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - PRIVATE_DATA->currentRA);
+			double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - PRIVATE_DATA->currentDec);
+			if (diffRA <= RA_MIN_DIF && diffDec <= DEC_MIN_DIF)
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			else
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
+			indigo_update_coordinates(device, NULL);
+			ieq_get_utc(device);
+			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+			indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
+		}
 	}
 }
 
@@ -327,15 +338,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if (!PRIVATE_DATA->parked && MOUNT_PARK_PARKED_ITEM->sw.value) {
-			ieq_command(device, ":MP1#", response, 1, 1);
+			ieq_command(device, ":MH#", response, 1, 1);
 			PRIVATE_DATA->parked = true;
-			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
+			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking");
 		}
 		if (PRIVATE_DATA->parked && MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 			ieq_command(device, ":MP0#", response, 1, 1);
 			PRIVATE_DATA->parked = false;
 			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
 		}
 		return INDIGO_OK;
