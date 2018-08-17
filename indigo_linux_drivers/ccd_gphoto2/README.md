@@ -36,14 +36,17 @@ Please visit the website [libgphoto2](https://github.com/gphoto/libgphoto2) and 
 up-to-date version or in case the camera is not supported by the latest version, please
 file an [issue](https://github.com/gphoto/libgphoto2/issues).
 
-### Shutterspeed and bulb mode
-Most cameras are operated either in shutterspeed mode or bulb mode.
-In shutterspeed mode, typical predefined exposure value are: 1/4000, 1/3200, 1/2500, ..., 1/5, 1/4, 0.3, 0.4, ..., 20, 25, 30 seconds.
-If the camera is in shutterspeed mode, then an exposure value closest to the predefined values is selected. For instance,
+### Manual mode
+Make sure the camera is in "M" mode, such that both aperture and shutterspeed can be controlled by the driver.
+
+### Shutterspeed and bulb setting
+Most cameras are operated either in shutterspeed setting or bulb setting.
+In shutterspeed setting, typical predefined exposure value are: 1/4000, 1/3200, 1/2500, ..., 1/5, 1/4, 0.3, 0.4, ..., 20, 25, 30 seconds.
+If the camera is in shutterspeed setting, then an exposure value closest to the predefined values is selected. For instance,
 if an exposure value of 24 seconds is chosen, then the predefined value of 25 seconds is selected by the
-indigo_ccd_gphoto2 driver. In bulb mode, any non-negative exposure value can be chosen,
+indigo_ccd_gphoto2 driver. In bulb setting, any non-negative exposure value can be chosen,
 for instance exactly 24 seconds or 180 seconds. If highly precise exposure values
-below 1 seconds are required it is advised to operate in the shutterspeed mode, otherwise in bulb mode.
+below 1 seconds are required it is advised to operate in the shutterspeed setting, otherwise in bulb setting.
 
 ### Mirror lockup
 Fast-flipping mirror can cause vibrations of the camera and the mount.
