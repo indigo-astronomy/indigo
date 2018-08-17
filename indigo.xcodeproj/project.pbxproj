@@ -302,6 +302,8 @@
 		9DAD523121246EB5002FCC79 /* indigo_mount_ioptron.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */; };
 		9DAD523D21258801002FCC79 /* indigo_guider_cgusbst4.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD523921258801002FCC79 /* indigo_guider_cgusbst4.c */; };
 		9DAD523E21258801002FCC79 /* indigo_guider_cgusbst4.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD523B21258801002FCC79 /* indigo_guider_cgusbst4.h */; };
+		9DAD52472126BD99002FCC79 /* indigo_wheel_quantum.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD52432126BD98002FCC79 /* indigo_wheel_quantum.h */; };
+		9DAD52482126BD99002FCC79 /* indigo_wheel_quantum.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD52452126BD98002FCC79 /* indigo_wheel_quantum.c */; };
 		9DB918031DF8546800678721 /* indigo_mount_lx200.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918001DF8546800678721 /* indigo_mount_lx200.c */; };
 		9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DB918011DF8546800678721 /* indigo_mount_lx200.h */; };
 		9DB918081DFEA42E00678721 /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
@@ -1541,6 +1543,10 @@
 		9DAD523921258801002FCC79 /* indigo_guider_cgusbst4.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_cgusbst4.c; sourceTree = "<group>"; };
 		9DAD523A21258801002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DAD523B21258801002FCC79 /* indigo_guider_cgusbst4.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_cgusbst4.h; sourceTree = "<group>"; };
+		9DAD52422126BD98002FCC79 /* indigo_wheel_quantum_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_quantum_main.c; sourceTree = "<group>"; };
+		9DAD52432126BD98002FCC79 /* indigo_wheel_quantum.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_quantum.h; sourceTree = "<group>"; };
+		9DAD52442126BD98002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DAD52452126BD98002FCC79 /* indigo_wheel_quantum.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_quantum.c; sourceTree = "<group>"; };
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
@@ -2684,6 +2690,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9DAD52412126BD98002FCC79 /* wheel_quantum */,
 				9DAD523721258801002FCC79 /* guider_cgusbst4 */,
 				9DAD522921246EB5002FCC79 /* mount_ioptron */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
@@ -3557,6 +3564,17 @@
 			path = guider_cgusbst4;
 			sourceTree = "<group>";
 		};
+		9DAD52412126BD98002FCC79 /* wheel_quantum */ = {
+			isa = PBXGroup;
+			children = (
+				9DAD52442126BD98002FCC79 /* README.md */,
+				9DAD52422126BD98002FCC79 /* indigo_wheel_quantum_main.c */,
+				9DAD52432126BD98002FCC79 /* indigo_wheel_quantum.h */,
+				9DAD52452126BD98002FCC79 /* indigo_wheel_quantum.c */,
+			);
+			path = wheel_quantum;
+			sourceTree = "<group>";
+		};
 		9DB917FE1DF8543800678721 /* mount_lx200 */ = {
 			isa = PBXGroup;
 			children = (
@@ -3737,6 +3755,7 @@
 				59E38B531F1577A000187839 /* indigo_ica_ptp_canon.h in Headers */,
 				9D59D5FD20D3F829009EA8FF /* ApnCamData.h in Headers */,
 				59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */,
+				9DAD52472126BD99002FCC79 /* indigo_wheel_quantum.h in Headers */,
 				9D59D67020D3F82A009EA8FF /* indigo_ccd_apogee.h in Headers */,
 				9D59D61D20D3F829009EA8FF /* AscentBasedIo.h in Headers */,
 				595F292C211E211200380EF4 /* DDHidAppleRemote.h in Headers */,
@@ -4109,6 +4128,7 @@
 				9D59D5F720D3F829009EA8FF /* AspenIo.cpp in Sources */,
 				9D59D62C20D3F829009EA8FF /* FindDeviceEthernet.cpp in Sources */,
 				595F2932211E211200380EF4 /* DDHidAppleMikey.m in Sources */,
+				9DAD52482126BD99002FCC79 /* indigo_wheel_quantum.c in Sources */,
 				59463C1C20DE7D16004950F2 /* indigo_focuser_wemacro.c in Sources */,
 				9D59D64220D3F829009EA8FF /* LinuxTimer.cpp in Sources */,
 				9D59D64720D3F829009EA8FF /* AscentBasedIo.cpp in Sources */,
