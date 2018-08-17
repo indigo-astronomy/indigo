@@ -688,17 +688,47 @@ $(BUILD_DRIVERS)/indigo_mount_lx200.$(SOEXT): indigo_drivers/mount_lx200/indigo_
 
 #---------------------------------------------------------------------
 #
+#	Build mount ioptron driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_mount_ioptron.a: indigo_drivers/mount_ioptron/indigo_mount_ioptron.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_mount_ioptron: indigo_drivers/mount_ioptron/indigo_mount_ioptron_main.o $(BUILD_DRIVERS)/indigo_mount_ioptron.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_mount_ioptron.$(SOEXT): indigo_drivers/mount_ioptron/indigo_mount_ioptron.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build CG-USB-ST4 guider driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_guider_cgusbst4.a: indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_guider_cgusbst4: indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4_main.o $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_guider_cgusbst4.$(SOEXT): indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build mount synscan driver
 #
 #---------------------------------------------------------------------
 
-$(BUILD_DRIVERS)/indigo_mount_synscan.a: indigo_drivers/mount_synscan/indigo_mount_synscan.o
+$(BUILD_DRIVERS)/indigo_mount_synscan.a: indigo_drivers/mount_synscan/indigo_mount_synscan.o indigo_drivers/mount_synscan/indigo_mount_synscan_protocol.o indigo_drivers/mount_synscan/indigo_mount_synscan_driver.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_mount_synscan: indigo_drivers/mount_synscan/indigo_mount_synscan_main.o $(BUILD_DRIVERS)/indigo_mount_synscan.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_mount_synscan.$(SOEXT): indigo_drivers/mount_synscan/indigo_mount_synscan.o
+$(BUILD_DRIVERS)/indigo_mount_synscan.$(SOEXT): indigo_drivers/mount_synscan/indigo_mount_synscan.o indigo_drivers/mount_synscan/indigo_mount_synscan_protocol.o indigo_drivers/mount_synscan/indigo_mount_synscan_driver.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
@@ -934,16 +964,17 @@ $(BUILD_DRIVERS)/indigo_ccd_iidc.$(SOEXT): indigo_drivers/ccd_iidc/indigo_ccd_ii
 #       Build gphoto2 CCD driver
 #
 #---------------------------------------------------------------------
+# Note: indigo_ccd_gphoto2.c is temporally compilied with g++ due to linking problems
+# of libraw on Ubuntu 18 with gcc/g++ 7.3.0
 
 $(BUILD_DRIVERS)/indigo_ccd_gphoto2.a: indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_ccd_gphoto2: indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2_main.o $(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2
-#	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2 $(BUILD_LIB)/libraw.a
+	g++ $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2
 
 $(BUILD_DRIVERS)/indigo_ccd_gphoto2.$(SOEXT): indigo_linux_drivers/ccd_gphoto2/indigo_ccd_gphoto2.o
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2 $(BUILD_LIB)/libraw.a
+	g++ -shared -o $@ $^ $(LDFLAGS) -lindigo -lgphoto2 $(BUILD_LIB)/libraw.a
 
 #---------------------------------------------------------------------
 #
@@ -1223,6 +1254,67 @@ $(BUILD_DRIVERS)/indigo_agent_lx200_server.a: indigo_drivers/agent_lx200_server/
 
 $(BUILD_DRIVERS)/indigo_agent_lx200_server.$(SOEXT): indigo_drivers/agent_lx200_server/indigo_agent_lx200_server.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build Brightstar Quantum filter wheel driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_wheel_quantum.a: indigo_drivers/wheel_quantum/indigo_wheel_quantum.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_wheel_quantum: indigo_drivers/wheel_quantum/indigo_wheel_quantum_main.o $(BUILD_DRIVERS)/indigo_wheel_quantum.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_wheel_quantum.$(SOEXT): indigo_drivers/wheel_quantum/indigo_wheel_quantum.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build Trutek filter wheel driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_wheel_trutek.a: indigo_drivers/wheel_trutek/indigo_wheel_trutek.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_wheel_trutek: indigo_drivers/wheel_trutek/indigo_wheel_trutek_main.o $(BUILD_DRIVERS)/indigo_wheel_trutek.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_wheel_trutek.$(SOEXT): indigo_drivers/wheel_trutek/indigo_wheel_trutek.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build Xagyl filter wheel driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_wheel_xagyl.a: indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_wheel_xagyl: indigo_drivers/wheel_xagyl/indigo_wheel_xagyl_main.o $(BUILD_DRIVERS)/indigo_wheel_xagyl.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_wheel_xagyl.$(SOEXT): indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build Optec filter wheel driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_wheel_optec.a: indigo_drivers/wheel_optec/indigo_wheel_optec.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_wheel_optec: indigo_drivers/wheel_optec/indigo_wheel_optec_main.o $(BUILD_DRIVERS)/indigo_wheel_optec.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_wheel_optec.$(SOEXT): indigo_drivers/wheel_optec/indigo_wheel_optec.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
 
 #---------------------------------------------------------------------
 #

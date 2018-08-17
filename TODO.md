@@ -70,10 +70,11 @@
 3. SBIG wheel driver __DONE__
 4. ASI EFW driver __DONE__
 5. Apogee wheel driver (based on Random Factory Apogee SDK)
+6. Brightstar Quantum filter wheel driver __UNTESTED__
 
 #### Guiders
 
-1. CGUSBST4 guider driver
+1. CGUSBST4 guider driver __DONE__
 2. GPUSB guider driver
 3. ZWO USB-ST4 __DONE__
 7. EQMac protocol driver __DONE__
@@ -89,9 +90,10 @@
 1. NexStar protocol mount driver (based on libnexstar) __DONE__
 2. NexStar EVO protocol mount driver
 3. LX200 protocol mount driver __DONE__
-4. EQMod mount driver
+4. SysScan (EQMod) mount driver
 5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft)
 6. Temma protocol mount driver __DONE__
+7. IEQ protocol (LX200 with extensions) mount driver
 
 #### GPS
 1. GPS Simulator driver __DOME__
@@ -101,6 +103,10 @@
 #### Dome
 1. Dome Simulator driver __DONE__
 2. UNIVERSAL dome driver
+
+#### AUX
+
+1. HID joystick driver __DONE__
 
 #### AO
 

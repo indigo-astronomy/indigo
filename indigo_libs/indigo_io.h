@@ -34,10 +34,14 @@
 extern "C" {
 #endif
 
-/** Open serial connection.
+/** Open serial connection at speed 9600.
  */
 extern int indigo_open_serial(const char *dev_file);
 
+/** Open serial connection at any speed.
+ */
+extern int indigo_open_serial_with_speed(const char *dev_file, int speed);
+	
 /** Open network connection.
  */
 extern int indigo_open_tcp(const char *host, int port);
@@ -56,8 +60,14 @@ extern bool indigo_write(int handle, const char *buffer, long length);
 
 /** Write formatted.
  */
+	
 extern bool indigo_printf(int handle, const char *format, ...);
+	
+/** Read formatted.
+ */
 
+extern int indigo_scanf(int handle, const char *format, ...);
+	
 #ifdef __cplusplus
 }
 #endif
