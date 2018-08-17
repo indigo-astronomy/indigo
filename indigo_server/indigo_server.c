@@ -77,6 +77,7 @@
 #include "mount_ioptron/indigo_mount_ioptron.h"
 #include "guider_cgusbst4/indigo_guider_cgusbst4.h"
 #include "wheel_quantum/indigo_wheel_quantum.h"
+#include "wheel_trutek/indigo_wheel_trutek.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -131,6 +132,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_ioptron,
 	indigo_guider_cgusbst4,
 	indigo_wheel_quantum,
+	indigo_wheel_trutek,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif
