@@ -1271,6 +1271,21 @@ $(BUILD_DRIVERS)/indigo_wheel_quantum.$(SOEXT): indigo_drivers/wheel_quantum/ind
 
 #---------------------------------------------------------------------
 #
+#	Build Trutek filter wheel driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_wheel_trutek.a: indigo_drivers/wheel_trutek/indigo_wheel_trutek.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_wheel_trutek: indigo_drivers/wheel_trutek/indigo_wheel_trutek_main.o $(BUILD_DRIVERS)/indigo_wheel_trutek.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_wheel_trutek.$(SOEXT): indigo_drivers/wheel_trutek/indigo_wheel_trutek.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------
