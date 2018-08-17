@@ -35,7 +35,7 @@ double indigo_lst(double longitude) {
 	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
 	double gst;
 	sidereal_time(ut1_now, 0.0, DELTA_T, 0, 0, 0, &gst);
-	return gst + longitude/15.0;
+	return fmod(gst + longitude/15.0 + 24.0, 24.0);
 }
 
 void indigo_eq2hor(double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az) {
