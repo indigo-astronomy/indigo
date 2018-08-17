@@ -1,5 +1,4 @@
-// Copyright (c) 2016 CloudMakers, s. r. o.
-// Copyright (c) 2016 Rumen G.Bogdanovski
+// Copyright (c) 2018 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -20,52 +19,27 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Bus
- \file indigo_io.h
+/** INDIGO Brightstar Quantum filter wheel driver main
+ \file indigo_wheel_quantum_main.c
  */
-
-#ifndef indigo_io_h
-#define indigo_io_h
 
 #include <stdio.h>
-#include <stdbool.h>
+#include <string.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "indigo_driver_xml.h"
 
-/** Open serial connection.
- */
-extern int indigo_open_serial(const char *dev_file);
+#include "indigo_wheel_quantum.h"
 
-/** Open network connection.
- */
-extern int indigo_open_tcp(const char *host, int port);
-
-/** Read buffer.
- */
-extern int indigo_read(int handle, char *buffer, long length);
-
-/** Read line.
- */
-extern int indigo_read_line(int handle, char *buffer, int length);
-
-/** Write buffer.
- */
-extern bool indigo_write(int handle, const char *buffer, long length);
-
-/** Write formatted.
- */
-	
-extern bool indigo_printf(int handle, const char *format, ...);
-	
-/** Read formatted.
- */
-
-extern int indigo_scanf(int handle, const char *format, ...);
-	
-#ifdef __cplusplus
+int main(int argc, const char * argv[]) {
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_start();
+	indigo_wheel_quantum(INDIGO_DRIVER_INIT, NULL);
+	indigo_attach_client(protocol_adapter);
+	indigo_xml_parse(NULL, protocol_adapter);
+	indigo_wheel_quantum(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_stop();
+	return 0;
 }
-#endif
 
-#endif /* indigo_io_h */

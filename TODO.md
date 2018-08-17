@@ -70,6 +70,7 @@
 3. SBIG wheel driver __DONE__
 4. ASI EFW driver __DONE__
 5. Apogee wheel driver (based on Random Factory Apogee SDK)
+6. Brightstar Quantum filter wheel driver __UNTESTED__
 
 #### Guiders
 

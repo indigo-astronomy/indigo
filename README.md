@@ -57,6 +57,7 @@ This is the list of requirements taken into the consideration:
 33. Moravian Intruments CCD and filter wheel driver
 34. HID Joystick AUX driver
 35. CGUSBST4 guider driver
+36. Brightstar Quantum filter wheel driver (untested)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount

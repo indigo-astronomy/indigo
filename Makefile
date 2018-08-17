@@ -1256,6 +1256,21 @@ $(BUILD_DRIVERS)/indigo_agent_lx200_server.$(SOEXT): indigo_drivers/agent_lx200_
 
 #---------------------------------------------------------------------
 #
+#	Build Brightstar Quantum filter wheel driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_wheel_quantum.a: indigo_drivers/wheel_quantum/indigo_wheel_quantum.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_wheel_quantum: indigo_drivers/wheel_quantum/indigo_wheel_quantum_main.o $(BUILD_DRIVERS)/indigo_wheel_quantum.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_wheel_quantum.$(SOEXT): indigo_drivers/wheel_quantum/indigo_wheel_quantum.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build tests
 #
 #---------------------------------------------------------------------

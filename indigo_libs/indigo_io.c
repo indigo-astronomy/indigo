@@ -165,3 +165,16 @@ bool indigo_printf(int handle, const char *format, ...) {
 	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, buffer));
 	return indigo_write(handle, buffer, length);
 }
+
+
+int indigo_scanf(int handle, const char *format, ...) {
+	char buffer[1024];
+	if (indigo_read(handle, buffer, sizeof(buffer)) <= 0)
+		return 0;
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
+	va_list args;
+	va_start(args, format);
+	int count = vsscanf(buffer, format, args);
+	va_end(args);
+	return count;
+}

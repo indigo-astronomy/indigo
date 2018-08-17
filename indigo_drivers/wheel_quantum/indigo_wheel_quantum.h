@@ -1,5 +1,4 @@
-// Copyright (c) 2016 CloudMakers, s. r. o.
-// Copyright (c) 2016 Rumen G.Bogdanovski
+// Copyright (c) 2018 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -20,52 +19,28 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Bus
- \file indigo_io.h
+/** INDIGO Brightstar Quantum filter wheel driver
+ \file indigo_wheel_quantum.h
  */
 
-#ifndef indigo_io_h
-#define indigo_io_h
+#ifndef wheel_quantum_h
+#define wheel_quantum_h
 
-#include <stdio.h>
-#include <stdbool.h>
+#include "indigo_driver.h"
+#include "indigo_wheel_driver.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Open serial connection.
- */
-extern int indigo_open_serial(const char *dev_file);
-
-/** Open network connection.
- */
-extern int indigo_open_tcp(const char *host, int port);
-
-/** Read buffer.
- */
-extern int indigo_read(int handle, char *buffer, long length);
-
-/** Read line.
- */
-extern int indigo_read_line(int handle, char *buffer, int length);
-
-/** Write buffer.
- */
-extern bool indigo_write(int handle, const char *buffer, long length);
-
-/** Write formatted.
- */
-	
-extern bool indigo_printf(int handle, const char *format, ...);
-	
-/** Read formatted.
+/** Register Brightstar Quantum filter wheel hot-plug callback
  */
 
-extern int indigo_scanf(int handle, const char *format, ...);
-	
+extern indigo_result indigo_wheel_quantum(indigo_driver_action action, indigo_driver_info *info);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* indigo_io_h */
+#endif /* wheel_quantum_h */
+
