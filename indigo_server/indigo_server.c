@@ -63,6 +63,7 @@
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #include "mount_lx200/indigo_mount_lx200.h"
+#include "mount_synscan/indigo_mount_synscan.h"
 #include "mount_nexstar/indigo_mount_nexstar.h"
 #include "mount_temma/indigo_mount_temma.h"
 #include "ccd_fli/indigo_ccd_fli.h"
@@ -121,6 +122,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_iidc,
 	indigo_mount_lx200,
 	indigo_mount_nexstar,
+	indigo_mount_synscan,
 	indigo_mount_temma,
 	indigo_ccd_fli,
 	indigo_wheel_fli,

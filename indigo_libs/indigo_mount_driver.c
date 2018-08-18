@@ -99,7 +99,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			MOUNT_PARK_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Park position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (MOUNT_PARK_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			MOUNT_PARK_SET_PROPERTY->hidden = true;
+			MOUNT_PARK_POSITION_PROPERTY->hidden = true;
 			indigo_init_number_item(MOUNT_PARK_POSITION_RA_ITEM, MOUNT_PARK_POSITION_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
 			indigo_init_number_item(MOUNT_PARK_POSITION_DEC_ITEM, MOUNT_PARK_POSITION_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
 			// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
