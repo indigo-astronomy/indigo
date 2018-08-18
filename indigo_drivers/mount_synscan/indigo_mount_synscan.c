@@ -329,15 +329,15 @@ static void park_timer_callback(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked && PRIVATE_DATA->slew_state == SLEW_NONE) {
+	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
 		//  Get the raw coords
 		synscan_get_coords(device);
 //		double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - PRIVATE_DATA->currentRA);
 //		double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - PRIVATE_DATA->currentDec);
-//		if (diffRA <= RA_MIN_DIF && diffDec <= DEC_MIN_DIF)
+		if (PRIVATE_DATA->slew_state == SLEW_NONE)
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-//		else
-//			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		else
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 
 		//  Convert Encoder position to EQ
 		coords_encoder_to_eq(device, PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition, &PRIVATE_DATA->currentHA, &PRIVATE_DATA->currentDec);
@@ -383,6 +383,9 @@ static indigo_result mount_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
+		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
+		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM, true);
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
 		MOUNT_POLARSCOPE_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_POLARSCOPE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Polarscope", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
 		if (MOUNT_POLARSCOPE_PROPERTY == NULL)
@@ -514,7 +517,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_coordinates(device, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
+		int ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+		int dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		mount_handle_coordinates(device);
 		return INDIGO_OK;
 	}
