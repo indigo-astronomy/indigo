@@ -946,8 +946,8 @@ void slew_timer_callback(indigo_device *device) {
 			//  Perform preliminary slew on both axes
 			{
 				//  Compute initial target positions
-				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value * M_PI / 12.0;
-				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * M_PI / 180.0;
+				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * M_PI / 12.0;
+				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target * M_PI / 180.0;
 				double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
 				double lst = indigo_lst(lng) * M_PI / 12.0;
 				double ha = lst - ra;
