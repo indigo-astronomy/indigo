@@ -30,13 +30,15 @@ struct AxisConfig {
 };
 
 bool synscan_configure(indigo_device* device);
-bool synscan_configure_axis_for_rate(indigo_device* device, enum AxisID axis, double rate);
-bool synscan_slew_axis_at_rate(indigo_device* device, enum AxisID axis, double rate);
+//bool synscan_configure_axis_for_rate(indigo_device* device, enum AxisID axis, double rate);
+void synscan_slew_axis_at_rate(indigo_device* device, enum AxisID axis, double rate);
 void slew_timer_callback(indigo_device *device);
-bool synscan_start_tracking_mode(indigo_device* device, enum TrackingMode mode);
+//bool synscan_start_tracking_mode(indigo_device* device, enum TrackingMode mode);
 void synscan_stop_and_resume_tracking_for_axis(indigo_device* device, enum AxisID axis);
 //bool synscan_slew_to_ra_dec(indigo_device* device, double ra, double dec, bool track);
 void synscan_get_coords(indigo_device *device);
+void ha_axis_timer_callback(indigo_device* device);
+void dec_axis_timer_callback(indigo_device* device);
 
 void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, double* ha, double* dec);
 

@@ -20,18 +20,26 @@
 
 #define PRIVATE_DATA        ((synscan_private_data *)device->private_data)
 
+//  Global modes of the mount (only one can be active at any time)
+enum GlobalMode {
+	kGlobalModeError,
+	kGlobalModeParked,
+	kGlobalModeIdle,
+	kGlobalModeSlewing
+};
 
 enum AxisMode {
-	kAxisModeIdle = 0,
-	kAxisModeTracking = 1,
-	kAxisModeGuiding = 2,
-	kAxisModeSlewing = 3
+	kAxisModeIdle,
+	kAxisModeStopping,
+	kAxisModeTracking,
+	kAxisModeGuiding,
+	kAxisModeManualSlewing,
+	kAxisModeSlewing,
+	kAxisModeSlewIdle
 };
 
 enum SlewState {
 	SLEW_NONE,
-	SLEW_START,
-	SLEW_STOP,
 	SLEW_PHASE0,
 	SLEW_PHASE1,
 	SLEW_PHASE2,
@@ -44,28 +52,26 @@ typedef struct {
 	bool parked;
 	bool park_in_progress;
 	char tty_name[INDIGO_VALUE_SIZE];
-	int count_open;
-	int slew_rate;
-	int st4_ra_rate, st4_dec_rate;
-	int vendor_id;
-	pthread_mutex_t serial_mutex;
-	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec, *park_timer, *slew_timer;
-	int guide_rate;
-	indigo_property *command_guide_rate_property;
+	//int count_open;
+	//int slew_rate;
+	//int st4_ra_rate, st4_dec_rate;
+	//int vendor_id;
+	//pthread_mutex_t serial_mutex;
+	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec, *park_timer, *slew_timer, *ha_axis_timer, *dec_axis_timer;
+	//int guide_rate;
+	//indigo_property *command_guide_rate_property;
 
 	int device_count;
-	double currentHAEnc;
-	double currentDecEnc;
-	double currentHA;
-	double currentRA;
-	double currentDec;
+	double currentHA;		//  radians
+	double currentRA;		//  radians
+	double currentDec;	//  radians
 	pthread_mutex_t port_mutex;
-	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
-	double lastRA, lastDec;
-	char lastUTC[INDIGO_VALUE_SIZE];
-	char product[64];
-	indigo_property *alignment_mode_property;
-	indigo_property *mount_polarscope_property;				///< MOUNT_POLARSCOPE property pointer
+	//char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
+	//double lastRA, lastDec;
+	//char lastUTC[INDIGO_VALUE_SIZE];
+	//char product[64];
+	indigo_property *operating_mode_property;
+	indigo_property *mount_polarscope_property;
 
 	bool mountConfigured;
 
@@ -84,24 +90,33 @@ typedef struct {
 	long raZeroPos;
 	long decZeroPos;
 
-	//  Last known position
+	//  Last known position (encoders)
 	double raPosition;
 	double decPosition;
+	double raTargetPosition;
+	double decTargetPosition;
 
 	//  Axis config cache
 	struct AxisConfig raAxisConfig;
 	struct AxisConfig decAxisConfig;
 
 	//  Tracking mode
-	enum TrackingMode trackingMode;
+	//enum TrackingMode trackingMode;
 
 	//  Axis slew rates
-	int raSlewRate;
-	int decSlewRate;
+	//int raSlewRate;
+	//int decSlewRate;
+
+	//  Global mode of mount
+	enum GlobalMode globalMode;
 
 	//  Axis state
 	enum AxisMode raAxisMode;
 	enum AxisMode decAxisMode;
+	enum AxisMode raDesiredAxisMode;
+	enum AxisMode decDesiredAxisMode;
+	double raDesiredRate;
+	double decDesiredRate;
 
 	//  Slewing data
 	enum SlewState slew_state;
@@ -121,5 +136,14 @@ typedef struct {
 #define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM					(MOUNT_POLARSCOPE_PROPERTY->items+0)
 #define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME			"BRIGHTNESS"
 
+/** OPERATING_MODE property pointer, property is optional, read-write and should be fully controlled by device driver.
+ */
+#define OPERATING_MODE_PROPERTY					(PRIVATE_DATA->operating_mode_property)
+#define POLAR_MODE_ITEM                 (OPERATING_MODE_PROPERTY->items+0)
+#define ALTAZ_MODE_ITEM                 (OPERATING_MODE_PROPERTY->items+1)
+
+#define OPERATING_MODE_PROPERTY_NAME		"OPERATING_MODE"
+#define POLAR_MODE_ITEM_NAME            "POLAR"
+#define ALTAZ_MODE_ITEM_NAME            "ALTAZ"
 
 #endif /* indigo_mount_synscan_private_h */
