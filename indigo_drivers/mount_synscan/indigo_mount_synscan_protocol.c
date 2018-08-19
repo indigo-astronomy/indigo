@@ -17,7 +17,26 @@
 #include "indigo_mount_synscan_private.h"
 #include "indigo_mount_synscan_protocol.h"
 
+
+#define SYNSCAN_START_CHAR								 ':'
+#define SYNSCAN_REPLY_CHAR								 '='
+#define SYNSCAN_ERROR_CHAR								 '!'
+#define SYNSCAN_END_CHAR									 '\r'
+
 #define SYNSCAN_FIRMWARE_VERSION					 ":e1"
+
+
+
+enum MountType {
+	kMountTypeEQ6 = 0x00,
+	kMountTypeHEQ5 = 0x01,
+	kMountTypeEQ5 = 0x02,
+	kMountTypeEQ3 = 0x03,
+	kMountTypeGT = 0x80,
+	kMountTypeMF = 0x81,
+	kMountType114GT = 0x82,
+	kMountTypeDOB = 0x90
+};
 
 
 //  HELPERS
@@ -118,6 +137,10 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 		long total_bytes = 0;
 		while (total_bytes < sizeof(resp)) {
 			long bytes_read = read(PRIVATE_DATA->handle, &c, 1);
+			if (bytes_read == 0) {
+				printf("SYNSCAN_TIMEOUT\n");
+				break;
+			}
 			if (bytes_read > 0) {
 				resp[total_bytes++] = c;
 				if (c == '\r')

@@ -25,7 +25,8 @@ enum GlobalMode {
 	kGlobalModeError,
 	kGlobalModeParked,
 	kGlobalModeIdle,
-	kGlobalModeSlewing
+	kGlobalModeSlewing,
+	kGlobalModeParking
 };
 
 enum AxisMode {
@@ -45,6 +46,13 @@ enum SlewState {
 	SLEW_PHASE2,
 	SLEW_PHASE3,
 	SLEW_PHASE4
+};
+
+enum ParkState {
+	PARK_NONE,
+	PARK_PHASE0,
+	PARK_PHASE1,
+	PARK_PHASE2
 };
 
 typedef struct {
@@ -121,6 +129,9 @@ typedef struct {
 	//  Slewing data
 	enum SlewState slew_state;
 	double target_lst;
+
+	//  Parking state
+	enum ParkState park_state;
 
 } synscan_private_data;
 
