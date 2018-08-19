@@ -380,7 +380,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_OK_STATE ? "Exposure canceled" : "Failed to cancel exposure");
+		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_FRAME
