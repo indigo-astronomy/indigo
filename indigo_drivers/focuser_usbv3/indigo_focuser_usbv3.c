@@ -266,6 +266,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
 			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);

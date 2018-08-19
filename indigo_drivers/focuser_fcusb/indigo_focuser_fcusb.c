@@ -125,6 +125,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
 			indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
@@ -218,23 +219,24 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			const char *name;
-			libfcusb_focuser(dev, &name);
-			fcusb_private_data *private_data = malloc(sizeof(fcusb_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(fcusb_private_data));
-			private_data->dev = dev;
-			libusb_ref_device(dev);
-			indigo_device *device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &focuser_template, sizeof(indigo_device));
-			strncpy(device->name, name, INDIGO_NAME_SIZE);
-			device->private_data = private_data;
-			for (int j = 0; j < MAX_DEVICES; j++) {
-				if (devices[j] == NULL) {
-					indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-					break;
-				}
-			}
+      if (libfcusb_focuser(dev, &name)) {
+        fcusb_private_data *private_data = malloc(sizeof(fcusb_private_data));
+        assert(private_data != NULL);
+        memset(private_data, 0, sizeof(fcusb_private_data));
+        private_data->dev = dev;
+        libusb_ref_device(dev);
+        indigo_device *device = malloc(sizeof(indigo_device));
+        assert(device != NULL);
+        memcpy(device, &focuser_template, sizeof(indigo_device));
+        strncpy(device->name, name, INDIGO_NAME_SIZE);
+        device->private_data = private_data;
+        for (int j = 0; j < MAX_DEVICES; j++) {
+          if (devices[j] == NULL) {
+            indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+            break;
+          }
+        }
+      }
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
@@ -247,6 +249,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 						indigo_detach_device(device);
 						free(device);
 						devices[j] = NULL;
+						break;
 					}
 				}
 			}
