@@ -462,15 +462,15 @@ void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, 
 		else
 			*ha = 1.0 - ha_enc;
 	}
-	if (*ha < 0)
+	if (*ha < -0.5)
 		*ha += 1.0;
-	if (*ha > 1.0)
+	if (*ha >= 0.5)
 		*ha -= 1.0;
 
 	*ha *= 2.0 * M_PI;
 }
 
-static void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double haPos[], double decPos[]) {
+void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double haPos[], double decPos[]) {
 	//  To do a slew, we have to decide which side of the meridian we'd like to be. Normally that would be
 	//  the side that gives maximum time before a meridian flip would be required. If the object has passed
 	//  the meridian already, then it is setting and we won't need to flip. If it is approaching the meridian,
@@ -600,10 +600,12 @@ static void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, 
 void synscan_get_coords(indigo_device *device) {
 	char response[128];
 	long haPos, decPos;
-	if (synscan_axis_position(device, kAxisRA, &haPos))
-		PRIVATE_DATA->raPosition = ha_steps_to_position(device, haPos);
+	//  Get the DEC first since we want the HA position to be changing as little as possible till
+	//  we combine it with LST to get RA
 	if (synscan_axis_position(device, kAxisDEC, &decPos))
 		PRIVATE_DATA->decPosition = dec_steps_to_position(device, decPos);
+	if (synscan_axis_position(device, kAxisRA, &haPos))
+		PRIVATE_DATA->raPosition = ha_steps_to_position(device, haPos);
 }
 
 void synscan_stop_and_resume_tracking_for_axis(indigo_device* device, enum AxisID axis) {
@@ -716,10 +718,24 @@ static void axis_timer_callback(indigo_device *device, enum AxisID axis) {
 						*axisMode = *desiredAxisMode;
 						break;
 					case kAxisModeSlewing:
-						if (!synscan_slew_axis_to_position(device, axis, (axis == kAxisRA) ? PRIVATE_DATA->raTargetPosition : PRIVATE_DATA->decTargetPosition))
-							break;
-						*axisMode = kAxisModeSlewing;
-						usleep(500000);
+						{
+							if (!synscan_slew_axis_to_position(device, axis, (axis == kAxisRA) ? PRIVATE_DATA->raTargetPosition : PRIVATE_DATA->decTargetPosition))
+								break;
+
+							//  Get the axis status
+							while (true) {
+								long axisStatus;
+								if (!synscan_motor_status(device, axis, &axisStatus))
+									break;
+
+								//  Wait for axis to start moving
+								if ((axisStatus & kStatusActiveMask) != 0)
+									break;
+							}
+
+							*axisMode = kAxisModeSlewing;
+							//usleep(500000);
+						}
 						break;
 					case kAxisModeStopping:
 					case kAxisModeSlewIdle:
@@ -986,8 +1002,8 @@ void slew_timer_callback(indigo_device *device) {
 					break;
 
 				//    Compute precise HA slew for LST + 5 seconds
-				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value * M_PI / 12.0;
-				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * M_PI / 180.0;
+				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * M_PI / 12.0;
+				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target * M_PI / 180.0;
 				double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
 				PRIVATE_DATA->target_lst = indigo_lst(lng) + (5 / 3600.0);
 				double ha = (PRIVATE_DATA->target_lst * M_PI / 12.0) - ra;
@@ -1075,6 +1091,11 @@ void slew_timer_callback(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	}
+}
+
+void synscan_park(indigo_device* device) {
+	//PRIVATE_DATA->parked = true;  /* a but premature but need to cancel other movements from now on until unparked */
+
 }
 
 #if 0
