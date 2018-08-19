@@ -486,6 +486,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (!device->is_connected) { /* Do not double open device */
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 					indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
 					return INDIGO_OK;
 				}
