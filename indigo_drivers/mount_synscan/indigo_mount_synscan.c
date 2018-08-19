@@ -264,27 +264,26 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 #endif
 
 static bool mount_cancel_slew(indigo_device *device) {
+	if (PRIVATE_DATA->globalMode == kGlobalModeParking || PRIVATE_DATA->globalMode == kGlobalModeSlewing) {
+		PRIVATE_DATA->globalMode = kGlobalModeIdle;
+	}
+	PRIVATE_DATA->raDesiredAxisMode = kAxisModeIdle;
+	PRIVATE_DATA->decDesiredAxisMode = kAxisModeIdle;
 
-
-//	int res = tc_goto_cancel(PRIVATE_DATA->dev_id);
-//	if (res != RC_OK) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_cancel(%d) = %d", PRIVATE_DATA->dev_id, res);
-//	}
-
-	MOUNT_MOTION_NORTH_ITEM->sw.value = false;
-	MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
-	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-
-	MOUNT_MOTION_WEST_ITEM->sw.value = false;
-	MOUNT_MOTION_EAST_ITEM->sw.value = false;
-	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-
-	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_coordinates(device, NULL);
+//	MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+//	MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+//	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+//	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+//
+//	MOUNT_MOTION_WEST_ITEM->sw.value = false;
+//	MOUNT_MOTION_EAST_ITEM->sw.value = false;
+//	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+//	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+//
+//	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+//	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+//	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+//	indigo_update_coordinates(device, NULL);
 
 	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -292,66 +291,106 @@ static bool mount_cancel_slew(indigo_device *device) {
 	return true;
 }
 
-#if 0
 static void park_timer_callback(indigo_device *device) {
-	int res;
-	int dev_id = PRIVATE_DATA->dev_id;
+	if (PRIVATE_DATA->globalMode == kGlobalModeParking) {
+		switch (PRIVATE_DATA->park_state) {
+			case PARK_NONE:
+				break;
+			case PARK_PHASE0:
+				{
+					//  Compute the axis positions for parking
+					double ha = MOUNT_PARK_POSITION_HA_ITEM->number.value * M_PI / 12.0;
+					double dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value * M_PI / 180.0;
+					double haPos[2], decPos[2];
+					coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 
-	if (dev_id < 0) return;
+					//  Start the axes moving
+					PRIVATE_DATA->raTargetPosition = haPos[0];
+					PRIVATE_DATA->decTargetPosition = decPos[0];
+					PRIVATE_DATA->raDesiredAxisMode = kAxisModeSlewing;
+					PRIVATE_DATA->decDesiredAxisMode = kAxisModeSlewing;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	if (tc_goto_in_progress(dev_id)) {
-		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-		PRIVATE_DATA->park_in_progress = true;
-	} else {
-		res = tc_set_tracking_mode(dev_id, TC_TRACK_OFF);
-		if (res != RC_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", dev_id, res);
-		} else {
-			MOUNT_TRACKING_OFF_ITEM->sw.value = true;
-			MOUNT_TRACKING_ON_ITEM->sw.value = false;
-			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+					//  Move to next state
+					PRIVATE_DATA->park_state = PARK_PHASE1;
+				}
+				break;
+
+			case PARK_PHASE1:
+				{
+					//  Check for HA parked
+					if (PRIVATE_DATA->raAxisMode != kAxisModeSlewIdle)
+						break;
+
+					//  Set desired mode to Idle
+					PRIVATE_DATA->raDesiredAxisMode = kAxisModeIdle;
+
+					//  Move to next state
+					PRIVATE_DATA->park_state = PARK_PHASE2;
+				}
+				break;
+
+			case PARK_PHASE2:
+				{
+					//  Check for DEC parked
+					if (PRIVATE_DATA->decAxisMode != kAxisModeSlewIdle)
+						break;
+
+					//  Set desired mode to Idle
+					PRIVATE_DATA->decDesiredAxisMode = kAxisModeIdle;
+
+					//  Update state
+					PRIVATE_DATA->park_state = PARK_NONE;
+					PRIVATE_DATA->globalMode = kGlobalModeParked;
+					PRIVATE_DATA->parked = true;
+					MOUNT_PARK_PARKED_ITEM->sw.value = true;
+					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				break;
 		}
-		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-		PRIVATE_DATA->park_in_progress = false;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-
-	if (PRIVATE_DATA->park_in_progress) {
+	if (PRIVATE_DATA->globalMode == kGlobalModeParking) {
 		indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->park_timer);
-	} else {
+	}
+	else {
 		PRIVATE_DATA->park_timer = NULL;
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount Parked.");
 	}
 }
-#endif
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
+		//  Longitude needed for LST
+		double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+
 		//  Get the raw coords
 		synscan_get_coords(device);
-//		double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - PRIVATE_DATA->currentRA);
-//		double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - PRIVATE_DATA->currentDec);
-		if (PRIVATE_DATA->slew_state == SLEW_NONE)
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+
+		//  Get the LST as quickly as we can after the HA
+		double lst = indigo_lst(lng) * M_PI / 12.0;
 
 		//  Convert Encoder position to EQ
 		coords_encoder_to_eq(device, PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition, &PRIVATE_DATA->currentHA, &PRIVATE_DATA->currentDec);
 
 		//  Add in LST to get RA
-		double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-		double lst = indigo_lst(lng) * M_PI / 12.0;
 		PRIVATE_DATA->currentRA = lst - PRIVATE_DATA->currentHA;
-		if (PRIVATE_DATA->currentRA < 0)
-			PRIVATE_DATA->currentRA += 24.0;
 		PRIVATE_DATA->currentRA *= 12.0 / M_PI;
 		PRIVATE_DATA->currentDec *= 180.0 / M_PI;
+		if (PRIVATE_DATA->currentRA < 0)
+			PRIVATE_DATA->currentRA += 24.0;
+		if (PRIVATE_DATA->currentRA >= 24.0)
+			PRIVATE_DATA->currentRA -= 24.0;
 
 		printf("LST: %g\nHA: %g\n", lst * 12.0 / M_PI, PRIVATE_DATA->currentHA);
+
+		//		double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - PRIVATE_DATA->currentRA);
+		//		double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - PRIVATE_DATA->currentDec);
+		if (PRIVATE_DATA->slew_state == SLEW_NONE)
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+
 
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
@@ -434,17 +473,18 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					PRIVATE_DATA->device_count--;
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					return INDIGO_OK;
 				}
-				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher");
-				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "SynScan");
+				else {
+					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher");
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "SynScan");
 
-				//  Start timers
-				PRIVATE_DATA->ha_axis_timer = indigo_set_timer(device, 0, ha_axis_timer_callback);
-				PRIVATE_DATA->dec_axis_timer = indigo_set_timer(device, 0, dec_axis_timer_callback);
-				PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
-				PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0, slew_timer_callback);
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					//  Start timers
+					PRIVATE_DATA->ha_axis_timer = indigo_set_timer(device, 0, ha_axis_timer_callback);
+					PRIVATE_DATA->dec_axis_timer = indigo_set_timer(device, 0, dec_axis_timer_callback);
+					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+					PRIVATE_DATA->slew_timer = indigo_set_timer(device, 0, slew_timer_callback);
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				}
 			}
 			else {
 				PRIVATE_DATA->device_count--;
@@ -466,51 +506,43 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		indigo_update_property(device, CONNECTION_PROPERTY, "");
 	}
-#if 0
 	else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
+#if 0
 		if(PRIVATE_DATA->park_in_progress) {
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, WARN_PARKING_PROGRESS_MSG);
 			return INDIGO_OK;
 		}
+#endif
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
-			PRIVATE_DATA->parked = true;  /* a but premature but need to cancel other movements from now on until unparked */
-			PRIVATE_DATA->park_in_progress = true;
-
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			int res = tc_goto_azalt_p(PRIVATE_DATA->dev_id, 0, 90);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_azalt_p(%d) = %d", PRIVATE_DATA->dev_id, res);
+			if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
+				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
+				PRIVATE_DATA->globalMode = kGlobalModeParking;
+				PRIVATE_DATA->park_state = PARK_PHASE0;
+				PRIVATE_DATA->park_timer = indigo_set_timer(device, 0, park_timer_callback);
 			}
-
-			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
-			PRIVATE_DATA->park_timer = indigo_set_timer(device, 2, park_timer_callback);
+			else {
+				//  Can't park while mount is doing something else
+				MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount busy!");
+			}
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparking...");
 
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			int res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			if (res != RC_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res);
-			} else {
-				MOUNT_TRACKING_OFF_ITEM->sw.value = false;
-				MOUNT_TRACKING_ON_ITEM->sw.value = true;
-				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-			}
+			//  We should try to move to an unpark position here - but we don't have one
 
 			PRIVATE_DATA->parked = false;
+			PRIVATE_DATA->globalMode = kGlobalModeIdle;
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount unparked.");
 		}
 		return INDIGO_OK;
 	}
-#endif
 	else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		if(PRIVATE_DATA->parked) {
@@ -577,7 +609,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-		mount_cancel_slew(device);
+		if (MOUNT_ABORT_MOTION_ITEM->sw.value)
+			mount_cancel_slew(device);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}

@@ -135,7 +135,7 @@ extern "C" {
 
 /** MOUNT_PARK_POSITION.RA property item pointer.
 */
-#define MOUNT_PARK_POSITION_RA_ITEM										(MOUNT_PARK_POSITION_PROPERTY->items+0)
+#define MOUNT_PARK_POSITION_HA_ITEM										(MOUNT_PARK_POSITION_PROPERTY->items+0)
 
 /** MOUNT_PARK_POSITION.DEC property item pointer.
 */

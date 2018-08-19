@@ -100,7 +100,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			if (MOUNT_PARK_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_PARK_POSITION_PROPERTY->hidden = true;
-			indigo_init_number_item(MOUNT_PARK_POSITION_RA_ITEM, MOUNT_PARK_POSITION_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
+			indigo_init_number_item(MOUNT_PARK_POSITION_HA_ITEM, MOUNT_PARK_POSITION_HA_ITEM_NAME, "Hour Angle (-12 to 12 hrs)", -12, 12, 0, 6);
 			indigo_init_number_item(MOUNT_PARK_POSITION_DEC_ITEM, MOUNT_PARK_POSITION_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
 			// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 			MOUNT_ON_COORDINATES_SET_PROPERTY = indigo_init_switch_property(NULL, device->name,MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_MAIN_GROUP, "On coordinates set", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
@@ -376,13 +376,14 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_PARK_SET
 		indigo_property_copy_values(MOUNT_PARK_SET_PROPERTY, property, false);
 		if (MOUNT_PARK_SET_DEFAULT_ITEM->sw.value) {
-			MOUNT_PARK_POSITION_RA_ITEM->number.value = 0;
+			MOUNT_PARK_POSITION_HA_ITEM->number.value = 6;
 			MOUNT_PARK_POSITION_DEC_ITEM->number.value = 90;
 			MOUNT_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_POSITION_PROPERTY, NULL);
 			MOUNT_PARK_SET_DEFAULT_ITEM->sw.value = false;
 		} else if (MOUNT_PARK_SET_CURRENT_ITEM->sw.value) {
-			MOUNT_PARK_POSITION_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+			double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+			MOUNT_PARK_POSITION_HA_ITEM->number.value = indigo_lst(lng) - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			MOUNT_PARK_POSITION_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			MOUNT_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_POSITION_PROPERTY, NULL);
