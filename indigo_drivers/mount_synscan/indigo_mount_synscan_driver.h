@@ -41,6 +41,7 @@ void ha_axis_timer_callback(indigo_device* device);
 void dec_axis_timer_callback(indigo_device* device);
 
 void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, double* ha, double* dec);
+void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double haPos[], double decPos[]);
 
 
 //  All rates are arcsecs/sec
