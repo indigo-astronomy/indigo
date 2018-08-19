@@ -959,7 +959,7 @@
 
 /** MOUNT_GUIDE_RATE.RA property item name.
  */
-#define MOUNT_PARK_POSITION_RA_ITEM_NAME				"RA"
+#define MOUNT_PARK_POSITION_HA_ITEM_NAME				"HA"
 
 /** MOUNT_GUIDE_RATE.DEC property item name.
  */
