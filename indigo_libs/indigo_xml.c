@@ -183,8 +183,6 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 		} else {
 			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_NEVER);
 		}		
-		INDIGO_DEBUG(indigo_debug("enableBLOB device='%s' name='%s' mode='%s'", property->device, property->name, value));
-		INDIGO_DEBUG(record = client->enable_blob_mode_records; while (record) { indigo_debug("   %s %s %d", record->device, record->name, record->mode); record = record->next; });
 	} else if (state == END_TAG) {
 		memset(property, 0, PROPERTY_SIZE);
 		return top_level_handler;
