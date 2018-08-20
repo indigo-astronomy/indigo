@@ -58,6 +58,12 @@ indigo_result indigo_guider_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			indigo_init_number_item(GUIDER_GUIDE_EAST_ITEM, GUIDER_GUIDE_EAST_ITEM_NAME, "Guide east", 0, 10000, 0, 0);
 			indigo_init_number_item(GUIDER_GUIDE_WEST_ITEM, GUIDER_GUIDE_WEST_ITEM_NAME, "Guide west", 0, 10000, 0, 0);
+			// -------------------------------------------------------------------------------- GUIDER_RATE
+			GUIDER_RATE_PROPERTY = indigo_init_number_property(NULL, device->name, GUIDER_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guiding rate", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			if (GUIDER_RATE_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			GUIDER_RATE_PROPERTY->hidden = true;
+			indigo_init_number_item(GUIDER_RATE_ITEM, GUIDER_RATE_ITEM_NAME, "Guiding rate (% of sidereal)", 10, 90, 0, 50);
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -75,6 +81,8 @@ indigo_result indigo_guider_enumerate_properties(indigo_device *device, indigo_c
 				indigo_define_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 			if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property))
 				indigo_define_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+			if (indigo_property_match(GUIDER_RATE_PROPERTY, property))
+				indigo_define_property(device, GUIDER_RATE_PROPERTY, NULL);
 		}
 	}
 	return result;
@@ -89,9 +97,11 @@ indigo_result indigo_guider_change_property(indigo_device *device, indigo_client
 		if (IS_CONNECTED) {
 			indigo_define_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 			indigo_define_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+			indigo_define_property(device, GUIDER_RATE_PROPERTY, NULL);
 		} else {
 			indigo_delete_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 			indigo_delete_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+			indigo_delete_property(device, GUIDER_RATE_PROPERTY, NULL);
 		}
 		// --------------------------------------------------------------------------------
 	}
@@ -102,6 +112,7 @@ indigo_result indigo_guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_release_property(GUIDER_GUIDE_DEC_PROPERTY);
 	indigo_release_property(GUIDER_GUIDE_RA_PROPERTY);
+	indigo_release_property(GUIDER_RATE_PROPERTY);
 	return indigo_device_detach(device);
 }
 

@@ -586,6 +586,17 @@ static indigo_result mount_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
+static void start_tracking(indigo_device *device) {
+	char response[2];
+	if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+		ieq_command(device, ":ST1#", response, 1, 1);
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+		if (IS_CONNECTED) {
+			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		}
+	}
+}
+
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -626,7 +637,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-		char command[128];
+		char command[20];
+		start_tracking(device->master_device);
 		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 			sprintf(command, ":Mn%05d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 			ieq_command(device, command, NULL, 0, 0);
@@ -642,6 +654,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		char command[128];
+		start_tracking(device->master_device);
 		if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 			sprintf(command, ":Mw%05d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
 			ieq_command(device, command, NULL, 0, 0);
@@ -713,6 +726,7 @@ indigo_result indigo_mount_ioptron(indigo_driver_action action, indigo_driver_in
 			assert(mount_guider != NULL);
 			memcpy(mount_guider, &mount_guider_template, sizeof(indigo_device));
 			mount_guider->private_data = private_data;
+			mount_guider->master_device = mount;
 			indigo_attach_device(mount_guider);
 			break;
 
