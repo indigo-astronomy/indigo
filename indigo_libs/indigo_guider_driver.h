@@ -65,12 +65,23 @@ extern "C" {
  */
 #define GUIDER_GUIDE_WEST_ITEM               (GUIDER_GUIDE_RA_PROPERTY->items+1)
 
+/** GUIDER_RATE property pointer, property is optional, property change request should be fully handled by device driver.
+ */
+#define GUIDER_RATE_PROPERTY             			(GUIDER_CONTEXT->guider_rate_property)
+
+/** GUIDER_RATE.RATE property item pointer.
+ */
+#define GUIDER_RATE_ITEM               				(GUIDER_RATE_PROPERTY->items+0)
+	
+
+	
 /** Guider device context structure.
  */
 typedef struct {
 	indigo_device_context device_context;         ///< device context base
 	indigo_property *guider_guide_dec_property;   ///< GUIDER_GUIDE_DEC property pointer
 	indigo_property *guider_guide_ra_property;    ///< GUIDER_GUIDE_RA property pointer
+	indigo_property *guider_rate_property;  			///< GUIDER_RATE property pointer
 } indigo_guider_context;
 
 /** Attach callback function.

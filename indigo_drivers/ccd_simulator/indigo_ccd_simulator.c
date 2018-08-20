@@ -83,6 +83,7 @@ typedef struct {
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	double ra_offset, dec_offset;
 	int eclipse;
+	double guide_rate;
 } simulator_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -624,14 +625,14 @@ static indigo_result ccd_detach(indigo_device *device) {
 static void guider_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->guider_timer = NULL;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
-		PRIVATE_DATA->dec_offset += (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 100;
+		PRIVATE_DATA->dec_offset += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 200;
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
-		PRIVATE_DATA->ra_offset += (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 100;
+		PRIVATE_DATA->ra_offset += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 200;
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -643,6 +644,8 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		GUIDER_RATE_PROPERTY->hidden = false;
+		PRIVATE_DATA->guide_rate = GUIDER_RATE_ITEM->number.value / 100.0;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -692,6 +695,13 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		}
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDER_RATE
+		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
+		PRIVATE_DATA->guide_rate = GUIDER_RATE_ITEM->number.value / 100.0;
+		GUIDER_RATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_RATE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}

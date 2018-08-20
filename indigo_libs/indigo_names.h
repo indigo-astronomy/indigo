@@ -660,11 +660,11 @@
  */
 #define GUIDER_GUIDE_DEC_PROPERTY_NAME        "GUIDER_GUIDE_DEC"
 
-/** GUIDER_GUIDE.NORTH property item name.
+/** GUIDER_GUIDE_DEC.NORTH property item name.
  */
 #define GUIDER_GUIDE_NORTH_ITEM_NAME          "NORTH"
 
-/** GUIDER_GUIDE.SOUTH property item name.
+/** GUIDER_GUIDE_DEC.SOUTH property item name.
  */
 #define GUIDER_GUIDE_SOUTH_ITEM_NAME          "SOUTH"
 
@@ -673,13 +673,22 @@
  */
 #define GUIDER_GUIDE_RA_PROPERTY_NAME         "GUIDER_GUIDE_RA"
 
-/** GUIDER_GUIDE.EAST property item name.
+/** GUIDER_GUIDE_RA.EAST property item name.
  */
 #define GUIDER_GUIDE_EAST_ITEM_NAME           "EAST"
 
-/** GUIDER_GUIDE.WEST property item name.
+/** GUIDER_GUIDE_RA.WEST property item name.
  */
 #define GUIDER_GUIDE_WEST_ITEM_NAME           "WEST"
+
+//----------------------------------------------------------------------
+/** GUIDER_RATE property name.
+ */
+#define GUIDER_RATE_PROPERTY_NAME       			"GUIDER_RATE"
+
+/** GUIDER_RATE.RATE property item name.
+ */
+#define GUIDER_RATE_ITEM_NAME           			"RATE"
 
 //----------------------------------------------------------------------
 /** WHEEL_SLOT property name.

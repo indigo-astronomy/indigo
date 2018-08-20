@@ -287,6 +287,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		GUIDER_RATE_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -336,6 +337,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		}
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
+			// -------------------------------------------------------------------------------- GUIDER_RATE
+		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
+		GUIDER_RATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_RATE_PROPERTY, NULL);
 		return INDIGO_OK;
 			// --------------------------------------------------------------------------------
 	}
