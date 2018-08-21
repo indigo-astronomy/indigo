@@ -13,11 +13,7 @@
 #include "apgHelper.h" 
 #include <sstream>
 #include <cstring> //for memset
-
-#ifdef __APPLE__
-#include <sys/select.h>
-#endif
-
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <netdb.h>

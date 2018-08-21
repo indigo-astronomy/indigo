@@ -38,7 +38,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-
+#include <sys/time.h>
 #include "indigo_driver_xml.h"
 #include "indigo_io.h"
 #include "indigo_guider_cgusbst4.h"
