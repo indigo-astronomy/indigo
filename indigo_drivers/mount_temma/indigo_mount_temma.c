@@ -41,6 +41,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <sys/time.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_io.h"
