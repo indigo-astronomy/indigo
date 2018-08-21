@@ -146,6 +146,8 @@
 		59FC2EBA210CA76200730343 /* indigo_ccd_mi_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */; };
 		59FC2EBB210CA76200730343 /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
 		59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */; };
+		59FFD0D22128604200C7355C /* hidapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFD0D02128604200C7355C /* hidapi.h */; };
+		59FFD0D32128604200C7355C /* hid.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FFD0D12128604200C7355C /* hid.c */; };
 		9D1880B31E534B5E002F75D7 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */; };
@@ -943,6 +945,7 @@
 		59E38B501F1577A000187839 /* indigo_ica_ptp_canon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_canon.m; sourceTree = "<group>"; };
 		59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_nikon.h; sourceTree = "<group>"; };
 		59E38B521F1577A000187839 /* indigo_ica_ptp_nikon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_nikon.m; sourceTree = "<group>"; };
+		59E67789212C8042004B99BE /* Protocol_V2.0.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V2.0.pdf; sourceTree = "<group>"; };
 		59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_data.c; sourceTree = "<group>"; };
 		59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_sbig.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59F4EC711E941D1700CC7772 /* indigo_ccd_sbig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_sbig.h; sourceTree = "<group>"; };
@@ -961,6 +964,8 @@
 		59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_mi.h; sourceTree = "<group>"; };
 		59FC2EB8210CA76200730343 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59FC2EB9210CA76200730343 /* indigo_ccd_mi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_mi.rules; sourceTree = "<group>"; };
+		59FFD0D02128604200C7355C /* hidapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hidapi.h; sourceTree = "<group>"; };
+		59FFD0D12128604200C7355C /* hid.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = hid.c; path = hidapi/mac/hid.c; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
 		9D3BBBA521147EB500800FB0 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -1530,7 +1535,6 @@
 		9D9EA6AF1DBFA30600E11841 /* indigo_guider_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_driver.h; sourceTree = "<group>"; };
 		9D9EA6B01DBFA30600E11841 /* indigo_wheel_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_driver.c; sourceTree = "<group>"; };
 		9D9EA6B11DBFA30600E11841 /* indigo_wheel_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_driver.h; sourceTree = "<group>"; };
-		9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libhidapi.0.dylib; path = build/lib/libhidapi.0.dylib; sourceTree = SOURCE_ROOT; };
 		9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "build/lib/libusb-1.0.0.dylib"; sourceTree = SOURCE_ROOT; };
 		9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_driver.c; sourceTree = "<group>"; };
 		9DAC59D21DC0A8AD00AE410D /* indigo_focuser_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_driver.h; sourceTree = "<group>"; };
@@ -1550,7 +1554,7 @@
 		9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_ioptron_main.c; sourceTree = "<group>"; };
 		9DAD522D21246EB5002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_ioptron.c; sourceTree = "<group>"; };
-		9DAD523221246FA9002FCC79 /* iOptron Telescope RS-232 Command language.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "iOptron Telescope RS-232 Command language.pdf"; sourceTree = "<group>"; };
+		9DAD523221246FA9002FCC79 /* Protocol_V1.4.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.4.pdf; sourceTree = "<group>"; };
 		9DAD523821258801002FCC79 /* indigo_guider_cgusbst4_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_cgusbst4_main.c; sourceTree = "<group>"; };
 		9DAD523921258801002FCC79 /* indigo_guider_cgusbst4.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_cgusbst4.c; sourceTree = "<group>"; };
 		9DAD523A21258801002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -2618,7 +2622,8 @@
 		59C8E7CC1DBBC00000AA3F0A /* externals */ = {
 			isa = PBXGroup;
 			children = (
-				9DAC59C71DC0A6A000AE410D /* libhidapi.0.dylib */,
+				59FFD0D12128604200C7355C /* hid.c */,
+				59FFD0D02128604200C7355C /* hidapi.h */,
 				9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */,
 				595AA1D31FC5F26600350E7B /* libnmea.a */,
 			);
@@ -3584,7 +3589,8 @@
 				9DAD522B21246EB5002FCC79 /* indigo_mount_ioptron.h */,
 				9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */,
 				9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */,
-				9DAD523221246FA9002FCC79 /* iOptron Telescope RS-232 Command language.pdf */,
+				9DAD523221246FA9002FCC79 /* Protocol_V1.4.pdf */,
+				59E67789212C8042004B99BE /* Protocol_V2.0.pdf */,
 			);
 			path = mount_ioptron;
 			sourceTree = "<group>";
@@ -3768,6 +3774,7 @@
 				59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */,
 				9D59D64820D3F829009EA8FF /* AscentBasedUsbIo.h in Headers */,
 				9D976FDC1DD0C69D00782B32 /* dc1394.h in Headers */,
+				59FFD0D22128604200C7355C /* hidapi.h in Headers */,
 				9D59D61120D3F829009EA8FF /* UdpSocketBase.h in Headers */,
 				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
 				9D59D65A20D3F829009EA8FF /* CamHelpers.h in Headers */,
@@ -4268,6 +4275,7 @@
 				9D59D61420D3F829009EA8FF /* libCurlWrap.cpp in Sources */,
 				9D59D5F820D3F829009EA8FF /* CamCfgMatrix.cpp in Sources */,
 				9D59D62520D3F829009EA8FF /* ITimer.cpp in Sources */,
+				59FFD0D32128604200C7355C /* hid.c in Sources */,
 				9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */,
 				5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */,
 				9D59D65B20D3F829009EA8FF /* AltaIo.cpp in Sources */,
