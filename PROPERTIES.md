@@ -1,12 +1,3 @@
-<style>
-table { width: 100%; font-size: 0.7em; }
-td { padding: 3px; border: solid 1px rgb(230,230,230); }
-.hdr1 { font-weight: bold; background-color: rgb(200,200,200); }
-.hdr2 { font-weight: bold; background-color: rgb(230,230,230); }
-</style>
-
-
-
 # INDIGO properties
 
 ## Introduction
@@ -15,6 +6,13 @@ INDIGO properties and items are abstraction of INDI properties and items. As far
 properties are first of all defined memory structures which are, if needed, mapped to XML or JSON textual representation.
 
 ## Common properties
+
+<style type="text/css">
+table { width: 100%; font-size: 0.7em; }
+td { padding: 3px; border: solid 1px rgb(230,230,230); }
+.hdr1 { font-weight: bold; background-color: rgb(200,200,200); }
+.hdr2 { font-weight: bold; background-color: rgb(230,230,230); }
+</style>
 
 <table>
 <tr class='hdr1'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
