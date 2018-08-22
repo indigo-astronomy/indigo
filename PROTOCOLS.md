@@ -60,87 +60,94 @@ JSON protocol offers just BLOBs referenced by URL, no inline data.
 
 The mapping of XML to JSON messages demonstrated on a few examples is as follows:
 
+XML message
 ```
 → <getProperties version='2.0'/>
 ```
-is mapped to
+is mapped to JSON message
 ```
 → { "getProperties": { "version": 512 } }
 ```
-
+XML message
 ```← <defTextVector device='Server' name='LOAD' group='Main' label='Load driver' state='Idle' perm='rw'>
     <defText name='DRIVER' label='Load driver'></defText>
   </defTextVector>
 ```
-is mapped to
+is mapped to JSON message
 ```
 ← { "defTextVector": { "version": 512, "device": "Server", "name": "LOAD", "group": "Main", "label": "Load driver", "perm": "rw", "state": "Idle", "items": [  { "name": "DRIVER", "label": "Load driver", "value": "" } ] } }
 ```
+XML message
 ```
 ← <defSwitchVector device='Server' name='RESTART' group='Main' label='Restart' rule='AnyOfMany' state='Idle' perm='rw'>
     <defSwitch name='RESTART' label='Restart server'>false</defSwitch>
   </defSwitchVector>
 ```
-is mapped to
+is mapped to JSON message
 ```
 ← { "defSwitchVector": { "version": 512, "device": "Server", "name": "RESTART", "group": "Main", "label": "Restart", "perm": "rw", "state": "Idle", "rule": "AnyOfMany", "items": [  { "name": "RESTART", "label": "Restart server", "value": false } ] } }
 ```
+XML message
 ```
 ← <defNumberVector device='CCD Imager Simulator' name='CCD_EXPOSURE' group='Camera' label='Start exposure' state='Idle' perm='rw'>
     <defNumber name='EXPOSURE' label='Start exposure' min='0' max='10000'step='1' format='%g' target='0'>0</defNumber>
   </defNumberVector>
 ```
-is mapped to
+is mapped to JSON message
 ```
 ← { "defNumberVector": { "version": 512, "device": "CCD Imager Simulator", "name": "CCD_EXPOSURE", "group": "Camera", "label": "Start exposure", "perm": "rw", "state": "Idle", "items": [  { "name": "EXPOSURE", "label": "Start exposure", "min": 0, "max": 10000, "step": 1, "format": "%g", "target": 0, "value": 0 } ] } }
 ```
+XML message
 ```
 ← <setSwitchVector device='' name='' state=''>
     <oneSwitch name='CONNECTED'>On</oneSwitch>
     <oneSwitch name='DISCONNECTED'>Off</oneSwitch>
   </setSwitchVector>
 ```
-is mapped to
+is mapped to JSON message
 ```
 ← { "setSwitchVector": { "device": "CCD Imager Simulator", "name": "CONNECTION", "state": "Ok", "items": [  { "name": "CONNECTED", "value": true }, { "name": "DISCONNECTED", "value": false } ] } }
 ```
+XML message
 ```
 ← <setBLOBVector device='' name='' state=''>
 	  <oneBLOB name='IMAGE'>/blob/0x10381d798.fits</oneSwitch>
   </setBLOBVector>
 ```
-is mapped to
+is mapped to JSON message
 ```
 ← { "setBLOBVector": { "device": "CCD Imager Simulator", "name": "CCD_IMAGE", "state": "Ok", "items": [  { "name": "IMAGE", "value": "/blob/0x10381d798.fits" } ] } }
 ```
+XML message
 ```
 → <newNumberVector device='' name=''>
   	<oneNumber name='EXPOSURE'>1</defNumber>
   </newNumberVector>
 ```
-is mapped to
+is mapped to JSON message
 ```
 → {"newNumberVector":{"device":"CCD Imager Simulator","name":"CCD_EXPOSURE","items":[{"name":"EXPOSURE","value":1}]}}
 ```
+XML message
 ```
 ← <deleteProperty device='Mount IEQ (guider)'/>
 ```
-is mapped to
+is mapped to JSON message
 ```
 ← { "deleteProperty": { "device": "Mount IEQ (guider)" } }
 ```
 ## References
 
-XML parser is implemented in [indigo_libs/indigo_xml.c] (https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_xml.c).
+XML parser is implemented in [indigo_xml.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_xml.c).
 
-Driver side protocol adapter is implemented in [indigo_libs/indigo_driver_xml.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver_xml.c).
+Driver side protocol adapter is implemented in [indigo_driver_xml.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver_xml.c).
 
-Client side protocol adapter is implemented in [indigo_libs/indigo_client_xml.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_client_xml.c).
+Client side protocol adapter is implemented in [indigo_client_xml.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_client_xml.c).
 
-BASE64 encoding/decoding is implemented in [indigo_libs/indigo_base64.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_base64.c).
+BASE64 encoding/decoding is implemented in [indigo_base64.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_base64.c).
 
-JSON parser is implemented in [indigo_libs/indigo_json.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_json.c).
+JSON parser is implemented in [indigo_json.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_json.c).
 
-Driver side protocol adapter is implemented in [indigo_libs/indigo_driver_json.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver_json.c).
+Driver side protocol adapter is implemented in [indigo_driver_json.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver_json.c).
 
-Client side protocol adapter is implemented in [indigo_libs/indigo_client_json.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_client_json.c).
+Client side protocol adapter is implemented in [indigo_client_json.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_client_json.c).
