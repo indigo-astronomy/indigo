@@ -7,6 +7,7 @@ properties are first of all defined memory structures wich are, if needed, mappe
 
 ## Common properties
 
+
 | Property |  |  |  | Items |  | Comments |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | Name | Type | RO | Required | Name | Required |  |
@@ -35,7 +36,7 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 ## CCD specific properties
 
 | Property |  |  |  | Items |  | Comments |
-| ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | Name | Type | RO | Required | Name | Required |  |
 | CCD_INFO | number | yes | yes | WIDTH | yes |  |
 |  |  |  |  | HEIGHT | yes |  |
@@ -86,7 +87,7 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 ## Wheel specific properties
 
 | Property |  |  |  | Items |  | Comments |
-| ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | Name | Type | RO | Required | Name | Required |  |
 | WHEEL_SLOT | number | no | yes | SLOT | yes |  |
 | WHEEL_SLOT_NAME | switch | no | yes | SLOT_NAME_1, ... | yes |  |
@@ -96,7 +97,7 @@ Properties are implemented by wheel driver base class in [indigo_wheel_driver.c]
 ## Focuser specific properties
 
 | Property |  |  |  | Items |  | Comments |
-| ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | Name | Type | RO | Required | Name | Required |  |
 | FOCUSER_SPEED | number | no | no | SPEED | yes |  |
 | FOCUSER_DIRECTION | switch | no | yes | MOVE_INWARD | yes |  |
@@ -112,7 +113,7 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 ## Mount specific properties
 
 | Property |  |  |  | Items |  | Comments |
-| ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | Name | Type | RO | Required | Name | Required |  |
 | MOUNT_INFO | text | no | no | MODEL | yes |  |
 |  |  |  |  | VENDOR | yes |  |
@@ -166,7 +167,7 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 ## Guider specific properties
 
 | Property |  |  |  | Items |  | Comments |
-| ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | Name | Type | RO | Required | Name | Required |  |
 | GUIDER_GUIDE_DEC | number | no | yes | NORTH | yes |  |
 |  |  |  |  | SOUTH | yes |  |
