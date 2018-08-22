@@ -8,6 +8,7 @@ properties are first of all defined memory structures wich are, if needed, mappe
 ## Common properties
 
 | Property |  |  |  |  | Items |  |  | Comments |
+| --- | --- | --- | --- | --- |  ---  | --- |  ---  |  ---  |
 | Name | Legacy mapping | Type | RO | Required | Name | Legacy mapping | Required |  |
 | --- | --- | --- | --- | --- |  ---  | --- |  ---  |  ---  |
 | CONNECTION | CONNECTION | switch | no | yes | CONNECTED | CONNECT | yes | Item values are undefined if state is not Idle or Ok. |
@@ -36,7 +37,10 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 
 ## CCD specific properties
 
-| CCD specific properties |  |  |  |  |  |  |  |  |
+| Property |  |  |  |  | Items |  |  | Comments |
+| --- | --- | --- | --- | --- |  ---  | --- |  ---  |  ---  |
+| Name | Legacy mapping | Type | RO | Required | Name | Legacy mapping | Required |  |
+| --- | --- | --- | --- | --- |  ---  | --- |  ---  |  ---  |
 | CCD_INFO | CCD_INFO | number | yes | yes | WIDTH | CCD_MAX_X | yes |  |
 |  |  |  |  |  | HEIGHT | CCD_MAX_Y | yes |  |
 |  |  |  |  |  | MAX_HORIZONTAL_BIN | CCD_MAX_BIN_X | yes |  |
