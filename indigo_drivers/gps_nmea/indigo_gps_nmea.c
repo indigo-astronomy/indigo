@@ -56,11 +56,11 @@ typedef struct {
 } nmea_private_data;
 
 void nmea_trace_callback(const char *str, int str_size) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", str);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%.*s", str_size - 5, str);
 }
 
 void nmea_error_callback(const char *str, int str_size) {
-    INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", str);
+    INDIGO_DRIVER_ERROR(DRIVER_NAME, "%.*s", str_size - 5, str);
 }
 
 
@@ -115,7 +115,7 @@ static void gps_close(indigo_device *device) {
 
 static void gps_refresh_callback(indigo_device *device) {
 	int prev_sec = -1, prev_fix = 0, size;
-	char buff[100];
+	char buff[256];
 	nmeaPOS dpos;
 
 	nmea_property()->trace_func = &nmea_trace_callback;
@@ -125,8 +125,9 @@ static void gps_refresh_callback(indigo_device *device) {
 
 	while (device->is_connected) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		size = indigo_read(PRIVATE_DATA->handle, &buff[0], 100);
-		nmea_parse(&PRIVATE_DATA->parser, &buff[0], size, &PRIVATE_DATA->info);
+		size = indigo_read(PRIVATE_DATA->handle, buff, sizeof(buff));
+		buff[size] = 0;
+		nmea_parse(&PRIVATE_DATA->parser, buff, size, &PRIVATE_DATA->info);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		nmea_info2pos(&PRIVATE_DATA->info, &dpos);
 
