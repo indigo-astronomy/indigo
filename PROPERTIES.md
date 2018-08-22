@@ -7,16 +7,9 @@ properties are first of all defined memory structures which are, if needed, mapp
 
 ## Common properties
 
-<style type="text/css">
-table { width: 100%; font-size: 0.7em; }
-td { padding: 3px; border: solid 1px rgb(230,230,230); }
-.hdr1 { font-weight: bold; background-color: rgb(200,200,200); }
-.hdr2 { font-weight: bold; background-color: rgb(230,230,230); }
-</style>
-
-<table>
-<tr class='hdr1'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr class='hdr2'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
+<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
+<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
 <tr><td>CONNECTION</td><td>switch</td><td>no</td><td>yes</td><td>CONNECTED</td><td>yes</td><td>Item values are undefined if state is not Idle or Ok.</td></tr>
 <tr><td></td><td></td><td></td><td></td><td>DISCONNECTED</td><td>yes</td><td></td></tr>
 <tr><td>INFO</td><td>text</td><td>yes</td><td>yes</td><td>DEVICE_NAME</td><td>yes</td><td>"Device in INDIGO strictly represents device itself and not device driver. Valid DEVICE_INTERFACE values are defined in indigo_driver.h as indigo_device_interface enumeration."</td></tr>
@@ -43,9 +36,9 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 
 ## CCD specific properties
 
-<table>
-<tr class='hdr1'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr class='hdr2'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
+<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
+<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
 <tr><td>CCD_INFO</td><td>number</td><td>yes</td><td>yes</td><td>WIDTH</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>HEIGHT</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>MAX_HORIZONTAL_BIN</td><td>yes</td><td></td></tr>
@@ -96,9 +89,9 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 
 ## Wheel specific properties
 
-<table>
-<tr class='hdr1'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr class='hdr2'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
+<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
+<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
 <tr><td>WHEEL_SLOT</td><td>number</td><td>no</td><td>yes</td><td>SLOT</td><td>yes</td><td></td></tr>
 <tr><td>WHEEL_SLOT_NAME</td><td>switch</td><td>no</td><td>yes</td><td>SLOT_NAME_1, ...</td><td>yes</td><td></td></tr>
 </table>
@@ -108,9 +101,9 @@ Properties are implemented by wheel driver base class in [indigo_wheel_driver.c]
 
 ## Focuser specific properties
 
-<table>
-<tr class='hdr1'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr class='hdr2'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
+<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
+<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
 <tr><td>FOCUSER_SPEED</td><td>number</td><td>no</td><td>no</td><td>SPEED</td><td>yes</td><td></td></tr>
 <tr><td>FOCUSER_DIRECTION</td><td>switch</td><td>no</td><td>yes</td><td>MOVE_INWARD</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>MOVE_OUTWARD</td><td>yes</td><td></td></tr>
@@ -126,9 +119,9 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 
 ## Mount specific properties
 
-<table>
-<tr class='hdr1'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr class='hdr2'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
+<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
+<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
 <tr><td>MOUNT_INFO</td><td>text</td><td>no</td><td>no</td><td>MODEL</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>VENDOR</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>FIRMWARE_VERSION</td><td>yes</td><td></td></tr>
@@ -143,7 +136,7 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 <tr><td></td><td></td><td></td><td></td><td>UNPARKED</td><td>yes</td><td></td></tr>
 <tr><td>MOUT_PARK_SET</td><td>switch</td><td>no</td><td>no</td><td>DEFAULT</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>CURRENT</td><td>yes</td><td></td></tr>
-<tr><td>MOUNT_PARK_POSITION</td><td>nuber</td><td>no</td><td>no</td><td>RA</td><td>yes</td><td></td></tr>
+<tr><td>MOUNT_PARK_POSITION</td><td>number</td><td>no</td><td>no</td><td>RA</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>DEC</td><td>yes</td><td></td></tr>
 <tr><td>MOUNT_ON_COORDINATES_SET</td><td>switch</td><td>no</td><td>yes</td><td>TRACK</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>SYNC</td><td>yes</td><td></td></tr>
@@ -182,9 +175,9 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 
 ## Guider specific properties
 
-<table>
-<tr class='hdr1'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr class='hdr2'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
+<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
+<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
 <tr><td>GUIDER_GUIDE_DEC</td><td>number</td><td>no</td><td>yes</td><td>NORTH</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>SOUTH</td><td>yes</td><td></td></tr>
 <tr><td>GUIDER_GUIDE_RA</td><td>number</td><td>no</td><td>yes</td><td>EAST</td><td>yes</td><td></td></tr>
