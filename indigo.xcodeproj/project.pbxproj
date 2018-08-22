@@ -1498,6 +1498,8 @@
 		9D59D5E120D3F829009EA8FF /* indigo_ccd_apogee.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_apogee.h; sourceTree = "<group>"; };
 		9D59D5E220D3F829009EA8FF /* indigo_ccd_apogee_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_apogee_main.cpp; sourceTree = "<group>"; };
 		9D59D67220D3FA67009EA8FF /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9D5D16CF212D5917001A849C /* PROTOCOLS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROTOCOLS.md; sourceTree = "<group>"; };
+		9D5D16D0212D93C9001A849C /* PROPERTIES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROPERTIES.md; sourceTree = "<group>"; };
 		9D658B941DE4A8BC006C9CC5 /* indigo_names.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_names.h; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
@@ -2223,6 +2225,8 @@
 				59D381C81D96A39400E87393 /* LICENSE.md */,
 				59D381C71D96A33D00E87393 /* README.md */,
 				5981C8E21DC2A2D300C7705F /* TODO.md */,
+				9D5D16CF212D5917001A849C /* PROTOCOLS.md */,
+				9D5D16D0212D93C9001A849C /* PROPERTIES.md */,
 				59D381AF1D95998300E87393 /* indigo_drivers */,
 				59C499DF1EFADF7600E750AA /* indigo_mac_drivers */,
 				9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */,
