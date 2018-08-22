@@ -69,7 +69,8 @@ is mapped to JSON message
 → { "getProperties": { "version": 512 } }
 ```
 XML message
-```← <defTextVector device='Server' name='LOAD' group='Main' label='Load driver' state='Idle' perm='rw'>
+```
+← <defTextVector device='Server' name='LOAD' group='Main' label='Load driver' state='Idle' perm='rw'>
     <defText name='DRIVER' label='Load driver'></defText>
   </defTextVector>
 ```
