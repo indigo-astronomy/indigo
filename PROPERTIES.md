@@ -7,9 +7,9 @@ properties are first of all defined memory structures which are, if needed, mapp
 
 ## Common properties
 
-<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
-<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table>
+<tr><th colspan='4'>Property</th><th colspan='2'>Items</th><th>Comments</th></tr>
+<tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
 <tr><td>CONNECTION</td><td>switch</td><td>no</td><td>yes</td><td>CONNECTED</td><td>yes</td><td>Item values are undefined if state is not Idle or Ok.</td></tr>
 <tr><td></td><td></td><td></td><td></td><td>DISCONNECTED</td><td>yes</td><td></td></tr>
 <tr><td>INFO</td><td>text</td><td>yes</td><td>yes</td><td>DEVICE_NAME</td><td>yes</td><td>"Device in INDIGO strictly represents device itself and not device driver. Valid DEVICE_INTERFACE values are defined in indigo_driver.h as indigo_device_interface enumeration."</td></tr>
@@ -36,9 +36,9 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 
 ## CCD specific properties
 
-<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
-<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table>
+<tr><th colspan='4'>Property</th><th colspan='2'>Items</th><th>Comments</th></tr>
+<tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
 <tr><td>CCD_INFO</td><td>number</td><td>yes</td><td>yes</td><td>WIDTH</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>HEIGHT</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>MAX_HORIZONTAL_BIN</td><td>yes</td><td></td></tr>
@@ -89,9 +89,9 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 
 ## Wheel specific properties
 
-<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
-<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table>
+<tr><th colspan='4'>Property</th><th colspan='2'>Items</th><th>Comments</th></tr>
+<tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
 <tr><td>WHEEL_SLOT</td><td>number</td><td>no</td><td>yes</td><td>SLOT</td><td>yes</td><td></td></tr>
 <tr><td>WHEEL_SLOT_NAME</td><td>switch</td><td>no</td><td>yes</td><td>SLOT_NAME_1, ...</td><td>yes</td><td></td></tr>
 </table>
@@ -101,9 +101,9 @@ Properties are implemented by wheel driver base class in [indigo_wheel_driver.c]
 
 ## Focuser specific properties
 
-<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
-<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table>
+<tr><th colspan='4'>Property</th><th colspan='2'>Items</th><th>Comments</th></tr>
+<tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
 <tr><td>FOCUSER_SPEED</td><td>number</td><td>no</td><td>no</td><td>SPEED</td><td>yes</td><td></td></tr>
 <tr><td>FOCUSER_DIRECTION</td><td>switch</td><td>no</td><td>yes</td><td>MOVE_INWARD</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>MOVE_OUTWARD</td><td>yes</td><td></td></tr>
@@ -119,9 +119,9 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 
 ## Mount specific properties
 
-<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
-<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table>
+<tr><th colspan='4'>Property</th><th colspan='2'>Items</th><th>Comments</th></tr>
+<tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
 <tr><td>MOUNT_INFO</td><td>text</td><td>no</td><td>no</td><td>MODEL</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>VENDOR</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>FIRMWARE_VERSION</td><td>yes</td><td></td></tr>
@@ -175,9 +175,9 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 
 ## Guider specific properties
 
-<table style='width: 100%; font-size: 0.7em; border: 1px solid rgb(230,230,230);'>
-<tr style='font-weight: bold; background-color: rgb(200,200,200);'><td colspan='4'>Property</td><td colspan='2'>Items</td><td>Comments</td></tr>
-<tr style='font-weight: bold; background-color: rgb(230,230,230);'><td>Name</td><td>Type</td><td>RO</td><td>Required</td><td>Name</td><td>Required</td><td></td></tr>
+<table>
+<tr><th colspan='4'>Property</th><th colspan='2'>Items</th><th>Comments</th></tr>
+<tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
 <tr><td>GUIDER_GUIDE_DEC</td><td>number</td><td>no</td><td>yes</td><td>NORTH</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>SOUTH</td><td>yes</td><td></td></tr>
 <tr><td>GUIDER_GUIDE_RA</td><td>number</td><td>no</td><td>yes</td><td>EAST</td><td>yes</td><td></td></tr>
