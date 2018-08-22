@@ -1,4 +1,4 @@
-# INDIGO protocols
+# INDIGO properties
 
 ## Introduction
 
