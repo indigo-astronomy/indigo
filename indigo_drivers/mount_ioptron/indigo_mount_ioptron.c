@@ -56,7 +56,7 @@ typedef struct {
 	double currentDec;
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
-	char lastSlewRate, lastTrackRate;
+	char lastSlewRate, lastTrackRate, lastMotionRA, lastMotionDec;
 	double lastRA, lastDec;
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
@@ -327,7 +327,13 @@ static void position_timer_callback(indigo_device *device) {
 					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 				} else {
-					indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
+					ieq_get_coords(device);
+					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
+					indigo_update_coordinates(device, NULL);
+					ieq_get_utc(device);
+					indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+					indigo_reschedule_timer(device, 1, &PRIVATE_DATA->position_timer);
 				}
 			} else if (PRIVATE_DATA->protocol == 0x0200) {
 				if (ieq_command(device, ":GAS#", response, sizeof(response)) && response[1] == '7') {
@@ -335,7 +341,13 @@ static void position_timer_callback(indigo_device *device) {
 					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 				} else {
-					indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
+					ieq_get_coords(device);
+					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
+					indigo_update_coordinates(device, NULL);
+					ieq_get_utc(device);
+					indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+					indigo_reschedule_timer(device, 1, &PRIVATE_DATA->position_timer);
 				}
 			}
 		} else {
@@ -408,9 +420,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = atol(response) / 60.0 / 60.0;
 				}
 				ieq_get_coords(device);
-				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 				ieq_get_utc(device);
 				if (!PRIVATE_DATA->parked)
 					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
@@ -481,6 +492,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '0') {
 					ieq_command(device, ":RT0#", response, 1);
@@ -554,11 +567,16 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				if (indigo_cancel_timer(device, &PRIVATE_DATA->position_timer)) {
 					PRIVATE_DATA->position_timer = NULL;
 					ieq_command(device, ":Q#", response, 1);
-					ieq_command(device, ":q#", NULL, 0);
+					if (PRIVATE_DATA->protocol == 0x0104)
+						ieq_command(device, ":q#", NULL, 0);
+					else if (PRIVATE_DATA->protocol == 0x0200)
+						ieq_command(device, ":q#", response, 1);
+					PRIVATE_DATA->lastMotionDec = 0;
 					MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 					MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 					MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+					PRIVATE_DATA->lastMotionRA = 0;
 					MOUNT_MOTION_WEST_ITEM->sw.value = false;
 					MOUNT_MOTION_EAST_ITEM->sw.value = false;
 					MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -575,7 +593,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
+		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
 		if (PRIVATE_DATA->parked) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mout is parked!");
@@ -594,21 +612,29 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				ieq_command(device, ":SR9#", response, 1);
 				PRIVATE_DATA->lastSlewRate = '9';
 			}
-			if (PRIVATE_DATA->protocol == 0x0104)
-				ieq_command(device, ":q#", NULL, 0);
-			else if (PRIVATE_DATA->protocol == 0x0200)
-				ieq_command(device, ":qD#", NULL, 0);
 			if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
-				ieq_command(device, ":mn#", NULL, 0);
+				if (PRIVATE_DATA->lastMotionDec != 'n') {
+					ieq_command(device, ":mn#", NULL, 0);
+					PRIVATE_DATA->lastMotionDec = 'n';
+				}
 			} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
-				ieq_command(device, ":ms#", NULL, 0);
+				if (PRIVATE_DATA->lastMotionDec != 's') {
+					ieq_command(device, ":ms#", NULL, 0);
+					PRIVATE_DATA->lastMotionDec = 's';
+				}
+			} else {
+				if (PRIVATE_DATA->protocol == 0x0104)
+					ieq_command(device, ":q#", NULL, 0);
+				else if (PRIVATE_DATA->protocol == 0x0200)
+					ieq_command(device, ":qD#", response, 1);
+				PRIVATE_DATA->lastMotionDec = 0;
 			}
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
+		// -------------------------------------------------------------------------------- MOUNT_MOTION_RA
 		if (PRIVATE_DATA->parked) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mout is parked!");
@@ -627,14 +653,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				ieq_command(device, ":SR9#", response, 1);
 				PRIVATE_DATA->lastSlewRate = '9';
 			}
-			if (PRIVATE_DATA->protocol == 0x0104)
-				ieq_command(device, ":q#", NULL, 0);
-			else if (PRIVATE_DATA->protocol == 0x0200)
-				ieq_command(device, ":qR#", NULL, 0);
 			if (MOUNT_MOTION_WEST_ITEM->sw.value) {
-				ieq_command(device, ":mn#", NULL, 0);
+				if (PRIVATE_DATA->lastMotionRA != 'w') {
+					ieq_command(device, ":mw#", NULL, 0);
+					PRIVATE_DATA->lastMotionRA = 'w';
+				}
 			} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
-				ieq_command(device, ":me#", NULL, 0);
+				if (PRIVATE_DATA->lastMotionRA != 'e') {
+					ieq_command(device, ":me#", NULL, 0);
+					PRIVATE_DATA->lastMotionRA = 'e';
+				}
+			} else {
+				if (PRIVATE_DATA->protocol == 0x0104)
+					ieq_command(device, ":q#", NULL, 0);
+				else if (PRIVATE_DATA->protocol == 0x0200)
+					ieq_command(device, ":qR#", response, 1);
+				PRIVATE_DATA->lastMotionRA = 0;
 			}
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
