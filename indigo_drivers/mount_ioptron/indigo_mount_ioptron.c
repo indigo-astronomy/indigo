@@ -131,9 +131,9 @@ static void ieq_get_coords(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (PRIVATE_DATA->protocol == 0x0200) {
 		long ra, dec;
-		if (ieq_command(device, ":GEC#", response, sizeof(response)) && sscanf(response, "%9ld%8ld", &ra, &dec) == 2) {
-			PRIVATE_DATA->currentRA = ra / 100.0 / 60.0 / 60.0;
+		if (ieq_command(device, ":GEC#", response, sizeof(response)) && sscanf(response, "%9ld%8ld", &dec, &ra) == 2) {
 			PRIVATE_DATA->currentDec = dec / 1000.0 / 60.0 / 60.0;
+			PRIVATE_DATA->currentRA = ra / 100.0 / 60.0 / 60.0;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
@@ -413,7 +413,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
 					if (ieq_command(device, ":Gg#", response, sizeof(response)))
 						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = indigo_stod(response);
-				} else {
+				} else if (PRIVATE_DATA->protocol == 0x0200) {
 					if (ieq_command(device, ":Gt#", response, sizeof(response)))
 						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = atol(response) / 60.0 / 60.0;
 					if (ieq_command(device, ":Gg#", response, sizeof(response)))
@@ -508,7 +508,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				if (PRIVATE_DATA->protocol == 0x0104)
 					sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				else if (PRIVATE_DATA->protocol == 0x0200)
-					sprintf(command, ":Sr%+08.0f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 60 * 60 * 1000);
+					sprintf(command, ":Sr%08.0f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 60 * 60 * 1000);
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -533,7 +533,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				if (PRIVATE_DATA->protocol == 0x0104)
 					sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 				else if (PRIVATE_DATA->protocol == 0x0200)
-					sprintf(command, ":Sr%+08.0f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 60 * 60 * 1000);
+					sprintf(command, ":Sr%08.0f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 60 * 60 * 1000);
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
