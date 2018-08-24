@@ -435,7 +435,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		if (PRIVATE_DATA->parked) {
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mout is parked!");
+			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked!");
 		} else {
 			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 			if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
@@ -484,7 +484,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
 		if (PRIVATE_DATA->parked) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mout is parked!");
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
 		} else {
 			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 			if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
@@ -518,7 +518,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
 		if (PRIVATE_DATA->parked) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mout is parked!");
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
 		} else {
 			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 			if (MOUNT_MOTION_WEST_ITEM->sw.value) {
