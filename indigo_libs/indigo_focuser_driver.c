@@ -75,7 +75,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 				return INDIGO_FAILED;
 			indigo_init_number_item(FOCUSER_POSITION_ITEM, FOCUSER_POSITION_ITEM_NAME, "Absolute position", -10000, 10000, 1, 0);
 			// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-			FOCUSER_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Abort motion", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			FOCUSER_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Abort motion", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (FOCUSER_ABORT_MOTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(FOCUSER_ABORT_MOTION_ITEM, FOCUSER_ABORT_MOTION_ITEM_NAME, "Abort motion", false);
