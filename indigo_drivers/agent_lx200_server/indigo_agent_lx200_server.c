@@ -23,7 +23,7 @@
  \file indigo_agent_lx200_server.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_agent_lx200_server"
 
 #include <stdio.h>
@@ -263,6 +263,8 @@ static void start_worker_thread(handler_data *data) {
 			} else if (strcmp(buffer_in, "Q") == 0) {
 				indigo_set_switch(MOUNT_ABORT_MOTION_PROPERTY, MOUNT_ABORT_MOTION_ITEM, true);
 				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_ABORT_MOTION_PROPERTY);
+			} else if (strncmp(buffer_in, "SC", 2) == 0) {
+				strcpy(buffer_out, "1Updating Planetary Data#                              #");
 			} else if (strncmp(buffer_in, "S", 1) == 0) {
 				strcpy(buffer_out, "1");
 			}
