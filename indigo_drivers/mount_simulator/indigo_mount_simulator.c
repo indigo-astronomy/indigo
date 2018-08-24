@@ -24,7 +24,7 @@
  \file indigo_mount_simulator.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_mount_simulator"
 
 #include <stdlib.h>
@@ -204,11 +204,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked");
 		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->move_timer);
 			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-			PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
+			if (PRIVATE_DATA->move_timer == NULL)
+				PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
@@ -217,11 +217,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked");
 		} else {
-			indigo_cancel_timer(device, &PRIVATE_DATA->move_timer);
 			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-			PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
+			if (PRIVATE_DATA->move_timer == NULL)
+				PRIVATE_DATA->move_timer = indigo_set_timer(device, 0, move_timer_callback);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
