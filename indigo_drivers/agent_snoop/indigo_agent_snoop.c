@@ -84,10 +84,23 @@ static indigo_result forward_property(indigo_device *device, indigo_client *clie
 	assert(r->source_property != NULL);
 	assert(r->target_device != NULL);
 	assert(r->target_property != NULL);
-	int size = sizeof(indigo_property) + r->source_property->count * sizeof(indigo_item);
+	indigo_property *source_property = r->source_property;
+	indigo_property *target_property = r->target_property;
+	if (source_property->rule == INDIGO_AT_MOST_ONE_RULE && target_property->rule == INDIGO_ONE_OF_MANY_RULE) {
+		bool any_set = false;
+		for (int i = 0; i < source_property->count; i++) {
+			if (source_property->items[i].sw.value) {
+				any_set = true;
+				break;
+			}
+		}
+		if (!any_set)
+			return INDIGO_OK;
+	}
+	int size = sizeof(indigo_property) + source_property->count * sizeof(indigo_item);
 	indigo_property *property = malloc(size);
 	assert(property != NULL);
-	memcpy(property, r->source_property, size);
+	memcpy(property, source_property, size);
 	strncpy(property->device, r->target_device_name, INDIGO_NAME_SIZE);
 	strncpy(property->name, r->target_property_name, INDIGO_NAME_SIZE);
 	indigo_trace_property("Property set by rule", property, false, true);

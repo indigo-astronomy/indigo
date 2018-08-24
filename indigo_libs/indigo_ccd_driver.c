@@ -128,7 +128,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
 			CCD_STREAMING_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Abort exposure", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (CCD_ABORT_EXPOSURE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(CCD_ABORT_EXPOSURE_ITEM, CCD_ABORT_EXPOSURE_ITEM_NAME, "Abort exposure", false);
