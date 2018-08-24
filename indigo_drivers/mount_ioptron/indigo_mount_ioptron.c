@@ -131,7 +131,7 @@ static void ieq_get_coords(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (PRIVATE_DATA->protocol == 0x0200) {
 		long ra, dec;
-		if (ieq_command(device, ":GEC#", response, sizeof(response)) && sscanf(response, "%8ld%8ld", &ra, &dec) == 2) {
+		if (ieq_command(device, ":GEC#", response, sizeof(response)) && sscanf(response, "%9ld%8ld", &ra, &dec) == 2) {
 			PRIVATE_DATA->currentRA = ra / 100.0 / 60.0 / 60.0;
 			PRIVATE_DATA->currentDec = dec / 1000.0 / 60.0 / 60.0;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -516,7 +516,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					if (PRIVATE_DATA->protocol == 0x0104)
 						sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
 					else if (PRIVATE_DATA->protocol == 0x0200)
-						sprintf(command, ":Sd%+08.0f#", MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target * 60 * 60 * 100);
+						sprintf(command, ":Sd%+09.0f#", MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target * 60 * 60 * 100);
 					if (!ieq_command(device, command, response, 1) || *response != '1') {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
