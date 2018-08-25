@@ -707,20 +707,21 @@ static void *poll(indigo_device *device) {
 		memset(PRIVATE_DATA->last_axis_value, 0, axis_count * sizeof(int));
 		fcntl(PRIVATE_DATA->fd, F_SETFL, O_NONBLOCK);
 		while (PRIVATE_DATA->fd) {
-			read(PRIVATE_DATA->fd, &js, sizeof(struct js_event));
-			switch (js.type) {
-				case JS_EVENT_AXIS:
-					if (PRIVATE_DATA->last_axis_value[js.number] != js.value) {
-						event_axis(device, js.number, 2 * js.value);
-						PRIVATE_DATA->last_axis_value[js.number] = js.value;
-					}
-					break;
-				case JS_EVENT_BUTTON:
-					if (PRIVATE_DATA->last_button_state[js.number] != js.value) {
-						event_button(device, js.number, js.value);
-						PRIVATE_DATA->last_button_state[js.number] = js.value;
-					}
-					break;
+			while (read(PRIVATE_DATA->fd, &js, sizeof(struct js_event)) != -1) {
+				switch (js.type & ~JS_EVENT_INIT) {
+					case JS_EVENT_AXIS:
+						if (PRIVATE_DATA->last_axis_value[js.number] != js.value) {
+							event_axis(device, js.number, 2 * js.value);
+							PRIVATE_DATA->last_axis_value[js.number] = js.value;
+						}
+						break;
+					case JS_EVENT_BUTTON:
+						if (PRIVATE_DATA->last_button_state[js.number] != js.value) {
+							event_button(device, js.number, js.value);
+							PRIVATE_DATA->last_button_state[js.number] = js.value;
+						}
+						break;
+				}
 			}
 			usleep(100000);
 		}
