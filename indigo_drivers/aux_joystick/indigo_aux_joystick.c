@@ -23,7 +23,7 @@
  \file indigo_aux_joystick.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_joystick"
 
 #include <stdlib.h>
@@ -167,7 +167,7 @@ static indigo_result aux_attach(indigo_device *device) {
 			char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE];
 			sprintf(name, JOYSTICK_AXIS_ITEM_NAME, i + 1);
 			sprintf(label, "Axis %d", i + 1);
-			indigo_init_number_item(JOYSTICK_AXES_PROPERTY->items + i, name, label, LDBL_MIN, LDBL_MAX, 0, 0);
+			indigo_init_number_item(JOYSTICK_AXES_PROPERTY->items + i, name, label, -65536, 65536, 0, 0);
 		}
 		// -------------------------------------------------------------------------------- JOYSTICK_MAPPING
 		JOYSTICK_MAPPING_PROPERTY = indigo_init_number_property(NULL, device->name, JOYSTICK_MAPPING_PROPERTY_NAME, JOYSTICK_CONFIG_GROUP, "Buttons and axes mapping", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 11);
