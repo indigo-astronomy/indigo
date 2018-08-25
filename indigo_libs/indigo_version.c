@@ -55,7 +55,6 @@ static struct property_mapping legacy[] = {
 	{	"CONFIG_PROCESS", CONFIG_PROPERTY_NAME, {
 			{ "CONFIG_LOAD", CONFIG_LOAD_ITEM_NAME },
 			{ "CONFIG_SAVE", CONFIG_SAVE_ITEM_NAME },
-			{ "CONFIG_DEFAULT", CONFIG_DEFAULT_ITEM_NAME },
 			NULL
 		}
 	},
