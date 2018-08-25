@@ -165,45 +165,36 @@ static int mount_slew_rate(indigo_device* device) {
 }
 
 static void mount_handle_slew_rate(indigo_device *device) {
-	int slewRate = mount_slew_rate(device);
 	MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, "slew speed = %d", slewRate);
+	indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
 }
 
 static void mount_handle_motion_dec(indigo_device *device) {
-	char message[INDIGO_VALUE_SIZE];
 	double axisRate = decRates[mount_slew_rate(device)] * SIDEREAL_RATE;
 	if(MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		synscan_slew_axis_at_rate(device, kAxisDEC, -axisRate);
-		strncpy(message,"Moving North...",sizeof(message));
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
 		synscan_slew_axis_at_rate(device, kAxisDEC, axisRate);
-		strncpy(message,"Moving South...",sizeof(message));
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		synscan_stop_and_resume_tracking_for_axis(device, kAxisDEC);
-		strncpy(message,"Stopped moving.",sizeof(message));
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, message);
+	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 }
 
 static void mount_handle_motion_ra(indigo_device *device) {
-	char message[INDIGO_VALUE_SIZE];
 	double axisRate = raRates[mount_slew_rate(device)] * SIDEREAL_RATE;
 	if (MOUNT_MOTION_WEST_ITEM->sw.value) {
 		synscan_slew_axis_at_rate(device, kAxisRA, axisRate);
-		strncpy(message,"Moving West...",sizeof(message));
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
 		synscan_slew_axis_at_rate(device, kAxisRA, -axisRate);
-		strncpy(message,"Moving East...",sizeof(message));
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 	}
 	else {
 		synscan_stop_and_resume_tracking_for_axis(device, kAxisRA);
-		strncpy(message,"Stopped moving.",sizeof(message));
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
