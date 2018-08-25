@@ -94,7 +94,8 @@ static bool ieq_command(indigo_device *device, char *command, char *response, in
 		int index = 0;
 		int remains = max;
 		while (remains > 0) {
-			tv.tv_usec = 500000;
+			tv.tv_usec = 0;
+			tv.tv_sec = 1;
 			fd_set readout;
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
@@ -132,8 +133,8 @@ static void ieq_get_coords(indigo_device *device) {
 	} else if (PRIVATE_DATA->protocol == 0x0200) {
 		long ra, dec;
 		if (ieq_command(device, ":GEC#", response, sizeof(response)) && sscanf(response, "%9ld%8ld", &dec, &ra) == 2) {
-			PRIVATE_DATA->currentDec = dec / 1000.0 / 60.0 / 60.0;
-			PRIVATE_DATA->currentRA = ra / 100.0 / 60.0 / 60.0;
+			PRIVATE_DATA->currentDec = dec / 100.0 / 60.0 / 60.0;
+			PRIVATE_DATA->currentRA = ra / 1000.0 / 60.0 / 60.0;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
@@ -166,7 +167,7 @@ static void ieq_get_utc(indigo_device *device) {
 			tm.tm_isdst = -1;
 			time_t secs = mktime(&tm);
 			indigo_timetoiso(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-			sprintf(MOUNT_UTC_OFFEST_ITEM->text.value, "%d", tz);
+			sprintf(MOUNT_UTC_OFFEST_ITEM->text.value, "%d", tz / 60);
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
@@ -411,13 +412,21 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				if (PRIVATE_DATA->protocol == 0x0104) {
 					if (ieq_command(device, ":Gt#", response, sizeof(response)))
 						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (ieq_command(device, ":Gg#", response, sizeof(response)))
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = indigo_stod(response);
+					if (ieq_command(device, ":Gg#", response, sizeof(response))) {
+						double  longitude = indigo_stod(response);
+						if (longitude < 0)
+							longitude += 360;
+						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+					}
 				} else if (PRIVATE_DATA->protocol == 0x0200) {
 					if (ieq_command(device, ":Gt#", response, sizeof(response)))
 						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = atol(response) / 60.0 / 60.0;
-					if (ieq_command(device, ":Gg#", response, sizeof(response)))
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = atol(response) / 60.0 / 60.0;
+					if (ieq_command(device, ":Gg#", response, sizeof(response))) {
+						double longitude = atol(response) / 60.0 / 60.0;
+						if (longitude < 0)
+							longitude += 360;
+						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+					}
 				}
 				ieq_get_coords(device);
 				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
@@ -470,11 +479,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			double longitude = 360-MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-			if (longitude > 360)
+			double longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+			if (longitude > 180)
 				longitude -= 360;
 			if (PRIVATE_DATA->protocol == 0x0104)
-				sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%0d*%02d:%02.0f"));
+				sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02.0f"));
 			else if (PRIVATE_DATA->protocol == 0x0200)
 				sprintf(command, ":Sg%+07.0f#", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * 60 * 60);
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
@@ -694,10 +703,18 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_timetoiso(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+					if (PRIVATE_DATA->protocol == 0x0104)
+						sprintf(command, ":SG%+03ld:00#", tm.tm_gmtoff / 60 / 60);
+					else if (PRIVATE_DATA->protocol == 0x0200)
+						sprintf(command, ":SG%+04ld#", tm.tm_gmtoff / 60);
+					if (!ieq_command(device, command, response, 1) || *response != '1') {
+						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
+						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_timetoiso(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+						indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+					}
 				}
 			}
 		}
@@ -895,6 +912,7 @@ indigo_result indigo_mount_ioptron(indigo_driver_action action, indigo_driver_in
 
 	SET_DRIVER_INFO(info, "iOptron Mount", __FUNCTION__, DRIVER_VERSION, last_action);
 
+	
 	if (action == last_action)
 		return INDIGO_OK;
 

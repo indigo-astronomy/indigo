@@ -338,8 +338,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 					if (meade_command(device, ":Gt#", response, sizeof(response), 0))
 						MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = indigo_stod(response);
-					if (meade_command(device, ":Gg#", response, sizeof(response), 0))
-						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = indigo_stod(response);
+					if (meade_command(device, ":Gg#", response, sizeof(response), 0)) {
+						double longitude = indigo_stod(response);
+						if (longitude < 0)
+							longitude += 360;
+						MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+					}
 					meade_get_coords(device);
 					meade_get_utc(device);
 				}
@@ -388,10 +392,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			double longitude = 360-MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-			if (longitude > 360)
+			double longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+			if (longitude > 180)
 				longitude -= 360;
-			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%0d*%02d"));
+			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+03d*%02d"));
 			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
