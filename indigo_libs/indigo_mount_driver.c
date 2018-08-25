@@ -408,7 +408,6 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_save_property(device, NULL, MOUNT_GUIDE_RATE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_ALIGNMENT_MODE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_PARK_POSITION_PROPERTY);
-			indigo_save_property(device, NULL, MOUNT_SNOOP_DEVICES_PROPERTY);
 			int handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".alignment");
 			if (handle > 0) {
 				int count = MOUNT_CONTEXT->alignment_point_count;
