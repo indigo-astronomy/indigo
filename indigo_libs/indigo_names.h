@@ -91,7 +91,7 @@
 
 /** CONFIG.DEFAULT property item name.
  */
-#define CONFIG_DEFAULT_ITEM_NAME							"DEFAULT"
+#define CONFIG_REMOVE_ITEM_NAME							"REMOVE"
 
 //----------------------------------------------------------------------
 /** PROFILE property name.

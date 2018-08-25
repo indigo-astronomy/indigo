@@ -38,8 +38,8 @@
 #include "indigo_names.h"
 #include "indigo_io.h"
 
-#define MAX_DEVICES 32
-#define MAX_CLIENTS 8
+#define MAX_DEVICES 256
+#define MAX_CLIENTS 256
 #define MAX_BLOBS	32
 
 #define BUFFER_SIZE	1024
