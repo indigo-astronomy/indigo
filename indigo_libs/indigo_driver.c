@@ -409,6 +409,7 @@ int indigo_open_config_file(char *device_name, int profile, int mode, const char
 		int handle = open(path, mode, 0644);
 		if (handle < 0)
 			INDIGO_DEBUG(indigo_debug("Can't %s %s (%s)", mode == O_RDONLY ? "open" : "create", path, strerror(errno)));
+		return handle;
 	} else {
 		INDIGO_DEBUG(indigo_debug("Can't create %s (%s)", path, strerror(errno)));
 	}
