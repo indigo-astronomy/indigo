@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -245,7 +245,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_ITEM->number.target < PRIVATE_DATA->device_context->min_exposure)
 			CCD_EXPOSURE_ITEM->number.target = PRIVATE_DATA->device_context->min_exposure;
-		if (CCD_EXPOSURE_ITEM->number.target <= 1) {
+		if (CCD_EXPOSURE_ITEM->number.target < 1) {
 			PRIVATE_DATA->can_check_temperature = false;
 			PRIVATE_DATA->exposure_timer = indigo_set_timer(device, 0, short_exposure_timer_callback);
 		} else {
