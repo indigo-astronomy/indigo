@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -161,7 +161,7 @@ static void ieq_get_utc(indigo_device *device) {
 		}
 	} else if (PRIVATE_DATA->protocol == 0x0200) {
 		int tz;
-		if (ieq_command(device, ":GLT#", response, sizeof(response)) && sscanf(response, "%4d%2d%2d%2d%2d%2d%2d", &tz, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 7) {
+		if (ieq_command(device, ":GLT#", response, sizeof(response)) && sscanf(response, "%4d%1d%2d%2d%2d%2d%2d%2d", &tz, &tm.tm_isdst, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 8) {
 			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 			tm.tm_mon -= 1;
 			tm.tm_isdst = -1;
@@ -485,7 +485,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (PRIVATE_DATA->protocol == 0x0104)
 				sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02.0f"));
 			else if (PRIVATE_DATA->protocol == 0x0200)
-				sprintf(command, ":Sg%+07.0f#", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * 60 * 60);
+				sprintf(command, ":Sg%+07.0f#", MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value * 60 * 60);
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
