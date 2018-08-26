@@ -53,6 +53,10 @@
 #include <float.h>
 #include <errno.h>
 #include <linux/joystick.h>
+
+#define MAX_BUTTONS	64
+#define MAX_AXES		16
+
 #endif
 
 #include "indigo_driver_xml.h"
@@ -131,8 +135,8 @@ typedef struct {
 #ifdef INDIGO_LINUX
 	int fd;
 	pthread_t thread;
-	bool *last_button_state;
-	int *last_axis_value;
+	bool last_button_state[MAX_BUTTONS];
+	int last_axis_value[MAX_AXES];
 #endif
 } joystick_private_data;
 
@@ -701,22 +705,18 @@ static void *poll(indigo_device *device) {
 		struct js_event js;
 		ioctl(joy_fd, JSIOCGAXES, &axis_count);
 		ioctl(joy_fd, JSIOCGBUTTONS, &button_count);
-		PRIVATE_DATA->last_button_state = malloc(button_count * sizeof(bool));
-		memset(PRIVATE_DATA->last_button_state, 0, button_count * sizeof(bool));
-		PRIVATE_DATA->last_axis_value = malloc(axis_count * sizeof(int));
-		memset(PRIVATE_DATA->last_axis_value, 0, axis_count * sizeof(int));
 		fcntl(PRIVATE_DATA->fd, F_SETFL, O_NONBLOCK);
 		while (PRIVATE_DATA->fd) {
 			while (read(PRIVATE_DATA->fd, &js, sizeof(struct js_event)) != -1) {
 				switch (js.type & ~JS_EVENT_INIT) {
 					case JS_EVENT_AXIS:
-						if (PRIVATE_DATA->last_axis_value[js.number] != js.value) {
+						if (js.number < MAX_AXES && PRIVATE_DATA->last_axis_value[js.number] != js.value) {
 							event_axis(device, js.number, 2 * js.value);
 							PRIVATE_DATA->last_axis_value[js.number] = js.value;
 						}
 						break;
 					case JS_EVENT_BUTTON:
-						if (PRIVATE_DATA->last_button_state[js.number] != js.value) {
+						if (js.number < MAX_BUTTONS && PRIVATE_DATA->last_button_state[js.number] != js.value) {
 							event_button(device, js.number, js.value);
 							PRIVATE_DATA->last_button_state[js.number] = js.value;
 						}
@@ -725,8 +725,6 @@ static void *poll(indigo_device *device) {
 			}
 			usleep(100000);
 		}
-		free(PRIVATE_DATA->last_button_state);
-		free(PRIVATE_DATA->last_axis_value);
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Joystick #%ld poll thread finished", PRIVATE_DATA->index);
 }
@@ -742,14 +740,15 @@ static void rescan() {
 	for (int i = 0; i < MAX_DEVICES; i++)
 		found[i] = false;
 	while ((dir = readdir(dev_input)) != NULL) {
-		int index;
+		int index = 0;
 		if (sscanf(dir->d_name, "js%d", &index) == 1) {
 			found[index] = true;
 			if (devices[index])
 				continue;
 			int joy_fd, axis_count=0, button_count=0;
-			char name[80];
-			sprintf(name, "/dev/input/%s", dir->d_name);
+			char name[512];
+			memset(name, 0, sizeof(name));
+			snprintf(name, sizeof(name), "/dev/input/%s", dir->d_name);
 			if ((joy_fd = open(name, O_RDONLY)) == -1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't access %s (%s)", name, strerror(errno));
 				return;
