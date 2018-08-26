@@ -485,7 +485,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (PRIVATE_DATA->protocol == 0x0104)
 				sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02.0f"));
 			else if (PRIVATE_DATA->protocol == 0x0200)
-				sprintf(command, ":Sg%+07.0f#", MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value * 60 * 60);
+				sprintf(command, ":Sg%+07.0f#", longitude * 60 * 60);
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
