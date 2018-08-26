@@ -264,7 +264,7 @@ static void start_worker_thread(handler_data *data) {
 				indigo_set_switch(MOUNT_ABORT_MOTION_PROPERTY, MOUNT_ABORT_MOTION_ITEM, true);
 				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_ABORT_MOTION_PROPERTY);
 			} else if (strncmp(buffer_in, "SC", 2) == 0) {
-				strcpy(buffer_out, "1Updating Planetary Data#                              #");
+				strcpy(buffer_out, "1Updating        planetary data. #                              #");
 			} else if (strncmp(buffer_in, "S", 1) == 0) {
 				strcpy(buffer_out, "1");
 			}
