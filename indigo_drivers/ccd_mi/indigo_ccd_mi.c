@@ -200,7 +200,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				while (int_value <= CCD_BIN_HORIZONTAL_ITEM->number.max && int_value <= CCD_BIN_VERTICAL_ITEM->number.max) {
 					char name[32], description[32];
 					sprintf(name, "BIN_%dx%d", int_value, int_value);
-					sprintf(description, "RAW 16 %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / int_value, (int)CCD_INFO_WIDTH_ITEM->number.value / int_value);
+					sprintf(description, "RAW 16 %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / int_value, (int)CCD_INFO_HEIGHT_ITEM->number.value / int_value);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, description, int_value == 1);
 					CCD_MODE_PROPERTY->count++;
 					int_value *= 2;
