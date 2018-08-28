@@ -334,6 +334,7 @@
 		9DE2A1241DC3A325008E8375 /* indigo_server in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D97F8171D9A8A1900582EAF /* indigo_server */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9DF7E64F1F6AA17900156652 /* indigo_ccd_qsi_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */; };
 		9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */; };
+		9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1598,6 +1599,11 @@
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
 		9DF7E6521F6AA3FE00156652 /* QSI Linux API Reference Manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = "QSI Linux API Reference Manual.pdf"; path = "doc/QSI Linux API Reference Manual.pdf"; sourceTree = "<group>"; };
+		9DFE1864213586AB00149BDE /* indigo_focuser_dmfc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dmfc.h; sourceTree = "<group>"; };
+		9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dmfc.c; sourceTree = "<group>"; };
+		9DFE1866213586AB00149BDE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DFE1868213586AB00149BDE /* indigo_focuser_dmfc_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dmfc_main.c; sourceTree = "<group>"; };
+		9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "DMFC-Serial-Command-Table.pdf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2732,6 +2738,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9DFE1863213586AB00149BDE /* focuser_dmfc */,
 				590DD8752127590600F2B978 /* wheel_optec */,
 				9DAD52512126FFC1002FCC79 /* wheel_xagyl */,
 				9DAD52492126E88B002FCC79 /* wheel_trutek */,
@@ -3713,6 +3720,18 @@
 			path = ccd_qsi;
 			sourceTree = "<group>";
 		};
+		9DFE1863213586AB00149BDE /* focuser_dmfc */ = {
+			isa = PBXGroup;
+			children = (
+				9DFE1866213586AB00149BDE /* README.md */,
+				9DFE1864213586AB00149BDE /* indigo_focuser_dmfc.h */,
+				9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */,
+				9DFE1868213586AB00149BDE /* indigo_focuser_dmfc_main.c */,
+				9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */,
+			);
+			path = focuser_dmfc;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -4240,6 +4259,7 @@
 				9D59D65C20D3F829009EA8FF /* FindDeviceUsb.cpp in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				9D59D61520D3F829009EA8FF /* AscentBasedUsbIo.cpp in Sources */,
+				9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */,
 				59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */,
 				9D59D61F20D3F829009EA8FF /* ApgLogger.cpp in Sources */,
 				59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */,
