@@ -488,10 +488,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_cancel_timer(device, &PRIVATE_DATA->dec_axis_timer);
 			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 			indigo_cancel_timer(device, &PRIVATE_DATA->slew_timer);
-			PRIVATE_DATA->ha_axis_timer = NULL;
-			PRIVATE_DATA->dec_axis_timer = NULL;
-			PRIVATE_DATA->position_timer = NULL;
-			PRIVATE_DATA->slew_timer = NULL;
 			if (--PRIVATE_DATA->device_count == 0) {
 				synscan_close(device);
 			}

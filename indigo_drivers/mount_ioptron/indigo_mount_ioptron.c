@@ -442,7 +442,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 		} else {
 			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
-			PRIVATE_DATA->position_timer = NULL;
 			if (--PRIVATE_DATA->device_count == 0) {
 				ieq_close(device);
 			}
