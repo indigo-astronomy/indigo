@@ -1075,6 +1075,21 @@ $(BUILD_DRIVERS)/indigo_focuser_usbv3.$(SOEXT): indigo_drivers/focuser_usbv3/ind
 
 #---------------------------------------------------------------------
 #
+#	Build PegasusAstro DMFC focuser driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_dmfc.a: indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_dmfc: indigo_drivers/focuser_dmfc/indigo_focuser_dmfc_main.o $(BUILD_DRIVERS)/indigo_focuser_dmfc.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_dmfc.$(SOEXT): indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build WeMacro Rail driver
 #
 #---------------------------------------------------------------------
