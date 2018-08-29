@@ -1475,6 +1475,7 @@ package-prepare: all
 	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)
 
 $(PACKAGE_NAME).deb: package-prepare
+	$(PACKAGE_NAME).deb
 	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
 	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nInstalled-Size: $(shell echo $$((`du -s /tmp/$(PACKAGE_NAME) | cut -f1`)))\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nReplaces: $(REWRITE_DEBS)\nMaintainer: CloudMakers, s. r. o.\nDepends: fxload, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	sudo chown root /tmp/$(PACKAGE_NAME)
@@ -1528,14 +1529,16 @@ endif
 
 #---------------------------------------------------------------------
 #
-#	Remote build on debian32.local, debian64.local and raspi.local
+#	Remote build on ubuntu32.local, ubuntu64.local, raspi32.local and raspi64.local
 #
 #---------------------------------------------------------------------
 
 remote:
-	ssh debian32.local "cd indigo; git pull; make; sudo make package"
-	scp debian32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb .
-	ssh debian64.local "cd indigo; git pull; make; sudo make package"
-	scp debian64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb .
-	ssh raspi.local "cd indigo; git pull; make; sudo make package"
-	scp raspi.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
+	ssh ubuntu32.local "cd indigo; git pull; make clean; make; sudo make package"
+	scp ubuntu32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb .
+	ssh ubuntu64.local "cd indigo; git pull; make clean; make; sudo make package"
+	scp ubuntu64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb .
+	ssh raspi32.local "cd indigo; git pull; make clean; make; sudo make package"
+	scp raspi32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
+	ssh raspi64.local "cd indigo; git pull; make clean; make; sudo make package"
+	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
