@@ -1475,7 +1475,7 @@ package-prepare: all
 	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)
 
 $(PACKAGE_NAME).deb: package-prepare
-	rm $(PACKAGE_NAME).deb
+	rm -f $(PACKAGE_NAME).deb
 	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
 	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nInstalled-Size: $(shell echo $$((`du -s /tmp/$(PACKAGE_NAME) | cut -f1`)))\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nReplaces: $(REWRITE_DEBS)\nMaintainer: CloudMakers, s. r. o.\nDepends: fxload, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	sudo chown root /tmp/$(PACKAGE_NAME)
