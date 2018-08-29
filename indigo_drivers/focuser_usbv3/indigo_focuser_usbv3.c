@@ -281,12 +281,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		if (IS_CONNECTED) {
+			indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 			usbv3_command(device, "SMO00%d", 10 - (int)(FOCUSER_SPEED_ITEM->number.value));
+			FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		}
-		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
@@ -326,15 +326,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
 	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		if (IS_CONNECTED) {
-			usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
-			usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
+			indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+			if (IS_CONNECTED) {
+				usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
+				usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
+			}
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		}
-		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
