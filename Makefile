@@ -20,6 +20,7 @@ LIB_DIR=lib
 BUILD_LIB=$(BUILD_ROOT)/$(LIB_DIR)
 BUILD_INCLUDE=$(BUILD_ROOT)/include
 BUILD_SHARE=$(BUILD_ROOT)/share
+BIN_EXTERNALS=bin_externals
 
 ifeq ($(OS),Windows_NT)
 	OS_DETECTED := Windows
@@ -1176,8 +1177,7 @@ endif
 $(BUILD_LIB)/libftd2xx.a:
 	install -d $(BUILD_LIB)
 ifeq ($(OS_DETECTED),Darwin)
-	curl http://www.ftdichip.com/Drivers/D2XX/MacOSX/D2XX1.4.4.dmg >/tmp/D2XX1.4.4.dmg
-	hdiutil attach -noverify -noautoopen /tmp/D2XX1.4.4.dmg
+	hdiutil attach -noverify -noautoopen $(BIN_EXTERNALS)/D2XX1.4.4.dmg
 	cp /Volumes/release/D2XX/ftd2xx.h /Volumes/release/D2XX/WinTypes.h $(BUILD_INCLUDE)
 	cp /Volumes/release/D2XX/libftd2xx.a $(BUILD_LIB)
 	hdiutil detach /Volumes/release
@@ -1185,29 +1185,25 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 ifeq ($(OS_DETECTED),Linux)
 ifeq ($(ARCH_DETECTED),arm)
-	curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-arm-v6-hf-1.4.6.tgz >/tmp/libftd2xx-arm-v6-hf-1.4.6.tgz
-	tar xvfz /tmp/libftd2xx-arm-v6-hf-1.4.6.tgz -C /tmp
+	tar xvfz $(BIN_EXTERNALS)/libftd2xx-arm-v6-hf-1.4.6.tgz -C /tmp
 	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
 	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
 	rm -rf /tmp/libftd2xx-arm-v6-hf-1.4.6.tgz /tmp/release
 endif
 ifeq ($(ARCH_DETECTED),arm64)
-	curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-arm-v8-1.4.6.tgz >/tmp/libftd2xx-arm-v8-1.4.6.tgz
-	tar xvfz /tmp/libftd2xx-arm-v8-1.4.6.tgz -C /tmp
+	tar xvfz $(BIN_EXTERNALS)/libftd2xx-arm-v8-1.4.6.tgz -C /tmp
 	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
 	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
 	rm -rf /tmp/libftd2xx-arm-v8-1.4.6.tgz /tmp/release
 endif
 ifeq ($(ARCH_DETECTED),x86)
-	curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-i386-1.4.6.tgz >/tmp/libftd2xx-i386-1.4.6.tgz
-	tar xvfz /tmp/libftd2xx-i386-1.4.6.tgz -C /tmp
+	tar xvfz $(BIN_EXTERNALS)/libftd2xx-i386-1.4.6.tgz -C /tmp
 	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
 	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
 	rm -rf /tmp/libftd2xx-i386-1.4.6.tgz /tmp/release
 endif
 ifeq ($(ARCH_DETECTED),x64)
-	curl http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx-x86_64-1.4.6.tgz >/tmp/libftd2xx-x86_64-1.4.6.tgz
-	tar xvfz /tmp/libftd2xx-x86_64-1.4.6.tgz -C /tmp
+	tar xvfz $(BIN_EXTERNALS)/libftd2xx-x86_64-1.4.6.tgz -C /tmp
 	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
 	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
 	rm -rf /tmp/libftd2xx-x86_64-1.4.6.tgz /tmp/release
