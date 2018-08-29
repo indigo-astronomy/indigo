@@ -404,7 +404,6 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_save_property(device, NULL, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_SLEW_RATE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_TRACK_RATE_PROPERTY);
-			indigo_save_property(device, NULL, MOUNT_TRACKING_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_GUIDE_RATE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_ALIGNMENT_MODE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_PARK_POSITION_PROPERTY);
