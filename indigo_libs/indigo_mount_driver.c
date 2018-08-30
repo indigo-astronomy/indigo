@@ -418,29 +418,31 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 				close(handle);
 			}
 		} else if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
-			int handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".alignment");
-			if (handle > 0) {
-				int count;
-				char buffer[1024], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
-				indigo_read_line(handle, buffer, sizeof(buffer));
-				sscanf(buffer, "%d", &count);
-				MOUNT_CONTEXT->alignment_point_count = count;
-				MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = count;
-				MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count;
-				for (int i = 0; i < count; i++) {
-					indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
+			if (IS_CONNECTED) {
+				int handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".alignment");
+				if (handle > 0) {
+					int count;
+					char buffer[1024], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 					indigo_read_line(handle, buffer, sizeof(buffer));
-					sscanf(buffer, "%d %lg %lg %lg %lg", (int *)&point->used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec);
-					snprintf(name, INDIGO_NAME_SIZE, "%d", i);
-					snprintf(label, INDIGO_VALUE_SIZE, "RA %.2f / Dec %.2f", point->ra, point->dec);
-					indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
-					indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + i, name, label, false);
+					sscanf(buffer, "%d", &count);
+					MOUNT_CONTEXT->alignment_point_count = count;
+					MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = count;
+					MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count;
+					for (int i = 0; i < count; i++) {
+						indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
+						indigo_read_line(handle, buffer, sizeof(buffer));
+						sscanf(buffer, "%d %lg %lg %lg %lg", (int *)&point->used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec);
+						snprintf(name, INDIGO_NAME_SIZE, "%d", i);
+						snprintf(label, INDIGO_VALUE_SIZE, "RA %.2f / Dec %.2f", point->ra, point->dec);
+						indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
+						indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + i, name, label, false);
+					}
+					close(handle);
+					MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
+					MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
 				}
-				close(handle);
-				MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
-				MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
 			}
 		}
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
