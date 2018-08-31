@@ -40,7 +40,7 @@
 #define PRIVATE_DATA        ((simulator_private_data *)device->private_data)
 
 typedef struct {
-	bool parked;
+	bool parking, parked, going_home, at_home;
 	indigo_timer *position_timer, *move_timer, *guider_timer;
 	double ha;
 	bool slew_in_progress;
@@ -51,39 +51,56 @@ typedef struct {
 
 static void position_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->position_mutex);
-	double diffRA = MOUNT_RAW_COORDINATES_RA_ITEM->number.target - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
-	double diffDec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target - MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
-	if (PRIVATE_DATA->slew_in_progress) {
-		if (diffRA == 0 && diffDec == 0) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			PRIVATE_DATA->slew_in_progress = false;
+	if (IS_CONNECTED) {
+		double diffRA = MOUNT_RAW_COORDINATES_RA_ITEM->number.target - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
+		double diffDec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target - MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
+		if (PRIVATE_DATA->slew_in_progress) {
+			if (diffRA == 0 && diffDec == 0) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->slew_in_progress = false;
+				if (PRIVATE_DATA->parking) {
+					PRIVATE_DATA->parking = false;
+					PRIVATE_DATA->parked = true;
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
+				}
+				if (PRIVATE_DATA->going_home) {
+					PRIVATE_DATA->going_home = false;
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+					MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+				}
+			} else {
+				double speedRA = 0.2;
+				double speedDec = 1.5;
+				if (fabs(diffRA) < speedRA)
+					MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_RAW_COORDINATES_RA_ITEM->number.target;
+				else if (diffRA > 0)
+					MOUNT_RAW_COORDINATES_RA_ITEM->number.value += speedRA;
+				else if (diffRA < 0)
+					MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= speedRA;
+				if (fabs(diffDec) < speedDec)
+					MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target;
+				else if (diffDec > 0)
+					MOUNT_RAW_COORDINATES_DEC_ITEM->number.value += speedDec;
+				else if (diffDec < 0)
+					MOUNT_RAW_COORDINATES_DEC_ITEM->number.value -= speedDec;
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			}
+			indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->position_timer);
 		} else {
-			double speedRA = 0.2;
-			double speedDec = 1.5;
-			if (fabs(diffRA) < speedRA)
-				MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_RAW_COORDINATES_RA_ITEM->number.target;
-			else if (diffRA > 0)
-				MOUNT_RAW_COORDINATES_RA_ITEM->number.value += speedRA;
-			else if (diffRA < 0)
-				MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= speedRA;
-			if (fabs(diffDec) < speedDec)
-				MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target;
-			else if (diffDec > 0)
-				MOUNT_RAW_COORDINATES_DEC_ITEM->number.value += speedDec;
-			else if (diffDec < 0)
-				MOUNT_RAW_COORDINATES_DEC_ITEM->number.value -= speedDec;
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			if (PRIVATE_DATA->parked || (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_OK_STATE && MOUNT_TRACKING_OFF_ITEM->sw.value)) {
+				MOUNT_RAW_COORDINATES_RA_ITEM->number.value = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - PRIVATE_DATA->ha;
+			}
+			indigo_reschedule_timer(device, 1.0, &PRIVATE_DATA->position_timer);
 		}
-		indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->position_timer);
-	} else {
-		if (MOUNT_PARK_PARKED_ITEM->sw.value || (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_OK_STATE && MOUNT_TRACKING_OFF_ITEM->sw.value)) {
-			MOUNT_RAW_COORDINATES_RA_ITEM->number.value = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - PRIVATE_DATA->ha;
-		}
-		indigo_reschedule_timer(device, 1.0, &PRIVATE_DATA->position_timer);
+		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+		indigo_update_coordinates(device, NULL);
+		indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 	}
-	indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-	indigo_update_coordinates(device, NULL);
-	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->position_mutex);
 }
 
@@ -140,6 +157,12 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		PRIVATE_DATA->parked = true;
+		// -------------------------------------------------------------------------------- MOUNT_HOME_SET
+		MOUNT_HOME_SET_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_HOME_POSITION
+		MOUNT_HOME_POSITION_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_HOME
+		MOUNT_HOME_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
@@ -168,7 +191,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.target, MOUNT_RAW_COORDINATES_DEC_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
-			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+			PRIVATE_DATA->position_timer = indigo_set_timer(device, 1, position_timer_callback);
 		} else {
 			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 		}
@@ -178,23 +201,37 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
-			sleep(1);
-			PRIVATE_DATA->ha = MOUNT_PARK_POSITION_HA_ITEM->number.value;
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - PRIVATE_DATA->ha;
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = 90;
-			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, &MOUNT_RAW_COORDINATES_RA_ITEM->number.value, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.value);
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - (PRIVATE_DATA->ha = MOUNT_PARK_POSITION_HA_ITEM->number.value);
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
 			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
+			PRIVATE_DATA->parking = true;
+			PRIVATE_DATA->parked = false;
+			PRIVATE_DATA->slew_in_progress = true;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_coordinates(device, NULL);
-			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
-			PRIVATE_DATA->parked = true;
 		} else {
-			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparking...");
-			sleep(1);
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
+			PRIVATE_DATA->parking = false;
 			PRIVATE_DATA->parked = false;
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_HOME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_HOME
+		indigo_property_copy_values(MOUNT_HOME_PROPERTY, property, false);
+		if (MOUNT_HOME_ITEM->sw.value) {
+			MOUNT_HOME_ITEM->sw.value = false;
+			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home...");
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = indigo_lst(MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - (PRIVATE_DATA->ha = MOUNT_HOME_POSITION_HA_ITEM->number.value);
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_HOME_POSITION_DEC_ITEM->number.value;
+			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
+			PRIVATE_DATA->going_home = true;
+			PRIVATE_DATA->slew_in_progress = true;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_coordinates(device, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {

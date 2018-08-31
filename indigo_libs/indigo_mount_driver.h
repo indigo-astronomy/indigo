@@ -155,6 +155,42 @@ extern "C" {
 #define MOUNT_PARK_UNPARKED_ITEM											(MOUNT_PARK_PROPERTY->items+1)
 	
 //----------------------------------------------
+/** MOUNT_HOME_SET property pointer, property is optional, property change request should be fully handled by indigo_mount_change_property.
+*/
+#define MOUNT_HOME_SET_PROPERTY												(MOUNT_CONTEXT->mount_set_home_property)
+
+/** MOUNT_HOME_SET.DEFAULT property item pointer.
+*/
+#define MOUNT_HOME_SET_DEFAULT_ITEM										(MOUNT_HOME_SET_PROPERTY->items+0)
+
+/** MOUNT_HOME_SET.CURRENT property item pointer.
+*/
+#define MOUNT_HOME_SET_CURRENT_ITEM										(MOUNT_HOME_SET_PROPERTY->items+1)
+
+//----------------------------------------------
+/** MOUNT_HOME_POSITION property pointer, property is optional, property change request should be fully handled by indigo_mount_change_property.
+*/
+#define MOUNT_HOME_POSITION_PROPERTY									(MOUNT_CONTEXT->mount_home_position_property)
+
+/** MOUNT_HOME_POSITION.RA property item pointer.
+*/
+#define MOUNT_HOME_POSITION_HA_ITEM										(MOUNT_HOME_POSITION_PROPERTY->items+0)
+
+/** MOUNT_HOME_POSITION.DEC property item pointer.
+*/
+#define MOUNT_HOME_POSITION_DEC_ITEM									(MOUNT_HOME_POSITION_PROPERTY->items+1)
+
+//----------------------------------------------
+/** MOUNT_HOME property pointer, property is optional, property change request should be fully handled by device driver.
+*/
+#define MOUNT_HOME_PROPERTY														(MOUNT_CONTEXT->mount_home_property)
+
+/** MOUNT_HOME.HOME property item pointer.
+*/
+#define MOUNT_HOME_ITEM												        (MOUNT_HOME_PROPERTY->items+0)
+	
+	
+//----------------------------------------------
 /** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
 #define MOUNT_ON_COORDINATES_SET_PROPERTY							(MOUNT_CONTEXT->mount_on_coordinates_set_property)
@@ -379,6 +415,9 @@ typedef struct {
 	indigo_property *mount_park_property;										///< MOUNT_PARK property pointer
 	indigo_property *mount_set_park_property;								///< MOUNT_PARK_SET property pointer
 	indigo_property *mount_park_position_property;					///< MOUNT_PARK_POSITION property pointer
+	indigo_property *mount_home_property;										///< MOUNT_HOME property pointer
+	indigo_property *mount_set_home_property;								///< MOUNT_HOME_SET property pointer
+	indigo_property *mount_home_position_property;					///< MOUNT_HOME_POSITION property pointer
 	indigo_property *mount_on_coordinates_set_property;			///< MOUNT_ON_COORDINATES_SET property pointer
 	indigo_property *mount_slew_rate_property;							///< MOUNT_SLEW_RATE property pointer
 	indigo_property *mount_track_rate_property;							///< MOUNT_TRACK_RATE property pointer
