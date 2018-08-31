@@ -953,11 +953,11 @@
  */
 #define MOUNT_PARK_SET_PROPERTY_NAME						"MOUNT_PARK_SET"
 
-/** MOUNT_PARK.PARKED property item name.
+/** MOUNT_PARK_SET.DEFAULT property item name.
  */
 #define MOUNT_PARK_SET_DEFAULT_ITEM_NAME				"DEFAULT"
 
-/** MOUNT_PARK.UNPARKED property item name.
+/** MOUNT_PARK_SET.CURRENT property item name.
  */
 #define MOUNT_PARK_SET_CURRENT_ITEM_NAME				"CURRENT"
 
@@ -966,14 +966,48 @@
  */
 #define MOUNT_PARK_POSITION_PROPERTY_NAME				"MOUNT_PARK_POSITION"
 
-/** MOUNT_GUIDE_RATE.RA property item name.
+/** MOUNT_PARK_POSITION.HA property item name.
  */
 #define MOUNT_PARK_POSITION_HA_ITEM_NAME				"HA"
 
-/** MOUNT_GUIDE_RATE.DEC property item name.
+/** MOUNT_PARK_POSITION.DEC property item name.
  */
 #define MOUNT_PARK_POSITION_DEC_ITEM_NAME				"DEC"
 
+//----------------------------------------------------------------------
+/** MOUNT_HOME property name.
+ */
+#define MOUNT_HOME_PROPERTY_NAME								"MOUNT_HOME"
+
+/** MOUNT_HOME.HOMEED property item name.
+ */
+#define MOUNT_HOME_ITEM_NAME							      "HOME"
+
+//----------------------------------------------------------------------
+/** MOUNT_HOME_SET property name.
+ */
+#define MOUNT_HOME_SET_PROPERTY_NAME						"MOUNT_HOME_SET"
+
+/** MOUNT_HOME_SET.DEFAULT property item name.
+ */
+#define MOUNT_HOME_SET_DEFAULT_ITEM_NAME				"DEFAULT"
+
+/** MOUNT_HOME_SET.CURRENT property item name.
+ */
+#define MOUNT_HOME_SET_CURRENT_ITEM_NAME				"CURRENT"
+
+//----------------------------------------------------------------------
+/** MOUNT_HOME_POSITION property name.
+ */
+#define MOUNT_HOME_POSITION_PROPERTY_NAME				"MOUNT_HOME_POSITION"
+
+/** MOUNT_HOME_POSITION.HA property item name.
+ */
+#define MOUNT_HOME_POSITION_HA_ITEM_NAME				"HA"
+
+/** MOUNT_HOME_POSITION.DEC property item name.
+ */
+#define MOUNT_HOME_POSITION_DEC_ITEM_NAME				"DEC"
 //----------------------------------------------------------------------
 /** MOUNT_ON_COORDINATES_SET property name.
  */
