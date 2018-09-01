@@ -529,14 +529,14 @@ static indigo_result ccd_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 7;
 
 		// -------------------------------------------------------------------------------- FLI_NFLUSHES
-		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", FLI_ADVANCED_GROUP, "Flush CCD", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", FLI_ADVANCED_GROUP, "Flush CCD", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (FLI_NFLUSHES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "FLI_NFLUSHES", "Times (before exposure)", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
 
 		// -------------------------------------------------------------------------------- FLI_RBI_FLUSH_ENABLE
-		FLI_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_RBI_FLUSH_ENABLE", FLI_ADVANCED_GROUP, "RBI flush", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		FLI_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_RBI_FLUSH_ENABLE", FLI_ADVANCED_GROUP, "RBI flush", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (FLI_RBI_FLUSH_ENABLE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -544,14 +544,14 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(FLI_RBI_FLUSH_DISABLED_ITEM, "DISABLED", "Disabled", true);
 
 		// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
-		FLI_RBI_FLUSH_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_RBI_FLUSH", FLI_ADVANCED_GROUP, "RBI flush params", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+		FLI_RBI_FLUSH_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_RBI_FLUSH", FLI_ADVANCED_GROUP, "RBI flush params", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (FLI_RBI_FLUSH_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_number_item(FLI_RBI_FLUSH_EXPOSURE_ITEM, "EXOSURE", "NIR flood time (s)", MIN_NIR_FLOOD, MAX_NIR_FLOOD, 0, DEFAULT_NIR_FLOOD);
 		indigo_init_number_item(FLI_RBI_FLUSH_COUNT_ITEM, "COUNT", "Number of flushes", MIN_FLUSH_COUNT, MAX_FLUSH_COUNT, 1, DEFAULT_FLUSH_COUNT);
 		// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
-		FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", FLI_ADVANCED_GROUP, "Camera mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
+		FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", FLI_ADVANCED_GROUP, "Camera mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
 				if (FLI_CAMERA_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 				/* will be populated on connect */

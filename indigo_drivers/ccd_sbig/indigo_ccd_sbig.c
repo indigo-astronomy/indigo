@@ -937,7 +937,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (PRIMARY_CCD && (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK)) {
 		INFO_PROPERTY->count = 7; 	/* Use all info property fields */
 
-		SBIG_FREEZE_TEC_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_FREEZE_TEC", SBIG_ADVANCED_GROUP,"Freeze TEC during readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		SBIG_FREEZE_TEC_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_FREEZE_TEC", SBIG_ADVANCED_GROUP,"Freeze TEC during readout", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SBIG_FREEZE_TEC_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -946,7 +946,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(SBIG_FREEZE_TEC_ENABLED_ITEM, "SBIG_FREEZE_TEC_ENABLED", "Enabled", false);
 		indigo_init_switch_item(SBIG_FREEZE_TEC_DISABLED_ITEM, "SBIG_FREEZE_TEC_DISABLED", "Disabled", true);
 
-		SBIG_ABG_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_ABG_STATE", SBIG_ADVANCED_GROUP,"ABG State", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		SBIG_ABG_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_ABG_STATE", SBIG_ADVANCED_GROUP,"ABG State", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (SBIG_ABG_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}

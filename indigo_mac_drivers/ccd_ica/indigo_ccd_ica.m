@@ -178,24 +178,24 @@ static indigo_result ccd_attach(indigo_device *device) {
     PRIVATE_DATA->useLiveView = true;
     CCD_FRAME_PROPERTY->hidden = CCD_MODE_PROPERTY->hidden = CCD_BIN_PROPERTY->hidden =  true;
     CCD_IMAGE_FORMAT_PROPERTY->perm = CCD_EXPOSURE_PROPERTY->perm = CCD_ABORT_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
-    DSLR_LOCK_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_LOCK_PROPERTY_NAME, "DSLR", "Lock camera GUI", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    DSLR_LOCK_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_LOCK_PROPERTY_NAME, "DSLR", "Lock camera GUI", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_LOCK_ITEM, DSLR_LOCK_ITEM_NAME, "Lock", true);
     indigo_init_switch_item(DSLR_UNLOCK_ITEM, DSLR_UNLOCK_ITEM_NAME, "Unlock", false);
-    DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_MIRROR_LOCKUP_PROPERTY_NAME, "DSLR", "Use mirror lockup", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_MIRROR_LOCKUP_PROPERTY_NAME, "DSLR", "Use mirror lockup", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_MIRROR_LOCKUP_LOCK_ITEM, DSLR_MIRROR_LOCKUP_LOCK_ITEM_NAME, "Lock", false);
     indigo_init_switch_item(DSLR_MIRROR_LOCKUP_UNLOCK_ITEM, DSLR_MIRROR_LOCKUP_UNLOCK_ITEM_NAME, "Unlock", true);
-    DSLR_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_AF_PROPERTY_NAME, "DSLR", "Autofocus", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+    DSLR_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_AF_PROPERTY_NAME, "DSLR", "Autofocus", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
     indigo_init_switch_item(DSLR_AF_ITEM, DSLR_AF_ITEM_NAME, "Start autofocus", false);
-    DSLR_AVOID_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_AVOID_AF_PROPERTY_NAME, "DSLR", "Avoid AF", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    DSLR_AVOID_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_AVOID_AF_PROPERTY_NAME, "DSLR", "Avoid AF", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_AVOID_AF_ON_ITEM, DSLR_AVOID_AF_ON_ITEM_NAME, "On", true);
     indigo_init_switch_item(DSLR_AVOID_AF_OFF_ITEM, DSLR_AVOID_AF_OFF_ITEM_NAME, "Off", false);
-    DSLR_STREAMING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_STREAMING_MODE_PROPERTY_NAME, "DSLR", "Preview mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    DSLR_STREAMING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_STREAMING_MODE_PROPERTY_NAME, "DSLR", "Preview mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_STREAMING_LIVE_VIEW_ITEM, DSLR_STREAMING_LIVE_VIEW_ITEM_NAME, "LiveView", true);
     indigo_init_switch_item(DSLR_STREAMING_BURST_MODE_ITEM, DSLR_STREAMING_BURST_MODE_ITEM_NAME, "Burst mode", false);
-    DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_ZOOM_PREVIEW_PROPERTY_NAME, "DSLR", "Zoom preview", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_ZOOM_PREVIEW_PROPERTY_NAME, "DSLR", "Zoom preview", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_ZOOM_PREVIEW_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", false);
     indigo_init_switch_item(DSLR_ZOOM_PREVIEW_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", true);
-    DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_DELETE_IMAGE_PROPERTY_NAME, "DSLR", "Delete downloaded image", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+    DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_DELETE_IMAGE_PROPERTY_NAME, "DSLR", "Delete downloaded image", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
     indigo_init_switch_item(DSLR_DELETE_IMAGE_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", true);
     indigo_init_switch_item(DSLR_DELETE_IMAGE_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", false);
     indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY, CCD_IMAGE_FORMAT_JPEG_ITEM, true);
@@ -574,16 +574,16 @@ static indigo_result focuser_detach(indigo_device *device) {
 		PRIVATE_DATA->dslr_properties = malloc((PRIVATE_DATA->dslr_properties_count = 1) * sizeof(indigo_property *));
 	switch (type) {
 		case INDIGO_SWITCH_VECTOR: {
-			property = indigo_init_switch_property(NULL, device->name, name, group, label, INDIGO_IDLE_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+			property = indigo_init_switch_property(NULL, device->name, name, group, label, INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
 			break;
 		}
 		case INDIGO_NUMBER_VECTOR: {
-			property = indigo_init_number_property(NULL, device->name, name, group, label, INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+			property = indigo_init_number_property(NULL, device->name, name, group, label, INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			indigo_init_number_item(property->items, "VALUE", "Value", 0, 65535, 1, 0);
 			break;
 		}
 		default: {
-			property = indigo_init_text_property(NULL, device->name, name, group, label, INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+			property = indigo_init_text_property(NULL, device->name, name, group, label, INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			indigo_init_text_item(property->items, "VALUE", "Value", "");
 			break;
 		}

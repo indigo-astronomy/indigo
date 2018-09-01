@@ -46,12 +46,12 @@ indigo_result indigo_wheel_attach(indigo_device *device, unsigned version) {
 	if (WHEEL_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_WHEEL) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- WHEEL_SLOT
-			WHEEL_SLOT_PROPERTY = indigo_init_number_property(NULL, device->name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Current slot", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			WHEEL_SLOT_PROPERTY = indigo_init_number_property(NULL, device->name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Current slot", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (WHEEL_SLOT_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(WHEEL_SLOT_ITEM, WHEEL_SLOT_ITEM_NAME, "Slot number", 1, 9, 1, 0);
 			// -------------------------------------------------------------------------------- WHEEL_SLOT_NAME
-			WHEEL_SLOT_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, WHEEL_SLOT_NAME_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Slot names", INDIGO_IDLE_STATE, INDIGO_RW_PERM, WHEEL_SLOT_ITEM->number.max);
+			WHEEL_SLOT_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, WHEEL_SLOT_NAME_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Slot names", INDIGO_OK_STATE, INDIGO_RW_PERM, WHEEL_SLOT_ITEM->number.max);
 			if (WHEEL_SLOT_NAME_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			for (int i = 0; i < WHEEL_SLOT_NAME_PROPERTY->count; i++) {

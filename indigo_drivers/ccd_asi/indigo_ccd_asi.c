@@ -604,7 +604,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
-		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, ASI_MAX_FORMATS);
+		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, ASI_MAX_FORMATS);
 		if (PIXEL_FORMAT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -689,12 +689,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 4.0;
 
 		// -------------------------------------------------------------------------------- ASI_PRESETS
-		ASI_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, "ASI_PRESETS", CCD_ADVANCED_GROUP, "Presets (Gain, Offset)", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+		ASI_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, "ASI_PRESETS", CCD_ADVANCED_GROUP, "Presets (Gain, Offset)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
 		if (ASI_PRESETS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
-		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 0);
+		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
 		if (ASI_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		// --------------------------------------------------------------------------------
@@ -1035,7 +1035,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// ------------------------------------------------------------------------------- GAMMA
 	} else if (indigo_property_match(CCD_GAMMA_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
-		CCD_GAMMA_PROPERTY->state = INDIGO_IDLE_STATE;
+		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAMMA_PROPERTY, property, false);
 
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -1052,7 +1052,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// ------------------------------------------------------------------------------- OFFSET
 	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
-		CCD_OFFSET_PROPERTY->state = INDIGO_IDLE_STATE;
+		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -1074,7 +1074,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// ------------------------------------------------------------------------------- GAIN
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
-		CCD_GAIN_PROPERTY->state = INDIGO_IDLE_STATE;
+		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -1096,7 +1096,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// ------------------------------------------------------------------------------- ASI_PRESETS
 	} else if (indigo_property_match(ASI_PRESETS_PROPERTY, property)) {
 		if (!IS_CONNECTED) return INDIGO_OK;
-		ASI_PRESETS_PROPERTY->state = INDIGO_IDLE_STATE;
+		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(ASI_PRESETS_PROPERTY, property, false);
 		int gain = 0, offset = 0;
 		if (ASI_HIGHEST_DR_ITEM->sw.value) {

@@ -302,9 +302,9 @@ static bool ieq_open(indigo_device *device) {
 				}
 			}
 		}
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_IDLE_STATE;
-		MOUNT_PARK_PROPERTY->state = INDIGO_IDLE_STATE;
-		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_IDLE_STATE;
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to connect to %s", name);

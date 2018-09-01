@@ -254,12 +254,12 @@ static void server_callback(int count) {
 
 static indigo_result attach(indigo_device *device) {
 	assert(device != NULL);
-	drivers_property = indigo_init_switch_property(NULL, server_device.name, "DRIVERS", "Main", "Active drivers", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
+	drivers_property = indigo_init_switch_property(NULL, server_device.name, "DRIVERS", "Main", "Active drivers", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
 	drivers_property->count = 0;
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 		if (indigo_available_drivers[i].driver != NULL)
 			indigo_init_switch_item(&drivers_property->items[drivers_property->count++], indigo_available_drivers[i].description, indigo_available_drivers[i].description, true);
-	servers_property = indigo_init_light_property(NULL, server_device.name, "SERVERS", "Main", "Active servers", INDIGO_IDLE_STATE, 2 * INDIGO_MAX_SERVERS);
+	servers_property = indigo_init_light_property(NULL, server_device.name, "SERVERS", "Main", "Active servers", INDIGO_OK_STATE, 2 * INDIGO_MAX_SERVERS);
 	servers_property->count = 0;
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_server_entry *entry = indigo_available_servers + i;
@@ -269,22 +269,22 @@ static indigo_result attach(indigo_device *device) {
 				strncpy(buf, entry->host, sizeof(buf));
 			else
 				snprintf(buf, sizeof(buf), "%s:%d", entry->host, entry->port);
-			indigo_init_light_item(&servers_property->items[servers_property->count++], buf, buf, INDIGO_IDLE_STATE);
+			indigo_init_light_item(&servers_property->items[servers_property->count++], buf, buf, INDIGO_OK_STATE);
 		}
 	}
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_subprocess_entry *entry = indigo_available_subprocesses + i;
 		if (*entry->executable) {
-			indigo_init_light_item(&servers_property->items[servers_property->count++], entry->executable, entry->executable, INDIGO_IDLE_STATE);
+			indigo_init_light_item(&servers_property->items[servers_property->count++], entry->executable, entry->executable, INDIGO_OK_STATE);
 		}
 	}
-	load_property = indigo_init_text_property(NULL, server_device.name, "LOAD", "Main", "Load driver", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+	load_property = indigo_init_text_property(NULL, server_device.name, "LOAD", "Main", "Load driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	indigo_init_text_item(&load_property->items[0], "DRIVER", "Load driver", "");
-	unload_property = indigo_init_text_property(NULL, server_device.name, "UNLOAD", "Main", "Unload driver", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+	unload_property = indigo_init_text_property(NULL, server_device.name, "UNLOAD", "Main", "Unload driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	indigo_init_text_item(&unload_property->items[0], "DRIVER", "Unload driver", "");
-	restart_property = indigo_init_switch_property(NULL, server_device.name, "RESTART", "Main", "Restart", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+	restart_property = indigo_init_switch_property(NULL, server_device.name, "RESTART", "Main", "Restart", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	indigo_init_switch_item(restart_property->items, "RESTART", "Restart server", false);
-	log_level_property = indigo_init_switch_property(NULL, device->name, "LOG_LEVEL", MAIN_GROUP, "Log level", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+	log_level_property = indigo_init_switch_property(NULL, device->name, "LOG_LEVEL", MAIN_GROUP, "Log level", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 	indigo_init_switch_item(&log_level_property->items[0], "ERROR", "Error", false);
 	indigo_init_switch_item(&log_level_property->items[1], "INFO", "Info", false);
 	indigo_init_switch_item(&log_level_property->items[2], "DEBUG", "Debug", false);

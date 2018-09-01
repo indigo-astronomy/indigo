@@ -264,7 +264,7 @@ static void init_vsspeed_property(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSSpeeds() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		option_num = 0;
 	}
-	VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Shift Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	VSSPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, VSSPEED_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Shift Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
 	if (VSSPEED_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of VSSPEED_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -297,7 +297,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		option_num = 0;
 	}
-	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
 	if (VSAMPLITUDE_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of VSAMPLITUDE_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -323,7 +323,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberVSAmplitudes() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		option_num = 0;
 	}
-	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	VSAMPLITUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, VSAMPLITUDE_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Vertical Clock Amplitude", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
 	if (VSAMPLITUDE_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of VSAMPLITUDE_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -350,7 +350,7 @@ static void init_vsamplitude_property(indigo_device *device) {
 static void init_hreadout_property(indigo_device *device) {
 	int res, channels, amps, items = 0;
 
-	HREADOUT_PROPERTY = indigo_init_switch_property(NULL, device->name, HREADOUT_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Horizontal Readout", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+	HREADOUT_PROPERTY = indigo_init_switch_property(NULL, device->name, HREADOUT_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Horizontal Readout", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
 	if (HREADOUT_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of HREADOUT_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -417,7 +417,7 @@ static void init_preampgain_property(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetNumberPreAmpGains() for camera %d error: %d", PRIVATE_DATA->handle, res);
 		option_num = 0;
 	}
-	PREAMPGAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, PREAMPGAIN_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Preamp Gain", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
+	PREAMPGAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, PREAMPGAIN_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Preamp Gain", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, option_num);
 	if (PREAMPGAIN_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of PREAMPGAIN_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -443,7 +443,7 @@ static void init_preampgain_property(indigo_device *device) {
 
 static void init_highcapacity_property(indigo_device *device) {
 	int res;
-	HIGHCAPACITY_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGHCAPACITY_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Capacity / Sensitivity", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	HIGHCAPACITY_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGHCAPACITY_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Capacity / Sensitivity", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	if (HIGHCAPACITY_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of HIGHCAPACITY_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -460,7 +460,7 @@ static void init_highcapacity_property(indigo_device *device) {
 
 static void init_baselineclamp_property(indigo_device *device) {
 	int res;
-	BASELINECLAMP_PROPERTY = indigo_init_switch_property(NULL, device->name, BASELINECLAMP_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Baseline Clamp", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	BASELINECLAMP_PROPERTY = indigo_init_switch_property(NULL, device->name, BASELINECLAMP_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Baseline Clamp", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	if (BASELINECLAMP_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of BASELINECLAMP_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -487,7 +487,7 @@ static void init_baselineclamp_property(indigo_device *device) {
 
 static void init_baselineoffset_property(indigo_device *device) {
 	int res;
-	BASELINEOFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, BASELINEOFFSET_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Baseline Offset", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+	BASELINEOFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, BASELINEOFFSET_PROPERTY_NAME, AQUISITION_GROUP_NAME, "Baseline Offset", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (BASELINEOFFSET_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of BASELINEOFFSET_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -502,7 +502,7 @@ static void init_baselineoffset_property(indigo_device *device) {
 
 
 static void init_fancontrol_property(indigo_device *device) {
-	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, CCD_COOLER_GROUP, "Fan Speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	FANCONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FANCONTROL_PROPERTY_NAME, CCD_COOLER_GROUP, "Fan Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	if (FANCONTROL_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of FANCONTROL_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -516,7 +516,7 @@ static void init_fancontrol_property(indigo_device *device) {
 
 static void init_coolermode_property(indigo_device *device) {
 	int res;
-	COOLERMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, COOLERMODE_PROPERTY_NAME, CCD_COOLER_GROUP, "Cooling on Shutdown", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	COOLERMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, COOLERMODE_PROPERTY_NAME, CCD_COOLER_GROUP, "Cooling on Shutdown", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	if (COOLERMODE_PROPERTY == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Initialization of COOLERMODE_PROPERTY for camera %d failed.", PRIVATE_DATA->handle);
 		return;
@@ -1066,7 +1066,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			} else {
 				res = CoolerOFF();
 				if(res == DRV_SUCCESS) {
-					CCD_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+					CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 					CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 					PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
 				} else {

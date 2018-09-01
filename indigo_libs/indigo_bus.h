@@ -93,7 +93,7 @@ extern char *indigo_property_type_text[];
 /** Property state.
  */
 typedef enum {
-	INDIGO_IDLE_STATE = 0,      ///< property is passive or unused
+	INDIGO_IDLE_STATE = 0,      ///< property is passive (unused by INDIGO)
 	INDIGO_OK_STATE,            ///< property is in correct state or if operation on property was successful
 	INDIGO_BUSY_STATE,          ///< property is transient state or if operation on property is pending
 	INDIGO_ALERT_STATE          ///< property is in incorrect state or if operation on property failed
