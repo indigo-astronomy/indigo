@@ -120,13 +120,13 @@ extern "C" {
  */
 #define MOUNT_PARK_SET_PROPERTY												(MOUNT_CONTEXT->mount_set_park_property)
 
-/** MOUNT_PARK_SET.DEFAULT property item pointer.
- */
-#define MOUNT_PARK_SET_DEFAULT_ITEM										(MOUNT_PARK_SET_PROPERTY->items+0)
-
 /** MOUNT_PARK_SET.CURRENT property item pointer.
  */
-#define MOUNT_PARK_SET_CURRENT_ITEM										(MOUNT_PARK_SET_PROPERTY->items+1)
+#define MOUNT_PARK_SET_CURRENT_ITEM										(MOUNT_PARK_SET_PROPERTY->items+0)
+
+/** MOUNT_PARK_SET.DEFAULT property item pointer.
+ */
+#define MOUNT_PARK_SET_DEFAULT_ITEM										(MOUNT_PARK_SET_PROPERTY->items+1)
 
 //----------------------------------------------
 /** MOUNT_PARK_POSITION property pointer, property is optional, property change request should be fully handled by indigo_mount_change_property.
@@ -159,13 +159,13 @@ extern "C" {
 */
 #define MOUNT_HOME_SET_PROPERTY												(MOUNT_CONTEXT->mount_set_home_property)
 
+/** MOUNT_HOME_SET.CURRENT property item pointer.
+ */
+#define MOUNT_HOME_SET_CURRENT_ITEM										(MOUNT_HOME_SET_PROPERTY->items+0)
+
 /** MOUNT_HOME_SET.DEFAULT property item pointer.
 */
-#define MOUNT_HOME_SET_DEFAULT_ITEM										(MOUNT_HOME_SET_PROPERTY->items+0)
-
-/** MOUNT_HOME_SET.CURRENT property item pointer.
-*/
-#define MOUNT_HOME_SET_CURRENT_ITEM										(MOUNT_HOME_SET_PROPERTY->items+1)
+#define MOUNT_HOME_SET_DEFAULT_ITEM										(MOUNT_HOME_SET_PROPERTY->items+1)
 
 //----------------------------------------------
 /** MOUNT_HOME_POSITION property pointer, property is optional, property change request should be fully handled by indigo_mount_change_property.

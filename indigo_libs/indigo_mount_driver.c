@@ -93,8 +93,8 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			if (MOUNT_PARK_SET_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_PARK_SET_PROPERTY->hidden = true;
-			indigo_init_switch_item(MOUNT_PARK_SET_DEFAULT_ITEM, MOUNT_PARK_SET_DEFAULT_ITEM_NAME, "Set default position", false);
 			indigo_init_switch_item(MOUNT_PARK_SET_CURRENT_ITEM, MOUNT_PARK_SET_CURRENT_ITEM_NAME, "set current position", false);
+			indigo_init_switch_item(MOUNT_PARK_SET_DEFAULT_ITEM, MOUNT_PARK_SET_DEFAULT_ITEM_NAME, "Set default position", false);
 			// -------------------------------------------------------------------------------- MOUNT_PARK_POSITION
 			MOUNT_PARK_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Park position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (MOUNT_PARK_POSITION_PROPERTY == NULL)
@@ -113,14 +113,12 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			if (MOUNT_HOME_SET_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_HOME_SET_PROPERTY->hidden = true;
-			MOUNT_HOME_SET_PROPERTY->hidden = true;
-			indigo_init_switch_item(MOUNT_HOME_SET_DEFAULT_ITEM, MOUNT_HOME_SET_DEFAULT_ITEM_NAME, "Set default position", false);
 			indigo_init_switch_item(MOUNT_HOME_SET_CURRENT_ITEM, MOUNT_HOME_SET_CURRENT_ITEM_NAME, "set current position", false);
+			indigo_init_switch_item(MOUNT_HOME_SET_DEFAULT_ITEM, MOUNT_HOME_SET_DEFAULT_ITEM_NAME, "Set default position", false);
 			// -------------------------------------------------------------------------------- MOUNT_HOME_POSITION
 			MOUNT_HOME_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_HOME_POSITION_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Home position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
 			if (MOUNT_HOME_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			MOUNT_HOME_POSITION_PROPERTY->hidden = true;
 			MOUNT_HOME_POSITION_PROPERTY->hidden = true;
 			indigo_init_number_item(MOUNT_HOME_POSITION_HA_ITEM, MOUNT_HOME_POSITION_HA_ITEM_NAME, "Hour Angle (-12 to 12 hrs)", -12, 12, 0, 6);
 			indigo_init_number_item(MOUNT_HOME_POSITION_DEC_ITEM, MOUNT_HOME_POSITION_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
