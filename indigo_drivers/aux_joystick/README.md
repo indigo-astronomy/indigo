@@ -22,8 +22,7 @@ NSXReturnThrowError, Copyright (c) 2007 Jonathan 'Wolf' Rentzsch
 
 indigo_server indigo_joystick
 
-## Status: Under development
+## Status: Stable
 
 Driver is developed and tested with:
-
 * Logitech Dual Action

@@ -2408,12 +2408,12 @@
 		59588CA1211CBEB100E9FC27 /* aux_joystick */ = {
 			isa = PBXGroup;
 			children = (
-				595F28F9211E211100380EF4 /* DDHidLib */,
+				59588CA9211CC08D00E9FC27 /* README.md */,
 				59588CA8211CC08D00E9FC27 /* indigo_aux_joystick_main.c */,
 				59588CA7211CC08D00E9FC27 /* indigo_aux_joystick.c */,
 				595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */,
 				59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */,
-				59588CA9211CC08D00E9FC27 /* README.md */,
+				595F28F9211E211100380EF4 /* DDHidLib */,
 			);
 			path = aux_joystick;
 			sourceTree = "<group>";
@@ -2872,11 +2872,11 @@
 		59FC2E90210CA26D00730343 /* ccd_mi */ = {
 			isa = PBXGroup;
 			children = (
+				59FC2EB8210CA76200730343 /* README.md */,
 				59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */,
 				59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */,
 				59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */,
 				59FC2EB9210CA76200730343 /* indigo_ccd_mi.rules */,
-				59FC2EB8210CA76200730343 /* README.md */,
 				59FC2E91210CA26D00730343 /* bin_externals */,
 			);
 			path = ccd_mi;
@@ -2910,9 +2910,9 @@
 		9D3BBBA421147E2700800FB0 /* agent_lx200_server */ = {
 			isa = PBXGroup;
 			children = (
+				9D3BBBA521147EB500800FB0 /* README.md */,
 				9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */,
 				9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */,
-				9D3BBBA521147EB500800FB0 /* README.md */,
 			);
 			path = agent_lx200_server;
 			sourceTree = "<group>";
