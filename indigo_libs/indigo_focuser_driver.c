@@ -47,52 +47,52 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 	if (FOCUSER_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_FOCUSER) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- FOCUSER_SPEED
-			FOCUSER_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Focuser speed", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			FOCUSER_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Focuser speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_SPEED_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(FOCUSER_SPEED_ITEM, FOCUSER_SPEED_ITEM_NAME, "Speed", 1, 100, 1, 1);
 			// -------------------------------------------------------------------------------- FOCUSER_ROTATION
-			FOCUSER_ROTATION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_ROTATION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Rotation direction", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			FOCUSER_ROTATION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_ROTATION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Rotation direction", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_ROTATION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FOCUSER_ROTATION_PROPERTY->hidden = true;
 			indigo_init_switch_item(FOCUSER_ROTATION_CLOCKWISE_ITEM, FOCUSER_ROTATION_CLOCKWISE_ITEM_NAME, "Clockwise rotation for inward move", true);
 			indigo_init_switch_item(FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM, FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM_NAME, "Couter-clockwise rotation for inward move", false);
 			// -------------------------------------------------------------------------------- FOCUSER_DIRECTION
-			FOCUSER_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Movement direction", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			FOCUSER_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Movement direction", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_DIRECTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(FOCUSER_DIRECTION_MOVE_INWARD_ITEM, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, "Move inward", true);
 			indigo_init_switch_item(FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, "Move outward", false);
 			// -------------------------------------------------------------------------------- FOCUSER_STEPS
-			FOCUSER_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Relative move", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			FOCUSER_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Relative move", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_STEPS_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(FOCUSER_STEPS_ITEM, FOCUSER_STEPS_ITEM_NAME, "Relative move (steps/ms)", 0, 65535, 1, 0);
 				// -------------------------------------------------------------------------------- FOCUSER_POSITION
-			FOCUSER_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Absolute position", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			FOCUSER_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Absolute position", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(FOCUSER_POSITION_ITEM, FOCUSER_POSITION_ITEM_NAME, "Absolute position", -10000, 10000, 1, 0);
 			// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-			FOCUSER_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Abort motion", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+			FOCUSER_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Abort motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (FOCUSER_ABORT_MOTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(FOCUSER_ABORT_MOTION_ITEM, FOCUSER_ABORT_MOTION_ITEM_NAME, "Abort motion", false);
 			// -------------------------------------------------------------------------------- CCD_TEMPERATURE
-			FOCUSER_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Temperature", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+			FOCUSER_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Temperature", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			if (FOCUSER_TEMPERATURE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
 			indigo_init_number_item(FOCUSER_TEMPERATURE_ITEM, FOCUSER_TEMPERATURE_ITEM_NAME, "Temperature (C)", -50, 50, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_COMPENSATION
-			FOCUSER_COMPENSATION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Compensation", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+			FOCUSER_COMPENSATION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Compensation", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_COMPENSATION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FOCUSER_COMPENSATION_PROPERTY->hidden = true;
 			indigo_init_number_item(FOCUSER_COMPENSATION_ITEM, FOCUSER_COMPENSATION_ITEM_NAME, "Compensation (steps/C)", -50, 50, 1, 0);
 			// -------------------------------------------------------------------------------- FOCUSER_MODE
-			FOCUSER_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Compensation mode", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			FOCUSER_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Compensation mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FOCUSER_MODE_PROPERTY->hidden = true;

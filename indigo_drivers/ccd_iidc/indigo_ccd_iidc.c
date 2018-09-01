@@ -484,13 +484,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_STREAMING_EXPOSURE_ITEM->number.min = CCD_EXPOSURE_ITEM->number.min;
 					CCD_STREAMING_EXPOSURE_ITEM->number.max = CCD_EXPOSURE_ITEM->number.max;
 					CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.value;
-					CCD_FRAME_PROPERTY->state = INDIGO_IDLE_STATE;
+					CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
 					indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_IDLE_STATE;
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 					indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-					CCD_STREAMING_PROPERTY->state = INDIGO_IDLE_STATE;
+					CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_delete_property(device, CCD_STREAMING_PROPERTY, NULL);
 					indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
 					break;

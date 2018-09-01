@@ -442,7 +442,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	// ------------------------------------------------------------------------------- GAIN
 	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
-		CCD_GAIN_PROPERTY->state = INDIGO_IDLE_STATE;
+		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -470,7 +470,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return indigo_ccd_change_property(device, client, CCD_BIN_PROPERTY);
 	// ------------------------------------------------------------------------------- OFFSET
 	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
-		CCD_OFFSET_PROPERTY->state = INDIGO_IDLE_STATE;
+		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);

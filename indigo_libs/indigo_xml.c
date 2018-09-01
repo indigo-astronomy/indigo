@@ -86,13 +86,15 @@ static char *parser_state_name[] = {
 	"HEADER1"
 };
 
-static indigo_property_state parse_state(char *value) {
+static indigo_property_state parse_state(indigo_version version, char *value) {
 	if (!strcmp(value, "Ok"))
 		return INDIGO_OK_STATE;
 	if (!strcmp(value, "Busy"))
 		return INDIGO_BUSY_STATE;
 	if (!strcmp(value, "Alert"))
 		return INDIGO_ALERT_STATE;
+	if (version == INDIGO_VERSION_LEGACY && !strcmp(value, "Idle"))
+		return INDIGO_OK_STATE;
 	return INDIGO_IDLE_STATE;
 }
 
@@ -260,7 +262,7 @@ static void *new_text_vector_handler(parser_state state, parser_context *context
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(client ? client->version : INDIGO_VERSION_CURRENT, property, value);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(INDIGO_VERSION_CURRENT, value);
 		}
 	} else if (state == END_TAG) {
 		indigo_change_property(client, property);
@@ -302,7 +304,7 @@ static void *new_number_vector_handler(parser_state state, parser_context *conte
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(client ? client->version : INDIGO_VERSION_CURRENT, property, value);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(INDIGO_VERSION_CURRENT, value);
 		}
 	} else if (state == END_TAG) {
 		indigo_change_property(client, property);
@@ -344,7 +346,7 @@ static void *new_switch_vector_handler(parser_state state, parser_context *conte
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(client ? client->version : INDIGO_VERSION_CURRENT, property, value);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(INDIGO_VERSION_CURRENT, value);
 		}
 		return new_switch_vector_handler;
 	} else if (state == END_TAG) {
@@ -471,7 +473,7 @@ static void *set_text_vector_handler(parser_state state, parser_context *context
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "message")) {
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
@@ -532,7 +534,7 @@ static void *set_number_vector_handler(parser_state state, parser_context *conte
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "message")) {
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
@@ -579,7 +581,7 @@ static void *set_switch_vector_handler(parser_state state, parser_context *conte
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "message")) {
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
@@ -600,7 +602,7 @@ static void *set_one_light_vector_handler(parser_state state, parser_context *co
 			indigo_copy_item_name(device->version, property, property->items+property->count-1, value);
 		}
 	} else if (state == TEXT) {
-		property->items[property->count-1].light.value = parse_state(value);
+		property->items[property->count-1].light.value = parse_state(INDIGO_VERSION_CURRENT, value);
 	} else if (state == END_TAG) {
 		return set_light_vector_handler;
 	}
@@ -626,7 +628,7 @@ static void *set_light_vector_handler(parser_state state, parser_context *contex
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "message")) {
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
@@ -684,7 +686,7 @@ static void *set_blob_vector_handler(parser_state state, parser_context *context
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "message")) {
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
@@ -790,7 +792,7 @@ static void *def_text_vector_handler(parser_state state, parser_context *context
 		} else if (!strcmp(name, "label")) {
 			strncpy(property->label, value, INDIGO_VALUE_SIZE);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "perm")) {
 			property->perm = parse_perm(value);
 		} else if (!strcmp(name, "message")) {
@@ -853,7 +855,7 @@ static void *def_number_vector_handler(parser_state state, parser_context *conte
 		} else if (!strcmp(name, "label")) {
 			strncpy(property->label, value, INDIGO_VALUE_SIZE);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "perm")) {
 			property->perm = parse_perm(value);
 		} else if (!strcmp(name, "message")) {
@@ -908,7 +910,7 @@ static void *def_switch_vector_handler(parser_state state, parser_context *conte
 		} else if (!strcmp(name, "label")) {
 			strncpy(property->label, value, INDIGO_VALUE_SIZE);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "perm")) {
 			property->perm = parse_perm(value);
 		} else if (!strcmp(name, "rule")) {
@@ -935,7 +937,7 @@ static void *def_light_handler(parser_state state, parser_context *context, char
 			strncpy(property->items[property->count-1].label, value, INDIGO_VALUE_SIZE);
 		}
 	} else if (state == TEXT) {
-		property->items[property->count-1].light.value = parse_state(value);
+		property->items[property->count-1].light.value = parse_state(INDIGO_VERSION_CURRENT, value);
 	} else if (state == END_TAG) {
 		return def_light_vector_handler;
 	}
@@ -965,7 +967,7 @@ static void *def_light_vector_handler(parser_state state, parser_context *contex
 		} else if (!strcmp(name, "label")) {
 			strncpy(property->label, value, INDIGO_VALUE_SIZE);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "message")) {
 			strncpy(message, value, INDIGO_VALUE_SIZE);
 		}
@@ -1020,7 +1022,7 @@ static void *def_blob_vector_handler(parser_state state, parser_context *context
 		} else if (!strcmp(name, "label")) {
 			strncpy(property->label, value, INDIGO_VALUE_SIZE);
 		} else if (!strcmp(name, "state")) {
-			property->state = parse_state(value);
+			property->state = parse_state(device->version, value);
 		} else if (!strcmp(name, "perm")) {
 			property->perm = parse_perm(value);
 		} else if (!strcmp(name, "message")) {

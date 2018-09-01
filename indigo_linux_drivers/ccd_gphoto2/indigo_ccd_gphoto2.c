@@ -1264,7 +1264,7 @@ static indigo_result ccd_attach(indigo_device *device)
 								    DSLR_SHUTTER_PROPERTY_NAME,
 								    GPHOTO2_NAME_DSLR,
 								    GPHOTO2_NAME_SHUTTER,
-								    INDIGO_IDLE_STATE,
+								    INDIGO_OK_STATE,
 								    INDIGO_RW_PERM,
 								    INDIGO_ONE_OF_MANY_RULE,
 								    count);
@@ -1277,7 +1277,7 @@ static indigo_result ccd_attach(indigo_device *device)
 								DSLR_ISO_PROPERTY_NAME,
 								GPHOTO2_NAME_DSLR,
 								GPHOTO2_NAME_ISO,
-								INDIGO_IDLE_STATE,
+								INDIGO_OK_STATE,
 								INDIGO_RW_PERM,
 								INDIGO_ONE_OF_MANY_RULE,
 								count);
@@ -1290,7 +1290,7 @@ static indigo_result ccd_attach(indigo_device *device)
 									DSLR_COMPRESSION_PROPERTY_NAME,
 									GPHOTO2_NAME_DSLR,
 									GPHOTO2_NAME_COMPRESSION,
-									INDIGO_IDLE_STATE,
+									INDIGO_OK_STATE,
 									INDIGO_RW_PERM,
 									INDIGO_ONE_OF_MANY_RULE,
 									count);
@@ -1302,7 +1302,7 @@ static indigo_result ccd_attach(indigo_device *device)
 									 DSLR_ZOOM_PREVIEW_PROPERTY_NAME,
 									 GPHOTO2_NAME_DSLR,
 									 GPHOTO2_NAME_ZOOM_PREVIEW,
-									 INDIGO_IDLE_STATE,
+									 INDIGO_OK_STATE,
 									 INDIGO_RW_PERM,
 									 INDIGO_ONE_OF_MANY_RULE,
 									 2);
@@ -1323,7 +1323,7 @@ static indigo_result ccd_attach(indigo_device *device)
 									  DSLR_MIRROR_LOCKUP_PROPERTY_NAME,
 									  GPHOTO2_NAME_DSLR,
 									  GPHOTO2_NAME_MIRROR_LOCKUP,
-									  INDIGO_IDLE_STATE,
+									  INDIGO_OK_STATE,
 									  INDIGO_RW_PERM,
 									  INDIGO_ONE_OF_MANY_RULE,
 									  2);
@@ -1343,7 +1343,7 @@ static indigo_result ccd_attach(indigo_device *device)
 									 DSLR_DELETE_IMAGE_PROPERTY_NAME,
 									 GPHOTO2_NAME_DSLR,
 									 GPHOTO2_NAME_DELETE_IMAGE,
-									 INDIGO_IDLE_STATE,
+									 INDIGO_OK_STATE,
 									 INDIGO_RW_PERM,
 									 INDIGO_ONE_OF_MANY_RULE,
 									 2);
@@ -1362,7 +1362,7 @@ static indigo_result ccd_attach(indigo_device *device)
 										GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY_NAME,
 										GPHOTO2_NAME_DSLR,
 										GPHOTO2_NAME_LIBGPHOTO2,
-										INDIGO_IDLE_STATE,
+										INDIGO_OK_STATE,
 										INDIGO_RO_PERM,
 										1);
 		indigo_init_text_item(GPHOTO2_LIBGPHOTO2_VERSION_ITEM,
@@ -1557,7 +1557,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 		}
 
 		CCD_ABORT_EXPOSURE_PROPERTY->state =
-			INDIGO_IDLE_STATE;
+			INDIGO_OK_STATE;
 		indigo_update_property(device,
 				       CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 

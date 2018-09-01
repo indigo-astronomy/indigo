@@ -46,9 +46,9 @@ In case of successful handshake for version 2.0 the following extensions can be 
 
 3. Number property items has 'target' attribute to distinguish between current and target item value for properties like CCD_EXPOSURE.
 
-
 If protocol version 2.0 is used, INDIGO property and item names are used (more gramatically and semantically consistent),
-while if version 1.7 is used, names of  commonly used names are maped to their INDI counter parts. 
+while if version 1.7 is used, names of  commonly used names are maped to their INDI counter parts.  Also "Idle" property state is mapped
+to "Ok" state ("Idle" state is not used as a property state in INDIGO, just as a light item value).
 
 ## INDIGO JSON protocol 
 

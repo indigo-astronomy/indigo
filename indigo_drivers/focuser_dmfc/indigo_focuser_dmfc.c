@@ -124,17 +124,17 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		X_FOCUSER_MOTOR_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_MOTOR_TYPE", FOCUSER_MAIN_GROUP, "Motor type", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		X_FOCUSER_MOTOR_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_MOTOR_TYPE", FOCUSER_MAIN_GROUP, "Motor type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (X_FOCUSER_MOTOR_TYPE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM, "STEPPER", "Stepper motor", false);
 		indigo_init_switch_item(X_FOCUSER_MOTOR_TYPE_DC_ITEM, "DC", "DC Motor", false);
-		X_FOCUSER_ENCODER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_ENCODER", FOCUSER_MAIN_GROUP, "Encoder state", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		X_FOCUSER_ENCODER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_ENCODER", FOCUSER_MAIN_GROUP, "Encoder state", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (X_FOCUSER_ENCODER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_FOCUSER_ENCODER_ENABLED_ITEM, "ENABLED", "Enabled", false);
 		indigo_init_switch_item(X_FOCUSER_ENCODER_DISABLED_ITEM, "DISABLED", "Enabled", false);
-		X_FOCUSER_BACKLASH_PROPERTY = indigo_init_number_property(NULL, device->name, "X_FOCUSER_BACKLASH", FOCUSER_MAIN_GROUP, "Backlash", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
+		X_FOCUSER_BACKLASH_PROPERTY = indigo_init_number_property(NULL, device->name, "X_FOCUSER_BACKLASH", FOCUSER_MAIN_GROUP, "Backlash", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (X_FOCUSER_BACKLASH_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(X_FOCUSER_BACKLASH_ITEM, "BACKLASH", "Backlash", 0, 9999, 100, 0);
@@ -233,7 +233,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					}
 					token = strtok(NULL, ":");
 					if (token) { // moving status
-						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 					}
 					token = strtok(NULL, ":"); // led status
 					token = strtok(NULL, ":");
