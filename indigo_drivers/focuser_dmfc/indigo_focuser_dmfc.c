@@ -211,6 +211,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					close(PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = 0;
 				}
+//			} else {
+//				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+//				INDIGO_DRIVER_ERROR(DRIVER_NAME, "DMFCv3 failed to open %s %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 			}
 			if (PRIVATE_DATA->handle > 0) {
 				if (dmfc_command(device, "A", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
