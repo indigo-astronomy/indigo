@@ -34,8 +34,8 @@
 extern "C" {
 #endif
 
-#define MOUNT_IOPTRON_NAME              "Mount IEQ"
-#define MOUNT_IOPTRON_GUIDER_NAME       "Mount IEQ (guider)"
+#define MOUNT_IOPTRON_NAME              "iOptron Mount"
+#define MOUNT_IOPTRON_GUIDER_NAME       "iOptron Mount (guider)"
 
 
 /** Create mount IOPTRON device instance

@@ -965,7 +965,7 @@
 		59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_mi.h; sourceTree = "<group>"; };
 		59FC2EB8210CA76200730343 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59FC2EB9210CA76200730343 /* indigo_ccd_mi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_mi.rules; sourceTree = "<group>"; };
-		59FFD0D02128604200C7355C /* hidapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hidapi.h; sourceTree = "<group>"; };
+		59FFD0D02128604200C7355C /* hidapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hidapi.h; path = hidapi/hidapi/hidapi.h; sourceTree = "<group>"; };
 		59FFD0D12128604200C7355C /* hid.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = hid.c; path = hidapi/mac/hid.c; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
