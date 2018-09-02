@@ -42,7 +42,7 @@ bool synscan_configure(indigo_device* device) {
 	//  Get firmware version
 	long version;
 	if (!synscan_firmware_version(device, &version)) {
-		printf("ERROR GETTING FIRMWARE\n");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ERROR GETTING FIRMWARE");
 		return false;
 	}
 	snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d.%02d", GET_RELEASE(version), GET_REVISION(version), GET_PATCH(version));
@@ -51,21 +51,21 @@ bool synscan_configure(indigo_device* device) {
 	long raMotorStatus = 0;
 	long decMotorStatus = 0;
 	if (!synscan_motor_status(device, kAxisRA, &raMotorStatus)) {
-		printf("ERROR GETTING RA STATUS\n");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ERROR GETTING RA STATUS");
 		return false;
 	}
 	if (!synscan_motor_status(device, kAxisDEC, &decMotorStatus)) {
-		printf("ERROR GETTING DEC STATUS\n");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ERROR GETTING DEC STATUS");
 		return false;
 	}
 
 	//  If the motors are moving, can we read back the config? Do we need to stop them?
 	if ((raMotorStatus & kStatusActiveMask) != 0) {
-		printf("RA MOTOR IS ACTIVE DURING CONFIGURATION!\n");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA MOTOR IS ACTIVE DURING CONFIGURATION!");
 		synscan_stop_axis(device, kAxisRA);
 	}
 	if ((decMotorStatus & kStatusActiveMask) != 0) {
-		printf("DEC MOTOR IS ACTIVE DURING CONFIGURATION!\n");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC MOTOR IS ACTIVE DURING CONFIGURATION!");
 		synscan_stop_axis(device, kAxisDEC);
 	}
 
@@ -122,13 +122,13 @@ bool synscan_configure(indigo_device* device) {
 		//  slewing routines.
 
 		//  Dump out mount data
-		printf("Total Steps:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raTotalSteps, PRIVATE_DATA->decTotalSteps);
-		printf(" Worm Steps:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raWormSteps, PRIVATE_DATA->decWormSteps);
-		printf(" Timer Freq:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raTimerFreq, PRIVATE_DATA->decTimerFreq);
-		printf("  HS Factor:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raHighSpeedFactor, PRIVATE_DATA->decHighSpeedFactor);
-		printf(" Polarscope:  %s\n", PRIVATE_DATA->canSetPolarscopeBrightness ? "YES" : "NO");
-		printf("   Home Pos:  RA == %10lu   DEC == %10lu\n", RA_HOME_POSITION, DEC_HOME_POSITION);
-		printf("   Zero Pos:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raZeroPos, PRIVATE_DATA->decZeroPos);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Total Steps:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raTotalSteps, PRIVATE_DATA->decTotalSteps);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Worm Steps:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raWormSteps, PRIVATE_DATA->decWormSteps);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Timer Freq:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raTimerFreq, PRIVATE_DATA->decTimerFreq);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  HS Factor:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raHighSpeedFactor, PRIVATE_DATA->decHighSpeedFactor);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, " Polarscope:  %s\n", PRIVATE_DATA->canSetPolarscopeBrightness ? "YES" : "NO");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Home Pos:  RA == %10lu   DEC == %10lu\n", RA_HOME_POSITION, DEC_HOME_POSITION);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Zero Pos:  RA == %10lu   DEC == %10lu\n", PRIVATE_DATA->raZeroPos, PRIVATE_DATA->decZeroPos);
 
 		//  Determine mount vendor and model
 	}
@@ -141,12 +141,12 @@ bool synscan_configure(indigo_device* device) {
 			return false;
 		if (raMotorStatus == kStatusNotInitialised) {
 			//  This is a fatal error - can't get the motor to initialize
-			printf("RA MOTOR FAILURE: WILL NOT INITIALIZE!\n");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "RA MOTOR FAILURE: WILL NOT INITIALIZE!");
 			return false;
 		}
 		if (!synscan_init_axis_position(device, kAxisRA, RA_HOME_POSITION))
 			return false;
-		printf("RA MOTOR INITIALIZED!\n");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA MOTOR INITIALIZED!");
 	}
 	else {
 		//  if mount was previously configured - assume that configuration is still valid
@@ -158,7 +158,7 @@ bool synscan_configure(indigo_device* device) {
 		//  actually if the assumption is that the software restarted AND EQMac previously configured it, then we can recover
 		//  by just reading the parameters and trusting the current position and computing where the home position should be
 
-		printf("RA MOTOR OK %06X\n", raMotorStatus);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA MOTOR OK %06X", raMotorStatus);
 	}
 	if (decMotorStatus == kStatusNotInitialised || decMotorStatus == 0x000) {
 		if (!synscan_init_axis(device, kAxisDEC))
@@ -167,12 +167,12 @@ bool synscan_configure(indigo_device* device) {
 			return false;
 		if (decMotorStatus == kStatusNotInitialised) {
 			//  This is a fatal error - can't get the motor to initialize
-			printf("DEC MOTOR FAILURE: WILL NOT INITIALIZE!\n");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "DEC MOTOR FAILURE: WILL NOT INITIALIZE!");
 			return false;
 		}
 		if (!synscan_init_axis_position(device, kAxisDEC, DEC_HOME_POSITION))
 			return false;
-		printf("DEC MOTOR INITIALIZED!\n");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC MOTOR INITIALIZED!");
 	}
 	else {
 		//  if mount was previously configured - assume that configuration is still valid
@@ -180,7 +180,7 @@ bool synscan_configure(indigo_device* device) {
 		//  else this is also a fatal error - we don't know why the motors are not needing INIT
 		//  maybe the software restarted??
 		//  we could receover by configuring, but the user should be told that the assumption is the mount must be homed
-		printf("DEC MOTOR OK %06X\n", decMotorStatus);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC MOTOR OK %06X", decMotorStatus);
 	}
 
 	//  Configure the mount modes
@@ -195,7 +195,7 @@ bool synscan_configure(indigo_device* device) {
 
 	//  Read the current position
 	synscan_get_coords(device);
-	printf("   Position:  RA == %g   DEC == %g\n", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "   Position:  RA == %g   DEC == %g\n", PRIVATE_DATA->raPosition, PRIVATE_DATA->decPosition);
 
 	//  Consider the mount configured once we reach here
 	PRIVATE_DATA->mountConfigured = true;
@@ -591,9 +591,9 @@ void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double 
 		decPos[1] = degw;
 	}
 
-	printf("SOLUTIONS:\n");
-	printf("  OK:  %g,   %g\n", haPos[0], decPos[0]);
-	printf("  UP:  %g,   %g\n", haPos[1], decPos[1]);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SOLUTIONS:\n");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  OK:  %g,   %g\n", haPos[0], decPos[0]);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "  UP:  %g,   %g\n", haPos[1], decPos[1]);
 }
 
 
@@ -659,7 +659,7 @@ static bool synscan_slew_axis_to_position(indigo_device* device, enum AxisID axi
 		//		if (cachedConfig->direction != d) {
 		//			//  Extend delta by the anti-backlash amount
 		//			delta += [self antibacklashStepsForAxis:axis];
-		//			printf("Doing ANTI-BACKLASH slew extension\n");
+		//			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Doing ANTI-BACKLASH slew extension\n");
 		//		}
 
 		AxisPosition slowdown = delta - 80000;
@@ -913,7 +913,7 @@ static int synscan_select_best_encoder_point(indigo_device* device, double haPos
 
 					//  Check if the CW-UP point is within limits
 					if (cwup_h > leftLimitPosition || cwup_h < rightLimitPosition) {
-						printf("CWUP HA IS OUTSIDE LIMITS - CANNOT SLEW CW UP\n");
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CWUP HA IS OUTSIDE LIMITS - CANNOT SLEW CW UP\n");
 						return &eps[0];
 					}
 
@@ -922,14 +922,14 @@ static int synscan_select_best_encoder_point(indigo_device* device, double haPos
 	if (!south) {
 		//  Desirable if time to flip (reach 0.5) is better
 		if (0.5 - cwup_h > 0.5 - eps[0].ha) {
-			printf("CWUP SLEW IS DESIRABLE!\n");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CWUP SLEW IS DESIRABLE!\n");
 			return &eps[1];
 		}
 	}
 	else {
 		//  Desirable if time to flip (reach 0.0) is better
 		if (cwup_h > eps[0].ha) {
-			printf("CWUP SLEW IS DESIRABLE!\n");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CWUP SLEW IS DESIRABLE!\n");
 			return &eps[1];
 		}
 	}
@@ -972,7 +972,7 @@ void slew_timer_callback(indigo_device *device) {
 
 				//  Select best encoder point based on limits
 				int idx = synscan_select_best_encoder_point(device, haPos, decPos);
-				printf("SLEW TO:  %g   /   %g     (HA %g / DEC %g)\n", haPos[idx], decPos[idx], ha, dec);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW TO:  %g   /   %g     (HA %g / DEC %g)\n", haPos[idx], decPos[idx], ha, dec);
 
 				//  Limits check
 
@@ -1012,7 +1012,7 @@ void slew_timer_callback(indigo_device *device) {
 
 				//  Select best encoder point based on limits
 				int idx = synscan_select_best_encoder_point(device, haPos, decPos);
-				printf("SLEW TO:  %g   /   %g\n", haPos[idx], decPos[idx]);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW TO:  %g   /   %g\n", haPos[idx], decPos[idx]);
 
 				//  Set the desired axis mode to slewing and provide the target coordinate
 
@@ -1141,7 +1141,7 @@ void synscan_park(indigo_device* device) {
 			 }
 
 			 //  Delay for the pulse duration
-			 printf("Doing RA pulse %g secs\n", ra);
+			 INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Doing RA pulse %g secs\n", ra);
 			 [op waitUntilFinished];
 
 			 useconds_t duration = (useconds_t)lrint(fabs(ra) * 1000000);
@@ -1190,7 +1190,7 @@ void synscan_park(indigo_device* device) {
 			 }
 
 			 //  Delay for the pulse duration
-			 printf("Doing DEC pulse %g secs\n", dec);
+			 INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Doing DEC pulse %g secs\n", dec);
 			 [op waitUntilFinished];
 			 useconds_t duration = (useconds_t)lrint(fabs(dec) * 1000000);
 			 if (duration < minimumPulseLength*1000)
@@ -1256,7 +1256,7 @@ void synscan_park(indigo_device* device) {
 		p.active = true;
 		[syncManager addPoint:p];
 
-		printf("SYNC DELTA RA: %g    DEC: %g\n", p.actual_ra - p.catalog_ra, p.actual_dec - p.catalog_dec);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SYNC DELTA RA: %g    DEC: %g\n", p.actual_ra - p.catalog_ra, p.actual_dec - p.catalog_dec);
 
 		//  User is telling us that current encoder positions (which are changing due to tracking) represent
 		//  the RA/DEC of self.slewTarget.
