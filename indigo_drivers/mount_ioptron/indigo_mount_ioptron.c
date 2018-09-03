@@ -93,8 +93,8 @@ static bool ieq_command(indigo_device *device, char *command, char *response, in
 		int index = 0;
 		int remains = max;
 		while (remains > 0) {
-			tv.tv_usec = 0;
-			tv.tv_sec = 1;
+			tv.tv_usec = 500000;
+			tv.tv_sec = 0;
 			fd_set readout;
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
