@@ -330,7 +330,7 @@ static void position_timer_callback(indigo_device *device) {
 				if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE && MOUNT_PARK_PARKED_ITEM->sw.value) {
 					ieq_command(device, ":MP1#", response, 1);
 					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
+					indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked - please switch mount off");
 				}
 			} else if (ieq_command(device, ":SE?#", response, 1) && *response == '1') {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -367,7 +367,7 @@ static void position_timer_callback(indigo_device *device) {
 						if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 							indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 							MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-							indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
+							indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked - please switch mount off");
 						}
 						break;
 					case 7: // stopped at zero position
