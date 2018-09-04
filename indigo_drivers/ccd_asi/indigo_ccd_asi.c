@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -114,7 +114,7 @@ typedef struct {
 
 
 static int get_unity_gain(indigo_device *device) {
-	double e_per_adu = PRIVATE_DATA->info.ElecPerADU;
+	double e_per_adu = PRIVATE_DATA->info.ElecPerADU * pow(10.0, CCD_GAIN_ITEM->number.value/200.0);
 
 	if (PRIVATE_DATA->is_asi120) {
 		if ((e_per_adu >= 1) && (e_per_adu < 2))
