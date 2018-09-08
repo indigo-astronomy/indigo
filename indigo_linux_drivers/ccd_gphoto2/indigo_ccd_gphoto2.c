@@ -53,6 +53,10 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
+#define STRNCMP(str1, str2)				\
+	((strlen(str1) == strlen(str2)) &&		\
+	 (strncmp(str1, str2, strlen(str1)) == 0))
+
 #define GPHOTO2_NAME_DSLR			"GPhoto2"
 #define GPHOTO2_NAME_SHUTTER			"Shutter time"
 #define GPHOTO2_NAME_ISO			"ISO"
@@ -149,6 +153,8 @@ typedef struct {
 	char filename_suffix[9];
 	enum vendor vendor;
 	char *gphoto2_compression_id;
+	char *name_best_jpeg_format;
+	char *name_pure_raw_format;
 	bool mirror_lockup;
 	bool shutterspeed_bulb;
 	bool has_single_bulb_mode;
@@ -748,9 +754,6 @@ static void exposure_timer_callback(indigo_device *device)
 						  PRIVATE_DATA->buffer_size,
 						  PRIVATE_DATA->filename_suffix);
 		if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-			/* TODO: Deal with conflicting formats, e.g.
-			   CCD_IMAGE_FORMAT_FITS_ITEM && COMPRESSION == JPEG,
-			   that is, DSLR JPEG -> FITS. */
 			rc = process_dslr_image_debayer(device,
 							PRIVATE_DATA->buffer,
 							PRIVATE_DATA->buffer_size);
@@ -1222,6 +1225,13 @@ static indigo_result ccd_attach(indigo_device *device)
 
 	if (indigo_ccd_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 
+		/*------------------- DEFAULT INITIALIZATION -----------------*/
+		PRIVATE_DATA->buffer = NULL;
+		PRIVATE_DATA->buffer_size = 0;
+		PRIVATE_DATA->buffer_size_max = 0;
+		PRIVATE_DATA->name_best_jpeg_format = NULL;
+		PRIVATE_DATA->name_pure_raw_format = NULL;
+
 		/*--------------------- CCD_INFO --------------------*/
 		char *name = PRIVATE_DATA->gphoto2_id.name;
 		CCD_INFO_PROPERTY->hidden = true;
@@ -1398,9 +1408,23 @@ static indigo_result ccd_attach(indigo_device *device)
 			CCD_STREAMING_PROPERTY->hidden = false;
 		}
 
-		PRIVATE_DATA->buffer = NULL;
-		PRIVATE_DATA->buffer_size = 0;
-		PRIVATE_DATA->buffer_size_max = 0;
+		/*----------------- BEST-JPEG-QUALITY-PURE-RAW ---------------*/
+		for (int i = 0; i < DSLR_COMPRESSION_PROPERTY->count; i++) {
+			if (!PRIVATE_DATA->name_pure_raw_format && (
+				    STRNCMP(DSLR_COMPRESSION_PROPERTY->items[i].name, "RAW") ||
+				    STRNCMP(DSLR_COMPRESSION_PROPERTY->items[i].name, "NEF (Raw)") ||
+				    STRNCMP(DSLR_COMPRESSION_PROPERTY->items[i].name, "NEF+Basic"))) {
+				PRIVATE_DATA->name_pure_raw_format = strdup(DSLR_COMPRESSION_PROPERTY->items[i].name);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "CCD_IMAGE_FORMAT_PROPERTY FITS/RAW uses compression format '%s'",
+						  PRIVATE_DATA->name_pure_raw_format);
+			} else if (!PRIVATE_DATA->name_best_jpeg_format && (
+					 STRNCMP(DSLR_COMPRESSION_PROPERTY->items[i].name, "Large Fine JPEG") ||
+					 STRNCMP(DSLR_COMPRESSION_PROPERTY->items[i].name, "JPEG Fine"))) {
+				PRIVATE_DATA->name_best_jpeg_format = strdup(DSLR_COMPRESSION_PROPERTY->items[i].name);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "CCD_IMAGE_FORMAT_PROPERTY JPEG uses compression format '%s'",
+						  PRIVATE_DATA->name_best_jpeg_format);
+			}
+		}
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -1435,6 +1459,12 @@ static indigo_result ccd_detach(indigo_device *device)
 		PRIVATE_DATA->buffer_size = 0;
 		PRIVATE_DATA->buffer_size_max = 0;
 	}
+
+	if (PRIVATE_DATA->name_pure_raw_format)
+		free(PRIVATE_DATA->name_pure_raw_format);
+
+	if (PRIVATE_DATA->name_best_jpeg_format)
+		free(PRIVATE_DATA->name_best_jpeg_format);
 
 	return indigo_ccd_detach(device);
 }
@@ -1527,6 +1557,37 @@ static indigo_result ccd_change_property(indigo_device *device,
 		DSLR_DELETE_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 
+		return INDIGO_OK;
+	}
+	/*------------------------- CCD-IMAGE-FORMAT -------------------------*/
+	else if (indigo_property_match(CCD_IMAGE_FORMAT_PROPERTY, property)) {
+		indigo_property_copy_values(CCD_IMAGE_FORMAT_PROPERTY, property,
+					    false);
+
+		/* RAW or FITS format, set to image quality pure RAW. */
+		if ((CCD_IMAGE_FORMAT_RAW_ITEM->sw.value || CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) && PRIVATE_DATA->name_pure_raw_format) {
+
+			indigo_set_switch(DSLR_COMPRESSION_PROPERTY,
+					  indigo_get_item(DSLR_COMPRESSION_PROPERTY,
+							  PRIVATE_DATA->name_pure_raw_format),
+					  true);
+			update_property(device, DSLR_COMPRESSION_PROPERTY, EOS_COMPRESSION);
+			CCD_IMAGE_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
+		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value && PRIVATE_DATA->name_best_jpeg_format) {
+			indigo_set_switch(DSLR_COMPRESSION_PROPERTY,
+					  indigo_get_item(DSLR_COMPRESSION_PROPERTY,
+							  PRIVATE_DATA->name_best_jpeg_format),
+					  true);
+			update_property(device, DSLR_COMPRESSION_PROPERTY, EOS_COMPRESSION);
+			CCD_IMAGE_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
+
+		} else {
+			INDIGO_DRIVER_LOG(DRIVER_NAME,
+					  "cannot set proper compression format for image format");
+			CCD_IMAGE_FORMAT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+
+		indigo_update_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	/*--------------------------- CCD-EXPOSURE ---------------------------*/
