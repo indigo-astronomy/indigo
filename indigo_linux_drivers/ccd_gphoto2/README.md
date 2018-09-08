@@ -77,6 +77,32 @@ The debayering options are currently fixed and set as follows:
 
 This FITS output is currently 3 colors (RGB) each 8-bit.
 
+### Image format FITS/RAW/JPEG
+Setting the INDIGO image format to FITS, RAW or JPEG requires a corresponding format on the DSLR camera (also called compression format).
+Typical compression formats are (Canon EOS)
+* Large Fine JPEG
+* Large Normal JPEG
+* Medium Fine JPEG
+* Medium Normal JPEG
+* Small Fine JPEG
+* Small Normal JPEG
+* Smaller JPEG
+* Tiny JPEG
+* RAW + Large Fine JPEG
+* RAW
+
+or for Nikon
+* JPEG Basic
+* JPEG Normal
+* JPEG Fine
+* NEF (Raw)
+* NEF+Basic
+* NEF+Normal
+* NEF+Fine
+
+Setting INDIGO image format to FITS or RAW sets the compression format
+on the DSLR camera to 'RAW' for Canon EOS and 'NEF (Raw)' or 'NEF+Basic' for Nikon cameras.
+
 ## Status: Development
 
 Driver is developed and tested with:
