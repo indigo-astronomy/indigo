@@ -1426,6 +1426,19 @@ static indigo_result ccd_attach(indigo_device *device)
 			}
 		}
 
+		/*---------------------- DEFAULT SETTINGS --------------------*/
+		if (PRIVATE_DATA->name_pure_raw_format) {
+			/* Default compression format is RAW. */
+			indigo_set_switch(DSLR_COMPRESSION_PROPERTY,
+					  indigo_get_item(DSLR_COMPRESSION_PROPERTY,
+							  PRIVATE_DATA->name_pure_raw_format),
+					  true);
+			update_property(device, DSLR_COMPRESSION_PROPERTY, COMPRESSION);
+			/* Default image format is RAW. */
+			indigo_set_switch(CCD_IMAGE_FORMAT_PROPERTY,
+					  CCD_IMAGE_FORMAT_RAW_ITEM, true);
+		}
+
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -1571,14 +1584,14 @@ static indigo_result ccd_change_property(indigo_device *device,
 					  indigo_get_item(DSLR_COMPRESSION_PROPERTY,
 							  PRIVATE_DATA->name_pure_raw_format),
 					  true);
-			update_property(device, DSLR_COMPRESSION_PROPERTY, EOS_COMPRESSION);
+			update_property(device, DSLR_COMPRESSION_PROPERTY, COMPRESSION);
 			CCD_IMAGE_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 		} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value && PRIVATE_DATA->name_best_jpeg_format) {
 			indigo_set_switch(DSLR_COMPRESSION_PROPERTY,
 					  indigo_get_item(DSLR_COMPRESSION_PROPERTY,
 							  PRIVATE_DATA->name_best_jpeg_format),
 					  true);
-			update_property(device, DSLR_COMPRESSION_PROPERTY, EOS_COMPRESSION);
+			update_property(device, DSLR_COMPRESSION_PROPERTY, COMPRESSION);
 			CCD_IMAGE_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
 
 		} else {

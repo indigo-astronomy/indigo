@@ -8,7 +8,7 @@ Cameras supported by libgphoto2
 
 ## Supported platforms
 
-This driver is Linux/Intel (32-bit and 64-bit) specific.
+This driver depends on 3rd party library and is supported on Linux (Intel 32/64 bit and ARM v6/7/8).
 
 ## License
 
@@ -36,8 +36,10 @@ Please visit the website [libgphoto2](https://github.com/gphoto/libgphoto2) and 
 up-to-date version or in case the camera is not supported by the latest version, please
 file an [issue](https://github.com/gphoto/libgphoto2/issues).
 
-### Manual mode
+### Manual mode and focus
 Make sure the camera is in "M" mode, such that both aperture and shutterspeed can be controlled by the driver.
+In addition make sure *manual* focus is enabled and *not* auto focus. The indigo_ccd_gphoto2 driver is
+developed for the domain of amateur astronomy, therefore any *auto* settings limit the functionality of the driver.
 
 ### Shutterspeed and bulb setting
 Most cameras are operated either in shutterspeed setting or bulb setting.
@@ -79,7 +81,7 @@ This FITS output is currently 3 colors (RGB) each 8-bit.
 
 ### Image format FITS/RAW/JPEG
 Setting the INDIGO image format to FITS, RAW or JPEG requires a corresponding format on the DSLR camera (also called compression format).
-Typical compression formats are (Canon EOS)
+Typical compression formats for Canon EOS are:
 * Large Fine JPEG
 * Large Normal JPEG
 * Medium Fine JPEG
@@ -91,7 +93,7 @@ Typical compression formats are (Canon EOS)
 * RAW + Large Fine JPEG
 * RAW
 
-or for Nikon
+or for Nikon:
 * JPEG Basic
 * JPEG Normal
 * JPEG Fine
@@ -108,5 +110,6 @@ on the DSLR camera to 'RAW' for Canon EOS and 'NEF (Raw)' or 'NEF+Basic' for Nik
 Driver is developed and tested with:
 * Nikon D50 (USB)
 * Nikon D7000 (USB)
+* Canon EOS 600D (USB)
 * Canon EOS 700D (USB)
 * Canon EOS 1100D (USB)
