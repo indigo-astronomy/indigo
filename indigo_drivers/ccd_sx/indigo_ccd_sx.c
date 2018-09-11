@@ -993,8 +993,6 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 #define SX_VENDOR_ID                  0x1278
 
 #define MAX_DEVICES                   10
@@ -1004,6 +1002,7 @@ static struct {
 	const char *name;
 	indigo_device_interface iface;
 } SX_PRODUCTS[] = {
+	{ 0x0100, "SX-Generic", INDIGO_INTERFACE_CCD },
 	{ 0x0105, "SXVF-M5", INDIGO_INTERFACE_CCD },
 	{ 0x0305, "SXVF-M5C", INDIGO_INTERFACE_CCD },
 	{ 0x0107, "SXVF-M7", INDIGO_INTERFACE_CCD },
@@ -1033,10 +1032,15 @@ static struct {
 	{ 0x0389, "SX-825C", INDIGO_INTERFACE_CCD },
 	{ 0x0184, "SX-834", INDIGO_INTERFACE_CCD },
 	{ 0x0384, "SX-834C", INDIGO_INTERFACE_CCD },
+	
 	{ 0x0507, "SX LodeStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
 	{ 0x0517, "SX CoStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
 	{ 0x0509, "SX SuperStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
 	{ 0x0525, "SX UltraStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
+	{ 0x0519, "SX Oculus", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
+	
+	{ 0x0719, "LSI9", INDIGO_INTERFACE_CCD },
+	{ 0x0720, "HLSI9", INDIGO_INTERFACE_CCD },
 	{ 0, NULL }
 };
 
@@ -1061,7 +1065,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	);
 	struct libusb_device_descriptor descriptor;
 
-	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 		INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
@@ -1128,7 +1131,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		break;
 	}
 	}
-	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 

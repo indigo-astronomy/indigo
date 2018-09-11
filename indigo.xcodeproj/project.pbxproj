@@ -2761,8 +2761,8 @@
 				59F654681EE47371007B8C93 /* ccd_qhy */,
 				59F4EC6F1E941CF400CC7772 /* ccd_sbig */,
 				59D62CD61E731479004DDD9C /* focuser_usbv3 */,
-				591FAB761E391AFA0076BD6E /* focuser_fli */,
 				59C4C87F20CEF107007EE330 /* focuser_wemacro */,
+				591FAB761E391AFA0076BD6E /* focuser_fli */,
 				5992F7B91E1EC9270035242E /* wheel_fli */,
 				5992F7B01E1EC84B0035242E /* ccd_fli */,
 				9DB917FE1DF8543800678721 /* mount_lx200 */,
@@ -3711,11 +3711,11 @@
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {
 			isa = PBXGroup;
 			children = (
-				595355A41F6AD71300478BEC /* qsiapi-7.6.0 */,
-				9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */,
-				9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */,
-				9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */,
 				591C3F4A1F8A883F002B5596 /* README.md */,
+				9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */,
+				9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */,
+				9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */,
+				595355A41F6AD71300478BEC /* qsiapi-7.6.0 */,
 			);
 			path = ccd_qsi;
 			sourceTree = "<group>";

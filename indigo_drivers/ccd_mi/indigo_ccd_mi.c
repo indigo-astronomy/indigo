@@ -552,8 +552,6 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 #define MAX_DEVICES                   10
 
 static indigo_device *devices[MAX_DEVICES];
@@ -596,7 +594,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		NULL,
 		wheel_detach
 		);
-	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			new_eid = -1;
@@ -687,7 +684,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 	}
-	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 }
 

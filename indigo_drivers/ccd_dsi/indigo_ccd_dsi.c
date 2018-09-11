@@ -583,7 +583,7 @@ static int find_unplugged_device_slot() {
 }
 
 
-static void process_plug_event() {
+static void process_plug_event(indigo_device *unusued) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -592,30 +592,33 @@ static void process_plug_event() {
 		NULL,
 		ccd_detach
 	);
-
+	pthread_mutex_lock(&device_mutex);
+#ifdef __APPLE__
+	dsi_load_firmware();
+#endif
 	int slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-
 	char sid[DSI_ID_LEN];
 	bool found = find_plugged_device_sid(sid);
 	if (!found) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No plugged device found.");
+		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-
 	char dev_name[DSI_NAME_LEN];
 	dsi_camera_t *dsi;
 	dsi = dsi_open_camera(sid);
 	if(dsi == NULL) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
+		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
 	strncpy(dev_name, dsi_get_model_name(dsi), DSI_NAME_LEN);
 	dsi_close_camera(dsi);
-
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
@@ -628,19 +631,21 @@ static void process_plug_event() {
 	device->private_data = private_data;
 	indigo_async((void *(*)(void *))indigo_attach_device, device);
 	devices[slot]=device;
+	pthread_mutex_unlock(&device_mutex);
 }
 
 
-static void process_unplug_event() {
+static void process_unplug_event(indigo_device *unusued) {
 	int slot;
 	bool removed = false;
 	dsi_private_data *private_data = NULL;
+	pthread_mutex_lock(&device_mutex);
 	while ((slot = find_unplugged_device_slot()) != NOT_FOUND) {
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
+			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
-
 		indigo_detach_device(*device);
 		if ((*device)->private_data) {
 			private_data = (dsi_private_data*)((*device)->private_data);
@@ -649,7 +654,6 @@ static void process_unplug_event() {
 		*device = NULL;
 		removed = true;
 	}
-
 	if (private_data) {
 		if (private_data->buffer != NULL) {
 			free(private_data->buffer);
@@ -658,77 +662,29 @@ static void process_unplug_event() {
 		free(private_data);
 		private_data = NULL;
 	}
-
 	if (!removed) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No DSI Camera unplugged!");
 	}
-}
-
-
-#ifdef __APPLE__
-static void *plug_thread_func(void *sid) {
-	pthread_mutex_lock(&device_mutex);
-	dsi_load_firmware();
-	process_plug_event();
 	pthread_mutex_unlock(&device_mutex);
-	pthread_exit(NULL);
-	return NULL;
 }
-
-
-static void *unplug_thread_func(void *sid) {
-	pthread_mutex_lock(&device_mutex);
-	process_unplug_event();
-	pthread_mutex_unlock(&device_mutex);
-	pthread_exit(NULL);
-	return NULL;
-}
-#endif /* __APPLE__ */
-
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	struct libusb_device_descriptor descriptor;
-
-	//pthread_mutex_lock(&device_mutex);
 	libusb_get_device_descriptor(dev, &descriptor);
 	if (descriptor.idVendor != DSI_VENDOR_ID) {
-		//pthread_mutex_unlock(&device_mutex);
 		return 0;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Hotplug: vid=%x pid=%x", descriptor.idVendor, descriptor.idProduct);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			#ifdef __APPLE__
-				pthread_t plug_thread;
-				/* This is ugly hack but otherwise does not work!!!
-				   The camera does not respond in the hotpliug callback on MacOS,
-				   so the thread waits the callback to complete and initializes
-				   the camera.
-				 */
-				if (pthread_create(&plug_thread, NULL, plug_thread_func, NULL)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
-				}
-			#else
-				process_plug_event();
-			#endif /* __APPLE__ */
+			indigo_set_timer(NULL, 0.5, process_plug_event);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			#ifdef __APPLE__
-				pthread_t unplug_thread;
-				/* This is ugly hack but otherwise does not work!!!
-				   See the note in LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED case.
-				*/
-				if (pthread_create(&unplug_thread, NULL, unplug_thread_func, NULL)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error creating thread for firmware loader");
-				}
-			#else
-				process_unplug_event();
-			#endif /* __APPLE__ */
+			indigo_set_timer(NULL, 0.5, process_unplug_event);
 			break;
 		}
 	}
-	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 
