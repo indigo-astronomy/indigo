@@ -351,105 +351,107 @@ static int find_unplugged_device_id() {
 	return id;
 }
 
+static void process_plug_event(indigo_device *unused) {
+	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
+		 "",
+		 guider_attach,
+		 indigo_guider_enumerate_properties,
+		 guider_change_property,
+		 NULL,
+		 guider_detach
+		 );
+	pthread_mutex_lock(&device_mutex);
+	int slot = find_available_device_slot();
+	if (slot < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	int id = find_plugged_device_id();
+	if (id == NO_DEVICE) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	int index = find_index_by_device_id(id);
+	if (index < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	indigo_device *device = malloc(sizeof(indigo_device));
+	assert(device != NULL);
+	memcpy(device, &guider_template, sizeof(indigo_device));
+	sprintf(device->name, "ASI USB-St4 Guider #%d", id);
+	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+	asi_private_data *private_data = malloc(sizeof(asi_private_data));
+	assert(private_data);
+	memset(private_data, 0, sizeof(asi_private_data));
+	private_data->dev_id = id;
+	device->private_data = private_data;
+	indigo_async((void *)(void *)indigo_attach_device, device);
+	devices[slot]=device;
+}
+
+static void process_unplug_event(indigo_device *unused) {
+	int id, slot;
+	bool removed = false;
+	asi_private_data *private_data = NULL;
+	pthread_mutex_lock(&device_mutex);
+	while ((id = find_unplugged_device_id()) != -1) {
+		slot = find_device_slot(id);
+		while (slot >= 0) {
+			indigo_device **device = &devices[slot];
+			if (*device == NULL) {
+				pthread_mutex_unlock(&device_mutex);
+				return;
+			}
+			indigo_detach_device(*device);
+			if ((*device)->private_data) {
+				private_data = (*device)->private_data;
+			}
+			free(*device);
+			*device = NULL;
+			removed = true;
+			slot = find_device_slot(id);
+		}
+		
+		if (private_data) {
+			USB2ST4Close(id);
+			free(private_data);
+			private_data = NULL;
+		}
+	}
+	if (!removed) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI USB-St4 Guider unplugged (maybe other ASI device)!");
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-
-	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
-		"",
-		guider_attach,
-		indigo_guider_enumerate_properties,
-		guider_change_property,
-		NULL,
-		guider_detach
-	);
-
 	struct libusb_device_descriptor descriptor;
-
-	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
 			for (int i = 0; i < asi_id_count; i++) {
-				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct) continue;
-
-				int slot = find_available_device_slot();
-				if (slot < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-					//pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-
-				int id = find_plugged_device_id();
-				if (id == NO_DEVICE) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
-					//pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-
-				int index = find_index_by_device_id(id);
-				if (index < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
-					//pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-
-				indigo_device *device = malloc(sizeof(indigo_device));
-				assert(device != NULL);
-				memcpy(device, &guider_template, sizeof(indigo_device));
-				sprintf(device->name, "ASI USB-St4 Guider #%d", id);
-				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-				asi_private_data *private_data = malloc(sizeof(asi_private_data));
-				assert(private_data);
-				memset(private_data, 0, sizeof(asi_private_data));
-				private_data->dev_id = id;
-				device->private_data = private_data;
-				indigo_async((void *)(void *)indigo_attach_device, device);
-				devices[slot]=device;
+				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct)
+					continue;
+				indigo_set_timer(NULL, 0.5, process_plug_event);
 			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			int id, slot;
-			bool removed = false;
-			asi_private_data *private_data = NULL;
-			while ((id = find_unplugged_device_id()) != -1) {
-				slot = find_device_slot(id);
-				while (slot >= 0) {
-					indigo_device **device = &devices[slot];
-					if (*device == NULL) {
-						pthread_mutex_unlock(&device_mutex);
-						return 0;
-					}
-					indigo_detach_device(*device);
-					if ((*device)->private_data) {
-						private_data = (*device)->private_data;
-					}
-					free(*device);
-					*device = NULL;
-					removed = true;
-					slot = find_device_slot(id);
-				}
-
-				if (private_data) {
-					USB2ST4Close(id);
-					free(private_data);
-					private_data = NULL;
-				}
-			}
-			if (!removed) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI USB-St4 Guider unplugged (maybe other ASI device)!");
-			}
+			indigo_set_timer(NULL, 0.5, process_unplug_event);
+			break;
 		}
 	}
-	//pthread_mutex_unlock(&device_mutex);
 	return 0;
-};
+}
 
 
 static void remove_all_devices() {
 	int i;
-	asi_private_data *pds[USB2ST4_ID_MAX] = {NULL};
-
+	asi_private_data *pds[USB2ST4_ID_MAX] = { NULL };
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device == NULL) continue;
@@ -458,16 +460,13 @@ static void remove_all_devices() {
 		free(device);
 		devices[i] = NULL;
 	}
-
 	/* free private data */
 	for(i = 0; i < USB2ST4_ID_MAX; i++) {
 		if (pds[i]) free(pds[i]);
 	}
-
 	for(i = 0; i < USB2ST4_ID_MAX; i++)
 		connected_ids[i] = false;
 }
-
 
 static libusb_hotplug_callback_handle callback_handle;
 

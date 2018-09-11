@@ -1413,7 +1413,7 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   10
 #define NO_DEVICE                 (-1000)
@@ -1495,10 +1495,8 @@ static int find_unplugged_device_id() {
 	return id;
 }
 
-
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+static void process_plug_event(indigo_device *unused) {
 	ASI_CAMERA_INFO info;
-
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -1506,7 +1504,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_change_property,
 		NULL,
 		ccd_detach
-	);
+		);
 	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		guider_attach,
@@ -1514,112 +1512,121 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		guider_change_property,
 		NULL,
 		guider_detach
-	);
+		);
+	pthread_mutex_lock(&device_mutex);
+	int slot = find_available_device_slot();
+	if (slot < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	
+	int id = find_plugged_device_id();
+	if (id == NO_DEVICE) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	
+	indigo_device *device = malloc(sizeof(indigo_device));
+	indigo_device *master_device = device;
+	int index = find_index_by_device_id(id);
+	if (index < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	}
+	ASIGetCameraProperty(&info, index);
+	assert(device != NULL);
+	memcpy(device, &ccd_template, sizeof(indigo_device));
+	device->master_device = master_device;
+	sprintf(device->name, "%s #%d", info.Name, id);
+	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+	asi_private_data *private_data = malloc(sizeof(asi_private_data));
+	assert(private_data);
+	memset(private_data, 0, sizeof(asi_private_data));
+	private_data->dev_id = id;
+	memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
+	device->private_data = private_data;
+	indigo_async((void *)(void *)indigo_attach_device, device);
+	devices[slot]=device;
+	if (info.ST4Port) {
+		slot = find_available_device_slot();
+		if (slot < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+			pthread_mutex_unlock(&device_mutex);
+			return;
+		}
+		device = malloc(sizeof(indigo_device));
+		assert(device != NULL);
+		memcpy(device, &guider_template, sizeof(indigo_device));
+		device->master_device = master_device;
+		sprintf(device->name, "%s Guider #%d", info.Name, id);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		device->private_data = private_data;
+		indigo_async((void *)(void *)indigo_attach_device, device);
+		devices[slot]=device;
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
 
+
+static void process_unplug_event(indigo_device *unused) {
+	pthread_mutex_lock(&device_mutex);
+	int id, slot;
+	bool removed = false;
+	asi_private_data *private_data = NULL;
+	while ((id = find_unplugged_device_id()) != -1) {
+		slot = find_device_slot(id);
+		while (slot >= 0) {
+			indigo_device **device = &devices[slot];
+			if (*device == NULL) {
+				pthread_mutex_unlock(&device_mutex);
+				return;
+			}
+			indigo_detach_device(*device);
+			if ((*device)->private_data) {
+				private_data = (*device)->private_data;
+			}
+			free(*device);
+			*device = NULL;
+			removed = true;
+			slot = find_device_slot(id);
+		}
+		
+		if (private_data) {
+			ASICloseCamera(id);
+			if (private_data->buffer != NULL) {
+				free(private_data->buffer);
+				private_data->buffer = NULL;
+			}
+			free(private_data);
+			private_data = NULL;
+		}
+	}
+	if (!removed) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI Camera unplugged (maybe EFW wheel)!");
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	struct libusb_device_descriptor descriptor;
-
-	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
 			for (int i = 0; i < asi_id_count; i++) {
-				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct) continue;
-
-				int slot = find_available_device_slot();
-				if (slot < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-					//pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-
-				int id = find_plugged_device_id();
-				if (id == NO_DEVICE) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
-					//pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-
-				indigo_device *device = malloc(sizeof(indigo_device));
-				indigo_device *master_device = device;
-				int index = find_index_by_device_id(id);
-				if (index < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
-					//pthread_mutex_unlock(&device_mutex);
-					return 0;
-				}
-				ASIGetCameraProperty(&info, index);
-				assert(device != NULL);
-				memcpy(device, &ccd_template, sizeof(indigo_device));
-				device->master_device = master_device;
-				sprintf(device->name, "%s #%d", info.Name, id);
-				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-				asi_private_data *private_data = malloc(sizeof(asi_private_data));
-				assert(private_data);
-				memset(private_data, 0, sizeof(asi_private_data));
-				private_data->dev_id = id;
-				memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
-				device->private_data = private_data;
-				indigo_async((void *)(void *)indigo_attach_device, device);
-				devices[slot]=device;
-
-				if (info.ST4Port) {
-					slot = find_available_device_slot();
-					if (slot < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-						//pthread_mutex_unlock(&device_mutex);
-						return 0;
-					}
-					device = malloc(sizeof(indigo_device));
-					assert(device != NULL);
-					memcpy(device, &guider_template, sizeof(indigo_device));
-					device->master_device = master_device;
-					sprintf(device->name, "%s Guider #%d", info.Name, id);
-					INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-					device->private_data = private_data;
-					indigo_async((void *)(void *)indigo_attach_device, device);
-					devices[slot]=device;
-				}
+				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct)
+					continue;
+				indigo_set_timer(NULL, 0.5, process_plug_event);
 			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			int id, slot;
-			bool removed = false;
-			asi_private_data *private_data = NULL;
-			while ((id = find_unplugged_device_id()) != -1) {
-				slot = find_device_slot(id);
-				while (slot >= 0) {
-					indigo_device **device = &devices[slot];
-					if (*device == NULL) {
-						//pthread_mutex_unlock(&device_mutex);
-						return 0;
-					}
-					indigo_detach_device(*device);
-					if ((*device)->private_data) {
-						private_data = (*device)->private_data;
-					}
-					free(*device);
-					*device = NULL;
-					removed = true;
-					slot = find_device_slot(id);
-				}
-
-				if (private_data) {
-					ASICloseCamera(id);
-					if (private_data->buffer != NULL) {
-						free(private_data->buffer);
-						private_data->buffer = NULL;
-					}
-					free(private_data);
-					private_data = NULL;
-				}
-			}
-			if (!removed) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI Camera unplugged (maybe EFW wheel)!");
-			}
+			indigo_set_timer(NULL, 0.5, process_unplug_event);
+			break;
 		}
 	}
-	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 };
 

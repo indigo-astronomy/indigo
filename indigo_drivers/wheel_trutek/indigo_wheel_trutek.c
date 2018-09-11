@@ -31,7 +31,6 @@
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <sys/time.h>
 
 #include "indigo_io.h"
