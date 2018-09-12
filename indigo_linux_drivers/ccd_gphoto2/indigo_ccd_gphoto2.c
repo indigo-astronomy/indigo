@@ -68,8 +68,7 @@
 #define GPHOTO2_NAME_ZOOM_PREVIEW_ON            "On"
 #define GPHOTO2_NAME_ZOOM_PREVIEW_OFF           "Off"
 #define GPHOTO2_NAME_MIRROR_LOCKUP		"Use mirror lockup"
-#define GPHOTO2_NAME_MIRROR_LOCKUP_LOCK		"Enable"
-#define GPHOTO2_NAME_MIRROR_LOCKUP_UNLOCK	"Disable"
+#define GPHOTO2_NAME_MIRROR_LOCKUP_ITEM_NAME	"MIRROR_LOCKUP"
 #define GPHOTO2_NAME_LIBGPHOTO2			"Gphoto2 library"
 #define GPHOTO2_NAME_LIBGPHOTO2_VERSION		"Version"
 #define GPHOTO2_NAME_DELETE_IMAGE               "Delete downloaded image"
@@ -118,8 +117,7 @@
 #define DSLR_COMPRESSION_PROPERTY		(PRIVATE_DATA->dslr_compression_property)
 #define DSLR_WHITEBALANCE_PROPERTY		(PRIVATE_DATA->dslr_whitebalance_property)
 #define DSLR_MIRROR_LOCKUP_PROPERTY		(PRIVATE_DATA->dslr_mirror_lockup_property)
-#define DSLR_MIRROR_LOCKUP_LOCK_ITEM		(PRIVATE_DATA->dslr_mirror_lockup_property->items + 0)
-#define DSLR_MIRROR_LOCKUP_UNLOCK_ITEM		(PRIVATE_DATA->dslr_mirror_lockup_property->items + 1)
+#define DSLR_MIRROR_LOCKUP_ITEM			(PRIVATE_DATA->dslr_mirror_lockup_property->items)
 #define DSLR_DELETE_IMAGE_PROPERTY		(PRIVATE_DATA->dslr_delete_image_property)
 #define DSLR_DELETE_IMAGE_ON_ITEM		(PRIVATE_DATA->dslr_delete_image_property->items + 0)
 #define DSLR_DELETE_IMAGE_OFF_ITEM		(PRIVATE_DATA->dslr_delete_image_property->items + 1)
@@ -159,7 +157,7 @@ typedef struct {
 	char *gphoto2_compression_id;
 	char *name_best_jpeg_format;
 	char *name_pure_raw_format;
-	bool mirror_lockup;
+	float mirror_lockup_secs;
 	bool shutterspeed_bulb;
 	bool has_single_bulb_mode;
 	bool has_eos_remote_release;
@@ -683,9 +681,9 @@ static void ctx_status_func(GPContext *context, const char *str, void *data)
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", str);
 }
 
-static int eos_mirror_lockup(const bool enable, indigo_device *device)
+static int eos_mirror_lockup(const float secs, indigo_device *device)
 {
-	return gphoto2_set_key_val_char(EOS_CUSTOMFUNCEX, enable ?
+	return gphoto2_set_key_val_char(EOS_CUSTOMFUNCEX, secs > 0 ?
 				   EOS_MIRROR_LOCKUP_ENABLE :
 				   EOS_MIRROR_LOCKUP_DISABLE,
 				   device);
@@ -973,8 +971,7 @@ static void *thread_capture(void *user_data)
 	capture_abort.device = device;
 	pthread_cleanup_push(thread_capture_abort, &capture_abort);
 
-	/* Mirror-lockup EOS (2500ms). */
-	if (PRIVATE_DATA->mirror_lockup) {
+	if (PRIVATE_DATA->mirror_lockup_secs) {
 		rc = gphoto2_set_key_val_char(EOS_REMOTE_RELEASE, EOS_PRESS_FULL,
 					      device);
 		if (rc < GP_OK) {
@@ -1003,7 +1000,7 @@ static void *thread_capture(void *user_data)
 			goto cleanup;
 		}
 
-		usleep(2500000);
+		sleep(PRIVATE_DATA->mirror_lockup_secs);
 	}
 
 	PRIVATE_DATA->counter_timer =
@@ -1236,6 +1233,7 @@ static indigo_result ccd_attach(indigo_device *device)
 		PRIVATE_DATA->buffer_size_max = 0;
 		PRIVATE_DATA->name_best_jpeg_format = NULL;
 		PRIVATE_DATA->name_pure_raw_format = NULL;
+		PRIVATE_DATA->mirror_lockup_secs = 0;
 
 		/*--------------------- CCD_INFO --------------------*/
 		char *name = PRIVATE_DATA->gphoto2_id.name;
@@ -1346,24 +1344,25 @@ static indigo_result ccd_attach(indigo_device *device)
 			DSLR_ZOOM_PREVIEW_PROPERTY->hidden = true;
 
 		/*------------------------ MIRROR-LOCKUP -----------------------*/
-		DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_switch_property(NULL,
+		DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_number_property(NULL,
 									  device->name,
 									  DSLR_MIRROR_LOCKUP_PROPERTY_NAME,
 									  GPHOTO2_NAME_DSLR,
 									  GPHOTO2_NAME_MIRROR_LOCKUP,
 									  INDIGO_OK_STATE,
 									  INDIGO_RW_PERM,
-									  INDIGO_ONE_OF_MANY_RULE,
-									  2);
-		int rc = eos_mirror_lockup(false, device);
-		indigo_init_switch_item(DSLR_MIRROR_LOCKUP_LOCK_ITEM,
-					DSLR_MIRROR_LOCKUP_LOCK_ITEM_NAME,
-					GPHOTO2_NAME_MIRROR_LOCKUP_LOCK,
-					false);
-		indigo_init_switch_item(DSLR_MIRROR_LOCKUP_UNLOCK_ITEM,
-					DSLR_MIRROR_LOCKUP_UNLOCK_ITEM_NAME,
-					GPHOTO2_NAME_MIRROR_LOCKUP_UNLOCK,
-					!rc);
+									  1);
+
+		indigo_init_number_item(DSLR_MIRROR_LOCKUP_ITEM,
+					GPHOTO2_NAME_MIRROR_LOCKUP_ITEM_NAME,
+					"Seconds", 0, 30, 0.1, 0);
+
+		int rc = eos_mirror_lockup(0, device);
+		if (rc) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "mirror lockup not available camera '%s'",
+					  PRIVATE_DATA->gphoto2_id.name);
+			DSLR_MIRROR_LOCKUP_PROPERTY->hidden = true;
+		}
 
 		/*------------------------ DELETE-IMAGE -----------------------*/
 		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL,
@@ -1582,12 +1581,18 @@ static indigo_result ccd_change_property(indigo_device *device,
 	/*-------------------------- MIRROR-LOCKUP ---------------------------*/
 	else if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property)) {
 		indigo_property_copy_values(DSLR_MIRROR_LOCKUP_PROPERTY, property, false);
-		int rc = eos_mirror_lockup(DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value, device);
-		if (rc == GP_OK) {
+		PRIVATE_DATA->mirror_lockup_secs = DSLR_MIRROR_LOCKUP_ITEM->number.target;
+
+		int rc = eos_mirror_lockup(PRIVATE_DATA->mirror_lockup_secs, device);
+		if (rc == GP_OK)
 			DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
-			PRIVATE_DATA->mirror_lockup = DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value;
+		else {
+			PRIVATE_DATA->mirror_lockup_secs = DSLR_MIRROR_LOCKUP_ITEM->number.target =
+				DSLR_MIRROR_LOCKUP_ITEM->number.value = 0;
+			DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+
+		indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	/*--------------------------- DELETE-IMAGE ---------------------------*/
