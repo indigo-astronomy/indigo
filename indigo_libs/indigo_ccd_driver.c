@@ -593,6 +593,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		byte_per_pixel = 1;
 		naxis = 3;
 		blobsize = 3 * size;
+	} else if (byte_per_pixel == 6) {
+		byte_per_pixel = 2;
+		naxis = 3;
+		blobsize = 6 * size;
 	}
 	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 		INDIGO_DEBUG(clock_t start = clock());
@@ -704,7 +708,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		t = sprintf(header += 80, "END");
 		header[t] = ' ';
-		if (byte_per_pixel == 2) {
+		if (byte_per_pixel == 2 && naxis == 1) {
 			short *raw = (short *)(data + FITS_HEADER_SIZE);
 			if (little_endian) {
 				for (int i = 0; i < size; i++) {
@@ -738,6 +742,30 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				}
 			}
 			memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
+			free(raw);
+		} else if (byte_per_pixel == 2 && naxis == 3) {
+			unsigned short *raw = malloc(6 * size);
+			unsigned short *red = raw;
+			unsigned short *green = raw + size;
+			unsigned short *blue = raw + 2 * size;
+			unsigned short *tmp = (unsigned short *)(data + FITS_HEADER_SIZE);
+			if (little_endian) {
+				for (int i = 0; i < size; i++) {
+					int value = *tmp++ - 32768;
+					*red++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+					value = *tmp++ - 32768;
+					*green++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+					value = *tmp++ - 32768;
+					*blue++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+				}
+			} else {
+				for (int i = 0; i < size; i++) {
+					*red++ = *tmp++;
+					*green++ = *tmp++;
+					*blue++ = *tmp++;
+				}
+			}
+			memcpy(data + FITS_HEADER_SIZE, raw, 6 * size);
 			free(raw);
 		}
 		int mod2880 = blobsize % 2880;
