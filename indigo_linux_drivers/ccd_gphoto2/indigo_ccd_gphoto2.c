@@ -203,8 +203,8 @@ static int process_dslr_image_debayer(indigo_device *device,
 
         raw_data = libraw_init(0);
 
-	/* Linear 8-bit output. */
-	raw_data->params.output_bps = 8;
+	/* Linear 16-bit output. */
+	raw_data->params.output_bps = 16;
 	/* Debayer algorithm, linear interpolation. */
 	raw_data->params.user_qual = 0;
 	/* Disable four color space. */
@@ -282,20 +282,16 @@ static int process_dslr_image_debayer(indigo_device *device,
 		goto cleanup;
 	}
 
-	void *data = NULL;
-	if (processed_image->bits == 8)
-		data = (unsigned char *)processed_image->data;
-	else if (processed_image->bits == 16)
-		data = (unsigned short *)processed_image->data;
-	else {
+	if (!(processed_image->bits == 16 || processed_image->bits == 8)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
 				    "8 or 16 bit is supported only");
 		rc = LIBRAW_UNSPECIFIED_ERROR;
 		goto cleanup;
 	}
+	void *data = (unsigned char *)processed_image->data;
 
 	indigo_fits_keyword keywords[] = {
-		{ INDIGO_FITS_STRING, "CTYPE3",
+		{ INDIGO_FITS_STRING, "CTYPE3  ",
 		  .string = "rgb",
 		  "coordinate axis red=1, green=2, blue=3" },
 		{ INDIGO_FITS_NUMBER, "ISOSPEED",
@@ -317,14 +313,14 @@ static int process_dslr_image_debayer(indigo_device *device,
 		PRIVATE_DATA->buffer = realloc(PRIVATE_DATA->buffer,
 					       data_size);
 	}
-	memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE + padding,
-	       data, data_size - (FITS_HEADER_SIZE + padding));
+	memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
+	       data, processed_image->data_size);
 	PRIVATE_DATA->buffer_size = data_size;
 
 	indigo_process_image(device, PRIVATE_DATA->buffer,
                              processed_image->width, processed_image->height,
                              processed_image->bits * processed_image->colors,
-                             false, /* little_endian */
+                             true, /* little_endian */
                              keywords);
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "input data: "
