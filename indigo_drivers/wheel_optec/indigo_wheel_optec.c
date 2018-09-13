@@ -49,11 +49,10 @@ static bool optec_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 19200);
 	if (PRIVATE_DATA->handle >= 0) {
-		int reply;
+		char reply;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
-		indigo_printf(PRIVATE_DATA->handle, "WSMODE");
-		if (indigo_scanf(PRIVATE_DATA->handle, "%c\r\n", &reply) == 1 && reply == '!') {
-			indigo_printf(PRIVATE_DATA->handle, "WFILTR");
+		if (indigo_printf(PRIVATE_DATA->handle, "WSMODE\r\n") && indigo_scanf(PRIVATE_DATA->handle, "%c\r\n", &reply) == 1 && reply == '!') {
+			indigo_printf(PRIVATE_DATA->handle, "WFILTR\r\n");
 			if (indigo_scanf(PRIVATE_DATA->handle, "%d\r\n", &PRIVATE_DATA->slot) == 1) {
 				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
 				return true;
@@ -71,12 +70,11 @@ static bool optec_open(indigo_device *device) {
 
 static void optec_goto(indigo_device *device) {
 	int slot = WHEEL_SLOT_ITEM->number.target;
-	int reply;
+	char reply;
 	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_printf(PRIVATE_DATA->handle, "WGOTO%d", slot);
-	if (indigo_scanf(PRIVATE_DATA->handle, "%c\r\n", &reply) == 1 && reply == '*') {
+	if (indigo_printf(PRIVATE_DATA->handle, "WGOTO%d\r\n", slot) && indigo_scanf(PRIVATE_DATA->handle, "%c\r\n", &reply) == 1 && reply == '*') {
 		WHEEL_SLOT_ITEM->number.value = slot;
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -87,7 +85,7 @@ static void optec_goto(indigo_device *device) {
 
 static void optec_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
-		indigo_printf(PRIVATE_DATA->handle, "WEXITS");
+		indigo_printf(PRIVATE_DATA->handle, "WEXITS\r\n");
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "disconnected from %s", DEVICE_PORT_ITEM->text.value);
