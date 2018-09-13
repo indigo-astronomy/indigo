@@ -922,6 +922,7 @@
 		59D382071D97314C00E87393 /* indigo_client_xml.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_client_xml.h; sourceTree = "<group>"; };
 		59D3820C1D97343000E87393 /* client */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = client; sourceTree = BUILT_PRODUCTS_DIR; };
 		59D382161D97348500E87393 /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
+		59D46EEB214AF4820018978D /* optec_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = optec_simulator.ino; sourceTree = "<group>"; };
 		59D62CD71E731490004DDD9C /* indigo_focuser_usbv3_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3_main.c; sourceTree = "<group>"; };
 		59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3.c; sourceTree = "<group>"; };
 		59D62CD91E731490004DDD9C /* indigo_focuser_usbv3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_usbv3.h; sourceTree = "<group>"; };
@@ -2183,6 +2184,7 @@
 				590DD8772127590600F2B978 /* indigo_wheel_optec.c */,
 				590DD8792127590600F2B978 /* indigo_wheel_optec_main.c */,
 				590DD8812127597A00F2B978 /* 17350_manual.pdf */,
+				59D46EEA214AF4820018978D /* optec_simulator */,
 			);
 			path = wheel_optec;
 			sourceTree = "<group>";
@@ -2780,6 +2782,14 @@
 				9D976FD21DD0C46E00782B32 /* ccd_iidc */,
 			);
 			path = indigo_drivers;
+			sourceTree = "<group>";
+		};
+		59D46EEA214AF4820018978D /* optec_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59D46EEB214AF4820018978D /* optec_simulator.ino */,
+			);
+			path = optec_simulator;
 			sourceTree = "<group>";
 		};
 		59D62CD61E731479004DDD9C /* focuser_usbv3 */ = {
