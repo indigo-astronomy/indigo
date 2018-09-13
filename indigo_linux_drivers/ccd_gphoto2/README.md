@@ -79,7 +79,7 @@ The debayering options are currently fixed and set as follows:
 * Disable white balance from the camera (if possible).
 * No embedded color profile application.
 
-This FITS output is currently 3 colors (RGB) each 8-bit.
+This FITS output is currently 3 colors (RGB) each 16-bit.
 
 ### Image format FITS/RAW/JPEG
 Setting the INDIGO image format to FITS, RAW or JPEG requires a corresponding format on the DSLR camera (also called compression format).
