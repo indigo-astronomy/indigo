@@ -51,10 +51,10 @@ static bool trutek_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
 		unsigned char buffer[4] = { 0xA5, 0x03, 0x20, 0xA5 + 0x03 + 0x20 };
-		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d ← %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3])
+		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d ← %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 		if (indigo_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
 			if (indigo_read(PRIVATE_DATA->handle, (char *)buffer, 4)) {
-				INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d → %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3])
+				INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d → %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 				if (buffer[0] == 0xA5 && buffer[1] == 0x83) {
 					WHEEL_SLOT_ITEM->number.max =  buffer[2] - 0x30;
 					return true;
@@ -70,10 +70,10 @@ static bool trutek_open(indigo_device *device) {
 static void trutek_query(indigo_device *device) {
 	unsigned char buffer[4] = { 0xA5, 0x02, 0x20, 0xA5 + 0x02 + 0x20 };
 	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d ← %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3])
+	INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d ← %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 	if (indigo_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
 		if (indigo_read(PRIVATE_DATA->handle, (char *)buffer, 4)) {
-			INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d → %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3])
+			INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d → %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 			if (buffer[0] == 0xA5 && buffer[1] == 0x82) {
 				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2] - 0x30;
 				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -90,11 +90,12 @@ static void trutek_goto(indigo_device *device) {
 	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d ← %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3])
+	INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d ← %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 	if (indigo_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
 		if (indigo_read(PRIVATE_DATA->handle, (char *)buffer, 4)) {
-			INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d → %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3])
+			INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d → %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 			if (buffer[0] == 0xA5 && buffer[1] == 0x81) {
+				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2];
 				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
