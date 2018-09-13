@@ -304,7 +304,7 @@ static int process_dslr_image_debayer(indigo_device *device,
 		  "ISO camera setting" },
 		{ INDIGO_FITS_NUMBER, "CCD-TEMP",
 		  .number = cam_sensor_temperature,
-		  "CCD temperature (Celcius)" },
+		  "CCD temperature [celcius]" },
 		{ 0 },
 	};
 	/* I guess nobody cools down a CCD to absolute zero. */
@@ -1367,7 +1367,7 @@ static indigo_result ccd_attach(indigo_device *device)
 
 		int rc = eos_mirror_lockup(0, device);
 		if (rc) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "mirror lockup not available camera '%s'",
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "mirror lockup not available for camera '%s'",
 					  PRIVATE_DATA->gphoto2_id.name);
 			DSLR_MIRROR_LOCKUP_PROPERTY->hidden = true;
 		}
