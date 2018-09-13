@@ -925,6 +925,7 @@
 		59D46EEB214AF4820018978D /* optec_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = optec_simulator.ino; sourceTree = "<group>"; };
 		59D46EED214AFB370018978D /* xagyl_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = xagyl_simulator.ino; sourceTree = "<group>"; };
 		59D46EEF214B08FF0018978D /* trutek_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = trutek_simulator.ino; sourceTree = "<group>"; };
+		59D46EF1214B14DC0018978D /* quantum_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = quantum_simulator.ino; sourceTree = "<group>"; };
 		59D62CD71E731490004DDD9C /* indigo_focuser_usbv3_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3_main.c; sourceTree = "<group>"; };
 		59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3.c; sourceTree = "<group>"; };
 		59D62CD91E731490004DDD9C /* indigo_focuser_usbv3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_usbv3.h; sourceTree = "<group>"; };
@@ -2810,6 +2811,14 @@
 			path = trutek_simulator;
 			sourceTree = "<group>";
 		};
+		59D46EF0214B14DC0018978D /* quantum_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59D46EF1214B14DC0018978D /* quantum_simulator.ino */,
+			);
+			path = quantum_simulator;
+			sourceTree = "<group>";
+		};
 		59D62CD61E731479004DDD9C /* focuser_usbv3 */ = {
 			isa = PBXGroup;
 			children = (
@@ -3652,6 +3661,7 @@
 				9DAD52432126BD98002FCC79 /* indigo_wheel_quantum.h */,
 				9DAD52452126BD98002FCC79 /* indigo_wheel_quantum.c */,
 				9DAD52422126BD98002FCC79 /* indigo_wheel_quantum_main.c */,
+				59D46EF0214B14DC0018978D /* quantum_simulator */,
 			);
 			path = wheel_quantum;
 			sourceTree = "<group>";
