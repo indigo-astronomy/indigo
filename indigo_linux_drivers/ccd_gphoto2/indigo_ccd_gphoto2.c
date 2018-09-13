@@ -220,6 +220,8 @@ static int process_dslr_image_debayer(indigo_device *device,
 	/* Disable white balance from the camera (if possible). */
 	raw_data->params.use_camera_wb = 0;
 
+	libraw_set_progress_handler(raw_data, &progress_cb, NULL);
+
 	rc = libraw_open_buffer(raw_data, buffer, buffer_size);
 	if (rc != LIBRAW_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
@@ -237,8 +239,6 @@ static int process_dslr_image_debayer(indigo_device *device,
 				    rc, libraw_strerror(rc));
 		goto cleanup;
 	}
-
-	libraw_set_progress_handler(raw_data, &progress_cb, NULL);
 
 	rc = libraw_raw2image(raw_data);
 	if (rc != LIBRAW_SUCCESS) {
