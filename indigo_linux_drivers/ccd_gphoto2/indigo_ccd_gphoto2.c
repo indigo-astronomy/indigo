@@ -288,7 +288,12 @@ static int process_dslr_image_debayer(indigo_device *device,
 		rc = LIBRAW_UNSPECIFIED_ERROR;
 		goto cleanup;
 	}
-	void *data = (unsigned char *)processed_image->data;
+
+	float cam_sensor_temperature = -273.15f;
+	if (raw_data->other.SensorTemperature > -273.15f)
+		cam_sensor_temperature = raw_data->other.SensorTemperature;
+	else if (raw_data->other.CameraTemperature > -273.15f)
+		cam_sensor_temperature = raw_data->other.CameraTemperature;
 
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "CTYPE3  ",
@@ -297,9 +302,16 @@ static int process_dslr_image_debayer(indigo_device *device,
 		{ INDIGO_FITS_NUMBER, "ISOSPEED",
 		  .number = raw_data->other.iso_speed,
 		  "ISO camera setting" },
-		{ 0 }
+		{ INDIGO_FITS_NUMBER, "CCD-TEMP",
+		  .number = cam_sensor_temperature,
+		  "CCD temperature (Celcius)" },
+		{ 0 },
 	};
+	/* I guess nobody cools down a CCD to absolute zero. */
+	if (cam_sensor_temperature == -273.15f)
+		memcpy(&keywords[2], &keywords[3], sizeof(indigo_fits_keyword));
 
+	void *data = (unsigned char *)processed_image->data;
         unsigned long int data_size = processed_image->data_size +
 		FITS_HEADER_SIZE;
 	int padding = 0;
