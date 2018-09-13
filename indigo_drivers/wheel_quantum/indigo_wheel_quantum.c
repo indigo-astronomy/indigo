@@ -78,7 +78,7 @@ static void quantum_query(indigo_device *device) {
 }
 
 static void quantum_goto(indigo_device *device, int slot) {
-	indigo_printf(PRIVATE_DATA->handle, "G%d\r\n\n", slot - 1);
+	indigo_printf(PRIVATE_DATA->handle, "G%d\r\n", slot - 1);
 	indigo_set_timer(device, 1, quantum_query);
 }
 
