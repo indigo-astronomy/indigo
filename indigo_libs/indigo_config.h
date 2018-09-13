@@ -60,7 +60,7 @@
 
 /** Conditional compilation wrapper for TRACE log level (for drivers)
  */
-#define INDIGO_TRACE_DRIVER(c)
+#define INDIGO_TRACE_DRIVER(c) c
 
 /** Conditional compilation wrapper for DEBUG log level (for drivers)
  */

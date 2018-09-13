@@ -923,7 +923,8 @@
 		59D3820C1D97343000E87393 /* client */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = client; sourceTree = BUILT_PRODUCTS_DIR; };
 		59D382161D97348500E87393 /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
 		59D46EEB214AF4820018978D /* optec_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = optec_simulator.ino; sourceTree = "<group>"; };
-		59D46EED214AFB370018978D /* xagyl_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = xagyl_simulator.ino; sourceTree = "<group>"; };
+		59D46EED214AFB370018978D /* xagyl_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = xagyl_simulator.ino; sourceTree = "<group>"; };
+		59D46EEF214B08FF0018978D /* trutek_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = trutek_simulator.ino; sourceTree = "<group>"; };
 		59D62CD71E731490004DDD9C /* indigo_focuser_usbv3_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3_main.c; sourceTree = "<group>"; };
 		59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3.c; sourceTree = "<group>"; };
 		59D62CD91E731490004DDD9C /* indigo_focuser_usbv3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_usbv3.h; sourceTree = "<group>"; };
@@ -2801,6 +2802,14 @@
 			path = xagyl_simulator;
 			sourceTree = "<group>";
 		};
+		59D46EEE214B08FF0018978D /* trutek_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59D46EEF214B08FF0018978D /* trutek_simulator.ino */,
+			);
+			path = trutek_simulator;
+			sourceTree = "<group>";
+		};
 		59D62CD61E731479004DDD9C /* focuser_usbv3 */ = {
 			isa = PBXGroup;
 			children = (
@@ -3654,6 +3663,7 @@
 				9DAD524D2126E88B002FCC79 /* indigo_wheel_trutek.h */,
 				9DAD524A2126E88B002FCC79 /* indigo_wheel_trutek.c */,
 				9DAD524C2126E88B002FCC79 /* indigo_wheel_trutek_main.c */,
+				59D46EEE214B08FF0018978D /* trutek_simulator */,
 			);
 			path = wheel_trutek;
 			sourceTree = "<group>";
