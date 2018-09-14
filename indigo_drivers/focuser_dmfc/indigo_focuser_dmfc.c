@@ -162,11 +162,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.min = 100;
 		FOCUSER_SPEED_ITEM->number.max = 1000;
-		FOCUSER_SPEED_ITEM->number.step = 100;
+		FOCUSER_SPEED_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_SPEED_ITEM->number.max = 100000;
-		FOCUSER_SPEED_ITEM->number.step = 1;
+		FOCUSER_STEPS_ITEM->number.max = 100000;
+		FOCUSER_STEPS_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.max = 100000;
