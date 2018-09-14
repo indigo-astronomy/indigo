@@ -925,7 +925,7 @@
 		59D46EEB214AF4820018978D /* optec_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = optec_simulator.ino; sourceTree = "<group>"; };
 		59D46EED214AFB370018978D /* xagyl_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = xagyl_simulator.ino; sourceTree = "<group>"; };
 		59D46EEF214B08FF0018978D /* trutek_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = trutek_simulator.ino; sourceTree = "<group>"; };
-		59D46EF1214B14DC0018978D /* quantum_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = quantum_simulator.ino; sourceTree = "<group>"; };
+		59D46EF1214B14DC0018978D /* quantum_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = quantum_simulator.ino; sourceTree = "<group>"; };
 		59D62CD71E731490004DDD9C /* indigo_focuser_usbv3_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3_main.c; sourceTree = "<group>"; };
 		59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_usbv3.c; sourceTree = "<group>"; };
 		59D62CD91E731490004DDD9C /* indigo_focuser_usbv3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_usbv3.h; sourceTree = "<group>"; };
@@ -1580,7 +1580,7 @@
 		9DAD52552126FFC2002FCC79 /* FW5125_User_Manual-3.1.5.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "FW5125_User_Manual-3.1.5.pdf"; sourceTree = "<group>"; };
 		9DAD52562126FFC2002FCC79 /* indigo_wheel_xagyl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_xagyl.c; sourceTree = "<group>"; };
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
-		9DB88E9E214BEDD900CECBCE /* dmfc_simulator.ino */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = dmfc_simulator.ino; sourceTree = "<group>"; };
+		9DB88E9E214BEDD900CECBCE /* dmfc_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; path = dmfc_simulator.ino; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
 		9DB918011DF8546800678721 /* indigo_mount_lx200.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_lx200.h; sourceTree = "<group>"; };
