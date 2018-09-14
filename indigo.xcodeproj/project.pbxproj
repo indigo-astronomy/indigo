@@ -1580,6 +1580,7 @@
 		9DAD52552126FFC2002FCC79 /* FW5125_User_Manual-3.1.5.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "FW5125_User_Manual-3.1.5.pdf"; sourceTree = "<group>"; };
 		9DAD52562126FFC2002FCC79 /* indigo_wheel_xagyl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_xagyl.c; sourceTree = "<group>"; };
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
+		9DB88E9E214BEDD900CECBCE /* dmfc_simulator.ino */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = dmfc_simulator.ino; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
 		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
 		9DB918011DF8546800678721 /* indigo_mount_lx200.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_lx200.h; sourceTree = "<group>"; };
@@ -3691,6 +3692,14 @@
 			path = wheel_xagyl;
 			sourceTree = "<group>";
 		};
+		9DB88E9D214BEDD900CECBCE /* dmfc_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DB88E9E214BEDD900CECBCE /* dmfc_simulator.ino */,
+			);
+			path = dmfc_simulator;
+			sourceTree = "<group>";
+		};
 		9DB917FE1DF8543800678721 /* mount_lx200 */ = {
 			isa = PBXGroup;
 			children = (
@@ -3768,6 +3777,7 @@
 				9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */,
 				9DFE1868213586AB00149BDE /* indigo_focuser_dmfc_main.c */,
 				9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */,
+				9DB88E9D214BEDD900CECBCE /* dmfc_simulator */,
 			);
 			path = focuser_dmfc;
 			sourceTree = "<group>";

@@ -99,7 +99,7 @@ static void timer_callback(indigo_device *device) {
 		}
 	}
 	if (dmfc_command(device, "I", response, sizeof(response))) {
-		if (*response == 0) {
+		if (*response == '0') {
 			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -305,14 +305,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		snprintf(command, sizeof(command), "G:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1));
 		if (dmfc_command(device, command, NULL, 0)) {
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
@@ -320,13 +320,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		snprintf(command, sizeof(command), "M:%d", (int)FOCUSER_POSITION_ITEM->number.value);
 		if (dmfc_command(device, command, NULL, 0)) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
@@ -336,7 +336,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (dmfc_command(device, "H", NULL, 0)) {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			} else {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -383,11 +385,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(X_FOCUSER_BACKLASH_PROPERTY, property, false);
 		snprintf(command, sizeof(command), "C:%d", (int)X_FOCUSER_BACKLASH_ITEM->number.value);
 		if (dmfc_command(device, command, NULL, 0)) {
-			X_FOCUSER_ENCODER_PROPERTY->state = INDIGO_OK_STATE;
+			X_FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			X_FOCUSER_ENCODER_PROPERTY->state = INDIGO_ALERT_STATE;
+			X_FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		indigo_update_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
+		indigo_update_property(device, X_FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
