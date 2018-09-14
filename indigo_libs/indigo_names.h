@@ -1091,7 +1091,7 @@
 
 /** MOUNT_TRACK_RATE.KING property item name.
  */
-#define MOUNT_TRACK_RATE_KING_ITEM_NAME			"SIDEREAL"
+#define MOUNT_TRACK_RATE_KING_ITEM_NAME			"KING"
 
 /** MOUNT_TRACK_RATE.CUSTOM property item name.
  */
