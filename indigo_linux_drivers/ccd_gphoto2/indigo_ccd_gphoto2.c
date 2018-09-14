@@ -220,6 +220,8 @@ static int process_dslr_image_debayer(indigo_device *device,
 	/* Disable white balance from the camera (if possible). */
 	raw_data->params.use_camera_wb = 0;
 
+	libraw_set_progress_handler(raw_data, &progress_cb, NULL);
+
 	rc = libraw_open_buffer(raw_data, buffer, buffer_size);
 	if (rc != LIBRAW_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,
@@ -237,8 +239,6 @@ static int process_dslr_image_debayer(indigo_device *device,
 				    rc, libraw_strerror(rc));
 		goto cleanup;
 	}
-
-	libraw_set_progress_handler(raw_data, &progress_cb, NULL);
 
 	rc = libraw_raw2image(raw_data);
 	if (rc != LIBRAW_SUCCESS) {
@@ -304,7 +304,7 @@ static int process_dslr_image_debayer(indigo_device *device,
 		  "ISO camera setting" },
 		{ INDIGO_FITS_NUMBER, "CCD-TEMP",
 		  .number = cam_sensor_temperature,
-		  "CCD temperature (Celcius)" },
+		  "CCD temperature [celcius]" },
 		{ 0 },
 	};
 	/* I guess nobody cools down a CCD to absolute zero. */
@@ -1367,7 +1367,7 @@ static indigo_result ccd_attach(indigo_device *device)
 
 		int rc = eos_mirror_lockup(0, device);
 		if (rc) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "mirror lockup not available camera '%s'",
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "mirror lockup not available for camera '%s'",
 					  PRIVATE_DATA->gphoto2_id.name);
 			DSLR_MIRROR_LOCKUP_PROPERTY->hidden = true;
 		}
