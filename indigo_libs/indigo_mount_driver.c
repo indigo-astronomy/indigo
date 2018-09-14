@@ -150,12 +150,15 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			indigo_init_switch_item(MOUNT_MOTION_WEST_ITEM, MOUNT_MOTION_WEST_ITEM_NAME, "West", false);
 			indigo_init_switch_item(MOUNT_MOTION_EAST_ITEM, MOUNT_MOTION_EAST_ITEM_NAME, "East", false);
 			// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
-			MOUNT_TRACK_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Track rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+			MOUNT_TRACK_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Track rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 			if (MOUNT_TRACK_RATE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(MOUNT_TRACK_RATE_SIDEREAL_ITEM, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, "Sidereal rate", true);
 			indigo_init_switch_item(MOUNT_TRACK_RATE_SOLAR_ITEM, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, "Solar rate", false);
 			indigo_init_switch_item(MOUNT_TRACK_RATE_LUNAR_ITEM, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, "Lunar rate", false);
+			indigo_init_switch_item(MOUNT_TRACK_RATE_KING_ITEM, MOUNT_TRACK_RATE_KING_ITEM_NAME, "King rate", false);
+			indigo_init_switch_item(MOUNT_TRACK_RATE_CUSTOM_ITEM, MOUNT_TRACK_RATE_KING_ITEM_NAME, "Custom rate", false);
+			MOUNT_TRACK_RATE_PROPERTY->count = 3;
 			// -------------------------------------------------------------------------------- MOUNT_TRACKING
 			MOUNT_TRACKING_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Tracking", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (MOUNT_TRACKING_PROPERTY == NULL)

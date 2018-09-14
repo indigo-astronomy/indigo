@@ -267,9 +267,12 @@ static bool ieq_open(indigo_device *device) {
 					case '2':
 						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
 						break;
-					default:
-					ieq_command(device, ":RT0#", response, 1);
-					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+					case '3':
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
+						break;
+					case '4':
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_CUSTOM_ITEM, true);
+						break;
 				}
 			}
 		} else if (PRIVATE_DATA->protocol == 0x0200) {
@@ -295,9 +298,12 @@ static bool ieq_open(indigo_device *device) {
 					case '2':
 						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
 						break;
-					default:
-						ieq_command(device, ":RT0#", response, 1);
-						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+					case '3':
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
+						break;
+					case '4':
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_CUSTOM_ITEM, true);
+						break;
 				}
 			}
 		}
@@ -405,6 +411,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
+		MOUNT_TRACK_RATE_PROPERTY->count = 5;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -558,6 +565,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '2') {
 					ieq_command(device, ":RT2#", response, 1);
 					PRIVATE_DATA->lastTrackRate = '2';
+				} else if (MOUNT_TRACK_RATE_KING_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '3') {
+					ieq_command(device, ":RT3#", response, 1);
+					PRIVATE_DATA->lastTrackRate = '3';
+				} else if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != '4') {
+					ieq_command(device, ":RT4#", response, 1);
+					PRIVATE_DATA->lastTrackRate = '4';
 				}
 				if (PRIVATE_DATA->protocol == 0x0104)
 					sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
