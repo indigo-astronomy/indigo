@@ -271,6 +271,14 @@ extern "C" {
  */
 #define MOUNT_TRACK_RATE_LUNAR_ITEM										(MOUNT_TRACK_RATE_PROPERTY->items+2)
 
+/** MOUNT_TRACK_RATE.KING property item pointer.
+ */
+#define MOUNT_TRACK_RATE_KING_ITEM										(MOUNT_TRACK_RATE_PROPERTY->items+3)
+	
+/** MOUNT_TRACK_RATE.CUSTOM property item pointer.
+ */
+#define MOUNT_TRACK_RATE_CUSTOM_ITEM									(MOUNT_TRACK_RATE_PROPERTY->items+4)
+	
 //-----------------------------------------------
 /** MOUNT_TRACKING property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */

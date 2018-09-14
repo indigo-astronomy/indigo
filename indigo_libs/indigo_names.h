@@ -1089,6 +1089,15 @@
  */
 #define MOUNT_TRACK_RATE_LUNAR_ITEM_NAME				"LUNAR"
 
+/** MOUNT_TRACK_RATE.KING property item name.
+ */
+#define MOUNT_TRACK_RATE_KING_ITEM_NAME			"SIDEREAL"
+
+/** MOUNT_TRACK_RATE.CUSTOM property item name.
+ */
+#define MOUNT_TRACK_RATE_CUSTOM_ITEM_NAME			"CUSTOM"
+
+
 //----------------------------------------------------------------------
 /** MOUNT_TRACKING property name.
  */
