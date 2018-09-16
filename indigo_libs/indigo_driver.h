@@ -159,6 +159,19 @@ extern "C" {
  */
 #define DEVICE_PORTS_PROPERTY					(DEVICE_CONTEXT->device_ports_property)
 
+/** AUTHENTICATION property pointer, property is optional, property change request is handled by indigo_device_change_property.
+ */
+#define AUTHENTICATION_PROPERTY					(DEVICE_CONTEXT->device_auth_property)
+	
+/** AUTHENTICATION.PASSWORD property item pointer.
+ */
+#define AUTHENTICATION_PASSWORD_ITEM			(AUTHENTICATION_PROPERTY->items+0)
+	
+/** AUTHENTICATION.USER property item pointer.
+ */
+#define AUTHENTICATION_USER_ITEM					(AUTHENTICATION_PROPERTY->items+1)
+	
+
 /** Device interface (value shout be used for INFO_DEVICE_INTERFACE_ITEM->number.value
  */
 typedef enum {
@@ -214,6 +227,7 @@ typedef struct {
 	indigo_property *profile_property; 				///< PROFILE property pointer
 	indigo_property *device_port_property;		///< DEVICE_PORT property pointer
 	indigo_property *device_ports_property;		///< DEVICE_PORTS property pointer
+	indigo_property *device_auth_property;		///< SECURITY property pointer
 } indigo_device_context;
 
 /** log macros

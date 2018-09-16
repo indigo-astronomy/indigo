@@ -175,6 +175,9 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM, true);
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
 		MOUNT_TRACK_RATE_PROPERTY->count = 5;
+		// -------------------------------------------------------------------------------- AUTHENTICATION
+		AUTHENTICATION_PROPERTY->hidden = false;
+		AUTHENTICATION_PROPERTY->count = 1;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
