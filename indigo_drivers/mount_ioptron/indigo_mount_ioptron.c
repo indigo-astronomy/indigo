@@ -176,7 +176,6 @@ static bool ieq_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (strncmp(name, "ieq://", 6)) {
 		PRIVATE_DATA->handle = indigo_open_serial(name);
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "connected to %s", name);
 	} else {
 		char *host = name + 6;
 		char *colon = strchr(host, ':');
@@ -197,7 +196,7 @@ static bool ieq_open(indigo_device *device) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "version:  %s", response);
 		}
 		strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "iOptron");
-		if (ieq_command(device, ":MountInfo#", response, sizeof(response))) {
+		if (ieq_command(device, ":MountInfo#", response, 4)) {
 			strncpy(PRIVATE_DATA->product, response, 64);
 			if (!strcmp(PRIVATE_DATA->product, "8407")) {
 				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 EQ/iEQ30");
