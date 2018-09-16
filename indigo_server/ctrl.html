@@ -218,8 +218,9 @@
 																<form name="form" class="form-horizontal" ng-switch-when="TEXT">
 																	<div class="form-group row" ng-repeat="item in property.items">
 																		<label class="col-sm-4 control-label">{{item.label}}</label>
-																		<div class="col-sm-8">
-																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)"/>
+																		<div class="col-sm-8" ng-switch="item.item">
+																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="password" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)" ng-switch-when="PASSWORD"/>
+																			<input name="{{device.device+'.'+property.property+'.'+item.item}}" class="form-control" type="text" ng-disabled="property.perm=='ro'" ng-model="item.value" ng-change="markModified(item)" ng-switch-default/>
 																		</div>
 																	</div>
 																	<div class="form-group row" ng-if="property.perm!='ro'">
@@ -488,7 +489,7 @@
 				for (i = 0; i < property.items.length; i++) {
 					var item = property.items[i];
 					item.value = item.oldValue
-					item.modified = 0;
+					item.modified = false;
 				}
 				form.$setPristine();
 			}
@@ -679,6 +680,7 @@
 				}
 				message = JSON.stringify(message);
 				doSend(message);
+				form.$setPristine();
 				console.log("SEND "+message);
 			}
 
@@ -691,6 +693,7 @@
 				}
 				message = JSON.stringify(message);
 				doSend(message);
+				form.$setPristine();
 				console.log("SEND "+message);
 			}
 
