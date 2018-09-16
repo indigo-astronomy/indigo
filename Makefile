@@ -1513,7 +1513,9 @@ fliusb-package:
 #---------------------------------------------------------------------
 
 clean: init
-	rm -rf $(BUILD_ROOT)/bin/indigo_server*
+	rm -rf $(BUILD_ROOT)/bin/indigo*
+	rm -rf $(BUILD_ROOT)/bin/test
+	rm -rf $(BUILD_ROOT)/bin/client
 	rm -rf $(BUILD_LIB)/libindigo*
 	rm -rf $(BUILD_ROOT)/drivers
 	rm -f indigo_libs/*.o
