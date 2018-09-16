@@ -1091,6 +1091,22 @@ $(BUILD_DRIVERS)/indigo_focuser_dmfc.$(SOEXT): indigo_drivers/focuser_dmfc/indig
 
 #---------------------------------------------------------------------
 #
+#	Build Rigel Systems nSTEP focuser driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_nstep.a: indigo_drivers/focuser_nstep/indigo_focuser_nstep.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_nstep: indigo_drivers/focuser_nstep/indigo_focuser_nstep_main.o $(BUILD_DRIVERS)/indigo_focuser_nstep.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_nstep.$(SOEXT): indigo_drivers/focuser_nstep/indigo_focuser_nstep.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+
+#---------------------------------------------------------------------
+#
 #	Build WeMacro Rail driver
 #
 #---------------------------------------------------------------------

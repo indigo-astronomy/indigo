@@ -65,7 +65,7 @@ typedef struct {
 
 static bool dmfc_command(indigo_device *device, char *command, char *response, int max) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	indigo_write(PRIVATE_DATA->handle, command, sizeof(command));
+	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	indigo_write(PRIVATE_DATA->handle, "\n", 1);
 	if (response != NULL) {
 		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == 0) {
