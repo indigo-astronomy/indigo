@@ -95,6 +95,7 @@
 		599C9A5D1DA028E4008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
+		599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */ = {isa = PBXBuildFile; fileRef = 599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
 		59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */; };
@@ -877,6 +878,11 @@
 		599C9A481DA022C0008BBCC1 /* libindigo.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libindigo.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_main.c; sourceTree = "<group>"; };
 		599C9A6D1DA05063008BBCC1 /* BridgingHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
+		599E6A71214D8EEB00E45C9E /* indigo_focuser_nstep_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep_main.c; sourceTree = "<group>"; };
+		599E6A72214D8EEB00E45C9E /* indigo_focuser_nstep.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_nstep.h; sourceTree = "<group>"; };
+		599E6A73214D8EEB00E45C9E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nstep_simulator.ino; sourceTree = "<group>"; };
+		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
@@ -2595,6 +2601,26 @@
 			path = "INDIGO Server for macOS";
 			sourceTree = "<group>";
 		};
+		599E6A70214D8EEB00E45C9E /* focuser_nstep */ = {
+			isa = PBXGroup;
+			children = (
+				599E6A73214D8EEB00E45C9E /* README.md */,
+				599E6A72214D8EEB00E45C9E /* indigo_focuser_nstep.h */,
+				599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */,
+				599E6A71214D8EEB00E45C9E /* indigo_focuser_nstep_main.c */,
+				599E6A74214D8EEB00E45C9E /* nstep_simulator */,
+			);
+			path = focuser_nstep;
+			sourceTree = "<group>";
+		};
+		599E6A74214D8EEB00E45C9E /* nstep_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */,
+			);
+			path = nstep_simulator;
+			sourceTree = "<group>";
+		};
 		59C499DF1EFADF7600E750AA /* indigo_mac_drivers */ = {
 			isa = PBXGroup;
 			children = (
@@ -2744,6 +2770,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				599E6A70214D8EEB00E45C9E /* focuser_nstep */,
 				9DFE1863213586AB00149BDE /* focuser_dmfc */,
 				590DD8752127590600F2B978 /* wheel_optec */,
 				9DAD52512126FFC1002FCC79 /* wheel_xagyl */,
@@ -4236,6 +4263,7 @@
 				595F292F211E211200380EF4 /* DDHidUsage.m in Sources */,
 				9D59D66920D3F82A009EA8FF /* ApnCamData.cpp in Sources */,
 				9D59D5E920D3F829009EA8FF /* LoggerException.cpp in Sources */,
+				599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */,
 				59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */,
 				59463C1A20DE6781004950F2 /* indigo_focuser_wemacro_main_bt.c in Sources */,
 				595F292B211E211200380EF4 /* DDHidUsageTables.m in Sources */,
