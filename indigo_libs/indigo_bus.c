@@ -367,7 +367,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 }
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
-	if ((!is_started) || (property == NULL) || (property->perm = INDIGO_RO_PERM))
+	if ((!is_started) || (property == NULL) || (property->perm == INDIGO_RO_PERM))
 		return INDIGO_FAILED;
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
