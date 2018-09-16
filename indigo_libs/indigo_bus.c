@@ -367,7 +367,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 }
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
-	if ((!is_started) || (property == NULL))
+	if ((!is_started) || (property == NULL) || (property->perm = INDIGO_RO_PERM))
 		return INDIGO_FAILED;
 	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property change request", property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
@@ -430,6 +430,9 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 
 	if (!property->hidden) {
 		char message[INDIGO_VALUE_SIZE];
+		int count = property->count;
+		if (property->perm == INDIGO_WO_PERM)
+			property->count = 0;
 		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property update", property, false, true));
 		if (format != NULL) {
 			va_list args;
@@ -442,6 +445,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 			if (client != NULL && client->update_property != NULL)
 				client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
 		}
+		property->count = count;
 	}
 	return INDIGO_OK;
 }
