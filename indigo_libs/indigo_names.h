@@ -112,6 +112,20 @@
 #define DEVICE_PORT_ITEM_NAME									"PORT"
 
 //----------------------------------------------------------------------
+
+/** AUTHENTICATION property name.
+ */
+#define AUTHENTICATION_PROPERTY_NAME							"AUTHENTICATION"
+
+/** AUTHENTICATION.PASSWORD property name.
+ */
+#define AUTHENTICATION_PASSWORD_ITEM_NAME					"PASSWORD"
+
+/** AUTHENTICATION.USER property name.
+ */
+#define AUTHENTICATION_USER_ITEM_NAME							"USER"
+
+//----------------------------------------------------------------------
 /** DEVICE_PORTS property name.
  */
 #define DEVICE_PORTS_PROPERTY_NAME						"DEVICE_PORTS"

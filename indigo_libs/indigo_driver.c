@@ -249,6 +249,13 @@ indigo_result indigo_device_attach(indigo_device *device, indigo_version version
 		return INDIGO_FAILED;
 		DEVICE_PORT_PROPERTY->hidden = true;
 		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Device name or URL", DEVICE_PORTS_PROPERTY->count > 1 ? DEVICE_PORTS_PROPERTY->items[1].name : DEFAULT_TTY);
+		// -------------------------------------------------------------------------------- SECURITY
+		AUTHENTICATION_PROPERTY = indigo_init_text_property(NULL, device->name, AUTHENTICATION_PROPERTY_NAME, MAIN_GROUP, "Device authorization", INDIGO_OK_STATE, INDIGO_WO_PERM, 2);
+		if (AUTHENTICATION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AUTHENTICATION_PROPERTY->hidden = true;
+		indigo_init_text_item(AUTHENTICATION_PASSWORD_ITEM, AUTHENTICATION_PASSWORD_ITEM_NAME, "Password", "");
+		indigo_init_text_item(AUTHENTICATION_USER_ITEM, AUTHENTICATION_USER_ITEM_NAME, "User name", "");
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
@@ -271,6 +278,8 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
 		indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property) && !CONNECTION_PROPERTY->hidden)
 		indigo_define_property(device, CONNECTION_PROPERTY, NULL);
+	if (indigo_property_match(AUTHENTICATION_PROPERTY, property) && !AUTHENTICATION_PROPERTY->hidden)
+		indigo_define_property(device, AUTHENTICATION_PROPERTY, NULL);
 	return INDIGO_OK;
 }
 
@@ -353,6 +362,11 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		}
 		DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);
+	} else if (indigo_property_match(AUTHENTICATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUTHENTICATION
+		indigo_property_copy_values(AUTHENTICATION_PROPERTY, property, false);
+		PROFILE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUTHENTICATION_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -368,6 +382,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(SIMULATION_PROPERTY);
 	indigo_release_property(CONFIG_PROPERTY);
 	indigo_release_property(PROFILE_PROPERTY);
+	indigo_release_property(AUTHENTICATION_PROPERTY);
 	indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
 	indigo_delete_property(device, all_properties, NULL);
 	indigo_release_property(all_properties);
