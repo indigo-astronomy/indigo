@@ -708,7 +708,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		t = sprintf(header += 80, "END");
 		header[t] = ' ';
-		if (byte_per_pixel == 2 && naxis == 1) {
+		if (byte_per_pixel == 2 && naxis == 2) {
 			short *raw = (short *)(data + FITS_HEADER_SIZE);
 			if (little_endian) {
 				for (int i = 0; i < size; i++) {
