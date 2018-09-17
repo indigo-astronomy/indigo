@@ -1520,6 +1520,8 @@ clean: init
 	rm -rf $(BUILD_ROOT)/drivers
 	rm -f indigo_libs/*.o
 	rm -f indigo_server/*.o
+	rm -f indigo_server/*.data
+	rm -f indigo_server/resource/*.data
 	rm -f $(wildcard indigo_drivers/*/*.o)
 	rm -f $(wildcard indigo_mac_drivers/*/*.o)
 	rm -f $(wildcard indigo_test/*.o)
