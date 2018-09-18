@@ -90,6 +90,7 @@
 3. SBIG focuser driver (based on SBIG SDK) __DONE__
 4. Pegasus DMFC focuser driver __DONE__
 5. RigelSys nSTEP focuser driver __DONE__
+6. RigelSys nFOCUS focuser driver (untested) __DONE__ __UNTESTED__
 
 #### Mounts
 
