@@ -22,5 +22,5 @@ http://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
 
 indigo_server indigo_focuser_nstep
 
-## Status: Untested
+## Status: Stable
 
