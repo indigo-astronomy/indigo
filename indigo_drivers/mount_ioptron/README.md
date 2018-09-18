@@ -22,8 +22,9 @@ indigo_server indigo_mount_ioptron
 
 Use URL in form ieq://host:port to connect to the mount over network (default port is 4030).
 
-## Status: Under development
+## Status: Stable
 
-Driver is developed and tested with:
+Driver is tested with:
 * CEM60-EC
+* iEQ 45 Pro
 

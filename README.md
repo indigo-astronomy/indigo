@@ -58,6 +58,12 @@ This is the list of requirements taken into the consideration:
 34. HID Joystick AUX driver
 35. CGUSBST4 guider driver
 36. Brightstar Quantum filter wheel driver (untested)
+37. Trutek filter wheel driver (untested)
+38. Xagyl filter wheel driver (untested)
+39. Optec filter wheel driver (untested)
+40. Pegasus DMFC focuser driver
+41. RigelSys nSTEP focuser driver
+42. iOptron mount driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
