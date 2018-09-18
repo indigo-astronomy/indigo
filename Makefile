@@ -1104,6 +1104,21 @@ $(BUILD_DRIVERS)/indigo_focuser_nstep: indigo_drivers/focuser_nstep/indigo_focus
 $(BUILD_DRIVERS)/indigo_focuser_nstep.$(SOEXT): indigo_drivers/focuser_nstep/indigo_focuser_nstep.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
+#---------------------------------------------------------------------
+#
+#	Build Rigel Systems nFOCUS focuser driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_nfocus.a: indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_nfocus: indigo_drivers/focuser_nfocus/indigo_focuser_nfocus_main.o $(BUILD_DRIVERS)/indigo_focuser_nfocus.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_nfocus.$(SOEXT): indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
 
 #---------------------------------------------------------------------
 #

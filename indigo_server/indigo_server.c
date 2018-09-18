@@ -83,6 +83,7 @@
 #include "wheel_optec/indigo_wheel_optec.h"
 #include "focuser_dmfc/indigo_focuser_dmfc.h"
 #include "focuser_nstep/indigo_focuser_nstep.h"
+#include "focuser_nfocus/indigo_focuser_nfocus.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -143,6 +144,7 @@ driver_entry_point static_drivers[] = {
 	indigo_wheel_optec,
 	indigo_focuser_dmfc,
 	indigo_focuser_nstep,
+	indigo_focuser_nfocus,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif

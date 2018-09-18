@@ -63,7 +63,8 @@ This is the list of requirements taken into the consideration:
 39. Optec filter wheel driver (untested)
 40. Pegasus DMFC focuser driver
 41. RigelSys nSTEP focuser driver
-42. iOptron mount driver
+42. RigelSys nFOCUS focuser driver (untested)
+43. iOptron mount driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
