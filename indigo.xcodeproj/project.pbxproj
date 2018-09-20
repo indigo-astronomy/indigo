@@ -885,6 +885,7 @@
 		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
+		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
 		59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb_utils.c; sourceTree = "<group>"; };
 		59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ica.h; sourceTree = "<group>"; };
@@ -2621,6 +2622,14 @@
 			path = nstep_simulator;
 			sourceTree = "<group>";
 		};
+		59AEB117215446960008A729 /* ioptron_2.0_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */,
+			);
+			path = ioptron_2.0_simulator;
+			sourceTree = "<group>";
+		};
 		59C499DF1EFADF7600E750AA /* indigo_mac_drivers */ = {
 			isa = PBXGroup;
 			children = (
@@ -3667,6 +3676,7 @@
 				9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */,
 				9DAD523221246FA9002FCC79 /* Protocol_V1.4.pdf */,
 				59E67789212C8042004B99BE /* Protocol_V2.0.pdf */,
+				59AEB117215446960008A729 /* ioptron_2.0_simulator */,
 			);
 			path = mount_ioptron;
 			sourceTree = "<group>";
