@@ -1,11 +1,11 @@
-# Rigel Systems nSTEP focuser driver
+# Rigel Systems nFOCUS focuser driver
 
 http://rigel.datacorner.com/rigelsys/focuser.html
 
 Thanks to Gene Nolan and Leon Palmer for their support.
 
 ## Supported devices
-* Riegel Systems nSTEP controller
+* Riegel Systems nFOCUS controller
 
 Single device is present on startup (no hot-plug support).
 
@@ -20,7 +20,8 @@ http://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
 
 ## Use
 
-indigo_server indigo_focuser_nstep
+indigo_server indigo_focuser_nfocus
 
-## Status: Stable
+## Status: Under development
 
+Unclear - how to abort movement? what is #CF command?

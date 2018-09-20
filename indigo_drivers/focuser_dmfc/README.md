@@ -20,5 +20,5 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_dmfc
 
-## Status: Untested
+## Status: Stable
 

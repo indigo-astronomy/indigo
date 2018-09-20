@@ -45,8 +45,8 @@
 1. QHY CCD driver __DONE__ (unstable SDK)
 2. ASI CCD driver __DONE__
 3. IIDC CCD driver (based on libdc1394) __DONE__
-4. MI CCD driver (based on MI SDK) __PARTIALLY_DONE__ (under development)
-5. QSI CCD driver (based on QSI SDK) __PARTIALLY_DONE__ (untested)
+4. MI CCD driver (based on MI SDK) __DONE__
+5. QSI CCD driver (based on QSI SDK) __DONE__
 6. FLI CCD driver (based on FLI SDK) __DONE__
 7. SBIG CCD driver (based on SBIG SDK) __DONE__
 8. Apogee CCD driver (based on Random Factory Apogee SDK) __DONE__
@@ -70,8 +70,11 @@
 3. SBIG wheel driver __DONE__
 4. ASI EFW driver __DONE__
 5. Apogee wheel driver (based on Random Factory Apogee SDK)
-6. Brightstar Quantum filter wheel driver __UNTESTED__
+6. Brightstar Quantum filter wheel driver __DONE__ __UNTESTED__
 7. Manual wheel
+8. Trutek filter wheel driver (untested) __DONE__ __UNTESTED__
+9. Xagyl filter wheel driver (untested) __DONE__ __UNTESTED__
+10. Optec filter wheel driver (untested) __DONE__ __UNTESTED__
 
 #### Guiders
 
@@ -85,6 +88,9 @@
 1. USB Focus v3 __DONE__
 2. FLI focuser driver (based on FLI SDK) __DONE__
 3. SBIG focuser driver (based on SBIG SDK) __DONE__
+4. Pegasus DMFC focuser driver __DONE__
+5. RigelSys nSTEP focuser driver __DONE__
+6. RigelSys nFOCUS focuser driver (untested) __DONE__ __UNTESTED__
 
 #### Mounts
 
@@ -94,7 +100,7 @@
 4. SysScan (EQMod) mount driver
 5. ASCOL protocol mount driver (1 & 2m zeiss telescopes upgraded by ProjectSoft)
 6. Temma protocol mount driver __DONE__
-7. IEQ protocol (LX200 with extensions) mount driver
+7. iOptron protocol (LX200 with extensions) mount driver __DONE__
 
 #### GPS
 1. GPS Simulator driver __DOME__
