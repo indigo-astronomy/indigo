@@ -1,7 +1,7 @@
 // Copyright (c) 2018 CloudMakers, s. r. o.
 // All rights reserved.
 //
-// Thanks to Gene Nolan and Leon Palmer for their support.
+/// Thanks to Gene Nolan and Leon Palmer for their support.
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -20,27 +20,28 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress filter wheel driver main
- \file indigo_wheel_sx_main.c
+/** INDIGO Rigel Systems nFOCUS focuser driver
+ \file indigo_focuser_nfocus.h
  */
 
-#include <stdio.h>
-#include <string.h>
+#ifndef focuser_nfocus_h
+#define focuser_nfocus_h
 
-#include "indigo_driver_xml.h"
+#include "indigo_driver.h"
+#include "indigo_focuser_driver.h"
 
-#include "indigo_focuser_nstep.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-int main(int argc, const char * argv[]) {
-	indigo_main_argc = argc;
-	indigo_main_argv = argv;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
-	indigo_start();
-	indigo_focuser_nstep(INDIGO_DRIVER_INIT, NULL);
-	indigo_attach_client(protocol_adapter);
-	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_focuser_nstep(INDIGO_DRIVER_SHUTDOWN, NULL);
-	indigo_stop();
-	return 0;
+/** Register nFOCUS focuser hot-plug callback
+ */
+
+extern indigo_result indigo_focuser_nfocus(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* focuser_nfocus_h */
 
