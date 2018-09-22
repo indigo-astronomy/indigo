@@ -9,7 +9,7 @@
 // 3: 1 = 1x sidereal tracking rate, 2 = 2x, 3 = 8x, 4 = 16x, 5 = 64x, 6 = 128x, 7 = 256x, 8 = 512x, 9 = maximum speed
 // 4: 1 = RS-232 port, 2 = hand controller, 3 = GPS
 // 5: 0 = Southern Hemisphere, 1 = Northern Hemisphere.
-char status[] = "060521#";
+char status[] = "260521#";
 int rate[] = { 1, 2, 8, 16, 64, 128, 256, 512, 1024 };
 
 // +OOODYYMMDDHHMMSS
