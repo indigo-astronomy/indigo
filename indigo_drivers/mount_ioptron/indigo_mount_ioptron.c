@@ -91,8 +91,7 @@ static bool ieq_command(indigo_device *device, char *command, char *response, in
 		// read response
 	if (response != NULL) {
 		int index = 0;
-		int remains = max;
-		while (remains > 0) {
+		while (index < max) {
 			tv.tv_usec = 500000;
 			tv.tv_sec = 0;
 			fd_set readout;
@@ -398,7 +397,7 @@ static void position_timer_callback(indigo_device *device) {
 		indigo_update_coordinates(device, NULL);
 		ieq_get_utc(device);
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->position_timer);
+		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.2 : 1, &PRIVATE_DATA->position_timer);
 	}
 }
 

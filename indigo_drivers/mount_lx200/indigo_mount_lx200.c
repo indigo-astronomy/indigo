@@ -131,9 +131,8 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 	// read response
 	if (response != NULL) {
 		int index = 0;
-		int remains = max;
 		int timeout = 3;
-		while (remains > 0) {
+		while (index < max) {
 			fd_set readout;
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);

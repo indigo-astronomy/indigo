@@ -142,10 +142,10 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 	// read response
 	if (wait) {
 		char buffer[128];
-		int remains = sizeof(buffer) - 1;
 		int index = 0;
 		int timeout = 3;
-		while (remains > 0) {
+		int max = sizeof(buffer) - 1;
+		while (index < max) {
 			fd_set readout;
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);

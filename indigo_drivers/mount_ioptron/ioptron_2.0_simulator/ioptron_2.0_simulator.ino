@@ -24,73 +24,85 @@ char ra[] = "00000000";
 char current[] = "+3240000000000000#";
 char zero[] = "+3240000000000000#";
 
-long move_dec = 0;
-long move_ra = 0;
+long dec_rate = 0;
+long ra_rate = 0;
 
 char guiding_rate[] = "050#";
 
-void format(unsigned long value, char *buffer, int length) {
+void format(long value, bool sign, char *buffer, int length) {
+  if (sign) {
+    if (value > 0) {
+      *buffer++ = '+';
+    } else {
+      *buffer++ = '-';
+      value = -value;
+    }
+    length--;
+  }
   while (length > 0) {
     buffer[--length] = value % 10 + '0';
     value /= 10;
   }
 }
 
-unsigned long parse(const char *buffer, int length) {
-  unsigned long value = 0;
+long parse(const char *buffer, int length) {
+  long value = 0;
+  int sign = 1;
+  if (*buffer == '+') {
+    buffer++;
+    length--;
+  } else if (*buffer == '-') {
+    buffer++;
+    length--;
+    sign = -1;
+  }
   while (length > 0) {
     value = value * 10 + *buffer++ - '0';
     length--;
   }
-  return value;
+  return value * sign;
 }
 
-void slew_to(const char *ra, const char *dec) {
+void slew_to(const char *dec, const char *ra) {
   static long target_ra = 0;
   static long target_dec = 0;
   static char target_status = 0;
   static bool do_slew = false;
-  static long unsigned last_sec = 0;
+  static long unsigned last_millis = 0;
   if (ra && dec) {
     target_ra = parse(ra, 8);
-    target_dec = parse(dec + 1, 8);
-    if (*dec == '-')
-      target_dec = -target_dec;
+    target_dec = parse(dec, 9);
     target_status = status[1];
     if (target_status == '7')
       target_status = '0';
     do_slew = true;
+    last_millis = millis();
   }
-  long unsigned current_sec = millis() / 1000;
-  if (do_slew && last_sec < current_sec) {
+  long unsigned current_millis = millis();
+  if (do_slew) {
+    long lapse = current_millis - last_millis;
     do_slew = false;
-    last_sec = current_sec;
+    last_millis = current_millis;
+    long current_dec = parse(current, 9);
     long current_ra = parse(current + 9, 8);
-    long current_dec = parse(current + 1, 8);
-    if (*current == '-')
-      current_dec = -current_dec;
 
     long diff = target_dec - current_dec;    
-    if (abs(diff) < 1500000L) {
+    if (abs(diff) < 1500L * lapse) {
       current_dec = target_dec;
     } else {
-      current_dec = current_dec + (diff > 0 ? 1500000L : -1500000L);
+      current_dec = current_dec + (diff > 0 ? 1500L : -1500L) * lapse;
       do_slew = true;
     }
-    if (current_dec < 0)
-      current[0] = '-';
-    else
-      current[1] = '+';
-    format(abs(current_dec), current + 1, 8);
+    format(current_dec, true, current, 9);
 
     diff = target_ra - current_ra;
-    if (abs(diff) < 1000000L) {
+    if (abs(diff) < 1000L * lapse) {
       current_ra = target_ra;
     } else {
-      current_ra = current_ra + (diff > 0 ? 1000000L : -1000000L);
+      current_ra = current_ra + (diff > 0 ? 1000L : -1000L) * lapse;
       do_slew = true;
     }
-    format(current_ra, current + 9, 8);
+    format(current_ra, false, current + 9, 8);
     
     if (do_slew)
       status[1] = '2';
@@ -106,27 +118,21 @@ void tracking() {
   if (status[1] == '0') {
     long current_ra = parse(current + 9, 8);
     current_ra = (current_ra + lapse) % (24 * 36001000L);
-    format(current_ra, current + 9, 8);
+    format(current_ra, false, current + 9, 8);
   }
-  if (move_dec) {
-    long current_dec = parse(current + 1, 8);
-    if (*current == '-')
-      current_dec = -current_dec;
-    current_dec += move_dec * lapse;
+  if (dec_rate) {
+    long current_dec = parse(current, 9);
+    current_dec += dec_rate * lapse;
     if (current_dec < -90 * 360000)
       current_dec = -90 * 360000;
     else if (current_dec > 90 * 360000)
       current_dec = 90 * 360000;
-    if (current_dec < 0)
-      current[0] = '-';
-    else
-      current[1] = '+';
-    format(abs(current_dec), current + 1, 8);
+    format(current_dec, true, current, 9);
   }
-  if (move_ra) {
+  if (ra_rate) {
     long current_ra = parse(current + 9, 8);
-    current_ra = (current_ra + move_ra * lapse) % (24 * 36001000L);
-    format(current_ra, current + 9, 8);
+    current_ra = (current_ra + ra_rate * lapse) % (24 * 36001000L);
+    format(current_ra, false, current + 9, 8);
   }
   last_millis = current_millis;
 }
@@ -160,12 +166,12 @@ void loop() {
         Serial.write("1");
       } else if (strncmp(command, "MH", 2) == 0) {
         Serial.write("1");
-        slew_to(zero + 9, zero);
+        slew_to(zero, zero + 9);
         status[1] = '7';
       } else if (strncmp(command, "MSH", 3) == 0) {
         Serial.write("1");
         status[1] = '7';
-        slew_to("00000000", "+32400000");
+        slew_to("+32400000", "00000000");
       } else if (strncmp(command, "MP", 2) == 0) {
         Serial.write("1");
         if (command[2] == '0') {
@@ -173,7 +179,7 @@ void loop() {
             status[1] = '7';
         } else {
           status[1] = '6';
-          slew_to("00000000", "+32400000");
+          slew_to("+32400000", "00000000");
         }
       } else if (strncmp(command, "RT", 2) == 0) {
         status[2] = command[2];
@@ -211,11 +217,11 @@ void loop() {
         Serial.write("1");
       } else if (strcmp(command, "GLT") == 0) {
         unsigned long now = setup_time + millis() / 1000;
-        format(now % 60, timestamp + 15, 2);
+        format(now % 60, false, timestamp + 15, 2);
         now /= 60;
-        format(now % 60, timestamp + 13, 2);
+        format(now % 60, false, timestamp + 13, 2);
         now /= 60;
-        format(now % 24, timestamp + 11, 2);
+        format(now % 24, false, timestamp + 11, 2);
         Serial.write(timestamp, 18);
       } else if (strncmp(command, "RG", 2) == 0) {
         strncpy(guiding_rate, command + 2, 3);
@@ -234,33 +240,33 @@ void loop() {
         Serial.write("1");
       } else if (strcmp(command, "MS") == 0) {
         Serial.write("1");
-        slew_to(ra, dec);
+        slew_to(dec, ra);
       } else if (strcmp(command, "Q") == 0) {
         Serial.write("1");
         status[1] = '0';
-        slew_to(current + 9, current);
+        slew_to(current, current + 9);
       } else if (strcmp(command, "SZP") == 0) {
         strncpy(zero, current, 18);
         Serial.write("1");
       } else if (strcmp(command, "GEC") == 0) {
         Serial.write(current, 18);
       } else if (strcmp(command, "mn") == 0) {
-        move_dec = rate[status[3] - '1'];
+        dec_rate = rate[status[3] - '1'];
       } else if (strcmp(command, "ms") == 0) {
-        move_dec = -rate[status[3] - '1'];
+        dec_rate = -rate[status[3] - '1'];
       } else if (strcmp(command, "qD") == 0) {
-        move_dec = 0;
+        dec_rate = 0;
         Serial.write("1");
       } else if (strcmp(command, "me") == 0) {
-        move_ra = rate[status[3] - '1'];
+        ra_rate = rate[status[3] - '1'];
       } else if (strcmp(command, "mw") == 0) {
-        move_ra = -rate[status[3] - '1'];
+        ra_rate = -rate[status[3] - '1'];
       } else if (strcmp(command, "qR") == 0) {
-        move_ra = 0;
+        ra_rate = 0;
         Serial.write("1");
       } else if (strcmp(command, "q") == 0) {
-        move_dec = 0;
-        move_ra = 0;
+        dec_rate = 0;
+        ra_rate = 0;
         Serial.write("1");
       } else {
         digitalWrite(LED_BUILTIN, HIGH);

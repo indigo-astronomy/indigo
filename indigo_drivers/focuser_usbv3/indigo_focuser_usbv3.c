@@ -73,8 +73,7 @@ static char *usbv3_response(indigo_device *device) {
 	static char response[128];
 	char c;
 	int index = 0;
-	int remains = sizeof(response);
-	while (remains > 0) {
+	while (index < sizeof(response)) {
 		long result = read(PRIVATE_DATA->handle, &c, 1);
 		if (result < 1) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
