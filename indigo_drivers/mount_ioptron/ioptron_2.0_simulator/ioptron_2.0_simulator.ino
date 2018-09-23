@@ -14,7 +14,7 @@ int rate[] = { 1, 2, 8, 16, 64, 128, 256, 512, 1024 };
 
 // +OOODYYMMDDHHMMSS
 char timestamp[] = "+0000000101000000#";
-unsigned long setup_time;
+long setup_time;
 
 char lat[] = "+173335#";
 char lon[] = "+061588#";
@@ -216,11 +216,11 @@ void loop() {
         strncpy(timestamp + 5, command + 2, 6);
         Serial.write("1");
       } else if (strncmp(command, "SL", 2) == 0) {
-        setup_time = ((command[2] - '0') * 10 + (command[3] - '0')) * 3600 + ((command[4] - '0') * 10 + (command[5] - '0')) * 60 + ((command[6] - '0') * 10 + (command[7] - '0')) - millis() / 1000;
+        setup_time = ((command[2] - '0') * 10 + (command[3] - '0')) * 3600L + ((command[4] - '0') * 10 + (command[5] - '0')) * 60L + ((command[6] - '0') * 10 + (command[7] - '0')) - millis() / 1000;
         strncpy(timestamp + 11, command + 2, 6);
         Serial.write("1");
       } else if (strcmp(command, "GLT") == 0) {
-        unsigned long now = setup_time + millis() / 1000;
+        long now = setup_time + millis() / 1000;
         format(now % 60, false, timestamp + 15, 2);
         now /= 60;
         format(now % 60, false, timestamp + 13, 2);
