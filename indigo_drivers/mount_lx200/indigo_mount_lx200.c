@@ -187,9 +187,10 @@ static void meade_get_utc(indigo_device *device) {
 			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 			tm.tm_mon -= 1;
 			tm.tm_isdst = -1;
-			time_t secs = mktime(&tm);
-			indigo_timetoiso(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 			if (meade_command(device, ":GG#", response, sizeof(response), 0)) {
+				tm.tm_gmtoff = atoi(response) * 3600;
+				time_t secs = mktime(&tm);
+				indigo_timetoiso(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 				sprintf(MOUNT_UTC_OFFEST_ITEM->text.value, "%g", atof(response));
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			}
