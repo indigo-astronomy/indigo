@@ -96,10 +96,14 @@ void slew_to(const char *dec, const char *ra) {
     format(current_dec, true, current, 9);
 
     diff = target_ra - current_ra;
+    if (diff > 12)
+      diff = diff - 24;
+    else if (diff < -12)
+      diff = diff + 24;
     if (abs(diff) < 1000L * lapse) {
       current_ra = target_ra;
     } else {
-      current_ra = current_ra + (diff > 0 ? 1000L : -1000L) * lapse;
+      current_ra = (current_ra + (diff > 0 ? 1000L : -1000L) * lapse) % (24 * 36001000L);
       do_slew = true;
     }
     format(current_ra, false, current + 9, 8);
