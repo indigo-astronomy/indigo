@@ -593,7 +593,7 @@ time_t indigo_utc(time_t *ltime) {
 	else time(&now);
 
 	gmtime_r(&now, &tm_now);
-	return mktime(&tm_now);
+	return timegm(&tm_now);
 }
 
 void indigo_timetoiso(time_t tstamp, char *isotime, int isotime_len) {
