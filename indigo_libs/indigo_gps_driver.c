@@ -47,13 +47,13 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 	}
 	if (GPS_CONTEXT != NULL) {
 		if (indigo_device_attach(device, version, INDIGO_INTERFACE_GPS) == INDIGO_OK) {
-			// -------------------------------------------------------------------------------- GPS_HAVE_FIX
+			// -------------------------------------------------------------------------------- GPS_STATUS
 			GPS_STATUS_PROPERTY = indigo_init_light_property(NULL, device->name, GPS_STATUS_PROPERTY_NAME, GPS_SITE_GROUP, "Status", INDIGO_OK_STATE, 3);
 			if (GPS_STATUS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_light_item(GPS_STATUS_NO_FIX_ITEM, GPS_STATUS_NO_FIX_ITEM_NAME, "No Fix", INDIGO_OK_STATE);
-			indigo_init_light_item(GPS_STATUS_2D_FIX_ITEM, GPS_STATUS_2D_FIX_ITEM_NAME, "2D Fix", INDIGO_OK_STATE);
-			indigo_init_light_item(GPS_STATUS_3D_FIX_ITEM, GPS_STATUS_3D_FIX_ITEM_NAME, "3D Fix", INDIGO_OK_STATE);
+			indigo_init_light_item(GPS_STATUS_NO_FIX_ITEM, GPS_STATUS_NO_FIX_ITEM_NAME, "No Fix", INDIGO_IDLE_STATE);
+			indigo_init_light_item(GPS_STATUS_2D_FIX_ITEM, GPS_STATUS_2D_FIX_ITEM_NAME, "2D Fix", INDIGO_IDLE_STATE);
+			indigo_init_light_item(GPS_STATUS_3D_FIX_ITEM, GPS_STATUS_3D_FIX_ITEM_NAME, "3D Fix", INDIGO_IDLE_STATE);
 			// -------------------------------------------------------------------------------- GPS_GEOGRAPHIC_COORDINATES
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GPS_SITE_GROUP, "Location", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
 			if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)

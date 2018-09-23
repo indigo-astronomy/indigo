@@ -108,7 +108,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
+	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.a $(BUILD_DRIVERS)/indigo_guider_eqmac.a $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.dylib
 endif
@@ -133,7 +133,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libnmea.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(LIBBOOST-REGEX)
+	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(LIBBOOST-REGEX)
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.so
 endif
@@ -436,23 +436,6 @@ $(BUILD_LIB)/libnexstar.a: indigo_drivers/mount_nexstar/externals/libnexstar/Mak
 
 #---------------------------------------------------------------------
 #
-#	Build nmealib
-#
-#---------------------------------------------------------------------
-
-$(BUILD_INCLUDE)/nmea/nmea.h: indigo_drivers/gps_nmea/externals/nmealib/include/nmea/nmea.h
-	install -d $(BUILD_INCLUDE)
-	install -d $(BUILD_INCLUDE)/nmea
-	cp  indigo_drivers/gps_nmea/externals/nmealib/include/nmea/* $(BUILD_INCLUDE)/nmea
-
-$(BUILD_LIB)/libnmea.a: $(BUILD_INCLUDE)/nmea/nmea.h
-	cd indigo_drivers/gps_nmea/externals/nmealib; make clean; make; cd ../../../..
-	install -d $(BUILD_LIB)
-	cp indigo_drivers/gps_nmea/externals/nmealib/lib/libnmea.a $(BUILD_LIB)
-
-
-#---------------------------------------------------------------------
-#
 #	Build libapogee
 #
 #---------------------------------------------------------------------
@@ -652,10 +635,10 @@ $(BUILD_DRIVERS)/indigo_dome_simulator.$(SOEXT): indigo_drivers/dome_simulator/i
 $(BUILD_DRIVERS)/indigo_gps_nmea.a: indigo_drivers/gps_nmea/indigo_gps_nmea.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_DRIVERS)/indigo_gps_nmea: indigo_drivers/gps_nmea/indigo_gps_nmea_main.o $(BUILD_DRIVERS)/indigo_gps_nmea.a $(BUILD_LIB)/libnmea.a
+$(BUILD_DRIVERS)/indigo_gps_nmea: indigo_drivers/gps_nmea/indigo_gps_nmea_main.o $(BUILD_DRIVERS)/indigo_gps_nmea.a
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
-$(BUILD_DRIVERS)/indigo_gps_nmea.$(SOEXT): indigo_drivers/gps_nmea/indigo_gps_nmea.o $(BUILD_LIB)/libnmea.a
+$(BUILD_DRIVERS)/indigo_gps_nmea.$(SOEXT): indigo_drivers/gps_nmea/indigo_gps_nmea.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
@@ -1554,7 +1537,6 @@ clean-all: clean
 	cd externals/libjpeg; make distclean; cd ../..
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; rm configure; cd ../../../..
-	cd indigo_drivers/gps_nmea/externals/nmealib; make clean; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223; make clean; cd ../../../..
 	cd indigo_drivers/ccd_qsi/externals; rm -rf qsiapi-7.6.0; cd ../../..
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make clean; cd ../../../..
