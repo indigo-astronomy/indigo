@@ -194,6 +194,14 @@ static void gps_refresh_callback(indigo_device *device) {
 					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+					if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+						GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+					}
+					if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+						GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+					}
 					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 				} else if (fix == 2 && GPS_STATUS_2D_FIX_ITEM->light.value != INDIGO_BUSY_STATE) {
 					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -201,11 +209,27 @@ static void gps_refresh_callback(indigo_device *device) {
 					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+					if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+						GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+					}
+					if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+						GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+					}
 				} else if (fix == 3 && GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
 					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
 					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+					if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_OK_STATE) {
+						GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+					}
+					if (GPS_UTC_TIME_PROPERTY->state != INDIGO_OK_STATE) {
+						GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+					}
 					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 				}
 				double pdop = atof(tokens[15]);
@@ -258,19 +282,21 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (PRIVATE_DATA->handle == -1) {
 				if (gps_open(device)) {
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
 					GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
-					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
 					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+					GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 					sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
 					indigo_set_timer(device, 0, gps_refresh_callback);
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
 		} else {
