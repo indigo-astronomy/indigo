@@ -32,7 +32,7 @@ byte _location[] = { 33, 50, 41, 0, 118, 20, 17, 1 };
 byte _time[] = { 15, 26, 0, 4, 6, 5, 251, 1 };
 unsigned long _time_lapse = 0;
 byte _aligned = 1;
-byte _pass_throughing = 0;
+byte _slewing = 0;
 byte _tracking = 0;
 unsigned long _ra = 0x00000000;
 unsigned long _dec = 0x40000000;
@@ -167,11 +167,11 @@ void loop() {
         Serial.write(_aligned);
         Serial.write('#');
       case 'L':
-        Serial.write(_pass_throughing);
+        Serial.write(_slewing);
         Serial.write('#');
         break;
       case 'M':
-        _pass_throughing = 0;
+        _slewing = 0;
         Serial.write('#');
         break;
       case 't':
