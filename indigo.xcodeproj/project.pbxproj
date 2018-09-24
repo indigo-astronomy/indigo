@@ -644,7 +644,7 @@
 		591E112321583FBE00ABADA6 /* nexstar.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = nexstar.c; path = externals/libnexstar/src/nexstar.c; sourceTree = "<group>"; };
 		591E112421583FBE00ABADA6 /* nexstar_pec.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = nexstar_pec.c; path = externals/libnexstar/src/nexstar_pec.c; sourceTree = "<group>"; };
 		591E112521583FBF00ABADA6 /* nex_open.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = nex_open.h; path = externals/libnexstar/src/nex_open.h; sourceTree = "<group>"; };
-		591E113A215844BC00ABADA6 /* nexstar_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = nexstar_simulator.ino; sourceTree = "<group>"; };
+		591E113A215844BC00ABADA6 /* nexstar_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nexstar_simulator.ino; sourceTree = "<group>"; };
 		591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fli_main.c; sourceTree = "<group>"; };
 		591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_focuser_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_fli.h; sourceTree = "<group>"; };

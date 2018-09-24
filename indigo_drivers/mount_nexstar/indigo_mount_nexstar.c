@@ -117,7 +117,7 @@ static void mount_handle_coordinates(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* GOTO requested */
 	if(MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-		res = tc_goto_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+		res = tc_goto_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
 		if (res != RC_OK) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -125,7 +125,7 @@ static void mount_handle_coordinates(indigo_device *device) {
 	}
 	/* SYNC requested */
 	else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		res = tc_sync_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+		res = tc_sync_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
 		if (res != RC_OK) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_sync_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -678,7 +678,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_coordinates(device, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
+		double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+		double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		mount_handle_coordinates(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_UTC_TIME_PROPERTY, property)) {
