@@ -18,19 +18,25 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#define CELESTRON
-//#define SKYWATCHER
+#ifdef ARDUINO_SAM_DUE
+#define Serial SerialUSB
+#endif
+
+//#define CELESTRON
+#define SKYWATCHER
 
 #define RA_AXIS 16
 #define DEC_AXIS 17
 #define GSP 176
 
 #define WRITE_BIN(data) Serial.write(data, sizeof(data)); Serial.write('#')
-#define READ_BIN(data) Serial.readBytes(data, sizeof(data)); Serial.write('#')
 #define WRITE_HEX(data) write_hex(data, sizeof(data)); Serial.write('#')
+#define READ_BIN(data) Serial.readBytes(data, sizeof(data)); Serial.write('#')
+
+byte echo;
 
 byte location[] = { 33, 50, 41, 0, 118, 20, 17, 1 };
-byte time[] = { 15, 26, 0, 4, 6, 5, 251, 1 };
+byte datetime[] = { 15, 26, 0, 4, 6, 5, 251, 1 };
 unsigned long time_lapse = 0;
 bool is_aligned = true;
 bool is_slewing = false;
@@ -80,30 +86,33 @@ void write_hex_hi(unsigned long data) {
   write_hex(buffer, sizeof(buffer));
 }
 
-byte read_hex() {
-  char c = Serial.read();
+byte to_hex(char c) {
   if (isDigit(c))
     return c - '0';
   return c - 'A' + 10;
 }
 
 unsigned long read_hex_lo() {
-  byte a = read_hex();
-  byte b = read_hex();
-  byte c = read_hex();
-  byte d = read_hex();
+  char buffer[4];
+  Serial.readBytes(buffer, sizeof(buffer));
+  byte a = to_hex(buffer[0]);
+  byte b = to_hex(buffer[1]);
+  byte c = to_hex(buffer[2]);
+  byte d = to_hex(buffer[3]);
   return a * 0x10000000L + b * 0x1000000L + c * 0x100000L + d * 0x10000L;
 }
 
 unsigned long read_hex_hi() {
-  byte a = read_hex();
-  byte b = read_hex();
-  byte c = read_hex();
-  byte d = read_hex();
-  byte e = read_hex();
-  byte f = read_hex();
-  byte g = read_hex();
-  byte h = read_hex();
+  char buffer[8];
+  Serial.readBytes(buffer, sizeof(buffer));
+  byte a = to_hex(buffer[0]);
+  byte b = to_hex(buffer[1]);
+  byte c = to_hex(buffer[2]);
+  byte d = to_hex(buffer[3]);
+  byte e = to_hex(buffer[4]);
+  byte f = to_hex(buffer[5]);
+  byte g = to_hex(buffer[6]);
+  byte h = to_hex(buffer[7]);
   return a * 0x10000000L + b * 0x1000000L + c * 0x100000L + d * 0x10000L + e * 0x1000L + f * 0x100L + g * 0x10L + h;
 }
 
@@ -122,20 +131,17 @@ void loop() {
   last_millis = current_millis;
   // update time
   time_lapse += lapse;
-  int s = time[2] + time_lapse / 1000;
-  int m = time[1] + s / 60;
-  int h = time[0] + m / 60;
-  time[2] = s % 60;
-  time[1] = m % 60;
-  time[0] = h % 24;
+  int s = datetime[2] + time_lapse / 1000;
+  int m = datetime[1] + s / 60;
+  int h = datetime[0] + m / 60;
+  datetime[2] = s % 60;
+  datetime[1] = m % 60;
+  datetime[0] = h % 24;
   time_lapse %= 1000;
   // update position - slew
   ra += ra_rate * lapse * 50;
   dec += dec_rate * lapse * 50;
   // update position - tracking
-  if (tracking_mode == 0) {
-    ra = (ra + (long)(lapse * STEP_PER_SEC)) % 0x1000000L;
-  }
   if (is_slewing) {
     long diff = ra_target - ra;
     if (abs(diff) < SLEW_PER_SEC * lapse) {
@@ -151,18 +157,21 @@ void loop() {
     }
     if (ra == ra_target && dec == dec_target)
       is_slewing = false;
+  } else if (tracking_mode == 0) {
+    ra = (ra + (long)(lapse * STEP_PER_SEC)) % 0x1000000L;
   }
   if (Serial.available()) {
     switch (Serial.read()) {
       case 'K':
-        Serial.write(Serial.read());
+        Serial.readBytes(&echo, 1);
+        Serial.write(echo);
         break;
       case 'V':
         #ifdef CELESTRON
         WRITE_BIN(_version);
         #endif
         #ifdef SKYWATCHER
-          WRITE_HEX(_version);
+        WRITE_HEX(_version);
         #endif
         break;
       case 'w':
@@ -172,10 +181,10 @@ void loop() {
         READ_BIN(location);
         break;
       case 'h':
-        WRITE_BIN(time);
+        WRITE_BIN(datetime);
         break;
       case 'H':
-        READ_BIN(time);
+        READ_BIN(datetime);
         break;
       case 'm':
         Serial.write(_model);
@@ -198,7 +207,7 @@ void loop() {
         Serial.write('#');
         break;
       case 'T':
-        tracking_mode = Serial.read();
+        Serial.readBytes(&tracking_mode, 1);
         Serial.write('#');
         break;
       case 'E':
@@ -216,31 +225,48 @@ void loop() {
       case 'S':
         ra = read_hex_lo();
         Serial.print(ra, HEX);
-        Serial.read();
+        Serial.readBytes(&echo, 1);
         dec = read_hex_lo();
         Serial.write('#');
         is_slewing = false;
         break;
       case 's':
         ra = read_hex_hi();
-        Serial.read();
+        Serial.readBytes(&echo, 1);
         dec = read_hex_hi();
         Serial.write('#');
         is_slewing = false;
         break;
       case 'R':
         ra_target = read_hex_lo();
-        Serial.print(ra, HEX);
-        Serial.read();
+        Serial.readBytes(&echo, 1);
         dec_target = read_hex_lo();
         Serial.write('#');
         is_slewing = true;
         break;
       case 'r':
         ra_target = read_hex_hi();
-        Serial.read();
+        Serial.readBytes(&echo, 1);
         dec_target = read_hex_hi();
         Serial.write('#');
+        is_slewing = true;
+        break;
+      case 'B': // parking only!
+        read_hex_lo();
+        Serial.readBytes(&echo, 1);
+        read_hex_lo();
+        Serial.write('#');
+        ra_target = 0x00000000;
+        dec_target = 0x40000000;
+        is_slewing = true;
+        break;
+      case 'b': // parking only!
+        read_hex_hi();
+        Serial.readBytes(&echo, 1);
+        read_hex_hi();
+        Serial.write('#');
+        ra_target = 0x00000000;
+        dec_target = 0x40000000;
         is_slewing = true;
         break;
 			case 'P': {
