@@ -23,40 +23,36 @@
 
 #define RA_AXIS 16
 #define DEC_AXIS 17
+#define GSP 176
 
 #define WRITE_BIN(data) Serial.write(data, sizeof(data)); Serial.write('#')
 #define READ_BIN(data) Serial.readBytes(data, sizeof(data)); Serial.write('#')
 #define WRITE_HEX(data) write_hex(data, sizeof(data)); Serial.write('#')
 
-byte _location[] = { 33, 50, 41, 0, 118, 20, 17, 1 };
-byte _time[] = { 15, 26, 0, 4, 6, 5, 251, 1 };
-unsigned long _time_lapse = 0;
-byte _aligned = 1;
-byte _slewing = 0;
-byte _tracking = 0;
-unsigned long _ra = 0x00000000;
-unsigned long _dec = 0x40000000;
+byte location[] = { 33, 50, 41, 0, 118, 20, 17, 1 };
+byte time[] = { 15, 26, 0, 4, 6, 5, 251, 1 };
+unsigned long time_lapse = 0;
+bool is_aligned = true;
+bool is_slewing = false;
+byte tracking_mode = 2;
+unsigned long ra = 0x00000000;
+unsigned long dec = 0x40000000;
 
-struct  {
-  byte size;
-  byte destination;
-  byte command;
-  byte data1;
-  byte data2;
-  byte data3;
-  byte response_size;
-} _pass_through;
+unsigned long ra_target = 0x00000000;
+unsigned long dec_target = 0x40000000;
 
-int _rates[] = { 0, 1, 2, 4, 8, 16, 64, 256, 1024, 4096 };
-int _ra_rate = 0;
-int _dec_rate = 0;
+int rates[] = { 0, 1, 2, 4, 8, 16, 64, 256, 1024, 4096 };
+int ra_rate = 0;
+int dec_rate = 0;
 
-int _ra_guiding_rate = 0;
-int _dec_guiding_rate = 0;
+byte ra_guiding_rate = 0;
+byte dec_guiding_rate = 0;
 
-int _ra_backlash = 0;
-int _dec_backlash = 0;
+byte ra_backlash = 0;
+byte dec_backlash = 0;
 
+double STEP_PER_SEC = 0x1000000L / 86400.0;
+long SLEW_PER_SEC = 0x10000L;
 
 #ifdef CELESTRON
 byte _version[] = { 1, 2 };
@@ -124,16 +120,38 @@ void loop() {
   long unsigned current_millis = millis();
   long unsigned lapse = current_millis - last_millis;
   last_millis = current_millis;
-  _time_lapse += lapse;
-  int s = _time[2] + _time_lapse / 1000;
-  int m = _time[1] + s / 60;
-  int h = _time[0] + m / 60;
-  _time[2] = s % 60;
-  _time[1] = m % 60;
-  _time[0] = h % 24;
-  _time_lapse %= 1000;
-  _ra += _ra_rate * lapse;
-  _dec += _dec_rate * lapse;
+  // update time
+  time_lapse += lapse;
+  int s = time[2] + time_lapse / 1000;
+  int m = time[1] + s / 60;
+  int h = time[0] + m / 60;
+  time[2] = s % 60;
+  time[1] = m % 60;
+  time[0] = h % 24;
+  time_lapse %= 1000;
+  // update position - slew
+  ra += ra_rate * lapse * 50;
+  dec += dec_rate * lapse * 50;
+  // update position - tracking
+  if (tracking_mode == 0) {
+    ra = (ra + (long)(lapse * STEP_PER_SEC)) % 0x1000000L;
+  }
+  if (is_slewing) {
+    long diff = ra_target - ra;
+    if (abs(diff) < SLEW_PER_SEC * lapse) {
+      ra = ra_target;
+    } else {
+      ra = ra + (diff > 0 ? SLEW_PER_SEC : -SLEW_PER_SEC) * lapse;
+    }
+    diff = dec_target - dec;
+    if (abs(diff) < SLEW_PER_SEC * lapse) {
+      dec = dec_target;
+    } else {
+      dec = dec + (diff > 0 ? SLEW_PER_SEC : -SLEW_PER_SEC) * lapse;
+    }
+    if (ra == ra_target && dec == dec_target)
+      is_slewing = false;
+  }
   if (Serial.available()) {
     switch (Serial.read()) {
       case 'K':
@@ -148,115 +166,142 @@ void loop() {
         #endif
         break;
       case 'w':
-        WRITE_BIN(_location);
+        WRITE_BIN(location);
         break;
       case 'W':
-        READ_BIN(_location);
+        READ_BIN(location);
         break;
       case 'h':
-        WRITE_BIN(_time);
+        WRITE_BIN(time);
         break;
       case 'H':
-        READ_BIN(_time);
+        READ_BIN(time);
         break;
       case 'm':
         Serial.write(_model);
         Serial.write('#');
         break;
       case 'J':
-        Serial.write(_aligned);
+        Serial.write(is_aligned ? 1 : 0);
         Serial.write('#');
+        break;
       case 'L':
-        Serial.write(_slewing);
+        Serial.write(is_slewing ? '1' : '0');
         Serial.write('#');
         break;
       case 'M':
-        _slewing = 0;
+        is_slewing = false;
         Serial.write('#');
         break;
       case 't':
-        Serial.write(_tracking);
+        Serial.write(tracking_mode);
         Serial.write('#');
         break;
       case 'T':
-        _tracking = Serial.read();
+        tracking_mode = Serial.read();
         Serial.write('#');
         break;
       case 'E':
-        write_hex_lo(_ra);
+        write_hex_lo(ra);
         Serial.write(',');
-        write_hex_lo(_dec);
+        write_hex_lo(dec);
         Serial.write('#');
         break;
       case 'e':
-        write_hex_hi(_ra);
+        write_hex_hi(ra);
         Serial.write(',');
-        write_hex_hi(_dec);
+        write_hex_hi(dec);
         Serial.write('#');
         break;
       case 'S':
-        _ra = read_hex_lo();
-        Serial.print(_ra, HEX);
+        ra = read_hex_lo();
+        Serial.print(ra, HEX);
         Serial.read();
-        _dec = read_hex_lo();
+        dec = read_hex_lo();
         Serial.write('#');
+        is_slewing = false;
         break;
       case 's':
-        _ra = read_hex_hi();
+        ra = read_hex_hi();
         Serial.read();
-        _dec = read_hex_hi();
+        dec = read_hex_hi();
         Serial.write('#');
+        is_slewing = false;
         break;
-      case 'P':
-        Serial.readBytes((byte *)&_pass_through, 7);
-        switch (_pass_through.command) {
+      case 'R':
+        ra_target = read_hex_lo();
+        Serial.print(ra, HEX);
+        Serial.read();
+        dec_target = read_hex_lo();
+        Serial.write('#');
+        is_slewing = true;
+        break;
+      case 'r':
+        ra_target = read_hex_hi();
+        Serial.read();
+        dec_target = read_hex_hi();
+        Serial.write('#');
+        is_slewing = true;
+        break;
+			case 'P': {
+				struct  {
+					byte size;
+					byte destination;
+					byte command;
+					byte data1;
+					byte data2;
+					byte data3;
+					byte response_size;
+				} pass_through;
+        Serial.readBytes((byte *)&pass_through, 7);
+        switch (pass_through.command) {
           case 6:
-            if (_pass_through.destination == RA_AXIS)
-              _ra_rate = _pass_through.data1 * 0x100 + _pass_through.data2;
-            else if (_pass_through.destination == DEC_AXIS)
-              _dec_rate = _pass_through.data1 * 0x100 + _pass_through.data2;
+            if (pass_through.destination == RA_AXIS)
+              ra_rate = pass_through.data1 * 0x100 + pass_through.data2;
+            else if (pass_through.destination == DEC_AXIS)
+              dec_rate = pass_through.data1 * 0x100 + pass_through.data2;
             break;
           case 7:
-            if (_pass_through.destination == RA_AXIS)
-              _ra_rate = -(_pass_through.data1 * 0x100 + _pass_through.data2);
-            else if (_pass_through.destination == DEC_AXIS)
-              _dec_rate = -(_pass_through.data1 * 0x100 + _pass_through.data2);
+            if (pass_through.destination == RA_AXIS)
+              ra_rate = -(pass_through.data1 * 0x100 + pass_through.data2);
+            else if (pass_through.destination == DEC_AXIS)
+              dec_rate = -(pass_through.data1 * 0x100 + pass_through.data2);
             break;
           case 16:
-            if (_pass_through.destination == RA_AXIS)
-              _ra_backlash = _pass_through.data1;
-            else if (_pass_through.destination == DEC_AXIS)
-              _dec_backlash = _pass_through.data1;
+            if (pass_through.destination == RA_AXIS)
+              ra_backlash = pass_through.data1;
+            else if (pass_through.destination == DEC_AXIS)
+              dec_backlash = pass_through.data1;
             break;
           case 36:
-            if (_pass_through.destination == RA_AXIS)
-              _ra_rate = _rates[_pass_through.data1];
-            else if (_pass_through.destination == DEC_AXIS)
-              _dec_rate = _rates[_pass_through.data1];
+            if (pass_through.destination == RA_AXIS)
+              ra_rate = rates[pass_through.data1];
+            else if (pass_through.destination == DEC_AXIS)
+              dec_rate = rates[pass_through.data1];
             break;
           case 37:
-            if (_pass_through.destination == RA_AXIS)
-              _ra_rate = -_rates[_pass_through.data1];
-            else if (_pass_through.destination == DEC_AXIS)
-              _dec_rate = -_rates[_pass_through.data1];
+            if (pass_through.destination == RA_AXIS)
+              ra_rate = -rates[pass_through.data1];
+            else if (pass_through.destination == DEC_AXIS)
+              dec_rate = -rates[pass_through.data1];
             break;
           case 64:
-            if (_pass_through.destination == RA_AXIS)
-              Serial.write(_ra_backlash);
-            else if (_pass_through.destination == DEC_AXIS)
-              Serial.write(_dec_backlash);
+            if (pass_through.destination == RA_AXIS)
+              Serial.write(ra_backlash);
+            else if (pass_through.destination == DEC_AXIS)
+              Serial.write(dec_backlash);
             break;
           case 70:
-            if (_pass_through.destination == RA_AXIS)
-              _ra_guiding_rate = _pass_through.data1;
-            else if (_pass_through.destination == DEC_AXIS)
-              _dec_guiding_rate = _pass_through.data1;
+            if (pass_through.destination == RA_AXIS)
+              ra_guiding_rate = pass_through.data1;
+            else if (pass_through.destination == DEC_AXIS)
+              dec_guiding_rate = pass_through.data1;
             break;
           case 71:
-            if (_pass_through.destination == RA_AXIS)
-              Serial.write(_ra_guiding_rate);
-            else if (_pass_through.destination == DEC_AXIS)
-              Serial.write(_dec_guiding_rate);
+            if (pass_through.destination == RA_AXIS)
+              Serial.write(ra_guiding_rate);
+            else if (pass_through.destination == DEC_AXIS)
+              Serial.write(dec_guiding_rate);
             break;
           case 254:
             Serial.write(1);
@@ -265,6 +310,7 @@ void loop() {
         }
         Serial.write('#');
         break;
+			}
     } 
   }
 }
