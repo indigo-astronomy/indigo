@@ -73,9 +73,8 @@ void loop() {
 		}
 	}
 	if (Serial.available()) {
-		String command = Serial.readStringUntil('#');
-    if (command.startsWith(":")) {
-      command = command.substring(1);      
+    if (Serial.read() == ':') {
+  		String command = Serial.readStringUntil('#');
   		if (command.equals("C")) {
   		} else if (command.equals("FG")) {
   			moving_status = 0x01;

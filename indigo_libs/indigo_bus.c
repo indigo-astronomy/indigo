@@ -881,6 +881,31 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 	}
 }
 
+void indigo_property_copy_targets(indigo_property *property, indigo_property *other, bool with_state) {
+	assert(property != NULL);
+	assert(other != NULL);
+	assert(property->type == INDIGO_NUMBER_VECTOR);
+	if (property->perm != INDIGO_RO_PERM) {
+		if (property->type == other->type) {
+			if (with_state)
+				property->state = other->state;
+			for (int i = 0; i < other->count; i++) {
+				indigo_item *other_item = &other->items[i];
+				for (int j = 0; j < property->count; j++) {
+					indigo_item *property_item = &property->items[j];
+					if (!strcmp(property_item->name, other_item->name)) {
+						property_item->number.target = other_item->number.value;
+						if (property_item->number.target < property_item->number.min)
+							property_item->number.target = property_item->number.min;
+						if (property_item->number.target > property_item->number.max)
+							property_item->number.target = property_item->number.max;
+					}
+				}
+			}
+		}
+	}
+}
+
 indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values) {
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, count);
 	for (int i = 0; i < count; i++)

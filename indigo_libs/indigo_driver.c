@@ -562,10 +562,16 @@ double indigo_stod(char *string) {
 		value = atof(string);
 		separator = strpbrk(string = separator, ":*' ");
 		if (separator == NULL) {
-			value += atof(string)/60.0;
+			if (value < 0)
+				value -= atof(string)/60.0;
+			else
+				value += atof(string)/60.0;
 		} else {
 			*separator++ = 0;
-			value += atof(string)/60.0 + atof(separator)/3600.0;
+			if (value < 0)
+				value -= atof(string)/60.0 + atof(separator)/3600.0;
+			else
+				value += atof(string)/60.0 + atof(separator)/3600.0;
 		}
 	}
 	return value;

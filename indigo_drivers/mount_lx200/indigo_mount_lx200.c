@@ -61,8 +61,6 @@ typedef struct {
 	bool parked;
 	int handle;
 	int device_count;
-	double currentRA;
-	double currentDec;
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
@@ -172,9 +170,10 @@ static void meade_close(indigo_device *device) {
 static void meade_get_coords(indigo_device *device) {
 	char response[128];
 	if (meade_command(device, ":GR#", response, sizeof(response), 0))
-		PRIVATE_DATA->currentRA = indigo_stod(response);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_stod(response);
 	if (meade_command(device, ":GD#", response, sizeof(response), 0))
-		PRIVATE_DATA->currentDec = indigo_stod(response);
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = indigo_stod(response);
+	indigo_debug("%g %g", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 }
 
 static void meade_get_utc(indigo_device *device) {
@@ -203,14 +202,12 @@ static void meade_get_utc(indigo_device *device) {
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
 		meade_get_coords(device);
-		double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - PRIVATE_DATA->currentRA);
-		double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - PRIVATE_DATA->currentDec);
+		double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value);
+		double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		if (diffRA <= RA_MIN_DIF && diffDec <= DEC_MIN_DIF)
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		else
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 		indigo_update_coordinates(device, NULL);
 		meade_get_utc(device);
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
@@ -285,7 +282,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					MOUNT_TRACKING_PROPERTY->hidden = true;
 					MOUNT_PARK_PROPERTY->count = 2; // Can unpark!
 					meade_get_coords(device);
-					if (PRIVATE_DATA->currentRA == 0 && PRIVATE_DATA->currentDec == 0) {
+					if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value == 0 && MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value == 0) {
 						MOUNT_PARK_PARKED_ITEM->sw.value = true;
 						MOUNT_PARK_UNPARKED_ITEM->sw.value = false;
 						PRIVATE_DATA->parked = true;
@@ -371,13 +368,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (!PRIVATE_DATA->parked && MOUNT_PARK_PARKED_ITEM->sw.value) {
 			meade_command(device, ":hP#", NULL, 0, 0);
 			PRIVATE_DATA->parked = true;
-			indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 		}
 		if (PRIVATE_DATA->parked && MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 			meade_command(device, ":hU#", NULL, 0, 0);
 			PRIVATE_DATA->parked = false;
-			PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
 		}
 		return INDIGO_OK;
@@ -411,7 +406,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_coordinates(device, "Mount is parked!");
 		} else {
-			indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+			indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 				if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'q') {
 					meade_command(device, ":TQ#", NULL, 0, 0);
@@ -469,22 +464,20 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 			if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
-				if (indigo_cancel_timer(device, &PRIVATE_DATA->position_timer)) {
-					PRIVATE_DATA->position_timer = NULL;
-					meade_command(device, ":Q#", NULL, 0, 0);
-					MOUNT_MOTION_NORTH_ITEM->sw.value = false;
-					MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
-					MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-					MOUNT_MOTION_WEST_ITEM->sw.value = false;
-					MOUNT_MOTION_EAST_ITEM->sw.value = false;
-					MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_coordinates(device, NULL);
-				}
+				PRIVATE_DATA->position_timer = NULL;
+				meade_command(device, ":Q#", NULL, 0, 0);
+				MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+				MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+				MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+				MOUNT_MOTION_WEST_ITEM->sw.value = false;
+				MOUNT_MOTION_EAST_ITEM->sw.value = false;
+				MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_coordinates(device, NULL);
 				MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 				MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
