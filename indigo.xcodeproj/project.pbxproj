@@ -648,6 +648,7 @@
 		591E113A215844BC00ABADA6 /* nexstar_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nexstar_simulator.ino; sourceTree = "<group>"; };
 		591E113B2159531B00ABADA6 /* skywatcher.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher.pdf; sourceTree = "<group>"; };
 		591E113C2159531B00ABADA6 /* celestron.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = celestron.pdf; sourceTree = "<group>"; };
+		591E1141215A999E00ABADA6 /* HighResSteppermotor107.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = HighResSteppermotor107.pdf; sourceTree = "<group>"; };
 		591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fli_main.c; sourceTree = "<group>"; };
 		591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_focuser_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_fli.h; sourceTree = "<group>"; };
@@ -925,7 +926,6 @@
 		59FC2EB9210CA76200730343 /* indigo_ccd_mi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_mi.rules; sourceTree = "<group>"; };
 		59FFD0D02128604200C7355C /* hidapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hidapi.h; path = hidapi/hidapi/hidapi.h; sourceTree = "<group>"; };
 		59FFD0D12128604200C7355C /* hid.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = hid.c; path = hidapi/mac/hid.c; sourceTree = "<group>"; };
-		9D0ECB35215A7E1200910709 /* HighResSteppermotor107.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = HighResSteppermotor107.pdf; path = ../../../../Desktop/HighResSteppermotor107.pdf; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
 		9D3BBBA521147EB500800FB0 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -2810,7 +2810,7 @@
 				9D4F473E215A4440006110FD /* indigo_focuser_moonlite.h */,
 				9D4F4741215A4440006110FD /* indigo_focuser_moonlite.c */,
 				9D4F473F215A4440006110FD /* indigo_focuser_moonlite_main.c */,
-				9D0ECB35215A7E1200910709 /* HighResSteppermotor107.pdf */,
+				591E1141215A999E00ABADA6 /* HighResSteppermotor107.pdf */,
 				9D4F473C215A4440006110FD /* moonlite_simulator */,
 			);
 			path = focuser_moonlite;

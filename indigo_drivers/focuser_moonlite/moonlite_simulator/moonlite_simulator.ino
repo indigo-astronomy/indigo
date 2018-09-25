@@ -18,12 +18,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-int current_position = 0x0000;
-int target_position = 0x0000;
+unsigned current_position = 0x8000;
+unsigned target_position = 0x8000;
 float temperature = 0x0031;
-int moving_status = 0x00;
-int speed = 0x02;
-int step_mode = 0x00;
+unsigned moving_status = 0x00;
+unsigned speed = 0x02;
+unsigned step_mode = 0x00;
 int temperature_compensation = 0x00;
 
 void setup() {
@@ -48,7 +48,7 @@ int parse_hex(String string) {
 	return value;
 }
 
-void print_hex(int value, int length) {
+void print_hex(unsigned value, int length) {
 	char buffer[5];
 	buffer[length] = 0;
 	while (length--) {
