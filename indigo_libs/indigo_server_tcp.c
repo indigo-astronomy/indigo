@@ -40,6 +40,10 @@
 #include <sys/time.h>
 #include <netinet/in.h>
 
+#ifdef INDIGO_LINUX
+#include <netinet/tcp.h>
+#endif
+
 #include "indigo_server_tcp.h"
 #include "indigo_driver_xml.h"
 #include "indigo_driver_json.h"
@@ -271,6 +275,15 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		indigo_error("Can't bind server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
+
+#ifdef INDIGO_LINUX
+	int val = 1;
+	if (setsockopt(server_socket, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) < 0) {
+		indigo_error("Can't setsockopt TCP_NODELAY, for server socket (%s)", strerror(errno));
+		return INDIGO_CANT_START_SERVER;
+	}
+#endif
+
 	unsigned int length = sizeof(server_address);
 	if (getsockname(server_socket, (struct sockaddr *)&server_address, &length) == -1) {
 		close(server_socket);
