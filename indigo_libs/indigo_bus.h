@@ -467,6 +467,10 @@ extern bool indigo_get_switch(indigo_property *property, char *item_name);
  */
 extern void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state);
 
+/** Copy item values into target from other number property into property (optionally including property state).
+ */
+extern void indigo_property_copy_targets(indigo_property *property, indigo_property *other, bool with_state);
+	
 /** Request text property change.
  */
 extern indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values);
