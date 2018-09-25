@@ -20,7 +20,7 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO Optec filter wheel driver
- \file indigo_ccd_optec.c
+ \file indigo_wheel_optec.c
  */
 
 #define DRIVER_VERSION 0x0001

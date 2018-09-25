@@ -84,6 +84,7 @@
 #include "focuser_dmfc/indigo_focuser_dmfc.h"
 #include "focuser_nstep/indigo_focuser_nstep.h"
 #include "focuser_nfocus/indigo_focuser_nfocus.h"
+#include "focuser_moonlite/indigo_focuser_moonlite.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -145,6 +146,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_dmfc,
 	indigo_focuser_nstep,
 	indigo_focuser_nfocus,
+	indigo_focuser_moonlite,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif

@@ -163,6 +163,7 @@
 		9D3BBBA921147EB500800FB0 /* indigo_agent_lx200_server.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */; };
 		9D4D64B220A9D947008ECE4B /* indigo_guider_eqmac.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D4D64AE20A9D946008ECE4B /* indigo_guider_eqmac.h */; };
 		9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D4D64B020A9D946008ECE4B /* indigo_guider_eqmac.c */; };
+		9D4F4742215A4447006110FD /* indigo_focuser_moonlite.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D4F4741215A4440006110FD /* indigo_focuser_moonlite.c */; };
 		9D59D5E320D3F829009EA8FF /* helpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D3C320D3F828009EA8FF /* helpers.cpp */; };
 		9D59D5E420D3F829009EA8FF /* AltaIo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3C420D3F828009EA8FF /* AltaIo.h */; };
 		9D59D5E520D3F829009EA8FF /* PromFx2Io.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D3C520D3F828009EA8FF /* PromFx2Io.h */; };
@@ -942,6 +943,11 @@
 		9D4D64AE20A9D946008ECE4B /* indigo_guider_eqmac.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_eqmac.h; sourceTree = "<group>"; };
 		9D4D64AF20A9D946008ECE4B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D4D64B020A9D946008ECE4B /* indigo_guider_eqmac.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_eqmac.c; sourceTree = "<group>"; };
+		9D4F473D215A4440006110FD /* moonlite_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = moonlite_simulator.ino; sourceTree = "<group>"; };
+		9D4F473E215A4440006110FD /* indigo_focuser_moonlite.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_moonlite.h; sourceTree = "<group>"; };
+		9D4F473F215A4440006110FD /* indigo_focuser_moonlite_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_moonlite_main.c; sourceTree = "<group>"; };
+		9D4F4740215A4440006110FD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D4F4741215A4440006110FD /* indigo_focuser_moonlite.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_moonlite.c; sourceTree = "<group>"; };
 		9D59D3C320D3F828009EA8FF /* helpers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = helpers.cpp; sourceTree = "<group>"; };
 		9D59D3C420D3F828009EA8FF /* AltaIo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AltaIo.h; sourceTree = "<group>"; };
 		9D59D3C520D3F828009EA8FF /* PromFx2Io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PromFx2Io.h; sourceTree = "<group>"; };
@@ -2532,6 +2538,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9D4F473B215A4440006110FD /* focuser_moonlite */,
 				9DADEE5321511322008C6FBE /* focuser_nfocus */,
 				599E6A70214D8EEB00E45C9E /* focuser_nstep */,
 				9DFE1863213586AB00149BDE /* focuser_dmfc */,
@@ -2793,6 +2800,26 @@
 				9D4D64AD20A9D946008ECE4B /* indigo_guider_eqmac_main.c */,
 			);
 			path = guider_eqmac;
+			sourceTree = "<group>";
+		};
+		9D4F473B215A4440006110FD /* focuser_moonlite */ = {
+			isa = PBXGroup;
+			children = (
+				9D4F4740215A4440006110FD /* README.md */,
+				9D4F473E215A4440006110FD /* indigo_focuser_moonlite.h */,
+				9D4F4741215A4440006110FD /* indigo_focuser_moonlite.c */,
+				9D4F473F215A4440006110FD /* indigo_focuser_moonlite_main.c */,
+				9D4F473C215A4440006110FD /* moonlite_simulator */,
+			);
+			path = focuser_moonlite;
+			sourceTree = "<group>";
+		};
+		9D4F473C215A4440006110FD /* moonlite_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9D4F473D215A4440006110FD /* moonlite_simulator.ino */,
+			);
+			path = moonlite_simulator;
 			sourceTree = "<group>";
 		};
 		9D59D3C020D3F828009EA8FF /* ccd_apogee */ = {
@@ -3473,9 +3500,9 @@
 			isa = PBXGroup;
 			children = (
 				9DAD52542126FFC2002FCC79 /* README.md */,
-				9DAD52522126FFC1002FCC79 /* indigo_wheel_xagyl_main.c */,
 				9DAD52532126FFC2002FCC79 /* indigo_wheel_xagyl.h */,
 				9DAD52562126FFC2002FCC79 /* indigo_wheel_xagyl.c */,
+				9DAD52522126FFC1002FCC79 /* indigo_wheel_xagyl_main.c */,
 				9DAD52552126FFC2002FCC79 /* FW5125_User_Manual-3.1.5.pdf */,
 				59D46EEC214AFB370018978D /* xagyl_simulator */,
 			);
@@ -4045,6 +4072,7 @@
 				590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */,
 				595F292E211E211200380EF4 /* DDHidElement.m in Sources */,
 				9D59D5E320D3F829009EA8FF /* helpers.cpp in Sources */,
+				9D4F4742215A4447006110FD /* indigo_focuser_moonlite.c in Sources */,
 				9D59D66620D3F82A009EA8FF /* AltaEthernetIo.cpp in Sources */,
 				59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */,
 				5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */,

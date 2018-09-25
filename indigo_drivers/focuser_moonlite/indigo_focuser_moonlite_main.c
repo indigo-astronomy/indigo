@@ -19,8 +19,8 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO PegasusAstro DMFC focuser driver main
- \file indigo_focuser_dmfc_main.c
+/** INDIGO MoonLite focuser driver main
+ \file indigo_wheel_sx_main.c
  */
 
 #include <stdio.h>
@@ -28,17 +28,17 @@
 
 #include "indigo_driver_xml.h"
 
-#include "indigo_focuser_dmfc.h"
+#include "indigo_focuser_moonlite.h"
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
-	indigo_focuser_dmfc(INDIGO_DRIVER_INIT, NULL);
+	indigo_focuser_moonlite(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_focuser_dmfc(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_focuser_moonlite(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_stop();
 	return 0;
 }
