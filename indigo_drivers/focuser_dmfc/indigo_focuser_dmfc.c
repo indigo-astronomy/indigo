@@ -19,8 +19,8 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress filter wheel driver
- \file indigo_ccd_sx.c
+/** INDIGO PegasusAstro DMFC focuser driver
+ \file indigo_focuser_dmfc.c
  */
 
 #define DRIVER_VERSION 0x0001

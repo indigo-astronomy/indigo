@@ -91,6 +91,8 @@
 4. Pegasus DMFC focuser driver __DONE__
 5. RigelSys nSTEP focuser driver __DONE__
 6. RigelSys nFOCUS focuser driver (untested) __DONE__ __UNTESTED__
+7. MoonLite focuser driver (untested) __DONE__ __UNTESTED__
+8. FCUSB focuser driver __DONE__
 
 #### Mounts
 

@@ -20,8 +20,8 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress filter wheel driver
- \file indigo_ccd_sx.c
+/** INDIGO Rigel Systems nFOCUS focuser driver
+ \file indigo_focuser_nfocus.c
  */
 
 #define DRIVER_VERSION 0x0001

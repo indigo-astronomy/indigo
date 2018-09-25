@@ -1102,6 +1102,20 @@ $(BUILD_DRIVERS)/indigo_focuser_nfocus: indigo_drivers/focuser_nfocus/indigo_foc
 $(BUILD_DRIVERS)/indigo_focuser_nfocus.$(SOEXT): indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
+#---------------------------------------------------------------------
+#
+#	MoonLite focuser driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_moonlite.a: indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_moonlite: indigo_drivers/focuser_moonlite/indigo_focuser_moonlite_main.o $(BUILD_DRIVERS)/indigo_focuser_moonlite.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_moonlite.$(SOEXT): indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
 #

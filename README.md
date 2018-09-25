@@ -65,6 +65,7 @@ This is the list of requirements taken into the consideration:
 41. RigelSys nSTEP focuser driver
 42. RigelSys nFOCUS focuser driver (untested)
 43. iOptron mount driver
+44. MoonLite focuser driver (untested)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount

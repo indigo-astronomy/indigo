@@ -20,8 +20,8 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress filter wheel driver
- \file indigo_ccd_sx.c
+/** INDIGO Rigel Systems nSTEP focuser driver
+ \file indigo_focuser_nstep.c
  */
 
 #define DRIVER_VERSION 0x0001
@@ -363,6 +363,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- X_FOCUSER_STEPPING_MODE
 	} else if (indigo_property_match(X_FOCUSER_STEPPING_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(X_FOCUSER_STEPPING_MODE_PROPERTY, property, false);
+		X_FOCUSER_STEPPING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_FOCUSER_PHASE_WIRING
