@@ -179,6 +179,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.max = 100000;
 		FOCUSER_POSITION_ITEM->number.step = 1;
+		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
+		FOCUSER_COMPENSATION_ITEM->number.min = -128;
+		FOCUSER_COMPENSATION_ITEM->number.min = -127;
+		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		FOCUSER_MODE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -228,6 +233,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				}
 				if (moonlite_command(device, ":GP#", response, sizeof(response))) {
 					FOCUSER_POSITION_ITEM->number.value = strtol(response, NULL, 16);
+				}
+				if (moonlite_command(device, ":GC#", response, sizeof(response))) {
+					FOCUSER_COMPENSATION_ITEM->number.value = (char)strtol(response, NULL, 16);
 				}
 			}
 			if (PRIVATE_DATA->handle > 0) {
@@ -313,6 +321,26 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- FOCUSER_MODE
+	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
+		if (moonlite_command(device, FOCUSER_MODE_AUTOMATIC_ITEM->sw.value ? ":+#" : ":-#", NULL, 0)) {
+			FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
+	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+		sprintf(command, ":SC%02X#", ((char)FOCUSER_COMPENSATION_ITEM->number.value) & 0xFF);
+		if (moonlite_command(device, command, NULL, 0)) {
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		// -------------------------------------------------------------------------------- X_FOCUSER_STEPPING_MODE
 	} else if (indigo_property_match(X_FOCUSER_STEPPING_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(X_FOCUSER_STEPPING_MODE_PROPERTY, property, false);

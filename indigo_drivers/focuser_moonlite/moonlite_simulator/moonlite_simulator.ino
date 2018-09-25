@@ -24,6 +24,7 @@ float temperature = 0x0031;
 int moving_status = 0x00;
 int speed = 0x02;
 int step_mode = 0x00;
+int temperature_compensation = 0x00;
 
 void setup() {
   Serial.begin(9600);
@@ -81,8 +82,7 @@ void loop() {
   		} else if (command.equals("FQ")) {
   			moving_status = 0x00;
   		} else if (command.equals("GC")) {
-  			// TBD
-  			Serial.print("00#");
+				print_hex(temperature_compensation, 2);
   		} else if (command.equals("GD")) {
   			print_hex(speed, 2);
   		} else if (command.equals("GH")) {
@@ -107,12 +107,11 @@ void loop() {
   			target_position = parse_hex(command.substring(2));
   		} else if (command.startsWith("SP")) {
   			current_position = parse_hex(command.substring(2));
+			} else if (command.startsWith("SC")) {
+				temperature_compensation = parse_hex(command.substring(2));
   		} else if (command.equals("+")) {
-  			// TBD
   		} else if (command.equals("-")) {
-  			// TBD
   		} else if (command.startsWith("PO")) {
-  			// TBD
   		}
     }
 	}
