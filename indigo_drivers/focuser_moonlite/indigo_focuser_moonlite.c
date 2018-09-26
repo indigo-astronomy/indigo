@@ -211,7 +211,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
+			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
 			if (PRIVATE_DATA->handle > 0) {
 				if (moonlite_command(device, ":GV#", response, sizeof(response)) && strlen(response) == 2) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "MoonLite focuser %c.%c", response[0], response[1]);
