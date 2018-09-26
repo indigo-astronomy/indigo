@@ -149,8 +149,8 @@ static void ieq_get_utc(indigo_device *device) {
 				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 				tm.tm_mon -= 1;
 				if (ieq_command(device, ":GG#", response, sizeof(response))) {
-					tm.tm_gmtoff = atoi(response) * 60;
 					tm.tm_isdst = -1;
+					tm.tm_gmtoff = atoi(response) * 60;
 					time_t secs = mktime(&tm);
 					indigo_timetoiso(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 					sprintf(MOUNT_UTC_OFFEST_ITEM->text.value, "%g", atof(response));

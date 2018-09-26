@@ -18,6 +18,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifdef ARDUINO_SAM_DUE
+#define Serial SerialUSB
+#endif
+
 // 0: 0 = GPS off, 1 = GPS on, 2 = GPS data extracted correctly
 // 1: 0 = stopped, 1 = tracking with PEC disabled, 2 = slewing, 3 = guiding, 4 = meridian flipping, 5 = tracking with PEC enabled, 6 = parked, 7 = stopped at zero position
 // 2: 0 = sidereal rate, 1 = lunar rate, 2 = solar rate, 3 = King rate, 4 = custom rate

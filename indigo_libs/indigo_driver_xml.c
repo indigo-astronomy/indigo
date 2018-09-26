@@ -91,9 +91,9 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, s
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
 			if (client->version >= INDIGO_VERSION_2_0 && property->perm != INDIGO_RO_PERM)
-				indigo_printf(handle, "<defNumber name='%s' label='%s' format='%s' min='%g' max='%g' step='%g' target='%g'>%g</defNumber>\n", indigo_item_name(client->version, property, item), item->label, item->number.format, item->number.min, item->number.max, item->number.step, item->number.target, item->number.value);
+				indigo_printf(handle, "<defNumber name='%s' label='%s' format='%s' min='%.8g' max='%.8g' step='%.8g' target='%.8g'>%.8g</defNumber>\n", indigo_item_name(client->version, property, item), item->label, item->number.format, item->number.min, item->number.max, item->number.step, item->number.target, item->number.value);
 			else
-				indigo_printf(handle, "<defNumber name='%s' label='%s' format='%s' min='%g' max='%g' step='%g'>%g</defNumber>\n", indigo_item_name(client->version, property, item), item->label, item->number.format, item->number.min, item->number.max, item->number.step, item->number.value);
+				indigo_printf(handle, "<defNumber name='%s' label='%s' format='%s' min='%.8g' max='%.8g' step='%.8g'>%.8g</defNumber>\n", indigo_item_name(client->version, property, item), item->label, item->number.format, item->number.min, item->number.max, item->number.step, item->number.value);
 		}
 		indigo_printf(handle, "</defNumberVector>\n");
 		break;
@@ -154,9 +154,9 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
 				if (client->version >= INDIGO_VERSION_2_0 && property->perm != INDIGO_RO_PERM)
-					indigo_printf(handle, "<oneNumber name='%s' target='%g'>%g</oneNumber>\n", indigo_item_name(client->version, property, item), item->number.target, item->number.value);
+					indigo_printf(handle, "<oneNumber name='%s' target='%.10g'>%.8g</oneNumber>\n", indigo_item_name(client->version, property, item), item->number.target, item->number.value);
 				else
-					indigo_printf(handle, "<oneNumber name='%s'>%g</oneNumber>\n", indigo_item_name(client->version, property, item), item->number.value);
+					indigo_printf(handle, "<oneNumber name='%s'>%.8g</oneNumber>\n", indigo_item_name(client->version, property, item), item->number.value);
 			}
 			indigo_printf(handle, "</setNumberVector>\n");
 			break;
