@@ -173,7 +173,6 @@ static void meade_get_coords(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_stod(response);
 	if (meade_command(device, ":GD#", response, sizeof(response), 0))
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = indigo_stod(response);
-	indigo_debug("%g %g", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 }
 
 static void meade_get_utc(indigo_device *device) {
@@ -185,8 +184,8 @@ static void meade_get_utc(indigo_device *device) {
 		if (meade_command(device, ":GL#", response, sizeof(response), 0) && sscanf(response, "%02d:%02d:%02d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
 			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 			tm.tm_mon -= 1;
-			tm.tm_isdst = -1;
 			if (meade_command(device, ":GG#", response, sizeof(response), 0)) {
+				tm.tm_isdst = -1;
 				tm.tm_gmtoff = atoi(response) * 3600;
 				time_t secs = mktime(&tm);
 				indigo_timetoiso(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
