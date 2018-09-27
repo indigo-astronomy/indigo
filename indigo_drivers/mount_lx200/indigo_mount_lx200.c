@@ -46,9 +46,6 @@
 
 #define PRIVATE_DATA        ((lx200_private_data *)device->private_data)
 
-#define RA_MIN_DIF					0.1
-#define DEC_MIN_DIF					0.1
-
 #define ALIGNMENT_MODE_PROPERTY					(PRIVATE_DATA->alignment_mode_property)
 #define POLAR_MODE_ITEM                 (ALIGNMENT_MODE_PROPERTY->items+0)
 #define ALTAZ_MODE_ITEM                 (ALIGNMENT_MODE_PROPERTY->items+1)
@@ -173,6 +170,8 @@ static void meade_get_coords(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_stod(response);
 	if (meade_command(device, ":GD#", response, sizeof(response), 0))
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = indigo_stod(response);
+	if (meade_command(device, ":D#", response, sizeof(response), 0))
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = *response ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 }
 
 static void meade_get_utc(indigo_device *device) {
@@ -201,12 +200,6 @@ static void meade_get_utc(indigo_device *device) {
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->parked) {
 		meade_get_coords(device);
-		double diffRA = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value);
-		double diffDec = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-		if (diffRA <= RA_MIN_DIF && diffDec <= DEC_MIN_DIF)
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_coordinates(device, NULL);
 		meade_get_utc(device);
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
@@ -546,7 +539,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 			if (MOUNT_MOTION_WEST_ITEM->sw.value) {
 				PRIVATE_DATA->lastMotionWE = 'w';
-				meade_command(device, ":Mwn#", NULL, 0, 0);
+				meade_command(device, ":Mw#", NULL, 0, 0);
 			} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
 				PRIVATE_DATA->lastMotionWE = 'e';
 				meade_command(device, ":Me#", NULL, 0, 0);

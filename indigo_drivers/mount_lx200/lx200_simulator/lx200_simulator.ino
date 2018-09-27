@@ -53,6 +53,12 @@ long dec = 90L * 360000L;
 long target_ra = 0;
 long target_dec = 90L * 360000L;
 
+int ra_slew = 0;
+int dec_slew = 0;
+
+char tracking_rate = 'Q';
+char slew_rate = 'M';
+
 bool is_slewing = false;
 bool is_tracking = true;
 bool is_parked = false;
@@ -82,6 +88,24 @@ void update_state() {
   } else if (!is_tracking) {
     ra = (ra + lapse) % (24L * 60L * 60L);
   }
+  if (ra_slew || dec_slew) {
+    long rate;
+    if (slew_rate == 'G')
+      rate = 10 * lapse;
+    else if (slew_rate == 'C')
+      rate = 50 * lapse;
+    else if (slew_rate == 'M')
+      rate = 500 * lapse;
+    else
+      rate = 1500 * lapse;
+    ra += ra_slew * rate / 15;
+    ra = (ra + 24L * 360000L) % (24L * 360000L);
+    dec += dec_slew * rate;
+    if (dec < -90L * 360000L)
+      dec = -90L * 360000L; 
+    if (dec > 90L * 360000L)
+      dec = 90L * 360000L; 
+  }
   int s = time_second + time_lapse / 1000;
   int m = time_minute + s / 60;
   int h = time_hour + m / 60;
@@ -91,10 +115,10 @@ void update_state() {
   time_lapse %= 1000;
 #ifdef LCD
   char buffer[17];
-  sprintf(buffer, "%02d%02d%02d %02d%02d%02d %c%c", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60, dec / 360000L, (dec / 6000L) % 60, (dec / 100L) % 60, is_tracking ? 'T' : 't', is_slewing ? 'S' : 's');
+  sprintf(buffer, "%02d%02d%02d %02d%02d%02d %c%c", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60, dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60, is_tracking ? 'T' : 't', is_slewing ? 'S' : 's');
   lcd.setCursor(0, 0);
   lcd.print(buffer);
-  sprintf(buffer, "%02d%02d%02d        %c%c", time_hour, time_minute, time_second, high_precision ? 'H' : 'h', is_parked ? 'P' : 'p');
+  sprintf(buffer, "%02d%02d%02d %c %c%c %c %c%c", time_hour, time_minute, time_second, slew_rate, (ra_slew < 0 ? 'E' : ra_slew > 0 ? 'W' : '0'), (dec_slew < 0 ? 'S' : dec_slew > 0 ? 'N' : '0'), tracking_rate, high_precision ? 'H' : 'h', is_parked ? 'P' : 'p');
   //sprintf(buffer, "%02d%02d%02d %02d%02d%02d", target_ra / 360000L, (target_ra / 6000L) % 60, (target_ra / 100L) % 60, target_dec / 360000L, (target_dec / 6000L) % 60, (target_dec / 100L) % 60);
   lcd.setCursor(0, 1);
   lcd.print(buffer);
@@ -232,8 +256,15 @@ void loop() {
       } else if (!strcmp(buffer, "MS")) {
         is_slewing = true;
         Serial.print("0");
+      } else if (!strcmp(buffer, "D")) {
+        if (is_slewing)
+          Serial.print("*#");
+        else
+          Serial.print("#");
       } else if (!strcmp(buffer, "Q")) {
         is_slewing = false;
+        ra_slew = 0;
+        dec_slew = 0;
       } else if (!strcmp(buffer, "AP")) {
         is_tracking = true;
       } else if (!strcmp(buffer, "AL")) {
@@ -252,9 +283,37 @@ void loop() {
         is_slewing = true;
         is_parked = true;
       } else if (!strcmp(buffer, "TQ")) {
+        tracking_rate = 'Q';
       } else if (!strcmp(buffer, "TS")) {
+        tracking_rate = 'S';
       } else if (!strcmp(buffer, "TL")) {
+        tracking_rate = 'L';
       } else if (!strcmp(buffer, "TM")) {
+        tracking_rate = 'M';
+      } else if (!strcmp(buffer, "RG")) {
+        slew_rate = 'G';
+      } else if (!strcmp(buffer, "RC")) {
+        slew_rate = 'C';
+      } else if (!strcmp(buffer, "RM")) {
+        slew_rate = 'M';
+      } else if (!strcmp(buffer, "RS")) {
+        slew_rate = 'S';
+      } else if (!strcmp(buffer, "Mn")) {
+        dec_slew = 1;
+      } else if (!strcmp(buffer, "Qn")) {
+        dec_slew = 0;
+      } else if (!strcmp(buffer, "Ms")) {
+        dec_slew = -1;
+      } else if (!strcmp(buffer, "Qs")) {
+        dec_slew = 0;
+      } else if (!strcmp(buffer, "Mw")) {
+        ra_slew = 1;
+      } else if (!strcmp(buffer, "Qw")) {
+        ra_slew = 0;
+      } else if (!strcmp(buffer, "Me")) {
+        ra_slew = -1;
+      } else if (!strcmp(buffer, "Qe")) {
+        ra_slew = 0;
       }
     }
   }
