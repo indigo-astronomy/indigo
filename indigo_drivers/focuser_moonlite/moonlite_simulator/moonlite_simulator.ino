@@ -18,8 +18,15 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#define LCD
+
 #ifdef ARDUINO_SAM_DUE
-#define Serial SerialUSB
+//#define Serial SerialUSB
+#endif
+
+#ifdef LCD
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
 unsigned current_position = 0x8000;
@@ -29,12 +36,23 @@ unsigned moving_status = 0x00;
 unsigned speed = 0x02;
 unsigned step_mode = 0x00;
 int temperature_compensation = 0x00;
+bool use_compensation = false;
 
 void setup() {
+#ifdef LCD
+  lcd.begin(16, 2);
+  lcd.setCursor(0, 0);
+  lcd.print("MoonLite sim");
+  lcd.setCursor(0, 1);
+  lcd.print("Not connected");
+#endif
   Serial.begin(9600);
   Serial.setTimeout(1000);
   while (!Serial)
     ;
+#ifdef LCD
+  lcd.clear();
+#endif
 }
 
 int parse_hex(String string) {
@@ -76,6 +94,15 @@ void loop() {
 			moving_status = 0x00;
 		}
 	}
+#ifdef LCD
+  char buffer[17];
+  sprintf(buffer, "T:%05d C:%05d", target_position, current_position);
+  lcd.setCursor(0, 0);
+  lcd.print(buffer);
+  sprintf(buffer, "M:%02x S:%02x D:%02x", moving_status, step_mode, speed);
+  lcd.setCursor(0, 1);
+  lcd.print(buffer);
+#endif
 	if (Serial.available()) {
     if (Serial.read() == ':') {
   		String command = Serial.readStringUntil('#');
@@ -113,7 +140,9 @@ void loop() {
 			} else if (command.startsWith("SC")) {
 				temperature_compensation = parse_hex(command.substring(2));
   		} else if (command.equals("+")) {
+        use_compensation = true;
   		} else if (command.equals("-")) {
+        use_compensation = false;
   		} else if (command.startsWith("PO")) {
   		}
     }
