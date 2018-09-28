@@ -161,6 +161,7 @@
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */; };
 		9D3BBBA921147EB500800FB0 /* indigo_agent_lx200_server.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */; };
+		9D48B7B6215E5B6100CF757E /* indigo_ccd_touptek.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D48B79F215E570600CF757E /* indigo_ccd_touptek.c */; };
 		9D4D64B220A9D947008ECE4B /* indigo_guider_eqmac.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D4D64AE20A9D946008ECE4B /* indigo_guider_eqmac.h */; };
 		9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D4D64B020A9D946008ECE4B /* indigo_guider_eqmac.c */; };
 		9D4F4742215A4447006110FD /* indigo_focuser_moonlite.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D4F4741215A4440006110FD /* indigo_focuser_moonlite.c */; };
@@ -941,6 +942,18 @@
 		9D45254920E0FB20004D1137 /* indigo_ccd_andor.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_andor.c; sourceTree = "<group>"; };
 		9D45254A20E0FB20004D1137 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D45254B20E0FB20004D1137 /* indigo_ccd_andor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_andor.h; sourceTree = "<group>"; };
+		9D48B79C215E570600CF757E /* indigo_ccd_touptek.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_touptek.h; sourceTree = "<group>"; };
+		9D48B79D215E570600CF757E /* indigo_ccd_touptek_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_touptek_main.c; sourceTree = "<group>"; };
+		9D48B79E215E570600CF757E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D48B79F215E570600CF757E /* indigo_ccd_touptek.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_touptek.c; sourceTree = "<group>"; };
+		9D48B7A3215E570600CF757E /* toupcam.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = toupcam.h; sourceTree = "<group>"; };
+		9D48B7A4215E570600CF757E /* en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
+		9D48B7A7215E570600CF757E /* libtoupcam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libtoupcam.dylib; sourceTree = "<group>"; };
+		9D48B7AA215E570600CF757E /* libtoupcam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libtoupcam.so; sourceTree = "<group>"; };
+		9D48B7AD215E570600CF757E /* libtoupcam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libtoupcam.so; sourceTree = "<group>"; };
+		9D48B7B0215E570600CF757E /* libtoupcam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libtoupcam.so; sourceTree = "<group>"; };
+		9D48B7B3215E570600CF757E /* libtoupcam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libtoupcam.so; sourceTree = "<group>"; };
+		9D48B7B5215E570600CF757E /* 99-toupcam.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-toupcam.rules"; sourceTree = "<group>"; };
 		9D4D64AD20A9D946008ECE4B /* indigo_guider_eqmac_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_eqmac_main.c; sourceTree = "<group>"; };
 		9D4D64AE20A9D946008ECE4B /* indigo_guider_eqmac.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_eqmac.h; sourceTree = "<group>"; };
 		9D4D64AF20A9D946008ECE4B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -2548,6 +2561,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9D48B79B215E570600CF757E /* ccd_touptek */,
 				9D4F473B215A4440006110FD /* focuser_moonlite */,
 				9DADEE5321511322008C6FBE /* focuser_nfocus */,
 				599E6A70214D8EEB00E45C9E /* focuser_nstep */,
@@ -2799,6 +2813,105 @@
 				9D45254B20E0FB20004D1137 /* indigo_ccd_andor.h */,
 			);
 			path = ccd_andor;
+			sourceTree = "<group>";
+		};
+		9D48B79B215E570600CF757E /* ccd_touptek */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B79E215E570600CF757E /* README.md */,
+				9D48B79C215E570600CF757E /* indigo_ccd_touptek.h */,
+				9D48B79F215E570600CF757E /* indigo_ccd_touptek.c */,
+				9D48B79D215E570600CF757E /* indigo_ccd_touptek_main.c */,
+				9D48B7A0215E570600CF757E /* bin_externals */,
+			);
+			path = ccd_touptek;
+			sourceTree = "<group>";
+		};
+		9D48B7A0215E570600CF757E /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7A1215E570600CF757E /* libtoupcam */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		9D48B7A1215E570600CF757E /* libtoupcam */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7A2215E570600CF757E /* include */,
+				9D48B7A4215E570600CF757E /* en.html */,
+				9D48B7A5215E570600CF757E /* lib */,
+				9D48B7B5215E570600CF757E /* 99-toupcam.rules */,
+			);
+			path = libtoupcam;
+			sourceTree = "<group>";
+		};
+		9D48B7A2215E570600CF757E /* include */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7A3215E570600CF757E /* toupcam.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		9D48B7A5215E570600CF757E /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7A6215E570600CF757E /* macOS */,
+				9D48B7A8215E570600CF757E /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		9D48B7A6215E570600CF757E /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7A7215E570600CF757E /* libtoupcam.dylib */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		9D48B7A8215E570600CF757E /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7A9215E570600CF757E /* x64 */,
+				9D48B7AC215E570600CF757E /* x86 */,
+				9D48B7AF215E570600CF757E /* arm */,
+				9D48B7B2215E570600CF757E /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		9D48B7A9215E570600CF757E /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7AA215E570600CF757E /* libtoupcam.so */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		9D48B7AC215E570600CF757E /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7AD215E570600CF757E /* libtoupcam.so */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		9D48B7AF215E570600CF757E /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7B0215E570600CF757E /* libtoupcam.so */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		9D48B7B2215E570600CF757E /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				9D48B7B3215E570600CF757E /* libtoupcam.so */,
+			);
+			path = arm64;
 			sourceTree = "<group>";
 		};
 		9D4D64AC20A9D946008ECE4B /* guider_eqmac */ = {
@@ -4224,6 +4337,7 @@
 				9D59D62220D3F829009EA8FF /* AltaUsbIo.cpp in Sources */,
 				591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */,
 				9D59D64120D3F829009EA8FF /* GenOneLinuxUSB.cpp in Sources */,
+				9D48B7B6215E5B6100CF757E /* indigo_ccd_touptek.c in Sources */,
 				59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */,
 				59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */,
 			);
