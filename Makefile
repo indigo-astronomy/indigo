@@ -58,6 +58,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
 	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac/libASICamera2.a
 	LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac/libUSB2ST4Conv.a
+	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/macOS/libtoupcam.dylib
 	FLISDK=libfli-1.999.1-180223
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
 	PACKAGE_TYPE=dmg
@@ -69,6 +70,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/Linux/$(ARCH_DETECTED)/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
+	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/Linux/$(ARCH_DETECTED)/libtoupcam.so
 	ifeq ($(ARCH_DETECTED),arm)
 		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/armv6/libEFWFilter.a
 		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/armv6/libASICamera2.a
@@ -469,6 +471,21 @@ $(BUILD_LIB)/libfli.a: $(BUILD_INCLUDE)/libfli/libfli.h
 	cd indigo_drivers/ccd_fli/externals/$(FLISDK); make clean; make; cd ../../../..
 	install -d $(BUILD_LIB)
 	cp indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.a $(BUILD_LIB)
+
+
+#---------------------------------------------------------------------
+#
+#	Build libtoupcam
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/toupcam.h: indigo_drivers/ccd_touptek/bin_externals/libtoupcam/include/toupcam.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_touptek/bin_externals/libtoupcam/include/toupcam.h $(BUILD_INCLUDE)
+
+$(BUILD_LIB)/libtoupcam.$(SOEXT): $(BUILD_INCLUDE)/toupcam.h
+	install -d $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBTOUPCAM) $(BUILD_LIB)
 
 
 #---------------------------------------------------------------------
@@ -1116,6 +1133,23 @@ $(BUILD_DRIVERS)/indigo_focuser_moonlite: indigo_drivers/focuser_moonlite/indigo
 
 $(BUILD_DRIVERS)/indigo_focuser_moonlite.$(SOEXT): indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build ToupTek CCD driver
+#
+#---------------------------------------------------------------------
+
+indigo_drivers/ccd_touptek/indigo_ccd_touptek.o:	$(BUILD_INCLUDE)/toupcam.h $(BUILD_LIB)/libtoupcam.$(SOEXT)
+
+$(BUILD_DRIVERS)/indigo_ccd_touptek.a: indigo_drivers/ccd_touptek/indigo_ccd_touptek.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_touptek: indigo_drivers/ccd_touptek/indigo_ccd_touptek_main.o $(BUILD_DRIVERS)/indigo_ccd_touptek.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -ltoupcam
+
+$(BUILD_DRIVERS)/indigo_ccd_touptek.$(SOEXT): indigo_drivers/ccd_touptek/indigo_ccd_touptek.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -ltoupcam
 
 #---------------------------------------------------------------------
 #
