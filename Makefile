@@ -1454,7 +1454,7 @@ install:
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=$(INSTALL_PREFIX)/etc/apogee RULES_PREFIX=/lib/udev/rules.d; cd ../../../../
 	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_fli/indigo-fli.rules /lib/udev/rules.d/99-indigo_fli.rules
-	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_atik/bin_externals/libatik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-indigo_ccd_asi.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_dsi/99-meadedsi.rules /lib/udev/rules.d/99-meadedsi.rules

@@ -3427,7 +3427,6 @@
 				9D9EA6A21DBE1F7300E11841 /* indigo_ccd_atik.h */,
 				9D9EA6A11DBE1F7300E11841 /* indigo_ccd_atik.c */,
 				9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */,
-				9D9EA6A31DBE1F7300E11841 /* indigo_ccd_atik.rules */,
 				599A23F31DBEA5820020BF8F /* bin_externals */,
 			);
 			path = ccd_atik;
@@ -3436,6 +3435,7 @@
 		9D9EA6A71DBE219C00E11841 /* libatik */ = {
 			isa = PBXGroup;
 			children = (
+				9D9EA6A31DBE1F7300E11841 /* indigo_ccd_atik.rules */,
 				9D9EA6A91DBE21DE00E11841 /* libatik.h */,
 				9D9EA6A81DBE21DE00E11841 /* libatik.a */,
 			);
