@@ -136,7 +136,7 @@
 #define BULK_COMMAND_TIMEOUT          2000
 #define BULK_DATA_TIMEOUT             10000
 
-#define CHUNK_SIZE                    (10*1024*1024)
+#define CHUNK_SIZE                    (4*1024*1024)
 
 #define PRIVATE_DATA        ((sx_private_data *)device->private_data)
 
