@@ -17,13 +17,16 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
+// 2.1 by Philip Wiese <philip.wiese@maketec.ch>
+// 	- Bugfix for exposure time
+//	- Changed Pixel Size to 3.75
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO IIDC CCD driver
  \file indigo_ccd_iidc.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_iidc"
 
 #include <stdlib.h>
@@ -202,8 +205,8 @@ static void exposure_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	CCD_EXPOSURE_ITEM->number.value = 0;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_EXPOSURE_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) -> %s", CCD_EXPOSURE_ITEM->number.value, dc1394_error_get_string(err));
+		dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_EXPOSURE_ITEM->number.target);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) -> %s", CCD_EXPOSURE_ITEM->number.target, dc1394_error_get_string(err));
 		if (setup_camera(device)) {
 			err = dc1394_video_set_one_shot(PRIVATE_DATA->camera, DC1394_ON);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_one_shot(DC1394_ON) -> %s", dc1394_error_get_string(err));
@@ -325,9 +328,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_MODE_PROPERTY->count = 0;
 		CCD_INFO_WIDTH_ITEM->number.value = 0;
 		CCD_INFO_HEIGHT_ITEM->number.value = 0;
-		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 4;
-		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 4;
-		CCD_INFO_PIXEL_SIZE_ITEM->number.value = 4;
+		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 3.75;
+		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 3.75;
+		CCD_INFO_PIXEL_SIZE_ITEM->number.value = 3.75;
 		CCD_INFO_WIDTH_ITEM->number.value = 0;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 0;
 		iidc_mode_data *mode_data = PRIVATE_DATA->mode_data;
