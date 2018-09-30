@@ -33,9 +33,10 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
-bool is_meade = true;
+bool is_meade = false;
 bool is_10micron = false;
 bool is_gemini = false;
+bool is_avalon = true;
 
 int date_day = 1;
 int date_month = 1;
@@ -49,7 +50,7 @@ int time_offset = 2;
 char latitude[] = "+48*08";
 char longitude[] = "+17*06";
 
-bool high_precision = false;
+bool high_precision = true;
 
 long ra = 0;
 long dec = 90L * 360000L;
@@ -158,35 +159,37 @@ void loop() {
           Serial.print("10micron GM1000HPS#");
         else if (is_gemini)
           Serial.print("Losmandy Gemini#");
-        else
+        else if (is_avalon)
+					Serial.print("Avalon#");
+				else
           Serial.print("Autostar#");
       } else if (!strcmp(buffer, "GVF")) {
-         Serial.print("ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
+				Serial.print("ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
       } else if (!strcmp(buffer, "GVN")) {
-         Serial.print("43Eg#");
+				Serial.print("43Eg#");
       } else if (!strcmp(buffer, "GVD")) {
-         Serial.print("Apr 03 2007#");
+				Serial.print("Apr 03 2007#");
       } else if (!strcmp(buffer, "GVT")) {
-         Serial.print("11:25:53#");
+        Serial.print("11:25:53#");
       } else if (!strncmp(buffer, "SC", 2)) {
-         date_day = atoi(buffer + 5);
-         date_month = atoi(buffer + 2);
-         date_year = 2000 + atoi(buffer + 8);
-         Serial.print("1Updating planetary data#                        #");
+				date_day = atoi(buffer + 5);
+				date_month = atoi(buffer + 2);
+				date_year = 2000 + atoi(buffer + 8);
+				Serial.print("1Updating planetary data#                        #");
       } else if (!strcmp(buffer, "GC")) {
         sprintf(buffer, "%02d/%02d/%02d#", date_month, date_day, date_year % 100);
         Serial.print(buffer);
       } else if (!strncmp(buffer, "SG", 2)) {
-         time_offset = atoi(buffer + 2);
-         Serial.print("1");
+				time_offset = atoi(buffer + 2);
+				Serial.print("1");
       } else if (!strcmp(buffer, "GG")) {
         sprintf(buffer, "%+03d#", time_offset);
         Serial.print(buffer);
       } else if (!strncmp(buffer, "SL", 2)) {
-         time_hour = atoi(buffer + 2);
-         time_minute = atoi(buffer + 5);
-         time_second = atoi(buffer + 8);
-         Serial.print("1");
+				time_hour = atoi(buffer + 2);
+				time_minute = atoi(buffer + 5);
+				time_second = atoi(buffer + 8);
+				Serial.print("1");
       } else if (!strcmp(buffer, "GL")) {
         sprintf(buffer, "%02d:%02d:%02d#", time_hour, time_minute, time_second);
         Serial.print(buffer);
@@ -201,9 +204,9 @@ void loop() {
       } else if (!strcmp(buffer, "Gt")) {
         Serial.print(latitude); Serial.print("#");
       } else if (!strcmp(buffer, "U0")) {
-          high_precision = false;
+				high_precision = false;
       } else if (!strcmp(buffer, "U1")) {
-          high_precision = true;
+				high_precision = true;
       } else if (!strcmp(buffer, "U")) {
         high_precision = !high_precision;
       } else if (!strcmp(buffer, "P")) {
@@ -282,9 +285,9 @@ void loop() {
         is_slewing = false;
         ra_slew = 0;
         dec_slew = 0;
-      } else if (!strcmp(buffer, "AP") || !strncmp(buffer, "190:192", 7)) {
+      } else if (!strcmp(buffer, "AP") || !strncmp(buffer, "190:192", 7) || !strcmp(buffer, "X122")) {
         is_tracking = true;
-      } else if (!strcmp(buffer, "AL") || !strncmp(buffer, "190:191", 7)) {
+      } else if (!strcmp(buffer, "AL") || !strncmp(buffer, "190:191", 7) || !strcmp(buffer, "X120")) {
         is_tracking = false;
       } else if (!strcmp(buffer, "GW")) {
         if (is_tracking)
@@ -306,18 +309,25 @@ void loop() {
           Serial.print("7#");
       } else if (!strcmp(buffer, "Gv")) {
         if (is_slewing)
-          Serial.print("S");         
+          Serial.print("S");
         else if (is_tracking)
           Serial.print("T");
         else
           Serial.print("N");
-      } else if (!strcmp(buffer, "hP") || !strcmp(buffer, "hC")) {
+			} else if (!strcmp(buffer, "X34")) {
+        if (is_slewing)
+          Serial.print("m55#");
+        else if (is_tracking)
+          Serial.print("m11#");
+        else
+          Serial.print("m00#");
+      } else if (!strcmp(buffer, "hP") || !strcmp(buffer, "hC") || !strcmp(buffer, "X362")) {
         target_ra = 0;
         target_dec = 90L * 360000L;
         is_tracking = false;
         is_slewing = true;
         is_parked = true;
-      } else if (!strcmp(buffer, "PO") || !strcmp(buffer, "hW")) {
+      } else if (!strcmp(buffer, "PO") || !strcmp(buffer, "hW") || !strcmp(buffer, "X370")) {
         is_tracking = true;
         is_slewing = false;
         is_parked = false;

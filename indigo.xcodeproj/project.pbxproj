@@ -650,7 +650,7 @@
 		591E113B2159531B00ABADA6 /* skywatcher.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher.pdf; sourceTree = "<group>"; };
 		591E113C2159531B00ABADA6 /* celestron.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = celestron.pdf; sourceTree = "<group>"; };
 		591E1141215A999E00ABADA6 /* HighResSteppermotor107.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = HighResSteppermotor107.pdf; sourceTree = "<group>"; };
-		591E1143215AEC3900ABADA6 /* lx200_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = lx200_simulator.ino; sourceTree = "<group>"; };
+		591E1143215AEC3900ABADA6 /* lx200_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = lx200_simulator.ino; sourceTree = "<group>"; };
 		591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_fli_main.c; sourceTree = "<group>"; };
 		591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_focuser_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_fli.h; sourceTree = "<group>"; };
