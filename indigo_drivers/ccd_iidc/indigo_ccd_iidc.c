@@ -202,8 +202,8 @@ static void exposure_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	CCD_EXPOSURE_ITEM->number.value = 0;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_EXPOSURE_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) -> %s", CCD_EXPOSURE_ITEM->number.value, dc1394_error_get_string(err));
+		dc1394error_t err = dc1394_feature_set_absolute_value(PRIVATE_DATA->camera, DC1394_FEATURE_SHUTTER, CCD_EXPOSURE_ITEM->number.target);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_feature_set_absolute_value(DC1394_FEATURE_SHUTTER, %g) -> %s", CCD_EXPOSURE_ITEM->number.target, dc1394_error_get_string(err));
 		if (setup_camera(device)) {
 			err = dc1394_video_set_one_shot(PRIVATE_DATA->camera, DC1394_ON);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_one_shot(DC1394_ON) -> %s", dc1394_error_get_string(err));
