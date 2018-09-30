@@ -2,7 +2,13 @@
 
 ## Supported devices
 
-Any LX200 protocol compatible mount (Meade LX, ETX; iOptron; EQMac; ...) connected over serial port or network.
+* Meade mounts
+* Avalon mounts with StarGo controller
+* Losmandy Gemini mounts
+* 10micron mounts
+* EQMac
+
+Connection over serial port or network.
 
 Single device is present on startup (no hot-plug support).
 
@@ -29,3 +35,4 @@ A non-standard switch property "Alignment mode" is provided by this driver.
 Driver is developed and tested with:
 * Meade ETX-125
 * EQMac
+* Simulators
