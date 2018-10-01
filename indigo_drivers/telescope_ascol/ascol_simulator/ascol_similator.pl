@@ -50,6 +50,10 @@ my $te_state = TE_OFF;
 my $te_rd_move_time = 0;
 my $te_hd_move_time = 0;
 
+my $correction_model = 0;
+my $state_bits = 0;
+
+
 use Time::HiRes qw ( setitimer ITIMER_VIRTUAL time );
 
 use strict;
@@ -294,6 +298,86 @@ while ($client = $server->accept()) {
 			next;
 		}
 
+		if ($cmd[0] eq "TSCS") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if (($cmd[1] != 0) and ($cmd[1] != 1) and ($cmd[1] != 2) and ($cmd[1] != 3)) { print $client "ERR\n"; next;};
+			$correction_model = $cmd[1];
+			print $client "1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSCA") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if ($cmd[1] == 1) {
+				$state_bits = $state_bits | (1 << 4);
+			} else {
+				$state_bits = $state_bits & ~(1 << 4);
+			}
+			print $client "1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSCP") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if ($cmd[1] == 1) {
+				$state_bits = $state_bits | (1 << 5);
+			} else {
+				$state_bits = $state_bits & ~(1 << 5);
+			}
+			print $client "1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSCR") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if ($cmd[1] == 1) {
+				$state_bits = $state_bits | (1 << 6);
+			} else {
+				$state_bits = $state_bits & ~(1 << 6);
+			}
+			print $client "1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSCM") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if ($cmd[1] == 1) {
+				$state_bits = $state_bits | (1 << 7);
+			} else {
+				$state_bits = $state_bits & ~(1 << 7);
+			}
+			print $client "1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSGM") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if ($cmd[1] == 1) {
+				$state_bits = $state_bits | (1 << 8);
+			} else {
+				$state_bits = $state_bits & ~(1 << 8);
+			}
+			print $client "1\n";
+			next;
+		}
+
 		if ($cmd[0] eq "TRRD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
 			print $client "$ra $de $west\n";
@@ -306,7 +390,7 @@ while ($client = $server->accept()) {
 
 		if ($cmd[0] eq "GLST") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
-			print $client "$oil_state $te_state 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n";
+			print $client "$oil_state $te_state 0 0 0 0 0 0 0 0 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
 			next;
 		}
 
