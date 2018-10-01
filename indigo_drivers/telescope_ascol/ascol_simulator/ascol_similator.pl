@@ -47,7 +47,8 @@ use constant TE_DECC3_TIME => 24;
 use constant TE_CLU3_TIME => 26;
 
 my $te_state = TE_OFF;
-my $te_move_time = 0;
+my $te_rd_move_time = 0;
+my $te_hd_move_time = 0;
 
 use Time::HiRes qw ( setitimer ITIMER_VIRTUAL time );
 
@@ -62,11 +63,8 @@ my $de = 0;
 my $req_ra = 0;
 my $req_de = 0;
 my $west = 0;
-
 my $ha=0;
 my $req_ha=0;
-
-my $newrd=0;
 
 sub set_state {
 	my $elapsed_time;
@@ -85,13 +83,13 @@ sub set_state {
 	}
 
 	# TELSECOPE state
-	if ($te_move_time != 0) {
-		$elapsed_time = time() - $te_move_time;
+	if ($te_rd_move_time != 0) {
+		$elapsed_time = time() - $te_rd_move_time;
 		if ($elapsed_time > TE_CLU3_TIME) {
 			$ra=$req_ra;
 			$de=$req_de;
 			$te_state = TE_TRACK;
-			$te_move_time = 0;
+			$te_rd_move_time = 0;
 		} elsif ($elapsed_time > TE_DECC3_TIME) {
 			$te_state = TE_ST_CLU3;
 		} elsif ($elapsed_time > TE_CLU2_TIME) {
@@ -102,6 +100,26 @@ sub set_state {
 			$te_state = TE_ST_DECC2;
 		} elsif ($elapsed_time > TE_CLU1_TIME) {
 			$te_state = TE_ST_SLEW;
+		}
+	}
+
+	if ($te_hd_move_time != 0) {
+		$elapsed_time = time() - $te_hd_move_time;
+		if ($elapsed_time > TE_CLU3_TIME) {
+			$ra=$req_ra;
+			$de=$req_de;
+			$te_state = TE_TRACK;
+			$te_hd_move_time = 0;
+		} elsif ($elapsed_time > TE_DECC3_TIME) {
+			$te_state = TE_SS_CLU3;
+		} elsif ($elapsed_time > TE_CLU2_TIME) {
+			$te_state = TE_SS_DECC3;
+		} elsif ($elapsed_time > TE_DECC2_TIME) {
+			$te_state = TE_SS_CLU2;
+		} elsif ($elapsed_time > TE_SLEW_TIME) {
+			$te_state = TE_SS_DECC2;
+		} elsif ($elapsed_time > TE_CLU1_TIME) {
+			$te_state = TE_SS_SLEW;
 		}
 	}
 }
@@ -202,6 +220,7 @@ while ($client = $server->accept()) {
 			next;
 		}
 
+		my $newrd=0;
 		if ($cmd[0] eq "TSRA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 3) { print $client "ERR\n"; next;}
@@ -233,7 +252,43 @@ while ($client = $server->accept()) {
 			if($newrd) {
 				$te_state = TE_ST_CLU1;
 				$newrd = 0;
-				$te_move_time = time();
+				$te_rd_move_time = time();
+			}
+			print $client "1\n";
+			next;
+		}
+
+		my $newhd=0;
+		if ($cmd[0] eq "TSHA") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 2) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			$req_ha=$cmd[1];
+			$req_de=$cmd[2];
+			$newhd=1;
+			print $client "1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSHR") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 2) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			$req_ha+=$cmd[1];
+			$req_de+=$cmd[2];
+			$newhd=1;
+			print $client "1\n";
+			next;
+		}
+
+		if (($cmd[0] eq "TGHA") or ($cmd[0] eq "TGHR")) {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state != TE_TRACK) { print $client "ERR\n"; next;}
+			if($newhd) {
+				$te_state = TE_SS_CLU1;
+				$newhd = 0;
+				$te_hd_move_time = time();
 			}
 			print $client "1\n";
 			next;
@@ -242,6 +297,11 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TRRD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
 			print $client "$ra $de $west\n";
+		}
+
+		if ($cmd[0] eq "TRHD") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$ha $de\n";
 		}
 
 		if ($cmd[0] eq "GLST") {
