@@ -381,11 +381,31 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TRRD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
 			print $client "$ra $de $west\n";
+			next;
 		}
 
 		if ($cmd[0] eq "TRHD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
 			print $client "$ha $de\n";
+			next;
+		}
+
+		my $guide_value_ra = 0;
+		my $guide_value_de = 0;
+		if ($cmd[0] eq "TSGV") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 2) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			$guide_value_ra=$cmd[1];
+			$guide_value_de=$cmd[2];
+			print $client "1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TRGV") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$guide_value_ra $guide_value_de\n";
+			next;
 		}
 
 		if ($cmd[0] eq "GLST") {
