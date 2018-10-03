@@ -33,6 +33,10 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
+bool is_meade = true;
+bool is_10micron = false;
+bool is_gemini = false;
+
 int date_day = 1;
 int date_month = 1;
 int date_year = 2018;
@@ -45,7 +49,7 @@ int time_offset = 2;
 char latitude[] = "+48*08";
 char longitude[] = "+17*06";
 
-bool high_precision = true;
+bool high_precision = false;
 
 long ra = 0;
 long dec = 90L * 360000L;
@@ -145,12 +149,17 @@ void loop() {
     char ch = Serial.read();
     if (ch == 6) {
       Serial.print("P");
-    } else if (ch == ':') {
+    } else if (ch == ':' || ch == '>') {
       char buffer[64];
       memset(buffer, 0, sizeof(buffer));
       Serial.readBytesUntil('#', buffer, sizeof(buffer));
       if (!strcmp(buffer, "GVP")) {
-         Serial.print("Autostar#");
+        if (is_10micron)
+          Serial.print("10micron GM1000HPS#");
+        else if (is_gemini)
+          Serial.print("Losmandy Gemini#");
+        else
+          Serial.print("Autostar#");
       } else if (!strcmp(buffer, "GVF")) {
          Serial.print("ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
       } else if (!strcmp(buffer, "GVN")) {
@@ -191,13 +200,21 @@ void loop() {
         Serial.print("1");
       } else if (!strcmp(buffer, "Gt")) {
         Serial.print(latitude); Serial.print("#");
+      } else if (!strcmp(buffer, "U0")) {
+          high_precision = false;
+      } else if (!strcmp(buffer, "U1")) {
+          high_precision = true;
+      } else if (!strcmp(buffer, "U")) {
+        high_precision = !high_precision;
       } else if (!strcmp(buffer, "P")) {
         if (high_precision) {
           Serial.print("LOW  PRECISION");
-          high_precision = false;
+          if (is_meade)
+            high_precision = false;
         } else {
           Serial.print("HIGH PRECISION");
-          high_precision = true;
+          if (is_meade)
+            high_precision = true;
         }
       } else if (!strncmp(buffer, "Sr", 2)) {
         if  (buffer[7] == '.') {
@@ -265,9 +282,9 @@ void loop() {
         is_slewing = false;
         ra_slew = 0;
         dec_slew = 0;
-      } else if (!strcmp(buffer, "AP")) {
+      } else if (!strcmp(buffer, "AP") || !strncmp(buffer, "190:192", 7)) {
         is_tracking = true;
-      } else if (!strcmp(buffer, "AL")) {
+      } else if (!strcmp(buffer, "AL") || !strncmp(buffer, "190:191", 7)) {
         is_tracking = false;
       } else if (!strcmp(buffer, "GW")) {
         if (is_tracking)
@@ -276,17 +293,39 @@ void loop() {
           Serial.print("PNP#");         
         else
           Serial.print("PN1#");         
-      } else if (!strcmp(buffer, "hP")) {
+      } else if (!strcmp(buffer, "Gstat")) {
+        if (is_slewing && is_parked)
+          Serial.print("2#");         
+        else if (is_parked)
+          Serial.print("5#");         
+        else if (is_slewing)
+          Serial.print("6#");         
+        else if (is_tracking)
+          Serial.print("0#");
+        else
+          Serial.print("7#");
+      } else if (!strcmp(buffer, "Gv")) {
+        if (is_slewing)
+          Serial.print("S");         
+        else if (is_tracking)
+          Serial.print("T");
+        else
+          Serial.print("N");
+      } else if (!strcmp(buffer, "hP") || !strcmp(buffer, "hC")) {
         target_ra = 0;
         target_dec = 90L * 360000L;
         is_tracking = false;
         is_slewing = true;
         is_parked = true;
-      } else if (!strcmp(buffer, "TQ")) {
+      } else if (!strcmp(buffer, "PO") || !strcmp(buffer, "hW")) {
+        is_tracking = true;
+        is_slewing = false;
+        is_parked = false;
+      } else if (!strcmp(buffer, "TQ") || !strncmp(buffer, "130:131", 7)) {
         tracking_rate = 'Q';
-      } else if (!strcmp(buffer, "TS")) {
+      } else if (!strcmp(buffer, "TS") || !strcmp(buffer, "TSOLAR") || !strncmp(buffer, "130:134", 7)) {
         tracking_rate = 'S';
-      } else if (!strcmp(buffer, "TL")) {
+      } else if (!strcmp(buffer, "TL") || !strncmp(buffer, "130:135", 7)) {
         tracking_rate = 'L';
       } else if (!strcmp(buffer, "TM")) {
         tracking_rate = 'M';
