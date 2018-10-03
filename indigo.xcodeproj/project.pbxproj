@@ -1576,6 +1576,7 @@
 		9DBC34701DCB26E500588DB9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		9DBC34721DCB26F200588DB9 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		9DBC34741DCB270200588DB9 /* libstdc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libstdc++.tbd"; path = "usr/lib/libstdc++.tbd"; sourceTree = SDKROOT; };
+		9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.01.pdf; sourceTree = "<group>"; };
 		9DDA7FD01F791F7D0094D65D /* indigo_novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_novas.c; sourceTree = "<group>"; };
 		9DDA7FD11F791F7D0094D65D /* indigo_novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_novas.h; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -3578,6 +3579,7 @@
 				9DAD522B21246EB5002FCC79 /* indigo_mount_ioptron.h */,
 				9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */,
 				9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */,
+				9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */,
 				9DAD523221246FA9002FCC79 /* Protocol_V1.4.pdf */,
 				59E67789212C8042004B99BE /* Protocol_V2.0.pdf */,
 				59AEB117215446960008A729 /* ioptron_2.0_simulator */,
