@@ -1,5 +1,10 @@
 #!/usr/bin/perl -w
 
+use Time::HiRes qw ( setitimer ITIMER_VIRTUAL time );
+use strict;
+use IO::Socket;
+use Net::hostent;
+
 # OIL states
 use constant OIL_OFF => 0;
 use constant OIL_START1 => 1;
@@ -53,12 +58,14 @@ my $te_hd_move_time = 0;
 my $correction_model = 0;
 my $state_bits = 0;
 
+my $guide_value_ra = 0;
+my $guide_value_de = 0;
+my $guide_correction_ra = 0;
+my $guide_correction_de = 0;
+my $user_speed_ra = 0;
+my $user_speed_de = 0;
+my $de_centering_flag = 0;
 
-use Time::HiRes qw ( setitimer ITIMER_VIRTUAL time );
-
-use strict;
-use IO::Socket;
-use Net::hostent;
 my $client;
 
 my $login = 1;
@@ -67,8 +74,12 @@ my $de = 0;
 my $req_ra = 0;
 my $req_de = 0;
 my $west = 0;
-my $ha=0;
-my $req_ha=0;
+my $ha = 0;
+my $req_ha = 0;
+
+my $newrd = 0;
+my $newhd = 0;
+
 
 sub in_range($$$$) {
 	my ($num, $min, $max, $accuracy) = @_;
@@ -234,7 +245,6 @@ while ($client = $server->accept()) {
 			next;
 		}
 
-		my $newrd=0;
 		if ($cmd[0] eq "TSRA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 3) { print $client "ERR\n"; next;}
@@ -272,7 +282,6 @@ while ($client = $server->accept()) {
 			next;
 		}
 
-		my $newhd=0;
 		if ($cmd[0] eq "TSHA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
@@ -400,8 +409,6 @@ while ($client = $server->accept()) {
 			next;
 		}
 
-		my $guide_value_ra = 0;
-		my $guide_value_de = 0;
 		if ($cmd[0] eq "TSGV") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
@@ -420,21 +427,18 @@ while ($client = $server->accept()) {
 			next;
 		}
 
-		my $guide_correction_ra = 0;
-		my $guide_correction_de = 0;
 		if ($cmd[0] eq "TSGC") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
 			if (in_range($cmd[1], -10, 10, 2) and in_range($cmd[2], 10, 10, 2)) {
-				$guide_correction_ra=$cmd[1];
-				$guide_correction_de=$cmd[2];
+				$guide_correction_ra = $cmd[1];
+				$guide_correction_de = $cmd[2];
 				print $client "1\n";
 				next;
 			}
 		}
 
-		my $de_centering_flag = 0;
 		if ($cmd[0] eq "TECE") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
@@ -442,6 +446,24 @@ while ($client = $server->accept()) {
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			$de_centering_flag = $cmd[1];
 			print $client "1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSUS") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 2) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], -10, 10, 4) and in_range($cmd[2], -10, 10, 4)) {
+				$user_speed_ra = $cmd[1];
+				$user_speed_de = $cmd[2];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TRUS") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$user_speed_ra $user_speed_de\n";
 			next;
 		}
 
