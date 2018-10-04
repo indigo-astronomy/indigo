@@ -70,6 +70,16 @@ my $west = 0;
 my $ha=0;
 my $req_ha=0;
 
+sub in_range($$$$) {
+	my ($num, $min, $max, $accuracy) = @_;
+	if (($num =~ /^[-+]?(\d+(\.\d{0,$accuracy})?)$/) and
+	    ($num >= $min) and
+		($num <= $max)) {
+			return 1;
+		}
+	return 0;
+}
+
 sub set_state {
 	my $elapsed_time;
 
@@ -396,10 +406,12 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			$guide_value_ra=$cmd[1];
-			$guide_value_de=$cmd[2];
-			print $client "1\n";
-			next;
+			if (in_range($cmd[1], -3600, 3600, 1) and in_range($cmd[2], -3600, 3600, 1)) {
+				$guide_value_ra=$cmd[1];
+				$guide_value_de=$cmd[2];
+				print $client "1\n";
+				next;
+			}
 		}
 
 		if ($cmd[0] eq "TRGV") {
@@ -414,10 +426,12 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			$guide_correction_ra=$cmd[1];
-			$guide_correction_de=$cmd[2];
-			print $client "1\n";
-			next;
+			if (in_range($cmd[1], -10, 10, 2) and in_range($cmd[2], 10, 10, 2)) {
+				$guide_correction_ra=$cmd[1];
+				$guide_correction_de=$cmd[2];
+				print $client "1\n";
+				next;
+			}
 		}
 
 		my $de_centering_flag = 0;
