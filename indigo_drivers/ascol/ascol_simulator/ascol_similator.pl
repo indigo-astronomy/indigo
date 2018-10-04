@@ -64,6 +64,10 @@ my $guide_correction_ra = 0;
 my $guide_correction_de = 0;
 my $user_speed_ra = 0;
 my $user_speed_de = 0;
+my $speed1 = 0;
+my $speed2 = 0;
+my $speed3 = 0;
+
 my $de_centering_flag = 0;
 
 my $client;
@@ -464,6 +468,57 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TRUS") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
 			print $client "$user_speed_ra $user_speed_de\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSS1") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], 100, 5000, 2)) {
+				$speed1 = $cmd[1];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TRS1") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$speed1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSS2") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], 1, 120, 2)) {
+				$speed2 = $cmd[1];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TRS2") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$speed2\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSS3") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], 1, 120, 2)) {
+				$speed3 = $cmd[1];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TRS3") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$speed3\n";
 			next;
 		}
 
