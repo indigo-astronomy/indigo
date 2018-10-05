@@ -271,7 +271,7 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 3) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			if (!is_ra($cmd[1]) or !is_de($cmd[2])) {print $client "ER1R\n"; next;}
+			if (!is_ra($cmd[1]) or !is_de($cmd[2])) {print $client "ERR\n"; next;}
 			if(($cmd[3] ne "0") and ($cmd[3] ne "1")) { print $client "ERR\n"; next;};
 			$req_ra=$cmd[1];
 			$req_de=$cmd[2];
