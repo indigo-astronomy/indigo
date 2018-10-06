@@ -1,5 +1,10 @@
 #!/usr/bin/perl -w
 
+use Time::HiRes qw ( setitimer ITIMER_VIRTUAL time );
+use strict;
+use IO::Socket;
+use Net::hostent;
+
 # OIL states
 use constant OIL_OFF => 0;
 use constant OIL_START1 => 1;
@@ -53,12 +58,18 @@ my $te_hd_move_time = 0;
 my $correction_model = 0;
 my $state_bits = 0;
 
+my $guide_value_ra = 0;
+my $guide_value_de = 0;
+my $guide_correction_ra = 0;
+my $guide_correction_de = 0;
+my $user_speed_ra = 0;
+my $user_speed_de = 0;
+my $speed1 = 0;
+my $speed2 = 0;
+my $speed3 = 0;
 
-use Time::HiRes qw ( setitimer ITIMER_VIRTUAL time );
+my $de_centering_flag = 0;
 
-use strict;
-use IO::Socket;
-use Net::hostent;
 my $client;
 
 my $login = 1;
@@ -67,8 +78,40 @@ my $de = 0;
 my $req_ra = 0;
 my $req_de = 0;
 my $west = 0;
-my $ha=0;
-my $req_ha=0;
+my $ha = 0;
+my $req_ha = 0;
+
+my $newrd = 0;
+my $newhd = 0;
+
+
+sub in_range($$$$) {
+	my ($num, $min, $max, $accuracy) = @_;
+	if (($num =~ /^[-+]?(\d+(\.\d{0,$accuracy})?)$/) and
+	    ($num >= $min) and
+		($num <= $max)) {
+			return 1;
+		}
+	return 0;
+}
+
+sub is_ra($) {
+	my ($ra) = @_;
+	if ($ra =~ /^([0-2][0-3][0-5][0-9][0-5][0-9])(\.\d{0,2})?$/) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+sub is_de($) {
+	my ($ra) = @_;
+	if ($ra =~ /^[-+]?([0-8][0-9][0-5][0-9][0-5][0-9])(\.\d{0,2})?$/) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
 
 sub set_state {
 	my $elapsed_time;
@@ -163,17 +206,17 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "OION") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if (($te_state != 1) && ($oil_state != OIL_ON) && ($cmd[1]==0)) {
+			if (($te_state != 1) && ($oil_state != OIL_ON) && ($cmd[1] eq "0")) {
 				print $client "ERR\n";
 				next;
 			}
-			if ($cmd[1]==1) {
+			if ($cmd[1] eq "1") {
 				$oil_state = OIL_START1;
 				$oil_time = time();
 				print $client "1\n";
 				next;
 			}
-			if ($cmd[1]==0) {
+			if ($cmd[1] eq "0") {
 				$oil_state=OIL_OFF;
 				print $client "1\n";
 				next;
@@ -189,12 +232,12 @@ while ($client = $server->accept()) {
 				print $client "ERR\n";
 				next;
 			}
-			if (($oil_state == OIL_ON) && ($cmd[1]==1)) {
+			if (($oil_state == OIL_ON) && ($cmd[1] eq "1")) {
 				$te_state = TE_STOP;
 				print $client "1\n";
 				next;
 			}
-			if (($oil_state == OIL_ON) && ($cmd[1]==0)) {
+			if (($oil_state == OIL_ON) && ($cmd[1] eq "0")) {
 				$te_state = TE_OFF;
 				print $client "1\n";
 				next;
@@ -210,12 +253,12 @@ while ($client = $server->accept()) {
 				print $client "ERR\n";
 				next;
 			}
-			if (($te_state == TE_STOP) && ($cmd[1]==1)) {
+			if (($te_state == TE_STOP) && ($cmd[1] eq "1")) {
 				$te_state = TE_TRACK;
 				print $client "1\n";
 				next;
 			}
-			if (($oil_state == TE_TRACK) && ($cmd[1]==0)) {
+			if (($oil_state == TE_TRACK) && ($cmd[1] eq "0")) {
 				$te_state = TE_STOP;
 				print $client "1\n";
 				next;
@@ -224,12 +267,12 @@ while ($client = $server->accept()) {
 			next;
 		}
 
-		my $newrd=0;
 		if ($cmd[0] eq "TSRA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 3) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			if(($cmd[3] != 0) and ($cmd[3]!=1)) { print $client "ERR\n"; next;};
+			if (!is_ra($cmd[1]) or !is_de($cmd[2])) {print $client "ERR\n"; next;}
+			if(($cmd[3] ne "0") and ($cmd[3] ne "1")) { print $client "ERR\n"; next;};
 			$req_ra=$cmd[1];
 			$req_de=$cmd[2];
 			$west=$cmd[3];
@@ -262,7 +305,6 @@ while ($client = $server->accept()) {
 			next;
 		}
 
-		my $newhd=0;
 		if ($cmd[0] eq "TSHA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
@@ -302,7 +344,7 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
-			if (($cmd[1] != 0) and ($cmd[1] != 1) and ($cmd[1] != 2) and ($cmd[1] != 3)) { print $client "ERR\n"; next;};
+			if (($cmd[1] ne "0") and ($cmd[1] ne "1") and ($cmd[1] ne "2") and ($cmd[1] ne "3")) { print $client "ERR\n"; next;};
 			$correction_model = $cmd[1];
 			print $client "1\n";
 			next;
@@ -312,7 +354,7 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
-			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 4);
 			} else {
@@ -326,7 +368,7 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
-			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 5);
 			} else {
@@ -340,7 +382,7 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
-			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 6);
 			} else {
@@ -354,7 +396,7 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
-			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 7);
 			} else {
@@ -368,7 +410,7 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
-			if (($cmd[1] != 0) and ($cmd[1] != 1)) { print $client "ERR\n"; next;};
+			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 8);
 			} else {
@@ -381,11 +423,122 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TRRD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
 			print $client "$ra $de $west\n";
+			next;
 		}
 
 		if ($cmd[0] eq "TRHD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
 			print $client "$ha $de\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSGV") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 2) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], -3600, 3600, 1) and in_range($cmd[2], -3600, 3600, 1)) {
+				$guide_value_ra=$cmd[1];
+				$guide_value_de=$cmd[2];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TRGV") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$guide_value_ra $guide_value_de\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSGC") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 2) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], -10, 10, 2) and in_range($cmd[2], 10, 10, 2)) {
+				$guide_correction_ra = $cmd[1];
+				$guide_correction_de = $cmd[2];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TECE") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
+			$de_centering_flag = $cmd[1];
+			print $client "1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSUS") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 2) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], -10, 10, 4) and in_range($cmd[2], -10, 10, 4)) {
+				$user_speed_ra = $cmd[1];
+				$user_speed_de = $cmd[2];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TRUS") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$user_speed_ra $user_speed_de\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSS1") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], 100, 5000, 2)) {
+				$speed1 = $cmd[1];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TRS1") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$speed1\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSS2") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], 1, 120, 2)) {
+				$speed2 = $cmd[1];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TRS2") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$speed2\n";
+			next;
+		}
+
+		if ($cmd[0] eq "TSS3") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], 1, 120, 2)) {
+				$speed3 = $cmd[1];
+				print $client "1\n";
+				next;
+			}
+		}
+
+		if ($cmd[0] eq "TRS3") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			print $client "$speed3\n";
+			next;
 		}
 
 		if ($cmd[0] eq "GLST") {
