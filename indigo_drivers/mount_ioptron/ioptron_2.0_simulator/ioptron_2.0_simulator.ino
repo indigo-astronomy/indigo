@@ -20,7 +20,14 @@
 
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
+#define LCD
 #endif
+
+#ifdef LCD
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+#endif
+
 
 // 0: 0 = GPS off, 1 = GPS on, 2 = GPS data extracted correctly
 // 1: 0 = stopped, 1 = tracking with PEC disabled, 2 = slewing, 3 = guiding, 4 = meridian flipping, 5 = tracking with PEC enabled, 6 = parked, 7 = stopped at zero position
@@ -161,6 +168,13 @@ void tracking() {
 }
 
 void setup() {
+#ifdef LCD
+  lcd.begin(16, 2);
+  lcd.setCursor(0, 0);
+  lcd.print("iOptron v2.0");
+  lcd.setCursor(0, 1);
+  lcd.print("Not connected");
+#endif
   Serial.begin(9600);
   Serial.setTimeout(1000);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -172,6 +186,12 @@ void loop() {
   char command[64];
   slew_to(NULL, NULL);
   tracking();
+#ifdef LCD
+  lcd.setCursor(0, 0);
+  lcd.print(current);
+  lcd.setCursor(0, 1);
+  lcd.print(timestamp + 4);
+#endif
   if (Serial.available()) {
     if (Serial.read() == ':') {
       int length = Serial.readBytesUntil('#', command, sizeof(command));

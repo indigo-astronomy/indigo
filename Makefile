@@ -1136,6 +1136,21 @@ $(BUILD_DRIVERS)/indigo_focuser_moonlite.$(SOEXT): indigo_drivers/focuser_moonli
 
 #---------------------------------------------------------------------
 #
+#	MJKZZ focuser driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_mjkzz.a: indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_mjkzz: indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz_main.o $(BUILD_DRIVERS)/indigo_focuser_mjkzz.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_mjkzz.$(SOEXT): indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build ToupTek CCD driver
 #
 #---------------------------------------------------------------------
