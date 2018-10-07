@@ -73,12 +73,12 @@ my $de_centering_flag = 0;
 my $client;
 
 my $login = 1;
-my $ra = 0;
-my $de = 0;
+my $set_ra = 0;
+my $set_de = 0;
 my $req_ra = 0;
 my $req_de = 0;
 my $west = 0;
-my $ha = 0;
+my $set_ha = 0;
 my $req_ha = 0;
 
 my $newrd = 0;
@@ -99,18 +99,20 @@ sub is_ra($) {
 	my ($ra) = @_;
 	if ($ra =~ /^([0-2][0-3][0-5][0-9][0-5][0-9])(\.\d{0,2})?$/) {
 		return 1;
-	} else {
-		return 0;
+	} elsif (($ra =~ /^(\d{1,3}(\.\d{0,6})?)$/) and ($ra > 0.0) and ($ra < 360.0)) {
+			return 1;
 	}
+	return 0;
 }
 
 sub is_de($) {
-	my ($ra) = @_;
-	if ($ra =~ /^[-+]?([0-8][0-9][0-5][0-9][0-5][0-9])(\.\d{0,2})?$/) {
+	my ($de) = @_;
+	if ($de =~ /^[-+]?([0-8][0-9][0-5][0-9][0-5][0-9])(\.\d{0,2})?$/) {
 		return 1;
-	} else {
-		return 0;
+	} elsif (($de =~ /^[-+]?(\d{1,2}(\.\d{0,6})?)$/) and ($de > -90.0) and ($de < 90.0)) {
+		return 1;
 	}
+	return 0;
 }
 
 sub set_state {
@@ -133,8 +135,8 @@ sub set_state {
 	if ($te_rd_move_time != 0) {
 		$elapsed_time = time() - $te_rd_move_time;
 		if ($elapsed_time > TE_CLU3_TIME) {
-			$ra=$req_ra;
-			$de=$req_de;
+			$set_ra=$req_ra;
+			$set_de=$req_de;
 			$te_state = TE_TRACK;
 			$te_rd_move_time = 0;
 		} elsif ($elapsed_time > TE_DECC3_TIME) {
@@ -153,8 +155,8 @@ sub set_state {
 	if ($te_hd_move_time != 0) {
 		$elapsed_time = time() - $te_hd_move_time;
 		if ($elapsed_time > TE_CLU3_TIME) {
-			$ra=$req_ra;
-			$de=$req_de;
+			$set_ha=$req_ha;
+			$set_de=$req_de;
 			$te_state = TE_TRACK;
 			$te_hd_move_time = 0;
 		} elsif ($elapsed_time > TE_DECC3_TIME) {
@@ -422,13 +424,13 @@ while ($client = $server->accept()) {
 
 		if ($cmd[0] eq "TRRD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
-			print $client "$ra $de $west\n";
+			print $client "$set_ra $set_de $west\n";
 			next;
 		}
 
 		if ($cmd[0] eq "TRHD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
-			print $client "$ha $de\n";
+			print $client "$set_ha $set_de\n";
 			next;
 		}
 
