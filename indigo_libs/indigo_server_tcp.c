@@ -61,7 +61,6 @@
 void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_t n);
 
 static int server_socket;
-static struct sockaddr_in server_address;
 static bool shutdown_initiated = false;
 static int client_count = 0;
 static indigo_server_tcp_callback server_callback;
@@ -256,21 +255,22 @@ void indigo_server_add_resource(const char *path, unsigned char *data, unsigned 
 indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 	server_callback = callback;
 	int client_socket;
-	int reuse = 1;
-	struct sockaddr_in client_name;
-	unsigned int name_len = sizeof(client_name);
 	server_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (server_socket == -1) {
 		indigo_error("Can't open server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
-	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(indigo_server_tcp_port);
-	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+	int reuse = 1;
 	if (setsockopt(server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
 		indigo_error("Can't setsockopt for server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
+	struct sockaddr_in client_name;
+	unsigned int name_len = sizeof(client_name);
+	struct sockaddr_in server_address;
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(indigo_server_tcp_port);
+	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
 		indigo_error("Can't bind server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
