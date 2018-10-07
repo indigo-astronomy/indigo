@@ -93,6 +93,8 @@
 6. RigelSys nFOCUS focuser driver (untested) __DONE__ __UNTESTED__
 7. MoonLite focuser driver (untested) __DONE__ __UNTESTED__
 8. FCUSB focuser driver __DONE__
+9. WeMacro rail focuser driver __DONE__
+10. MJKZZ rail focuser driver __DONE__ __UNTESTED__
 
 #### Mounts
 
