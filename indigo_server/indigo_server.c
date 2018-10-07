@@ -85,6 +85,7 @@
 #include "focuser_nstep/indigo_focuser_nstep.h"
 #include "focuser_nfocus/indigo_focuser_nfocus.h"
 #include "focuser_moonlite/indigo_focuser_moonlite.h"
+#include "focuser_mjkzz/indigo_focuser_mjkzz.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -147,6 +148,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_nstep,
 	indigo_focuser_nfocus,
 	indigo_focuser_moonlite,
+	indigo_focuser_mjkzz,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif
@@ -494,7 +496,7 @@ static void server_main() {
 	}
 
 	indigo_attach_device(&server_device);
-	
+
 #ifdef INDIGO_LINUX
 	indigo_server_start(server_callback);
 #endif
