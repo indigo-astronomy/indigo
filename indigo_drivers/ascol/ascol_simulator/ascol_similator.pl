@@ -120,6 +120,8 @@ sub dms2dd($$$) {
 
 	my $result = $deg + ($min/60) + (($sec/60) *(1/60));
 	$result = sprintf("%.6f", $result);
+
+	return $result;
 }
 
 sub dd2dms($) {
