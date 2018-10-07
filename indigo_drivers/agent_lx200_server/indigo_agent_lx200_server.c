@@ -103,7 +103,6 @@ typedef struct {
 	indigo_client *client;
 	bool unparked;
 	double ra, dec;
-	struct sockaddr_in server_address;
 	int server_socket;
 	pthread_t listener;
 } agent_private_data;
@@ -305,50 +304,52 @@ static void start_listener_thread(indigo_device *device) {
 
 static bool start_server(indigo_device *device) {
 	int port = (int)LX200_CONFIGURATION_PORT_ITEM->number.value;
-	int reuse = 1;
-	DEVICE_PRIVATE_DATA->server_socket = socket(PF_INET, SOCK_STREAM, 0);
-	if (DEVICE_PRIVATE_DATA->server_socket == -1) {
+	int server_socket = socket(PF_INET, SOCK_STREAM, 0);
+	if (server_socket == -1) {
 		LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, LX200_SERVER_PROPERTY, "socket() failed (%s)", strerror(errno));
+    indigo_update_property(device, LX200_SERVER_PROPERTY, "%s: socket() failed (%s)", LX200_SERVER_AGENT_NAME, strerror(errno));
 		return false;
 	}
-	DEVICE_PRIVATE_DATA->server_address.sin_family = AF_INET;
-	DEVICE_PRIVATE_DATA->server_address.sin_port = htons(port);
-	DEVICE_PRIVATE_DATA->server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (setsockopt(DEVICE_PRIVATE_DATA->server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
-		close(DEVICE_PRIVATE_DATA->server_socket);
+  int reuse = 1;
+  if (setsockopt(server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+    close(server_socket);
+    LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
+    indigo_update_property(device, LX200_SERVER_PROPERTY, "%s: setsockopt() failed (%s)", LX200_SERVER_AGENT_NAME, strerror(errno));
+    return false;
+  }
+  struct sockaddr_in server_address;
+	unsigned int server_address_length = sizeof(server_address);
+  server_address.sin_family = AF_INET;
+  server_address.sin_port = htons(port);
+  server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+  if (bind(server_socket, (struct sockaddr *)&server_address, server_address_length) < 0) {
+		close(server_socket);
 		LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, LX200_SERVER_PROPERTY, "setsockopt() failed (%s)", strerror(errno));
+    indigo_update_property(device, LX200_SERVER_PROPERTY, "%s: bind() failed (%s)", LX200_SERVER_AGENT_NAME, strerror(errno));
 		return false;
 	}
-	if (bind(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&(DEVICE_PRIVATE_DATA->server_address), sizeof(struct sockaddr_in)) < 0) {
-		close(DEVICE_PRIVATE_DATA->server_socket);
+	if (getsockname(server_socket, (struct sockaddr *)&(server_address), &server_address_length) < 0) {
+		close(server_socket);
 		LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, LX200_SERVER_PROPERTY, "bind() failed (%s)", strerror(errno));
+    indigo_update_property(device, LX200_SERVER_PROPERTY, "%s: getsockname() failed (%s)", LX200_SERVER_AGENT_NAME, strerror(errno));
 		return false;
 	}
-	unsigned int length = sizeof(DEVICE_PRIVATE_DATA->server_address);
-	if (getsockname(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&(DEVICE_PRIVATE_DATA->server_address), &length) == -1) {
-		close(DEVICE_PRIVATE_DATA->server_socket);
+	if (listen(server_socket, 5) < 0) {
+		close(server_socket);
 		LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, LX200_SERVER_PROPERTY, "getsockname() failed (%s)", strerror(errno));
-		return false;
-	}
-	if (listen(DEVICE_PRIVATE_DATA->server_socket, 5) < 0) {
-		close(DEVICE_PRIVATE_DATA->server_socket);
-		LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, LX200_SERVER_PROPERTY, "Can't listen on server socket (%s)", strerror(errno));
+    indigo_update_property(device, LX200_SERVER_PROPERTY, "%s: Can't listen on server socket (%s)", LX200_SERVER_AGENT_NAME, strerror(errno));
 		return false;
 	}
 	if (port == 0) {
-		LX200_CONFIGURATION_PORT_ITEM->number.value = port = ntohs(DEVICE_PRIVATE_DATA->server_address.sin_port);
+		LX200_CONFIGURATION_PORT_ITEM->number.value = port = ntohs(server_address.sin_port);
 		LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, LX200_CONFIGURATION_PROPERTY, NULL);
 	}
+  DEVICE_PRIVATE_DATA->server_socket = server_socket;
 	if (pthread_create(&(DEVICE_PRIVATE_DATA->listener) , NULL, (void *(*)(void *))&start_listener_thread, device) != 0) {
-		close(DEVICE_PRIVATE_DATA->server_socket);
+		close(server_socket);
 		LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, LX200_SERVER_PROPERTY, "Can't create listener thread (%s)", strerror(errno));
+    indigo_update_property(device, LX200_SERVER_PROPERTY, "%s: Can't create listener thread (%s)", LX200_SERVER_AGENT_NAME, strerror(errno));
 		return false;
 	}
 	LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
@@ -363,9 +364,8 @@ static void shutdown_server(indigo_device *device) {
 		shutdown(server_socket, SHUT_RDWR);
 		close(server_socket);
 		pthread_join(DEVICE_PRIVATE_DATA->listener, NULL);
+		DEVICE_PRIVATE_DATA->listener = NULL;
 		LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, LX200_SERVER_PROPERTY, NULL);
 }
