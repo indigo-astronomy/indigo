@@ -115,6 +115,30 @@ sub is_de($) {
 	return 0;
 }
 
+sub dms2dd($$$) {
+	my ($deg, $min, $sec) = @_;
+
+	my $result = $deg + ($min/60) + (($sec/60) *(1/60));
+	$result = sprintf("%.6f", $result);
+}
+
+sub dd2dms($) {
+	my $input = @_;
+	my $deg = floor($input);
+
+	$input = $input - $deg;
+	$input = $input * 60;
+
+	my $min = floor($input);
+
+	$input = $input - $min;
+	$input = $input * 60;
+
+	my $sec = sprintf("%.2f", $input);
+	return ($deg, $min, $sec);
+}
+
+
 sub set_state {
 	my $elapsed_time;
 
