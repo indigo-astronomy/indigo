@@ -1540,7 +1540,7 @@ package-prepare: all
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=/tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/etc/apogee RULES_PREFIX=/tmp/$(PACKAGE_NAME)/lib/udev/rules.d; cd ../../../../
 	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
 	install -D -m 0644 indigo_drivers/ccd_fli/indigo-fli.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_fli.rules
-	install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
+	install -D -m 0644 indigo_drivers/ccd_atik/bin_externals/libatik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
 	install -D -m 0644 indigo_drivers/ccd_dsi/99-meadedsi.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-meadedsi.rules
 	install -D -m 0644 indigo_drivers/ccd_dsi/meade-deepskyimager.hex /tmp/$(PACKAGE_NAME)/lib/firmware/meade-deepskyimager.hex
 	install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_ssag.rules
