@@ -275,10 +275,10 @@ typedef struct indigo_client {
 	/** callback called when device broadcast property value change
 	 */
 	indigo_result (*update_property)(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
-	/** callback called when device broadcast property definition
+	/** callback called when device broadcast property removal
 	 */
 	indigo_result (*delete_property)(indigo_client *client, struct indigo_device *device, indigo_property *property, const char *message);
-	/** callback called when device broadcast property removal
+	/** callback called when device broadcast a message
 	 */
 	indigo_result (*send_message)(indigo_client *client, struct indigo_device *device, const char *message);
 	/** callback called when client is detached from the bus
@@ -311,7 +311,7 @@ extern void (*indigo_log_message_handler)(const char *message);
 /** Print diagnostic messages.
  */
 extern void indigo_log_message(const char *format, va_list args);
-	
+
 /** Print diagnostic messages on trace level, wrap calls to INDIGO_TRACE() macro.
  */
 extern void indigo_trace(const char *format, ...);
@@ -470,7 +470,7 @@ extern void indigo_property_copy_values(indigo_property *property, indigo_proper
 /** Copy item values into target from other number property into property (optionally including property state).
  */
 extern void indigo_property_copy_targets(indigo_property *property, indigo_property *other, bool with_state);
-	
+
 /** Request text property change.
  */
 extern indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values);
@@ -494,7 +494,7 @@ extern indigo_result indigo_device_disconnect(indigo_client *client, char *devic
 /** Trim " @ local_service_name" from the string.
  */
 extern void indigo_trim_local_service(char *device_name);
-	
+
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
 extern indigo_property INDIGO_ALL_PROPERTIES;
@@ -526,7 +526,7 @@ extern bool indigo_use_host_suffix;
 /** Is sandboxed environment (macOS only).
  */
 extern bool indigo_is_sandboxed;
-	
+
 #ifdef __cplusplus
 }
 #endif
