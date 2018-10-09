@@ -812,7 +812,7 @@ static struct info {
                         PTPProperty *itemProperty = self.info.properties[itemNumber];
                         if (itemProperty == nil)
                           itemProperty = [[self.propertyClass alloc] initWithCode:itemCode];
-                        itemProperty.type = PTPDataTypeCodeUnicodeString;
+                        itemProperty.type = PTPDataTypeCodeUInt16;
                         NSMutableString *value = [NSMutableString stringWithFormat:@"%u", customFuncEx[offset++]];
                         for (int k = 1; k < valueSize; k++)
                           [value appendFormat:@"%u", customFuncEx[offset++]];
@@ -1368,13 +1368,13 @@ static struct info {
             case PTPDataTypeCodeSInt16:
             case PTPDataTypeCodeUInt16: {
               buffer = malloc(size = 12);
-              *(short *)(buffer + 8) = value.intValue;
+              *(short *)(buffer + 8) = CFSwapInt16HostToLittle(value.intValue);
               break;
             }
             case PTPDataTypeCodeSInt32:
             case PTPDataTypeCodeUInt32: {
               buffer = malloc(size = 12);
-              *(int *)(buffer + 8) = value.intValue;
+              *(int *)(buffer + 8) = CFSwapInt32LittleToHost(value.intValue);
               break;
             }
             case PTPDataTypeCodeUnicodeString: {
