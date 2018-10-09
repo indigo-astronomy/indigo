@@ -205,13 +205,31 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				message.ucCMD = CMD_GVER;
 				if (mjkzz_command(device, &message)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "MJKZZ detected");
+					message.ucCMD = CMD_SREG;
+					message.ucIDX = reg_HPWR;
+					mjkzz_set_int(&message, 16);
+					mjkzz_command(device, &message);
+					message.ucCMD = CMD_SREG;
+					message.ucIDX = reg_LPWR;
+					mjkzz_set_int(&message, 2);
+					mjkzz_command(device, &message);
+					message.ucCMD = CMD_SREG;
+					message.ucIDX = reg_MSTEP;
+					mjkzz_set_int(&message, 0);
+					mjkzz_command(device, &message);
+					if (mjkzz_command(device, &message)) {
+						FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value = mjkzz_get_int(&message);
+					}
 					message.ucCMD = CMD_GPOS;
 					if (mjkzz_command(device, &message)) {
 						FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value = mjkzz_get_int(&message);
 					}
 					message.ucCMD = CMD_GSPD;
 					if (mjkzz_command(device, &message)) {
-						FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value = mjkzz_get_int(&message);
+						int speed = mjkzz_get_int(&message);
+						if (speed > FOCUSER_SPEED_ITEM->number.max)
+							speed = (int)FOCUSER_SPEED_ITEM->number.max;
+						FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value = speed;
 					}
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "MJKZZ not detected");

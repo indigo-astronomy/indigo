@@ -21,9 +21,8 @@
 #include <stdarg.h>
 
 #ifdef ARDUINO_SAM_DUE
-#define SERIAL SerialUSB
+#define MJKZZ Serial3
 #define DEBUG  Serial
-#define LCD
 #endif
 
 #ifdef LCD
@@ -75,6 +74,9 @@ int32_t target = 0;
 int32_t position = 0;
 int32_t speed = 0;
 
+char buffer[32];
+
+
 static int32_t mjkzz_get_int(mjkzz_message *message) {
   return ((((((int32_t)message->ucMSG[0] << 8) + (int32_t)message->ucMSG[1]) << 8) + (int32_t)message->ucMSG[2]) << 8) + (int32_t)message->ucMSG[3];
 }
@@ -94,8 +96,12 @@ void setup() {
   lcd.setCursor(0, 1);
   lcd.print("Not connected");
 #endif
-  SERIAL.begin(9600);
-  SERIAL.setTimeout(1000);
+#ifdef DEBUG
+  DEBUG.begin(9600);
+  DEBUG.println("MJKZZ Simulator");
+#endif
+  MJKZZ.begin(9600);
+  MJKZZ.setTimeout(1000);
 }
 
 void loop() {
@@ -110,18 +116,20 @@ void loop() {
     last_time = current_time;
   }
 #ifdef LCD
-    char buffer[32];
     sprintf(buffer, "%1d %6d %6d", speed, target, position);
     lcd.setCursor(0, 1);
     lcd.print(buffer);
 #endif
-  if (SERIAL.available()) {
-    SERIAL.readBytes((byte *)&message, 8);
+  if (MJKZZ.available()) {
+    MJKZZ.readBytes((byte *)&message, 8);
 #ifdef LCD
-    char buffer[32];
     sprintf(buffer, "%c %02x %02x %02x %02x %02x", message.ucCMD, message.ucIDX, message.ucMSG[0], message.ucMSG[1], message.ucMSG[2], message.ucMSG[3]);
     lcd.setCursor(0, 0);
     lcd.print(buffer);
+#endif
+#ifdef DEBUG
+    sprintf(buffer, "< %c %02x %02x %02x %02x %02x (%d)", message.ucCMD, message.ucIDX, message.ucMSG[0], message.ucMSG[1], message.ucMSG[2], message.ucMSG[3], mjkzz_get_int(&message));
+    DEBUG.println(buffer);
 #endif
     if (message.ucADD == address)
       message.ucADD |= 0x80;
@@ -195,6 +203,10 @@ void loop() {
     }
     message.ucCMD |= 0x80;
     message.ucSUM = message.ucADD + message.ucCMD + message.ucIDX + message.ucMSG[0] + message.ucMSG[1] + message.ucMSG[2] + message.ucMSG[3];
-    SERIAL.write((byte *)&message, 8);
+    MJKZZ.write((byte *)&message, 8);
+#ifdef DEBUG
+    sprintf(buffer, "> %c %02x %02x %02x %02x %02x", message.ucCMD & 0x7F, message.ucIDX, message.ucMSG[0], message.ucMSG[1], message.ucMSG[2], message.ucMSG[3]);
+    DEBUG.println(buffer);
+#endif
   }
 }
