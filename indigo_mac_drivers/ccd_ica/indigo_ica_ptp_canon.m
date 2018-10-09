@@ -589,6 +589,11 @@ static struct info {
       [self sendPTPRequest:PTPRequestCodeCanonSetRemoteMode param1:1];
       [self sendPTPRequest:PTPRequestCodeCanonSetEventMode param1:1];
       [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
+      [self sendPTPRequest:PTPRequestCodeCanonRequestDevicePropValue param1:PTPPropertyCodeCanonOwner];
+      [self sendPTPRequest:PTPRequestCodeCanonRequestDevicePropValue param1:PTPPropertyCodeCanonArtist];
+      [self sendPTPRequest:PTPRequestCodeCanonRequestDevicePropValue param1:PTPPropertyCodeCanonCopyright];
+      [self sendPTPRequest:PTPRequestCodeCanonRequestDevicePropValue param1:PTPPropertyCodeCanonSerialNumber];
+      [self sendPTPRequest:PTPRequestCodeCanonGetEvent];
       [self sendPTPRequest:PTPRequestCodeGetStorageIDs];
       break;
     }
