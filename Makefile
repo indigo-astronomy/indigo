@@ -1549,6 +1549,10 @@ package-prepare: all
 	install -D -m 0644 indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/USB2ST4.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_guider_asi.rules
 	install -D -m 0644 indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_focuser_usbv3.rules
 	install -D -m 0644 indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_focuser_wemacro.rules
+	install -D -m 0644 indigo_libs/indigo_bus.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_bus.h
+	install -D -m 0644 indigo_libs/indigo_client.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_client.h
+	install -D -m 0644 indigo_libs/indigo_xml.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_xml.h
+	install -D -m 0644 indigo.pc /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib/pkgconfig/indigo.pc
 	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)
 
 $(PACKAGE_NAME).deb: package-prepare
