@@ -1,0 +1,11 @@
+prefix=/usr/local
+exec_prefix=/usr/local
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include/indigo
+
+Name: API for INDIGO client development.
+Description: INDIGO is a system of standards and frameworks for multiplatform and distributed astronomy software.
+Version: 2.0-74
+URL: http://www.indigo-astronomy.org
+Libs: -L${libdir} -lindigo
+Cflags: -I${includedir}
