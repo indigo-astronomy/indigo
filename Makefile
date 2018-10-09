@@ -1552,6 +1552,10 @@ package-prepare: all
 	install -D -m 0644 indigo_libs/indigo_bus.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_bus.h
 	install -D -m 0644 indigo_libs/indigo_client.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_client.h
 	install -D -m 0644 indigo_libs/indigo_xml.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_xml.h
+	install -D -m 0644 indigo_libs/indigo_config.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_config.h
+	install -D -m 0644 indigo_libs/indigo_driver.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_driver.h
+	install -D -m 0644 indigo_libs/indigo_names.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_names.h
+	install -D -m 0644 indigo_libs/indigo_timer.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_timer.h
 	install -D -m 0644 indigo.pc /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib/pkgconfig/indigo.pc
 	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)
 
