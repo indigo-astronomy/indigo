@@ -33,6 +33,8 @@
 extern "C" {
 #endif
 
+#define FOCUSER_MJKZZ_NAME              "MJKZZ Rail"
+
 /** Register MJKZZ focuser hot-plug callback
  */
 
