@@ -72,13 +72,21 @@ and for disabling mirror lockup:
 ### FITS format and debayering
 FITS conversion and debayering is performed with library [LibRaw](https://github.com/LibRaw/LibRaw).
 The debayering options are currently fixed and set as follows:
-* Linear interpolation.
 * Disable LibRaw's default histogram transformation.
 * Disable LibRaw's default gamma curve transformation.
 * Disable automatic white balance obtained after averaging over the entire image.
 * Disable white balance from the camera (if possible).
 * No embedded color profile application.
 
+For debayering one can choose between algorithms:
+* Linear interpolation,
+* VNG,
+* PPG,
+* AHD,
+* DCB,
+* DHT.
+The default debayering algorithm is VNG which quite computationally
+intensive however very good. Linear interpolation is a very basic interpolation but it is much faster compared to VNG.
 This FITS output is currently 3 colors (RGB) each 16-bit.
 
 ### Image format FITS/RAW/JPEG
@@ -106,8 +114,9 @@ or for Nikon:
 
 Setting INDIGO image format to FITS or RAW sets the compression format
 on the DSLR camera to 'RAW' for Canon EOS and 'NEF (Raw)' or 'NEF+Basic' for Nikon cameras.
+Setting INDIGO image format to JPEG sets the compression format to 'Large Fine JPEG', 'JPEG Fine' respectively.
 
-## Status: Development
+## Status: Stable
 
 Driver is developed and tested with:
 * Nikon D50 (USB)
