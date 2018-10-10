@@ -1,9 +1,9 @@
-# MJKZZ focuser driver
+# MJKZZ Rail focuser driver
 
 http://www.mjkzz.com/extreme-macro
 
 ## Supported devices
-* MJKZZ Serial Camera Motion Controller
+* MJKZZ Serial Motion Controller (USB)
 
 Single device is present on startup (no hot-plug support).
 
@@ -21,4 +21,4 @@ indigo_server indigo_focuser_mjkzz
 
 ## Status: Under development
 
-Unclear - how to abort movement? what is #CF command?
+Driver is developed and tested with the simulator.

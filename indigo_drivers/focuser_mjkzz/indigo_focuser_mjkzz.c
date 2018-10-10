@@ -41,57 +41,15 @@
 #include "indigo_io.h"
 #include "indigo_focuser_mjkzz.h"
 
+#include "mjkzz_def.h"
+
 #define PRIVATE_DATA													((mjkzz_private_data *)device->private_data)
 
 typedef struct {
 	int handle;
 	pthread_mutex_t port_mutex;
 	indigo_timer *timer;
-	indigo_property *registers;
 } mjkzz_private_data;
-
-#define CMD_GVER 'v' // get version
-#define CMD_SCAM 'A' // activate camera for lwValue
-#define CMD_SFCS 'a' // activate half pressed
-#define CMD_MOVE 'M' // move by positive or negative increment
-#define CMD_SREG 'R' // set register value
-#define CMD_GREG 'r' // get register value
-#define CMD_SPOS 'P' // set position
-#define CMD_GPOS 'p' // get position
-#define CMD_SSPD 'S' // set speed
-#define CMD_GSPD 's' // get speed
-#define CMD_SSET 'I' // set settle time
-#define CMD_GSET 'i' // get settle time
-#define CMD_SHLD 'D' // set hold period
-#define CMD_GHLD 'd' // get hold period
-#define CMD_SBCK 'K' // set backlash
-#define CMD_GBCK 'k' // get backlash
-#define CMD_SLAG 'G' // set shutter lag
-#define CMD_GLAG 'g' // get shutter lag
-#define CMD_SSPS 'B' // set start position
-#define CMD_GSPS 'b' // get start position
-#define CMD_SCFG 'F' // set configuration flag
-#define CMD_GCFG 'f' // get configuration flag
-#define CMD_SEPS 'E' // set ending position
-#define CMD_GEPS 'e' // get ending position
-#define CMD_SCNT 'N' // set number of captures
-#define CMD_GCNT 'n' // get number of captures
-#define CMD_SSSZ 'Z' // set step size
-#define CMD_GSSZ 'z' // get step size
-#define CMD_EXEC 'X' // execute commands
-#define CMD_STOP 'x' // stop execution of commands
-
-enum enumREG {
-	reg_STAT = 100, reg_LPWR, reg_HPWR, reg_MSTEP, reg_MAXP, reg_EXEC, reg_ADDR
-};
-
-typedef struct {
-	uint8_t ucADD;
-	uint8_t ucCMD;
-	uint8_t ucIDX;
-	uint8_t ucMSG[4];
-	uint8_t ucSUM;
-} mjkzz_message;
 
 static int32_t mjkzz_get_int(mjkzz_message *message) {
 	return ((((((int32_t)message->ucMSG[0] << 8) + (int32_t)message->ucMSG[1]) << 8) + (int32_t)message->ucMSG[2]) << 8) + (int32_t)message->ucMSG[3];
@@ -217,9 +175,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					message.ucIDX = reg_MSTEP;
 					mjkzz_set_int(&message, 0);
 					mjkzz_command(device, &message);
-					if (mjkzz_command(device, &message)) {
-						FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value = mjkzz_get_int(&message);
-					}
 					message.ucCMD = CMD_GPOS;
 					if (mjkzz_command(device, &message)) {
 						FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value = mjkzz_get_int(&message);
@@ -337,7 +292,7 @@ indigo_result indigo_focuser_mjkzz(indigo_driver_action action, indigo_driver_in
 	static indigo_device *focuser = NULL;
 
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		"MJKZZ Focuser",
+		"MJKZZ Rail",
 		focuser_attach,
 		focuser_enumerate_properties,
 		focuser_change_property,

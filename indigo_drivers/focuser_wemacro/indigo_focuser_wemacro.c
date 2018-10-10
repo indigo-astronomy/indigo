@@ -24,7 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x0002
-#define DRIVER_NAME "indigo_ccd_wemacro"
+#define DRIVER_NAME "indigo_focuser_wemacro"
 
 #include <stdlib.h>
 #include <string.h>

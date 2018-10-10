@@ -24,7 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x0002
-#define DRIVER_NAME "indigo_ccd_wemacro_bt"
+#define DRIVER_NAME "indigo_focuser_wemacro_bt"
 
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +61,6 @@
 typedef struct {
 	int device_count;
 	pthread_t reader;
-	pthread_mutex_t port_mutex;
 	indigo_property *shutter_property;
 	indigo_property *config_property;
 	indigo_property *move_steps_property;
@@ -72,7 +71,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 static indigo_result focuser_detach(indigo_device *device);
 
-@interface BTDelegate : NSObject<CBCentralManagerDelegate, CBPeripheralDelegate>
+@interface WeMacroBTDelegate : NSObject<CBCentralManagerDelegate, CBPeripheralDelegate>
 -(void)connect;
 -(void)cmd:(uint8_t)cmd a:(uint8_t)a b:(uint8_t)b c:(uint8_t)c d:(uint32_t)d;
 -(void)disconnect;
@@ -80,7 +79,7 @@ static indigo_result focuser_detach(indigo_device *device);
 
 #pragma clang diagnostic ignored "-Wshadow-ivar"
 
-@implementation BTDelegate {
+@implementation WeMacroBTDelegate {
 	CBCentralManager *central;
 	CBPeripheral *hc08;
 	CBCharacteristic *ffe1;
@@ -287,7 +286,7 @@ static indigo_result focuser_detach(indigo_device *device);
 
 @end
 
-static BTDelegate *delegate;
+static WeMacroBTDelegate *delegate;
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 
@@ -322,7 +321,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_number_item(X_RAIL_EXECUTE_LENGTH_ITEM, "LENGTH", "Step size", 1, 0xFFFFFF, 1, 1);
 		indigo_init_number_item(X_RAIL_EXECUTE_COUNT_ITEM, "COUNT", "Step count", 0, 0xFFFFFF, 1, 1);
 		// --------------------------------------------------------------------------------
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
@@ -454,7 +452,7 @@ indigo_result indigo_focuser_wemacro_bt(indigo_driver_action action, indigo_driv
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			delegate = [[BTDelegate alloc] init];
+			delegate = [[WeMacroBTDelegate alloc] init];
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
