@@ -292,7 +292,7 @@ indigo_result indigo_focuser_mjkzz(indigo_driver_action action, indigo_driver_in
 	static indigo_device *focuser = NULL;
 
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		"MJKZZ Rail",
+		FOCUSER_MJKZZ_NAME,
 		focuser_attach,
 		focuser_enumerate_properties,
 		focuser_change_property,
@@ -300,7 +300,7 @@ indigo_result indigo_focuser_mjkzz(indigo_driver_action action, indigo_driver_in
 		focuser_detach
 	);
 
-	SET_DRIVER_INFO(info, "MJKZZ Focuser", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, FOCUSER_MJKZZ_NAME, __FUNCTION__, DRIVER_VERSION, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
