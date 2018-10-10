@@ -67,14 +67,14 @@ This is the list of requirements taken into the consideration:
 43. iOptron mount driver
 44. MoonLite focuser driver (untested)
 45. MJKZZ rail focuser driver (untested, platform independent USB & Mac only bluetooth)
+46. GPhoto2 CCD driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
 2. ASCOM driver for INDIGO focuser
 3. Apogee filter wheel driver
-4. GPhoto2 CCD driver
-5. SynScan (EQMod) mount driver
-6. ToupTek CCD driver
+4. SynScan (EQMod) mount driver
+5. ToupTek CCD driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO

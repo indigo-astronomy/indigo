@@ -57,26 +57,40 @@
 	((strlen(str1) == strlen(str2)) &&		\
 	 (strncmp(str1, str2, strlen(str1)) == 0))
 
-#define GPHOTO2_NAME_DSLR			"GPhoto2"
-#define GPHOTO2_NAME_SHUTTER			"Shutter time"
-#define GPHOTO2_NAME_ISO			"ISO"
-#define GPHOTO2_NAME_COMPRESSION		"Compression"
-#define GPHOTO2_NAME_WHITEBALANCE		"Whitebalance"
-#define GPHOTO2_NAME_ZOOM_PREVIEW               "Liveview zoom"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM       "5"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM      "1"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_ON            "On"
-#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF           "Off"
-#define GPHOTO2_NAME_MIRROR_LOCKUP		"Use mirror lockup"
-#define GPHOTO2_NAME_MIRROR_LOCKUP_ITEM_NAME	"MIRROR_LOCKUP"
-#define GPHOTO2_NAME_LIBGPHOTO2			"Gphoto2 library"
-#define GPHOTO2_NAME_LIBGPHOTO2_VERSION		"Version"
-#define GPHOTO2_NAME_DELETE_IMAGE               "Delete downloaded image"
-#define GPHOTO2_NAME_DELETE_IMAGE_ON_ITEM       "ON"
-#define GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM      "OFF"
-#define GPHOTO2_NAME_DELETE_IMAGE_ON            "On"
-#define GPHOTO2_NAME_DELETE_IMAGE_OFF           "Off"
+#define GPHOTO2_NAME_DSLR			 "GPhoto2"
+#define GPHOTO2_NAME_SHUTTER			 "Shutter time"
+#define GPHOTO2_NAME_ISO			 "ISO"
+#define GPHOTO2_NAME_COMPRESSION		 "Compression"
+#define GPHOTO2_NAME_WHITEBALANCE		 "Whitebalance"
+#define GPHOTO2_NAME_ZOOM_PREVIEW                "Liveview zoom"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_ON_ITEM        "5"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF_ITEM       "1"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_ON             "On"
+#define GPHOTO2_NAME_ZOOM_PREVIEW_OFF            "Off"
+#define GPHOTO2_NAME_MIRROR_LOCKUP		 "Use mirror lockup"
+#define GPHOTO2_NAME_MIRROR_LOCKUP_ITEM_NAME	 "MIRROR_LOCKUP"
+#define GPHOTO2_NAME_LIBGPHOTO2			 "Gphoto2 library"
+#define GPHOTO2_NAME_LIBGPHOTO2_VERSION		 "Version"
+#define GPHOTO2_NAME_DELETE_IMAGE                "Delete downloaded image"
+#define GPHOTO2_NAME_DELETE_IMAGE_ON_ITEM        "ON"
+#define GPHOTO2_NAME_DELETE_IMAGE_OFF_ITEM       "OFF"
+#define GPHOTO2_NAME_DELETE_IMAGE_ON             "On"
+#define GPHOTO2_NAME_DELETE_IMAGE_OFF            "Off"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM           "Debayer algorithm"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME  "DEBAYER_LINEAR"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME  "DEBAYER_VNG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME  "DEBAYER_PPG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME  "DEBAYER_AHD"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME  "DEBAYER_DCB"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME  "DEBAYER_DHT"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_LABEL "Linear"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_LABEL "VNG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_LABEL "PPG"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_LABEL "AHD"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_LABEL "DCB"
+#define GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_LABEL "DHT"
 
+#define GPHOTO2_DEBAYER_ALGORITHM_PROPERTY_NAME	 "GPHOTO2_DEBAYER_ALGORITHM"
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY_NAME "GPHOTO2_LIBGPHOTO2_VERSION"
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM_NAME     "LIBGPHOTO2_VERSION"
 
@@ -121,6 +135,13 @@
 #define DSLR_DELETE_IMAGE_PROPERTY		(PRIVATE_DATA->dslr_delete_image_property)
 #define DSLR_DELETE_IMAGE_ON_ITEM		(PRIVATE_DATA->dslr_delete_image_property->items + 0)
 #define DSLR_DELETE_IMAGE_OFF_ITEM		(PRIVATE_DATA->dslr_delete_image_property->items + 1)
+#define DSLR_DEBAYER_ALGORITHM_PROPERTY		(PRIVATE_DATA->dslr_debayer_algorithm_property)
+#define DSLR_DEBAYER_ALGORITHM_LIN_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 0)
+#define DSLR_DEBAYER_ALGORITHM_VNG_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 1)
+#define DSLR_DEBAYER_ALGORITHM_PPG_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 2)
+#define DSLR_DEBAYER_ALGORITHM_AHD_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 3)
+#define DSLR_DEBAYER_ALGORITHM_DCB_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 4)
+#define DSLR_DEBAYER_ALGORITHM_DHT_ITEM		(PRIVATE_DATA->dslr_debayer_algorithm_property->items + 5)
 #define GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY	(PRIVATE_DATA->dslr_libgphoto2_version_property)
 #define GPHOTO2_LIBGPHOTO2_VERSION_ITEM		(PRIVATE_DATA->dslr_libgphoto2_version_property->items)
 #define COMPRESSION                             (PRIVATE_DATA->gphoto2_compression_id)
@@ -161,6 +182,7 @@ typedef struct {
 	bool shutterspeed_bulb;
 	bool has_single_bulb_mode;
 	bool has_eos_remote_release;
+	int debayer_algorithm;
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_iso_property;
 	indigo_property *dslr_compression_property;
@@ -168,6 +190,7 @@ typedef struct {
 	indigo_property *dslr_zoom_preview_property;
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_delete_image_property;
+	indigo_property *dslr_debayer_algorithm_property;
 	indigo_property *dslr_libgphoto2_version_property;
 	indigo_timer *exposure_timer, *counter_timer;
 	pthread_mutex_t driver_mutex;
@@ -183,13 +206,51 @@ static pthread_t thread_id_capture;
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static libusb_hotplug_callback_handle callback_handle;
 
+static char *debayer_algorithm_str_id(const int algorithm)
+{
+	switch (algorithm) {
+	case 0:
+		return GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME;
+	case 1:
+		return GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME;
+	case 2:
+		return GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME;
+	case 3:
+		return GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME;
+	case 4:
+		return GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME;
+	case 11:
+		return GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME;
+	default:
+		return "unknown";
+	}
+}
+
+static int debayer_algorithm_value_id(const char *algorithm)
+{
+	if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME))
+		return 0;
+	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME))
+		return 1;
+	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME))
+		return 2;
+	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME))
+		return 3;
+	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME))
+		return 4;
+	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME))
+		return 11;
+	else
+		return -1;	/* Unknown. */
+}
+
 static int progress_cb(void *callback_data,
 		       enum LibRaw_progress stage, int iteration, int expected)
 {
 	(void)callback_data;
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libraw: %s, step %i/%i",
-			    libraw_strprogress(stage), iteration, expected);
+			    libraw_strprogress(stage), iteration + 1, expected);
 
 	return 0;
 }
@@ -205,8 +266,8 @@ static int process_dslr_image_debayer(indigo_device *device,
 
 	/* Linear 16-bit output. */
 	raw_data->params.output_bps = 16;
-	/* Debayer algorithm, linear interpolation. */
-	raw_data->params.user_qual = 0;
+	/* Debayer algorithm. */
+	raw_data->params.user_qual = PRIVATE_DATA->debayer_algorithm;
 	/* Disable four color space. */
 	raw_data->params.four_color_rgb = 0;
 	/* Disable LibRaw's default histogram transformation. */
@@ -338,8 +399,10 @@ static int process_dslr_image_debayer(indigo_device *device,
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "input data: "
 			    "%d bytes -> unpacked and debayered output data: "
 			    "%d bytes, colors: %d, "
-			    "bits: %d", buffer_size, processed_image->data_size,
-			    processed_image->colors, processed_image->bits);
+			    "bits: %d, algorithm: %s", buffer_size,
+			    processed_image->data_size,
+			    processed_image->colors, processed_image->bits,
+			    debayer_algorithm_str_id(PRIVATE_DATA->debayer_algorithm));
 
 cleanup:
 	libraw_dcraw_clear_mem(processed_image);
@@ -776,6 +839,8 @@ static void exposure_timer_callback(indigo_device *device)
 			}
 		}
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		/* Set exposure value to previous value when not otherwise intended. */
+		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	} else {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1391,6 +1456,44 @@ static indigo_result ccd_attach(indigo_device *device)
 					GPHOTO2_NAME_DELETE_IMAGE_OFF,
 					true);
 
+		/*--------------------- DEBAYER-ALGORITHM --------------------*/
+		DSLR_DEBAYER_ALGORITHM_PROPERTY = indigo_init_switch_property(NULL,
+									      device->name,
+									      GPHOTO2_DEBAYER_ALGORITHM_PROPERTY_NAME,
+									      GPHOTO2_NAME_DSLR,
+									      GPHOTO2_NAME_DEBAYER_ALGORITHM,
+									      INDIGO_OK_STATE,
+									      INDIGO_RW_PERM,
+									      INDIGO_ONE_OF_MANY_RULE,
+									      6);
+		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_LIN_ITEM,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_LABEL,
+					false);
+		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_VNG_ITEM,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_LABEL,
+					true);
+		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_PPG_ITEM,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_LABEL,
+					false);
+		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_AHD_ITEM,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_LABEL,
+					false);
+		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_DCB_ITEM,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_LABEL,
+					false);
+		indigo_init_switch_item(DSLR_DEBAYER_ALGORITHM_DHT_ITEM,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME,
+					GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_LABEL,
+					false);
+		PRIVATE_DATA->debayer_algorithm =
+			debayer_algorithm_value_id(GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME);
+
+
 		/*--------------------- LIBGPHOTO2-VERSION --------------------*/
 		GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY = indigo_init_text_property(NULL,
 										device->name,
@@ -1487,6 +1590,7 @@ static indigo_result ccd_detach(indigo_device *device)
 	indigo_release_property(DSLR_ZOOM_PREVIEW_PROPERTY);
 	indigo_release_property(DSLR_MIRROR_LOCKUP_PROPERTY);
 	indigo_release_property(DSLR_DELETE_IMAGE_PROPERTY);
+	indigo_release_property(DSLR_DEBAYER_ALGORITHM_PROPERTY);
 	indigo_release_property(GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY);
 
 	if (COMPRESSION)
@@ -1538,6 +1642,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+			indigo_define_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
 			indigo_define_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
 		} else {
 			if (device->is_connected) {
@@ -1548,6 +1653,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 				indigo_delete_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
 				indigo_delete_property(device, GPHOTO2_LIBGPHOTO2_VERSION_PROPERTY, NULL);
 				device->is_connected = false;
 			}
@@ -1609,6 +1715,22 @@ static indigo_result ccd_change_property(indigo_device *device,
 		PRIVATE_DATA->delete_downloaded_image = DSLR_DELETE_IMAGE_ON_ITEM->sw.value;
 		DSLR_DELETE_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+
+		return INDIGO_OK;
+	}
+	/*------------------------- DEBAYER-ALGORITHM ------------------------*/
+	else if (indigo_property_match(DSLR_DEBAYER_ALGORITHM_PROPERTY, property)) {
+		indigo_property_copy_values(DSLR_DEBAYER_ALGORITHM_PROPERTY, property, false);
+		DSLR_DEBAYER_ALGORITHM_PROPERTY->state = INDIGO_ALERT_STATE;
+		for (int i = 0; i < DSLR_DEBAYER_ALGORITHM_PROPERTY->count; i++) {
+			if (DSLR_DEBAYER_ALGORITHM_PROPERTY->items[i].sw.value) {
+				PRIVATE_DATA->debayer_algorithm =
+					debayer_algorithm_value_id(DSLR_DEBAYER_ALGORITHM_PROPERTY->items[i].name);
+				if (PRIVATE_DATA->debayer_algorithm >= 0)
+					DSLR_DEBAYER_ALGORITHM_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
+		indigo_update_property(device, DSLR_DEBAYER_ALGORITHM_PROPERTY, NULL);
 
 		return INDIGO_OK;
 	}
@@ -1741,6 +1863,8 @@ static indigo_result ccd_change_property(indigo_device *device,
 					     DSLR_MIRROR_LOCKUP_PROPERTY);
 			indigo_save_property(device, NULL,
 					     DSLR_DELETE_IMAGE_PROPERTY);
+			indigo_save_property(device, NULL,
+					     DSLR_DEBAYER_ALGORITHM_PROPERTY);
 		}
 	}
 
