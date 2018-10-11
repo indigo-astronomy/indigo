@@ -158,6 +158,8 @@
 		59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */; };
 		59FFD0D22128604200C7355C /* hidapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFD0D02128604200C7355C /* hidapi.h */; };
 		59FFD0D32128604200C7355C /* hid.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FFD0D12128604200C7355C /* hid.c */; };
+		9D07F7D2216F5EEE00330726 /* libtoupcam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D48B7A7215E570600CF757E /* libtoupcam.dylib */; };
+		9D07F7D3216F5F9100330726 /* libtoupcam.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D48B7A7215E570600CF757E /* libtoupcam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D1880B31E534B5E002F75D7 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */; };
@@ -469,12 +471,13 @@
 		};
 		9D97F8131D9A8A1900582EAF /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
+			buildActionMask = 12;
+			dstPath = "";
+			dstSubfolderSpec = 16;
 			files = (
+				9D07F7D3216F5F9100330726 /* libtoupcam.dylib in CopyFiles */,
 			);
-			runOnlyForDeploymentPostprocessing = 1;
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9DE2A1231DC3A317008E8375 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -1680,6 +1683,7 @@
 				9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */,
 				9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */,
 				9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */,
+				9D07F7D2216F5EEE00330726 /* libtoupcam.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4881,6 +4885,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 					"$(PROJECT_DIR)/build/lib",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -4898,6 +4903,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 					"$(PROJECT_DIR)/build/lib",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
