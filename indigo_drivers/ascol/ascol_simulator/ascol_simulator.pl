@@ -51,6 +51,40 @@ use constant TE_CLU2_TIME => 22;
 use constant TE_DECC3_TIME => 24;
 use constant TE_CLU3_TIME => 26;
 
+# FOCUS states
+use constant FO_STOP	=> 1;
+use constant FO_MOVE	=> 4;
+use constant FO_SET_POS => 5;
+
+use constant FO_REL_MOVING_TIME => 5;
+use constant FO_ABS_MOVING_TIME => 10;
+
+# DOME states
+use constant DO_OFF	   => 0;
+use constant DO_STOP	   => 1;
+use constant DO_PLUS	   => 2;
+use constant DO_MINUS	   => 3;
+use constant DO_SLEW_PLUS  => 4;
+use constant DO_SLEW_MINUS => 5;
+use constant DO_AUTO_STOP  => 6;
+use constant DO_AUTO_PLUS  => 7;
+use constant DO_AUTO_MINUS => 8;
+use constant DO_SET_POS    => 9;
+use constant DO_MOVE       => 10;
+
+use constant DO_REL_MOVING_TIME => 5;
+use constant DO_ABS_MOVING_TIME => 20;
+
+# DOME SLIT states
+use constant DO_SL_UNDEF   => 0;
+use constant DO_SL_OPENING => 1;
+use constant DO_SL_CLOSING => 2;
+use constant DO_SL_OPEN	   => 3;
+use constant DO_SL_CLOSE   => 4;
+
+use constant DO_SL_OPENING_TIME => 10;
+use constant DO_SL_CLOSING_TIME => 10;
+
 my $te_state = TE_OFF;
 my $te_rd_move_time = 0;
 my $te_hd_move_time = 0;
@@ -84,6 +118,17 @@ my $req_ha = 0;
 my $newrd = 0;
 my $newhd = 0;
 
+my $fo_pos = 0;
+my $fo_state = FO_STOP;
+my $fo_rel_moving_time = 0;
+my $fo_abs_moving_time = 0;
+
+my $do_pos = 0;
+my $do_state = DO_OFF;
+my $do_rel_moving_time = 0;
+my $do_abs_moving_time = 0;
+my $do_sl_opening_time = 0;
+my $do_sl_closing_time = 0;
 
 sub in_range($$$$) {
 	my ($num, $min, $max, $accuracy) = @_;
@@ -195,6 +240,56 @@ sub set_state {
 			$te_state = TE_SS_DECC2;
 		} elsif ($elapsed_time > TE_CLU1_TIME) {
 			$te_state = TE_SS_SLEW;
+		}
+	      }
+
+	# FOCUS state
+	if ($fo_rel_moving_time != 0) {
+		$elapsed_time = time() - $fo_rel_moving_time;
+		if ($elapsed_time > FO_REL_MOVING_TIME) {
+			$fo_state = FO_STOP;
+			$fo_rel_moving_time = 0;
+		}
+	}
+
+	if ($fo_abs_moving_time != 0) {
+		$elapsed_time = time() - $fo_abs_moving_time;
+		if ($elapsed_time > FO_ABS_MOVING_TIME) {
+			$fo_state = FO_STOP;
+			$fo_abs_moving_time = 0;
+		}
+	}
+
+	# DOME state
+	if ($do_rel_moving_time != 0) {
+		$elapsed_time = time() - $do_rel_moving_time;
+		if ($elapsed_time > DO_REL_MOVING_TIME) {
+			$do_state = DO_STOP;
+			$do_rel_moving_time = 0;
+		}
+	}
+
+	if ($do_abs_moving_time != 0) {
+		$elapsed_time = time() - $do_abs_moving_time;
+		if ($elapsed_time > DO_ABS_MOVING_TIME) {
+			$do_state = DO_STOP;
+			$do_abs_moving_time = 0;
+		}
+	}
+
+	# DOME SLIT state
+	if ($do_sl_opening_time != 0) {
+		$elapsed_time = time() - $do_sl_opening_time;
+		if ($elapsed_time > DO_SL_OPENING_TIME) {
+			$do_state = DO_SL_OPEN;
+			$do_sl_opening_time = 0;
+		}
+	}
+	if ($do_sl_closing_time != 0) {
+		$elapsed_time = time() - $do_sl_closing_time;
+		if ($elapsed_time > DO_SL_CLOSING_TIME) {
+			$do_state = DO_SL_CLOSE;
+			$do_sl_closing_time = 0;
 		}
 	}
 }
@@ -566,6 +661,151 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TRS3") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
 			print $client "$speed3\n";
+			next;
+		}
+		#------------ Focus Position ---------- #
+		if ($cmd[0] eq "FOPO") {
+			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			print $client "$fo_pos\n";
+			next;
+		}
+		# ------------- Focus Stop ------------ #
+		if ($cmd[0] eq "FOST") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			$fo_state = FO_STOP;
+			print $client "1\n";
+			next;
+		}
+		# ---- Focus Set Relative Position ---- #
+		if ($cmd[0] eq "FOSR") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($fo_state != FO_STOP) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], -49, 49, 0.01)) {
+				$fo_pos = $cmd[1];
+				$fo_state = FO_SET_POS;
+				print $client "1\n";
+				next;
+			}
+		}
+		# ---- Focus Set Absolute Position ---- #
+		if ($cmd[0] eq "FOSA") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($fo_state != FO_STOP) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], 0, 49, 0.01)) {
+				$fo_pos = $cmd[1];
+				$fo_state = FO_SET_POS;
+				print $client "1\n";
+				next;
+			}
+		}
+		# ---------- Focus Go Relative -------- #
+		if ($cmd[0] eq "FOGR") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			if ($fo_state != FO_SET_POS) { print $client "ERR\n"; next;}
+			$fo_state = FO_MOVE;
+			$fo_rel_moving_time = time();
+			print $client "1\n";
+			next;
+		}
+		# ---------- Focus Go Absolute -------- #
+		if ($cmd[0] eq "FOGA") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			if ($fo_state != FO_SET_POS) { print $client "ERR\n"; next;}
+			$fo_state = FO_MOVE;
+			$fo_abs_moving_time = time();
+			print $client "1\n";
+			next;
+		}
+		# -------------- Dome On -------------- #
+		if ($cmd[0] eq "DOON") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if (($do_state == DO_OFF) && ($cmd[1] eq "1")) {
+				$do_state = DO_SL_CLOSE;
+				print $client "1\n";
+				next;
+			}
+			if (($do_state == DO_SL_CLOSE) && ($cmd[1] eq "0")) {
+				$do_state = DO_OFF;
+				print $client "1\n";
+				next;
+			}
+			print $client "ERR\n";
+			next;
+		}
+		# ----------- Dome Slit Open ---------- #
+		if ($cmd[0] eq "DOSO") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if (($do_state == DO_SL_CLOSE) && ($cmd[1] eq "1")) {
+				$do_state = DO_SL_OPENING;
+				$do_sl_opening_time = time();
+				print $client "1\n";
+				next;
+			}
+			if (($do_state == DO_SL_OPEN) && ($cmd[1] eq "0")) {
+				$do_state = DO_SL_CLOSING;
+				$do_sl_closing_time = time();
+				print $client "1\n";
+				next;
+			}
+			print $client "ERR\n";
+			next;
+		}
+		# ------------ Dome Position ---------- #
+		if ($cmd[0] eq "DOPO") {
+			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			if ($do_state != DO_OFF) { print $client "$do_pos\n"; next; }
+			print $client "ERR\n";
+			next;
+		}
+		# ----- Dome Set Relative Position ---- #
+		if ($cmd[0] eq "DOSR") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($do_state != DO_STOP) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], -179.99, 180.00, 0.01)) {
+				$do_pos = $cmd[1];
+				$do_state = DO_SET_POS;
+				print $client "1\n";
+				next;
+			}
+		}
+		# ----- Dome Set Absolute Position ---- #
+		if ($cmd[0] eq "DOSA") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if ($do_state != DO_STOP) { print $client "ERR\n"; next;}
+			if (in_range($cmd[1], 0.00, 359.99, 0.01)) {
+				$do_pos = $cmd[1];
+				$do_state = DO_SET_POS;
+				print $client "1\n";
+				next;
+			}
+		}
+		#------ Dome Go Relative Position ----- #
+		if ($cmd[0] eq "DOGR") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			if ($do_state != DO_SET_POS) { print $client "ERR\n"; next;}
+			$do_state = DO_MOVE;
+			$do_rel_moving_time = time();
+			print $client "1\n";
+			next;
+		}
+		#------ Dome Go Absolute Position ----- #
+		if ($cmd[0] eq "DOGA") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			if ($do_state != DO_SET_POS) { print $client "ERR\n"; next;}
+			$do_state = DO_MOVE;
+			$do_abs_moving_time = time();
+			print $client "1\n";
 			next;
 		}
 
