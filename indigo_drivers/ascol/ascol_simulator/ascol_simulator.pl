@@ -160,17 +160,38 @@ sub is_de($) {
 	return 0;
 }
 
-sub dms2dd($$$) {
-	my ($deg, $min, $sec) = @_;
+sub dms2dd($) {
+	my ($encoded) = @_;
+	my $sign = 1;
+	my $deg;
+	my $min;
+	my $sec;
 
-	my $result = $deg + ($min/60) + (($sec/60) *(1/60));
+	if ($encoded =~ /^[-+]/) {
+		$deg = substr($encoded, 1, 2);
+		$min = substr($encoded, 3, 2);
+		$sec = substr($encoded, 5);
+		$sign = -1 if ($encoded =~ /^-/);
+	} else {
+		$deg = substr($encoded, 0, 2);
+		$min = substr($encoded, 2, 2);
+		$sec = substr($encoded, 4);
+	}
+
+	my $result = ($deg + ($min/60) + (($sec/60) *(1/60))) * $sign;
 	$result = sprintf("%.6f", $result);
 
 	return $result;
 }
 
 sub dd2dms($) {
-	my $input = @_;
+	my ($input) = @_;
+
+	my $sign = 1;
+	if ($input < 0) {
+		$sign = -1;
+		$input = -1 * $input;
+	}
 	my $deg = floor($input);
 
 	$input = $input - $deg;
@@ -182,7 +203,13 @@ sub dd2dms($) {
 	$input = $input * 60;
 
 	my $sec = sprintf("%.2f", $input);
-	return ($deg, $min, $sec);
+	my $result;
+	if ($sign < 0) {
+		$result = sprintf("-%02d%02d%05.2f", $deg, $min, $sec);
+	} else {
+		$result = sprintf("%02d%02d%05.2f", $deg, $min, $sec);
+	}
+	return $result;
 }
 
 
