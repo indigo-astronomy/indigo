@@ -364,7 +364,7 @@ static void shutdown_server(indigo_device *device) {
 		shutdown(server_socket, SHUT_RDWR);
 		close(server_socket);
 		pthread_join(DEVICE_PRIVATE_DATA->listener, NULL);
-		DEVICE_PRIVATE_DATA->listener = NULL;
+		DEVICE_PRIVATE_DATA->listener = 0;
 		LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, LX200_SERVER_PROPERTY, NULL);
