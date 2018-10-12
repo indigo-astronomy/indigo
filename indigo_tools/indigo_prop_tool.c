@@ -374,12 +374,6 @@ static indigo_result client_define_property(struct indigo_client *client, struct
 				indigo_enable_blob(client, property, indigo_use_blob_urls ? INDIGO_ENABLE_BLOB_URL : INDIGO_ENABLE_BLOB_ALSO);
 				break;
 			}
-
-			//printf("MATCHED:\n");
-			//for (i = 0; i< change_request.item_count; i++) {
-			//	free(items[i]);
-			//	printf("%s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i], change_request.value_string[i]);
-			//}
 		}
 		return INDIGO_OK;
 	} else {
@@ -519,16 +513,12 @@ int main(int argc, const char * argv[]) {
 			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
-		//for (int i = 0; i< change_request.item_count; i++) {
-		//	printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
-		//}
 		change_requested = true;
 	} else {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");
 			return 1;
 		}
-		//printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
 		change_requested = false;
 	}
 
