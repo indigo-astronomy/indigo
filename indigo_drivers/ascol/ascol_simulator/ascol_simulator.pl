@@ -4,6 +4,7 @@ use Time::HiRes qw ( setitimer ITIMER_VIRTUAL time );
 use strict;
 use IO::Socket;
 use Net::hostent;
+use POSIX qw(ceil floor);
 
 # OIL states
 use constant OIL_OFF => 0;
@@ -134,34 +135,34 @@ sub in_range($$$$) {
 	my ($num, $min, $max, $accuracy) = @_;
 	if (($num =~ /^[-+]?(\d+(\.\d{0,$accuracy})?)$/) and
 	    ($num >= $min) and
-		($num <= $max)) {
+	    ($num <= $max)) {
 			return 1;
 		}
 	return 0;
 }
 
-sub is_ra($) {
+sub parse_ra($) {
 	my ($ra) = @_;
 	if ($ra =~ /^([0-2][0-3][0-5][0-9][0-5][0-9])(\.\d{0,2})?$/) {
-		return 1;
+		return dms2dd($ra, 1);
 	} elsif (($ra =~ /^(\d{1,3}(\.\d{0,6})?)$/) and ($ra > 0.0) and ($ra < 360.0)) {
-			return 1;
+		return $ra;
 	}
-	return 0;
+	return undef;
 }
 
-sub is_de($) {
+sub parse_de($) {
 	my ($de) = @_;
 	if ($de =~ /^[-+]?([0-8][0-9][0-5][0-9][0-5][0-9])(\.\d{0,2})?$/) {
-		return 1;
+		return dms2dd($de, 0);
 	} elsif (($de =~ /^[-+]?(\d{1,2}(\.\d{0,6})?)$/) and ($de > -90.0) and ($de < 90.0)) {
-		return 1;
+		return $de;
 	}
-	return 0;
+	return undef;
 }
 
-sub dms2dd($) {
-	my ($encoded) = @_;
+sub dms2dd($$) {
+	my ($encoded, $hours) = @_;
 	my $sign = 1;
 	my $deg;
 	my $min;
@@ -179,6 +180,7 @@ sub dms2dd($) {
 	}
 
 	my $result = ($deg + ($min/60) + (($sec/60) *(1/60))) * $sign;
+	$result *= 15.0 if ($hours);
 	$result = sprintf("%.6f", $result);
 
 	return $result;
@@ -186,7 +188,6 @@ sub dms2dd($) {
 
 sub dd2dms($) {
 	my ($input) = @_;
-
 	my $sign = 1;
 	if ($input < 0) {
 		$sign = -1;
@@ -421,12 +422,14 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 3) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			if (!is_ra($cmd[1]) or !is_de($cmd[2])) {print $client "ERR\n"; next;}
+			my $ra = parse_ra($cmd[1]);
+			my $de = parse_de($cmd[2]);
+			if (!defined($ra) or !defined($de)) {print $client "ERR\n"; next;}
 			if(($cmd[3] ne "0") and ($cmd[3] ne "1")) { print $client "ERR\n"; next;};
-			$req_ra=$cmd[1];
-			$req_de=$cmd[2];
-			$west=$cmd[3];
-			$newrd=1;
+			$req_ra = $ra;
+			$req_de = $de;
+			$west = $cmd[3];
+			$newrd = 1;
 			print $client "1\n";
 			next;
 		}
@@ -435,8 +438,8 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			$req_ra+=$cmd[1];
-			$req_de+=$cmd[2];
+			$req_ra += $cmd[1];
+			$req_de += $cmd[2];
 			$newrd=1;
 			print $client "1\n";
 			next;
@@ -459,9 +462,9 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			$req_ha=$cmd[1];
-			$req_de=$cmd[2];
-			$newhd=1;
+			$req_ha	= $cmd[1];
+			$req_de	= $cmd[2];
+			$newhd = 1;
 			print $client "1\n";
 			next;
 		}
@@ -470,9 +473,9 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			$req_ha+=$cmd[1];
-			$req_de+=$cmd[2];
-			$newhd=1;
+			$req_ha += $cmd[1];
+			$req_de += $cmd[2];
+			$newhd = 1;
 			print $client "1\n";
 			next;
 		}
@@ -572,7 +575,9 @@ while ($client = $server->accept()) {
 
 		if ($cmd[0] eq "TRRD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
-			print $client "$set_ra $set_de $west\n";
+			my $ra = dd2dms($set_ra / 15.0);
+			my $de = dd2dms($set_de);
+			print $client "$ra $de $west\n";
 			next;
 		}
 
