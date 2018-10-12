@@ -71,19 +71,40 @@ use constant DO_AUTO_PLUS  => 7;
 use constant DO_AUTO_MINUS => 8;
 use constant DO_SET_POS    => 9;
 use constant DO_MOVE       => 10;
+use constant DO_AUTOMATED  => 11;
 
 use constant DO_REL_MOVING_TIME => 5;
 use constant DO_ABS_MOVING_TIME => 20;
 
-# DOME SLIT states
-use constant DO_SL_UNDEF   => 0;
-use constant DO_SL_OPENING => 1;
-use constant DO_SL_CLOSING => 2;
-use constant DO_SL_OPEN	   => 3;
-use constant DO_SL_CLOSE   => 4;
+# SLIT states
+use constant SL_UNDEF   => 0;
+use constant SL_OPENING => 1;
+use constant SL_CLOSING => 2;
+use constant SL_OPEN	   => 3;
+use constant SL_CLOSE   => 4;
 
-use constant DO_SL_OPENING_TIME => 10;
-use constant DO_SL_CLOSING_TIME => 10;
+use constant SL_OPENING_TIME => 10;
+use constant SL_CLOSING_TIME => 10;
+
+# FLAP TUBE states
+use constant FL_TB_UNDEF   => 0;
+use constant FL_TB_OPENING => 1;
+use constant FL_TB_CLOSING => 2;
+use constant FL_TB_OPEN    => 3;
+use constant FL_TB_CLOSE   => 4;
+
+use constant FL_TB_OPENING_TIME => 5;
+use constant FL_TB_CLOSING_TIME => 5;
+
+# FLAP COUDE states
+use constant FL_CD_UNDEF   => 0;
+use constant FL_CD_OPENING => 1;
+use constant FL_CD_CLOSING => 2;
+use constant FL_CD_OPEN    => 3;
+use constant FL_CD_CLOSE   => 4;
+
+use constant FL_CD_OPENING_TIME => 5;
+use constant FL_CD_CLOSING_TIME => 5;
 
 my $te_state = TE_OFF;
 my $te_rd_move_time = 0;
@@ -127,8 +148,18 @@ my $do_pos = 0;
 my $do_state = DO_OFF;
 my $do_rel_moving_time = 0;
 my $do_abs_moving_time = 0;
-my $do_sl_opening_time = 0;
-my $do_sl_closing_time = 0;
+
+my $sl_state = SL_CLOSE;
+my $sl_opening_time = 0;
+my $sl_closing_time = 0;
+
+my $fl_tb_state = FL_TB_CLOSE;
+my $fl_tb_opening_time = 0;
+my $fl_tb_closing_time = 0;
+
+my $fl_cd_state = FL_TB_CLOSE;
+my $fl_cd_opening_time = 0;
+my $fl_cd_closing_time = 0;
 
 sub in_range($$$$) {
 	my ($num, $min, $max, $accuracy) = @_;
@@ -211,7 +242,6 @@ sub dd2dms($) {
 	}
 	return $result;
 }
-
 
 sub set_state {
 	my $elapsed_time;
@@ -304,19 +334,51 @@ sub set_state {
 		}
 	}
 
-	# DOME SLIT state
-	if ($do_sl_opening_time != 0) {
-		$elapsed_time = time() - $do_sl_opening_time;
-		if ($elapsed_time > DO_SL_OPENING_TIME) {
-			$do_state = DO_SL_OPEN;
-			$do_sl_opening_time = 0;
+	# SLIT state
+	if ($sl_opening_time != 0) {
+		$elapsed_time = time() - $sl_opening_time;
+		if ($elapsed_time > SL_OPENING_TIME) {
+			$sl_state = SL_OPEN;
+			$sl_opening_time = 0;
 		}
 	}
-	if ($do_sl_closing_time != 0) {
-		$elapsed_time = time() - $do_sl_closing_time;
-		if ($elapsed_time > DO_SL_CLOSING_TIME) {
-			$do_state = DO_SL_CLOSE;
-			$do_sl_closing_time = 0;
+	if ($sl_closing_time != 0) {
+		$elapsed_time = time() - $sl_closing_time;
+		if ($elapsed_time > SL_CLOSING_TIME) {
+			$sl_state = SL_CLOSE;
+			$sl_closing_time = 0;
+		}
+	}
+
+	# FLAP TUBE state
+	if ($fl_tb_opening_time != 0) {
+		$elapsed_time = time() - $fl_tb_opening_time;
+		if ($elapsed_time > FL_TB_OPENING_TIME) {
+			$fl_tb_state = FL_TB_OPEN;
+			$fl_tb_opening_time = 0;
+		}
+	}
+	if ($fl_tb_closing_time != 0) {
+		$elapsed_time = time() - $fl_tb_closing_time;
+		if ($elapsed_time > FL_TB_CLOSING_TIME) {
+			$fl_tb_state = FL_TB_CLOSE;
+			$fl_tb_closing_time = 0;
+		}
+	}
+
+	# FLAP COUDE state
+	if ($fl_cd_opening_time != 0) {
+		$elapsed_time = time() - $fl_cd_opening_time;
+		if ($elapsed_time > FL_CD_OPENING_TIME) {
+			$fl_cd_state = FL_CD_OPEN;
+			$fl_cd_opening_time = 0;
+		}
+	}
+	if ($fl_cd_closing_time != 0) {
+		$elapsed_time = time() - $fl_cd_closing_time;
+		if ($elapsed_time > FL_CD_CLOSING_TIME) {
+			$fl_cd_state = FL_CD_CLOSE;
+			$fl_cd_closing_time = 0;
 		}
 	}
 }
@@ -753,11 +815,12 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if (($do_state == DO_OFF) && ($cmd[1] eq "1")) {
-				$do_state = DO_SL_CLOSE;
+				$do_state = DO_STOP;
 				print $client "1\n";
 				next;
 			}
-			if (($do_state == DO_SL_CLOSE) && ($cmd[1] eq "0")) {
+			if (($do_state == DO_STOP) and ($sl_state == SL_CLOSE)
+			    && ($cmd[1] eq "0")) {
 				$do_state = DO_OFF;
 				print $client "1\n";
 				next;
@@ -769,15 +832,15 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "DOSO") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if (($do_state == DO_SL_CLOSE) && ($cmd[1] eq "1")) {
-				$do_state = DO_SL_OPENING;
-				$do_sl_opening_time = time();
+			if (($sl_state == SL_CLOSE) and ($do_state == DO_STOP) && ($cmd[1] eq "1")) {
+				$sl_state = SL_OPENING;
+				$sl_opening_time = time();
 				print $client "1\n";
 				next;
 			}
-			if (($do_state == DO_SL_OPEN) && ($cmd[1] eq "0")) {
-				$do_state = DO_SL_CLOSING;
-				$do_sl_closing_time = time();
+			if (($sl_state == SL_OPEN) && ($cmd[1] eq "0")) {
+				$sl_state = SL_CLOSING;
+				$sl_closing_time = time();
 				print $client "1\n";
 				next;
 			}
@@ -788,6 +851,18 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "DOPO") {
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
 			if ($do_state != DO_OFF) { print $client "$do_pos\n"; next; }
+			print $client "ERR\n";
+			next;
+		}
+		# --------------- Dome Stop ----------- #
+		if ($cmd[0] eq "DOST") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			if (($do_state == DO_MOVE) or ($do_state == DO_AUTOMATED)) {
+				$do_state = DO_STOP;
+				print $client "1\n";
+				next;
+			}
 			print $client "ERR\n";
 			next;
 		}
@@ -815,7 +890,7 @@ while ($client = $server->accept()) {
 				next;
 			}
 		}
-		#------ Dome Go Relative Position ----- #
+		# ----- Dome Go Relative Position ----- #
 		if ($cmd[0] eq "DOGR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
@@ -825,7 +900,7 @@ while ($client = $server->accept()) {
 			print $client "1\n";
 			next;
 		}
-		#------ Dome Go Absolute Position ----- #
+		# ----- Dome Go Absolute Position ----- #
 		if ($cmd[0] eq "DOGA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
@@ -833,6 +908,57 @@ while ($client = $server->accept()) {
 			$do_state = DO_MOVE;
 			$do_abs_moving_time = time();
 			print $client "1\n";
+			next;
+		}
+		# ---------- Dome Automated ----------- #
+		if ($cmd[0] eq "DOAM") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			if ($do_state != DO_STOP) { print $client "ERR\n"; next;}
+			$do_state = DO_AUTOMATED;
+			print $client "1\n";
+			next;
+		}
+		# ----- Flap Tube Open or Close ------- #
+		if ($cmd[0] eq "FTOC") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if (($te_state == TE_STOP) && ($fl_tb_state == FL_TB_CLOSE)
+			    && ($cmd[1] eq "1")) {
+				$fl_tb_state = FL_TB_OPENING;
+				$fl_tb_opening_time = time();
+				print $client "1\n";
+				next;
+			}
+			if (($te_state == TE_STOP) && ($fl_tb_state == FL_TB_OPEN)
+			    && ($cmd[1] eq "0")) {
+				$fl_tb_state = FL_TB_CLOSING;
+				$fl_tb_closing_time = time();
+				print $client "1\n";
+				next;
+			}
+			print $client "ERR\n";
+			next;
+		}
+		# ----- Flap Coude Open or Close ------ #
+		if ($cmd[0] eq "FCOC") {
+			if (!$login) { print $client "ERR\n"; next;}
+			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if (($te_state == TE_STOP) && ($fl_cd_state == FL_CD_CLOSE)
+			    && ($cmd[1] eq "1")) {
+				$fl_cd_state = FL_CD_OPENING;
+				$fl_cd_opening_time = time();
+				print $client "1\n";
+				next;
+			}
+			if (($te_state == TE_STOP) && ($fl_cd_state == FL_CD_OPEN)
+			    && ($cmd[1] eq "0")) {
+				$fl_cd_state = FL_CD_CLOSING;
+				$fl_cd_closing_time = time();
+				print $client "1\n";
+				next;
+			}
+			print $client "ERR\n";
 			next;
 		}
 
