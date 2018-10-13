@@ -299,7 +299,7 @@ sub set_state {
 		} elsif ($elapsed_time > TE_CLU1_TIME) {
 			$te_state = TE_SS_SLEW;
 		}
-	      }
+	}
 
 	# FOCUS state
 	if ($fo_rel_moving_time != 0) {
@@ -500,11 +500,13 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			$req_ra += $cmd[1];
-			$req_de += $cmd[2];
-			$newrd=1;
-			print $client "1\n";
-			next;
+			if (in_range($cmd[1], -36000, 36000, 2) and in_range($cmd[2], -36000, 36000, 2)) {
+				$req_ra += $cmd[1];
+				$req_de += $cmd[2];
+				$newrd=1;
+				print $client "1\n";
+				next;
+			}
 		}
 
 		if (($cmd[0] eq "TGRA") or ($cmd[0] eq "TGRR")) {
@@ -524,22 +526,26 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			$req_ha	= $cmd[1];
-			$req_de	= $cmd[2];
-			$newhd = 1;
-			print $client "1\n";
-			next;
+			if (in_range($cmd[1], -180, 330, 4) and in_range($cmd[2], -90, 270, 4)) {
+				$req_ha	= $cmd[1];
+				$req_de	= $cmd[2];
+				$newhd = 1;
+				print $client "1\n";
+				next;
+			}
 		}
 
 		if ($cmd[0] eq "TSHR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
 			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
-			$req_ha += $cmd[1];
-			$req_de += $cmd[2];
-			$newhd = 1;
-			print $client "1\n";
-			next;
+			if (in_range($cmd[1], -36000, 36000, 2) and in_range($cmd[2], -36000, 36000, 2)) {
+				$req_ha += $cmd[1];
+				$req_de += $cmd[2];
+				$newhd = 1;
+				print $client "1\n";
+				next;
+			}
 		}
 
 		if (($cmd[0] eq "TGHA") or ($cmd[0] eq "TGHR")) {
@@ -969,15 +975,15 @@ while ($client = $server->accept()) {
 
 		if ($cmd[0] eq "GLST") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
-			print $client "$oil_state $te_state 0 0 0 0 0 0 0 0 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
+			print $client "$oil_state $te_state 0 0 $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
 			next;
 		}
 
 		if ($line=~/quit|exit/i) {
 			last;
-  		} else {
-      		print $client "ERR\n";
+		} else {
+			print $client "ERR\n";
 		}
 	}
-  	close $client;
+	close $client;
 }
