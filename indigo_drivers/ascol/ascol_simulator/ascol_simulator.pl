@@ -528,7 +528,7 @@ while ($client = $server->accept()) {
 				if ($te_state == TE_OFF) { print $client "1\n"; next;}
 				$req_ra += $cmd[1];
 				$req_de += $cmd[2];
-				$newrd=1;
+				$newrd = 1;
 				print $client "1\n";
 				next;
 			}
@@ -538,11 +538,18 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-			if ($te_state != TE_TRACK) { print $client "1\n"; next;}
-			if($newrd) {
-				$te_state = TE_ST_CLU1;
-				$newrd = 0;
-				$te_rd_move_time = time();
+			if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print $client "1\n"; next;}
+			if ($cmd[1] == 1) {
+				if($newrd) {
+					$te_state = TE_ST_CLU1;
+					$newrd = 0;
+					$te_rd_move_time = time();
+				}
+			} else {
+				# simplyfy stop -> shuld go to state transition
+				$te_state = TE_TRACK;
+				$newrd = 1;
+				$te_rd_move_time = 0;
 			}
 			print $client "1\n";
 			next;
@@ -578,11 +585,18 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-			if ($te_state != TE_TRACK) { print $client "1\n"; next;}
-			if($newhd) {
-				$te_state = TE_SS_CLU1;
-				$newhd = 0;
-				$te_hd_move_time = time();
+			if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print $client "1\n"; next;}
+			if ($cmd[1] == 1) {
+				if($newhd) {
+					$te_state = TE_SS_CLU1;
+					$newrd = 0;
+					$te_hd_move_time = time();
+				}
+			} else {
+				# simplyfy stop -> shuld go to state transition
+				$te_state = TE_TRACK;
+				$newhd = 1;
+				$te_hd_move_time = 0;
 			}
 			print $client "1\n";
 			next;
