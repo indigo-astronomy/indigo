@@ -63,7 +63,7 @@ use constant DA_POSITION => 1;
 # more states ...
 
 # FOCUS states
-use constant FO_OFF		=> 0;
+use constant FO_OFF	=> 0;
 use constant FO_STOP	=> 1;
 use constant FO_SLEW	=> 4;
 
@@ -91,7 +91,7 @@ use constant DO_ABS_MOVING_TIME => 20;
 use constant SL_UNDEF   => 0;
 use constant SL_OPENING => 1;
 use constant SL_CLOSING => 2;
-use constant SL_OPEN	   => 3;
+use constant SL_OPEN	=> 3;
 use constant SL_CLOSE   => 4;
 
 use constant SL_OPENING_TIME => 10;
@@ -807,25 +807,21 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "FOSR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if (!in_range($cmd[1], -49, 49, 2)) { print $client "ERR\n"; next;}
 			if ($fo_state == FO_OFF) { print $client "1\n"; next;}
-			if (in_range($cmd[1], -49, 49, 0.01)) {
-				$fo_pos = $cmd[1];
-				$fo_state = FO_SLEW;
-				print $client "1\n";
-				next;
-			}
+			$fo_pos = $cmd[1];
+			print $client "1\n";
+			next;
 		}
 		# ---- Focus Set Absolute Position ---- #
 		if ($cmd[0] eq "FOSA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
+			if (!in_range($cmd[1], 0, 49, 2)) { print $client "ERR\n"; next;}
 			if ($fo_state == FO_OFF) { print $client "1\n"; next;}
-			if (in_range($cmd[1], 0, 49, 0.01)) {
-				$fo_pos = $cmd[1];
-				$fo_state = FO_SLEW;
-				print $client "1\n";
-				next;
-			}
+			$fo_pos = $cmd[1];
+			print $client "1\n";
+			next;
 		}
 		# ---------- Focus Go Relative -------- #
 		if ($cmd[0] eq "FOGR") {
