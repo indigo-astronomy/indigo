@@ -51,9 +51,11 @@ typedef struct {
 	indigo_device *guider;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	unsigned char *buffer;
-	int remaining;
+	bool pull_active;
+	bool push_active;
 	int bits;
 	bool can_check_temperature;
+	pthread_mutex_t mutex;
 } touptek_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -62,28 +64,49 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 	ToupcamFrameInfoV2 frameInfo;
 	HRESULT result;
 	indigo_device *device = (indigo_device *)callbackCtx;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "event #%d", event);
-	switch (event) {
-		case TOUPCAM_EVENT_IMAGE: {
-			if (PRIVATE_DATA->remaining) {
-				PRIVATE_DATA->remaining--;
+	if (PRIVATE_DATA->pull_active) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback #%d", event);
+		switch (event) {
+			case TOUPCAM_EVENT_IMAGE: {
+				PRIVATE_DATA->pull_active = false;
 				result = Toupcam_PullImageV2(PRIVATE_DATA->handle, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->bits, &frameInfo);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_PullImageV2(%d, ->[%d x %d, %x, %d])->%d", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
 				result = Toupcam_Pause(PRIVATE_DATA->handle, 1);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Pause(1)->%d", result);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Pause(1) -> %08x", result);
 				indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits, true, NULL);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				break;
 			}
-			break;
-		}
-		case TOUPCAM_EVENT_TIMEOUT:
-		case TOUPCAM_EVENT_DISCONNECTED:
-		case TOUPCAM_EVENT_ERROR: {
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			break;
+			case TOUPCAM_EVENT_TIMEOUT:
+			case TOUPCAM_EVENT_DISCONNECTED:
+			case TOUPCAM_EVENT_ERROR: {
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				break;
+			}
 		}
 	}
-	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+}
+
+static void push_callback(const void *data, const ToupcamFrameInfoV2* frameInfo, int snap, void* callbackCtx) {
+	HRESULT result;
+	indigo_device *device = (indigo_device *)callbackCtx;
+	if (PRIVATE_DATA->push_active) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "push_callback %d x %d, %x, %d", frameInfo->width, frameInfo->height, frameInfo->flag, frameInfo->seq);
+		int size = frameInfo->width * frameInfo->height * (PRIVATE_DATA->bits / 8);
+		memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE,data, size);
+		indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo->width, frameInfo->height, PRIVATE_DATA->bits, true, NULL);
+		CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
+			PRIVATE_DATA->push_active = false;
+			result = Toupcam_Pause(PRIVATE_DATA->handle, 1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Pause(1) -> %08x", result);
+			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+		}
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+	}
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
@@ -105,6 +128,60 @@ static void ccd_temperature_callback(indigo_device *device) {
 		}
 	}
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
+}
+
+static void setup_exposure(indigo_device *device) {
+	HRESULT result = Toupcam_Stop(PRIVATE_DATA->handle);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Stop() -> %08x", result);
+	PRIVATE_DATA->bits = 0;
+	unsigned resolutionIndex = 0;
+	for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+		indigo_item *item = CCD_MODE_PROPERTY->items + i;
+		if (item->sw.value) {
+			if (strncmp(item->name, "RAW8", 4) == 0) {
+				result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 1);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_RAW, 1) -> %08x", result);
+				result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_BITDEPTH, 0) -> %08x", result);
+				resolutionIndex = atoi(item->name + 5);
+				result = Toupcam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_eSize(%d) -> %08x", resolutionIndex, result);
+				PRIVATE_DATA->bits = 8;
+			} else if (strncmp(item->name, "RAW16", 4) == 0) {
+				result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 1);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_RAW, 1) -> %08x", result);
+				result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, 1);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_BITDEPTH, 1) -> %08x", result);
+				resolutionIndex = atoi(item->name + 6);
+				result = Toupcam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_eSize(%d) -> %08x", resolutionIndex, result);
+				PRIVATE_DATA->bits = 16;
+			} else if (strncmp(item->name, "RGB", 3) == 0) {
+				result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_RAW, 0) -> %08x", result);
+				resolutionIndex = atoi(item->name + 4);
+				result = Toupcam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_eSize(%d) -> %08x", resolutionIndex, result);
+				PRIVATE_DATA->bits = 24;
+			}
+		}
+	}
+	if (PRIVATE_DATA->cam.model->flag & TOUPCAM_FLAG_ROI_HARDWARE) {
+		unsigned left = 2 * ((unsigned)CCD_FRAME_LEFT_ITEM->number.value / (unsigned)CCD_BIN_HORIZONTAL_ITEM->number.value / 2);
+		unsigned top = 2 * ((unsigned)CCD_FRAME_TOP_ITEM->number.value / (unsigned)CCD_BIN_VERTICAL_ITEM->number.value / 2);
+		unsigned width = 2 * ((unsigned)CCD_FRAME_WIDTH_ITEM->number.value / (unsigned)CCD_BIN_HORIZONTAL_ITEM->number.value / 2);
+		if (width < 16)
+			width = 16;
+		unsigned height = 2 * ((unsigned)CCD_FRAME_HEIGHT_ITEM->number.value / (unsigned)CCD_BIN_VERTICAL_ITEM->number.value / 2);
+		if (height < 16)
+			height = 16;
+		result = Toupcam_put_Roi(PRIVATE_DATA->handle, left, top, width, height);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Roi(%d, %d, %d, %d) -> %08x", left, top, width, height, result);
+	}
+	result = Toupcam_put_ExpoTime(PRIVATE_DATA->handle, CCD_EXPOSURE_ITEM->number.target * 1000000);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_ExpoTime(%ld) -> %08x", (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000), result);
+	result = Toupcam_Flush(PRIVATE_DATA->handle);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Flush() -> %08x", result);
 }
 
 static indigo_result ccd_attach(indigo_device *device) {
@@ -175,8 +252,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 			}
 		}
-		CCD_BIN_PROPERTY->hidden = true;
+		CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
+		CCD_STREAMING_PROPERTY->hidden = false;
 		PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(3 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
@@ -214,17 +293,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					rawMode = 1;
 				} else {
 					result = Toupcam_get_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, &rawMode);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_Option(TOUPCAM_OPTION_RAW, ->%d)->%d", rawMode, result);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_Option(TOUPCAM_OPTION_RAW, ->%d) -> %08x", rawMode, result);
 				}
 				if (rawMode) {
 					result = Toupcam_get_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, &bitDepth);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_Option(TOUPCAM_OPTION_BITDEPTH, ->%d)->%d", bitDepth, result);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_Option(TOUPCAM_OPTION_BITDEPTH, ->%d) -> %08x", bitDepth, result);
 					result = Toupcam_get_eSize(PRIVATE_DATA->handle, &resolutionIndex);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_eSize(->%d)->%d", resolutionIndex, result);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_eSize(->%d) -> %08x", resolutionIndex, result);
 					sprintf(name, "RAW%d_%d", bitDepth ? 16 : 8, resolutionIndex);
 				} else {
 					result = Toupcam_get_eSize(PRIVATE_DATA->handle, &resolutionIndex);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_eSize(->%d)->%d", resolutionIndex, result);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_eSize(->%d) -> %08x", resolutionIndex, result);
 					sprintf(name, "RGB_%d", resolutionIndex);
 				}
 				for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
@@ -232,6 +311,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 						indigo_set_switch(CCD_MODE_PROPERTY, CCD_MODE_PROPERTY->items + i, true);
 					}
 				}
+				CCD_BIN_HORIZONTAL_ITEM->number.value = (int)(CCD_INFO_WIDTH_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].width);
+				CCD_BIN_VERTICAL_ITEM->number.value = (int)(CCD_INFO_HEIGHT_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].height);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -245,7 +326,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 			if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
 				if (((touptek_private_data *)PRIVATE_DATA->guider->private_data)->handle == NULL) {
+					pthread_mutex_lock(&PRIVATE_DATA->mutex);
 					Toupcam_Close(PRIVATE_DATA->handle);
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 				}
 				PRIVATE_DATA->handle = NULL;
 				indigo_global_unlock(device);
@@ -253,61 +336,62 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			device->gp_bits = 0;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
+	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_MODE
+		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
+		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
+			if (item->sw.value) {
+				char *underscore = strchr(item->name, '_');
+				unsigned resolutionIndex = atoi(underscore + 1);
+				CCD_BIN_HORIZONTAL_ITEM->number.value = (int)(CCD_INFO_WIDTH_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].width);
+				CCD_BIN_VERTICAL_ITEM->number.value = (int)(CCD_INFO_HEIGHT_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].height);
+				break;
+			}
+		}
+		if (IS_CONNECTED) {
+			CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+			CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
-		HRESULT result;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		result = Toupcam_Stop(PRIVATE_DATA->handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Stop()->%d", result);
-		PRIVATE_DATA->bits = 0;
-		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
-			indigo_item *item = CCD_MODE_PROPERTY->items + i;
-			if (item->sw.value) {
-				if (strncmp(item->name, "RAW8", 4) == 0) {
-					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 1);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_RAW, 1)->%d", result);
-					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, 0);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_BITDEPTH, 0)->%d", result);
-					unsigned resolutionIndex = atoi(item->name + 5);
-					result = Toupcam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_eSize(%d)->%d", resolutionIndex, result);
-					PRIVATE_DATA->bits = 8;
-				} else if (strncmp(item->name, "RAW16", 4) == 0) {
-					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 1);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_RAW, 1)->%d", result);
-					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, 1);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_BITDEPTH, 1)->%d", result);
-					unsigned resolutionIndex = atoi(item->name + 6);
-					result = Toupcam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_eSize(%d)->%d", resolutionIndex, result);
-					PRIVATE_DATA->bits = 16;
-				} else if (strncmp(item->name, "RGB", 3) == 0) {
-					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 0);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_RAW, 0)->%d", result);
-					unsigned resolutionIndex = atoi(item->name + 4);
-					result = Toupcam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_eSize(%d)->%d", resolutionIndex, result);
-					PRIVATE_DATA->bits = 24;
-				}
-			}
-		}
-		result = Toupcam_put_ExpoTime(PRIVATE_DATA->handle, CCD_EXPOSURE_ITEM->number.target * 1000000);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_ExpoTime(%ld)->%d", (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000), result);
-		PRIVATE_DATA->remaining = 1;
-		result = Toupcam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_StartPullModeWithCallback()->%d", result);
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		setup_exposure(device);
+		PRIVATE_DATA->pull_active = true;
+		HRESULT result = Toupcam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_StartPullModeWithCallback() -> %08x", result);
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_STREAMING
+		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+			return INDIGO_OK;
+		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		setup_exposure(device);
+		PRIVATE_DATA->push_active = true;
+		HRESULT result = Toupcam_StartPushModeV2(PRIVATE_DATA->handle, push_callback, device);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_StartPushModeV2() -> %08x", result);
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		HRESULT result;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+			PRIVATE_DATA->pull_active = false;
+			PRIVATE_DATA->push_active = false;
 			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+			pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			result = Toupcam_Stop(PRIVATE_DATA->handle);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Stop()->%d", result);
-			PRIVATE_DATA->remaining = 0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Stop() -> %08x", result);
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			if (result >=0)
 				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			else
@@ -398,7 +482,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 			if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 				if (((touptek_private_data *)PRIVATE_DATA->camera->private_data)->handle == NULL) {
+					pthread_mutex_lock(&PRIVATE_DATA->mutex);
 					Toupcam_Close(PRIVATE_DATA->handle);
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 					indigo_global_unlock(device);
 				}
 				PRIVATE_DATA->handle = NULL;
