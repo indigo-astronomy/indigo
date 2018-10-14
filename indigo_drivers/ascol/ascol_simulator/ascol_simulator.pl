@@ -52,10 +52,20 @@ use constant TE_CLU2_TIME => 22;
 use constant TE_DECC3_TIME => 24;
 use constant TE_CLU3_TIME => 26;
 
+# Hour Axis states
+use constant HA_OFF => 0;
+use constant HA_POSITION => 1;
+# more states ....
+
+# Declination Axis states
+use constant DA_OFF => 0;
+use constant DA_POSITION => 1;
+# more states ...
+
 # FOCUS states
+use constant FO_OFF		=> 0;
 use constant FO_STOP	=> 1;
-use constant FO_MOVE	=> 4;
-use constant FO_SET_POS => 5;
+use constant FO_SLEW	=> 4;
 
 use constant FO_REL_MOVING_TIME => 5;
 use constant FO_ABS_MOVING_TIME => 10;
@@ -120,9 +130,12 @@ my $guide_correction_ra = 0;
 my $guide_correction_de = 0;
 my $user_speed_ra = 0;
 my $user_speed_de = 0;
-my $speed1 = 0;
-my $speed2 = 0;
-my $speed3 = 0;
+my $speed1 = 5000.00;
+my $speed2 = 120.0;
+my $speed3 = 10.00;
+
+my $ha_state = HA_OFF;
+my $da_state = DA_OFF;
 
 my $de_centering_flag = 0;
 
@@ -141,7 +154,7 @@ my $newrd = 0;
 my $newhd = 0;
 
 my $fo_pos = 0;
-my $fo_state = FO_STOP;
+my $fo_state = FO_OFF;
 my $fo_rel_moving_time = 0;
 my $fo_abs_moving_time = 0;
 
@@ -174,7 +187,7 @@ sub in_range($$$$) {
 
 sub parse_ra($) {
 	my ($ra) = @_;
-	if ($ra =~ /^([0-2][0-3][0-5][0-9][0-5][0-9])(\.\d{0,2})?$/) {
+	if ($ra =~ /^([0-2][0-9][0-5][0-9][0-5][0-9])(\.\d{0,3})?$/) {
 		return dms2dd($ra, 1);
 	} elsif (($ra =~ /^(\d{1,3}(\.\d{0,6})?)$/) and ($ra > 0.0) and ($ra < 360.0)) {
 		return $ra;
@@ -217,8 +230,9 @@ sub dms2dd($$) {
 	return $result;
 }
 
-sub dd2dms($) {
-	my ($input) = @_;
+sub dd2dms($$) {
+	my ($input, $hours) = @_;
+	$input /= 15.0 if ($hours);
 	my $sign = 1;
 	if ($input < 0) {
 		$sign = -1;
@@ -234,12 +248,17 @@ sub dd2dms($) {
 	$input = $input - $min;
 	$input = $input * 60;
 
-	my $sec = sprintf("%.2f", $input);
+	my $sec = $input;
+
 	my $result;
-	if ($sign < 0) {
-		$result = sprintf("-%02d%02d%05.2f", $deg, $min, $sec);
+	if ($hours) {
+		$result = sprintf("%02d%02d%06.3f", $deg, $min, $sec);
 	} else {
-		$result = sprintf("%02d%02d%05.2f", $deg, $min, $sec);
+		if ($sign < 0) {
+			$result = sprintf("-%02d%02d%05.2f", $deg, $min, $sec);
+		} else {
+			$result = sprintf("+%02d%02d%05.2f", $deg, $min, $sec);
+		}
 	}
 	return $result;
 }
@@ -356,6 +375,7 @@ sub set_state {
 		$elapsed_time = time() - $fl_tb_opening_time;
 		if ($elapsed_time > FL_TB_OPENING_TIME) {
 			$fl_tb_state = FL_TB_OPEN;
+			$fo_state = FO_STOP;
 			$fl_tb_opening_time = 0;
 		}
 	}
@@ -363,6 +383,7 @@ sub set_state {
 		$elapsed_time = time() - $fl_tb_closing_time;
 		if ($elapsed_time > FL_TB_CLOSING_TIME) {
 			$fl_tb_state = FL_TB_CLOSE;
+			$fo_state = FO_OFF;
 			$fl_tb_closing_time = 0;
 		}
 	}
@@ -419,8 +440,8 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "OION") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if (($te_state != 1) && ($oil_state != OIL_ON) && ($cmd[1] eq "0")) {
-				print $client "ERR\n";
+			if ($te_state != TE_OFF) {
+				print $client "1\n";
 				next;
 			}
 			if ($cmd[1] eq "1") {
@@ -442,16 +463,20 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if (($oil_state != OIL_ON) && ($cmd[1] == 1)) {
-				print $client "ERR\n";
+				print $client "1\n";
 				next;
 			}
 			if (($oil_state == OIL_ON) && ($cmd[1] eq "1")) {
 				$te_state = TE_STOP;
+				$da_state = DA_POSITION;
+				$ha_state = HA_POSITION;
 				print $client "1\n";
 				next;
 			}
 			if (($oil_state == OIL_ON) && ($cmd[1] eq "0")) {
 				$te_state = TE_OFF;
+				$da_state = DA_OFF;
+				$ha_state = HA_OFF;
 				print $client "1\n";
 				next;
 			}
@@ -463,7 +488,7 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
 			if (($te_state != TE_STOP) && ($cmd[1] == 1)) {
-				print $client "ERR\n";
+				print $client "1\n";
 				next;
 			}
 			if (($te_state == TE_STOP) && ($cmd[1] eq "1")) {
@@ -483,10 +508,10 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSRA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 3) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			my $ra = parse_ra($cmd[1]);
 			my $de = parse_de($cmd[2]);
-			if (!defined($ra) or !defined($de)) {print $client "ERR\n"; next;}
+			if (!defined($ra) or !defined($de)) {print $client "ERR $ra - $de\n"; next;}
 			if(($cmd[3] ne "0") and ($cmd[3] ne "1")) { print $client "ERR\n"; next;};
 			$req_ra = $ra;
 			$req_de = $de;
@@ -499,7 +524,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSRR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], -36000, 36000, 2) and in_range($cmd[2], -36000, 36000, 2)) {
 				$req_ra += $cmd[1];
 				$req_de += $cmd[2];
@@ -512,7 +537,7 @@ while ($client = $server->accept()) {
 		if (($cmd[0] eq "TGRA") or ($cmd[0] eq "TGRR")) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state != TE_TRACK) { print $client "ERR\n"; next;}
+			if ($te_state != TE_TRACK) { print $client "1\n"; next;}
 			if($newrd) {
 				$te_state = TE_ST_CLU1;
 				$newrd = 0;
@@ -525,7 +550,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSHA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], -180, 330, 4) and in_range($cmd[2], -90, 270, 4)) {
 				$req_ha	= $cmd[1];
 				$req_de	= $cmd[2];
@@ -538,7 +563,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSHR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], -36000, 36000, 2) and in_range($cmd[2], -36000, 36000, 2)) {
 				$req_ha += $cmd[1];
 				$req_de += $cmd[2];
@@ -551,7 +576,7 @@ while ($client = $server->accept()) {
 		if (($cmd[0] eq "TGHA") or ($cmd[0] eq "TGHR")) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state != TE_TRACK) { print $client "ERR\n"; next;}
+			if ($te_state != TE_TRACK) { print $client "1\n"; next;}
 			if($newhd) {
 				$te_state = TE_SS_CLU1;
 				$newhd = 0;
@@ -564,7 +589,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSCS") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "1\n"; next;}
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1") and ($cmd[1] ne "2") and ($cmd[1] ne "3")) { print $client "ERR\n"; next;};
 			$correction_model = $cmd[1];
 			print $client "1\n";
@@ -574,7 +599,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSCA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "1\n"; next;}
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 4);
@@ -588,7 +613,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSCP") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "1\n"; next;}
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 5);
@@ -602,7 +627,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSCR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "1\n"; next;}
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 6);
@@ -616,7 +641,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSCM") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "1\n"; next;}
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 7);
@@ -630,7 +655,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSGM") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "1\n"; next;}
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			if ($cmd[1] == 1) {
 				$state_bits = $state_bits | (1 << 8);
@@ -643,8 +668,8 @@ while ($client = $server->accept()) {
 
 		if ($cmd[0] eq "TRRD") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
-			my $ra = dd2dms($set_ra / 15.0);
-			my $de = dd2dms($set_de);
+			my $ra = dd2dms($set_ra, 1);
+			my $de = dd2dms($set_de, 0);
 			print $client "$ra $de $west\n";
 			next;
 		}
@@ -658,7 +683,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSGV") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], -3600, 3600, 1) and in_range($cmd[2], -3600, 3600, 1)) {
 				$guide_value_ra=$cmd[1];
 				$guide_value_de=$cmd[2];
@@ -676,7 +701,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSGC") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], -10, 10, 2) and in_range($cmd[2], 10, 10, 2)) {
 				$guide_correction_ra = $cmd[1];
 				$guide_correction_de = $cmd[2];
@@ -688,7 +713,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TECE") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state != TE_STOP) { print $client "ERR\n"; next;}
+			if ($te_state != TE_STOP) { print $client "1\n"; next;}
 			if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;};
 			$de_centering_flag = $cmd[1];
 			print $client "1\n";
@@ -698,7 +723,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSUS") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 2) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], -10, 10, 4) and in_range($cmd[2], -10, 10, 4)) {
 				$user_speed_ra = $cmd[1];
 				$user_speed_de = $cmd[2];
@@ -716,7 +741,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSS1") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], 100, 5000, 2)) {
 				$speed1 = $cmd[1];
 				print $client "1\n";
@@ -733,7 +758,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSS2") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], 1, 120, 2)) {
 				$speed2 = $cmd[1];
 				print $client "1\n";
@@ -750,7 +775,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "TSS3") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($te_state == TE_OFF) { print $client "ERR\n"; next;}
+			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], 1, 120, 2)) {
 				$speed3 = $cmd[1];
 				print $client "1\n";
@@ -773,6 +798,7 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "FOST") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
+			if ($fo_state == FO_OFF) { print $client "1\n"; next;}
 			$fo_state = FO_STOP;
 			print $client "1\n";
 			next;
@@ -781,10 +807,10 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "FOSR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($fo_state != FO_STOP) { print $client "ERR\n"; next;}
+			if ($fo_state == FO_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], -49, 49, 0.01)) {
 				$fo_pos = $cmd[1];
-				$fo_state = FO_SET_POS;
+				$fo_state = FO_SLEW;
 				print $client "1\n";
 				next;
 			}
@@ -793,10 +819,10 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "FOSA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($fo_state != FO_STOP) { print $client "ERR\n"; next;}
+			if ($fo_state == FO_OFF) { print $client "1\n"; next;}
 			if (in_range($cmd[1], 0, 49, 0.01)) {
 				$fo_pos = $cmd[1];
-				$fo_state = FO_SET_POS;
+				$fo_state = FO_SLEW;
 				print $client "1\n";
 				next;
 			}
@@ -805,8 +831,8 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "FOGR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
-			if ($fo_state != FO_SET_POS) { print $client "ERR\n"; next;}
-			$fo_state = FO_MOVE;
+			if ($fo_state == FO_OFF) { print $client "1\n"; next;}
+			$fo_state = FO_SLEW;
 			$fo_rel_moving_time = time();
 			print $client "1\n";
 			next;
@@ -815,8 +841,8 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "FOGA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
-			if ($fo_state != FO_SET_POS) { print $client "ERR\n"; next;}
-			$fo_state = FO_MOVE;
+			if ($fo_state == FO_OFF) { print $client "1\n"; next;}
+			$fo_state = FO_SLEW;
 			$fo_abs_moving_time = time();
 			print $client "1\n";
 			next;
@@ -975,7 +1001,7 @@ while ($client = $server->accept()) {
 
 		if ($cmd[0] eq "GLST") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
-			print $client "$oil_state $te_state 0 0 $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
+			print $client "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
 			next;
 		}
 
