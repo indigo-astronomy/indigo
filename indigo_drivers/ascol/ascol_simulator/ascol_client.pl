@@ -2,7 +2,7 @@
 use strict;
 use IO::Socket;
 my ( $host, $port, $kidpid, $handle, $line, $timeout );
-$host = '192.168.1.230';
+$host = '192.168.2.230';
 $host = 'localhost';
 $port = 2000;
 $timeout = 2;
