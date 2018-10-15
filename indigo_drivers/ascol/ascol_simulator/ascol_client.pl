@@ -3,7 +3,7 @@ use strict;
 use IO::Socket;
 my ( $host, $port, $kidpid, $handle, $line, $timeout );
 $host = '192.168.2.230';
-#$host = 'localhost';
+$host = 'localhost';
 $port = 2001;
 $timeout = 2;
 
@@ -25,11 +25,11 @@ while(1) {
 	$port++;
 }
 $handle->autoflush(1);
- 
+
 print STDERR "[Connected to $host:$port]\n";
- 
+
 die "can't fork: $!" unless defined( $kidpid = fork() );
- 
+
 if ($kidpid) {
 	while(defined($line = <$handle>)) {
 		#$line=~s/\r//;
