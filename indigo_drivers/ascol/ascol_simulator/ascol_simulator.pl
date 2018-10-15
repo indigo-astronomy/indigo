@@ -156,7 +156,7 @@ my $fo_rel_moving_time = 0;
 my $fo_abs_moving_time = 0;
 
 my $do_pos = 0;
-my $do_pos_old = 0;
+my $do_pos_cur = 0;
 my $do_state = DO_OFF;
 my $do_rel_moving_time = 0;
 my $do_abs_moving_time = 0;
@@ -338,17 +338,36 @@ sub set_state {
 	# DOME state
 	if ($do_rel_moving_time != 0) {
 		$elapsed_time = time() - $do_rel_moving_time;
+		if (($do_state == DO_STOP) or ($do_pos == $do_pos_cur)) {
+			$elapsed_time += DO_REL_MOVING_TIME + 1;
+		} elsif ($do_state == DO_SLEW_MINUS) {
+			$do_pos_cur = ($do_pos_cur - 1) % 360;
+		} elsif ($do_state == DO_SLEW_PLUS) {
+			$do_pos_cur = ($do_pos_cur + 1) % 360;
+		}
 		if ($elapsed_time > DO_REL_MOVING_TIME) {
-			$do_pos_old = $do_pos;
+			# When moving time is passed we magically jump to desired postion.
+			if ($do_state != DO_STOP) {
+				$do_pos_cur = $do_pos;
+			}
 			$do_state = DO_STOP;
 			$do_rel_moving_time = 0;
 		}
 	}
-
 	if ($do_abs_moving_time != 0) {
 		$elapsed_time = time() - $do_abs_moving_time;
+		if (($do_state == DO_STOP) or ($do_pos == $do_pos_cur)) {
+			$elapsed_time += DO_ABS_MOVING_TIME + 1;
+		} elsif ($do_state == DO_SLEW_MINUS) {
+			$do_pos_cur = ($do_pos_cur - 1) % 360;
+		} elsif ($do_state == DO_SLEW_PLUS) {
+			$do_pos_cur = ($do_pos_cur + 1) % 360;
+		}
 		if ($elapsed_time > DO_ABS_MOVING_TIME) {
-			$do_pos_old = $do_pos;
+			# When moving time is passed we magically jump to desired postion.
+			if ($do_state != DO_STOP) {
+				$do_pos_cur = $do_pos;
+			}
 			$do_state = DO_STOP;
 			$do_abs_moving_time = 0;
 		}
@@ -910,10 +929,8 @@ while ($client = $server->accept()) {
 		# ------------ Dome Position ---------- #
 		if ($cmd[0] eq "DOPO") {
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
-			if ($do_state != DO_OFF) {
-				print $client "$do_pos\n";
-				next;
-			}
+			print $client "$do_pos_cur\n";
+			next;
 		}
 		# --------------- Dome Stop ----------- #
 		if ($cmd[0] eq "DOST") {
@@ -951,11 +968,12 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
 			if ($do_state == DO_OFF) { print $client "1\n"; next;}
-			if ($do_pos > $do_pos_old) {
+			if ($do_pos > 0) {
 				$do_state = DO_SLEW_PLUS;
 			} else {
 				$do_state = DO_SLEW_MINUS;
 			}
+			$do_pos = ($do_pos_cur + $do_pos) % 360;
 			$do_rel_moving_time = time();
 			print $client "1\n";
 			next;
@@ -965,10 +983,10 @@ while ($client = $server->accept()) {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
 			if ($do_state == DO_OFF) { print $client "1\n"; next;}
-			if (abs($do_pos - $do_pos_old) > 180) {
-				$do_state = DO_SLEW_PLUS;
-			} else {
+			if ($do_pos > ($do_pos_cur + 180.0) % 360) {
 				$do_state = DO_SLEW_MINUS;
+			} else {
+				$do_state = DO_SLEW_PLUS;
 			}
 			$do_abs_moving_time = time();
 			print $client "1\n";
