@@ -80,9 +80,6 @@ use constant DO_SLEW_MINUS => 5;
 use constant DO_AUTO_STOP  => 6;
 use constant DO_AUTO_PLUS  => 7;
 use constant DO_AUTO_MINUS => 8;
-use constant DO_SET_POS    => 9;
-use constant DO_MOVE       => 10;
-use constant DO_AUTOMATED  => 11;
 
 use constant DO_REL_MOVING_TIME => 5;
 use constant DO_ABS_MOVING_TIME => 20;
@@ -159,6 +156,7 @@ my $fo_rel_moving_time = 0;
 my $fo_abs_moving_time = 0;
 
 my $do_pos = 0;
+my $do_pos_old = 0;
 my $do_state = DO_OFF;
 my $do_rel_moving_time = 0;
 my $do_abs_moving_time = 0;
@@ -341,6 +339,7 @@ sub set_state {
 	if ($do_rel_moving_time != 0) {
 		$elapsed_time = time() - $do_rel_moving_time;
 		if ($elapsed_time > DO_REL_MOVING_TIME) {
+			$do_pos_old = $do_pos;
 			$do_state = DO_STOP;
 			$do_rel_moving_time = 0;
 		}
@@ -349,6 +348,7 @@ sub set_state {
 	if ($do_abs_moving_time != 0) {
 		$elapsed_time = time() - $do_abs_moving_time;
 		if ($elapsed_time > DO_ABS_MOVING_TIME) {
+			$do_pos_old = $do_pos;
 			$do_state = DO_STOP;
 			$do_abs_moving_time = 0;
 		}
@@ -546,7 +546,7 @@ while ($client = $server->accept()) {
 					$te_rd_move_time = time();
 				}
 			} else {
-				# simplyfy stop -> shuld go to state transition
+				# simplyfy stop -> should go to state transition
 				$te_state = TE_TRACK;
 				$newrd = 1;
 				$te_rd_move_time = 0;
@@ -901,30 +901,27 @@ while ($client = $server->accept()) {
 		# ------------ Dome Position ---------- #
 		if ($cmd[0] eq "DOPO") {
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
-			if ($do_state != DO_OFF) { print $client "$do_pos\n"; next; }
-			print $client "ERR\n";
-			next;
+			if ($do_state != DO_OFF) {
+				print $client "$do_pos\n";
+				next;
+			}
 		}
 		# --------------- Dome Stop ----------- #
 		if ($cmd[0] eq "DOST") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
-			if (($do_state == DO_MOVE) or ($do_state == DO_AUTOMATED)) {
-				$do_state = DO_STOP;
-				print $client "1\n";
-				next;
-			}
-			print $client "ERR\n";
+			if ($do_state == DO_OFF) { print $client "1\n"; next;}
+			$do_state = DO_STOP;
+			print $client "1\n";
 			next;
 		}
 		# ----- Dome Set Relative Position ---- #
 		if ($cmd[0] eq "DOSR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($do_state != DO_STOP) { print $client "ERR\n"; next;}
-			if (in_range($cmd[1], -179.99, 180.00, 0.01)) {
+			if (in_range($cmd[1], -179.99, 180.00, 2)) {
+				if ($do_state == DO_OFF) { print $client "1\n"; next;}
 				$do_pos = $cmd[1];
-				$do_state = DO_SET_POS;
 				print $client "1\n";
 				next;
 			}
@@ -933,10 +930,9 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "DOSA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
-			if ($do_state != DO_STOP) { print $client "ERR\n"; next;}
-			if (in_range($cmd[1], 0.00, 359.99, 0.01)) {
+			if (in_range($cmd[1], 0.00, 359.99, 2)) {
+				if ($do_state == DO_OFF) { print $client "1\n"; next;}
 				$do_pos = $cmd[1];
-				$do_state = DO_SET_POS;
 				print $client "1\n";
 				next;
 			}
@@ -945,8 +941,12 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "DOGR") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
-			if ($do_state != DO_SET_POS) { print $client "ERR\n"; next;}
-			$do_state = DO_MOVE;
+			if ($do_state == DO_OFF) { print $client "1\n"; next;}
+			if ($do_pos > $do_pos_old) {
+				$do_state = DO_SLEW_PLUS;
+			} else {
+				$do_state = DO_SLEW_MINUS;
+			}
 			$do_rel_moving_time = time();
 			print $client "1\n";
 			next;
@@ -955,8 +955,12 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "DOGA") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
-			if ($do_state != DO_SET_POS) { print $client "ERR\n"; next;}
-			$do_state = DO_MOVE;
+			if ($do_state == DO_OFF) { print $client "1\n"; next;}
+			if (abs($do_pos - $do_pos_old) > 180) {
+				$do_state = DO_SLEW_PLUS;
+			} else {
+				$do_state = DO_SLEW_MINUS;
+			}
 			$do_abs_moving_time = time();
 			print $client "1\n";
 			next;
@@ -965,8 +969,8 @@ while ($client = $server->accept()) {
 		if ($cmd[0] eq "DOAM") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 0) { print $client "ERR\n"; next;}
-			if ($do_state != DO_STOP) { print $client "ERR\n"; next;}
-			$do_state = DO_AUTOMATED;
+			if ($do_state == DO_OFF) { print $client "1\n"; next;}
+			# TODO
 			print $client "1\n";
 			next;
 		}
