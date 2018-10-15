@@ -511,7 +511,7 @@ while ($client = $server->accept()) {
 			if ($te_state == TE_OFF) { print $client "1\n"; next;}
 			my $ra = parse_ra($cmd[1]);
 			my $de = parse_de($cmd[2]);
-			if (!defined($ra) or !defined($de)) {print $client "ERR $ra - $de\n"; next;}
+			if (!defined($ra) or !defined($de)) {print $client "ERR\n"; next;}
 			if(($cmd[3] ne "0") and ($cmd[3] ne "1")) { print $client "ERR\n"; next;};
 			$req_ra = $ra;
 			$req_de = $de;
