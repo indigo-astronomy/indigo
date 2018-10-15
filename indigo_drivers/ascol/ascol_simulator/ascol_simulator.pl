@@ -419,11 +419,6 @@ sub set_state {
 die "can't start simulator" unless $server;
 print "[Server $0 is running]\n";
 
- ####
- #the server waits for a client to connect
- #and accept it with $server->accept
- #you can telnet to the port you want to test it
- ####
 
 while ($client = $server->accept()) {
 	$client->autoflush(1);
@@ -434,9 +429,10 @@ while ($client = $server->accept()) {
 
  	while ( my $line = <$client>) {
 		set_state();
-		next unless $line=~/\S/; # blank line
+		unless ($line=~/\S/) { print $client "ERR\n"; next;}; # blank line
 		my @cmd = split /\s+/,$line;
 
+		# ----- Oil pump start/stop ----- #
 		if ($cmd[0] eq "OION") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
@@ -459,6 +455,19 @@ while ($client = $server->accept()) {
 			next;
 		}
 
+		# ----- Oil Sensors Readings ----- #
+		if ($cmd[0] eq "OIMV") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			# Hardcoded but these do not change rapidly
+			if ($oil_state == OIL_ON) {
+				print $client "70.3 71.5 24.8 25.0 21.7 26.4 25.3 28.1 21.7 20.9 27.5 23.1 72.1 88.8 49.0 17.7 46.0\n";
+			} else {
+				print $client "0.0 0.4 0.0 0.2 0.0 0.1 0.1 0.3 0.0 0.0 0.2 0.2 32.5 88.5 69.0 13.6 12.8\n";
+			}
+			next;
+		}
+
+		# ----- Telescope ON/OFF ----- #
 		if ($cmd[0] eq "TEON") {
 			if (!$login) { print $client "ERR\n"; next;}
 			if ($#cmd != 1) { print $client "ERR\n"; next;}
@@ -1017,6 +1026,15 @@ while ($client = $server->accept()) {
 			next;
 		}
 
+		# ----- Global Meteo Data ----- #
+		if ($cmd[0] eq "GLME") {
+			if ($#cmd!=0) { print $client "ERR\n"; next;}
+			# Hardcoded but these do not change rapidly
+			print $client "8.87 828.73 63.19 2.25 9.43 9.96 10.90 9.58\n";
+			next;
+		}
+
+		# ----- Global System Status ----- #
 		if ($cmd[0] eq "GLST") {
 			if ($#cmd!=0) { print $client "ERR\n"; next;}
 			print $client "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
