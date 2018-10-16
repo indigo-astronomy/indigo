@@ -476,7 +476,7 @@ sub main() {
 		my $hostinfo = gethostbyaddr($client->peeraddr);
 
 		#print this informations on the server side
-		printf "[Acceepted connection from: %s]\n", $hostinfo->name || $client->peerhost;
+		printf "[Accepted connection from: %s]\n", $hostinfo->name || $client->peerhost;
 
 		while ( my $line = <$client>) {
 			update_state();
@@ -1112,7 +1112,7 @@ sub main() {
 		}
 		close $client;
 		$login = 0;
-		printf "[Connedction closed]\n";
+		printf "[Connection closed]\n";
 	}
 }
 main();
