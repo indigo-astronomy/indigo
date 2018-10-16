@@ -469,14 +469,14 @@ sub main() {
 	);
 
 	die "Can't start simulator" unless $server;
-	print "[Server $0 is running]\n";
+	print "[ASCOL Simulator is running on port: $port]\n";
 
 	while ($client = $server->accept()) {
 		$client->autoflush(1);
 		my $hostinfo = gethostbyaddr($client->peeraddr);
 
 		#print this informations on the server side
-		printf "[Connect from %s]\n", $hostinfo->name || $client->peerhost;
+		printf "[Acceepted connection from: %s]\n", $hostinfo->name || $client->peerhost;
 
 		while ( my $line = <$client>) {
 			update_state();
@@ -1112,6 +1112,7 @@ sub main() {
 		}
 		close $client;
 		$login = 0;
+		printf "[Connedction closed]\n";
 	}
 }
 main();
