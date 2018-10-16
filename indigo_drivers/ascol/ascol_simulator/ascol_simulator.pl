@@ -31,6 +31,9 @@ use IO::Socket;
 use Net::hostent;
 use POSIX qw(ceil floor);
 
+my $debug = 1;
+my $login = 0;
+
 # OIL states
 use constant OIL_OFF => 0;
 use constant OIL_START1 => 1;
@@ -163,7 +166,6 @@ my $de_centering_flag = 0;
 
 my $client;
 
-my $login = 1;
 my $set_ra = 0;
 my $set_de = 0;
 my $req_ra = 0;
@@ -286,7 +288,7 @@ sub dd2dms($$) {
 	return $result;
 }
 
-sub set_state {
+sub update_state {
 	my $elapsed_time;
 
 	# OIL state
@@ -449,9 +451,15 @@ sub set_state {
 	}
 }
 
+sub print_client($$) {
+	my ($client, $message) = @_;
+	print $client $message;
+	$debug && print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
+}
+
 sub main() {
 	#you have to specify the port number after the perl command
-	my $port=$ARGV[0] || die "Usage server.pl <port>\n";
+	my $port=$ARGV[0] || die "Usage $0 <port>\n";
 
 	my $server = IO::Socket::INET->new(
 		Proto => 'tcp',
@@ -460,7 +468,7 @@ sub main() {
 		Reuse => 1
 	);
 
-	die "can't start simulator" unless $server;
+	die "Can't start simulator" unless $server;
 	print "[Server $0 is running]\n";
 
 	while ($client = $server->accept()) {
@@ -471,128 +479,128 @@ sub main() {
 		printf "[Connect from %s]\n", $hostinfo->name || $client->peerhost;
 
 		while ( my $line = <$client>) {
-			set_state();
-			unless ($line=~/\S/) { print $client "ERR\n"; next;}; # blank line
+			update_state();
+			unless ($line=~/\S/) { print_client($client, "ERR\n"); next; }; # blank line
 			my @cmd = split /\s+/,$line;
 
 			# ----- Oil pump start/stop ----- #
 			if ($cmd[0] eq "OION") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if ($te_state != TE_OFF) {
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if ($cmd[1] eq "1") {
 					$oil_state = OIL_START1;
 					$oil_time = time();
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if ($cmd[1] eq "0") {
 					$oil_state=OIL_OFF;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
-				print $client "ERR\n";
+				print_client($client, "ERR\n");
 				next;
 			}
 
 			# ----- Oil Sensors Readings ----- #
 			if ($cmd[0] eq "OIMV") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
 				# Hardcoded but these do not change rapidly
 				if ($oil_state == OIL_ON) {
-					print $client "70.3 71.5 24.8 25.0 21.7 26.4 25.3 28.1 21.7 20.9 27.5 23.1 72.1 88.8 49.0 17.7 46.0\n";
+					print_client($client, "70.3 71.5 24.8 25.0 21.7 26.4 25.3 28.1 21.7 20.9 27.5 23.1 72.1 88.8 49.0 17.7 46.0\n");
 				} elsif ($oil_state == OIL_OFF) {
-					print $client "0.0 0.4 0.0 0.2 0.0 0.1 0.1 0.3 0.0 0.0 0.2 0.2 32.5 88.5 69.0 13.6 12.8\n";
+					print_client($client, "0.0 0.4 0.0 0.2 0.0 0.1 0.1 0.3 0.0 0.0 0.2 0.2 32.5 88.5 69.0 13.6 12.8\n");
 				} else {
-					print $client "11.6 12.6 11.9 12.3 11.9 12.4 12.2 12.4 11.5 11.5 12.6 12.5 31.2 88.7 44.0 18.0 48.3\n";
+					print_client($client, "11.6 12.6 11.9 12.3 11.9 12.4 12.2 12.4 11.5 11.5 12.6 12.5 31.2 88.7 44.0 18.0 48.3\n");
 				}
 				next;
 			}
 
 			# ----- Telescope ON/OFF ----- #
 			if ($cmd[0] eq "TEON") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($oil_state != OIL_ON) && ($cmd[1] == 1)) {
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if (($oil_state == OIL_ON) && ($cmd[1] eq "1")) {
 					$te_state = TE_STOP;
 					$da_state = DA_POSITION;
 					$ha_state = HA_POSITION;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if (($oil_state == OIL_ON) && ($cmd[1] eq "0")) {
 					$te_state = TE_OFF;
 					$da_state = DA_OFF;
 					$ha_state = HA_OFF;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
-				print $client "ERR\n";
+				print_client($client, "ERR\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TETR") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($te_state != TE_STOP) && ($cmd[1] == 1)) {
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if (($te_state == TE_STOP) && ($cmd[1] eq "1")) {
 					$te_state = TE_TRACK;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if (($oil_state == TE_TRACK) && ($cmd[1] eq "0")) {
 					$te_state = TE_STOP;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
-				print $client "ERR\n";
+				print_client($client, "ERR\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSRA") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 3) { print $client "ERR\n"; next;}
-				if ($te_state == TE_OFF) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 3) { print_client($client, "ERR\n"); next; }
+				if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 				my $ra = parse_ra($cmd[1]);
 				my $de = parse_de($cmd[2]);
-				if (!defined($ra) or !defined($de)) {print $client "ERR\n"; next;}
-				if(($cmd[3] ne "0") and ($cmd[3] ne "1")) { print $client "ERR\n"; next;};
+				if (!defined($ra) or !defined($de)) {print_client($client, "ERR\n"); next; }
+				if(($cmd[3] ne "0") and ($cmd[3] ne "1")) { print_client($client, "ERR\n"); next; };
 				$req_ra = $ra;
 				$req_de = $de;
 				$west = $cmd[3];
 				$newrd = 1;
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSRR") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 2) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -36000, 36000, 2) and in_range($cmd[2], -36000, 36000, 2)) {
-					if ($te_state == TE_OFF) { print $client "1\n"; next;}
+					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$req_ra += $cmd[1];
 					$req_de += $cmd[2];
 					$newrd = 1;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			if (($cmd[0] eq "TGRA") or ($cmd[0] eq "TGRR")) {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-				if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					if($newrd) {
 						$te_state = TE_ST_CLU1;
@@ -605,41 +613,41 @@ sub main() {
 					$newrd = 1;
 					$te_rd_move_time = 0;
 				}
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSHA") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 2) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -180, 330, 4) and in_range($cmd[2], -90, 270, 4)) {
-					if ($te_state == TE_OFF) { print $client "1\n"; next;}
+					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$req_ha	= $cmd[1];
 					$req_de	= $cmd[2];
 					$newhd = 1;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			if ($cmd[0] eq "TSHR") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 2) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -36000, 36000, 2) and in_range($cmd[2], -36000, 36000, 2)) {
-					if ($te_state == TE_OFF) { print $client "1\n"; next;}
+					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$req_ha += $cmd[1];
 					$req_de += $cmd[2];
 					$newhd = 1;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			if (($cmd[0] eq "TGHA") or ($cmd[0] eq "TGHR")) {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-				if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					if($newhd) {
 						$te_state = TE_SS_CLU1;
@@ -652,348 +660,348 @@ sub main() {
 					$newhd = 1;
 					$te_hd_move_time = 0;
 				}
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSCS") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1") and ($cmd[1] ne "2") and ($cmd[1] ne "3")) { print $client "ERR\n"; next;};
-				if ($te_state != TE_STOP) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1") and ($cmd[1] ne "2") and ($cmd[1] ne "3")) { print_client($client, "ERR\n"); next; };
+				if ($te_state != TE_STOP) { print_client($client, "1\n"); next; }
 				$correction_model = $cmd[1];
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSCA") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-				if ($te_state != TE_STOP) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ($te_state != TE_STOP) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					$state_bits = $state_bits | (1 << 4);
 				} else {
 					$state_bits = $state_bits & ~(1 << 4);
 				}
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSCP") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-				if ($te_state != TE_STOP) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ($te_state != TE_STOP) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					$state_bits = $state_bits | (1 << 5);
 				} else {
 					$state_bits = $state_bits & ~(1 << 5);
 				}
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSCR") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-				if ($te_state != TE_STOP) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ($te_state != TE_STOP) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					$state_bits = $state_bits | (1 << 6);
 				} else {
 					$state_bits = $state_bits & ~(1 << 6);
 				}
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSCM") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-				if ($te_state != TE_STOP) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ($te_state != TE_STOP) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					$state_bits = $state_bits | (1 << 7);
 				} else {
 					$state_bits = $state_bits & ~(1 << 7);
 				}
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSGM") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-				if ($te_state != TE_STOP) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ($te_state != TE_STOP) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					$state_bits = $state_bits | (1 << 8);
 				} else {
 					$state_bits = $state_bits & ~(1 << 8);
 				}
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TRRD") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
 				my $ra = dd2dms($set_ra, 1);
 				my $de = dd2dms($set_de, 0);
-				print $client "$ra $de $west\n";
+				print_client($client, "$ra $de $west\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TRHD") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
-				print $client "$set_ha $set_de\n";
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				print_client($client, "$set_ha $set_de\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSGV") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 2) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -3600, 3600, 1) and in_range($cmd[2], -3600, 3600, 1)) {
-					if ($te_state == TE_OFF) { print $client "1\n"; next;}
+					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$guide_value_ra=$cmd[1];
 					$guide_value_de=$cmd[2];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			if ($cmd[0] eq "TRGV") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
-				print $client "$guide_value_ra $guide_value_de\n";
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				print_client($client, "$guide_value_ra $guide_value_de\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSGC") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 2) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -10, 10, 2) and in_range($cmd[2], 10, 10, 2)) {
-					if ($te_state == TE_OFF) { print $client "1\n"; next;}
+					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$guide_correction_ra = $cmd[1];
 					$guide_correction_de = $cmd[2];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			if ($cmd[0] eq "TECE") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print $client "ERR\n"; next;}
-				if ($te_state != TE_STOP) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ($te_state != TE_STOP) { print_client($client, "1\n"); next; }
 				$de_centering_flag = $cmd[1];
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSUS") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 2) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -10, 10, 4) and in_range($cmd[2], -10, 10, 4)) {
-					if ($te_state == TE_OFF) { print $client "1\n"; next;}
+					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$user_speed_ra = $cmd[1];
 					$user_speed_de = $cmd[2];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			if ($cmd[0] eq "TRUS") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
-				print $client "$user_speed_ra $user_speed_de\n";
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				print_client($client, "$user_speed_ra $user_speed_de\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSS1") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], 100, 5000, 2)) {
-					if ($te_state == TE_OFF) { print $client "1\n"; next;}
+					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$speed1 = $cmd[1];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			if ($cmd[0] eq "TRS1") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
-				print $client "$speed1\n";
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				print_client($client, "$speed1\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSS2") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], 1, 120, 2)) {
-					if ($te_state == TE_OFF) { print $client "1\n"; next;}
+					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$speed2 = $cmd[1];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			if ($cmd[0] eq "TRS2") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
-				print $client "$speed2\n";
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				print_client($client, "$speed2\n");
 				next;
 			}
 
 			if ($cmd[0] eq "TSS3") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], 1, 120, 2)) {
-					if ($te_state == TE_OFF) { print $client "1\n"; next;}
+					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$speed3 = $cmd[1];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 
 			if ($cmd[0] eq "TRS3") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
-				print $client "$speed3\n";
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				print_client($client, "$speed3\n");
 				next;
 			}
 			#------------ Focus Position ---------- #
 			if ($cmd[0] eq "FOPO") {
-				if ($#cmd != 0) { print $client "ERR\n"; next;}
-				print $client "$fo_pos\n";
+				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
+				print_client($client, "$fo_pos\n");
 				next;
 			}
 			# ------------- Focus Stop ------------ #
 			if ($cmd[0] eq "FOST") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 0) { print $client "ERR\n"; next;}
-				if ($fo_state == FO_OFF) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
+				if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
 				$fo_state = FO_STOP;
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 			# ---- Focus Set Relative Position ---- #
 			if ($cmd[0] eq "FOSR") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -49, 49, 2)) {
-					if ($fo_state == FO_OFF) { print $client "1\n"; next;}
+					if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
 					$fo_pos = $cmd[1];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 			# ---- Focus Set Absolute Position ---- #
 			if ($cmd[0] eq "FOSA") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], 0, 49, 2)) {
-					if ($fo_state == FO_OFF) { print $client "1\n"; next;}
+					if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
 					$fo_pos = $cmd[1];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 			# ---------- Focus Go Relative -------- #
 			if ($cmd[0] eq "FOGR") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 0) { print $client "ERR\n"; next;}
-				if ($fo_state == FO_OFF) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
+				if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
 				$fo_state = FO_SLEW;
 				$fo_rel_moving_time = time();
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 			# ---------- Focus Go Absolute -------- #
 			if ($cmd[0] eq "FOGA") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 0) { print $client "ERR\n"; next;}
-				if ($fo_state == FO_OFF) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
+				if ($fo_state == FO_OFF) { print_client($client, "1\n"); next; }
 				$fo_state = FO_SLEW;
 				$fo_abs_moving_time = time();
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 			# -------------- Dome On -------------- #
 			if ($cmd[0] eq "DOON") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($do_state == DO_OFF) && ($cmd[1] eq "1")) {
 					$do_state = DO_STOP;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if (($do_state == DO_STOP) and ($sl_state == SL_CLOSE)
 				    && ($cmd[1] eq "0")) {
 					$do_state = DO_OFF;
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
-				print $client "ERR\n";
+				print_client($client, "ERR\n");
 				next;
 			}
 			# ----------- Dome Slit Open ---------- #
 			if ($cmd[0] eq "DOSO") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($sl_state == SL_CLOSE) and ($do_state == DO_STOP) && ($cmd[1] eq "1")) {
 					$sl_state = SL_OPENING;
 					$sl_opening_time = time();
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if (($sl_state == SL_OPEN) && ($cmd[1] eq "0")) {
 					$sl_state = SL_CLOSING;
 					$sl_closing_time = time();
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
-				print $client "ERR\n";
+				print_client($client, "ERR\n");
 				next;
 			}
 			# ------------ Dome Position ---------- #
 			if ($cmd[0] eq "DOPO") {
-				if ($#cmd != 0) { print $client "ERR\n"; next;}
-				print $client "$do_pos_cur\n";
+				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
+				print_client($client, "$do_pos_cur\n");
 				next;
 			}
 			# --------------- Dome Stop ----------- #
 			if ($cmd[0] eq "DOST") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 0) { print $client "ERR\n"; next;}
-				if ($do_state == DO_OFF) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
+				if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
 				$do_state = DO_STOP;
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 			# ----- Dome Set Relative Position ---- #
 			if ($cmd[0] eq "DOSR") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], -179.99, 180.00, 2)) {
-					if ($do_state == DO_OFF) { print $client "1\n"; next;}
+					if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
 					$do_pos = $cmd[1];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 			# ----- Dome Set Absolute Position ---- #
 			if ($cmd[0] eq "DOSA") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (in_range($cmd[1], 0.00, 359.99, 2)) {
-					if ($do_state == DO_OFF) { print $client "1\n"; next;}
+					if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
 					$do_pos = $cmd[1];
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 			}
 			# ----- Dome Go Relative Position ----- #
 			if ($cmd[0] eq "DOGR") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 0) { print $client "ERR\n"; next;}
-				if ($do_state == DO_OFF) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
+				if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
 				if ($do_pos > 0) {
 					$do_state = DO_SLEW_PLUS;
 				} else {
@@ -1001,97 +1009,109 @@ sub main() {
 				}
 				$do_pos = ($do_pos_cur + $do_pos) % 360;
 				$do_rel_moving_time = time();
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 			# ----- Dome Go Absolute Position ----- #
 			if ($cmd[0] eq "DOGA") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 0) { print $client "ERR\n"; next;}
-				if ($do_state == DO_OFF) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
+				if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
 				if ($do_pos > ($do_pos_cur + 180.0) % 360) {
 					$do_state = DO_SLEW_MINUS;
 				} else {
 					$do_state = DO_SLEW_PLUS;
 				}
 				$do_abs_moving_time = time();
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 			# ---------- Dome Automated ----------- #
 			if ($cmd[0] eq "DOAM") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 0) { print $client "ERR\n"; next;}
-				if ($do_state == DO_OFF) { print $client "1\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
+				if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
 				# TODO
-				print $client "1\n";
+				print_client($client, "1\n");
 				next;
 			}
 			# ----- Flap Tube Open or Close ------- #
 			if ($cmd[0] eq "FTOC") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($te_state == TE_STOP) && ($fl_tb_state == FL_TB_CLOSE)
 				    && ($cmd[1] eq "1")) {
 					$fl_tb_state = FL_TB_OPENING;
 					$fl_tb_opening_time = time();
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if (($te_state == TE_STOP) && ($fl_tb_state == FL_TB_OPEN)
 				    && ($cmd[1] eq "0")) {
 					$fl_tb_state = FL_TB_CLOSING;
 					$fl_tb_closing_time = time();
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
-				print $client "ERR\n";
+				print_client($client, "ERR\n");
 				next;
 			}
 			# ----- Flap Coude Open or Close ------ #
 			if ($cmd[0] eq "FCOC") {
-				if (!$login) { print $client "ERR\n"; next;}
-				if ($#cmd != 1) { print $client "ERR\n"; next;}
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($te_state == TE_STOP) && ($fl_cd_state == FL_CD_CLOSE)
 				    && ($cmd[1] eq "1")) {
 					$fl_cd_state = FL_CD_OPENING;
 					$fl_cd_opening_time = time();
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
 				if (($te_state == TE_STOP) && ($fl_cd_state == FL_CD_OPEN)
 				    && ($cmd[1] eq "0")) {
 					$fl_cd_state = FL_CD_CLOSING;
 					$fl_cd_closing_time = time();
-					print $client "1\n";
+					print_client($client, "1\n");
 					next;
 				}
-				print $client "ERR\n";
+				print_client($client, "ERR\n");
 				next;
 			}
 
 			# ----- Global Meteo Data ----- #
 			if ($cmd[0] eq "GLME") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
 				# Hardcoded but these do not change rapidly
-				print $client "8.87 828.73 63.19 2.25 9.43 9.96 10.90 9.58\n";
+				print_client($client, "8.87 828.73 63.19 2.25 9.43 9.96 10.90 9.58\n");
 				next;
 			}
 
+			# ----- Global Login (passwod: 123) ----- #
+			if ($cmd[0] eq "GLLG") {
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if ($cmd[1] eq "123") {
+					$login = 1;
+					print_client($client, "1\n");
+				} else {
+					print_client($client, "0\n");
+				}
+				next;
+			}
 			# ----- Global System Status ----- #
 			if ($cmd[0] eq "GLST") {
-				if ($#cmd!=0) { print $client "ERR\n"; next;}
-				print $client "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				print_client($client, "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n");
 				next;
 			}
 
 			if ($line=~/quit|exit/i) {
 				last;
 			} else {
-				print $client "ERR\n";
+				print_client($client, "ERR\n");
 			}
 		}
 		close $client;
+		$login = 0;
 	}
 }
 main();
