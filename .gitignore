@@ -9,6 +9,7 @@ build/*
 **/.hg
 **/.hgignore
 **/*externals/**/*.a
+**/.DS_Store
 
 externals/
 indigo_drivers/ccd_qsi/externals/
