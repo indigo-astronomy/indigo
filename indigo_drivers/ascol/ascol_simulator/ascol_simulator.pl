@@ -25,13 +25,13 @@
 # ASCOL telescope simulator
 # file ascol_simulator.pl
 
-use Time::HiRes qw ( setitimer ITIMER_VIRTUAL time );
 use strict;
 use IO::Socket;
 use Net::hostent;
 use POSIX qw(ceil floor);
+use Getopt::Std;
 
-my $debug = 1;
+my $verbose = 0;
 my $login = 0;
 
 # OIL states
@@ -454,12 +454,60 @@ sub update_state {
 sub print_client($$) {
 	my ($client, $message) = @_;
 	print $client $message;
-	$debug && print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
+	$verbose && print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
+}
+
+sub print_usage() {
+	print "\nASCOL Telescope Simulator\n";
+	print "usage: $0 [-lotTvh] [-p port]\n\n";
+	print "    -l        : Do not require GLLG\n";
+	print "    -o        : Oil is ON at startup (OION 1)\n";
+	print "    -t        : Telescope is ON at startup (TEON 1)\n";
+	print "    -T        : Telescope tracking is ON at startup (TETR 1)\n";
+	print "    -v        : Print global status on each command\n";
+	print "    -h        : Show this help\n";
+	print "    -p port   : TCP port to listen on (default: 2000)\n";
+	print "\n    example: $0 -l -t -p 2001\n\n";
+	exit;
 }
 
 sub main() {
-	#you have to specify the port number after the perl command
-	my $port=$ARGV[0] || die "Usage $0 <port>\n";
+	my %opt=();
+	getopts("lotTvhp:", \%opt) or print_usage();
+
+	if (defined $opt{h}) {
+		print_usage();
+	}
+	my $port = 2000;
+	if (defined $opt{p}) {
+		$port = $opt{p};
+	}
+	if (defined $opt{l}) {
+		print "[Login required: OFF]\n";
+	}
+	if (defined $opt{o}) {
+		$oil_state = OIL_ON;
+		print "[Oil: ON]\n";
+	}
+	if (defined $opt{t}) {
+		$oil_state = OIL_ON;
+		print "[Oil: ON]\n";
+		$te_state = TE_STOP;
+		$da_state = DA_POSITION;
+		$ha_state = HA_POSITION;
+		print "[Telescope: ON (Tracking: OFF)]\n";
+	}
+	if (defined $opt{T}) {
+		$oil_state = OIL_ON;
+		print "[Oil: ON]\n";
+		$te_state = TE_TRACK;
+		$da_state = DA_POSITION;
+		$ha_state = HA_POSITION;
+		print "[Telescope: ON (Tracking: ON)]\n";
+	}
+	if (defined $opt{v}) {
+		$verbose = 1;
+	}
 
 	my $server = IO::Socket::INET->new(
 		Proto => 'tcp',
@@ -468,10 +516,12 @@ sub main() {
 		Reuse => 1
 	);
 
-	die "Can't start simulator" unless $server;
+	die "[Can not start simulator on port: $port]" unless $server;
 	print "[ASCOL Simulator is running on port: $port]\n";
 
 	while ($client = $server->accept()) {
+		if (defined $opt{l}) { $login = 1; }
+
 		$client->autoflush(1);
 		my $hostinfo = gethostbyaddr($client->peeraddr);
 
