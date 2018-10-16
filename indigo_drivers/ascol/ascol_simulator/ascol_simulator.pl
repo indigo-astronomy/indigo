@@ -480,8 +480,10 @@ while ($client = $server->accept()) {
 			# Hardcoded but these do not change rapidly
 			if ($oil_state == OIL_ON) {
 				print $client "70.3 71.5 24.8 25.0 21.7 26.4 25.3 28.1 21.7 20.9 27.5 23.1 72.1 88.8 49.0 17.7 46.0\n";
-			} else {
+			} elsif ($oil_state == OIL_OFF) {
 				print $client "0.0 0.4 0.0 0.2 0.0 0.1 0.1 0.3 0.0 0.0 0.2 0.2 32.5 88.5 69.0 13.6 12.8\n";
+			} else {
+				print $client "11.6 12.6 11.9 12.3 11.9 12.4 12.2 12.4 11.5 11.5 12.6 12.5 31.2 88.7 44.0 18.0 48.3\n";
 			}
 			next;
 		}
