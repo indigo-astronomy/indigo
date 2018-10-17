@@ -484,6 +484,7 @@ sub main() {
 	}
 	if (defined $opt{l}) {
 		print "[Login required: OFF]\n";
+		# $login is set to 1 at connect
 	}
 	if (defined $opt{o}) {
 		$oil_state = OIL_ON;
