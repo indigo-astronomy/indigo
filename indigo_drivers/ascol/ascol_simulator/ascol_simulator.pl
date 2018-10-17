@@ -108,10 +108,10 @@ use constant DA_CA_SLOW => 6;
 # more states ...
 
 use constant CA_CLU1_TIME => 2;
-use constant CA_FAST_TIME => 18;
-use constant CA_FASTBR_TIME => 20;
-use constant CA_CLU2_TIME => 22;
-use constant CA_SLOW_TIME => 24;
+use constant CA_FAST_TIME => 14;
+use constant CA_FASTBR_TIME => 16;
+use constant CA_CLU2_TIME => 18;
+use constant CA_SLOW_TIME => 28;
 
 my $da_move_time = 0;
 my $da_state = HA_STOP;
@@ -361,6 +361,44 @@ sub update_state {
 			$te_state = TE_SS_DECC2;
 		} elsif ($elapsed_time > TE_CLU1_TIME) {
 			$te_state = TE_SS_SLEW;
+		}
+	}
+
+	# Hour Axis Callibration
+	if ($ha_move_time != 0) {
+		$elapsed_time = time() - $ha_move_time;
+		if ($elapsed_time > CA_SLOW_TIME) {
+			# set cllibrated bit
+			$state_bits = $state_bits | 1;
+			$ha_state = HA_POSITION;
+			$ha_move_time = 0;
+		} elsif ($elapsed_time > CA_CLU2_TIME) {
+			$ha_state = HA_CA_SLOW;
+		} elsif ($elapsed_time > CA_FASTBR_TIME) {
+			$ha_state = HA_CA_CLU2;
+		} elsif ($elapsed_time > CA_FAST_TIME) {
+			$ha_state = HA_CA_FASTBR;
+		} elsif ($elapsed_time > CA_CLU1_TIME) {
+			$ha_state = HA_CA_FAST;
+		}
+	}
+
+	# Declination Axis Callibration
+	if ($da_move_time != 0) {
+		$elapsed_time = time() - $da_move_time;
+		if ($elapsed_time > CA_SLOW_TIME) {
+			# set cllibrated bit
+			$state_bits = $state_bits | 2;
+			$da_state = DA_POSITION;
+			$da_move_time = 0;
+		} elsif ($elapsed_time > CA_CLU2_TIME) {
+			$da_state = DA_CA_SLOW;
+		} elsif ($elapsed_time > CA_FASTBR_TIME) {
+			$da_state = DA_CA_CLU2;
+		} elsif ($elapsed_time > CA_FAST_TIME) {
+			$da_state = DA_CA_FASTBR;
+		} elsif ($elapsed_time > CA_CLU1_TIME) {
+			$da_state = DA_CA_FAST;
 		}
 	}
 
