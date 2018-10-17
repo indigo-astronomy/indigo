@@ -698,7 +698,7 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if (($te_state != TE_STOP) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					if($newhd) {
 						$te_state = TE_SS_CLU1;
@@ -707,7 +707,7 @@ sub main() {
 					}
 				} else {
 					# simplyfy stop -> shuld go to state transition
-					$te_state = TE_TRACK;
+					$te_state = TE_STOP;
 					$newhd = 1;
 					$te_hd_move_time = 0;
 				}
