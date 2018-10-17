@@ -80,15 +80,41 @@ use constant TE_CLU2_TIME => 22;
 use constant TE_DECC3_TIME => 24;
 use constant TE_CLU3_TIME => 26;
 
+my $te_state = TE_OFF;
+my $te_rd_move_time = 0;
+my $te_hd_move_time = 0;
+
 # Hour Axis states
-use constant HA_OFF => 0;
+use constant HA_STOP => 0;
 use constant HA_POSITION => 1;
+use constant HA_CA_CLU1 => 2;
+use constant HA_CA_FAST => 3;
+use constant HA_CA_FASTBR => 4;
+use constant HA_CA_CLU2 => 5;
+use constant HA_CA_SLOW => 6;
 # more states ....
 
+my $ha_move_time = 0;
+my $ha_state = HA_STOP;
+
 # Declination Axis states
-use constant DA_OFF => 0;
+use constant DA_STOP => 0;
 use constant DA_POSITION => 1;
+use constant DA_CA_CLU1 => 2;
+use constant DA_CA_FAST => 3;
+use constant DA_CA_FASTBR => 4;
+use constant DA_CA_CLU2 => 5;
+use constant DA_CA_SLOW => 6;
 # more states ...
+
+use constant CA_CLU1_TIME => 2;
+use constant CA_FAST_TIME => 18;
+use constant CA_FASTBR_TIME => 20;
+use constant CA_CLU2_TIME => 22;
+use constant CA_SLOW_TIME => 24;
+
+my $da_move_time = 0;
+my $da_state = HA_STOP;
 
 # FOCUS states
 use constant FO_OFF	=> 0;
@@ -142,10 +168,6 @@ use constant FL_CD_CLOSE   => 4;
 use constant FL_CD_OPENING_TIME => 5;
 use constant FL_CD_CLOSING_TIME => 5;
 
-my $te_state = TE_OFF;
-my $te_rd_move_time = 0;
-my $te_hd_move_time = 0;
-
 my $correction_model = 0;
 my $state_bits = 0;
 
@@ -158,9 +180,6 @@ my $user_speed_de = 0;
 my $speed1 = 5000.00;
 my $speed2 = 120.0;
 my $speed3 = 10.00;
-
-my $ha_state = HA_OFF;
-my $da_state = DA_OFF;
 
 my $de_centering_flag = 0;
 
@@ -588,8 +607,8 @@ sub main() {
 				}
 				if (($oil_state == OIL_ON) && ($cmd[1] eq "0")) {
 					$te_state = TE_OFF;
-					$da_state = DA_OFF;
-					$ha_state = HA_OFF;
+					$da_state = DA_STOP;
+					$ha_state = HA_STOP;
 					print_client($client, "1\n");
 					next;
 				}
@@ -694,6 +713,7 @@ sub main() {
 				}
 			}
 
+			# ----- GOTO HA and DEC ----- #
 			if (($cmd[0] eq "TGHA") or ($cmd[0] eq "TGHR")) {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
@@ -710,6 +730,42 @@ sub main() {
 					$te_state = TE_STOP;
 					$newhd = 1;
 					$te_hd_move_time = 0;
+				}
+				print_client($client, "1\n");
+				next;
+			}
+
+			# ----- Callibrate Hour Axis ----- #
+			if ($cmd[0] eq "TEHC") {
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if (($te_state != TE_STOP) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ($cmd[1] == 1) {
+					$ha_state = HA_CA_CLU1;
+					$ha_move_time = time();
+				} else {
+					# simplyfy stop -> shuld go to state transition
+					$ha_state = HA_POSITION;
+					$ha_move_time = 0;
+				}
+				print_client($client, "1\n");
+				next;
+			}
+
+			# ----- Callibrate Declination Axis ----- #
+			if ($cmd[0] eq "TEDC") {
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if (($te_state != TE_STOP) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ($cmd[1] == 1) {
+					$da_state = DA_CA_CLU1;
+					$da_move_time = time();
+				} else {
+					# simplyfy stop -> shuld go to state transition
+					$da_state = DA_POSITION;
+					$da_move_time = 0;
 				}
 				print_client($client, "1\n");
 				next;
