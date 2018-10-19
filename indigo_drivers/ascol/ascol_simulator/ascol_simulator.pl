@@ -139,6 +139,8 @@ use constant DO_AUTO_MINUS => 8;
 
 use constant DO_REL_MOVING_TIME => 5;
 use constant DO_ABS_MOVING_TIME => 20;
+use constant DO_AUTO_MOVING_TIME => 10;
+use constant DO_AUTO_STOP_TIME => 60;
 
 # SLIT states
 use constant SL_UNDEF   => 0;
@@ -209,6 +211,7 @@ my $do_pos_cur = 0;
 my $do_state = DO_OFF;
 my $do_rel_moving_time = 0;
 my $do_abs_moving_time = 0;
+my $do_auto_moving_time = 0;
 
 my $sl_state = SL_CLOSE;
 my $sl_opening_time = 0;
@@ -477,6 +480,21 @@ sub update_state {
 			}
 			$do_state = DO_STOP;
 			$do_abs_moving_time = 0;
+		}
+	}
+	if ($do_auto_moving_time != 0) {
+		$elapsed_time = time() - $do_auto_moving_time;
+		if ($do_state == DO_STOP) {
+			$do_auto_moving_time = 0;
+		} elsif (($elapsed_time > DO_AUTO_STOP_TIME) and ($do_state == DO_AUTO_STOP)) {
+			if ($west) {
+				$do_state = DO_AUTO_PLUS;
+			} else {
+				$do_state = DO_AUTO_MINUS;
+			}
+			$do_auto_moving_time = time();
+		} elsif ($elapsed_time > DO_AUTO_MOVING_TIME) {
+			$do_state = DO_AUTO_STOP;
 		}
 	}
 
@@ -1272,7 +1290,12 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
 				if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
-				# TODO
+				if ($west) {
+					$do_state = DO_AUTO_PLUS;
+				} else {
+					$do_state = DO_AUTO_MINUS;
+				}
+				$do_auto_moving_time = time();
 				print_client($client, "1\n");
 				next;
 			}
