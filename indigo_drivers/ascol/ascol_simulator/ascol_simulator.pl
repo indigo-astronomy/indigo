@@ -30,6 +30,8 @@ use IO::Socket;
 use Net::hostent;
 use POSIX qw(ceil floor);
 use Getopt::Std;
+use threads;
+use threads::shared;
 
 my $verbose = 0;
 my $login = 0;
@@ -169,7 +171,8 @@ use constant FL_CD_OPENING_TIME => 5;
 use constant FL_CD_CLOSING_TIME => 5;
 
 my $correction_model = 0;
-my $state_bits = 0;
+my $state_bits : shared = 0;
+my @alarm_bits : shared = (0,0,0,0,0);
 
 my $guide_value_ra = 0;
 my $guide_value_de = 0;
@@ -511,7 +514,64 @@ sub update_state {
 sub print_client($$) {
 	my ($client, $message) = @_;
 	print $client $message;
-	$verbose && print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
+	$verbose && print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits @alarm_bits 0\n";
+}
+
+# simulator console
+sub console() {
+	threads->detach();
+	while ( my $line = <STDIN>) {
+		unless ($line=~/\S/) { next; }; # blank line
+		my @cmd = split /\s+/,$line;
+
+		if ($cmd[0] eq "set_state") {
+			if ($#cmd != 1) { print "error\n"; next; }
+			if (!in_range($cmd[1], 0, 15, 0)) { print "error\n"; next; }
+			$state_bits = $state_bits | (1 << $cmd[1]);
+			print "State bits: $state_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "clear_state") {
+			if ($#cmd != 1) { print "error\n"; next; }
+			if (!in_range($cmd[1], 0, 15, 0)) { print "error\n"; next; }
+			$state_bits = $state_bits & ~(1 << $cmd[1]);
+			print "State bits: $state_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "set_alarm") {
+			if ($#cmd != 2) { print "error\n"; next; }
+			if (!in_range($cmd[1], 0, 4, 0)) { print "error\n"; next; }
+			if (!in_range($cmd[2], 0, 15, 0)) { print "error\n"; next; }
+			$alarm_bits[$cmd[1]] = $alarm_bits[$cmd[1]] | (1 << $cmd[2]);
+			print "Alarm bits: @alarm_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "clear_alarm") {
+			if ($#cmd != 2) { print "error\n"; next; }
+			if (!in_range($cmd[1], 0, 4, 0)) { print "error\n"; next; }
+			if (!in_range($cmd[2], 0, 15, 0)) { print "error\n"; next; }
+			$alarm_bits[$cmd[1]] = $alarm_bits[$cmd[1]] & ~(1 << $cmd[2]);
+			print "Alarm bits: @alarm_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "park_bridge") {
+			if ($#cmd != 0) { print "error\n"; next; }
+			$alarm_bits[2] = $alarm_bits[2] & ~(1 << 1);
+			print "Bridge parked: @alarm_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "unpark_bridge") {
+			if ($#cmd != 0) { print "error\n"; next; }
+			$alarm_bits[2] = $alarm_bits[2] | (1 << 1);
+			print "Bridge unparked: @alarm_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "exit") {
+			print "Bye!\n";
+			exit(0);
+		}
+		print "error\n";
+	}
 }
 
 sub print_usage() {
@@ -573,6 +633,8 @@ sub main() {
 		Listen => SOMAXCONN,
 		Reuse => 1
 	);
+
+ 	my $thr = threads->create('console', '');
 
 	die "[Can not start simulator on port: $port]" unless $server;
 	print "[ASCOL Simulator is running on port: $port]\n";
@@ -1245,7 +1307,7 @@ sub main() {
 			# ----- Global System Status ----- #
 			if ($cmd[0] eq "GLST") {
 				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
-				print_client($client, "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n");
+				print_client($client, "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits @alarm_bits 0\n");
 				next;
 			}
 
