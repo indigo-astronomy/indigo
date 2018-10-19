@@ -520,6 +520,7 @@ sub print_client($$) {
 # simulator console
 sub console() {
 	threads->detach();
+	print "[ASCOL Simulator console. For help: \"help\" or \"?\" ]\n";
 	while ( my $line = <STDIN>) {
 		unless ($line=~/\S/) { next; }; # blank line
 		my @cmd = split /\s+/,$line;
@@ -564,6 +565,18 @@ sub console() {
 			if ($#cmd != 0) { print "error\n"; next; }
 			$alarm_bits[2] = $alarm_bits[2] | (1 << 1);
 			print "Bridge unparked: @alarm_bits\n";
+			next;
+		}
+		if (($cmd[0] eq "help") or ($cmd[0] eq "?")) {
+			print "Valid console commands:\n";
+			print "   set_state <bit>          :set state bit (0-15)\n";
+			print "   clear_state <bit>        :clear state bit (0-15)\n";
+			print "   set_alarm <bank> <bit>   :set alarm bit (0-15) of bank (0-4)\n";
+			print "   clear_alarm <bank> <bit> :clear alarm bit (0-15) of bank (0-4)\n";
+			print "   park_bridge              :alias for \"set_alarm 2 1\"\n";
+			print "   unpark_bridge            :alias for \"clear_alarm 2 1\"\n";
+			print "   exit                     :terminate simulator\n";
+			print "   help or ?                :this help\n";
 			next;
 		}
 		if ($cmd[0] eq "exit") {
@@ -634,10 +647,11 @@ sub main() {
 		Reuse => 1
 	);
 
- 	my $thr = threads->create('console', '');
-
 	die "[Can not start simulator on port: $port]" unless $server;
 	print "[ASCOL Simulator is running on port: $port]\n";
+
+	# console thread is detatched
+	threads->create(\&console);
 
 	while ($client = $server->accept()) {
 		if (defined $opt{l}) { $login = 1; }
