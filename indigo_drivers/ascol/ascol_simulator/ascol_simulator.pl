@@ -171,7 +171,7 @@ use constant FL_CD_OPENING_TIME => 5;
 use constant FL_CD_CLOSING_TIME => 5;
 
 my $correction_model = 0;
-my $state_bits : shared = 0;
+my $state_bits : shared = 3; # HA and DA calibrated
 my @alarm_bits : shared = (0,0,0,0,0);
 
 my $guide_value_ra = 0;
@@ -229,6 +229,24 @@ sub in_range($$$$) {
 	    ($num <= $max)) {
 			return 1;
 		}
+	return 0;
+}
+
+sub can_slew() {
+	if ((($state_bits & 3) == 3) # H axis and Dec axis are calibrated
+	   and (($alarm_bits[2] & 2) == 0)) # Bridge is parked
+	{
+		print "CAN!";
+		return 1;
+	}
+	print "CAN NOT!";
+	return 0;
+}
+
+sub bridge_parked() {
+	if (($alarm_bits[2] & 2) == 0) {
+		return 1;
+	}
 	return 0;
 }
 
@@ -514,7 +532,7 @@ sub update_state {
 sub print_client($$) {
 	my ($client, $message) = @_;
 	print $client $message;
-	$verbose && print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits @alarm_bits 0\n";
+	$verbose && print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 0 $correction_model $state_bits [@alarm_bits] 0\n";
 }
 
 # simulator console
@@ -784,7 +802,7 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_TRACK) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					if($newrd) {
 						$te_state = TE_ST_CLU1;
@@ -832,7 +850,7 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if (($te_state != TE_STOP) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					if($newhd) {
 						$te_state = TE_SS_CLU1;
@@ -854,7 +872,7 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if (($te_state != TE_STOP) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !bridge_parked()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					$ha_state = HA_CA_CLU1;
 					$ha_move_time = time();
@@ -872,7 +890,7 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if (($te_state != TE_STOP) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !bridge_parked()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					$da_state = DA_CA_CLU1;
 					$da_move_time = time();
@@ -1321,7 +1339,7 @@ sub main() {
 			# ----- Global System Status ----- #
 			if ($cmd[0] eq "GLST") {
 				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
-				print_client($client, "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits @alarm_bits 0\n");
+				print_client($client, "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 0 $correction_model $state_bits @alarm_bits 0\n");
 				next;
 			}
 
