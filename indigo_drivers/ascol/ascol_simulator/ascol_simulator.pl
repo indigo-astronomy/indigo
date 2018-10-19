@@ -236,17 +236,19 @@ sub can_slew() {
 	if ((($state_bits & 3) == 3) # H axis and Dec axis are calibrated
 	   and (($alarm_bits[2] & 2) == 0)) # Bridge is parked
 	{
-		print "CAN!";
+		$verbose && print "Can Slew\n";
 		return 1;
 	}
-	print "CAN NOT!";
+	$verbose && print "Can NOT Slew\n";
 	return 0;
 }
 
 sub bridge_parked() {
 	if (($alarm_bits[2] & 2) == 0) {
+		$verbose && print "Bridge is parked\n";
 		return 1;
 	}
+	$verbose && print "Bridge is NOT parked\n";
 	return 0;
 }
 
