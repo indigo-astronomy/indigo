@@ -1319,9 +1319,16 @@ sub main() {
 
 			# ----- Global Meteo Data ----- #
 			if ($cmd[0] eq "GLME") {
-				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
 				# Hardcoded but these do not change rapidly
-				print_client($client, "8.87 828.73 63.19 2.25 9.43 9.96 10.90 9.58\n");
+				my @values = ("8.87", "828.73", "63.19", "2.25", "9.43", "9.96", "10.90", "9.58");
+				if ($#cmd == 0) {
+					print_client($client, "@values\n");
+					next;
+				} elsif (($#cmd == 1) and in_range($cmd[1], 0, 7, 0)) {
+					print_client($client, $values[$cmd[1]]."\n");
+					next;
+				}
+				print_client($client, "ERR\n");
 				next;
 			}
 
