@@ -30,6 +30,8 @@ use IO::Socket;
 use Net::hostent;
 use POSIX qw(ceil floor);
 use Getopt::Std;
+use threads;
+use threads::shared;
 
 my $verbose = 0;
 my $login = 0;
@@ -80,15 +82,41 @@ use constant TE_CLU2_TIME => 22;
 use constant TE_DECC3_TIME => 24;
 use constant TE_CLU3_TIME => 26;
 
+my $te_state = TE_OFF;
+my $te_rd_move_time = 0;
+my $te_hd_move_time = 0;
+
 # Hour Axis states
-use constant HA_OFF => 0;
+use constant HA_STOP => 0;
 use constant HA_POSITION => 1;
+use constant HA_CA_CLU1 => 2;
+use constant HA_CA_FAST => 3;
+use constant HA_CA_FASTBR => 4;
+use constant HA_CA_CLU2 => 5;
+use constant HA_CA_SLOW => 6;
 # more states ....
 
+my $ha_move_time = 0;
+my $ha_state = HA_STOP;
+
 # Declination Axis states
-use constant DA_OFF => 0;
+use constant DA_STOP => 0;
 use constant DA_POSITION => 1;
+use constant DA_CA_CLU1 => 2;
+use constant DA_CA_FAST => 3;
+use constant DA_CA_FASTBR => 4;
+use constant DA_CA_CLU2 => 5;
+use constant DA_CA_SLOW => 6;
 # more states ...
+
+use constant CA_CLU1_TIME => 2;
+use constant CA_FAST_TIME => 14;
+use constant CA_FASTBR_TIME => 16;
+use constant CA_CLU2_TIME => 18;
+use constant CA_SLOW_TIME => 28;
+
+my $da_move_time = 0;
+my $da_state = HA_STOP;
 
 # FOCUS states
 use constant FO_OFF	=> 0;
@@ -111,6 +139,8 @@ use constant DO_AUTO_MINUS => 8;
 
 use constant DO_REL_MOVING_TIME => 5;
 use constant DO_ABS_MOVING_TIME => 20;
+use constant DO_AUTO_MOVING_TIME => 10;
+use constant DO_AUTO_STOP_TIME => 60;
 
 # SLIT states
 use constant SL_UNDEF   => 0;
@@ -142,12 +172,9 @@ use constant FL_CD_CLOSE   => 4;
 use constant FL_CD_OPENING_TIME => 5;
 use constant FL_CD_CLOSING_TIME => 5;
 
-my $te_state = TE_OFF;
-my $te_rd_move_time = 0;
-my $te_hd_move_time = 0;
-
 my $correction_model = 0;
-my $state_bits = 0;
+my $state_bits : shared = 3; # HA and DA calibrated
+my @alarm_bits : shared = (0,0,0,0,0);
 
 my $guide_value_ra = 0;
 my $guide_value_de = 0;
@@ -158,9 +185,6 @@ my $user_speed_de = 0;
 my $speed1 = 5000.00;
 my $speed2 = 120.0;
 my $speed3 = 10.00;
-
-my $ha_state = HA_OFF;
-my $da_state = DA_OFF;
 
 my $de_centering_flag = 0;
 
@@ -187,6 +211,7 @@ my $do_pos_cur = 0;
 my $do_state = DO_OFF;
 my $do_rel_moving_time = 0;
 my $do_abs_moving_time = 0;
+my $do_auto_moving_time = 0;
 
 my $sl_state = SL_CLOSE;
 my $sl_opening_time = 0;
@@ -207,6 +232,26 @@ sub in_range($$$$) {
 	    ($num <= $max)) {
 			return 1;
 		}
+	return 0;
+}
+
+sub can_slew() {
+	if ((($state_bits & 3) == 3) # H axis and Dec axis are calibrated
+	   and (($alarm_bits[2] & 2) == 0)) # Bridge is parked
+	{
+		$verbose && print "Can Slew\n";
+		return 1;
+	}
+	$verbose && print "Can NOT Slew\n";
+	return 0;
+}
+
+sub bridge_parked() {
+	if (($alarm_bits[2] & 2) == 0) {
+		$verbose && print "Bridge is parked\n";
+		return 1;
+	}
+	$verbose && print "Bridge is NOT parked\n";
 	return 0;
 }
 
@@ -345,6 +390,44 @@ sub update_state {
 		}
 	}
 
+	# Hour Axis Callibration
+	if ($ha_move_time != 0) {
+		$elapsed_time = time() - $ha_move_time;
+		if ($elapsed_time > CA_SLOW_TIME) {
+			# set cllibrated bit
+			$state_bits = $state_bits | 1;
+			$ha_state = HA_POSITION;
+			$ha_move_time = 0;
+		} elsif ($elapsed_time > CA_CLU2_TIME) {
+			$ha_state = HA_CA_SLOW;
+		} elsif ($elapsed_time > CA_FASTBR_TIME) {
+			$ha_state = HA_CA_CLU2;
+		} elsif ($elapsed_time > CA_FAST_TIME) {
+			$ha_state = HA_CA_FASTBR;
+		} elsif ($elapsed_time > CA_CLU1_TIME) {
+			$ha_state = HA_CA_FAST;
+		}
+	}
+
+	# Declination Axis Callibration
+	if ($da_move_time != 0) {
+		$elapsed_time = time() - $da_move_time;
+		if ($elapsed_time > CA_SLOW_TIME) {
+			# set cllibrated bit
+			$state_bits = $state_bits | 2;
+			$da_state = DA_POSITION;
+			$da_move_time = 0;
+		} elsif ($elapsed_time > CA_CLU2_TIME) {
+			$da_state = DA_CA_SLOW;
+		} elsif ($elapsed_time > CA_FASTBR_TIME) {
+			$da_state = DA_CA_CLU2;
+		} elsif ($elapsed_time > CA_FAST_TIME) {
+			$da_state = DA_CA_FASTBR;
+		} elsif ($elapsed_time > CA_CLU1_TIME) {
+			$da_state = DA_CA_FAST;
+		}
+	}
+
 	# FOCUS state
 	if ($fo_rel_moving_time != 0) {
 		$elapsed_time = time() - $fo_rel_moving_time;
@@ -397,6 +480,21 @@ sub update_state {
 			}
 			$do_state = DO_STOP;
 			$do_abs_moving_time = 0;
+		}
+	}
+	if ($do_auto_moving_time != 0) {
+		$elapsed_time = time() - $do_auto_moving_time;
+		if ($do_state == DO_STOP) {
+			$do_auto_moving_time = 0;
+		} elsif (($elapsed_time > DO_AUTO_STOP_TIME) and ($do_state == DO_AUTO_STOP)) {
+			if ($west) {
+				$do_state = DO_AUTO_PLUS;
+			} else {
+				$do_state = DO_AUTO_MINUS;
+			}
+			$do_auto_moving_time = time();
+		} elsif ($elapsed_time > DO_AUTO_MOVING_TIME) {
+			$do_state = DO_AUTO_STOP;
 		}
 	}
 
@@ -454,7 +552,77 @@ sub update_state {
 sub print_client($$) {
 	my ($client, $message) = @_;
 	print $client $message;
-	$verbose && print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n";
+	$verbose && print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 0 $correction_model $state_bits [@alarm_bits] 0\n";
+}
+
+# simulator console
+sub console() {
+	threads->detach();
+	print "[ASCOL Simulator console. For help: \"help\" or \"?\" ]\n";
+	while ( my $line = <STDIN>) {
+		unless ($line=~/\S/) { next; }; # blank line
+		my @cmd = split /\s+/,$line;
+
+		if ($cmd[0] eq "set_state") {
+			if ($#cmd != 1) { print "error\n"; next; }
+			if (!in_range($cmd[1], 0, 15, 0)) { print "error\n"; next; }
+			$state_bits = $state_bits | (1 << $cmd[1]);
+			print "State bits: $state_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "clear_state") {
+			if ($#cmd != 1) { print "error\n"; next; }
+			if (!in_range($cmd[1], 0, 15, 0)) { print "error\n"; next; }
+			$state_bits = $state_bits & ~(1 << $cmd[1]);
+			print "State bits: $state_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "set_alarm") {
+			if ($#cmd != 2) { print "error\n"; next; }
+			if (!in_range($cmd[1], 0, 4, 0)) { print "error\n"; next; }
+			if (!in_range($cmd[2], 0, 15, 0)) { print "error\n"; next; }
+			$alarm_bits[$cmd[1]] = $alarm_bits[$cmd[1]] | (1 << $cmd[2]);
+			print "Alarm bits: @alarm_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "clear_alarm") {
+			if ($#cmd != 2) { print "error\n"; next; }
+			if (!in_range($cmd[1], 0, 4, 0)) { print "error\n"; next; }
+			if (!in_range($cmd[2], 0, 15, 0)) { print "error\n"; next; }
+			$alarm_bits[$cmd[1]] = $alarm_bits[$cmd[1]] & ~(1 << $cmd[2]);
+			print "Alarm bits: @alarm_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "park_bridge") {
+			if ($#cmd != 0) { print "error\n"; next; }
+			$alarm_bits[2] = $alarm_bits[2] & ~(1 << 1);
+			print "Bridge parked: @alarm_bits\n";
+			next;
+		}
+		if ($cmd[0] eq "unpark_bridge") {
+			if ($#cmd != 0) { print "error\n"; next; }
+			$alarm_bits[2] = $alarm_bits[2] | (1 << 1);
+			print "Bridge unparked: @alarm_bits\n";
+			next;
+		}
+		if (($cmd[0] eq "help") or ($cmd[0] eq "?")) {
+			print "Valid console commands:\n";
+			print "   set_state <bit>          :set state bit (0-15)\n";
+			print "   clear_state <bit>        :clear state bit (0-15)\n";
+			print "   set_alarm <bank> <bit>   :set alarm bit (0-15) of bank (0-4)\n";
+			print "   clear_alarm <bank> <bit> :clear alarm bit (0-15) of bank (0-4)\n";
+			print "   park_bridge              :alias for \"set_alarm 2 1\"\n";
+			print "   unpark_bridge            :alias for \"clear_alarm 2 1\"\n";
+			print "   exit                     :terminate simulator\n";
+			print "   help or ?                :this help\n";
+			next;
+		}
+		if ($cmd[0] eq "exit") {
+			print "Bye!\n";
+			exit(0);
+		}
+		print "error\n";
+	}
 }
 
 sub print_usage() {
@@ -519,6 +687,9 @@ sub main() {
 
 	die "[Can not start simulator on port: $port]" unless $server;
 	print "[ASCOL Simulator is running on port: $port]\n";
+
+	# console thread is detatched
+	threads->create(\&console);
 
 	while ($client = $server->accept()) {
 		if (defined $opt{l}) { $login = 1; }
@@ -588,8 +759,8 @@ sub main() {
 				}
 				if (($oil_state == OIL_ON) && ($cmd[1] eq "0")) {
 					$te_state = TE_OFF;
-					$da_state = DA_OFF;
-					$ha_state = HA_OFF;
+					$da_state = DA_STOP;
+					$ha_state = HA_STOP;
 					print_client($client, "1\n");
 					next;
 				}
@@ -651,7 +822,7 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if (($te_state != TE_TRACK) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_TRACK) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					if($newrd) {
 						$te_state = TE_ST_CLU1;
@@ -694,11 +865,12 @@ sub main() {
 				}
 			}
 
+			# ----- GOTO HA and DEC ----- #
 			if (($cmd[0] eq "TGHA") or ($cmd[0] eq "TGHR")) {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
 				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
-				if (($te_state != TE_STOP) and ($cmd[1] == 1)) { print_client($client, "1\n"); next; }
+				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !can_slew()) { print_client($client, "1\n"); next; }
 				if ($cmd[1] == 1) {
 					if($newhd) {
 						$te_state = TE_SS_CLU1;
@@ -710,6 +882,42 @@ sub main() {
 					$te_state = TE_STOP;
 					$newhd = 1;
 					$te_hd_move_time = 0;
+				}
+				print_client($client, "1\n");
+				next;
+			}
+
+			# ----- Callibrate Hour Axis ----- #
+			if ($cmd[0] eq "TEHC") {
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !bridge_parked()) { print_client($client, "1\n"); next; }
+				if ($cmd[1] == 1) {
+					$ha_state = HA_CA_CLU1;
+					$ha_move_time = time();
+				} else {
+					# simplyfy stop -> shuld go to state transition
+					$ha_state = HA_POSITION;
+					$ha_move_time = 0;
+				}
+				print_client($client, "1\n");
+				next;
+			}
+
+			# ----- Callibrate Declination Axis ----- #
+			if ($cmd[0] eq "TEDC") {
+				if (!$login) { print_client($client, "ERR\n"); next; }
+				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1")) { print_client($client, "ERR\n"); next; }
+				if ((($te_state != TE_STOP) and ($cmd[1] == 1)) or !bridge_parked()) { print_client($client, "1\n"); next; }
+				if ($cmd[1] == 1) {
+					$da_state = DA_CA_CLU1;
+					$da_move_time = time();
+				} else {
+					# simplyfy stop -> shuld go to state transition
+					$da_state = DA_POSITION;
+					$da_move_time = 0;
 				}
 				print_client($client, "1\n");
 				next;
@@ -1082,7 +1290,12 @@ sub main() {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 0) { print_client($client, "ERR\n"); next; }
 				if ($do_state == DO_OFF) { print_client($client, "1\n"); next; }
-				# TODO
+				if ($west) {
+					$do_state = DO_AUTO_PLUS;
+				} else {
+					$do_state = DO_AUTO_MINUS;
+				}
+				$do_auto_moving_time = time();
 				print_client($client, "1\n");
 				next;
 			}
@@ -1131,9 +1344,16 @@ sub main() {
 
 			# ----- Global Meteo Data ----- #
 			if ($cmd[0] eq "GLME") {
-				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
 				# Hardcoded but these do not change rapidly
-				print_client($client, "8.87 828.73 63.19 2.25 9.43 9.96 10.90 9.58\n");
+				my @values = ("8.87", "828.73", "63.19", "2.25", "9.43", "9.96", "10.90", "9.58");
+				if ($#cmd == 0) {
+					print_client($client, "@values\n");
+					next;
+				} elsif (($#cmd == 1) and in_range($cmd[1], 0, 7, 0)) {
+					print_client($client, $values[$cmd[1]]."\n");
+					next;
+				}
+				print_client($client, "ERR\n");
 				next;
 			}
 
@@ -1151,7 +1371,7 @@ sub main() {
 			# ----- Global System Status ----- #
 			if ($cmd[0] eq "GLST") {
 				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
-				print_client($client, "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 $correction_model $state_bits 0 0 0 0 0 0 0\n");
+				print_client($client, "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 0 $correction_model $state_bits @alarm_bits 0\n");
 				next;
 			}
 
