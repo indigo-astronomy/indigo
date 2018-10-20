@@ -74,6 +74,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 				result = Toupcam_Pause(PRIVATE_DATA->handle, 1);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Pause(1) -> %08x", result);
 				indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits, true, NULL);
+				CCD_EXPOSURE_ITEM->number.value = 0;
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				break;
@@ -97,7 +98,8 @@ static void push_callback(const void *data, const ToupcamFrameInfoV2* frameInfo,
 		int size = frameInfo->width * frameInfo->height * (PRIVATE_DATA->bits / 8);
 		memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE,data, size);
 		indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo->width, frameInfo->height, PRIVATE_DATA->bits, true, NULL);
-		CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+		if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+			CCD_STREAMING_COUNT_ITEM->number.value -= 1;
 		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
 			PRIVATE_DATA->push_active = false;
 			result = Toupcam_Pause(PRIVATE_DATA->handle, 1);
@@ -178,8 +180,6 @@ static void setup_exposure(indigo_device *device) {
 		result = Toupcam_put_Roi(PRIVATE_DATA->handle, left, top, width, height);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Roi(%d, %d, %d, %d) -> %08x", left, top, width, height, result);
 	}
-	result = Toupcam_put_ExpoTime(PRIVATE_DATA->handle, CCD_EXPOSURE_ITEM->number.target * 1000000);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_ExpoTime(%ld) -> %08x", (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000), result);
 	result = Toupcam_Flush(PRIVATE_DATA->handle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Flush() -> %08x", result);
 }
@@ -267,6 +267,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
+	HRESULT result;
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -284,7 +285,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 5.0, ccd_temperature_callback);
 				else
 					PRIVATE_DATA->temperature_timer = NULL;
-				HRESULT result;
 				int rawMode;
 				int bitDepth;
 				unsigned resolutionIndex;
@@ -363,6 +363,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		setup_exposure(device);
+		result = Toupcam_put_ExpoTime(PRIVATE_DATA->handle, (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_ExpoTime(%u) -> %08x", (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->pull_active = true;
 		HRESULT result = Toupcam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_StartPullModeWithCallback() -> %08x", result);
@@ -375,6 +377,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		setup_exposure(device);
+		result = Toupcam_put_ExpoTime(PRIVATE_DATA->handle, (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_ExpoTime(%u) -> %08x", (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->push_active = true;
 		HRESULT result = Toupcam_StartPushModeV2(PRIVATE_DATA->handle, push_callback, device);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_StartPushModeV2() -> %08x", result);
@@ -382,7 +386,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-		HRESULT result;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
 			PRIVATE_DATA->pull_active = false;

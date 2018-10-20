@@ -140,10 +140,12 @@ int indigo_read_line(int handle, char *buffer, int length) {
 				break;
 		} else {
 			errno = ECONNRESET;
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → ERROR", handle));
 			return -1;
 		}
 	}
 	buffer[total_bytes] = '\0';
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
 	return (int)total_bytes;
 }
 
@@ -175,7 +177,6 @@ int indigo_scanf(int handle, const char *format, ...) {
 	char buffer[1024];
 	if (indigo_read_line(handle, buffer, sizeof(buffer)) <= 0)
 		return 0;
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
 	va_list args;
 	va_start(args, format);
 	int count = vsscanf(buffer, format, args);

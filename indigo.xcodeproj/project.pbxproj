@@ -29,6 +29,7 @@
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
 		59292E5720D4224F0042E939 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 59292E5620D4224F0042E939 /* libcurl.tbd */; };
 		592E79192168E06B00E856F3 /* indigo_focuser_mjkzz.c in Sources */ = {isa = PBXBuildFile; fileRef = 592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */; };
+		59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 59399D892177D316002886CA /* indigo_focuser_optec.c */; };
 		593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 593AD1011EF8399500C059BC /* indigo_guider_asi.c */; };
 		593AD10A1EF839F200C059BC /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 593AD1081EF839EF00C059BC /* libUSB2ST4Conv.a */; };
 		593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */ = {isa = PBXBuildFile; fileRef = 593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */; };
@@ -672,6 +673,12 @@
 		592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mjkzz.c; sourceTree = "<group>"; };
 		592E79172168DD7A00E856F3 /* indigo_focuser_mjkzz_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mjkzz_main.c; sourceTree = "<group>"; };
 		592E79182168DDC700E856F3 /* MJKZZ.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = MJKZZ.pdf; sourceTree = "<group>"; };
+		59399D892177D316002886CA /* indigo_focuser_optec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec.c; sourceTree = "<group>"; };
+		59399D8A2177D316002886CA /* indigo_focuser_optec_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec_main.c; sourceTree = "<group>"; };
+		59399D8B2177D316002886CA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59399D8D2177D316002886CA /* optec_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = optec_simulator.ino; sourceTree = "<group>"; };
+		59399D8E2177D316002886CA /* indigo_focuser_optec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_optec.h; sourceTree = "<group>"; };
+		59399D8F2177D391002886CA /* tcf_technical_manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = tcf_technical_manual.pdf; path = ../../../../Desktop/tcf_technical_manual.pdf; sourceTree = "<group>"; };
 		593AD1011EF8399500C059BC /* indigo_guider_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_asi.c; sourceTree = "<group>"; };
 		593AD1031EF8399500C059BC /* indigo_guider_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_asi_main.c; sourceTree = "<group>"; };
 		593AD1041EF8399500C059BC /* indigo_guider_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_asi.h; sourceTree = "<group>"; };
@@ -768,7 +775,6 @@
 		595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_snoop.h; sourceTree = "<group>"; };
 		595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent.h; sourceTree = "<group>"; };
 		595AA1D01FC5EEFE00350E7B /* indigo_agent.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent.c; sourceTree = "<group>"; };
-		595AA1D31FC5F26600350E7B /* libnmea.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnmea.a; path = indigo_drivers/gps_nmea/externals/nmealib/lib/libnmea.a; sourceTree = SOURCE_ROOT; };
 		595F28FA211E211100380EF4 /* DDHidMouse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DDHidMouse.h; sourceTree = "<group>"; };
 		595F28FB211E211100380EF4 /* DDHidStandardUsages.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = DDHidStandardUsages.plist; sourceTree = "<group>"; };
 		595F28FC211E211100380EF4 /* NSDictionary+DDHidExtras.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+DDHidExtras.h"; sourceTree = "<group>"; };
@@ -2104,6 +2110,27 @@
 			path = mjkzz_simulator;
 			sourceTree = "<group>";
 		};
+		59399D882177D316002886CA /* focuser_optec */ = {
+			isa = PBXGroup;
+			children = (
+				59399D8B2177D316002886CA /* README.md */,
+				59399D8E2177D316002886CA /* indigo_focuser_optec.h */,
+				59399D892177D316002886CA /* indigo_focuser_optec.c */,
+				59399D8A2177D316002886CA /* indigo_focuser_optec_main.c */,
+				59399D8F2177D391002886CA /* tcf_technical_manual.pdf */,
+				59399D8C2177D316002886CA /* optec_simulator */,
+			);
+			path = focuser_optec;
+			sourceTree = "<group>";
+		};
+		59399D8C2177D316002886CA /* optec_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59399D8D2177D316002886CA /* optec_simulator.ino */,
+			);
+			path = optec_simulator;
+			sourceTree = "<group>";
+		};
 		593AD1001EF8396A00C059BC /* guider_asi */ = {
 			isa = PBXGroup;
 			children = (
@@ -2499,7 +2526,6 @@
 				59FFD0D12128604200C7355C /* hid.c */,
 				59FFD0D02128604200C7355C /* hidapi.h */,
 				9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */,
-				595AA1D31FC5F26600350E7B /* libnmea.a */,
 			);
 			path = externals;
 			sourceTree = "<group>";
@@ -2602,6 +2628,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				59399D882177D316002886CA /* focuser_optec */,
 				592E79112168DD7A00E856F3 /* focuser_mjkzz */,
 				9D48B79B215E570600CF757E /* ccd_touptek */,
 				9D4F473B215A4440006110FD /* focuser_moonlite */,
@@ -4358,6 +4385,7 @@
 				9D59D60120D3F829009EA8FF /* UdpSocketBase.cpp in Sources */,
 				9D59D66F20D3F82A009EA8FF /* indigo_ccd_apogee.cpp in Sources */,
 				9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */,
+				59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */,
 				9D59D66D20D3F82A009EA8FF /* PromFx2Io.cpp in Sources */,
 				9D59D64020D3F829009EA8FF /* UdpSocketLinux.cpp in Sources */,
 				9D59D64420D3F829009EA8FF /* LoggerSyslog.cpp in Sources */,
