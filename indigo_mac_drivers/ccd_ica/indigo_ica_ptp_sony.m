@@ -244,18 +244,18 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       break;
     }
     case PTPPropertyCodeStillCaptureMode: {
-      NSDictionary *map = @{ @1: @"Single shooting", @32787: @"Cont. shooting", @32788: @"Spd priority cont.", @32773: @"Self-timer 2s", @32772: @"Self-time 10s", @32776: @"Self-timer 10s 3x", @32777: @"Self-timer 10s 5x", @33591: @"Bracket 1/3EV 3x cont.", @33655: @"Bracket 2/3EV 3x cont.", @33553: @"Bracket 1EV 3x cont.", @33569: @"Bracket 2EV 3x cont.", @33585: @"Bracket 3EV 3x cont.", @33590: @"Bracket 1/3EV 3x", @33654: @"Bracket 2/3EV 3x", @33552: @"Bracket 1EV 3x", @33568: @"Bracket 2EV 3x", @33584: @"Bracket 3EV 3x", @32792: @"Bracket WB Lo", @32808: @"Bracket WB Hi", @32793: @"Bracket DRO Lo", @32809: @"Bracket DRO Hi" };
+      NSDictionary *map = @{ @1: @"Single shooting", @2: @"Cont. shooting HI", @0x8012: @"Cont. shooting LO", @32787: @"Cont. shooting", @32788: @"Spd priority cont.", @32773: @"Self-timer 2s", @0x8003: @"Self-timer 5s", @32772: @"Self-time 10s", @32776: @"Self-timer 10s 3x", @32777: @"Self-timer 10s 5x", @33591: @"Bracket 1/3EV 3x cont.", @33655: @"Bracket 2/3EV 3x cont.", @33553: @"Bracket 1EV 3x cont.", @33569: @"Bracket 2EV 3x cont.", @33585: @"Bracket 3EV 3x cont.", @33590: @"Bracket 1/3EV 3x", @33654: @"Bracket 2/3EV 3x", @33552: @"Bracket 1EV 3x", @33568: @"Bracket 2EV 3x", @33584: @"Bracket 3EV 3x", @32792: @"Bracket WB Lo", @32808: @"Bracket WB Hi", @32793: @"Bracket DRO Lo", @32809: @"Bracket DRO Hi" };
       [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeWhiteBalance: {
-      NSDictionary *map = @{ @2: @"Auto", @4: @"Daylight", @32785: @"Shade", @32784: @"Cloudy", @6: @"Incandescent", @32769: @"Flourescent warm white", @32770: @"Flourescent cool white", @32771: @"Flourescent day white", @32772:@"Flourescent daylight",  @7: @"Flash", @32786: @"C.Temp/Filter", @32803: @"Custom" };
+      NSDictionary *map = @{ @2: @"Auto", @4: @"Daylight", @32785: @"Shade", @32784: @"Cloudy", @6: @"Incandescent", @32769: @"Flourescent warm white", @32770: @"Flourescent cool white", @32771: @"Flourescent day white", @32772:@"Flourescent daylight",  @7: @"Flash", @32786: @"C.Temp/Filter", @32816: @"Underwater", @32800: @"Custom 1", @32801: @"Custom 2", @32802: @"Custom 3", @32803: @"Custom 4" };
       [self mapValueList:property map:map];
       break;
     }
     case PTPPropertyCodeCompressionSetting: {
       self.imagesPerShot = property.value.intValue == 19 ? 2 : 1;
-      NSDictionary *map = @{ @2: @"Standard", @3: @"Fine", @16: @"RAW", @19: @"RAW + JPEG" };
+      NSDictionary *map = @{ @2: @"Standard", @3: @"Fine", @4: @"Extra Fine", @16: @"RAW", @19: @"RAW + JPEG" };
       [self mapValueList:property map:map];
       break;
     }
