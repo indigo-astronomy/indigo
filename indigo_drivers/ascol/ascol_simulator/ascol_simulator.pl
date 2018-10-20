@@ -1303,42 +1303,30 @@ sub main() {
 			if ($cmd[0] eq "FTOC") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
-				if (($te_state == TE_STOP) && ($fl_tb_state == FL_TB_CLOSE)
-				    && ($cmd[1] eq "1")) {
+				if (($fl_tb_state == FL_TB_CLOSE) && ($cmd[1] eq "1")) {
 					$fl_tb_state = FL_TB_OPENING;
 					$fl_tb_opening_time = time();
-					print_client($client, "1\n");
-					next;
 				}
-				if (($te_state == TE_STOP) && ($fl_tb_state == FL_TB_OPEN)
-				    && ($cmd[1] eq "0")) {
+				if (($fl_tb_state == FL_TB_OPEN) && ($cmd[1] eq "0")) {
 					$fl_tb_state = FL_TB_CLOSING;
 					$fl_tb_closing_time = time();
-					print_client($client, "1\n");
-					next;
 				}
-				print_client($client, "ERR\n");
+				print_client($client, "1\n");
 				next;
 			}
 			# ----- Flap Coude Open or Close ------ #
 			if ($cmd[0] eq "FCOC") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
-				if (($te_state == TE_STOP) && ($fl_cd_state == FL_CD_CLOSE)
-				    && ($cmd[1] eq "1")) {
+				if (($fl_cd_state == FL_CD_CLOSE) && ($cmd[1] eq "1")) {
 					$fl_cd_state = FL_CD_OPENING;
 					$fl_cd_opening_time = time();
-					print_client($client, "1\n");
-					next;
 				}
-				if (($te_state == TE_STOP) && ($fl_cd_state == FL_CD_OPEN)
-				    && ($cmd[1] eq "0")) {
+				if (($fl_cd_state == FL_CD_OPEN) && ($cmd[1] eq "0")) {
 					$fl_cd_state = FL_CD_CLOSING;
 					$fl_cd_closing_time = time();
-					print_client($client, "1\n");
-					next;
 				}
-				print_client($client, "ERR\n");
+				print_client($client, "1\n");
 				next;
 			}
 
