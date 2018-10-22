@@ -119,7 +119,7 @@ extern "C" {
 
 /** CONFIG property pointer, property is mandatory.
  */
-#define CONFIG_PROPERTY               (DEVICE_CONTEXT->congfiguration_property)
+#define CONFIG_PROPERTY               (DEVICE_CONTEXT->configuration_property)
 
 /** CONFIG.LOAD property item pointer.
  */
@@ -162,15 +162,15 @@ extern "C" {
 /** AUTHENTICATION property pointer, property is optional, property change request is handled by indigo_device_change_property.
  */
 #define AUTHENTICATION_PROPERTY					(DEVICE_CONTEXT->device_auth_property)
-	
+
 /** AUTHENTICATION.PASSWORD property item pointer.
  */
 #define AUTHENTICATION_PASSWORD_ITEM			(AUTHENTICATION_PROPERTY->items+0)
-	
+
 /** AUTHENTICATION.USER property item pointer.
  */
 #define AUTHENTICATION_USER_ITEM					(AUTHENTICATION_PROPERTY->items+1)
-	
+
 
 /** Device interface (value shout be used for INFO_DEVICE_INTERFACE_ITEM->number.value
  */
@@ -223,7 +223,7 @@ typedef struct {
 	indigo_property *connection_property;     ///< CONNECTION property pointer
 	indigo_property *info_property;           ///< INFO property pointer
 	indigo_property *simulation_property;     ///< SIMULATION property pointer
-	indigo_property *congfiguration_property; ///< CONFIGURATION property pointer
+	indigo_property *configuration_property;  ///< CONFIGURATION property pointer
 	indigo_property *profile_property; 				///< PROFILE property pointer
 	indigo_property *device_port_property;		///< DEVICE_PORT property pointer
 	indigo_property *device_ports_property;		///< DEVICE_PORTS property pointer
@@ -300,7 +300,7 @@ extern indigo_result indigo_save_property(indigo_device*device, int *file_handle
 /** Remove properties.
  */
 extern indigo_result indigo_remove_properties(indigo_device *device);
-	
+
 /** Start USB event handler thread.
  */
 extern void indigo_start_usb_event_handler(void);
@@ -332,7 +332,7 @@ time_t indigo_isototime(char *isotime);
 /** Enumerate serial ports.
  */
 	void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);
-	
+
 #ifdef __cplusplus
 }
 #endif
