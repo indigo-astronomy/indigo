@@ -294,6 +294,7 @@
 		9D59D66F20D3F82A009EA8FF /* indigo_ccd_apogee.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D59D5E020D3F829009EA8FF /* indigo_ccd_apogee.cpp */; };
 		9D59D67020D3F82A009EA8FF /* indigo_ccd_apogee.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D59D5E120D3F829009EA8FF /* indigo_ccd_apogee.h */; };
 		9D61B9DF216DE636000DE7E8 /* indigo_focuser_mjkzz_bt.m in Sources */ = {isa = PBXBuildFile; fileRef = 9D61B9DB216DE62B000DE7E8 /* indigo_focuser_mjkzz_bt.m */; };
+		9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D6940892180B9F600AB112C /* indigo_aux_upb.c */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
 		9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */; };
 		9D976FDC1DD0C69D00782B32 /* dc1394.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FDA1DD0C69D00782B32 /* dc1394.h */; };
@@ -1502,6 +1503,12 @@
 		9D61B9DE216DE62B000DE7E8 /* indigo_focuser_mjkzz_main_bt.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mjkzz_main_bt.c; sourceTree = "<group>"; };
 		9D61B9E0216E4B1B000DE7E8 /* mjkzz_def.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mjkzz_def.h; sourceTree = "<group>"; };
 		9D658B941DE4A8BC006C9CC5 /* indigo_names.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_names.h; sourceTree = "<group>"; };
+		9D6940832180B9F600AB112C /* indigo_aux_upb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_upb.h; sourceTree = "<group>"; };
+		9D6940892180B9F600AB112C /* indigo_aux_upb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_upb.c; sourceTree = "<group>"; };
+		9D69408A2180B9F600AB112C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D69408B2180B9F600AB112C /* indigo_aux_upb_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_upb_main.c; sourceTree = "<group>"; };
+		9D69408D2180BA1800AB112C /* upb_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = upb_simulator.ino; sourceTree = "<group>"; };
+		9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Ultimate_Powerbox_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D855DF4215119CB0049C4B0 /* libnexstar.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnexstar.a; path = build/lib/libnexstar.a; sourceTree = "<group>"; };
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
@@ -2628,6 +2635,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9D6940822180B9F600AB112C /* aux_upb */,
 				59399D882177D316002886CA /* focuser_optec */,
 				592E79112168DD7A00E856F3 /* focuser_mjkzz */,
 				9D48B79B215E570600CF757E /* ccd_touptek */,
@@ -3579,6 +3587,27 @@
 			path = focuser_mjkzz_bt;
 			sourceTree = "<group>";
 		};
+		9D6940822180B9F600AB112C /* aux_upb */ = {
+			isa = PBXGroup;
+			children = (
+				9D69408A2180B9F600AB112C /* README.md */,
+				9D6940832180B9F600AB112C /* indigo_aux_upb.h */,
+				9D6940892180B9F600AB112C /* indigo_aux_upb.c */,
+				9D69408B2180B9F600AB112C /* indigo_aux_upb_main.c */,
+				9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */,
+				9D69408C2180BA1800AB112C /* upb_simulator */,
+			);
+			path = aux_upb;
+			sourceTree = "<group>";
+		};
+		9D69408C2180BA1800AB112C /* upb_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9D69408D2180BA1800AB112C /* upb_simulator.ino */,
+			);
+			path = upb_simulator;
+			sourceTree = "<group>";
+		};
 		9D976FD21DD0C46E00782B32 /* ccd_iidc */ = {
 			isa = PBXGroup;
 			children = (
@@ -4333,6 +4362,7 @@
 				9D59D64720D3F829009EA8FF /* AscentBasedIo.cpp in Sources */,
 				9D59D66120D3F82A009EA8FF /* IAltaSerialPortIo.cpp in Sources */,
 				59CC779D1F27BD07003AD2DB /* indigo_ica_ptp_sony.m in Sources */,
+				9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */,
 				9D59D63520D3F829009EA8FF /* Aspen.cpp in Sources */,
 				9DAD522221246C18002FCC79 /* indigo_mount_synscan.c in Sources */,
 				595F2929211E211200380EF4 /* NSDictionary+DDHidExtras.m in Sources */,
