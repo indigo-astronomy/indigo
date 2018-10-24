@@ -1091,6 +1091,21 @@ $(BUILD_DRIVERS)/indigo_focuser_dmfc.$(SOEXT): indigo_drivers/focuser_dmfc/indig
 
 #---------------------------------------------------------------------
 #
+#	Build PegasusAstro UPB aux driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_aux_upb.a: indigo_drivers/aux_upb/indigo_aux_upb.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_aux_upb: indigo_drivers/aux_upb/indigo_aux_upb_main.o $(BUILD_DRIVERS)/indigo_aux_upb.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_aux_upb.$(SOEXT): indigo_drivers/aux_upb/indigo_aux_upb.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build Rigel Systems nSTEP focuser driver
 #
 #---------------------------------------------------------------------
