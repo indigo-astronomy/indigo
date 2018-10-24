@@ -207,7 +207,7 @@ static void aux_timer_callback(indigo_device *device) {
 static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	if (indigo_focuser_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+	if (indigo_aux_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		X_AUX_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_POWER", AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
 		if (X_AUX_POWER_PROPERTY == NULL)
 			return INDIGO_FAILED;
