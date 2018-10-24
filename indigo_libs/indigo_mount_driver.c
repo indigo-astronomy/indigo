@@ -93,7 +93,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			if (MOUNT_PARK_SET_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_PARK_SET_PROPERTY->hidden = true;
-			indigo_init_switch_item(MOUNT_PARK_SET_CURRENT_ITEM, MOUNT_PARK_SET_CURRENT_ITEM_NAME, "set current position", false);
+			indigo_init_switch_item(MOUNT_PARK_SET_CURRENT_ITEM, MOUNT_PARK_SET_CURRENT_ITEM_NAME, "Set current position", false);
 			indigo_init_switch_item(MOUNT_PARK_SET_DEFAULT_ITEM, MOUNT_PARK_SET_DEFAULT_ITEM_NAME, "Set default position", false);
 			// -------------------------------------------------------------------------------- MOUNT_PARK_POSITION
 			MOUNT_PARK_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Park position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
@@ -113,7 +113,7 @@ indigo_result indigo_mount_attach(indigo_device *device, unsigned version) {
 			if (MOUNT_HOME_SET_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_HOME_SET_PROPERTY->hidden = true;
-			indigo_init_switch_item(MOUNT_HOME_SET_CURRENT_ITEM, MOUNT_HOME_SET_CURRENT_ITEM_NAME, "set current position", false);
+			indigo_init_switch_item(MOUNT_HOME_SET_CURRENT_ITEM, MOUNT_HOME_SET_CURRENT_ITEM_NAME, "Set current position", false);
 			indigo_init_switch_item(MOUNT_HOME_SET_DEFAULT_ITEM, MOUNT_HOME_SET_DEFAULT_ITEM_NAME, "Set default position", false);
 			// -------------------------------------------------------------------------------- MOUNT_HOME_POSITION
 			MOUNT_HOME_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_HOME_POSITION_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Home position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
