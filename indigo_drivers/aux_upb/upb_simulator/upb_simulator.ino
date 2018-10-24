@@ -44,10 +44,17 @@ void setup() {
 }
 
 void loop() {
+  double step = speed / 100.0;
   if (target > position) {
-    position += speed / 100.0;
+    if (target - position < step)
+      position = target;
+    else
+      position += step;
   } else if (target < position) {
-    position -= speed / 100.0;
+    if (position - target < step)
+      position = target;
+    else
+      position -= step;
   }
   String command = Serial.readStringUntil('\n');
   if (command.equals("P#")) {
@@ -119,10 +126,7 @@ void loop() {
     led = command.charAt(3) == '1';
     Serial.println(command);
   } else if (command.equals("SA")) {
-    Serial.print("UPB_OK:1.0:");
-    Serial.print(temperature);
-    Serial.print(":");
-    Serial.print((int)position);
+    Serial.print((long)position);
     Serial.print(":");
     Serial.print(target == position ? '0' : '1');
     Serial.print(":");
@@ -134,7 +138,7 @@ void loop() {
   } else if (command.equals("SP")) {
     Serial.println((int)position);
   } else if (command.startsWith("SH")) {
-    target = (int)position;
+    target = (long)position;
     Serial.println("H:1");
   } else if (command.equals("ST")) {
     Serial.println(temperature);
