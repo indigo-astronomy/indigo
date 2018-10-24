@@ -44,28 +44,49 @@
 #define PRIVATE_DATA													((upb_private_data *)device->private_data)
 
 #define X_AUX_POWER_PROPERTY									(PRIVATE_DATA->power_property)
-#define X_AUX_POWER_1_ITEM										(X_AUX_POWER_PROPERTY->items+0)
-#define X_AUX_POWER_2_ITEM										(X_AUX_POWER_PROPERTY->items+1)
-#define X_AUX_POWER_3_ITEM										(X_AUX_POWER_PROPERTY->items+2)
-#define X_AUX_POWER_4_ITEM										(X_AUX_POWER_PROPERTY->items+3)
+#define X_AUX_POWER_1_ITEM										(X_AUX_POWER_PROPERTY->items + 0)
+#define X_AUX_POWER_2_ITEM										(X_AUX_POWER_PROPERTY->items + 1)
+#define X_AUX_POWER_3_ITEM										(X_AUX_POWER_PROPERTY->items + 2)
+#define X_AUX_POWER_4_ITEM										(X_AUX_POWER_PROPERTY->items + 3)
 
 #define X_AUX_HEATER_PROPERTY									(PRIVATE_DATA->heater_property)
-#define X_AUX_HEATER_1_ITEM										(X_AUX_HEATER_PROPERTY->items+0)
-#define X_AUX_HEATER_2_ITEM										(X_AUX_HEATER_PROPERTY->items+1)
+#define X_AUX_HEATER_1_ITEM										(X_AUX_HEATER_PROPERTY->items + 0)
+#define X_AUX_HEATER_2_ITEM										(X_AUX_HEATER_PROPERTY->items + 1)
 
 #define X_AUX_AUTO_HEATER_PROPERTY						(PRIVATE_DATA->auto_heater_property)
-#define X_AUX_AUTO_HEATER_ITEM								(X_AUX_AUTO_HEATER_PROPERTY->items+0)
+#define X_AUX_AUTO_HEATER_ITEM								(X_AUX_AUTO_HEATER_PROPERTY->items + 0)
 
 #define X_AUX_HUB_PROPERTY										(PRIVATE_DATA->hub_property)
-#define X_AUX_HUB_ITEM												(X_AUX_HUB_PROPERTY->items+0)
+#define X_AUX_HUB_ITEM												(X_AUX_HUB_PROPERTY->items + 0)
 
 #define X_AUX_INFO_PROPERTY										(PRIVATE_DATA->info_property)
-#define X_AUX_AVERAGE_ITEM										(X_AUX_INFO_PROPERTY->items+0)
-#define X_AUX_AMP_HOUR_ITEM										(X_AUX_INFO_PROPERTY->items+1)
-#define X_AUX_WATT_HOUR_ITEM									(X_AUX_INFO_PROPERTY->items+2)
+#define X_AUX_AVERAGE_ITEM										(X_AUX_INFO_PROPERTY->items + 0)
+#define X_AUX_AMP_HOUR_ITEM										(X_AUX_INFO_PROPERTY->items + 1)
+#define X_AUX_WATT_HOUR_ITEM									(X_AUX_INFO_PROPERTY->items + 2)
+#define X_AUX_VOLTAGE_ITEM										(X_AUX_INFO_PROPERTY->items + 3)
+#define X_AUX_CURRENT_ITEM										(X_AUX_INFO_PROPERTY->items + 4)
+#define X_AUX_POWER_ITEM											(X_AUX_INFO_PROPERTY->items + 5)
+#define X_AUX_TEMP_ITEM												(X_AUX_INFO_PROPERTY->items + 6)
+#define X_AUX_HUMIDITY_ITEM										(X_AUX_INFO_PROPERTY->items + 7)
+#define X_AUX_DEVPOINT_ITEM										(X_AUX_INFO_PROPERTY->items + 8)
+#define X_AUX_CURRENT_POWER_1_ITEM						(X_AUX_INFO_PROPERTY->items + 9)
+#define X_AUX_CURRENT_POWER_2_ITEM						(X_AUX_INFO_PROPERTY->items + 10)
+#define X_AUX_CURRENT_POWER_3_ITEM						(X_AUX_INFO_PROPERTY->items + 11)
+#define X_AUX_CURRENT_POWER_4_ITEM						(X_AUX_INFO_PROPERTY->items + 12)
+#define X_AUX_CURRENT_HEATER_1_ITEM						(X_AUX_INFO_PROPERTY->items + 13)
+#define X_AUX_CURRENT_HEATER_2_ITEM						(X_AUX_INFO_PROPERTY->items + 14)
+
+#define X_AUX_OVERCURRENT_PROPERTY						(PRIVATE_DATA->overcurrent_property)
+#define X_AUX_OVERCURRENT_POWER_1_ITEM				(X_AUX_OVERCURRENT_PROPERTY->items + 0)
+#define X_AUX_OVERCURRENT_POWER_2_ITEM				(X_AUX_OVERCURRENT_PROPERTY->items + 1)
+#define X_AUX_OVERCURRENT_POWER_3_ITEM				(X_AUX_OVERCURRENT_PROPERTY->items + 2)
+#define X_AUX_OVERCURRENT_POWER_4_ITEM				(X_AUX_OVERCURRENT_PROPERTY->items + 3)
+#define X_AUX_OVERCURRENT_HEATER_1_ITEM				(X_AUX_OVERCURRENT_PROPERTY->items + 4)
+#define X_AUX_OVERCURRENT_HEATER_2_ITEM				(X_AUX_OVERCURRENT_PROPERTY->items + 5)
+
 
 #define X_FOCUSER_BACKLASH_PROPERTY						(PRIVATE_DATA->backlash_property)
-#define X_FOCUSER_BACKLASH_ITEM								(X_FOCUSER_BACKLASH_PROPERTY->items+0)
+#define X_FOCUSER_BACKLASH_ITEM								(X_FOCUSER_BACKLASH_PROPERTY->items + 0)
 
 #define AUX_GROUP															"Powerbox"
 
@@ -79,6 +100,7 @@ typedef struct {
 	indigo_property *auto_heater_property;
 	indigo_property *hub_property;
 	indigo_property *info_property;
+	indigo_property *overcurrent_property;
 	indigo_property *backlash_property;
 	int count;
 } upb_private_data;
@@ -101,9 +123,68 @@ static bool upb_command(indigo_device *device, char *command, char *response, in
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
 
 static void aux_timer_callback(indigo_device *device) {
-	char response[16];
+	char response[128];
 	if (upb_command(device, "PA", response, sizeof(response))) {
-		// TBD
+		char *token = strtok(response, ":");
+		if ((token = strtok(NULL, ":"))) { // Voltage
+			X_AUX_VOLTAGE_ITEM->number.value = atof(token);
+		}
+		if ((token = strtok(NULL, ":"))) { // Current
+			X_AUX_CURRENT_ITEM->number.value = atof(token);
+		}
+		if ((token = strtok(NULL, ":"))) { // Power
+			X_AUX_POWER_ITEM->number.value = atoi(token);
+		}
+		if ((token = strtok(NULL, ":"))) { // Temp
+			X_AUX_TEMP_ITEM->number.value = atof(token);
+		}
+		if ((token = strtok(NULL, ":"))) { // Humidity
+			X_AUX_HUMIDITY_ITEM->number.value = atof(token);
+		}
+		if ((token = strtok(NULL, ":"))) { // Dewpoint
+			X_AUX_DEVPOINT_ITEM->number.value = atof(token);
+		}
+		if ((token = strtok(NULL, ":"))) { // portstatus
+			X_AUX_POWER_1_ITEM->sw.value = token[0] == '1';
+			X_AUX_POWER_2_ITEM->sw.value = token[1] == '1';
+			X_AUX_POWER_3_ITEM->sw.value = token[2] == '1';
+			X_AUX_POWER_4_ITEM->sw.value = token[3] == '1';
+		}
+		if ((token = strtok(NULL, ":"))) { // Dew1
+			X_AUX_HEATER_1_ITEM->number.value = atoi(token);
+		}
+		if ((token = strtok(NULL, ":"))) { // Dew2
+			X_AUX_HEATER_2_ITEM->number.value = atoi(token);
+		}
+		if ((token = strtok(NULL, ":"))) { // Current_port1
+			X_AUX_CURRENT_POWER_1_ITEM->number.value = atoi(token) / 400.0;
+		}
+		if ((token = strtok(NULL, ":"))) { // Current_port2
+			X_AUX_CURRENT_POWER_2_ITEM->number.value = atoi(token) / 400.0;
+		}
+		if ((token = strtok(NULL, ":"))) { // Current_port2
+			X_AUX_CURRENT_POWER_3_ITEM->number.value = atoi(token) / 400.0;
+		}
+		if ((token = strtok(NULL, ":"))) { // Current_port2
+			X_AUX_CURRENT_POWER_4_ITEM->number.value = atoi(token) / 400.0;
+		}
+		if ((token = strtok(NULL, ":"))) { // Current_dew1
+			X_AUX_CURRENT_HEATER_1_ITEM->number.value = atoi(token) / 400.0;
+		}
+		if ((token = strtok(NULL, ":"))) { // Current_dew2
+			X_AUX_CURRENT_HEATER_2_ITEM->number.value = atoi(token) / 400.0;
+		}
+		if ((token = strtok(NULL, ":"))) { // Overcurrent
+			X_AUX_OVERCURRENT_POWER_1_ITEM->light.value = token[0] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			X_AUX_OVERCURRENT_POWER_2_ITEM->light.value = token[1] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			X_AUX_OVERCURRENT_POWER_3_ITEM->light.value = token[2] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			X_AUX_OVERCURRENT_POWER_4_ITEM->light.value = token[3] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			X_AUX_OVERCURRENT_HEATER_1_ITEM->light.value = token[4] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			X_AUX_OVERCURRENT_HEATER_2_ITEM->light.value = token[5] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+		}
+		if ((token = strtok(NULL, ":"))) { // Autodew
+			X_AUX_AUTO_HEATER_ITEM->sw.value = atoi(token) == 1;
+		}
 	}
 	if (upb_command(device, "PC", response, sizeof(response))) {
 		char *token = strtok(response, ":");
@@ -117,6 +198,8 @@ static void aux_timer_callback(indigo_device *device) {
 			X_AUX_WATT_HOUR_ITEM->number.value = atof(token);
 		X_AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
 	}
+	indigo_update_property(device, X_AUX_POWER_PROPERTY, NULL);
+	indigo_update_property(device, X_AUX_HEATER_PROPERTY, NULL);
 	indigo_update_property(device, X_AUX_INFO_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->aux_timer);
 }
@@ -135,8 +218,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		X_AUX_HEATER_PROPERTY = indigo_init_number_property(NULL, device->name, "X_AUX_HEATER", AUX_GROUP, "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (X_AUX_HEATER_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(X_AUX_HEATER_1_ITEM, "X_AUX_HEATER_1", "Heater #1", 0, 255, 5, 0);
-		indigo_init_number_item(X_AUX_HEATER_2_ITEM, "X_AUX_HEATER_2", "Heater #2", 0, 255, 5, 0);
+		indigo_init_number_item(X_AUX_HEATER_1_ITEM, "X_AUX_HEATER_1", "Heater #1", 0, 254, 5, 0);
+		indigo_init_number_item(X_AUX_HEATER_2_ITEM, "X_AUX_HEATER_2", "Heater #2", 0, 254, 5, 0);
 		X_AUX_HUB_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_HUB", AUX_GROUP, "USB hub", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (X_AUX_HUB_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -145,12 +228,33 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (X_AUX_AUTO_HEATER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_AUX_AUTO_HEATER_ITEM, "X_AUX_AUTO_HEATER", "Enabled", false);
-		X_AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, "X_AUX_INFO", AUX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		X_AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, "X_AUX_INFO", AUX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 15);
 		if (X_AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(X_AUX_AVERAGE_ITEM, "X_AUX_AVERAGE", "Avereage current", 0, 100, 0, 0);
-		indigo_init_number_item(X_AUX_AMP_HOUR_ITEM, "X_AUX_AMP_HOUR", "Amp-hour", 0, 100, 0, 0);
-		indigo_init_number_item(X_AUX_WATT_HOUR_ITEM, "X_AUX_WATT_HOUR", "Watt-hour", 0, 100, 0, 0);
+		indigo_init_number_item(X_AUX_AVERAGE_ITEM, "X_AUX_AVERAGE", "Avereage current [A]", 0, 100, 0, 0);
+		indigo_init_number_item(X_AUX_AMP_HOUR_ITEM, "X_AUX_AMP_HOUR", "Amp-hour [Ah]", 0, 100, 0, 0);
+		indigo_init_number_item(X_AUX_WATT_HOUR_ITEM, "X_AUX_WATT_HOUR", "Watt-hour [Wh]", 0, 100, 0, 0);
+		indigo_init_number_item(X_AUX_VOLTAGE_ITEM, "X_AUX_VOLTAGE", "Voltage [V]", 0, 15, 0, 0);
+		indigo_init_number_item(X_AUX_CURRENT_ITEM, "X_AUX_CURRENT", "Current [A]", 0, 20, 0, 0);
+		indigo_init_number_item(X_AUX_POWER_ITEM, "X_AUX_POWER", "Power [W]", 0, 200, 0, 0);
+		indigo_init_number_item(X_AUX_TEMP_ITEM, "X_AUX_TEMP", "Temperature [C]", -50, 100, 0, 0);
+		indigo_init_number_item(X_AUX_HUMIDITY_ITEM, "X_AUX_HUMIDITY", "Humidity [%]", 0, 100, 0, 0);
+		indigo_init_number_item(X_AUX_DEVPOINT_ITEM, "X_AUX_DEVPOINT", "Devpoint [C]", -50, 100, 0, 0);
+		indigo_init_number_item(X_AUX_CURRENT_POWER_1_ITEM, "X_AUX_CURRENT_POWER_1", "Outlet #1 current [A]", 0, 3, 0, 0);
+		indigo_init_number_item(X_AUX_CURRENT_POWER_2_ITEM, "X_AUX_CURRENT_POWER_2", "Outlet #2 current [A]", 0, 3, 0, 0);
+		indigo_init_number_item(X_AUX_CURRENT_POWER_3_ITEM, "X_AUX_CURRENT_POWER_3", "Outlet #3 current [A]", 0, 3, 0, 0);
+		indigo_init_number_item(X_AUX_CURRENT_POWER_4_ITEM, "X_AUX_CURRENT_POWER_4", "Outlet #4 current [A]", 0, 3, 0, 0);
+		indigo_init_number_item(X_AUX_CURRENT_HEATER_1_ITEM, "X_AUX_CURRENT_HEATER_1", "Heater #1 current [A]", 0, 3, 0, 0);
+		indigo_init_number_item(X_AUX_CURRENT_HEATER_2_ITEM, "X_AUX_CURRENT_HEATER_2", "Heater #2 current [A]", 0, 3, 0, 0);
+		X_AUX_OVERCURRENT_PROPERTY = indigo_init_light_property(NULL, device->name, "X_AUX_OVERCURRENT", AUX_GROUP, "Overcurrent", INDIGO_OK_STATE, 6);
+		if (X_AUX_OVERCURRENT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_light_item(X_AUX_OVERCURRENT_POWER_1_ITEM, "X_AUX_OVERCURRENT_POWER_1", "Outlet #1 overcurrent", INDIGO_OK_STATE);
+		indigo_init_light_item(X_AUX_OVERCURRENT_POWER_2_ITEM, "X_AUX_OVERCURRENT_POWER_2", "Outlet #2 overcurrent", INDIGO_OK_STATE);
+		indigo_init_light_item(X_AUX_OVERCURRENT_POWER_3_ITEM, "X_AUX_OVERCURRENT_POWER_3", "Outlet #3 overcurrent", INDIGO_OK_STATE);
+		indigo_init_light_item(X_AUX_OVERCURRENT_POWER_4_ITEM, "X_AUX_OVERCURRENT_POWER_4", "Outlet #4 overcurrent", INDIGO_OK_STATE);
+		indigo_init_light_item(X_AUX_OVERCURRENT_HEATER_1_ITEM, "X_AUX_OVERCURRENT_HEATER_1", "Heater #1 overcurrent", INDIGO_OK_STATE);
+		indigo_init_light_item(X_AUX_OVERCURRENT_HEATER_2_ITEM, "X_AUX_OVERCURRENT_HEATER_2", "Heater #2 overcurrent", INDIGO_OK_STATE);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -185,7 +289,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	char command[16], response[64];
+	char command[16], response[128];
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -205,23 +309,85 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				}
 			}
 			if (PRIVATE_DATA->handle > 0) {
-				X_AUX_POWER_1_ITEM->sw.value = true;
-				X_AUX_POWER_2_ITEM->sw.value = true;
-				X_AUX_POWER_3_ITEM->sw.value = true;
-				X_AUX_POWER_4_ITEM->sw.value = true;
+				if (upb_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UPB", 3)) {
+					char *token = strtok(response, ":");
+					if ((token = strtok(NULL, ":"))) { // Voltage
+						X_AUX_VOLTAGE_ITEM->number.value = atof(token);
+					}
+					if ((token = strtok(NULL, ":"))) { // Current
+						X_AUX_CURRENT_ITEM->number.value = atof(token);
+					}
+					if ((token = strtok(NULL, ":"))) { // Power
+						X_AUX_POWER_ITEM->number.value = atoi(token);
+					}
+					if ((token = strtok(NULL, ":"))) { // Temp
+						X_AUX_TEMP_ITEM->number.value = atof(token);
+					}
+					if ((token = strtok(NULL, ":"))) { // Humidity
+						X_AUX_HUMIDITY_ITEM->number.value = atof(token);
+					}
+					if ((token = strtok(NULL, ":"))) { // Dewpoint
+						X_AUX_DEVPOINT_ITEM->number.value = atof(token);
+					}
+					if ((token = strtok(NULL, ":"))) { // portstatus
+						X_AUX_POWER_1_ITEM->sw.value = token[0] == '1';
+						X_AUX_POWER_2_ITEM->sw.value = token[1] == '1';
+						X_AUX_POWER_3_ITEM->sw.value = token[2] == '1';
+						X_AUX_POWER_4_ITEM->sw.value = token[3] == '1';
+					}
+					if ((token = strtok(NULL, ":"))) { // Dew1
+						X_AUX_HEATER_1_ITEM->number.value = atoi(token);
+					}
+					if ((token = strtok(NULL, ":"))) { // Dew2
+						X_AUX_HEATER_2_ITEM->number.value = atoi(token);
+					}
+					if ((token = strtok(NULL, ":"))) { // Current_port1
+						X_AUX_CURRENT_POWER_1_ITEM->number.value = atoi(token) / 400.0;
+					}
+					if ((token = strtok(NULL, ":"))) { // Current_port2
+						X_AUX_CURRENT_POWER_2_ITEM->number.value = atoi(token) / 400.0;
+					}
+					if ((token = strtok(NULL, ":"))) { // Current_port2
+						X_AUX_CURRENT_POWER_3_ITEM->number.value = atoi(token) / 400.0;
+					}
+					if ((token = strtok(NULL, ":"))) { // Current_port2
+						X_AUX_CURRENT_POWER_4_ITEM->number.value = atoi(token) / 400.0;
+					}
+					if ((token = strtok(NULL, ":"))) { // Current_dew1
+						X_AUX_CURRENT_HEATER_1_ITEM->number.value = atoi(token) / 400.0;
+					}
+					if ((token = strtok(NULL, ":"))) { // Current_dew2
+						X_AUX_CURRENT_HEATER_2_ITEM->number.value = atoi(token) / 400.0;
+					}
+					if ((token = strtok(NULL, ":"))) { // Overcurrent
+						X_AUX_OVERCURRENT_POWER_1_ITEM->light.value = token[0] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+						X_AUX_OVERCURRENT_POWER_2_ITEM->light.value = token[1] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+						X_AUX_OVERCURRENT_POWER_3_ITEM->light.value = token[2] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+						X_AUX_OVERCURRENT_POWER_4_ITEM->light.value = token[3] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+						X_AUX_OVERCURRENT_HEATER_1_ITEM->light.value = token[4] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+						X_AUX_OVERCURRENT_HEATER_2_ITEM->light.value = token[5] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					}
+					if ((token = strtok(NULL, ":"))) { // Autodew
+						X_AUX_AUTO_HEATER_ITEM->sw.value = atoi(token) == 1;
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'SA' response");
+						close(PRIVATE_DATA->handle);
+						PRIVATE_DATA->handle = 0;
+					}
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'SA' response");
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+				}
+			}
+			if (PRIVATE_DATA->handle > 0) {
 				indigo_define_property(device, X_AUX_POWER_PROPERTY, NULL);
-				upb_command(device, "PZ:1", response, sizeof(response));
-				X_AUX_HEATER_1_ITEM->number.value = 0;
-				X_AUX_HEATER_2_ITEM->number.value = 0;
 				indigo_define_property(device, X_AUX_HEATER_PROPERTY, NULL);
-				upb_command(device, "P5:0", response, sizeof(response));
-				upb_command(device, "P6:0", response, sizeof(response));
+				upb_command(device, "PU:1", response, sizeof(response));
 				X_AUX_HUB_ITEM->sw.value = true;
 				indigo_define_property(device, X_AUX_HUB_PROPERTY, NULL);
-				upb_command(device, "PU:0", response, sizeof(response));
-				X_AUX_AUTO_HEATER_ITEM->sw.value = false;
 				indigo_define_property(device, X_AUX_AUTO_HEATER_PROPERTY, NULL);
-				upb_command(device, "PD:0", response, sizeof(response));
+				indigo_define_property(device, X_AUX_OVERCURRENT_PROPERTY, NULL);
 				indigo_define_property(device, X_AUX_INFO_PROPERTY, NULL);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 				PRIVATE_DATA->aux_timer = indigo_set_timer(device, 0, aux_timer_callback);
@@ -237,6 +403,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, X_AUX_HEATER_PROPERTY, NULL);
 			indigo_delete_property(device, X_AUX_HUB_PROPERTY, NULL);
 			indigo_delete_property(device, X_AUX_AUTO_HEATER_PROPERTY, NULL);
+			indigo_delete_property(device, X_AUX_OVERCURRENT_PROPERTY, NULL);
 			indigo_delete_property(device, X_AUX_INFO_PROPERTY, NULL);
 			if (--PRIVATE_DATA->count == 0) {
 				if (PRIVATE_DATA->handle > 0) {
@@ -302,6 +469,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(X_AUX_HEATER_PROPERTY);
 	indigo_release_property(X_AUX_HUB_PROPERTY);
 	indigo_release_property(X_AUX_AUTO_HEATER_PROPERTY);
+	indigo_release_property(X_AUX_OVERCURRENT_PROPERTY);
 	indigo_release_property(X_AUX_INFO_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
@@ -310,7 +478,7 @@ static indigo_result aux_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 
 static void focuser_timer_callback(indigo_device *device) {
-	char response[16];
+	char response[128];
 	if (upb_command(device, "ST", response, sizeof(response))) {
 		double temp = atof(response);
 		if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
@@ -407,7 +575,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	char command[16], response[64];
+	char command[16], response[128];
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);

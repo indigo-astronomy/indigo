@@ -82,7 +82,29 @@ void loop() {
   } else if (command.startsWith("PF")) {
     Serial.println("RBT");
   } else if (command.startsWith("PA")) {
-    Serial.println("UPB_OK"); // TBD
+    Serial.print("UPB:12.2:0.0:0:23.2:59:14.7:");
+    Serial.print(power1 ? '1' : '0');
+    Serial.print(power2 ? '1' : '0');
+    Serial.print(power3 ? '1' : '0');
+    Serial.print(power4 ? '1' : '0');
+    Serial.print(':');
+    Serial.print(power5);
+    Serial.print(':');
+    Serial.print(power6);
+    Serial.print(':');
+    Serial.print(power1 ? 200 : 0);
+    Serial.print(':');
+    Serial.print(power2 ? 200 : 0);
+    Serial.print(':');
+    Serial.print(power3 ? 200 : 0);
+    Serial.print(':');
+    Serial.print(power4 ? 200 : 0);
+    Serial.print(':');
+    Serial.print(power5 ? 300 : 0);
+    Serial.print(':');
+    Serial.print(power6 ? 400 : 0);
+    Serial.print(":000001:");
+    Serial.println(autodev ? '1' : '0');
   } else if (command.startsWith("PC")) {
     Serial.println("2.1:12:46");
   } else if (command.startsWith("PD:")) {
