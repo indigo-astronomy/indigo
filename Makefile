@@ -1516,7 +1516,8 @@ install:
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server_standalone $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_prop_tool $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0644 $(DRIVERS) $(INSTALL_PREFIX)/bin
-	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.so $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.$(SOEXT) $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0644 $(BUILD_LIB)/libtoupcam.$(SOEXT) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 $(DRIVER_SOLIBS) $(INSTALL_PREFIX)/lib
 	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/ -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	mkdir qhy_scratch; cd qhy_scratch; cmake -DCMAKE_INSTALL_PREFIX=/ -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_qhy/bin_externals/qhyccd/; make install; cd ..; rm -rf qhy_scratch
@@ -1555,6 +1556,7 @@ package-prepare: all
 	install $(BUILD_LIB)/libindigo.a /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	install $(BUILD_LIB)/libtoupcam.$(SOEXT) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	mkdir qhy_scratch; cd qhy_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_qhy/bin_externals/qhyccd/; make install; cd ..; rm -rf qhy_scratch
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=/tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/etc/apogee RULES_PREFIX=/tmp/$(PACKAGE_NAME)/lib/udev/rules.d; cd ../../../../
