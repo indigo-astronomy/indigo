@@ -207,8 +207,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 -(void)processEvent:(PTPEvent *)event {
   switch (event.eventCode) {
     case PTPEventCodeSonyPropertyChanged: {
-      if (iteratedProperty == 0)
-        [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
+      [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
       break;
     }
     case PTPEventCodeSonyObjectAdded: {
@@ -443,9 +442,11 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
         self.info.properties[codeNumber] = property;
         [properties addObject:property];
       }
-      if (iteratedProperty == 0) {
-        for (PTPProperty *property in properties)
+      for (PTPProperty *property in properties) {
+        if (iteratedProperty == 0 || iteratedProperty == property.propertyCode) {
+          [self.delegate debug:[property description]];
           [self processPropertyDescription:property];
+        }
       }
       break;
     }
@@ -597,6 +598,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 }
 
 #define MAX_WAIT  10
+#define MAX_DELAY 100000
 
 -(void)iterate:(PTPPropertyCode)code to:(NSString *)value withMap:(long *)map {
   iteratedProperty = code;
@@ -619,7 +621,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:@"1"];
       for (wait = 0; wait < MAX_WAIT; wait++) {
         [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
-        usleep(200000);
+        usleep(MAX_DELAY);
         property = self.info.properties[[NSNumber numberWithUnsignedShort:code]];
         if (property.value.intValue == map[i + 1]) {
           break;
@@ -633,7 +635,7 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
       [self setProperty:code operation:PTPRequestCodeSonySetControlDeviceB value:@"-1"];
       for (wait = 0; wait < MAX_WAIT; wait++) {
         [self sendPTPRequest:PTPRequestCodeSonyGetAllDevicePropData];
-        usleep(200000);
+        usleep(MAX_DELAY);
         property = self.info.properties[[NSNumber numberWithUnsignedShort:code]];
         if (property.value.intValue == map[i - 1]) {
           break;
