@@ -595,30 +595,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				}
 			}
 			if (PRIVATE_DATA->handle > 0) {
-				if (upb_command(device, "SA", response, sizeof(response)) && !strncmp(response, "UPB_OK", 6)) { // TBD
+				if (upb_command(device, "SA", response, sizeof(response))) {
 					char *token = strtok(response, ":");
-					token = strtok(NULL, ":"); // status
-					if (token) { // version
-						strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
+					if (token) { // Stepper position
+						FOCUSER_POSITION_ITEM->number.value = atol(token);
 					}
-					token = strtok(NULL, ":");
-					if (token) { // temperature
-						FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = atof(token);
-					}
-					token = strtok(NULL, ":");
-					if (token) { // position
-						FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
-					}
-					token = strtok(NULL, ":");
-					if (token) { // moving status
+					if ((token = strtok(NULL, ":"))) { // Motor is running
 						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 					}
-					token = strtok(NULL, ":");
-					if (token) { // reverse
+					if ((token = strtok(NULL, ":"))) { // Motor Invert
 						indigo_set_switch(FOCUSER_ROTATION_PROPERTY, *token == '1' ? FOCUSER_ROTATION_COUNTERCLOCKWISE_ITEM : FOCUSER_ROTATION_CLOCKWISE_ITEM, true);
 					}
-					token = strtok(NULL, ":");
-					if (token) { // backlash
+					if ((token = strtok(NULL, ":"))) { // Backlash Steps
 						X_FOCUSER_BACKLASH_ITEM->number.value = X_FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'SA' response");
