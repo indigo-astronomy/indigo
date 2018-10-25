@@ -70,6 +70,7 @@ This is the list of requirements taken into the consideration:
 46. GPhoto2 CCD driver
 47. Optec focuser driver (untested)
 48. ToupTek CCD driver
+49. AltairAstro CCD driver
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
