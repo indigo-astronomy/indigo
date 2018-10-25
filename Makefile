@@ -1187,6 +1187,21 @@ $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.dylib: indigo_mac_drivers/focuser_mjkzz
 
 #---------------------------------------------------------------------
 #
+#	Build RTS-on-COM aux driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_aux_rts.a: indigo_drivers/aux_rts/indigo_aux_rts.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_aux_rts: indigo_drivers/aux_rts/indigo_aux_rts_main.o $(BUILD_DRIVERS)/indigo_aux_rts.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_aux_rts.$(SOEXT): indigo_drivers/aux_rts/indigo_aux_rts.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build ToupTek CCD driver
 #
 #---------------------------------------------------------------------
@@ -1214,7 +1229,7 @@ $(BUILD_DRIVERS)/indigo_ccd_altair.a: indigo_drivers/ccd_altair/indigo_ccd_altai
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DRIVERS)/indigo_ccd_altair: indigo_drivers/ccd_altair/indigo_ccd_altair_main.o $(BUILD_DRIVERS)/indigo_ccd_altair.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -laltair
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -laltaircam
 
 $(BUILD_DRIVERS)/indigo_ccd_altair.$(SOEXT): indigo_drivers/ccd_altair/indigo_ccd_altair.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -laltaircam

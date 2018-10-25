@@ -1,4 +1,4 @@
-// Copyright (c) 2016 CloudMakers, s. r. o.
+// Copyright (c) 2018 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -19,8 +19,8 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO FCUSB focuser driver main
- \file indigo_focuser_fcusb_main.c
+/** INDIGO RTS on COM aux driver main
+ \file indigo_aux_rts_main.c
  */
 
 #include <stdio.h>
@@ -28,17 +28,17 @@
 
 #include "indigo_driver_xml.h"
 
-#include "indigo_focuser_fcusb.h"
+#include "indigo_aux_rts.h"
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
 	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
 	indigo_start();
-	indigo_focuser_fcusb(INDIGO_DRIVER_INIT, NULL);
+	indigo_aux_rts(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_focuser_fcusb(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_aux_rts(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_stop();
 	return 0;
 }
