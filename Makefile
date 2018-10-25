@@ -59,6 +59,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac/libASICamera2.a
 	LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac/libUSB2ST4Conv.a
 	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/macOS/libtoupcam.dylib
+	LIBALTAIRCAM=indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/macOS/libaltaircam.dylib
 	FLISDK=libfli-1.999.1-180223
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
 	PACKAGE_TYPE=dmg
@@ -71,6 +72,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/Linux/$(ARCH_DETECTED)/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
 	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/Linux/$(ARCH_DETECTED)/libtoupcam.so
+	LIBALTAIRCAM=indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/Linux/$(ARCH_DETECTED)/libaltaircam.so
 	ifeq ($(ARCH_DETECTED),arm)
 		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/armv6/libEFWFilter.a
 		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/armv6/libASICamera2.a
@@ -487,6 +489,19 @@ $(BUILD_LIB)/libtoupcam.$(SOEXT): $(BUILD_INCLUDE)/toupcam.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBTOUPCAM) $(BUILD_LIB)
 
+#---------------------------------------------------------------------
+#
+#	Build libaltaircam
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/altaircam.h: indigo_drivers/ccd_altair/bin_externals/libaltaircam/include/altaircam.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_altair/bin_externals/libaltaircam/include/altaircam.h $(BUILD_INCLUDE)
+
+$(BUILD_LIB)/libaltaircam.$(SOEXT): $(BUILD_INCLUDE)/altaircam.h
+	install -d $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBALTAIRCAM) $(BUILD_LIB)
 
 #---------------------------------------------------------------------
 #
@@ -1189,6 +1204,23 @@ $(BUILD_DRIVERS)/indigo_ccd_touptek.$(SOEXT): indigo_drivers/ccd_touptek/indigo_
 
 #---------------------------------------------------------------------
 #
+#	Build AltairAstro CCD driver
+#
+#---------------------------------------------------------------------
+
+indigo_drivers/ccd_altair/indigo_ccd_altair.o:	$(BUILD_INCLUDE)/altaircam.h $(BUILD_LIB)/libaltaircam.$(SOEXT)
+
+$(BUILD_DRIVERS)/indigo_ccd_altair.a: indigo_drivers/ccd_altair/indigo_ccd_altair.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_altair: indigo_drivers/ccd_altair/indigo_ccd_altair_main.o $(BUILD_DRIVERS)/indigo_ccd_altair.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -laltair
+
+$(BUILD_DRIVERS)/indigo_ccd_altair.$(SOEXT): indigo_drivers/ccd_altair/indigo_ccd_altair.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -laltaircam
+
+#---------------------------------------------------------------------
+#
 #	Build WeMacro Rail driver
 #
 #---------------------------------------------------------------------
@@ -1467,7 +1499,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 
 $(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS) $(BUILD_LIB)/libindigo.a $(EXTERNALS) ctrlpanel
-	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS) $(se) $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) $(LIBRAW_1394) -lstdc++  -lcurl -ltoupcam
+	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS) $(se) $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) $(LIBRAW_1394) -lstdc++  -lcurl -ltoupcam  -laltaircam
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
@@ -1533,6 +1565,7 @@ install:
 	sudo install -D -m 0644 $(DRIVERS) $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.$(SOEXT) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 $(BUILD_LIB)/libtoupcam.$(SOEXT) $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0644 $(BUILD_LIB)/libaltaircam.$(SOEXT) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 $(DRIVER_SOLIBS) $(INSTALL_PREFIX)/lib
 	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/ -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	mkdir qhy_scratch; cd qhy_scratch; cmake -DCMAKE_INSTALL_PREFIX=/ -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_qhy/bin_externals/qhyccd/; make install; cd ..; rm -rf qhy_scratch
@@ -1549,6 +1582,8 @@ install:
 	sudo install -D -m 0644 indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.rules /lib/udev/rules.d/99-indigo_focuser_usbv3.rules
 	sudo install -D -m 0644 indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.rules /lib/udev/rules.d/99-indigo_focuser_wemacro.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_mi/indigo_ccd_mi.rules /lib/udev/rules.d/99-indigo_ccd_mi.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_touptek/libtoupcam/99-toupcam.rules /lib/udev/rules.d/99-indigo_ccd_toupcam.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_altair/libaltaircam/99-altaircam.rules /lib/udev/rules.d/99-indigo_ccd_altaircam.rules
 	sudo udevadm control --reload-rules
 
 #---------------------------------------------------------------------
@@ -1572,6 +1607,7 @@ package-prepare: all
 	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(BUILD_LIB)/libtoupcam.$(SOEXT) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	install $(BUILD_LIB)/libaltaircam.$(SOEXT) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	mkdir qhy_scratch; cd qhy_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_qhy/bin_externals/qhyccd/; make install; cd ..; rm -rf qhy_scratch
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=/tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/etc/apogee RULES_PREFIX=/tmp/$(PACKAGE_NAME)/lib/udev/rules.d; cd ../../../../

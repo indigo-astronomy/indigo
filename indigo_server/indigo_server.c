@@ -87,6 +87,7 @@
 #include "focuser_moonlite/indigo_focuser_moonlite.h"
 #include "focuser_mjkzz/indigo_focuser_mjkzz.h"
 #include "ccd_touptek/indigo_ccd_touptek.h"
+#include "ccd_altair/indigo_ccd_altair.h"
 #include "focuser_optec/indigo_focuser_optec.h"
 #include "aux_upb/indigo_aux_upb.h"
 #ifndef __aarch64__
@@ -154,6 +155,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_moonlite,
 	indigo_focuser_mjkzz,
 	indigo_ccd_touptek,
+	indigo_ccd_altair,
 	indigo_focuser_optec,
 	indigo_aux_upb,
 #ifndef __aarch64__

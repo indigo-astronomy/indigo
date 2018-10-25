@@ -108,6 +108,9 @@
 		599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */ = {isa = PBXBuildFile; fileRef = 599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
+		59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD17321823693008199D6 /* indigo_ccd_altair.c */; };
+		59BBD187218236D8008199D6 /* libaltaircam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59BBD17C21823693008199D6 /* libaltaircam.dylib */; };
+		59BBD18821823B60008199D6 /* libaltaircam.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 59BBD17C21823693008199D6 /* libaltaircam.dylib */; };
 		59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */; };
 		59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */; };
 		59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */; };
@@ -478,6 +481,7 @@
 			dstSubfolderSpec = 16;
 			files = (
 				9D07F7D3216F5F9100330726 /* libtoupcam.dylib in CopyFiles */,
+				59BBD18821823B60008199D6 /* libaltaircam.dylib in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -856,6 +860,18 @@
 		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
 		59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb_utils.c; sourceTree = "<group>"; };
+		59BBD17021823693008199D6 /* indigo_ccd_altair.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_altair.h; sourceTree = "<group>"; };
+		59BBD17121823693008199D6 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59BBD17221823693008199D6 /* indigo_ccd_altair_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_altair_main.c; sourceTree = "<group>"; };
+		59BBD17321823693008199D6 /* indigo_ccd_altair.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_altair.c; sourceTree = "<group>"; };
+		59BBD17621823693008199D6 /* 99-altaircam.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-altaircam.rules"; sourceTree = "<group>"; };
+		59BBD17821823693008199D6 /* altaircam.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = altaircam.h; sourceTree = "<group>"; };
+		59BBD17921823693008199D6 /* en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
+		59BBD17C21823693008199D6 /* libaltaircam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libaltaircam.dylib; sourceTree = "<group>"; };
+		59BBD17F21823693008199D6 /* libaltaircam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libaltaircam.so; sourceTree = "<group>"; };
+		59BBD18121823693008199D6 /* libaltaircam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libaltaircam.so; sourceTree = "<group>"; };
+		59BBD18321823693008199D6 /* libaltaircam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libaltaircam.so; sourceTree = "<group>"; };
+		59BBD18521823693008199D6 /* libaltaircam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libaltaircam.so; sourceTree = "<group>"; };
 		59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ica.h; sourceTree = "<group>"; };
 		59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ccd_ica.m; sourceTree = "<group>"; };
 		59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp.h; sourceTree = "<group>"; };
@@ -1694,6 +1710,7 @@
 				59986D741F9BA10900D68DC1 /* libftd2xx.a in Frameworks */,
 				9DBC346E1DCB26D100588DB9 /* libEFWFilter.a in Frameworks */,
 				9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */,
+				59BBD187218236D8008199D6 /* libaltaircam.dylib in Frameworks */,
 				9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */,
 				9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */,
 				9D07F7D2216F5EEE00330726 /* libtoupcam.dylib in Frameworks */,
@@ -2486,6 +2503,105 @@
 			path = ioptron_2.0_simulator;
 			sourceTree = "<group>";
 		};
+		59BBD16F21823693008199D6 /* ccd_altair */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD17121823693008199D6 /* README.md */,
+				59BBD17021823693008199D6 /* indigo_ccd_altair.h */,
+				59BBD17321823693008199D6 /* indigo_ccd_altair.c */,
+				59BBD17221823693008199D6 /* indigo_ccd_altair_main.c */,
+				59BBD17421823693008199D6 /* bin_externals */,
+			);
+			path = ccd_altair;
+			sourceTree = "<group>";
+		};
+		59BBD17421823693008199D6 /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD17521823693008199D6 /* libaltaircam */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		59BBD17521823693008199D6 /* libaltaircam */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD17921823693008199D6 /* en.html */,
+				59BBD17621823693008199D6 /* 99-altaircam.rules */,
+				59BBD17721823693008199D6 /* include */,
+				59BBD17A21823693008199D6 /* lib */,
+			);
+			path = libaltaircam;
+			sourceTree = "<group>";
+		};
+		59BBD17721823693008199D6 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD17821823693008199D6 /* altaircam.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59BBD17A21823693008199D6 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD17B21823693008199D6 /* macOS */,
+				59BBD17D21823693008199D6 /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		59BBD17B21823693008199D6 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD17C21823693008199D6 /* libaltaircam.dylib */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		59BBD17D21823693008199D6 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD17E21823693008199D6 /* x64 */,
+				59BBD18021823693008199D6 /* x86 */,
+				59BBD18221823693008199D6 /* arm */,
+				59BBD18421823693008199D6 /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		59BBD17E21823693008199D6 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD17F21823693008199D6 /* libaltaircam.so */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		59BBD18021823693008199D6 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD18121823693008199D6 /* libaltaircam.so */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		59BBD18221823693008199D6 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD18321823693008199D6 /* libaltaircam.so */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		59BBD18421823693008199D6 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				59BBD18521823693008199D6 /* libaltaircam.so */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
 		59C499DF1EFADF7600E750AA /* indigo_mac_drivers */ = {
 			isa = PBXGroup;
 			children = (
@@ -2635,6 +2751,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				59BBD16F21823693008199D6 /* ccd_altair */,
 				9D6940822180B9F600AB112C /* aux_upb */,
 				59399D882177D316002886CA /* focuser_optec */,
 				592E79112168DD7A00E856F3 /* focuser_mjkzz */,
@@ -2915,10 +3032,10 @@
 		9D48B7A1215E570600CF757E /* libtoupcam */ = {
 			isa = PBXGroup;
 			children = (
-				9D48B7A2215E570600CF757E /* include */,
 				9D48B7A4215E570600CF757E /* en.html */,
-				9D48B7A5215E570600CF757E /* lib */,
 				9D48B7B5215E570600CF757E /* 99-toupcam.rules */,
+				9D48B7A2215E570600CF757E /* include */,
+				9D48B7A5215E570600CF757E /* lib */,
 			);
 			path = libtoupcam;
 			sourceTree = "<group>";
@@ -4147,9 +4264,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9D97F8141D9A8A1900582EAF /* Build configuration list for PBXNativeTarget "indigo_server" */;
 			buildPhases = (
+				9D97F8131D9A8A1900582EAF /* CopyFiles */,
 				9D97F80A1D9A8A1900582EAF /* Sources */,
 				9D97F8121D9A8A1900582EAF /* Frameworks */,
-				9D97F8131D9A8A1900582EAF /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -4328,6 +4445,7 @@
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
 				599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */,
+				59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */,
 				59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */,
 				59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */,
 				592E79192168E06B00E856F3 /* indigo_focuser_mjkzz.c in Sources */,
@@ -4944,6 +5062,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 					"$(PROJECT_DIR)/build/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -4962,6 +5081,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 					"$(PROJECT_DIR)/build/lib",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
