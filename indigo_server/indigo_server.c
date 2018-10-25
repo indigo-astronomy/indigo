@@ -90,6 +90,7 @@
 #include "ccd_altair/indigo_ccd_altair.h"
 #include "focuser_optec/indigo_focuser_optec.h"
 #include "aux_upb/indigo_aux_upb.h"
+#include "aux_rts/indigo_aux_rts.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -158,6 +159,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_altair,
 	indigo_focuser_optec,
 	indigo_aux_upb,
+	indigo_aux_rts,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif
