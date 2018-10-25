@@ -684,7 +684,7 @@
 		59399D8B2177D316002886CA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59399D8D2177D316002886CA /* optec_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = optec_simulator.ino; sourceTree = "<group>"; };
 		59399D8E2177D316002886CA /* indigo_focuser_optec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_optec.h; sourceTree = "<group>"; };
-		59399D8F2177D391002886CA /* tcf_technical_manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = tcf_technical_manual.pdf; path = ../../../../Desktop/tcf_technical_manual.pdf; sourceTree = "<group>"; };
+		59399D8F2177D391002886CA /* tcf_technical_manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = tcf_technical_manual.pdf; sourceTree = "<group>"; };
 		593AD1011EF8399500C059BC /* indigo_guider_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_asi.c; sourceTree = "<group>"; };
 		593AD1031EF8399500C059BC /* indigo_guider_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_asi_main.c; sourceTree = "<group>"; };
 		593AD1041EF8399500C059BC /* indigo_guider_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_asi.h; sourceTree = "<group>"; };
