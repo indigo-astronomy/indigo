@@ -54,9 +54,6 @@
 #define X_FOCUSER_PHASE_WIRING_1_ITEM					(X_FOCUSER_PHASE_WIRING_PROPERTY->items+1)
 #define X_FOCUSER_PHASE_WIRING_2_ITEM					(X_FOCUSER_PHASE_WIRING_PROPERTY->items+2)
 
-#define X_FOCUSER_BACKLASH_PROPERTY						(PRIVATE_DATA->compensation_backlash_property)
-#define X_FOCUSER_BACKLASH_ITEM								(X_FOCUSER_BACKLASH_PROPERTY->items+0)
-
 typedef struct {
 	int handle;
 	pthread_mutex_t port_mutex;
@@ -152,10 +149,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(X_FOCUSER_PHASE_WIRING_0_ITEM, "0", "0", true);
 		indigo_init_switch_item(X_FOCUSER_PHASE_WIRING_1_ITEM, "1", "1", false);
 		indigo_init_switch_item(X_FOCUSER_PHASE_WIRING_2_ITEM, "2", "2", false);
-		X_FOCUSER_BACKLASH_PROPERTY = indigo_init_number_property(NULL, device->name, "X_FOCUSER_BACKLASH", FOCUSER_MAIN_GROUP, "Compensation backlash", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_FOCUSER_BACKLASH_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_number_item(X_FOCUSER_BACKLASH_ITEM, "BACKLASH", "Backlash", 0, 999, 0, 0);
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
+		FOCUSER_BACKLASH_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_ITEM->number.min = 0;
+		FOCUSER_BACKLASH_ITEM->number.max = 999;
+		FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = 0;
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -207,8 +205,6 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
 		if (indigo_property_match(X_FOCUSER_PHASE_WIRING_PROPERTY, property))
 			indigo_define_property(device, X_FOCUSER_PHASE_WIRING_PROPERTY, NULL);
-		if (indigo_property_match(X_FOCUSER_BACKLASH_PROPERTY, property))
-			indigo_define_property(device, X_FOCUSER_BACKLASH_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -240,7 +236,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
 						FOCUSER_COMPENSATION_PROPERTY->hidden = true;
 						FOCUSER_MODE_PROPERTY->hidden = true;
-						X_FOCUSER_BACKLASH_PROPERTY->hidden = true;
 					} else {
 						FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 						FOCUSER_TEMPERATURE_ITEM->number.value = atoi(response) / 10.0;
@@ -261,9 +256,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 						if (nstep_command(device, ":RG", response, 1)) {
 							indigo_set_switch(FOCUSER_MODE_PROPERTY, *response == '2' ? FOCUSER_MODE_AUTOMATIC_ITEM : FOCUSER_MODE_MANUAL_ITEM, true);
 						}
-						X_FOCUSER_BACKLASH_PROPERTY->hidden = false;
 						if (nstep_command(device, ":RE", response, 3)) {
-							X_FOCUSER_BACKLASH_ITEM->number.value = atoi(response);
+							FOCUSER_BACKLASH_ITEM->number.value = atoi(response);
 						}
 					}
 				}
@@ -291,7 +285,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (PRIVATE_DATA->handle > 0) {
 				indigo_define_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
 				indigo_define_property(device, X_FOCUSER_PHASE_WIRING_PROPERTY, NULL);
-				indigo_define_property(device, X_FOCUSER_BACKLASH_PROPERTY, NULL);
 				nstep_command(device, ":CC1", NULL, 0);
 				nstep_command(device, ":CS001#", NULL, 0);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
@@ -307,7 +300,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_cancel_timer(device, &PRIVATE_DATA->timer);
 				indigo_delete_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
 				indigo_delete_property(device, X_FOCUSER_PHASE_WIRING_PROPERTY, NULL);
-				indigo_delete_property(device, X_FOCUSER_BACKLASH_PROPERTY, NULL);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
@@ -410,16 +402,16 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-		// -------------------------------------------------------------------------------- X_FOCUSER_BACKLASH
-	} else if (indigo_property_match(X_FOCUSER_BACKLASH_PROPERTY, property)) {
-		indigo_property_copy_values(X_FOCUSER_BACKLASH_PROPERTY, property, false);
-		snprintf(command, sizeof(command), ":TB%03d#", (int)X_FOCUSER_BACKLASH_ITEM->number.value);
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
+	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+		snprintf(command, sizeof(command), ":TB%03d#", (int)FOCUSER_BACKLASH_ITEM->number.value);
 		if (nstep_command(device, command, NULL, 0)) {
-			X_FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			X_FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		indigo_update_property(device, X_FOCUSER_BACKLASH_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
@@ -431,7 +423,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_FOCUSER_STEPPING_MODE_PROPERTY);
 	indigo_release_property(X_FOCUSER_PHASE_WIRING_PROPERTY);
-	indigo_release_property(X_FOCUSER_BACKLASH_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
