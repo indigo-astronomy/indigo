@@ -40,8 +40,6 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <hidapi/hidapi.h>
-
 #include <libfcusb/libfcusb.h>
 
 #include "indigo_driver_xml.h"
