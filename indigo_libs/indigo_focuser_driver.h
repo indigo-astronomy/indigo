@@ -97,6 +97,14 @@ extern "C" {
  */
 #define FOCUSER_ABORT_MOTION_ITEM							(FOCUSER_ABORT_MOTION_PROPERTY->items+0)
 
+	/** FOCUSER_BACKLASH property pointer, property is optional, property change request should be fully handled by focuser driver
+	 */
+#define FOCUSER_BACKLASH_PROPERTY							(FOCUSER_CONTEXT->focuser_backlash_property)
+	
+	/** FOCUSER_BACKLASH.BACKLASH property item pointer.
+	 */
+#define FOCUSER_BACKLASH_ITEM									(FOCUSER_BACKLASH_PROPERTY->items+0)
+	
 /** FOCUSER_TEMPERATURE property pointer, property is optional, property should be fully handled by focuser driver
  */
 #define FOCUSER_TEMPERATURE_PROPERTY					(FOCUSER_CONTEXT->focuser_temperature_property)
@@ -136,6 +144,7 @@ typedef struct {
 	indigo_property *focuser_steps_property;					///< FOCUSER_STEPS property pointer
 	indigo_property *focuser_position_property;				///< FOCUSER_POSITION property pointer
 	indigo_property *focuser_abort_motion_property;		///< FOCUSER_ABORT_MOTION property pointer
+	indigo_property *focuser_backlash_property;				///< FOCUSER_BACKLASH property pointer
 	indigo_property *focuser_temperature_property;		///< FOCUSER_TEMPERATURE property pointer
 	indigo_property *focuser_compensation_property;		///< FOCUSER_COMPENSATION property pointer
 	indigo_property *focuser_mode_property;						///< FOCUSER_MODE property pointer

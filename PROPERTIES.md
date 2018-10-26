@@ -110,6 +110,7 @@ Properties are implemented by wheel driver base class in [indigo_wheel_driver.c]
 <tr><td>FOCUSER_STEPS</td><td>number</td><td>no</td><td>yes</td><td>STEPS</td><td>yes</td><td></td></tr>
 <tr><td>FOCUSER_POSITION</td><td>number</td><td></td><td>no</td><td>POSITION</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
 <tr><td>FOCUSER_ABORT_MOTION</td><td>switch</td><td>no</td><td>yes</td><td>ABORT_MOTION</td><td>yes</td><td></td></tr>
+<tr><td>FOCUSER_BACKLASH</td><td>switch</td><td>no</td><td>no</td><td>BACKLASH</td><td>yes</td><td></td></tr>
 <tr><td>FOCUSER_TEMPERATURE</td><td>number</td><td>no</td><td>no</td><td>TEMPERATURE</td><td>yes</td><td></td></tr>
 <tr><td>FOCUSER_COMPENSATION</td><td>number</td><td>no</td><td>no</td><td>COMPENSATION</td><td>yes</td><td></td></tr>
 </table>
