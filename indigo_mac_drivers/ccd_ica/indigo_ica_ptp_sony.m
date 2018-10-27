@@ -336,8 +336,8 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
 				else
 					value = [NSString stringWithFormat:@"1/%d", b];
 			}
-			NSArray *values = @[ @"+", property.value.description,  @"-" ];
-			NSArray *labels = @[ @"-", value, @"+" ];
+			NSArray *values = @[ @"-", property.value.description,  @"+" ];
+			NSArray *labels = @[ @"+", value, @"-" ];
       property.readOnly = mode != 4 && mode != 1 && mode != 32850 && mode != 32851;
       [self.delegate cameraPropertyChanged:self code:property.propertyCode value:property.value.description values:values labels:labels readOnly:property.readOnly];
       break;
