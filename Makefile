@@ -1597,8 +1597,8 @@ install:
 	sudo install -D -m 0644 indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.rules /lib/udev/rules.d/99-indigo_focuser_usbv3.rules
 	sudo install -D -m 0644 indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.rules /lib/udev/rules.d/99-indigo_focuser_wemacro.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_mi/indigo_ccd_mi.rules /lib/udev/rules.d/99-indigo_ccd_mi.rules
-	sudo install -D -m 0644 indigo_drivers/ccd_touptek/libtoupcam/99-toupcam.rules /lib/udev/rules.d/99-indigo_ccd_toupcam.rules
-	sudo install -D -m 0644 indigo_drivers/ccd_altair/libaltaircam/99-altaircam.rules /lib/udev/rules.d/99-indigo_ccd_altaircam.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_touptek/bin_externals/libtoupcam/99-toupcam.rules /lib/udev/rules.d/99-indigo_ccd_toupcam.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_altair/bin_externals/libaltaircam/99-altaircam.rules /lib/udev/rules.d/99-indigo_ccd_altaircam.rules
 	sudo udevadm control --reload-rules
 
 #---------------------------------------------------------------------
