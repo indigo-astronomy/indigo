@@ -158,7 +158,6 @@
 		59F756281DCE504D002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
 		59FC2EB2210CA58500730343 /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FC2EB1210CA58400730343 /* libgxccd.a */; };
 		59FC2EB4210CA58C00730343 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB3210CA58C00730343 /* gxccd.h */; };
-		59FC2EBA210CA76200730343 /* indigo_ccd_mi_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */; };
 		59FC2EBB210CA76200730343 /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
 		59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */; };
 		59FFD0D22128604200C7355C /* hidapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFD0D02128604200C7355C /* hidapi.h */; };
@@ -1746,9 +1745,9 @@
 			isa = PBXGroup;
 			children = (
 				594107CD1EC8E95300C44F92 /* README.md */,
-				590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */,
-				590A86401DB80A04002F12FB /* indigo_ccd_asi.c */,
 				590A86411DB80A04002F12FB /* indigo_ccd_asi.h */,
+				590A86401DB80A04002F12FB /* indigo_ccd_asi.c */,
+				590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */,
 				59C8E7F21DBBD98900AA3F0A /* indigo_ccd_asi.rules */,
 				59019E0D1DE1125900CCB3ED /* bin_externals */,
 			);
@@ -2010,9 +2009,9 @@
 		5911F7AB1F02E10B0053F3CA /* ccd_dsi */ = {
 			isa = PBXGroup;
 			children = (
-				5911F7AC1F02E1330053F3CA /* indigo_ccd_dsi_main.c */,
-				5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */,
 				5911F7AE1F02E1330053F3CA /* indigo_ccd_dsi.h */,
+				5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */,
+				5911F7AC1F02E1330053F3CA /* indigo_ccd_dsi_main.c */,
 				5911F7AF1F02E1330053F3CA /* libdsi_firmware.h */,
 				5911F7B01F02E1330053F3CA /* libdsi.c */,
 				5911F7B11F02E1330053F3CA /* libdsi.h */,
@@ -2215,10 +2214,10 @@
 			isa = PBXGroup;
 			children = (
 				594107CA1EC8E59300C44F92 /* README.md */,
-				59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */,
 				59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */,
 				59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */,
 				59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */,
+				59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */,
 				59C8E7F01DBBD91400AA3F0A /* indigo_ccd_ssag.rules */,
 			);
 			path = ccd_ssag;
@@ -2942,9 +2941,9 @@
 			isa = PBXGroup;
 			children = (
 				59FC2EB8210CA76200730343 /* README.md */,
-				59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */,
-				59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */,
 				59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */,
+				59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */,
+				59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */,
 				59FC2EB9210CA76200730343 /* indigo_ccd_mi.rules */,
 				59FC2E91210CA26D00730343 /* bin_externals */,
 			);
@@ -4456,7 +4455,6 @@
 				595F292B211E211200380EF4 /* DDHidUsageTables.m in Sources */,
 				59FC2EBB210CA76200730343 /* indigo_ccd_mi.c in Sources */,
 				59DD69D71FC1DC4900AEF0DF /* indigo_dome_simulator.c in Sources */,
-				59FC2EBA210CA76200730343 /* indigo_ccd_mi_main.c in Sources */,
 				9DF7E64F1F6AA17900156652 /* indigo_ccd_qsi_main.cpp in Sources */,
 				9D59D5ED20D3F829009EA8FF /* CamGen2ModeFsm.cpp in Sources */,
 				5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */,
