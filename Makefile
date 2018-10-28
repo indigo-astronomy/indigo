@@ -1577,7 +1577,7 @@ install:
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server_standalone $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_prop_tool $(INSTALL_PREFIX)/bin
-	sudo install -D -m 0644 $(DRIVERS) $(INSTALL_PREFIX)/bin
+	sudo install -D -m 0755 $(DRIVERS) $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.$(SOEXT) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 $(BUILD_LIB)/libtoupcam.$(SOEXT) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 $(BUILD_LIB)/libaltaircam.$(SOEXT) $(INSTALL_PREFIX)/lib
