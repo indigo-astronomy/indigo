@@ -71,7 +71,9 @@ This is the list of requirements taken into the consideration:
 47. Optec focuser driver (untested)
 48. ToupTek CCD driver
 49. AltairAstro CCD driver
-50. RTS-on-COM aux driver
+50. RTS-on-COM aux (shutter) driver (untested)
+51. DSUSB aux (shutter) driver (untested)
+52. GPUSB guider driver (untested)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount
