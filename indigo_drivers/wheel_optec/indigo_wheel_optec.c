@@ -165,7 +165,7 @@ indigo_result indigo_wheel_optec(indigo_driver_action action, indigo_driver_info
 		wheel_detach
 		);
 
-	SET_DRIVER_INFO(info, "Optec Filter Wheel", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "Optec Filter Wheel", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

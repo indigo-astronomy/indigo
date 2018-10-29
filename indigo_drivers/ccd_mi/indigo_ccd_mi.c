@@ -692,7 +692,7 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Moravian Instruments Camera", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "Moravian Instruments Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

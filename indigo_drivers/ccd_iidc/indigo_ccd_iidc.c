@@ -819,7 +819,7 @@ static void debuglog_handler(dc1394log_t type, const char *message, void* user) 
 indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

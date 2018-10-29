@@ -19,8 +19,8 @@ void group(int argc, char **argv, char *group, char *prefix) {
 			indigo_driver_entry *driver;
 			indigo_load_driver(argv[i], false, &driver);
 			indigo_available_drivers[0].driver(INDIGO_DRIVER_INFO, &info);
-			printf("  <device label=\"%s\">\n", indigo_available_drivers[0].description);
-			printf("   <driver name=\"%s\">%s</driver>\n", indigo_available_drivers[0].description, indigo_available_drivers[0].name);
+			printf("  <device label=\"%s\">\n", info.description);
+			printf("   <driver name=\"%s\"%s>%s</driver>\n", info.description, info.multi_device_support ? " mdpd=\"true\"" : "",  info.name);
 			printf("   <version>%d.%d</version>\n", INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version));
 			printf("  </device>\n");
 			indigo_remove_driver(driver);
