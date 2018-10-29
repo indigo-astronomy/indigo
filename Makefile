@@ -216,7 +216,26 @@ SO_LIBS= $(wildcard $(BUILD_LIB)/*.$(SOEXT))
 #
 #---------------------------------------------------------------------
 
-all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) ctrlpanel drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath
+all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) ctrlpanel drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath $(BUILD_SHARE)/indi/indi_indigo.xml
+
+
+#---------------------------------------------------------------------
+#
+#      Create driver list
+#
+#---------------------------------------------------------------------
+
+$(BUILD_BIN)/indigo_drivers: indigo_tools/indigo_drivers.o
+	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_tools/indigo_drivers.o $(LDFLAGS) -lindigo
+ifeq ($(OS_DETECTED),Darwin)
+	install_name_tool -add_rpath @loader_path/../drivers $@
+	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
+	#install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
+endif
+
+$(BUILD_SHARE)/indi/indi_indigo.xml: $(DRIVER_SOLIBS) $(BUILD_BIN)/indigo_drivers
+	install -d $(BUILD_SHARE)/indi
+	$(BUILD_BIN)/indigo_drivers $(BUILD_DRIVERS)/indigo_*.$(SOEXT) >$(BUILD_SHARE)/indi/indi_indigo.xml
 
 #---------------------------------------------------------------------
 #
@@ -1577,6 +1596,7 @@ install:
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server_standalone $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_prop_tool $(INSTALL_PREFIX)/bin
+	sudo install -D -m 0755 $(BUILD_BIN)/indigo_drivers $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(DRIVERS) $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.$(SOEXT) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 $(BUILD_LIB)/libtoupcam.$(SOEXT) $(INSTALL_PREFIX)/lib
@@ -1600,6 +1620,35 @@ install:
 	sudo install -D -m 0644 indigo_drivers/ccd_touptek/bin_externals/libtoupcam/99-toupcam.rules /lib/udev/rules.d/99-indigo_ccd_toupcam.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_altair/bin_externals/libaltaircam/99-altaircam.rules /lib/udev/rules.d/99-indigo_ccd_altaircam.rules
 	sudo udevadm control --reload-rules
+	sudo install -D -m 0644 $(BUILD_SHARE)/indi/indi_indigo.xml /usr/share/indi/indi_indigo.xml
+
+#---------------------------------------------------------------------
+#
+#	Uninstall
+#
+#---------------------------------------------------------------------
+
+uninstall:
+	sudo rm -f $(INSTALL_PREFIX)/bin/*indigo_*
+	sudo rm -f $(INSTALL_PREFIX)/lib/*indigo*
+	sudo rm -rf $(INSTALL_PREFIX)/lib/pkgconfig
+	sudo rm -f $(INSTALL_PREFIX)/lib/libtoupcam.$(SOEXT)
+	sudo rm -f $(INSTALL_PREFIX)/lib/libaltaircam.$(SOEXT)
+	sudo rm -f /lib/udev/rules.d/99-indigo_*.rules
+	sudo rm -f /lib/udev/rules.d/51-sbig-debian.rules
+	sudo rm -f /lib/firmware/sbigfcam.hex
+	sudo rm -f /lib/firmware/sbiglcam.hex
+	sudo rm -f /lib/firmware/sbigpcam.hex
+	sudo rm -f /lib/firmware/sbigucam.hex
+	sudo rm -f /lib/firmware/stfga.bin
+	sudo rm -rf /lib/firmware/qhy
+	sudo rm -f /lib/udev/rules.d/85-qhyccd.rules
+	sudo rm -rf /usr/etc/appgee
+	sudo rm -f /lib/udev/rules.d/99-meadedsi.rules
+	sudo rm -f /lib/firmware/meade-deepskyimager.hex
+	sudo udevadm control --reload-rules
+	sudo rm -rf /usr/share/indi/indi_indigo.xml
+
 
 #---------------------------------------------------------------------
 #
@@ -1645,7 +1694,8 @@ package-prepare: all
 	install -D -m 0644 indigo_libs/indigo_names.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_names.h
 	install -D -m 0644 indigo_libs/indigo_timer.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_timer.h
 	install -D -m 0644 indigo.pc /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib/pkgconfig/indigo.pc
-	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)
+	install -D -m 0644 $(BUILD_SHARE)/indi_indigo.xml /tmp/$(PACKAGE_NAME)/usr/share/indi_indigo.xml
+	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)/usr/
 
 $(PACKAGE_NAME).deb: package-prepare
 	rm -f $(PACKAGE_NAME).deb
@@ -1675,6 +1725,8 @@ clean: init
 	rm -rf $(BUILD_ROOT)/bin/client
 	rm -rf $(BUILD_LIB)/libindigo*
 	rm -rf $(BUILD_ROOT)/drivers
+	rm -rf $(BUILD_ROOT)/share/indigo/*
+	rm -rf $(BUILD_ROOT)/share/indi/indi_indigo.xml
 	rm -f indigo_libs/*.o
 	rm -f indigo_server/*.o
 	rm -f indigo_server/*.data
