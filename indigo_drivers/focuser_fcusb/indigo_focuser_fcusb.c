@@ -23,7 +23,7 @@
  \file indigo_focuser_fcusb.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_fcusb"
 
 #include <stdlib.h>
@@ -53,9 +53,9 @@
 #define X_FOCUSER_FREQUENCY_16_ITEM						(X_FOCUSER_FREQUENCY_PROPERTY->items+2)
 
 typedef struct {
+	libusb_device *dev;
 	libfcusb_device_context *device_context;
 	indigo_timer *focuser_timer;
-	libusb_device *dev;
 	indigo_property *frequency_property;
 
 } fcusb_private_data;
@@ -64,8 +64,6 @@ typedef struct {
 
 static void focuser_timer_callback(indigo_device *device) {
 	libfcusb_stop(PRIVATE_DATA->device_context);
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
@@ -82,7 +80,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_4_ITEM, "FREQUENCY_4", "6 kHz (4x)", false);
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_16_ITEM, "FREQUENCY_16", "25 kHz (16x)", false);
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		FOCUSER_POSITION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
 		strncpy(FOCUSER_SPEED_ITEM->label, "Power (0-255)", INDIGO_VALUE_SIZE);
@@ -106,7 +104,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	libfcusb_debug_level = (indigo_get_log_level() >= INDIGO_LOG_DEBUG);
 	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -151,8 +148,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
 				libfcusb_move_out(PRIVATE_DATA->device_context);
 			}
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, FOCUSER_STEPS_ITEM->number.value / 1000, focuser_timer_callback);
@@ -167,8 +162,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
 			libfcusb_stop(PRIVATE_DATA->device_context);
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		}
@@ -197,8 +190,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-//static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 #define MAX_DEVICES                   3
 
 static indigo_device *devices[MAX_DEVICES];
@@ -213,7 +204,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		focuser_detach
 	);
 
-	//pthread_mutex_lock(&device_mutex);
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			const char *name;
@@ -258,14 +248,17 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 	}
-	//pthread_mutex_unlock(&device_mutex);
 	return 0;
 }
 
 static libusb_hotplug_callback_handle callback_handle;
 
+static void debug(const char *message) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libfcusb: %s\n", message);
+}
+
 indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_info *info) {
-	libfcusb_use_syslog = indigo_use_syslog;
+	libfcusb_debug = &debug;
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "Shoestring FCUSB Focuser", __FUNCTION__, DRIVER_VERSION, true, last_action);
