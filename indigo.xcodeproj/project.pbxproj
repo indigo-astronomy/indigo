@@ -39,6 +39,7 @@
 		59463C1A20DE6781004950F2 /* indigo_focuser_wemacro_main_bt.c in Sources */ = {isa = PBXBuildFile; fileRef = 59463C1620DE6781004950F2 /* indigo_focuser_wemacro_main_bt.c */; };
 		59463C1B20DE6781004950F2 /* indigo_focuser_wemacro_bt.m in Sources */ = {isa = PBXBuildFile; fileRef = 59463C1820DE6781004950F2 /* indigo_focuser_wemacro_bt.m */; };
 		59463C1C20DE7D16004950F2 /* indigo_focuser_wemacro.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */; };
+		595705A42186740F00E713A9 /* indigo_drivers.c in Sources */ = {isa = PBXBuildFile; fileRef = 595705A321866D9700E713A9 /* indigo_drivers.c */; };
 		59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */; };
 		59588CB0211CC30C00E9FC27 /* indigo_aux_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59588CAE211CC30B00E9FC27 /* indigo_aux_driver.c */; };
 		59588CB1211CC30C00E9FC27 /* indigo_aux_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAF211CC30C00E9FC27 /* indigo_aux_driver.h */; };
@@ -767,6 +768,7 @@
 		595355D61F6AD79100478BEC /* VidPid.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VidPid.cpp; path = lib/VidPid.cpp; sourceTree = "<group>"; };
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
 		595355ED1F6B140300478BEC /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libqsiapi.a; path = build/lib/libqsiapi.a; sourceTree = "<group>"; };
+		595705A321866D9700E713A9 /* indigo_drivers.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_drivers.c; sourceTree = "<group>"; };
 		59588C9F211B4A0200E9FC27 /* indigo.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = indigo.js; sourceTree = "<group>"; };
 		59588CA0211B4ACA00E9FC27 /* wheel_test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = wheel_test.html; sourceTree = "<group>"; };
 		59588CA7211CC08D00E9FC27 /* indigo_aux_joystick.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_joystick.c; sourceTree = "<group>"; };
@@ -2970,6 +2972,7 @@
 		9D1880BF1E534B89002F75D7 /* indigo_tools */ = {
 			isa = PBXGroup;
 			children = (
+				595705A321866D9700E713A9 /* indigo_drivers.c */,
 				9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */,
 			);
 			path = indigo_tools;
@@ -2998,9 +3001,9 @@
 			children = (
 				590DD77E212013B500F2B978 /* externals */,
 				9D45254320E0F9A1004D1137 /* README.md */,
-				9D45254120E0F9A1004D1137 /* indigo_ccd_gphoto2_main.c */,
 				9D45254220E0F9A1004D1137 /* indigo_ccd_gphoto2.h */,
 				9D45254420E0F9A1004D1137 /* indigo_ccd_gphoto2.c */,
+				9D45254120E0F9A1004D1137 /* indigo_ccd_gphoto2_main.c */,
 			);
 			path = ccd_gphoto2;
 			sourceTree = "<group>";
@@ -4620,6 +4623,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */,
+				595705A42186740F00E713A9 /* indigo_drivers.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
