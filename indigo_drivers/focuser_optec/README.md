@@ -19,5 +19,5 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_optec
 
-## Status: Under development
+## Status: Untested
 

@@ -21,4 +21,6 @@ indigo_server indigo_aux_rts
 
 ## Comments
 
-## Status: Under development
+## Status: Untested
+
+Looking for device owners!!! :)

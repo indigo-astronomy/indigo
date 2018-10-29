@@ -55,6 +55,8 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS/libatik.a
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/macOS/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
+	LIBDSUSB=indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS/libdsusb.a
+	LIBGPUSB=indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS/libgpusb.a
 	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
 	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac/libASICamera2.a
 	LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac/libUSB2ST4Conv.a
@@ -71,6 +73,8 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/Linux/$(ARCH_DETECTED)/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
+	LIBDSUSB=indigo_drivers/auxdsusb/bin_externals/libdsusb/lib/Linux/$(ARCH_DETECTED)/libdsusb.a
+	LIBGPUSB=indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/Linux/$(ARCH_DETECTED)/libgpusb.a
 	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/Linux/$(ARCH_DETECTED)/libtoupcam.so
 	LIBALTAIRCAM=indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/Linux/$(ARCH_DETECTED)/libaltaircam.so
 	ifeq ($(ARCH_DETECTED),arm)
@@ -112,7 +116,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
+	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.a $(BUILD_DRIVERS)/indigo_guider_eqmac.a $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.a $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.dylib $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.dylib
 endif
@@ -137,7 +141,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI)  $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(LIBBOOST-REGEX)
+	EXTERNALS=$(LIBHIDAPI)  $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(LIBBOOST-REGEX)
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.so
 endif
@@ -438,9 +442,37 @@ $(BUILD_INCLUDE)/libfcusb/libfcusb.h: indigo_drivers/focuser_fcusb/bin_externals
 	install -d $(BUILD_INCLUDE)
 	ln -sf $(INDIGO_ROOT)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libfcusb.a: $(BUILD_INCLUDE)/libfcusb/libfcusb.h
+$(BUILD_LIB)/libfcusb.a: $(LIBFCUSB) $(BUILD_INCLUDE)/libfcusb/libfcusb.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBFCUSB) $(BUILD_LIB)
+
+#---------------------------------------------------------------------
+#
+#	Install libdsusb
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/libdsusb/libdsusb.h: indigo_drivers/aux_dsusb/bin_externals/libdsusb/include/libdsusb/libdsusb.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/include/libdsusb $(BUILD_INCLUDE)
+
+$(BUILD_LIB)/libdsusb.a: $(LIBDSUSB) $(BUILD_INCLUDE)/libdsusb/libdsusb.h
+	install -d $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBDSUSB) $(BUILD_LIB)
+
+#---------------------------------------------------------------------
+#
+#	Install libgpusb
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/libgpusb/libgpusb.h: indigo_drivers/guider_gpusb/bin_externals/libgpusb/include/libgpusb/libgpusb.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/include/libgpusb $(BUILD_INCLUDE)
+
+$(BUILD_LIB)/libgpusb.a: $(LIBGPUSB) $(BUILD_INCLUDE)/libgpusb/libgpusb.h
+	install -d $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBGPUSB) $(BUILD_LIB)
 
 #---------------------------------------------------------------------
 #
@@ -978,6 +1010,36 @@ $(BUILD_DRIVERS)/indigo_focuser_fcusb: indigo_drivers/focuser_fcusb/indigo_focus
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
 $(BUILD_DRIVERS)/indigo_focuser_fcusb.$(SOEXT): indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.o $(BUILD_LIB)/libfcusb.a $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build Shoestring DSUSB shutter driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_aux_dsusb.a: indigo_drivers/aux_dsusb/indigo_aux_dsusb.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_aux_dsusb: indigo_drivers/aux_dsusb/indigo_aux_dsusb_main.o $(BUILD_DRIVERS)/indigo_aux_dsusb.a $(BUILD_LIB)/libdsusb.a  $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_aux_dsusb.$(SOEXT): indigo_drivers/aux_dsusb/indigo_aux_dsusb.o $(BUILD_LIB)/libdsusb.a $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build Shoestring GPUSB guider driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_guider_gpusb.a: indigo_drivers/guider_gpusb/indigo_guider_gpusb.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_guider_gpusb: indigo_drivers/guider_gpusb/indigo_guider_gpusb_main.o $(BUILD_DRIVERS)/indigo_guider_gpusb.a $(BUILD_LIB)/libgpusb.a  $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_guider_gpusb.$(SOEXT): indigo_drivers/guider_gpusb/indigo_guider_gpusb.o $(BUILD_LIB)/libgpusb.a $(LIBHIDAPI)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------

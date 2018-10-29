@@ -23,7 +23,7 @@
 #include <libusb-1.0/libusb.h>
 #include <hidapi/hidapi.h>
 
-#define FCUSB_VID		0x134A
+#define FCUSB_VID	0x134A
 
 #define FCUSB_PID1	0x9023
 #define FCUSB_PID2	0x9024
@@ -37,18 +37,17 @@ typedef struct {
 
 extern bool libfcusb_focuser(libusb_device *device, const char **name);
 extern bool libfcusb_open(libusb_device *device, libfcusb_device_context **context);
-extern bool libfcusb_led_green(libfcusb_device_context *device_context);
-extern bool libfcusb_led_red(libfcusb_device_context *device_context);
-extern bool libfcusb_led_off(libfcusb_device_context *device_context);
-extern bool libfcusb_set_power(libfcusb_device_context *device_context, unsigned power);
-extern bool libfcusb_set_frequency(libfcusb_device_context *device_context, unsigned frequency);
-extern bool libfcusb_move_out(libfcusb_device_context *device_context);
-extern bool libfcusb_move_in(libfcusb_device_context *device_context);
-extern bool libfcusb_stop(libfcusb_device_context *device_context);
+extern bool libfcusb_led_green(libfcusb_device_context *context);
+extern bool libfcusb_led_red(libfcusb_device_context *context);
+extern bool libfcusb_led_off(libfcusb_device_context *context);
+extern bool libfcusb_set_power(libfcusb_device_context *context, unsigned power);
+extern bool libfcusb_set_frequency(libfcusb_device_context *context, unsigned frequency);
+extern bool libfcusb_move_out(libfcusb_device_context *context);
+extern bool libfcusb_move_in(libfcusb_device_context *context);
+extern bool libfcusb_stop(libfcusb_device_context *context);
 extern void libfcusb_close(libfcusb_device_context *context);
 
-extern bool libfcusb_debug_level;
-extern bool libfcusb_use_syslog;
+extern void (*libfcusb_debug)(const char *message);
 
 extern const char *libfcusb_version;
 extern const char *libfcusb_os;
