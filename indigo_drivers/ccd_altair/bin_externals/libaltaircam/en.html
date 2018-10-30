@@ -1,0 +1,1720 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>AltairCam API Manual</title>
+</head>
+<body>
+<h1 align="center">AltairCam API Manual</h1>
+<hr/>
+<h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
+<hr/>
+<ul><li>Version: 30.13010.2018.0926</li></ul>
+<ul>
+  <li>Platform
+    <ul>
+      <li>Win32:
+        <ul>
+          <li>x86: XP SP3 or above; CPU supports SSE2 instruction set or above</li>
+          <li>x64: Win7 or above</li>
+        </ul>
+      </li>
+	  <li>WinRT: x86 and x64; Windows10 or above</li>
+      <li>macOS: x86 and x64 bundle; macOS 10.10 or above</li>
+      <li>Linux: kernel 2.6.27 or above
+	    <ul>
+		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
+		  <li>x64: GLIBC 2.14 or above</li>
+		  <li>armel: GLIBC 2.17 or above; built by toolchain arm-linux-gnueabi (version 4.9.2)</li>
+		  <li>armhf: GLIBC 2.17 or above; built by toolchain arm-linux-gnueabihf (version 4.9.2)</li>
+		  <li>arm64: GLIBC 2.17 or above; built by toolchain aarch64-linux-gnu (version 4.9.2)</li>
+		</ul>
+	  </li>
+    </ul>
+  </li>
+</ul>
+<hr/>
+<h1><font color="#0000FF">2. Introduction</font></h1>
+<hr/>
+<p>AltairCam cameras support various kinds of APIs (Application Program Interface), namely
+ Native C/C++, .NET/C#/VB.NET, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/dd375454(v=vs.85).aspx">DirectShow</a>, <a href="http://twain.org/">Twain</a>, LabView and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
+The SDK zip file contains all of the necessary resources and information:</p>
+<ul><li>inc</li></ul>
+<blockquote>
+ <p align="left">altaircam.h, C/C++ head file<br/></p>
+</blockquote>
+<ul>
+ <li>win: For Microsoft Windows
+   <ul>
+     <li>dotnet
+     <blockquote>
+       <p align="left">altaircam.cs, for C#. The altaircam.cs use P/Invoke to call into altaircam.dll. Please copy altaircam.cs to your C# project to use it.<br/>
+         altaircam.vb, for VB.NET. The altaircam.vb use P/Invoke to call into altaircam.dll. Please copy altaircam.vb to your VB.NET project to use it.<br/>
+      </p>
+     </blockquote></li>
+     <li>x86
+     <blockquote>
+       <p align="left">altaircam.lib, lib file for x86.<br/>
+         altaircam.dll, dll file for x86.<br/>
+         democpp.exe, x86 C++ demo exe file.</p>
+     </blockquote></li>
+     <li>x64
+      <blockquote>
+        <p align="left">altaircam.lib, lib file for x64.<br/>
+          altaircam.dll, dll file for x64.<br/>
+         democpp.exe, x64 C++ demo exe file.</p>
+      </blockquote></li>
+	 <li>winrt
+		<blockquote>
+		DLL files for WinRT / UWP (Universal Windows Platform) / Windows Store App.<br/>
+		These dll files are compatible with Windows Runtime, and can be consumed from a Universal Windows Platform app.<br/>
+		If use C# to develop the UWP, altaircam.cs wrapper class can be used to P/Invoke into altaircam.dll.<br/>
+		Please pay attation to DeviceCapability of uwp, see: <a href="https://msdn.microsoft.com/en-us/library/windows/hardware/dn303351(v=vs.85).aspx">How to add USB device capabilities to the app manifest</a>. (It seems that microsoft limits the number of Device items to 100)<br/>
+		demouwp.zip is a simple demo, before build and run this demo, please change the value of vidpid in file Package.appxmanifest<br/>
+		</blockquote>
+	</li>
+     <li>drivers (<b>The cameras produced after Jan. 1, 2017 support WinUSB, it's no longer need to install driver in Windows8 and above versions</b>)
+       <ol>
+         <li>x86 folder contains the kernel mode drivers for x86, including altaircam.cat, altaircam.inf and altaircam.sys.</li>
+         <li>x64 folder contains the kennel mode driver for x64, including altaircam.cat, altaircam.inf and altaircam.sys.</li>
+       </ol>
+     </li>
+     <li>samples
+       <ol>
+         <li>democpp, C++ sample. It demonstrates to enumerate device, open device, video preview, image capture, set the preview resolution, trigger, multi-format image saving (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode and so on. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl/">http://sourceforge.net/projects/wtl</a></li>
+         <li>demomfc, a simple C++ sample. It use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode.</li>
+         <li>demowinformcs1, C# winform sample. This sample use Pull Mode, StartPullModeWithWndMsg.</li>
+         <li>demowinformcs2, C# winform sample. This sample use Pull Mode, StartPullModeWithCallback.</li>
+         <li>demowinformcs3, C# winform sample. This sample use Push Mode, StartPushMode.</li>
+         <li>demowinformvb, VB.NET winform sample. This sample use Pull Mode.</li>
+       </ol>
+      </li>
+     <li>extras
+       <ol>
+         <li>directshow: DirectShow SDK and demo.</li>
+         <li>twain: TWAIN SDK.</li>
+         <li>labview: Labview SDK and demo.</li>
+       </ol>
+     </li>
+   </ul>
+</li>
+</ul>
+ <ul><li>linux: For Linux
+ 	<ul>
+ 	<li>udev: 99-altaircam.rules, udev rule file. Please see: <a href="http://reactivated.net/writing_udev_rules.html">http://reactivated.net/writing_udev_rules.html</a></li>
+     <li>c#: altaircam.cs, for .Net Core C#. The altaircam.cs use P/Invoke to call into libaltaircam.so. Please copy altaircam.cs to your C# project to use it.</li>
+     <li>x86: libaltaircam.so, so file for x86.</li>
+     <li>x64: libaltaircam.so, so file for x64.</li>
+	 <li>armel: libaltaircam.so, so file for armel, use toolchain arm-linux-gnueabi.</li>
+	 <li>armhf: libaltaircam.so, so file for armhf, use toolchain arm-linux-gnueabihf.</li>
+	 <li>arm64: libaltaircam.so, so file for arm64, use toolchain aarch64-linux-gnu.</li>
+	</ul>
+ 	</li></ul>
+ <ul><li>mac: For macOS.</li></ul>
+ <ul><li>doc: User manuals in English and Chinese.</li></ul>
+ <ul><li>sample
+	<ul>
+	<li>demosimplest: a simplest sample, about 60 lines of code.</li>
+	<li>demoraw: raw data and snap still image, about 120 lines of code.</li>
+	</ul>
+	</li></ul>
+ <hr/>
+<h1><font color="#0000FF">3. Concepts and terminology</font></h1>
+<hr/>
+<h2><font color="#0000FF">a. Modes for accessing image data: "Pull Mode" vs "Push Mode"</font></h2>
+<p>Altaircam offers two modes to obtain image data: Pull Mode and Push Mode. The former is recommended since it's simpler and the application seldom gets stuck in multithreading conditions, especially when using windows message to notify the events.</p>
+<ul>
+  <li>In Pull Mode, altaircam plays a passive role and the application 'PULL' image data from altaircam. The internal thread of altaircam obtains image data from the camera hardware and saves them to the internal buffers, then notify the application (see below). The application then call functions Altaircam_PullImage(WithRowPitch)(V2) and Altaircam_PullStillImage(WithRowPitch)(V2) to access image data.</li>
+</ul>
+<blockquote>
+ <p>There are to ways to notify applications:</p>
+<blockquote>
+ <p>a) Use Windows message: Start pull mode by using the function Altaircam_StartPullModeWithWndMsg. When event occurs, altaircam will post message (PostMessage) to the specified window. Parameter WPARAM is the event type, refer to the definition of ALTAIRCAM_EVENT_xxxx. This model avoids the multithreading issues, so it's the most simple way. (Obviously, this is only supported in Windows systems, and not supported in Linux and macOS.)</p>
+ <p>b) Use Callback function: Start pull mode by using the function Altaircam_StartPullModeWithCallback. When event occurs, altaircam will callback the function PALTAIRCAM_EVENT_CALLBACK.</p>
+</blockquote>
+</blockquote>
+<blockquote>
+ <p>In Pull Mode, the SDK could not only notify the application that the image data or still image are available for 'PULL', but also inform you of the other events, such as:</p>
+<div align="center">
+<table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+ <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_EXPOSURE</td>
+   <td width="73%" valign="top">exposure time changed</td>
+ </tr>
+ <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_TEMPTINT</td>
+   <td width="73%" valign="top">white balance changed. Temp/Tint Mode, please see <a href="#wb">here</a>.</td>
+ </tr>
+ <tr>
+   <td valign="top">ALTAIRCAM_EVENT_WBGAIN</td>
+   <td valign="top">white balance changed. RGB Gain Mode, please see <a href="#wb">here</a>.</td>
+ </tr>
+ <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_IMAGE</td>
+   <td width="73%" valign="top">Video image data arrives. Use Altaircam_PullImage(V2) to 'pull' the image data</td>
+ </tr>
+ <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_STILLIMAGE</td>
+   <td width="73%" valign="top">Still image which is triggered by function Altaircam_Snap or Altaircam_SnapN arrives. Use Altaircam_PullStillImage(V2) to 'pull' the image data</td>
+ </tr>
+ <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_ERROR</td>
+   <td width="73%" valign="top">Generic error, data acquisition cannot continue</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_DISCONNECTED</td>
+   <td width="73%" valign="top">Camera disconnected, maybe has been pulled out</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_TIMEOUT</td>
+   <td width="73%" valign="top">Grab image timeout error, data acquisition cannot continue</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_TRIGGERFAIL</td>
+   <td width="73%" valign="top">trigger failed (for example, bad frame data or timeout)</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_BLACK</td>
+   <td width="73%" valign="top">black balance changed</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_FFC</td>
+   <td width="73%" valign="top">flat field correction status changed</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_DFC</td>
+   <td width="73%" valign="top">dark field correction status changed</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_EVENT_FACTORY</td>
+   <td width="73%" valign="top">restore factory settings. Please note that restoring factory settings may cause resolution changes.</td>
+ </tr>
+</table>
+</div>
+</blockquote>
+<ul>
+  <li>In Push Mode, altaircam plays an active role. Once the video data is obtained from camera by internal thread, altaircam will 'PUSH' the image data to the application through PALTAIRCAM_DATA_CALLBACK. Call the function Altaircam_StartPushMode to start push mode. Push mode is more complex. There are some special precautions, such as multithread issues, being impossible to call Altaircam_Close and Altaircam_Stop in callback function PALTAIRCAM_DATA_CALLBACK, etc.</li>
+</ul>
+<h2><font color="#0000FF">b. <a id="stillcapture">Still Capture (Still Image)</a></font></h2>
+<p>Most cameras support the so-called still capture capability. This function switches the camera to another resolution temporarily when the camera is in preview mode, after a "still" image in the new resolution is captured and then switch back to the original resolution and resume preview mode.</p>
+<p>For example, UCMOS05100KPA support 3 resolutions and the current one in preview mode is 1280 * 960. Call Altaircam_Snap(h, 0) to "still capture" an image in 2592 * 1944 resolution. To realize this function, the camera will temporarily switch to 2592 * 1944 firstly, get an image in 2592 * 1944 resolution and then switch back to 1280 * 960 and resume preview.</p>
+<blockquote>a) In pull mode operation, after the still capture, ALTAIRCAM_EVENT_STILLIMAGE will be sent out for external acknowledgement. The external application should call Altaircam_PullStillImage(V2) to get the still captured image.</blockquote>
+<blockquote>b) In push mode operation, after the still capture, the callback function PALTAIRCAM_DATA_CALLBACK(_V2) will be called with bSnap parameter setting TRUE. The image information including the resolution information will be obtained via the parameter pHeader.</blockquote>
+<p>To check whether the camera have the still capture capability, call Altaircam_get_StillResolutionNumber function or check the still field of the struct AltaircamModelV2.</p>
+<h2><font color="#0000FF"><a id="raw">c. Data format: RGB vs RAW</a></font></h2>
+<p>Altaircam supports two data formats: RGB format (default) and RAW format. RAW format could be enabled by assigning ALTAIRCAM_OPTION_RAW parameter to 1 when calling Altaircam_put_Option function.</p>
+<ul><li>RGB format: The output of every pixel contains 3 componants which stand for R/G/B value respectively. This output is a processed output from the internal color processing engine.</li></ul>
+<ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose. With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Altaircam_put_Hue or Altaircam_AwbOnePush function and so on.</li></ul>
+<p>Users could switch these two format by calling Altaircam_put_Option function with different value setting to ALTAIRCAM_OPTION_RAW. You must call this function BEFORE the camera start function (Altaircam_StartPullModeWithWndMsg or Altaircam_StartPullModeWithCallback or Altaircam_StartPushMode).</p>
+<h2><font color="#0000FF"><a id="wb">d. White Balance and Auto White Balance: Temp/Tint mode vs RGB Gain mode</a></font></h2>
+<p>1. Altaircam sdk supports two independent modes for white balance: a) Temp/Tint Mode; b) RGB Gain Mode</p>
+<blockquote>
+<p>a) Temp/Tint mode is the default white balance mode. In this mode, temp and tint are the parameters that could be used to control the white balance. Altaircam_get_TempTint function is used to acquire the temp and tint values and Altaircam_put_TempTint is used to set the temp and tint values. Function Altaircam_AwbOnePush is used to execute the auto white balance. When the white balance parameters change, ALTAIRCAM_EVENT_TEMPTINT event will be notified for external use.</p>
+<p>b) In RGB Gain mode, the while balace is controled by the gain values of the R,G,B channels. Altaircam_get_WhiteBalanceGain is used to acquire the parameters and Altaircam_put_WhiteBalanceGain is used to set the white balance parameters. Altaircam_AwbInit is used to execute the execute the auto white balance. When the white balance parameters change, ALTAIRCAM_EVENT_WBGAIN event will be notified for external use.</p>
+<p>The functions for these two modes cannot be misused:</p>
+	<blockquote>
+	a) In Temp/Tint mode, please use Altaircam_get_TempTint and Altaircam_put_TempTint and Altaircam_AwbOnePush. Altaircam_get_WhiteBalanceGain and Altaircam_put_WhiteBalanceGain and Altaircam_AwbInit cannot be used, they always return E_NOTIMPL.<br/>
+	b) In RGB Gain mode, please use Altaircam_get_WhiteBalanceGain and Altaircam_put_WhiteBalanceGain and Altaircam_AwbInit. Altaircam_get_TempTint and Altaircam_put_TempTint and Altaircam_AwbOnePush cannot be used, they always return E_NOTIMPL<br/>
+	</blockquote>
+<p>When calling Altaircam_Open function, whether to add a '@' character at the beginning of the id parameter will determine the white balance mode. Add a '@' character at the beginning of the id parameter means the RGB gain mode. If you want to use the RGB Gain mode, for example, if the id parameter is "abcdef", please call the Altaircam_Open function with the id parameter "@abcdef".</p>
+</blockquote>
+<p>2. There are two auto white balance mechanisms available in this field: one is continuous auto white balance and the other is a "one push" auto white balance. The white balance parameters will be always calculated and updated for the continuous auto white balance mechanism. For "one push" auto white balance mechanism, the white balance parameters will be calculated and updated only when triggered. Altaircam cameras support "one push" auto white balance mechanism since it is more accurate and propriate for the microscope application, especially when the background is in pure color. Continuous white balance mechanism will encounter some problem in some cases.</p>
+<p>3. Monochromatic camera does not support white balance. The functions metioned above always return E_NOTIMPL.</p>
+<h2><font color="#0000FF">e. <a id="trigger">Trigger Mode</a></font></h2>
+<p>1. What is Trigger Mode</p>
+	<blockquote>
+		AltairCam camera has two working modes: video mode and trigger mode. When in trigger mode, no images will be available until the trigger conditions are met. Cameras have 2 types for triggering according to the types of trigger source, including software trigger mode, external trigger mode and simulated trigger mode.
+	</blockquote>
+<p>2. The Difference between Trigger and Snap</p>
+	<blockquote>
+		Trigger mode is designed for accurate control of the camera and images would be acquired only when the conditions are met. Users could get the images by controlling the trigger conditions. Trigger mode must be pre-specified. Once the trigger mode is entered, no images will come out from the camera until the trigger conditions are met. The triggered images will stay the same property as the pre-specified resolution. Snap is designed to acquire the images from the camera in video mode. The resolution of the snapped image could be the same resolution as the video or could be different.
+	</blockquote>
+<p>3. Software Trigger Mode</p>
+	<blockquote>
+		Camera could be triggered by software. In software trigger mode, images burst out only when users trigger the camera from the software. Numbers of the images of the triggering could also be controlled by software.
+	</blockquote>
+<p>4. External Trigger Mode</p>
+	<blockquote>
+		Camera could be triggered by external trigger signal. By now Altaircam camera only supports positive-edge trigger mode.
+	</blockquote>
+<p>5. Simulated Trigger Mode</p>
+	<blockquote>
+		For cameras that do not support software trigger and external trigger, simulated trigger mode could be available. When in simulated trigger mode, the camera hardware actually works in the same mode as the video mode. But the up-level software will not obtain any images from the camera. The software buffer will stay empty until the user set the trigger conditions by software. 
+	</blockquote>
+<p>6. How to Enter the Trigger Mode</p>
+	<blockquote>
+		After the numeration of the connected camera, you can check the flag and find out what trigger mode does the camera support according to the following definition.
+			<blockquote><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define ALTAIRCAM_FLAG_TRIGGER_SOFTWARE   0x00080000  /* support software trigger */
+#define ALTAIRCAM_FLAG_TRIGGER_EXTERNAL   0x00100000  /* support external trigger */
+#define ALTAIRCAM_FLAG_TRIGGER_SINGLE     0x00200000  /* only support trigger single: one trigger, one image */</pre></td></tr></table></blockquote>
+		Function Altaircam_put_Option(HAltairCam h, unsigned iOption, int iValue) could be used to set the camera to trigger mode when assign ALTAIRCAM_OPTION_TRIGGER to the iOption parameter. iValue is used to specify the types of the trigger modes. Please see the following for reference.
+			<blockquote>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define ALTAIRCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, default value =  0 */</pre></td></tr></table>
+			</blockquote>
+		Function Altaircam_get_Option(HAltairCam h, unsigned iOption, int* piValue) could be used to get what type of trigger mode the camera is in.
+	</blockquote>
+<p>7. How to Trigger the camera</p>
+	<blockquote>
+		Function Altaircam_Trigger(HAltairCam h, unsigned short nNumber) could be used to trigger the camera. Assigning different value to nNumber means different:
+			<blockquote>
+			nNumber = 0 means stop the trigger.<br/>
+			nNumber = 0xFFFF means trigger continuously, the same as video mode;<br/>
+			nNumber = other valid values means nNumber images will come out from the camera.<br/>
+			</blockquote>
+		If the ALTAIRCAM_FLAG_TRIGGER_SINGLE flag is checked, the nNumber parameter must be assigned to 1 and 1 image will come out from the camera when Altaircam_Trigger is called.<br/>Enter the trigger mode first and then call Altaircam_Trigger function to trigger the camera.
+	</blockquote>
+<p>8. Trigger timeout</p>
+	<blockquote>
+	The timeout is recommended for not less than (Exposure Time * 102% + 8 Seconds).
+	</blockquote>
+<hr/>
+<h1><font color="#0000FF">4. Functions</font></h1>
+<hr/>
+<ul><li><h2><font color="#0000FF">HRESULT return value</font></h2>
+	<p>HRESULT is not uncommon on the Windows platform. It's borrowed to macOS and Linux, see the table:</p>
+  <div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+      <tr>
+        <td width="20%">Name</td>
+        <td width="60%">Description</td>
+		<td width="20%">Value</td>
+      </tr>
+	  <tr>
+        <td width="20%">S_OK</td>
+        <td width="60%">Operation successful</td>
+		<td width="20%">0x00000000</td>
+	  </tr>
+	  <tr>
+        <td width="20%">S_FALSE</td>
+        <td width="60%">Operation successful</td>
+		<td width="20%">0x00000001</td>
+	  </tr>
+	  <tr>
+        <td width="20%">E_FAIL</td>
+        <td width="60%">Unspecified failure</td>
+		<td width="20%">0x80004005</td>
+	  </tr>
+	  <tr>
+        <td width="20%">E_INVALIDARG</td>
+        <td width="60%">One or more arguments are not valid</td>
+		<td width="20%">0x80070057</td>
+	  </tr>
+	  <tr>
+        <td width="20%">E_NOTIMPL</td>
+        <td width="60%">Not supported or not implemented</td>
+		<td width="20%">0x80004001</td>
+	  </tr>
+	  <tr>
+        <td width="20%">E_POINTER</td>
+        <td width="60%">Pointer that is not valid</td>
+		<td width="20%">0x80004003</td>
+	  </tr>
+	  <tr>
+        <td width="20%">E_UNEXPECTED</td>
+        <td width="60%">Unexpected failure</td>
+		<td width="20%">0x8000FFFF</td>
+	  </tr>
+	  <tr>
+        <td width="20%">E_WRONG_THREAD</td>
+        <td width="60%">Called in wrong thread</td>
+		<td width="20%">0x8001010E</td>
+	  </tr>
+    </table>
+  </div><br/>
+<div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+  <tr><td><pre>#define SUCCEEDED(hr)   (((HRESULT)(hr)) &gt;= 0)
+#define FAILED(hr)      (((HRESULT)(hr)) &lt; 0)</pre></td></tr>
+</table></div>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Calling Convention</font></h2>
+	<p>Win: __stdcall, please see <a href="https://docs.microsoft.com/en-us/cpp/cpp/stdcall">here</a></p>
+	<p>macOS and Linux: __cdecl</p>
+</li></ul>
+<ul><li><h2><a id="callback"><font color="#0000FF">Callback: PALTAIRCAM_EVENT_CALLBACK and PALTAIRCAM_DATA_CALLBACK(_V2)</font></a></h2>
+	<p>These callback functions are called back from the internal thread in altaircam.dll, so great attention should be paid to multithread issue.</p>
+	<p><strong>There are limitation in the callback context:</strong></p>
+	<p><strong>(a) Do NOT call Altaircam_Stop and Altaircam_Close in this callback function, otherwise, deadlocks.</strong></p>
+	<p><strong>(b) Do NOT call Altaircam_put_Option with ALTAIRCAM_OPTION_TRIGGER, ALTAIRCAM_OPTION_BITDEPTH, ALTAIRCAM_OPTION_PIXEL_FORMAT, ALTAIRCAM_OPTION_BINNING, ALTAIRCAM_OPTION_ROTATE, the return value is E_WRONG_THREAD.</strong></p>
+</li></ul>
+<ul><li><h2><font color="#0000FF"><a id="cord">Coordinate</a></font></h2>
+<p>Functions with coordinate parameters, such as Altaircam_put_Roi, Altaircam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the video has been flipped, rotated, digital binning, ROIed, or combination of the previous operations.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_EnumV2</font></h2>
+    <p><strong>Return value:</strong> non-negative integer, enumerated camera number</p>
+    <p><strong>Parameters:</strong></p>
+    	<blockquote>
+    		<p>AltaircamInstV2 pti[ALTAIRCAM_MAX]: AltaircamInstV2 buffer</p>
+    	</blockquote>
+    <p><strong>Remarks:</strong> call this function to enumerate AltairCam cameras that are currently connected to computer and when it is returned, AltaircamInstV2 buffer contains the information of each camera instance enumerated.<strong>If we don't care about that multiple cameras connect to the computer simultaneously, it's optional to call this function to enumerate the camera instances</strong>.</p>
+    <p>The code snippet shows as below:<br/></p>
+<table width="100%" border="0" bgcolor="#B0D0B0">
+  <tr><td><pre>AltaircamInstV2 arr[ALTAIRCAM_MAX];
+unsigned cnt = Altaircam_EnumV2(arr);
+for (unsigned i = 0; i &lt; cnt; ++i)
+    ......</pre></td></tr>
+</table><br/>
+<table width="100%" border="0" bgcolor="#B0D0B0">
+<tr><td><pre>typedef struct{
+#ifdef _WIN32
+    const wchar_t*     name;     /* model name */
+#else
+    const char*        name;
+#endif
+    unsigned long long flag;     /* ALTAIRCAM_FLAG_xxx */
+    unsigned           maxspeed; /* maximum speed level, Altaircam_get_MaxSpeed, the speed range = [0, maxspeed], closed interval */
+    unsigned           preview;  /* number of preview resolution, Altaircam_get_ResolutionNumber */
+    unsigned           still;    /* number of still resolution, Altaircam_get_StillResolutionNumber */
+    unsigned           maxfanspeed; /* maximum fan speed */
+    AltaircamResolution  res[ALTAIRCAM_MAX];
+}AltaircamModelV2;</pre></td></tr>
+</table><br/>
+<div align="center">
+<table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+ <tr>
+   <td width="8%" valign="top">name</td>
+   <td colspan="2" valign="top">The name of this model</td>
+   </tr>
+ <tr>
+   <td width="8%" rowspan="35" valign="top">flag</td>
+   <td colspan="2" valign="top">Bitwise flag</td>
+   </tr>
+ <tr>
+   <td valign="top">ALTAIRCAM_FLAG_CMOS</td>
+   <td valign="top">cmos sensor</td>
+ </tr>
+ <tr>
+   <td valign="top">ALTAIRCAM_FLAG_CCD_PROGRESSIVE</td>
+   <td valign="top">progressive ccd sensor</td>
+ </tr>
+ <tr>
+   <td valign="top">ALTAIRCAM_FLAG_CCD_INTERLACED</td>
+   <td valign="top">interlaced ccd sensor</td>
+ </tr>
+ <tr>
+   <td valign="top">ALTAIRCAM_FLAG_ROI_HARDWARE</td>
+   <td valign="top">support hardware ROI. Hardware ROI means only the ROI part of image is output from the sensor and the software cropping operation is not required. Higher frame rate is achieved when using hardware ROI method. Software ROI means the image with the complete field of view of the sensor will be output and software cropping operation is required to obtain the ROI image.</td>
+ </tr>
+ <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_MONO</td>
+   <td width="63%" valign="top">monochromatic sensor</td>
+ </tr>
+  <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_BINSKIP_SUPPORTED</td>
+   <td width="63%" valign="top">support bin/skip mode, see Altaircam_put_Mode and Altaircam_get_Mode</td>
+ </tr>
+ <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_USB30</td>
+   <td width="63%" valign="top">usb3.0</td>
+ </tr>
+ <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_TEC</td>
+   <td width="63%" valign="top">Thermoelectric Cooler</td>
+ </tr>
+ <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_USB30_OVER_USB20</td>
+   <td width="63%" valign="top">usb3.0 camera connected to usb2.0 port</td>
+ </tr>
+ <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_ST4</td>
+   <td width="63%" valign="top">ST4 port</td>
+ </tr>
+ <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_GETTEMPERATURE</td>
+   <td width="63%" valign="top">support to get the temperature of the sensor, Altaircam_get_Temperature</td>
+ </tr>
+ <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_PUTTEMPERATURE</td>
+   <td width="63%" valign="top">support to put the target temperature of the sensor, Altaircam_put_Temperature</td>
+ </tr> 
+  <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_RAW10</td>
+   <td width="63%" valign="top">Pixel format, RAW 10 bits</td>
+ </tr>
+  <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_RAW12</td>
+   <td width="63%" valign="top">Pixel format, RAW 12 bits</td>
+ </tr>
+  <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_RAW14</td>
+   <td width="63%" valign="top">Pixel format, RAW 14 bits</td>
+ </tr>
+  <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_RAW16</td>
+   <td width="63%" valign="top">Pixel format, RAW 16 bits</td>
+ </tr>
+  <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_FAN</td>
+   <td width="63%" valign="top">cooling fan</td>
+ </tr>
+  <tr>
+   <td width="29%" valign="top">ALTAIRCAM_FLAG_TEC_ONOFF</td>
+   <td width="63%" valign="top">Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
+							ALTAIRCAM_OPTION_TEC<br/>
+							ALTAIRCAM_OPTION_TECTARGET</td>
+ </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_ISP</td>
+    <td valign="top">ISP (Image Signal Processing) chip</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_TRIGGER_SOFTWARE</td>
+    <td valign="top">support software trigger</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_TRIGGER_EXTERNAL</td>
+    <td valign="top">support external trigger</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_TRIGGER_SINGLE</td>
+    <td valign="top">only support trigger single, one trigger, one image</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_BLACKLEVEL</td>
+    <td valign="top">support set and get the black level</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_AUTO_FOCUS</td>
+    <td valign="top">support auto focus</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_BUFFER</td>
+    <td valign="top">frame buffer</td>
+  </tr>
+  <tr>
+    <td valign="top"><a id="ddr">ALTAIRCAM_FLAG_DDR</a></td>
+    <td valign="top">use very large capacity DDR (Double Data Rate SDRAM) for frame buffer</td>
+  </tr>
+  <tr>
+    <td valign="top">>ALTAIRCAM_FLAG_CG</td>
+    <td valign="top">Conversion Gain: LCG, HCG</td>
+  </tr>
+  <tr>
+    <td valign="top">>ALTAIRCAM_FLAG_CGHDR</td>
+    <td valign="top">Conversion Gain: LCG, HCG, HDR</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_YUV411</td>
+    <td valign="top">pixel format, yuv411</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_YUV422</td>
+    <td valign="top">pixel format, yuv422</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_YUV444</td>
+    <td valign="top">pixel format, yuv444</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_RGB888</td>
+    <td valign="top">pixel format, RGB888</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_RAW8</td>
+    <td valign="top">pixel format, RAW 8 bits</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_GMCY8</td>
+    <td valign="top">pixel format, GMCY, 8bits</td>
+  </tr>
+  <tr>
+    <td valign="top">ALTAIRCAM_FLAG_GMCY12</td>
+    <td valign="top">pixel format, GMCY, 12 btis</td>
+  </tr>
+ <tr>
+   <td width="8%" valign="top">maxspeed</td>
+   <td colspan="2" valign="top">Maximum speed level, same with Altaircam_get_MaxSpeed. The speed range is [0, maxspeed]. see Altaircam_put_Speed and Altaircam_get_Speed</td>
+   </tr>
+ <tr>
+   <td width="8%" valign="top">preview</td>
+   <td colspan="2" valign="top">Number of preview resolution. Same with Altaircam_get_ResolutionNumber</td>
+   </tr>
+ <tr>
+   <td width="8%" valign="top">still</td>
+   <td colspan="2" valign="top">Number of still resolution, zero means still capture is not supported. Same with Altaircam_get_StillResolutionNumber</td>
+   </tr>
+  <tr>
+   <td width="8%" valign="top">res</td>
+   <td colspan="2" valign="top">Resolution, width and height</td>
+   </tr>
+</table>
+</div>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_HotPlug</font></h2>
+  <p><strong>Return value:</strong> NA</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>PALTAIRCAM_HOTPLUG pHotPlugCallback: callback function</p>
+    <blockquote>
+    <table width="100%" border="0" bgcolor="#B0D0B0">
+      <tr>
+        <td><div align="center">typedef void (*PALTAIRCAM_HOTPLUG)(void* pCallbackCtx);</div></td>
+      </tr>
+    </table>
+  </blockquote>
+    <p>void* pCallbackCtx: callback context</p>
+  </blockquote>
+  <p><strong>Remarks:</strong></p><blockquote>
+  <p>This function is only available on macOS and Linux, it's unnecessary on Windows.</p>
+  <p>To process the device plug in / pull out in Windows, please refer to the MSDN(<a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa363224(v=vs.85).aspx">Device Management</a>, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/aa363215(v=vs.85).aspx">Detecting Media Insertion or Removal</a>).</p>
+  <p>To process the device plug in / pull out in Linux / macOS, please call this function to register the callback function. When the device is inserted or pulled out, you will be notified by the callback funcion, and then call Altaircam_EnumV2(...) again to enum the cameras.</p>
+  <p>Recommendation: for better rubustness, when notify of device insertion arrives, don't open handle of this device immediately, but open it <b>after delaying a short time (e.g., 200 milliseconds)</b>.</p>
+</blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_Open</font></h2>
+  <p><strong>Return value:</strong> HAltairCam handle. Return NULL when fails (Such as the device has been pulled out).</p>
+  <p><strong>Parameters:</strong></p>
+  	<blockquote>
+  		<p>id: AltairCam camera instance, enumerated by Altaircam_EnumV2. <strong>If id is NULL, Altaircam_Open will open the first camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Altaircam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
+  	</blockquote>
+  <p><strong>Remarks:</strong> open the camera instance.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_Close</font></h2>
+    <p><strong>Return value:</strong> void</p>
+    <p><strong>Parameters:</strong></p>
+		<blockquote>
+			<p>HAltairCam h: camera instance handle</p>
+		</blockquote>
+    <p><strong>Remarks:</strong> close the camera instance. After it is closed, never use the HAltairCam handle any more.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_StartPullModeWithWndMsg, Altaircam_StartPullModeWithCallback</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means "success / failure"</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: instance handle opened by Altaircam_Open</p>
+      <p>HWND hWnd: event occurs, message will be posted in this window</p>
+      <p>UINT nMsg: Windows custom message type. Its WPARAM parameter means event type ALTAIRCAM_EVENT_xxxx, LPARAM is useless (always zero)</p>
+      <p>PALTAIRCAM_EVENT_CALLBACK pEventCallback, void* pCallbackContext: callback function specified by user's application and callback context parameter.</p>
+        <table width="100%" border="0">
+          <tr>
+            <td bgcolor="#B0D0B0"><div align="center">typedef void (*PALTAIRCAM_EVENT_CALLBACK)(unsigned nEvent, void* pCallbackCtx);</div></td>
+          </tr>
+        </table>
+		<p>see <a href="#callback">here</a>.</p>
+      </blockquote>
+    <p><strong>Remarks:</strong> Obviously, Altaircam_StartPullModeWithWndMsg is only supported in Windows OS.</p>
+</li></ul>
+<ul><li><h2><a id="infov2">Altaircam_PullImageV2, Altaircam_PullStillImageV2, Altaircam_PullImageWithRowPitchV2, Altaircam_PullStillImageWithRowPitchV2</a>,
+			Altaircam_PullImage, Altaircam_PullStillImage, <a id="rowpitch1">Altaircam_PullImageWithRowPitch</a>, <a id="rowpitch2">Altaircam_PullStillImageWithRowPitch</a></h2>
+      <p><strong>Return value:</strong> HRESULT type means "success/ failure". Return E_FAIL when there isn't image ready for pull.</p>
+      <p><strong>Parameters:</strong></p>
+      <blockquote>
+    <p>HAltairCam h: instance handle opened by Altaircam_Open</p>
+    <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must >= rowPitch * nHeight.</p>
+    <p>int bits: 24, 32, 48, 8, 16, means RGB24, RGB32, RGB48, 8 bits gray or 16 bits gray images. This parameter is ignored in RAW mode.</p>
+    <p>int rowPitch: the distance from one row of to the next row. rowPitch = 0 means using the default row pitch.</p>
+    <p>unsigned* pnWidth, unsigned* pnHeight: out parameter. width and height of image.</p>
+	<p>AltaircamFrameInfoV2* pInfo: out parameter, frame info. Some cameras support frame sequence and frame timestamp, for other unsigned cameras, sequence and timestamp are always 0</p>
+</blockquote>
+  <p><strong>Remarks:</strong> when pImageData is NULL, while pnWidth and pnHeight are not NULL, you can "peek" the width and height of images.</p>
+  <p>Please ensure that the pImageData buffer is large enough to hold the entire frame data, see the table below:</p>
+  <blockquote><div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+      <tr>
+        <td colspan="2" valign="top">Format</td>
+        <td width="63%" valign="top">Default Row Pitch</td>
+      </tr>
+      <tr>
+        <td width="10%" rowspan="4" valign="top">RGB</td>
+        <td width="27%" valign="top">RGB24</td>
+        <td width="63%" valign="top">TDIBWIDTHBYTES(24 * Width)</td>
+      </tr>
+      <tr>
+        <td width="27%" valign="top">RGB32</td>
+        <td width="63%" valign="top">Width * 4</td>
+      </tr>
+      <tr>
+        <td width="27%" valign="top">RGB48</td>
+        <td width="63%" valign="top">TDIBWIDTHBYTES(48 * Width)</td>
+      </tr>
+      <tr>
+        <td width="27%" valign="top">RGB8 grey image</td>
+        <td width="63%" valign="top">TDIBWIDTHBYTES(8 * Width)</td>
+      </tr>
+      <tr>
+        <td width="10%" rowspan="2" valign="top">RAW</td>
+        <td width="27%" valign="top">8bits Mode</td>
+        <td width="63%" valign="top">Width</td>
+      </tr>
+      <tr>
+        <td width="27%" valign="top">10bits, 12bits, 14bits, 16bits Mode</td>
+        <td width="63%" valign="top">Width * 2</td>
+      </tr>
+    </table>
+  </div><br/>
+<div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+  <tr>
+   <td>#ifndef TDIBWIDTHBYTES<br/>
+#define TDIBWIDTHBYTES(bits)&nbsp;&nbsp;&nbsp;&nbsp;((unsigned)(((bits) + 31) &amp; (~31)) / 8)<br/>
+#endif<br/>
+</td></tr>
+</table></div></blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_StartPushModeV2, Altaircam_StartPushMode</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: instance handle opened by Altaircam.</p>
+      <p>PALTAIRCAM_DATA_CALLBACK(_V2) pDataCallback, void* pCallbackCtx: the callback function and callback context parameters that are specified by the user's program. Altaircam.dll gets image data from the camera, then calls back this function.</p>
+    </blockquote>
+  <blockquote>
+    <table width="100%" border="0" bgcolor="#B0D0B0">
+      <tr>
+        <td>typedef void (*PALTAIRCAM_DATA_CALLBACK)(const void* pData, const BITMAPINFOHEADER* pHeader, int bSnap, void* pCallbackCtx);<br/>
+		typedef void (*PALTAIRCAM_DATA_CALLBACK_V2)(const void* pData, const AltaircamFrameInfoV2* pInfo, int bSnap, void* pCallbackCtx);</td>
+      </tr>
+    </table>
+	<p>see <a href="#callback">here</a>.</p>
+  </blockquote>
+  <blockquote>
+    <p align="left">when calls back, if Parameter pData == NULL, then internal error occurs (eg: the camera is pulled out suddenly).<br/>
+      The row pitch of pData is always the default value.<br/>
+      For parameter int bSnap, TRUE means still image snap by Altaircam_Snap or Altaircam_SnapN function, FALSE means ordinary previewed pictures / videos.<br/>
+  </p></blockquote>
+  <p><strong>Remarks:</strong> start camera instance.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_Stop</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    	<blockquote>
+    		<p>HAltairCam handle</p>
+    	</blockquote>
+    <p><strong>Remarks:</strong> stop the camera instance. After stopped, it can be restart again. For example, switching the video resolution:   </p>
+    <blockquote>
+      <p>Step 1: call Altaircam_Stop to stop</p>
+      <p>Step 2: call Altaircam_put_Size or Altaircam_put_eSize to set the new resolution</p>
+      <p>Step 3: call Altaircam_StartPullModeWithWndMsg or Altaircam_StartPullModeWithCallback or Altaircam_StartPushMode to restart</p>
+    </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_Pause</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    	<blockquote>
+    		<p>HAltairCam h: camera instance handle</p>
+    	</blockquote>
+    <p><strong>Remarks:</strong> pause/continue camera instance.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_Snap, Altaircam_SnapN</font></h2>
+  <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>unsigned nResolutionIndex: resolution index.</p>
+	<p><a id="snapn">unsigned nNum: the number to be snapped.</a></p>
+  </blockquote>
+  <p><strong>Remarks:</strong> snap 'still' image, please see <a href="#stillcapture">here</a>. When snap successfully:</p>
+  <blockquote><blockquote>
+  <p>a) If we use Pull Mode, it will be notified by ALTAIRCAM_EVENT_STILLIMAGE.</p>
+  <p>b) If we use Push Mode, the image will be returned by callback function PALTAIRCAM_DATA_CALLBACK(_V2) with the parameter int bSnap is TRUE.</p>
+	</blockquote>
+    <p>Most cameras can snap still image with different resolutions under continuous preview. For example, UCMOS03100KPA's previewed resolution is 1024*768, if we call Altaircam_Snap(h, 0), we get so called "still image" with 2048*1536 resolution.<br/>
+    Some cameras hasn't this ability, so nResolutionIndex must be equal the preview resolution which is set by Altaircam_put_Size, or Altaircam_put_eSize.<br/>
+    Whether it supports "still snap" or not, see "still" domain in AltaircamModelV2.</p>
+	<p>Altaircam_Snap(h, index) == Altaircam_SnapN(h, index, 1)</p>
+  </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_Trigger</font></h2>
+  <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>unsigned short nNumber: 0xffff(trigger continuously), 0(stop / cancel trigger), others(number of images to be triggered)</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> in trigger mode, call this function to trigger an image:</p>
+  <blockquote>
+  <p>a) If we use Pull Mode, it will be notified by ALTAIRCAM_EVENT_IMAGE.</p>
+  <p>b) If we use Push Mode, the image will be returned by callback function PALTAIRCAM_DATA_CALLBACK(_V2) with the parameter int bSnap is FALSE.</p>
+  </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_Size, Altaircam_get_Size, Altaircam_put_eSize, Altaircam_get_eSize</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>unsigned nResolutionIndex: current/present resolution index</p>
+      <p>int nWidth, int nHeight: width and height of current resolution index</p>
+    </blockquote>
+  <p><strong>Remarks:</strong> set/get current resolution</p>
+        <blockquote>
+          <p align="left">Set resolution before running Altaircam_StartPullModeWithWndMsg or Altaircam_StartPullModeWithCallback or Altaircam_StartPushMode<br/>
+            There are two ways to set current resolution: one is by resolution index, the other by width/height. Both ways are equivalent. For example, UCMOS03100KPA supports the following three kinds of resolution: <br/>
+            &nbsp;&nbsp;&nbsp;&nbsp;Index 0: 2048, 1536<br/>
+            &nbsp;&nbsp;&nbsp;&nbsp;Index 1: 1024, 768<br/>
+            &nbsp;&nbsp;&nbsp;&nbsp;Index 2: 680, 510<br/>
+            So Altaircam_put_Size(h, 1024, 768) is as effective as Altaircam_put_eSize(h, 1)</p>
+        </blockquote>
+</li></ul>
+<ul><li><h2><a id="roi">Altaircam_put_Roi, Altaircam_get_Roi</a></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>unsigned xOffset: x offset, must be even number</p>
+      <p>unsigned yOffset: y offset, must be even number</p>
+      <p>unsigned xWidth: width, must be even number and must not be less than 16</p>
+      <p>unsigned yHeight: height, must be even number and must not be less than 16</p>
+    </blockquote>
+  <p><strong>Remarks:</strong> set/get the ROI. Altaircam_put_Roi(h, 0, 0, 0, 0) means to clear the ROI and restore the original size.</p>
+  <blockquote>
+	<p><strong>Important: It is forbidden to call Altaircam_put_Roi in the callback context of PALTAIRCAM_EVENT_CALLBACK and PALTAIRCAM_DATA_CALLBACK(_V2), the return value is E_WRONG_THREAD.</strong></p>
+  	<p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
+	<p>The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support ROI, so the return value is E_NOTIMPL.</p>
+  </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_ResolutionNumber, Altaircam_get_Resolution</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>unsigned nResolutionIndex: resolution index</p>
+      <p>int* pWidth, int* pHeight: width/height</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Altaircam_get_ResolutionNumber means the number of resolution supported. Take UCMOS03100KPA as an example, if we call the function Altaircam_get_ResolutionNumber and get "3", which means it can support three kinds of resolution. Altaircam_get_Resolution gets the width/height of each kind of resolution.</p>
+  <blockquote>
+    <p align="left">These parameters have also been contained in AltaircamModelV2.</p>
+  </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_RawFormat</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>unsigned* nFourCC: raw format, see the table below</p>
+    <p>unsigned* bitdepth: Bit Depth, such as 8, 12, 14, 16</p>
+<div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+  <tr>
+   <td>#ifndef MAKEFOURCC<br/>
+#define MAKEFOURCC(a, b, c, d) ((unsigned)(unsigned char)(a) | ((unsigned)(unsigned char)(b) &lt;&lt; 8) | ((unsigned)(unsigned char)(c) &lt;&lt; 16) | ((unsigned)(unsigned char)(d) &lt;&lt; 24))<br/>
+#endif<br/></td>
+  </tr>
+</table></div><br/>
+  <div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+      <tr>
+        <td width="40%" valign="top">MAKEFOURCC('G', 'B', 'R', 'G')</td>
+        <td width="60%" valign="top">GBGBGB...<br/>RGRGRG...<br/>GBGBGB...<br/>RGRGRG...<br/>...<br/>see <a href="http://www.siliconimaging.com/RGB%20Bayer.htm">here</a></td>
+      </tr>
+      <tr>
+        <td width="40%" valign="top">MAKEFOURCC('R', 'G', 'G', 'B')</td>
+        <td width="60%" valign="top">RGRGRG...<br/>GBGBGB...<br/>RGRGRG...<br/>GBGBGB...<br/>...<br/></td>
+      </tr>
+      <tr>
+        <td width="40%" valign="top">MAKEFOURCC('B', 'G', 'G', 'R')</td>
+        <td width="60%" valign="top">BGBGBG...<br/>GRGRGR...<br/>BGBGBG...<br/>GRGRGR...<br/>...<br/></td>
+      </tr>
+      <tr>
+        <td width="40%" valign="top">MAKEFOURCC('G', 'R', 'B', 'G')</td>
+        <td width="60%" valign="top">GRGRGR...<br/>BGBGBG...<br/>GRGRGR...<br/>BGBGBG...<br/>...<br/></td>
+      </tr>
+      <tr>
+        <td width="40%" valign="top">MAKEFOURCC('V', 'U', 'Y', 'Y')</td>
+        <td width="60%" valign="top">YUV4:2:2, please see: <a href="http://www.fourcc.org">http://www.fourcc.org</a></td>
+      </tr>
+      <tr>
+        <td width="40%" valign="top">MAKEFOURCC('U', 'Y', 'V', 'Y')</td>
+        <td width="60%" valign="top">YUV4:2:2</td>
+      </tr>
+      <tr>
+        <td width="40%" valign="top">MAKEFOURCC('Y', 'Y', 'Y', 'Y')</td>
+        <td width="60%" valign="top">Black / White camera</td>
+      </tr>      
+    </table>
+  </div>
+  </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_Option, Altaircam_get_Option</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>unsigned iOption: see the table</p>
+    <p>int iValue: see the table</p>
+  <div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+    <tr>
+    	<td width="28%">Option</td>
+    	<td width="48%">Description</td>
+    	<td width="4%">Default</td>
+    	<td width="20%">The value can be changed after Altaircam_StartPullModeWithWndMsg or Altaircam_StartPullModeWithCallback or Altaircam_StartPushMode?<br/>
+					<b>The value can be changed on-the-fly?</b></td>
+	</tr>
+      <tr>
+        <td width="28%">ALTAIRCAM_OPTION_NOFRAME_TIMEOUT</td>
+        <td width="48%">Report error if cannot grab frame in a certain time.<br/>
+          1 = enable this feature;<br/>0 = disable this feature.</td>
+        <td width="4%">0</td>
+        <td width="20%">Yes</td>
+      </tr>
+      <tr>
+        <td width="28%">ALTAIRCAM_OPTION_THREAD_PRIORITY</td>
+        <td width="48%">set the priority of the internal thread which grab data from the usb device.<br/>
+          0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms686277(v=vs.85).aspx">SetThreadPriority</a><br/>This option is not available at Linux and macOS.</td>
+        <td width="4%">1</td>
+        <td width="20%">Yes</td>
+      </tr>
+      <tr>
+        <td width="28%">ALTAIRCAM_OPTION_PROCESSMODE</td>
+        <td width="48%">0 = better image quality, more cpu usage.<br/>
+          1 = lower image quality, less cpu usage.</td>
+        <td width="4%">0</td>
+        <td width="20%">Yes</td>
+      </tr>
+      <tr>
+        <td width="28%"><a id="rawo">ALTAIRCAM_OPTION_RAW</a></td>
+        <td width="48%">0 means RGB mode.<br/>
+          1 means RAW mode, read the CMOS or CCD raw data.</td>
+        <td width="4%">0</td>
+        <td width="20%"><b>No</b><br/>
+          (The return value is E_UNEXPECTED when set this option after the camera is started)</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_BITDEPTH</td>
+      	<td width="48%">Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.<br/>
+      	  0 = use 8 bits depth.<br/>1 = use the maximum bits depth of this camera.</td>
+      	<td width="4%">NA</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_FAN</td>
+      	<td width="48%">Some cameras support the cooling fan.<br/>
+      	  0 = turn off the cooling fan<br/>[1, max] = fan speed</td>
+      	<td width="4%">NA</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_TEC</td>
+      	<td width="48%">Some cameras support to turn on or off the thermoelectric cooler.<br/>
+      	  0 = turn off the thermoelectric cooler<br/>1 = turn on the thermoelectric cooler</td>
+      	<td width="4%">1</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_LINEAR</td>
+      	<td width="48%">0 = turn off the builtin linear tone mapping<br/>
+      	  1 = turn on the builtin linear tone mapping</td>
+      	<td width="4%">1</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_CURVE</td>
+      	<td width="48%">0 = turn off the builtin curve tone mapping<br/>
+      	  1 = turn on the builtin polynomial curve tone mapping<br/>
+		  2 = turn on the builtin logarithmic curve tone mapping</td>
+      	<td width="4%">2</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_COLORMATIX</td>
+      	<td width="48%">0 = turn off the builtin color matrix<br/>
+      	  1 = turn on the builtin color matrix</td>
+      	<td width="4%">1</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_WBGAIN</td>
+      	<td width="48%">0 = turn off the builtin white balance gain<br/>
+      	  1 = turn on the builtin white balance gain</td>
+      	<td width="4%">1</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_TRIGGER</td>
+      	<td width="48%">0 = video mode<br/>
+      	  1 = software or simulated trigger mode<br/>
+      	  2 = external trigger mode</td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%"><a id="rgb">ALTAIRCAM_OPTION_RGB</a></td>
+      	<td width="48%">0 = RGB24<br/>
+						1 = enable RGB48 format when bitdepth > 8<br/>
+						2 = RGB32<br/>
+						3 = 8 bits gray (only for mono camera)<br/>
+						4 = 16 bits gray (only for mono camera and bitdepth > 8)</td>
+      	<td width="4%">0</td>
+      	<td width="20%"><b>No</b><br/>
+      	  (The return value is E_UNEXPECTED when set this option after the camera is started)</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_TECTARGET</td>
+      	<td width="48%">get or set the target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃</td>
+      	<td width="4%">NA</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_AGAIN</td>
+      	<td width="48%">enable or disable adjusting the analog gain when auto exposure is enabled</td>
+      	<td width="4%">Yes</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_FRAMERATE</td>
+      	<td width="48%">limit the frame rate, range=[0, 63].<br/>frame rate control is disabled automatically in trigger mode.</td>
+      	<td width="4%">0<br/>(means no limit)</td>
+      	<td width="20%"><b>No</b><br/>(The return value is E_UNEXPECTED when set this option after the camera is started)</td>
+      </tr>
+      <tr>
+      	<td width="28%"><a id="demosaic">ALTAIRCAM_OPTION_DEMOSAIC</a></td>
+      	<td width="48%">Demosaic mothod for both video and still image: (Please refrence <a href="https://en.wikipedia.org/wiki/Demosaicing">https://en.wikipedia.org/wiki/Demosaicing</a>)<br/>
+      			0 = BILINEAR<br/>
+      			1 = VNG(Variable Number of Gradients interpolation)<br/>
+      			2 = PPG(Patterned Pixel Grouping interpolation)<br/>
+      			3 = AHD(Adaptive Homogeneity-Directed interpolation)<br/>
+      			Always return E_NOTIMPL for monochromatic camera.</td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_DEMOSAIC_VIDEO</td>
+      	<td width="48%">Demosaic mothod for video</td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_DEMOSAIC_STILL</td>
+      	<td width="48%">Demosaic mothod for still image<br/>
+      			Always return E_NOTIMPL for camera that don't support sill image capture.</td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%"><a id="blacklevel">ALTAIRCAM_OPTION_BLACKLEVEL</a></td>
+      	<td width="48%">Black Level<br/>
+      			Always return E_NOTIMPL for camera that don't support black level.</td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_MULTITHREAD</td>
+      	<td width="48%">multithread image processing</td>
+      	<td width="4%">1</td>
+      	<td width="20%"><b>No</b><br/>
+			(The return value is E_UNEXPECTED when set this option after the camera is started)</td>
+      </tr>
+      <tr>
+      	<td width="28%"><a id="binning">ALTAIRCAM_OPTION_BINNING</a></td>
+      	<td width="48%">digital binning:<br/>
+					0x01 (no binning)<br/>
+					0x02 (add, 2*2)<br/>
+					0x03 (add, 3*3)<br/>
+					0x04 (add, 4*4)<br/>
+					0x82 (average, 2*2)<br/>
+					0x83 (average, 3*3)<br/>
+					0x84 (average, 4*4)</td>
+      	<td width="4%">1</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%"><a id="rotate">ALTAIRCAM_OPTION_ROTATE</a></td>
+      	<td width="48%">rotate clockwise: 0, 90, 180, 270</td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_CG</td>
+      	<td width="48%">Conversion Gain:<br/>
+						0: LCG<br/>
+						1: HCG<br/>
+						2: HDR</td>
+      	<td width="4%">NA</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_PIXEL_FORMAT</td>
+      	<td width="48%">pixel format</td>
+      	<td width="4%">NA</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%"><a id="ddrdepth">ALTAIRCAM_OPTION_DDR_DEPTH</a></td>
+      	<td width="48%">the number of the frames that DDR can cache:<br/>
+		                    1: DDR cache only one frame<br/>
+                            0: Auto:
+                                   <blockquote>->one for video mode when auto exposure is enabled</blockquote>
+                                   <blockquote>->full capacity for others</blockquote>
+                            -1: DDR can cache frames to full capacity</td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%"><a id="ffc">ALTAIRCAM_OPTION_FFC</a></td>
+      	<td width="48%">Flat Field Correction:<br/>
+					set:
+                        <blockquote>0: disable</blockquote>
+                        <blockquote>1: enable</blockquote>
+						<blockquote>-1: reset</blockquote>
+                        <blockquote>(0xff000000 | n): set the average number to n, [1~255]</blockquote>
+                    get:
+                        <blockquote>(val &amp; 0xff): 0 -> disable, 1 -> enable, 2 -> inited</blockquote>
+                        <blockquote>((val &amp; 0xff00) >> 8): sequence</blockquote>
+                        <blockquote>((val &amp; 0xff0000) >> 8): average number</blockquote></td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%"><a id="dfc">ALTAIRCAM_OPTION_DFC</a></td>
+      	<td width="48%">Dark Field Correction:<br/>
+					set:
+                        <blockquote>0: disable</blockquote>
+                        <blockquote>1: enable</blockquote>
+						<blockquote>-1: reset</blockquote>
+                        <blockquote>(0xff000000 | n): set the average number to n, [1~255]</blockquote>
+                    get:
+                        <blockquote>(val &amp; 0xff): 0 -> disable, 1 -> enable, 2 -> inited</blockquote>
+                        <blockquote>((val &amp; 0xff00) >> 8): sequence</blockquote>
+                        <blockquote>((val &amp; 0xff0000) >> 8): average number</blockquote></td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_SHARPENING</td>
+      	<td width="48%">Sharpening, (threshold << 24) | (radius << 16) | strength)<br/>
+						<blockquote>strength: [0, 500], default: 0 (disable)</blockquote>
+						<blockquote>radius: [1, 10]</blockquote>
+						<blockquote>threshold: [0, 255]</blockquote>
+		</td>
+      	<td width="4%">0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_FACTORY</td>
+      	<td width="48%">restore the factory settings</td>
+      	<td width="4%">Always 0</td>
+      	<td width="20%">Yes</td>
+      </tr>
+      <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_TEC_VOLTAGE</td>
+      	<td width="48%">get the current TEC voltage in 0.1V, 59 mean 5.9V; readonly</td>
+      	<td width="4%">NA/td>
+      	<td width="20%">NA</td>
+      </tr>
+	  <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_TEC_VOLTAGE_MAX</td>
+      	<td width="48%">get the TEC maximum voltage in 0.1V; readonly</td>
+      	<td width="4%">NA</td>
+      	<td width="20%">NA</td>
+      </tr>
+	  <tr>
+      	<td width="28%">ALTAIRCAM_OPTION_DEVICE_RESET</td>
+      	<td width="48%">reset usb device, simulate a replug</td>
+      	<td width="4%">NA</td>
+      	<td width="20%">NA</td>
+      </tr>
+    </table>
+  </div>
+  </blockquote>
+<blockquote>
+	<p><strong>Important:</strong></p>
+<p><strong>a. Some options cannot be changed after the camera is started. This is to say the option cannot be changed on-the-fly.</strong></p>
+  <p><strong>b. It is forbidden to call Altaircam_put_Option with ALTAIRCAM_OPTION_TRIGGER, ALTAIRCAM_OPTION_BITDEPTH, ALTAIRCAM_OPTION_PIXEL_FORMAT, ALTAIRCAM_OPTION_BINNING, ALTAIRCAM_OPTION_ROTATE in the callback context of PALTAIRCAM_EVENT_CALLBACK and PALTAIRCAM_DATA_CALLBACK, the return value is E_WRONG_THREAD.</strong></p>
+  <p>c. The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support RAW mode.</p>
+</blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_RealTime, Altaircam_get_RealTime</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>int bEnable: TRUE or FALSE</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> If you set RealTime mode as TRUE, then you get shorter frame delay but lower frame rate which damages fluency. The default value is FALSE.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_AutoExpoEnable, Altaircam_put_AutoExpoEnable, Altaircam_get_AutoExpoTarget, Altaircam_put_AutoExpoTarget, Altaircam_put_MaxAutoExpoTimeAGain</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>int bAutoExposure: TRUE or FALSE</p>
+      <p>unsigned short Target: auto-exposure target</p>
+      <p>unsigned maxTime, unsigned short maxAGain: the maximum time and maximum analog gain of auto-exposure</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> If auto exposure is enabled, the exposure time and analog gain are controlled by software to make the average brightness of the target rectangle as close as possible to the auto exposure target. The auto exposure target value is the target brightness of the target rectangle (see Altaircam_put_AEAuxRect, Altaircam_get_AEAuxRect).</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_ExpoTime, Altaircam_put_ExpoTime, Altaircam_get_ExpTimeRange</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>unsigned Time: exposure time, unit: microsecond</p>
+      <p>unsigned* nMin, unsigned* nMax, unsigned* nDef: the minimum, maximum and default value of exposure time.</p>
+    </blockquote>
+  <p><strong>Remarks:</strong> exposure time related.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_ExpoAGain, Altaircam_put_ExpoAGain, Altaircam_get_ExpoAGainRange</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>unsigned short AGain: analog gain, shown in percentage, eg, 200 means the analog gain is 200%</p>
+      <p>unsigned short* nMin, unsigned short* nMax, unsigned short* nDef: the minimum, maximum and default value of analog gain.</p>
+    </blockquote>
+  <p><strong>Remarks:</strong> analog gain related.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_Hue, Altaircam_get_Hue, Altaircam_put_Saturation, Altaircam_get_Saturation, Altaircam_put_Brightness, Altaircam_get_Brightness, Altaircam_get_Contrast, Altaircam_put_Contrast, Altaircam_get_Gamma, Altaircam_put_Gamma</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>HAltairCam h: camera instance handle</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> set or get hue, saturation, brightness, contrast and gamma.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_Chrome, Altaircam_put_Chrome</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>int bChrome: TRUE or FALSE</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> color or gray mode</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_VFlip, Altaircam_put_VFlip, Altaircam_get_HFlip, Altaircam_put_HFlip</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong> HAltairCam h: camera instance handle</p>
+      <p><strong>Remarks:</strong> vertical/horizontal flip.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_Speed, Altaircam_get_Speed, Altaircam_get_MaxSpeed</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>unsigned short nSpeed: frame rate level</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> the minimum frame rate level is "0", the maximum one can be achieved through Function "Altaircam_get_MaxSpeed" which equals to maxspeed in AltaircamModelV2.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_HZ, Altaircam_get_HZ</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>int nHZ: 0: 60Hz alternating current, 1: 50Hz alternating current, 2: direct current</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> set the light source power frequency</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_Temperature, Altaircam_put_Temperature</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure, E_NOTIMPL means not supporting get or set the temperature</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>short nTemperature: in 0.1℃ (32 means 3.2℃, -35 means -3.5℃).</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> get the temperature of the sensor. see ALTAIRCAM_FLAG_GETTEMPERATURE.</p>
+	<blockquote><p>set the target temperature of the sensor.</p></blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_Mode, Altaircam_get_Mode</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>int bSkip: Bin mode or Skip mode.</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> set Bin mode or Skip mode. Cameras with higher resolution can support two sampling modes, one is Bin mode (Neighborhood averaging), the other is Skip (sampling extraction). In comparison, the former is with better image effect but decreasing frame rate while the latter is just the reverse.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_TempTint, Altaircam_get_TempTint</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return.</p>
+      <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>HAltairCam h: camera instance handle</p>
+    	<p>int nTemp, int nTint: color temperature and Tint</p>
+	</blockquote>
+  <p><strong>Remarks:</strong> set/get the color temperature and Tint parameters of white balance (Temp/Tint Mode, please see <a href="#wb">here</a>).</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_AwbOnePush</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>PIALTAIRCAM_TEMPTINT_CALLBACK fnTTProc, void* pTTCtx: callback function and callback context when the automatic white balance completes.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in Temp/Tint Mode. When the "auto white balance" completes, ALTAIRCAM_EVENT_TEMPTINT event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_WhiteBalanceGain, Altaircam_get_WhiteBalanceGain</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint Gain mode, E_NOTIMPL will be return.</p>
+      <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>HAltairCam h: camera instance handle</p>
+    	<p>int aGain[3]: RGB Gain</p>
+	</blockquote>
+  <p><strong>Remarks:</strong> set/get the RGB gain parameters of white balance (RGB Gain Mode, please see <a href="#wb">here</a>).</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_AwbInit</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint mode, E_NOTIMPL will be return.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>PIALTAIRCAM_WHITEBALANCE_CALLBACK fnWBProc, void* pWBCtx: callback function and callback context when the automatic white balance completes.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in RGB Gain Mode. When the "auto white balance" completes, ALTAIRCAM_EVENT_WBGAIN event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
+</li></ul>
+<ul><li><h2><a id="black">Altaircam_AbbOnePush</a></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>PIALTAIRCAM_BLACKBALANCE_CALLBACK fnBBProc, void* pBBCtx: callback function and callback context when the automatic black balance completes.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Call this function to perform one "auto black balance". When the "auto black balance" completes, ALTAIRCAM_EVENT_BLACK event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_BlackBalance, Altaircam_get_BlackBalance</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
+      <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>HAltairCam h: camera instance handle</p>
+    	<p>unsigned short aSub[3]: RGB Offset</p>
+	</blockquote>
+  <p><strong>Remarks:</strong> set/get the RGB offset parameters of black balance.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_AWBAuxRect, Altaircam_get_AWBAuxRect, Altaircam_put_AEAuxRect, Altaircam_get_AEAuxRect, Altaircam_put_ABBAuxRect, Altaircam_get_ABBAuxRect</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+      <blockquote>
+      	<p>HAltairCam h: camera instance handle</p>
+      </blockquote>
+      <p><strong>Remarks:</strong> set/get the rectangle of automatic white balance and auto-exposure and automatic black balance. The default Rectangle is in the center of the image, its width is 20% image with, its height is 20% image height.</p>
+	  <p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
+  </li>
+</ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_MonoMode</font></h2>
+    <p><strong>Return value:</strong> S_OK means mono mode, S_FALSE means color mode</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>AltairCam h: camera instance handle</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> gray camera or not, find the flag in AltairCamModelV2: ALTAIRCAM_FLAG_MONO</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_get_MaxBitDepth</font></h2>
+    <p><strong>Return value:</strong> the maximum bit depth this camera supports.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>HAltairCam h: camera instance handle</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.</p>
+</li></ul>
+<ul><li>
+    <h2>Altaircam_get_StillResolutionNumber, Altaircam_get_StillResolution</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>unsigned nResolutionIndex: resolution index</p>
+      <p>int* pWidth, int* pHeight: width/height</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Altaircam_get_StillResolutionNumber means the number of supported still resolution. Take UCMOS03100KPA as an example, if we call the function Altaircam_get_StillResolutionNumber and get "3", which means it can support three kinds of resolution. If it doesn't support "still snap", then we get "0". Altaircam_get_Resolution gs the width/height of each kind of resolution.</p>
+</li></ul>
+<ul><li>
+    <h2>Altaircam_get_SerialNumber, Altaircam_get_FwVersion, Altaircam_get_HwVersion, Altaircam_get_ProductionDate, Altaircam_get_Revision</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>char sn[32]: buffer to the serial number, such as: TP110826145730ABCD1234FEDC56787</p>
+    <p>char fwver[16]: buffer to the firmware version, such as: 3.2.1.20140922</p>
+    <p>char hwver[16]: buffer to the hardware version, such as: 3.12</p>
+    <p>char pdate[10]: buffer to the production date, such as: 20150327</p>
+	<p>unsigned short pRevision: revision</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> each camera has a unique serial number with 31 letters, eg,"TP110826145730ABCD1234FEDC56787"</p>
+</li></ul>
+<ul><li>
+    <h2>Altaircam_get_PixelSize</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>unsigned nResolutionIndex: resolution index</p>
+    <p>float* x, float* y: physical pixel size(µm)</p>
+  </blockquote>
+</li></ul>
+<ul><li>
+    <h2>Altaircam_put_LEDState</font></h2>
+  <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>unsigned short iLed: the index of LED light</p>
+    <p>unsigned short iState: LED status, 1 -&gt; Ever bright; 2 -&gt; Flashing; other -&gt; Off</p>
+    <p>unsigned short iPeriod: Flashing Period (&gt;= 500ms)</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> One or more LED lights installed on some camera. This function controls the status of these lights.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_read_EEPROM, Altaircam_write_EEPROM</font></h2>
+  <p><strong>Return value:</strong> HRESULT type means failure or byte(s) transferred</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>unsigned addr: EEPROM address</p>
+    <p>const unsigned char* pBuffer: data buffer to be written</p>
+    <p>unsigned char* pBuffer: read EEPROM to buffer</p>
+    <p>unsigned nBufferLen: buffer length</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> In some cameras, EEPROM is available for read and write. If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_IoControl</font></h2>
+  <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>unsigned index: IO port index</p>
+    <p>unsigned nType: type of control</p>
+    <p>int outVal: output control value</p>
+	<p>int* inVal: input control value</p>
+  <div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+      <tr>
+        <td width="28%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_SUPPORTEDMODE</td>
+        <td width="72%" valign="top">get the supported mode:<br/>0x01->Input<br/>0x02->Output<br/>(0x01 | 0x02)->support both Input and Output</td>
+      </tr>
+      <tr>
+        <td width="28%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_ALLSTATUS</td>
+        <td width="72%" valign="top">A single bit field indicating the current logical state of all available line signals at time of polling</td>
+      </tr>
+      <tr>
+        <td valign="top">ALTAIRCAM_IOCONTROTYPE_GET_MODE</td>
+        <td valign="top">get current mode, 0x01->Input, 0x02->Output</td>
+      </tr>
+      <tr>
+        <td width="28%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_FORMAT</td>
+        <td width="72%" valign="top">get the format, 0x00->not connected, 0x01->Tri-state, 0x02->TTL, 0x03->LVDS, 0x04->RS422, 0x05->Opto-coupled</td>
+      </tr>
+      <tr>
+        <td width="28%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_FORMAT</td>
+        <td width="72%" valign="top">set the format</td>
+      </tr>
+      <tr>
+        <td width="28%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_INVERTER</td>
+        <td width="72%" valign="top">Enables the signal inverter function</td>
+      </tr>
+      <tr>
+        <td width="28%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_INVERTER</td>
+        <td width="72%" valign="top">Enables the signal inverter function</td>
+      </tr>
+      <tr>
+        <td width="28%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_LOGIC</td>
+        <td width="72%" valign="top">0x01->Positive, 0x02->Negative</td>
+      </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_LOGIC</td>
+   <td width="73%" valign="top">0x01->Positive, 0x02->Negative</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_MINIMUMOUTPUTPULSEWIDTH</td>
+   <td width="73%" valign="top">minimum signal width of an output signal (in microseconds)</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_MINIMUMOUTPUTPULSEWIDTH</td>
+   <td width="73%" valign="top">minimum signal width of an output signal (in microseconds)</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_OVERLOADSTATUS</td>
+   <td width="73%" valign="top">0x01->Positive, 0x02->Negative</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_OVERLOADSTATUS</td>
+   <td width="73%" valign="top">0x01->Positive, 0x02->Negative</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_PITCH</td>
+   <td width="73%" valign="top">Number of bytes separating the starting pixels of two consecutive lines</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_PITCH</td>
+   <td width="73%" valign="top">Number of bytes separating the starting pixels of two consecutive lines</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_PITCHENABLE</td>
+   <td width="73%" valign="top">Number of bytes separating the starting pixels of two consecutive lines. This feature is used to facilitate alignment of image data.</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_PITCHENABLE</td>
+   <td width="73%" valign="top">Number of bytes separating the starting pixels of two consecutive lines. This feature is used to facilitate alignment of image data.</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_SOURCE</td>
+   <td width="73%" valign="top">get the source<br/>
+								0->ExposureActive<br/>
+                                1->TimerActive<br/>
+                                2->UserOutput<br/>
+                                3->TriggerReady<br/>
+                                4->SerialTx<br/>
+                                5->AcquisitionTriggerReady</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_SOURCE</td>
+   <td width="73%" valign="top">set the source</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_STATUS</td>
+   <td width="73%" valign="top">get status</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_STATUS</td>
+   <td width="73%" valign="top">set status</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_GET_DEBOUNCERTIME</td>
+   <td width="73%" valign="top">debouncer time in microseconds</td>
+ </tr>
+  <tr>
+   <td width="27%" valign="top">ALTAIRCAM_IOCONTROTYPE_SET_DEBOUNCERTIME</td>
+   <td width="73%" valign="top">debouncer time in microseconds</td>
+ </tr>
+    </table>
+  </div>
+  </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_read_UART, Altaircam_write_UART</font></h2>
+  <p><strong>Return value:</strong> HRESULT type means failure or byte(s) transferred</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>const unsigned char* pBuffer: data buffer to be written</p>
+    <p>unsigned char* pBuffer: read buffer</p>
+    <p>unsigned nBufferLen: buffer length</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_FfcOnePush</font></h2>
+  <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+  </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_DfcOnePush</font></h2>
+  <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+  </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_ExpoCallback</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>PIALTAIRCAM_EXPOSURE_CALLBACK fnExpoProc, void* pExpoCtx: exposure callback function and callback context. If we set fnExpoProc as NULL, then it means stop calling back.</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> Once we set non-NULL callback function, then callback happens whenever the exposure time changes.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_ChromeCallback</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>PIALTAIRCAM_CHROME_CALLBACK fnChromeProc, void* pChromeCtx: color/gray switches callback function and callback context. If we set fnChromeProc as NULL, then it means stop calling back.</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> once we set non-NULL callback function, then callback happens whenever the color/gray switches, eg, call Altaircam_put_Chrome</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_LevelRangeAuto</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+      <blockquote>
+      	<p>HAltairCam h: camera instance handle</p>
+      </blockquote>
+      <p><strong>Remarks:</strong> auto Level Range.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_put_LevelRange, Altaircam_get_LevelRange</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltairCam h: camera instance handle</p>
+      <p>unsigned short aLow[4], unsigned short aHigh[4]: Level Range of R, G, B, and Gray. RGB is only available for color image, and gray is only available for gray image.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> level range related.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_GetHistogram</font></h2>
+      <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HAltairCam h: camera instance handle</p>
+    <p>PIALTAIRCAM_HISTOGRAM_CALLBACK fnHistogramProc, void* pHistogramCtx: callback function and callback context of histogram data.</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> get histogram data.</p>
+</li></ul>
+<hr/>
+<h1><font color="#0000FF">5. .NET and C# and VB.NET</font></h1>
+<hr/>
+<p>Altaircam does support .NET development environment (C# and VB.NET).</p>
+<p>altaircam.cs in the 'inc' directory use P/Invoke call into altaircam.dll. Copy altaircam.cs to your C# project, please reference demowinformcs1 and demowinformcs2 in the samples directory.</p>
+<p>The C# class Altair.AltairCam is a thin wrapper class of the native C/C++ API of altaircam.dll, it's properties and methods P/Invoke into the corresponding Altaircam_xxxx functions of altaircam.dll. So, the descriptions of the Altaircam_xxxx function are also applicable for the corresponding C# properties or methods. For example, the C# Snap method call the function Altaircam_Snap, the descriptions of the Altaircam_Snap function is applicable for C# Snap method:</p>
+<table width="100%" border="0" bgcolor="#B0D0B0">
+<tr><td><pre>[DllImport(&quot;altaircam.dll&quot;, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+private static extern int Altaircam_Snap(SafeHAltairCamHandle h, uint nResolutionIndex);
+
+public bool Snap(uint nResolutionIndex)
+{
+    if (_handle == null || _handle.IsInvalid || _handle.IsClosed)
+        return false;
+    return (Altaircam_Snap(_handle, nResolutionIndex) &gt;= 0);
+}</pre></td></tr></table>
+<p>VB.NET is similar with C#, not otherwise specified.</p>
+<hr/>
+<h1><font color="#0000FF">6. Misc</font></h1>
+<hr/>
+<ul>
+  <li>Byte order (BGR vs RGB)
+    <blockquote>
+      <p>Windows: BGR</p>
+      <p>macOS, Linux: RGB</p>
+    </blockquote>
+  </li>
+</ul>
+<ul>
+  <li>Ranges and default value of some parameters</li>
+</ul>
+<blockquote>
+<div align="center">
+ <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+  <tr>
+    <td colspan="3">Parameters</td>
+    <td width="15%">Range</td>
+    <td width="8%">Default value</td>
+    <td width="17%">Get</td>
+    <td width="17%">Set</td>
+    <td width="14%">Auto</td>
+  </tr>
+  <tr>
+    <td colspan="3">Auto Exposure Target</td>
+    <td width="15%">16~235</td>
+    <td width="8%">120</td>
+    <td width="17%">Altaircam_get_AutoExpoTarget</td>
+    <td width="17%">Altaircam_put_AutoExpoTarget</td>
+    <td width="14%">&nbsp;</td>
+  </tr>
+  <tr>
+    <td width="14%" rowspan="5">White Balance</td>
+    <td width="9%" rowspan="2">Temp/Tint Mode</td>
+    <td width="10%">Color Temperature</td>
+    <td width="15%">2000~15000</td>
+    <td width="8%">6503</td>
+    <td width="17%" rowspan="2">Altaircam_get_TempTint</td>
+    <td width="17%" rowspan="2">Altaircam_put_TempTint</td>
+    <td width="14%" rowspan="2">Altaircam_AwbOnePush</td>
+  </tr>
+  <tr>
+    <td width="10%">Tint</td>
+    <td width="15%">200~2500</td>
+    <td width="8%">1000</td>
+    </tr>
+  <tr>
+    <td rowspan="3">RGB Gain Mode</td>
+    <td>Red Gain</td>
+    <td rowspan="3">-127~127</td>
+    <td rowspan="3">0</td>
+    <td rowspan="3">Altaircam_get_WhiteBalanceGain</td>
+    <td rowspan="3">Altaircam_put_WhiteBalanceGain</td>
+    <td rowspan="3">Altaircam_AwbInit</td>
+  </tr>
+  <tr>
+    <td>Green Gain</td>
+    </tr>
+  <tr>
+    <td>Blue Gain</td>
+    </tr>
+  <tr>
+    <td colspan="3">LevelRange</td>
+    <td width="15%">0~255</td>
+    <td width="8%">Low = 0<br/>
+      High = 255</td>
+    <td width="17%">Altaircam_get_LevelRange</td>
+    <td width="17%">Altaircam_put_LevelRange</td>
+    <td width="14%">Altaircam_LevelRangeAuto</td>
+  </tr>
+  <tr>
+    <td colspan="3">Contrast</td>
+    <td width="15%">-100~100</td>
+    <td width="8%">0</td>
+    <td width="17%">Altaircam_get_Contrast</td>
+    <td width="17%">Altaircam_put_Contrast</td>
+    <td width="14%">&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="3">Hue</td>
+    <td width="15%">-180~180</td>
+    <td width="8%">0</td>
+    <td width="17%">Altaircam_get_Hue</td>
+    <td width="17%">Altaircam_put_Hue</td>
+    <td width="14%">&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="3">Saturation</td>
+    <td width="15%">0~255</td>
+    <td width="8%">128</td>
+    <td width="17%">Altaircam_get_Saturation</td>
+    <td width="17%">Altaircam_put_Saturation</td>
+    <td width="14%">&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="3">Brightness</td>
+    <td width="15%">-64~64</td>
+    <td width="8%">0</td>
+    <td width="17%">Altaircam_get_Brightness</td>
+    <td width="17%">Altaircam_put_Brightness</td>
+    <td width="14%">&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="3">Gamma</td>
+    <td width="15%">20~180</td>
+    <td width="8%">100</td>
+    <td width="17%">Altaircam_get_Gamma</td>
+    <td width="17%">Altaircam_put_Gamma</td>
+    <td width="14%">&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="3">Black Level</td>
+    <td width="15%">0~31 (bit depth=8)<br/>
+    				0~31 * 4 (bit depth=10)<br/>
+    				0~31 * 16 (bit depth=12)<br/>
+    				0~31 * 64 (bit depth=14)<br/>
+    				0~31 * 256 (bit depth=16)</td>
+    <td width="8%">&nbsp;</td>
+    <td width="17%">Altaircam_get_Option</td>
+    <td width="17%">Altaircam_put_Option</td>
+    <td width="14%">&nbsp;</td>
+  </tr>
+ </table>
+</div>
+</blockquote>
+<hr/>
+<h1><font color="#0000FF">7. Changelog</font></h1>
+<hr/>
+<p>v30: Add ALTAIRCAM_FLAG_CGHDR</p>
+<p>v29: Add AltaircamFrameInfoV2, a group of functions (PullImageV2 and StartPushModeV2), some cameras support frame sequence number and timestamp. Please see <a href="#infov2">here</a></p>
+<p>v28: Add Altaircam_read_Pipe, Altaircam_write_Pipe, Altaircam_feed_Pipe</p>
+<p>v27: Add Altaircam_SnapN, support to snap multiple images, please see <a href="#snapn">here</a> and democpp</p>
+<p>v26: Add support to restore factory settings, ALTAIRCAM_OPTION_FACTORY</p>
+<p>v25: Add sharpening, ALTAIRCAM_OPTION_SHARPENING</p>
+<p>v24: Add support to Auto Exposure with the 50/60 HZ constraint</p>
+<p>v23: Add support to Linux armhf, armel and arm64<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add FFC and DFC, please see <a href="#ffc">here</a> and <a href="#dfc">here</a></p>
+<p>v22: Add ALTAIRCAM_OPTION_DDR_DEPTH, please see <a href="#ddrdepth">here</a></p>
+<p>v21: Add Altaircam_IoControl</p>
+<p>v20: Add Altaircam_EnumV2, AltaircamModelV2, AltaircamInstV2; (Altaircam_Enum, AltaircamModel and AltaircamInst are obsoleted)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Pixel Format, see ALTAIRCAM_OPTION_PIXEL_FORMAT; (ALTAIRCAM_OPTION_PIXEL_FORMAT is the super set of ALTAIRCAM_OPTION_BITDEPTH)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Flat Field Correction</p>
+<p>v19: Add Black Balance: please see <a href="#black">here</a></p>
+<p>v18: Add Altaircam_get_Revision</p>
+<p>v17: Add <a href="#rotate">ALTAIRCAM_OPTION_ROTATE</a></p>
+<p>v16: Add <a href="#ddr">ALTAIRCAM_FLAG_DDR</a>, use very large capacity DDR (Double Data Rate SDRAM) for frame buffer</p>
+<p>v15: Add <a href="#binning">ALTAIRCAM_OPTION_BINNING</a></p>
+<p>v14: Add support to WinRT / UWP (Universal Windows Platform) / Windows Store App</p>
+<p>v13: support row pitch, please see <a href="#rowpitch1">Altaircam_PullImageWithRowPitch</a> and <a href="#rowpitch2">Altaircam_PullStillImageWithRowPitch</a></p>
+<p>v12: support RGB32, 8 bits Gray, 16 bits Gray, please see <a href="#rgb">here</a></p>
+<p>v11: black level: please see <a href="#blacklevel">here</a></p>
+<p>v10: demosaic method: please see <a href="#demosaic">here</a></p>
+<p>v9: change the histogram data type from double to float</p>
+<p>v8: support simulated trigger, please see <a href="#trigger">here</a></p>
+<p>v7: support RGB48 when bit depth > 8, please see <a href="#rgb">here</a></p>
+<p>v6: support trigger mode, please see <a href="#trigger">here</a></p>
+<p>v5: White Balance: Temp/Tint Mode vs RGB Gain Mode, please see <a href="#wb">here</a></p>
+<p>v4: ROI (Region Of Interest) supported: please see <a href="#roi">here</a></p>
+<p>v3: more bit depth supported: 10bits, 12bits, 14bits, 16bits</p>
+<p>v2: support RAW format, please see <a href="#raw">here</a> and <a href="#rawo">here</a>; support Linux and macOS</p>
+<p>v1: initial release</p>
+<hr/>
+<h1><font color="#0000FF">8. Contact</font></h1>
+<hr/>
+<p>If you have any problems in using this SDK, please use the following information to contact us.<br/>
+ www: <a href="http://www.altair.com">www.altair.com</a><br/>
+ email: support@altair.com</p>
+</body>
+</html>

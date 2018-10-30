@@ -233,7 +233,7 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, MOUNT_CGUSBST4_GUIDER_NAME, __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, MOUNT_CGUSBST4_GUIDER_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

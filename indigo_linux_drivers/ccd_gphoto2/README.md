@@ -85,6 +85,7 @@ For debayering one can choose between algorithms:
 * AHD,
 * DCB,
 * DHT.
+
 The default debayering algorithm is VNG which quite computationally
 intensive however very good. Linear interpolation is a very basic interpolation but it is much faster compared to VNG.
 This FITS output is currently 3 colors (RGB) each 16-bit.

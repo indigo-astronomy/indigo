@@ -469,7 +469,7 @@ static void _debug_ext(int level, char *format, va_list arg) {
 indigo_result indigo_wheel_fli(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "FLI Filter Wheel", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "FLI Filter Wheel", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

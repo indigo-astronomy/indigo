@@ -23,7 +23,7 @@
  \file indigo_ccd_ica.m
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_ccd_ica"
 
 #import <Cocoa/Cocoa.h>
@@ -962,7 +962,7 @@ indigo_result indigo_ccd_ica(indigo_driver_action action, indigo_driver_info *in
   static PTPBrowser* browser;
   static PTPDelegate* delegate;
 
-	SET_DRIVER_INFO(info, "ICA Camera", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "ICA Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
   if (delegate == NULL)
     delegate = [[PTPDelegate alloc] init];

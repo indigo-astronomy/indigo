@@ -184,7 +184,7 @@ indigo_result indigo_wheel_trutek(indigo_driver_action action, indigo_driver_inf
 		wheel_detach
 		);
 
-	SET_DRIVER_INFO(info, "Trutek Filter Wheel", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "Trutek Filter Wheel", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

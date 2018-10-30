@@ -1502,7 +1502,7 @@ indigo_result indigo_ccd_apogee(indigo_driver_action action, indigo_driver_info 
 			ethernet_detach
 		);
 
-		SET_DRIVER_INFO(info, "Apogee Camera", __FUNCTION__, DRIVER_VERSION, last_action);
+		SET_DRIVER_INFO(info, "Apogee Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 		if (action == last_action)
 			return INDIGO_OK;

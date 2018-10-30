@@ -20,7 +20,7 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO MoonLite focuser driver main
- \file indigo_wheel_sx_main.c
+ \file indigo_focuser_moonlite_main.c
  */
 
 #include <stdio.h>

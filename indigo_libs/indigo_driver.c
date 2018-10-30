@@ -143,7 +143,7 @@ static bool is_serial(char *path) {
 
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property) {
 	property->count = 1;
-	char name[INDIGO_VALUE_SIZE];
+	char name[PATH_MAX];
 #if defined(INDIGO_MACOS)
 	io_iterator_t iterator;
 	io_object_t serial_device;
@@ -179,6 +179,22 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 		}
 	}
 	closedir(dir);
+	dir = opendir ("/dev/serial/by-id");
+	if (dir) {
+		char target[PATH_MAX];
+		while ((entry = readdir (dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
+			if (entry->d_name[0] != '.') {
+				snprintf(name, PATH_MAX, "/dev/serial/by-id/%s", entry->d_name);
+				if (realpath(name, target)) {
+					int i = DEVICE_PORTS_PROPERTY->count++;
+					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, target, target, false);
+					if (i == 0)
+						strncpy(DEVICE_PORT_ITEM->text.value, target, INDIGO_VALUE_SIZE);
+				}
+			}
+		}
+		closedir(dir);
+	}
 #else
 	/* freebsd */
 #endif

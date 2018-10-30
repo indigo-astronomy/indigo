@@ -2382,7 +2382,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		eth_detach
 	);
 
-	SET_DRIVER_INFO(info, "SBIG Camera", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "SBIG Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 #ifdef __APPLE__
 	static void *dl_handle = NULL;

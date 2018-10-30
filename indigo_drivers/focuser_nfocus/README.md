@@ -22,6 +22,6 @@ http://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
 
 indigo_server indigo_focuser_nfocus
 
-## Status: Under development
+## Status: Untested
 
 Unclear - how to abort movement? what is #CF command?
