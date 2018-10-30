@@ -1247,6 +1247,21 @@ $(BUILD_DRIVERS)/indigo_focuser_moonlite.$(SOEXT): indigo_drivers/focuser_moonli
 
 #---------------------------------------------------------------------
 #
+#	LakesideAstro focuser driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_focuser_lakeside.a: indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_focuser_lakeside: indigo_drivers/focuser_lakeside/indigo_focuser_lakeside_main.o $(BUILD_DRIVERS)/indigo_focuser_lakeside.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_focuser_lakeside.$(SOEXT): indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	MJKZZ focuser driver
 #
 #---------------------------------------------------------------------

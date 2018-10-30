@@ -93,6 +93,7 @@
 #include "aux_rts/indigo_aux_rts.h"
 #include "aux_dsusb/indigo_aux_dsusb.h"
 #include "guider_gpusb/indigo_guider_gpusb.h"
+#include "focuser_lakeside/indigo_focuser_lakeside.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -164,6 +165,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_rts,
 	indigo_aux_dsusb,
 	indigo_guider_gpusb,
+	indigo_focuser_lakeside,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif
