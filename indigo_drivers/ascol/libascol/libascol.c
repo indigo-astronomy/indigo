@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <netdb.h>
@@ -102,4 +103,71 @@ int read_telescope(int devfd, char *reply, int len) {
 		}
 	}
 	return -1;
+}
+
+
+int dms2dd(double *dd, const char *a) {
+	int i;
+	double 	deg,min,sec,sign=1;
+	char *buff,*b1;
+	//char tmps[3];
+
+	buff=(char*)a;    //clear the spaces
+	while (isspace(buff[0])) buff++;
+	i=strlen(buff)-1;
+	while (isspace(buff[i])) i--;
+	buff[i+1]='\0';
+
+	if (buff[0]=='-') { sign=-1; buff++; }
+	if (buff[0]=='+') buff++;
+
+	if ((buff=(char*)strtok(buff,":"))==NULL) return -1;
+	deg=(double)strtoul(buff,&b1,10);
+	if((buff[0]=='\0')||(b1[0]!='\0')) return -1;
+
+	if ((buff=(char*)strtok(NULL,":"))==NULL) return -1;
+	min=(double)strtoul(buff,&b1,10);
+	if((buff[0]=='\0')||(b1[0]!='\0')) return -1;
+
+	if ((buff=(char*)strtok(NULL,"\0"))==NULL) return -1;
+	sec=(double)strtod(buff,&b1);
+	if((buff[0]=='\0')||(b1[0]!='\0')) return -1;
+
+	if((min>=60)||(min<0)||(sec>=60)||(sec<0)) return -1;
+
+	*dd=sign*(deg+min/60+sec/3600);
+
+	return 0;
+}
+
+
+int hms2dh(double *dh, const char *a) {
+	int i;
+	double 	hour,min,sec;
+	char *buff,*b1;
+
+	buff=(char*)a;                     //clear the spaces
+	while (isspace(buff[0])) buff++;
+	i=strlen(buff)-1;
+	while (isspace(buff[i])) i--;
+	buff[i+1]='\0';
+
+	if ((buff=(char*)strtok(buff,":"))==NULL) return -1;
+	hour=(double)strtoul(buff,&b1,10);
+	if((buff[0]=='\0')||(b1[0]!='\0')) return -1;
+
+	if ((buff=(char*)strtok(NULL,":"))==NULL) return -1;
+	min=(double)strtoul(buff,&b1,10);
+	if((buff[0]=='\0')||(b1[0]!='\0')) return -1;
+
+	if ((buff=(char*)strtok(NULL,"\0"))==NULL) return -1;
+	sec=(double)strtod(buff,&b1);
+	if((buff[0]=='\0')||(b1[0]!='\0')) return -1;
+
+	if((hour<0)||(hour>=24)||(min>=60)||(min<0)||(sec>=60)||(sec<0))
+	   return -1;
+
+	*dh=hour+min/60+sec/3600;
+
+	return 0;
 }
