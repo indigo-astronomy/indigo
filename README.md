@@ -74,6 +74,7 @@ This is the list of requirements taken into the consideration:
 50. RTS-on-COM aux (shutter) driver (untested)
 51. DSUSB aux (shutter) driver (untested)
 52. GPUSB guider driver (untested)
+53. LakesideAstro focuser (untested)
 
 ## This is under development
 1. ASCOM driver for INDIGO mount

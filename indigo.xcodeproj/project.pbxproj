@@ -167,6 +167,7 @@
 		59FE34662187B2F8004FB5D4 /* indigo_aux_dsusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FE34632187B2F7004FB5D4 /* indigo_aux_dsusb.h */; };
 		59FE347B2187B7CF004FB5D4 /* libgpusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FE347A2187B7CF004FB5D4 /* libgpusb.a */; };
 		59FE347C2187B7DD004FB5D4 /* indigo_guider_gpusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE346B2187B5FD004FB5D4 /* indigo_guider_gpusb.c */; };
+		59FE3484218887EA004FB5D4 /* indigo_focuser_lakeside.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE347E21886A17004FB5D4 /* indigo_focuser_lakeside.c */; };
 		59FFD0D22128604200C7355C /* hidapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFD0D02128604200C7355C /* hidapi.h */; };
 		59FFD0D32128604200C7355C /* hid.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FFD0D12128604200C7355C /* hid.c */; };
 		9D07F7D2216F5EEE00330726 /* libtoupcam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D48B7A7215E570600CF757E /* libtoupcam.dylib */; };
@@ -4664,6 +4665,7 @@
 				9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */,
 				59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */,
 				9D59D66D20D3F82A009EA8FF /* PromFx2Io.cpp in Sources */,
+				59FE3484218887EA004FB5D4 /* indigo_focuser_lakeside.c in Sources */,
 				9D59D64020D3F829009EA8FF /* UdpSocketLinux.cpp in Sources */,
 				9D59D64420D3F829009EA8FF /* LoggerSyslog.cpp in Sources */,
 				9DAD52592126FFC2002FCC79 /* indigo_wheel_xagyl.c in Sources */,
