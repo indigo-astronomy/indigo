@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress filter wheel driver main
+/** INDIGO Optec TCF-S focuser driver main
  \file indigo_focuser_optec_main.c
  */
 
