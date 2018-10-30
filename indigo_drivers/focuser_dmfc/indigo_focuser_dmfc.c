@@ -51,9 +51,6 @@
 #define X_FOCUSER_ENCODER_ENABLED_ITEM				(X_FOCUSER_ENCODER_PROPERTY->items+0)
 #define X_FOCUSER_ENCODER_DISABLED_ITEM				(X_FOCUSER_ENCODER_PROPERTY->items+1)
 
-#define X_FOCUSER_BACKLASH_PROPERTY						(PRIVATE_DATA->backlash_property)
-#define X_FOCUSER_BACKLASH_ITEM								(X_FOCUSER_BACKLASH_PROPERTY->items+0)
-
 typedef struct {
 	int handle;
 	pthread_mutex_t port_mutex;
@@ -134,10 +131,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_FOCUSER_ENCODER_ENABLED_ITEM, "ENABLED", "Enabled", false);
 		indigo_init_switch_item(X_FOCUSER_ENCODER_DISABLED_ITEM, "DISABLED", "Enabled", false);
-		X_FOCUSER_BACKLASH_PROPERTY = indigo_init_number_property(NULL, device->name, "X_FOCUSER_BACKLASH", FOCUSER_MAIN_GROUP, "Backlash", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_FOCUSER_BACKLASH_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_number_item(X_FOCUSER_BACKLASH_ITEM, "BACKLASH", "Backlash", 0, 9999, 100, 0);
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
+		FOCUSER_BACKLASH_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_ITEM->number.min = 0;
+		FOCUSER_BACKLASH_ITEM->number.max = 9999;
+		FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = 100;
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -185,8 +183,6 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 		if (indigo_property_match(X_FOCUSER_ENCODER_PROPERTY, property))
 			indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-		if (indigo_property_match(X_FOCUSER_BACKLASH_PROPERTY, property))
-			indigo_define_property(device, X_FOCUSER_BACKLASH_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -249,7 +245,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					}
 					token = strtok(NULL, ":");
 					if (token) { // backlash
-						X_FOCUSER_BACKLASH_ITEM->number.value = X_FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
+						FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'A' response");
 						close(PRIVATE_DATA->handle);
@@ -264,7 +260,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (PRIVATE_DATA->handle > 0) {
 				indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 				indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-				indigo_define_property(device, X_FOCUSER_BACKLASH_PROPERTY, NULL);
 				dmfc_command(device, "L:2", response, sizeof(response));
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 				PRIVATE_DATA->timer = indigo_set_timer(device, 0, timer_callback);
@@ -280,7 +275,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				dmfc_command(device, "L:1", response, sizeof(response));
 				indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 				indigo_delete_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-				indigo_delete_property(device, X_FOCUSER_BACKLASH_PROPERTY, NULL);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
@@ -380,16 +374,16 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- X_FOCUSER_BACKLASH
-	} else if (indigo_property_match(X_FOCUSER_BACKLASH_PROPERTY, property)) {
-		indigo_property_copy_values(X_FOCUSER_BACKLASH_PROPERTY, property, false);
-		snprintf(command, sizeof(command), "C:%d", (int)X_FOCUSER_BACKLASH_ITEM->number.value);
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
+	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+		snprintf(command, sizeof(command), "C:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
 		if (dmfc_command(device, command, NULL, 0)) {
-			X_FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			X_FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		indigo_update_property(device, X_FOCUSER_BACKLASH_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
@@ -401,7 +395,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_device_disconnect(NULL, device->name);
 	indigo_release_property(X_FOCUSER_MOTOR_TYPE_PROPERTY);
 	indigo_release_property(X_FOCUSER_ENCODER_PROPERTY);
-	indigo_release_property(X_FOCUSER_BACKLASH_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
@@ -420,7 +413,7 @@ indigo_result indigo_focuser_dmfc(indigo_driver_action action, indigo_driver_inf
 		focuser_detach
 	);
 
-	SET_DRIVER_INFO(info, "PegasusAstro DMFC Focuser", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "PegasusAstro DMFC Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

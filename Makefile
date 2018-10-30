@@ -55,10 +55,13 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS/libatik.a
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/macOS/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
+	LIBDSUSB=indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS/libdsusb.a
+	LIBGPUSB=indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS/libgpusb.a
 	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
 	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac/libASICamera2.a
 	LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac/libUSB2ST4Conv.a
 	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/macOS/libtoupcam.dylib
+	LIBALTAIRCAM=indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/macOS/libaltaircam.dylib
 	FLISDK=libfli-1.999.1-180223
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)
 	PACKAGE_TYPE=dmg
@@ -70,7 +73,10 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/Linux/$(ARCH_DETECTED)/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
+	LIBDSUSB=indigo_drivers/auxdsusb/bin_externals/libdsusb/lib/Linux/$(ARCH_DETECTED)/libdsusb.a
+	LIBGPUSB=indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/Linux/$(ARCH_DETECTED)/libgpusb.a
 	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/Linux/$(ARCH_DETECTED)/libtoupcam.so
+	LIBALTAIRCAM=indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/Linux/$(ARCH_DETECTED)/libaltaircam.so
 	ifeq ($(ARCH_DETECTED),arm)
 		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/armv6/libEFWFilter.a
 		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/armv6/libASICamera2.a
@@ -110,7 +116,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
+	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.a $(BUILD_DRIVERS)/indigo_guider_eqmac.a $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.a $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.dylib $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.dylib
 endif
@@ -135,7 +141,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI)  $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(LIBBOOST-REGEX)
+	EXTERNALS=$(LIBHIDAPI)  $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(LIBBOOST-REGEX)
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.so
 endif
@@ -214,7 +220,26 @@ SO_LIBS= $(wildcard $(BUILD_LIB)/*.$(SOEXT))
 #
 #---------------------------------------------------------------------
 
-all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) ctrlpanel drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath
+all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) ctrlpanel drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath $(BUILD_SHARE)/indi/indi_indigo.xml
+
+
+#---------------------------------------------------------------------
+#
+#      Create driver list
+#
+#---------------------------------------------------------------------
+
+$(BUILD_BIN)/indigo_drivers: indigo_tools/indigo_drivers.o
+	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_tools/indigo_drivers.o $(LDFLAGS) -lindigo
+ifeq ($(OS_DETECTED),Darwin)
+	install_name_tool -add_rpath @loader_path/../drivers $@
+	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
+	#install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
+endif
+
+$(BUILD_SHARE)/indi/indi_indigo.xml: $(DRIVER_SOLIBS) $(BUILD_BIN)/indigo_drivers
+	install -d $(BUILD_SHARE)/indi
+	$(BUILD_BIN)/indigo_drivers $(BUILD_DRIVERS)/indigo_*.$(SOEXT) >$(BUILD_SHARE)/indi/indi_indigo.xml
 
 #---------------------------------------------------------------------
 #
@@ -417,9 +442,37 @@ $(BUILD_INCLUDE)/libfcusb/libfcusb.h: indigo_drivers/focuser_fcusb/bin_externals
 	install -d $(BUILD_INCLUDE)
 	ln -sf $(INDIGO_ROOT)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libfcusb.a: $(BUILD_INCLUDE)/libfcusb/libfcusb.h
+$(BUILD_LIB)/libfcusb.a: $(LIBFCUSB) $(BUILD_INCLUDE)/libfcusb/libfcusb.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBFCUSB) $(BUILD_LIB)
+
+#---------------------------------------------------------------------
+#
+#	Install libdsusb
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/libdsusb/libdsusb.h: indigo_drivers/aux_dsusb/bin_externals/libdsusb/include/libdsusb/libdsusb.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/include/libdsusb $(BUILD_INCLUDE)
+
+$(BUILD_LIB)/libdsusb.a: $(LIBDSUSB) $(BUILD_INCLUDE)/libdsusb/libdsusb.h
+	install -d $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBDSUSB) $(BUILD_LIB)
+
+#---------------------------------------------------------------------
+#
+#	Install libgpusb
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/libgpusb/libgpusb.h: indigo_drivers/guider_gpusb/bin_externals/libgpusb/include/libgpusb/libgpusb.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/include/libgpusb $(BUILD_INCLUDE)
+
+$(BUILD_LIB)/libgpusb.a: $(LIBGPUSB) $(BUILD_INCLUDE)/libgpusb/libgpusb.h
+	install -d $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBGPUSB) $(BUILD_LIB)
 
 #---------------------------------------------------------------------
 #
@@ -487,6 +540,19 @@ $(BUILD_LIB)/libtoupcam.$(SOEXT): $(BUILD_INCLUDE)/toupcam.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBTOUPCAM) $(BUILD_LIB)
 
+#---------------------------------------------------------------------
+#
+#	Build libaltaircam
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/altaircam.h: indigo_drivers/ccd_altair/bin_externals/libaltaircam/include/altaircam.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_altair/bin_externals/libaltaircam/include/altaircam.h $(BUILD_INCLUDE)
+
+$(BUILD_LIB)/libaltaircam.$(SOEXT): $(BUILD_INCLUDE)/altaircam.h
+	install -d $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBALTAIRCAM) $(BUILD_LIB)
 
 #---------------------------------------------------------------------
 #
@@ -948,6 +1014,36 @@ $(BUILD_DRIVERS)/indigo_focuser_fcusb.$(SOEXT): indigo_drivers/focuser_fcusb/ind
 
 #---------------------------------------------------------------------
 #
+#	Build Shoestring DSUSB shutter driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_aux_dsusb.a: indigo_drivers/aux_dsusb/indigo_aux_dsusb.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_aux_dsusb: indigo_drivers/aux_dsusb/indigo_aux_dsusb_main.o $(BUILD_DRIVERS)/indigo_aux_dsusb.a $(BUILD_LIB)/libdsusb.a  $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_aux_dsusb.$(SOEXT): indigo_drivers/aux_dsusb/indigo_aux_dsusb.o $(BUILD_LIB)/libdsusb.a $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
+#	Build Shoestring GPUSB guider driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_guider_gpusb.a: indigo_drivers/guider_gpusb/indigo_guider_gpusb.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_guider_gpusb: indigo_drivers/guider_gpusb/indigo_guider_gpusb_main.o $(BUILD_DRIVERS)/indigo_guider_gpusb.a $(BUILD_LIB)/libgpusb.a  $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_guider_gpusb.$(SOEXT): indigo_drivers/guider_gpusb/indigo_guider_gpusb.o $(BUILD_LIB)/libgpusb.a $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build IIDC CCD driver
 #
 #---------------------------------------------------------------------
@@ -1091,6 +1187,21 @@ $(BUILD_DRIVERS)/indigo_focuser_dmfc.$(SOEXT): indigo_drivers/focuser_dmfc/indig
 
 #---------------------------------------------------------------------
 #
+#	Build PegasusAstro UPB aux driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_aux_upb.a: indigo_drivers/aux_upb/indigo_aux_upb.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_aux_upb: indigo_drivers/aux_upb/indigo_aux_upb_main.o $(BUILD_DRIVERS)/indigo_aux_upb.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_aux_upb.$(SOEXT): indigo_drivers/aux_upb/indigo_aux_upb.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build Rigel Systems nSTEP focuser driver
 #
 #---------------------------------------------------------------------
@@ -1157,6 +1268,21 @@ $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.dylib: indigo_mac_drivers/focuser_mjkzz
 
 #---------------------------------------------------------------------
 #
+#	Build RTS-on-COM aux driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_aux_rts.a: indigo_drivers/aux_rts/indigo_aux_rts.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_aux_rts: indigo_drivers/aux_rts/indigo_aux_rts_main.o $(BUILD_DRIVERS)/indigo_aux_rts.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_aux_rts.$(SOEXT): indigo_drivers/aux_rts/indigo_aux_rts.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build ToupTek CCD driver
 #
 #---------------------------------------------------------------------
@@ -1171,6 +1297,23 @@ $(BUILD_DRIVERS)/indigo_ccd_touptek: indigo_drivers/ccd_touptek/indigo_ccd_toupt
 
 $(BUILD_DRIVERS)/indigo_ccd_touptek.$(SOEXT): indigo_drivers/ccd_touptek/indigo_ccd_touptek.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -ltoupcam
+
+#---------------------------------------------------------------------
+#
+#	Build AltairAstro CCD driver
+#
+#---------------------------------------------------------------------
+
+indigo_drivers/ccd_altair/indigo_ccd_altair.o:	$(BUILD_INCLUDE)/altaircam.h $(BUILD_LIB)/libaltaircam.$(SOEXT)
+
+$(BUILD_DRIVERS)/indigo_ccd_altair.a: indigo_drivers/ccd_altair/indigo_ccd_altair.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_ccd_altair: indigo_drivers/ccd_altair/indigo_ccd_altair_main.o $(BUILD_DRIVERS)/indigo_ccd_altair.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -laltaircam
+
+$(BUILD_DRIVERS)/indigo_ccd_altair.$(SOEXT): indigo_drivers/ccd_altair/indigo_ccd_altair.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -laltaircam
 
 #---------------------------------------------------------------------
 #
@@ -1452,7 +1595,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 
 $(BUILD_BIN)/indigo_server_standalone: indigo_server/indigo_server.c $(DRIVER_LIBS) $(BUILD_LIB)/libindigo.a $(EXTERNALS) ctrlpanel
-	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS) $(se) $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) $(LIBRAW_1394) -lstdc++  -lcurl -ltoupcam
+	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server/indigo_server.c $(DRIVER_LIBS) $(se) $(BUILD_LIB)/libindigo.a $(EXTERNALS) $(LDFLAGS) $(LIBRAW_1394) -lstdc++  -lcurl -ltoupcam  -laltaircam
 ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
@@ -1515,8 +1658,11 @@ install:
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_server_standalone $(INSTALL_PREFIX)/bin
 	sudo install -D -m 0755 $(BUILD_BIN)/indigo_prop_tool $(INSTALL_PREFIX)/bin
-	sudo install -D -m 0644 $(DRIVERS) $(INSTALL_PREFIX)/bin
-	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.so $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0755 $(BUILD_BIN)/indigo_drivers $(INSTALL_PREFIX)/bin
+	sudo install -D -m 0755 $(DRIVERS) $(INSTALL_PREFIX)/bin
+	sudo install -D -m 0644 $(BUILD_LIB)/libindigo.$(SOEXT) $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0644 $(BUILD_LIB)/libtoupcam.$(SOEXT) $(INSTALL_PREFIX)/lib
+	sudo install -D -m 0644 $(BUILD_LIB)/libaltaircam.$(SOEXT) $(INSTALL_PREFIX)/lib
 	sudo install -D -m 0644 $(DRIVER_SOLIBS) $(INSTALL_PREFIX)/lib
 	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/ -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	mkdir qhy_scratch; cd qhy_scratch; cmake -DCMAKE_INSTALL_PREFIX=/ -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_qhy/bin_externals/qhyccd/; make install; cd ..; rm -rf qhy_scratch
@@ -1533,7 +1679,38 @@ install:
 	sudo install -D -m 0644 indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.rules /lib/udev/rules.d/99-indigo_focuser_usbv3.rules
 	sudo install -D -m 0644 indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.rules /lib/udev/rules.d/99-indigo_focuser_wemacro.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_mi/indigo_ccd_mi.rules /lib/udev/rules.d/99-indigo_ccd_mi.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_touptek/bin_externals/libtoupcam/99-toupcam.rules /lib/udev/rules.d/99-indigo_ccd_toupcam.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_altair/bin_externals/libaltaircam/99-altaircam.rules /lib/udev/rules.d/99-indigo_ccd_altaircam.rules
 	sudo udevadm control --reload-rules
+	sudo install -D -m 0644 $(BUILD_SHARE)/indi/indi_indigo.xml /usr/share/indi/indi_indigo.xml
+
+#---------------------------------------------------------------------
+#
+#	Uninstall
+#
+#---------------------------------------------------------------------
+
+uninstall:
+	sudo rm -f $(INSTALL_PREFIX)/bin/*indigo_*
+	sudo rm -f $(INSTALL_PREFIX)/lib/*indigo*
+	sudo rm -rf $(INSTALL_PREFIX)/lib/pkgconfig
+	sudo rm -f $(INSTALL_PREFIX)/lib/libtoupcam.$(SOEXT)
+	sudo rm -f $(INSTALL_PREFIX)/lib/libaltaircam.$(SOEXT)
+	sudo rm -f /lib/udev/rules.d/99-indigo_*.rules
+	sudo rm -f /lib/udev/rules.d/51-sbig-debian.rules
+	sudo rm -f /lib/firmware/sbigfcam.hex
+	sudo rm -f /lib/firmware/sbiglcam.hex
+	sudo rm -f /lib/firmware/sbigpcam.hex
+	sudo rm -f /lib/firmware/sbigucam.hex
+	sudo rm -f /lib/firmware/stfga.bin
+	sudo rm -rf /lib/firmware/qhy
+	sudo rm -f /lib/udev/rules.d/85-qhyccd.rules
+	sudo rm -rf /usr/etc/appgee
+	sudo rm -f /lib/udev/rules.d/99-meadedsi.rules
+	sudo rm -f /lib/firmware/meade-deepskyimager.hex
+	sudo udevadm control --reload-rules
+	sudo rm -rf /usr/share/indi/indi_indigo.xml
+
 
 #---------------------------------------------------------------------
 #
@@ -1555,6 +1732,8 @@ package-prepare: all
 	install $(BUILD_LIB)/libindigo.a /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	install $(BUILD_LIB)/libtoupcam.$(SOEXT) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	install $(BUILD_LIB)/libaltaircam.$(SOEXT) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
 	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	mkdir qhy_scratch; cd qhy_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_qhy/bin_externals/qhyccd/; make install; cd ..; rm -rf qhy_scratch
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=/tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/etc/apogee RULES_PREFIX=/tmp/$(PACKAGE_NAME)/lib/udev/rules.d; cd ../../../../
@@ -1577,7 +1756,8 @@ package-prepare: all
 	install -D -m 0644 indigo_libs/indigo_names.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_names.h
 	install -D -m 0644 indigo_libs/indigo_timer.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_timer.h
 	install -D -m 0644 indigo.pc /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib/pkgconfig/indigo.pc
-	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)
+	install -D -m 0644 $(BUILD_SHARE)/indi/indi_indigo.xml /tmp/$(PACKAGE_NAME)/usr/share/indi/indi_indigo.xml
+	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)/usr/
 
 $(PACKAGE_NAME).deb: package-prepare
 	rm -f $(PACKAGE_NAME).deb
@@ -1607,6 +1787,8 @@ clean: init
 	rm -rf $(BUILD_ROOT)/bin/client
 	rm -rf $(BUILD_LIB)/libindigo*
 	rm -rf $(BUILD_ROOT)/drivers
+	rm -rf $(BUILD_ROOT)/share/indigo/*
+	rm -rf $(BUILD_ROOT)/share/indi/indi_indigo.xml
 	rm -f indigo_libs/*.o
 	rm -f indigo_server/*.o
 	rm -f indigo_server/*.data

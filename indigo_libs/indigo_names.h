@@ -883,6 +883,15 @@
 #define FOCUSER_ABORT_MOTION_ITEM_NAME				"ABORT_MOTION"
 
 //----------------------------------------------------------------------
+/** FOCUSER_BACKLASH property name.
+ */
+#define FOCUSER_BACKLASH_PROPERTY_NAME			"FOCUSER_BACKLASH"
+
+/** FOCUSER_BACKLASH.BACKLASH property item name.
+ */
+#define FOCUSER_BACKLASH_ITEM_NAME					"BACKLASH"
+
+//----------------------------------------------------------------------
 /** FOCUSER_TEMPERATURE property name.
  */
 #define FOCUSER_TEMPERATURE_PROPERTY_NAME		"FOCUSER_TEMPERATURE"

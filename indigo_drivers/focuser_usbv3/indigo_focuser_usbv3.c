@@ -19,8 +19,8 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress filter wheel driver
- \file indigo_ccd_sx.c
+/** INDIGO USBV3 focuser driver
+ \file indigo_focuser_usbv3.c
  */
 
 #define DRIVER_VERSION 0x0001
@@ -388,7 +388,7 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 		focuser_detach
 	);
 
-	SET_DRIVER_INFO(info, "USB_Focus v3 Focuser", __FUNCTION__, DRIVER_VERSION, last_action);
+	SET_DRIVER_INFO(info, "USB_Focus v3 Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
