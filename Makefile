@@ -73,7 +73,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/Linux/$(ARCH_DETECTED)/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
-	LIBDSUSB=indigo_drivers/auxdsusb/bin_externals/libdsusb/lib/Linux/$(ARCH_DETECTED)/libdsusb.a
+	LIBDSUSB=indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/Linux/$(ARCH_DETECTED)/libdsusb.a
 	LIBGPUSB=indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/Linux/$(ARCH_DETECTED)/libgpusb.a
 	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/Linux/$(ARCH_DETECTED)/libtoupcam.so
 	LIBALTAIRCAM=indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/Linux/$(ARCH_DETECTED)/libaltaircam.so
