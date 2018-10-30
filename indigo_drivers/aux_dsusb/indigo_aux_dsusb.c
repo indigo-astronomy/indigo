@@ -246,7 +246,7 @@ indigo_result indigo_aux_dsusb(indigo_driver_action action, indigo_driver_info *
 	libdsusb_debug = &debug;
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "Shoestring DSUSB Focuser", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	SET_DRIVER_INFO(info, "Shoestring DSUSB shutter", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
