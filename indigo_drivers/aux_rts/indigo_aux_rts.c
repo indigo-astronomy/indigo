@@ -215,7 +215,7 @@ indigo_result indigo_aux_rts(indigo_driver_action action, indigo_driver_info *in
 		aux_detach
 		);
 	
-	SET_DRIVER_INFO(info, "RTS-on-COM", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, "RTS-on-COM shutter", __FUNCTION__, DRIVER_VERSION, false, last_action);
 	
 	if (action == last_action)
 		return INDIGO_OK;
