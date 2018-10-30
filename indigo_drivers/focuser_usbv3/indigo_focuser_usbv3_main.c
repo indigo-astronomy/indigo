@@ -19,8 +19,8 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO StarlighXpress filter wheel driver main
- \file indigo_wheel_sx_main.c
+/** INDIGO USBV3 focuser driver main
+ \file indigo_focuser_usbv3_main.c
  */
 
 #include <stdio.h>

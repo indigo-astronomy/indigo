@@ -984,6 +984,11 @@
 		59FE346B2187B5FD004FB5D4 /* indigo_guider_gpusb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_gpusb.c; sourceTree = "<group>"; };
 		59FE34792187B7CF004FB5D4 /* libgpusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libgpusb.h; path = include/libgpusb/libgpusb.h; sourceTree = "<group>"; };
 		59FE347A2187B7CF004FB5D4 /* libgpusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgpusb.a; path = lib/macOS/libgpusb.a; sourceTree = "<group>"; };
+		59FE347E21886A17004FB5D4 /* indigo_focuser_lakeside.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lakeside.c; sourceTree = "<group>"; };
+		59FE347F21886A17004FB5D4 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59FE348021886A17004FB5D4 /* indigo_focuser_lakeside.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_lakeside.h; sourceTree = "<group>"; };
+		59FE348121886A17004FB5D4 /* indigo_focuser_lakeside_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lakeside_main.c; sourceTree = "<group>"; };
+		59FE348321886A17004FB5D4 /* lakeside_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = lakeside_simulator.ino; sourceTree = "<group>"; };
 		59FFD0D02128604200C7355C /* hidapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hidapi.h; path = hidapi/hidapi/hidapi.h; sourceTree = "<group>"; };
 		59FFD0D12128604200C7355C /* hid.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = hid.c; path = hidapi/mac/hid.c; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -2642,10 +2647,10 @@
 		59C499DF1EFADF7600E750AA /* indigo_mac_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				59C499E01EFADF9700E750AA /* ccd_ica */,
 				9D61B9DA216DE62B000DE7E8 /* focuser_mjkzz_bt */,
 				59463C1420DE6781004950F2 /* focuser_wemacro_bt */,
 				9D4D64AC20A9D946008ECE4B /* guider_eqmac */,
-				59C499E01EFADF9700E750AA /* ccd_ica */,
 			);
 			path = indigo_mac_drivers;
 			sourceTree = "<group>";
@@ -2673,8 +2678,8 @@
 			children = (
 				59C4C88220CEF107007EE330 /* README.md */,
 				59C4C88020CEF107007EE330 /* indigo_focuser_wemacro.h */,
-				59C4C88120CEF107007EE330 /* indigo_focuser_wemacro_main.c */,
 				59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */,
+				59C4C88120CEF107007EE330 /* indigo_focuser_wemacro_main.c */,
 				9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */,
 			);
 			path = focuser_wemacro;
@@ -2788,57 +2793,58 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
-				59FE34672187B5FD004FB5D4 /* guider_gpusb */,
+				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
+				595AA1C91FC5ED2900350E7B /* agent_snoop */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
-				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
+				59588CA1211CBEB100E9FC27 /* aux_joystick */,
 				59BBD189218246C8008199D6 /* aux_rts */,
-				59BBD16F21823693008199D6 /* ccd_altair */,
 				9D6940822180B9F600AB112C /* aux_upb */,
-				59399D882177D316002886CA /* focuser_optec */,
-				592E79112168DD7A00E856F3 /* focuser_mjkzz */,
+				59BBD16F21823693008199D6 /* ccd_altair */,
+				9D59D3C020D3F828009EA8FF /* ccd_apogee */,
+				590A863E1DB8096A002F12FB /* ccd_asi */,
+				9D9EA69F1DBE1F5000E11841 /* ccd_atik */,
+				5911F7AB1F02E10B0053F3CA /* ccd_dsi */,
+				5992F7B01E1EC84B0035242E /* ccd_fli */,
+				9D976FD21DD0C46E00782B32 /* ccd_iidc */,
+				59FC2E90210CA26D00730343 /* ccd_mi */,
+				59F654681EE47371007B8C93 /* ccd_qhy */,
+				9DF7E64B1F6AA0E600156652 /* ccd_qsi */,
+				59F4EC6F1E941CF400CC7772 /* ccd_sbig */,
+				59D381AA1D95984D00E87393 /* ccd_simulator */,
+				59519D421DB422E3008BAF29 /* ccd_ssag */,
+				5999FB651DA40B380084BBF8 /* ccd_sx */,
 				9D48B79B215E570600CF757E /* ccd_touptek */,
+				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
+				5981C8D51DC14DB900C7705F /* focuser_fcusb */,
+				59FE347D2188699F004FB5D4 /* focuser_lakeside */,
+				592E79112168DD7A00E856F3 /* focuser_mjkzz */,
 				9D4F473B215A4440006110FD /* focuser_moonlite */,
 				9DADEE5321511322008C6FBE /* focuser_nfocus */,
 				599E6A70214D8EEB00E45C9E /* focuser_nstep */,
+				59399D882177D316002886CA /* focuser_optec */,
 				9DFE1863213586AB00149BDE /* focuser_dmfc */,
-				590DD8752127590600F2B978 /* wheel_optec */,
-				9DAD52512126FFC1002FCC79 /* wheel_xagyl */,
-				9DAD52492126E88B002FCC79 /* wheel_trutek */,
-				9DAD52412126BD98002FCC79 /* wheel_quantum */,
-				9DAD523721258801002FCC79 /* guider_cgusbst4 */,
-				9DAD522921246EB5002FCC79 /* mount_ioptron */,
-				9DAD521721246C17002FCC79 /* mount_synscan */,
-				59588CA1211CBEB100E9FC27 /* aux_joystick */,
-				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
-				59FC2E90210CA26D00730343 /* ccd_mi */,
-				9D59D3C020D3F828009EA8FF /* ccd_apogee */,
-				595AA1C91FC5ED2900350E7B /* agent_snoop */,
-				59DD69C41FC1CF5B00AEF0DF /* gps_nmea */,
-				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
-				59CBD47A1FAF6C65000DAFDB /* gps_simulator */,
-				590B59CE1F7853F400086FD2 /* mount_temma */,
-				9DF7E64B1F6AA0E600156652 /* ccd_qsi */,
-				5911F7AB1F02E10B0053F3CA /* ccd_dsi */,
-				593AD1001EF8396A00C059BC /* guider_asi */,
-				59F654681EE47371007B8C93 /* ccd_qhy */,
-				59F4EC6F1E941CF400CC7772 /* ccd_sbig */,
+				591FAB761E391AFA0076BD6E /* focuser_fli */,
 				59D62CD61E731479004DDD9C /* focuser_usbv3 */,
 				59C4C87F20CEF107007EE330 /* focuser_wemacro */,
-				591FAB761E391AFA0076BD6E /* focuser_fli */,
-				5992F7B91E1EC9270035242E /* wheel_fli */,
-				5992F7B01E1EC84B0035242E /* ccd_fli */,
+				59DD69C41FC1CF5B00AEF0DF /* gps_nmea */,
+				59CBD47A1FAF6C65000DAFDB /* gps_simulator */,
+				593AD1001EF8396A00C059BC /* guider_asi */,
+				9DAD523721258801002FCC79 /* guider_cgusbst4 */,
+				59FE34672187B5FD004FB5D4 /* guider_gpusb */,
+				9DAD522921246EB5002FCC79 /* mount_ioptron */,
 				9DB917FE1DF8543800678721 /* mount_lx200 */,
 				599A63A11DE3733200ABC827 /* mount_nexstar */,
-				59D381AA1D95984D00E87393 /* ccd_simulator */,
+				590B59CE1F7853F400086FD2 /* mount_temma */,
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
-				9D9EA69F1DBE1F5000E11841 /* ccd_atik */,
+				9DAD521721246C17002FCC79 /* mount_synscan */,
 				593CFE3F1DFC89F5003B63D4 /* wheel_atik */,
-				59519D421DB422E3008BAF29 /* ccd_ssag */,
-				5999FB651DA40B380084BBF8 /* ccd_sx */,
-				59C8E7F71DBBDF2200AA3F0A /* wheel_sx */,
-				590A863E1DB8096A002F12FB /* ccd_asi */,
 				9DBC34611DCB265A00588DB9 /* wheel_asi */,
-				9D976FD21DD0C46E00782B32 /* ccd_iidc */,
+				5992F7B91E1EC9270035242E /* wheel_fli */,
+				590DD8752127590600F2B978 /* wheel_optec */,
+				9DAD52412126BD98002FCC79 /* wheel_quantum */,
+				59C8E7F71DBBDF2200AA3F0A /* wheel_sx */,
+				9DAD52492126E88B002FCC79 /* wheel_trutek */,
+				9DAD52512126FFC1002FCC79 /* wheel_xagyl */,
 			);
 			path = indigo_drivers;
 			sourceTree = "<group>";
@@ -3047,6 +3053,26 @@
 				59FE34792187B7CF004FB5D4 /* libgpusb.h */,
 			);
 			path = libgpusb;
+			sourceTree = "<group>";
+		};
+		59FE347D2188699F004FB5D4 /* focuser_lakeside */ = {
+			isa = PBXGroup;
+			children = (
+				59FE347F21886A17004FB5D4 /* README.md */,
+				59FE348021886A17004FB5D4 /* indigo_focuser_lakeside.h */,
+				59FE347E21886A17004FB5D4 /* indigo_focuser_lakeside.c */,
+				59FE348121886A17004FB5D4 /* indigo_focuser_lakeside_main.c */,
+				59FE348221886A17004FB5D4 /* lakeside_simulator */,
+			);
+			path = focuser_lakeside;
+			sourceTree = "<group>";
+		};
+		59FE348221886A17004FB5D4 /* lakeside_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59FE348321886A17004FB5D4 /* lakeside_simulator.ino */,
+			);
+			path = lakeside_simulator;
 			sourceTree = "<group>";
 		};
 		9D1880BF1E534B89002F75D7 /* indigo_tools */ = {

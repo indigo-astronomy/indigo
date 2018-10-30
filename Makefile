@@ -1756,7 +1756,7 @@ package-prepare: all
 	install -D -m 0644 indigo_libs/indigo_names.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_names.h
 	install -D -m 0644 indigo_libs/indigo_timer.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_timer.h
 	install -D -m 0644 indigo.pc /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib/pkgconfig/indigo.pc
-	install -D -m 0644 $(BUILD_SHARE)/indi/indi_indigo.xml /tmp/$(PACKAGE_NAME)/usr/share/indi_indigo.xml
+	install -D -m 0644 $(BUILD_SHARE)/indi/indi_indigo.xml /tmp/$(PACKAGE_NAME)/usr/share/indi/indi_indigo.xml
 	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)/usr/
 
 $(PACKAGE_NAME).deb: package-prepare

@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Rigel Systems Optec TCF-S focuser driver
+/** INDIGO Optec TCF-S focuser driver
  \file indigo_focuser_optec.c
  */
 
