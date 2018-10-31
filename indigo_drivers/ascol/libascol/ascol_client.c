@@ -12,8 +12,13 @@ int main() {
 
 	char res_str[80] = {0};
 	res = read_telescope(fd, res_str, 80);
-
 	printf("READ: %d <- >%s<\n", res, res_str);
+
+	double ra, de;
+	char east;
+	res = ascol_TRRD(fd, &ra, &de, &east);
+
+	printf("TRRD = %d <- %lf %lf %d\n", res, ra, de, east);
 
 	double dd;
 	strcpy(response, "+1030003.6");
@@ -63,4 +68,6 @@ int main() {
 	strcpy(response, "235959.99999");
 	res = hms2dd(&dd, response);
 	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+
+
 }

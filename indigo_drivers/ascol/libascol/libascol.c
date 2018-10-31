@@ -18,6 +18,18 @@
 #include <libascol.h>
 
 
+static size_t strncpy_n(char *dest, const char *src, size_t n){
+	size_t i;
+
+	for (i = 0 ; i < n && src[i] != '\0' ; i++)
+		dest[i] = src[i];
+
+	if (i + 1 < n) dest[i+1] = '\0';
+
+	return i;
+ }
+
+
 int parse_devname(char *device, char *host, int *port) {
 	char *strp;
 	int n;
@@ -105,17 +117,6 @@ int read_telescope(int devfd, char *reply, int len) {
 	return -1;
 }
 
-static size_t strncpy_n(char *dest, const char *src, size_t n){
-	size_t i;
-
-	for (i = 0 ; i < n && src[i] != '\0' ; i++)
-		dest[i] = src[i];
-
-	if (i + 1 < n) dest[i+1] = '\0';
-
-	return i;
- }
-
 
 int dms2dd(double *dd, const char *dms) {
 	int i;
@@ -192,4 +193,36 @@ int hms2dd(double *dd, const char *hms) {
 	*dd = (hour + min/60 + sec/3600) * 15.0;
 
 	return 0;
+}
+
+
+int ascol_TRRD(int fd, double *ra, double *de, char *east) {
+	const char cmd[] = "TRRD\n";
+	char resp[80] = {0};
+	char ra_s[80];
+	char de_s[80];
+	int east_c;
+
+	int res = write_telescope(fd, cmd);
+	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
+	if (res != strlen(cmd)) return -1;
+
+	res = read_telescope(fd, resp, 80);
+	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
+	if (res <= 0) return -1;
+
+	res = sscanf(resp, "%s %s %d", ra_s, de_s, &east_c);
+	if (res != 3) return -1;
+
+	res = 0;
+	if (ra) res = hms2dd(ra, ra_s);
+	if (res) return -1;
+
+	if (de) res = dms2dd(de, de_s);
+	if (res) return -1;
+
+	if (east) *east = east_c;
+
+	printf("%s() == %2d return: %lf %lf %d\n", __FUNCTION__, res, *ra, *de, *east);
+	return res;
 }

@@ -25,6 +25,8 @@ int read_telescope(int devfd, char *reply, int len);
 int dms2dd(double *dd, const char *dms);
 int hms2dd(double *dd, const char *hms);
 
+int ascol_TRRD(int fd, double *ra, double *de, char *east);
+
 #ifdef __cplusplus /* If this is a C++ compiler, end C linkage */
 }
 #endif

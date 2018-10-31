@@ -28,7 +28,7 @@ use IO::Socket;
 my ( $host, $port, $kidpid, $handle, $line, $timeout );
 $host = '192.168.2.230';
 $host = 'localhost';
-$port = 2001;
+$port = 2000;
 $timeout = 2;
 
 $SIG{ALRM} = sub{ die "ALRM"; };
