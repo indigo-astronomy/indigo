@@ -22,6 +22,9 @@ int read_telescope(int devfd, char *reply, int len);
 #define write_telescope(dev_fd, buf) (write(dev_fd, buf, strlen(buf)))
 #define write_telescope_s(dev_fd, buf, size) (write(dev_fd, buf, size))
 
+int dms2dd(double *dd, const char *dms);
+int hms2dd(double *dd, const char *hms);
+
 #ifdef __cplusplus /* If this is a C++ compiler, end C linkage */
 }
 #endif
