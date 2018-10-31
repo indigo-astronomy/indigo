@@ -37,4 +37,30 @@ int main() {
 	strcpy(response, "-103036.");
 	res = dms2dd(&dd, response);
 	printf("dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+
+	printf("\n===== hms2dd() =====\n");
+	strcpy(response, "+1030003.6");
+	res = hms2dd(&dd, response);
+	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	strcpy(response, "+103003.6");
+	res = hms2dd(&dd, response);
+	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	strcpy(response, "+1003");
+	res = hms2dd(&dd, response);
+	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	strcpy(response, "+103");
+	res = hms2dd(&dd, response);
+	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	strcpy(response, "103003");
+	res = hms2dd(&dd, response);
+	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	strcpy(response, "103003.6");
+	res = hms2dd(&dd, response);
+	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	strcpy(response, "240000.01");
+	res = hms2dd(&dd, response);
+	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	strcpy(response, "235959.99999");
+	res = hms2dd(&dd, response);
+	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 }

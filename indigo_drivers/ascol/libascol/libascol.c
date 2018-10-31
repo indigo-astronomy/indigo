@@ -157,33 +157,39 @@ int dms2dd(double *dd, const char *dms) {
 }
 
 
-int hms2dh(double *dh, const char *a) {
+int hms2dd(double *dd, const char *hms) {
 	int i;
-	double 	hour,min,sec;
-	char *buff,*b1;
+	double hour, min, sec, sign = 1;
+	char *buff, *b1;
+	char buff1[3];
 
-	buff=(char*)a;                     //clear the spaces
+	buff = (char*)hms;    //clear the spaces
 	while (isspace(buff[0])) buff++;
-	i=strlen(buff)-1;
+	i = strlen(buff)-1;
 	while (isspace(buff[i])) i--;
-	buff[i+1]='\0';
+	buff[i+1] = '\0';
 
-	if ((buff=(char*)strtok(buff,":"))==NULL) return -1;
-	hour=(double)strtoul(buff,&b1,10);
-	if((buff[0]=='\0')||(b1[0]!='\0')) return -1;
+	if (2 != strncpy_n(buff1, buff, 2)) return -1;
+	buff1[2] = '\0';
+	buff += 2;
+	hour = (double)strtoul(buff1, &b1, 10);
+	if((buff[0] == '\0') || (b1[0] != '\0')) return -1;
 
-	if ((buff=(char*)strtok(NULL,":"))==NULL) return -1;
-	min=(double)strtoul(buff,&b1,10);
-	if((buff[0]=='\0')||(b1[0]!='\0')) return -1;
+	if (2 != strncpy_n(buff1, buff, 2)) return -1;
+	buff1[2] = '\0';
+	buff += 2;
+	min = (double)strtoul(buff1, &b1, 10);
+	if ((buff[0] == '\0') || (b1[0] != '\0')) return -1;
 
-	if ((buff=(char*)strtok(NULL,"\0"))==NULL) return -1;
-	sec=(double)strtod(buff,&b1);
-	if((buff[0]=='\0')||(b1[0]!='\0')) return -1;
+	if ((buff = (char*)strtok(buff, "\0")) == NULL) return -1;
+	if ((2 != strchr(buff, '.') - buff) && (2 != strlen(buff))) return -1;
+	sec = (double)strtod(buff, &b1);
+	if ((buff[0] == '\0') || (b1[0] != '\0')) return -1;
 
-	if((hour<0)||(hour>=24)||(min>=60)||(min<0)||(sec>=60)||(sec<0))
-	   return -1;
+	if((hour < 0) || (hour >= 24) || (min >= 60) || (min < 0) || (sec >= 60) || (sec < 0))
+		return -1;
 
-	*dh=hour+min/60+sec/3600;
+	*dd = (hour + min/60 + sec/3600) * 15.0;
 
 	return 0;
 }
