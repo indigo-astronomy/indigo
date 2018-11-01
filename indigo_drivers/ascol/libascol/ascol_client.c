@@ -48,6 +48,14 @@ int main() {
 	res = ascol_TSS1(fd, 15.2134);
 	printf("TSS1 = %d\n", res);
 
+	printf("\n===== ascol_DOSA() =====\n");
+	res = ascol_DOSA(fd, 150.2134);
+	printf("DOSA = %d\n", res);
+	res = ascol_DOSA(fd, 15.2134);
+	printf("DOSA = %d\n", res);
+	res = ascol_DOSA(fd, -3515.2154);
+	printf("DOSA = %d\n", res);
+
 	double dd;
 	printf("\n===== dms2dd() =====\n");
 	strcpy(response, "+1030003.6");
