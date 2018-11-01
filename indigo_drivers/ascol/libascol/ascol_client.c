@@ -41,6 +41,8 @@ int main() {
 	printf("TEON = %d\n", res);
 	res = ascol_TEON(fd, 3);
 	printf("TEON = %d\n", res);
+	res = ascol_TEON(fd, ASCOL_ON);
+	printf("TEON = %d\n", res);
 
 	printf("\n===== ascol_TSS1() =====\n");
 	res = ascol_TSS1(fd, 150.2134);
@@ -83,6 +85,15 @@ int main() {
 	printf("\n===== ascol_TRUS() =====\n");
 	res = ascol_TRUS(fd, &ra_us, &de_us);
 	printf("TRUS = %d <- %lf %lf\n", res, ra_us, de_us);
+
+	double ra_gv, de_gv;
+	printf("\n===== ascol_TSGV() =====\n");
+	res = ascol_TSGV(fd, 1.22222, 2.3333);
+	printf("TSGV = %d\n", res);
+
+	printf("\n===== ascol_TRGV() =====\n");
+	res = ascol_TRGV(fd, &ra_gv, &de_gv);
+	printf("TRGV = %d <- %lf %lf\n", res, ra_gv, de_gv);
 
 	double dd;
 	printf("\n===== dms2dd() =====\n");
