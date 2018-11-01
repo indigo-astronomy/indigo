@@ -20,6 +20,13 @@ int main() {
 
 	printf("TRRD = %d <- %lf %lf %d\n", res, ra, de, east);
 
+	res = ascol_GLLG(fd, "234");
+	printf("GLLG = %d\n", res);
+	res = ascol_GLLG(fd, "123");
+	printf("GLLG = %d\n", res);
+	res = ascol_GLLG(fd, "");
+	printf("GLLG = %d\n", res);
+
 	double dd;
 	strcpy(response, "+1030003.6");
 	res = dms2dd(&dd, response);
