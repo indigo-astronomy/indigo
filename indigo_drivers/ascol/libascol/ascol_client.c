@@ -56,6 +56,16 @@ int main() {
 	res = ascol_DOSA(fd, -3515.2154);
 	printf("DOSA = %d\n", res);
 
+	printf("\n===== ascol_DOGA() =====\n");
+	res = ascol_DOGA(fd);
+	printf("DOGA = %d\n", res);
+	sleep(2);
+
+	printf("\n===== ascol_DOST() =====\n");
+	res = ascol_DOST(fd);
+	printf("DOST = %d\n", res);
+	sleep(2);
+
 	double dd;
 	printf("\n===== dms2dd() =====\n");
 	strcpy(response, "+1030003.6");
