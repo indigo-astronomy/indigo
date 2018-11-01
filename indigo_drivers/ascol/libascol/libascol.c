@@ -195,6 +195,24 @@ int hms2dd(double *dd, const char *hms) {
 	return 0;
 }
 
+int ascol_GLLG(int fd, char *password) {
+	char cmd[80] = {0};
+	char resp[80] = {0};
+
+	sprintf(cmd, "GLLG %s\n", password);
+	int res = write_telescope(fd, cmd);
+	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = read_telescope(fd, resp, 80);
+	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	if (strcmp("1",resp)) return ASCOL_COMMAND_ERROR;
+
+	return res;
+}
+
 
 int ascol_TRRD(int fd, double *ra, double *de, char *east) {
 	const char cmd[] = "TRRD\n";
@@ -205,24 +223,24 @@ int ascol_TRRD(int fd, double *ra, double *de, char *east) {
 
 	int res = write_telescope(fd, cmd);
 	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
-	if (res != strlen(cmd)) return -1;
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
 	res = read_telescope(fd, resp, 80);
 	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
-	if (res <= 0) return -1;
+	if (res <= 0) return ASCOL_READ_ERROR;
 
 	res = sscanf(resp, "%s %s %d", ra_s, de_s, &east_c);
-	if (res != 3) return -1;
+	if (res != 3) return ASCOL_RESPONCE_ERROR;
 
 	res = 0;
 	if (ra) res = hms2dd(ra, ra_s);
-	if (res) return -1;
+	if (res) return ASCOL_RESPONCE_ERROR;
 
 	if (de) res = dms2dd(de, de_s);
-	if (res) return -1;
+	if (res) return ASCOL_RESPONCE_ERROR;
 
 	if (east) *east = east_c;
 
-	printf("%s() == %2d return: %lf %lf %d\n", __FUNCTION__, res, *ra, *de, *east);
-	return res;
+	printf("%s() == %2d return: %lf %lf %d\n", __FUNCTION__, ASCOL_OK, *ra, *de, *east);
+	return ASCOL_OK;
 }

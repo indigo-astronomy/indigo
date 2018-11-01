@@ -11,6 +11,12 @@
 #include<string.h>
 #include<unistd.h>
 
+#define ASCOL_OK              (0)
+#define ASCOL_READ_ERROR      (1)
+#define ASCOL_WRITE_ERROR     (2)
+#define ASCOL_COMMAND_ERROR   (3)
+#define ASCOL_RESPONCE_ERROR  (4)
+
 #ifdef __cplusplus /* If this is a C++ compiler, use C linkage */
 extern "C" {
 #endif
@@ -25,6 +31,7 @@ int read_telescope(int devfd, char *reply, int len);
 int dms2dd(double *dd, const char *dms);
 int hms2dd(double *dd, const char *hms);
 
+int ascol_GLLG(int fd, char *password);
 int ascol_TRRD(int fd, double *ra, double *de, char *east);
 
 #ifdef __cplusplus /* If this is a C++ compiler, end C linkage */
