@@ -213,7 +213,7 @@ int ascol_GLLG(int devfd, char *password) {
 	return ASCOL_OK;
 }
 
-int ascol_no_param_cmd(int devfd, char *cmd_name) {
+int ascol_0_param_cmd(int devfd, char *cmd_name) {
 	char cmd[80] = {0};
 	char resp[80] = {0};
 
@@ -231,7 +231,7 @@ int ascol_no_param_cmd(int devfd, char *cmd_name) {
 	return ASCOL_OK;
 }
 
-int ascol_int_param_cmd(int devfd, char *cmd_name, int param) {
+int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param) {
 	char cmd[80] = {0};
 	char resp[80] = {0};
 
@@ -249,7 +249,7 @@ int ascol_int_param_cmd(int devfd, char *cmd_name, int param) {
 	return ASCOL_OK;
 }
 
-int ascol_double_param_cmd(int devfd, char *cmd_name, double param, int precision) {
+int ascol_1_double_param_cmd(int devfd, char *cmd_name, double param, int precision) {
 	char cmd[80] = {0};
 	char resp[80] = {0};
 
@@ -300,12 +300,12 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 }
 
 
-int ascol_TRHD(int devfd, double *ha, double *de) {
-	const char cmd[] = "TRHD\n";
+int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val) {
+	char cmd[80] = {0};
 	char resp[80] = {0};
-	double buf_ha;
-	double buf_de;
+	double buf;
 
+	snprintf(cmd, 80, "%s\n", cmd_name);
 	int res = write_telescope(devfd, cmd);
 	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
@@ -314,12 +314,37 @@ int ascol_TRHD(int devfd, double *ha, double *de) {
 	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
-	res = sscanf(resp, "%lf %lf", &buf_ha, &buf_de);
+	res = sscanf(resp, "%lf", &buf);
+	if (res != 1) return ASCOL_RESPONCE_ERROR;
+
+	if (val) *val = buf;
+
+	printf("%s() == %2d return: %lf\n", __FUNCTION__, ASCOL_OK, *val);
+	return ASCOL_OK;
+}
+
+
+int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2) {
+	char cmd[80] = {0};
+	char resp[80] = {0};
+	double buf1;
+	double buf2;
+
+	snprintf(cmd, 80, "%s\n", cmd_name);
+	int res = write_telescope(devfd, cmd);
+	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = read_telescope(devfd, resp, 80);
+	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	res = sscanf(resp, "%lf %lf", &buf1, &buf2);
 	if (res != 2) return ASCOL_RESPONCE_ERROR;
 
-	if (ha) *ha = buf_ha;
-	if (de) *de = buf_de;
+	if (val1) *val1 = buf1;
+	if (val2) *val2 = buf2;
 
-	printf("%s() == %2d return: %lf %lf\n", __FUNCTION__, ASCOL_OK, *ha, *de);
+	printf("%s() == %2d return: %lf %lf\n", __FUNCTION__, ASCOL_OK, *val1, *val2);
 	return ASCOL_OK;
 }
