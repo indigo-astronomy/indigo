@@ -214,11 +214,29 @@ int ascol_GLLG(int fd, char *password) {
 }
 
 
-int ascol_on_off_cmd(int fd, char *cmd_name, char on) {
+int ascol_int_param_cmd(int fd, char *cmd_name, int param) {
 	char cmd[80] = {0};
 	char resp[80] = {0};
 
-	snprintf(cmd, 80, "%s %d\n", cmd_name, on);
+	snprintf(cmd, 80, "%s %d\n", cmd_name, param);
+	int res = write_telescope(fd, cmd);
+	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = read_telescope(fd, resp, 80);
+	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	if (strcmp("1",resp)) return ASCOL_COMMAND_ERROR;
+
+	return ASCOL_OK;
+}
+
+int ascol_double_param_cmd(int fd, char *cmd_name, double param, int precision) {
+	char cmd[80] = {0};
+	char resp[80] = {0};
+
+	snprintf(cmd, 80, "%s %.*f\n", cmd_name, precision, param);
 	int res = write_telescope(fd, cmd);
 	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
