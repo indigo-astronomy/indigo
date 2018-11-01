@@ -48,6 +48,10 @@ int main() {
 	res = ascol_TSS1(fd, 15.2134);
 	printf("TSS1 = %d\n", res);
 
+	printf("\n===== ascol_DOON() =====\n");
+	res = ascol_DOON(fd, ASCOL_ON);
+	printf("DOON = %d\n", res);
+
 	printf("\n===== ascol_DOSA() =====\n");
 	res = ascol_DOSA(fd, 150.2134);
 	printf("DOSA = %d\n", res);
@@ -61,10 +65,15 @@ int main() {
 	printf("DOGA = %d\n", res);
 	sleep(2);
 
-	printf("\n===== ascol_DOST() =====\n");
-	res = ascol_DOST(fd);
-	printf("DOST = %d\n", res);
-	sleep(2);
+	//printf("\n===== ascol_DOST() =====\n");
+	//res = ascol_DOST(fd);
+	//printf("DOST = %d\n", res);
+	//sleep(2);
+
+	double pos;
+	printf("\n===== ascol_DOPO() =====\n");
+	res = ascol_DOPO(fd, &pos);
+	printf("DOST = %d <- %lf\n", res, pos);
 
 	double dd;
 	printf("\n===== dms2dd() =====\n");
