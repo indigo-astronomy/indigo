@@ -34,6 +34,14 @@ int main() {
 	res = ascol_TRHD(fd, &ha, &de);
 	printf("TRHD = %d <- %lf %lf\n", res, ha, de);
 
+	printf("\n===== ascol_TEON() =====\n");
+	res = ascol_TEON(fd, ASCOL_ON);
+	printf("TEON = %d\n", res);
+	res = ascol_TEON(fd, ASCOL_OFF);
+	printf("TEON = %d\n", res);
+	res = ascol_TEON(fd, 3);
+	printf("TEON = %d\n", res);
+
 	double dd;
 	printf("\n===== dms2dd() =====\n");
 	strcpy(response, "+1030003.6");
