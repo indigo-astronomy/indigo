@@ -1038,7 +1038,7 @@ sub main() {
 			if ($cmd[0] eq "TSGC") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 2) { print_client($client, "ERR\n"); next; }
-				if (in_range($cmd[1], -10, 10, 2) and in_range($cmd[2], 10, 10, 2)) {
+				if (in_range($cmd[1], -10, 10, 2) and in_range($cmd[2], -10, 10, 2)) {
 					if ($te_state == TE_OFF) { print_client($client, "1\n"); next; }
 					$guide_correction_ra = $cmd[1];
 					$guide_correction_de = $cmd[2];
