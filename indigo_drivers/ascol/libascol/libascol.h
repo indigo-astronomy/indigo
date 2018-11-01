@@ -31,58 +31,61 @@ int parse_devname(char *device, char *host, int *port);
 int open_telescope(char *host, int port);
 int close_telescope(int devfd);
 int read_telescope(int devfd, char *reply, int len);
-#define write_telescope(dev_fd, buf) (write(dev_fd, buf, strlen(buf)))
-#define write_telescope_s(dev_fd, buf, size) (write(dev_fd, buf, size))
-int ascol_int_param_cmd(int fd, char *cmd, int param);
-int ascol_double_param_cmd(int fd, char *cmd, double param, int precision);
+#define write_telescope(devfd, buf) (write(devfd, buf, strlen(buf)))
+#define write_telescope_s(devfd, buf, size) (write(devfd, buf, size))
+int ascol_int_param_cmd(int devfd, char *cmd, int param);
+int ascol_double_param_cmd(int devfd, char *cmd, double param, int precision);
 
 
-int ascol_GLLG(int fd, char *password);
+int ascol_GLLG(int devfd, char *password);
 
 /* Telescope Commands */
 
-#define ascol_TEON(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TEON", on))
-#define ascol_TETR(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TETR", on))
-#define ascol_TEHC(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TEHC", on))
-#define ascol_TEDC(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TEDC", on))
+#define ascol_TEON(devfd, on) (ascol_int_param_cmd(devfd, "TEON", on))
+#define ascol_TETR(devfd, on) (ascol_int_param_cmd(devfd, "TETR", on))
+#define ascol_TEHC(devfd, on) (ascol_int_param_cmd(devfd, "TEHC", on))
+#define ascol_TEDC(devfd, on) (ascol_int_param_cmd(devfd, "TEDC", on))
 
-#define ascol_TGRA(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TGRA", on))
-#define ascol_TGRR(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TGRR", on))
+#define ascol_TGRA(devfd, on) (ascol_int_param_cmd(devfd, "TGRA", on))
+#define ascol_TGRR(devfd, on) (ascol_int_param_cmd(devfd, "TGRR", on))
 
-#define ascol_TGHA(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TGHA", on))
-#define ascol_TGHR(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TGHR", on))
+#define ascol_TGHA(devfd, on) (ascol_int_param_cmd(devfd, "TGHA", on))
+#define ascol_TGHR(devfd, on) (ascol_int_param_cmd(devfd, "TGHR", on))
 
-#define ascol_TSCS(dev_fd, model) (ascol_int_param_cmd(dev_fd, "TSCS", model))
+#define ascol_TSCS(devfd, model) (ascol_int_param_cmd(devfd, "TSCS", model))
 
-#define ascol_TSCA(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TSCA", on))
-#define ascol_TSCP(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TSCP", on))
-#define ascol_TSCR(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TSCR", on))
-#define ascol_TSGM(dev_fd, on) (ascol_int_param_cmd(dev_fd, "TSGM", on))
+#define ascol_TSCA(devfd, on) (ascol_int_param_cmd(devfd, "TSCA", on))
+#define ascol_TSCP(devfd, on) (ascol_int_param_cmd(devfd, "TSCP", on))
+#define ascol_TSCR(devfd, on) (ascol_int_param_cmd(devfd, "TSCR", on))
+#define ascol_TSGM(devfd, on) (ascol_int_param_cmd(devfd, "TSGM", on))
 
-#define ascol_TSS1(dev_fd, speed) (ascol_double_param_cmd(dev_fd, "TSS1", speed, 2))
-#define ascol_TSS2(dev_fd, speed) (ascol_double_param_cmd(dev_fd, "TSS2", speed, 2))
-#define ascol_TSS3(dev_fd, speed) (ascol_double_param_cmd(dev_fd, "TSS3", speed, 2))
+#define ascol_TSS1(devfd, speed) (ascol_double_param_cmd(devfd, "TSS1", speed, 2))
+#define ascol_TSS2(devfd, speed) (ascol_double_param_cmd(devfd, "TSS2", speed, 2))
+#define ascol_TSS3(devfd, speed) (ascol_double_param_cmd(devfd, "TSS3", speed, 2))
 
-int ascol_TRRD(int fd, double *ra, double *de, char *east);
-int ascol_TRHD(int fd, double *ha, double *de);
+int ascol_TRRD(int devfd, double *ra, double *de, char *east);
+int ascol_TRHD(int devfd, double *ha, double *de);
 
 /* Focuser Commands */
 
+#define ascol_FOSR(devfd, position) (ascol_double_param_cmd(devfd, "FOSR", position, 2))
+#define ascol_FOSA(devfd, position) (ascol_double_param_cmd(devfd, "FOSA", position, 2))
 
 /* Dome Commands */
 
-#define ascol_DOON(dev_fd, on) (ascol_int_param_cmd(dev_fd, "DOON", on))
-#define ascol_DOSO(dev_fd, on) (ascol_int_param_cmd(dev_fd, "DOSO", on))
-
+#define ascol_DOON(devfd, on) (ascol_int_param_cmd(devfd, "DOON", on))
+#define ascol_DOSO(devfd, on) (ascol_int_param_cmd(devfd, "DOSO", on))
+#define ascol_DOSR(devfd, position) (ascol_double_param_cmd(devfd, "DOSR", position, 2))
+#define ascol_DOSA(devfd, position) (ascol_double_param_cmd(devfd, "DOSA", position, 2))
 
 /* Flap commands */
 
-#define ascol_FTOC(dev_fd, on) (ascol_int_param_cmd(dev_fd, "FTOC", on))
-#define ascol_FCOC(dev_fd, on) (ascol_int_param_cmd(dev_fd, "FCOC", on))
+#define ascol_FTOC(devfd, on) (ascol_int_param_cmd(devfd, "FTOC", on))
+#define ascol_FCOC(devfd, on) (ascol_int_param_cmd(devfd, "FCOC", on))
 
 /* Oil Commands */
 
-#define ascol_OION(dev_fd, on) (ascol_int_param_cmd(dev_fd, "OION", on))
+#define ascol_OION(devfd, on) (ascol_int_param_cmd(devfd, "OION", on))
 
 
 #ifdef __cplusplus /* If this is a C++ compiler, end C linkage */

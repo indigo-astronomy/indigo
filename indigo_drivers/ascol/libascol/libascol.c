@@ -195,16 +195,16 @@ int hms2dd(double *dd, const char *hms) {
 	return 0;
 }
 
-int ascol_GLLG(int fd, char *password) {
+int ascol_GLLG(int devfd, char *password) {
 	char cmd[80] = {0};
 	char resp[80] = {0};
 
 	sprintf(cmd, "GLLG %s\n", password);
-	int res = write_telescope(fd, cmd);
+	int res = write_telescope(devfd, cmd);
 	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(fd, resp, 80);
+	res = read_telescope(devfd, resp, 80);
 	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -214,16 +214,16 @@ int ascol_GLLG(int fd, char *password) {
 }
 
 
-int ascol_int_param_cmd(int fd, char *cmd_name, int param) {
+int ascol_int_param_cmd(int devfd, char *cmd_name, int param) {
 	char cmd[80] = {0};
 	char resp[80] = {0};
 
 	snprintf(cmd, 80, "%s %d\n", cmd_name, param);
-	int res = write_telescope(fd, cmd);
+	int res = write_telescope(devfd, cmd);
 	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(fd, resp, 80);
+	res = read_telescope(devfd, resp, 80);
 	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -232,16 +232,16 @@ int ascol_int_param_cmd(int fd, char *cmd_name, int param) {
 	return ASCOL_OK;
 }
 
-int ascol_double_param_cmd(int fd, char *cmd_name, double param, int precision) {
+int ascol_double_param_cmd(int devfd, char *cmd_name, double param, int precision) {
 	char cmd[80] = {0};
 	char resp[80] = {0};
 
 	snprintf(cmd, 80, "%s %.*f\n", cmd_name, precision, param);
-	int res = write_telescope(fd, cmd);
+	int res = write_telescope(devfd, cmd);
 	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(fd, resp, 80);
+	res = read_telescope(devfd, resp, 80);
 	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -251,18 +251,18 @@ int ascol_double_param_cmd(int fd, char *cmd_name, double param, int precision) 
 }
 
 
-int ascol_TRRD(int fd, double *ra, double *de, char *east) {
+int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 	const char cmd[] = "TRRD\n";
 	char resp[80] = {0};
 	char ra_s[80];
 	char de_s[80];
 	int east_c;
 
-	int res = write_telescope(fd, cmd);
+	int res = write_telescope(devfd, cmd);
 	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(fd, resp, 80);
+	res = read_telescope(devfd, resp, 80);
 	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -283,17 +283,17 @@ int ascol_TRRD(int fd, double *ra, double *de, char *east) {
 }
 
 
-int ascol_TRHD(int fd, double *ha, double *de) {
+int ascol_TRHD(int devfd, double *ha, double *de) {
 	const char cmd[] = "TRHD\n";
 	char resp[80] = {0};
 	double buf_ha;
 	double buf_de;
 
-	int res = write_telescope(fd, cmd);
+	int res = write_telescope(devfd, cmd);
 	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(fd, resp, 80);
+	res = read_telescope(devfd, resp, 80);
 	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
