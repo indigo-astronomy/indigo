@@ -14,12 +14,14 @@ int main() {
 	res = read_telescope(fd, res_str, 80);
 	printf("READ: %d <- >%s<\n", res, res_str);
 
-	double ra, de;
+	double ra, ha, de;
 	char east;
-	res = ascol_TRRD(fd, &ra, &de, &east);
 
+	printf("\n===== ascol_TRRD() =====\n");
+	res = ascol_TRRD(fd, &ra, &de, &east);
 	printf("TRRD = %d <- %lf %lf %d\n", res, ra, de, east);
 
+	printf("\n===== ascol_GLLG() =====\n");
 	res = ascol_GLLG(fd, "234");
 	printf("GLLG = %d\n", res);
 	res = ascol_GLLG(fd, "123");
@@ -27,7 +29,13 @@ int main() {
 	res = ascol_GLLG(fd, "");
 	printf("GLLG = %d\n", res);
 
+
+	printf("\n===== ascol_TRHD() =====\n");
+	res = ascol_TRHD(fd, &ha, &de);
+	printf("TRHD = %d <- %lf %lf\n", res, ha, de);
+
 	double dd;
+	printf("\n===== dms2dd() =====\n");
 	strcpy(response, "+1030003.6");
 	res = dms2dd(&dd, response);
 	printf("dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
