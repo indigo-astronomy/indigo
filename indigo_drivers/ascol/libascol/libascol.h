@@ -37,6 +37,7 @@ int read_telescope(int devfd, char *reply, int len);
 int ascol_0_param_cmd(int devfd, char *cmd_name);
 int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param);
 int ascol_1_double_param_cmd(int devfd, char *cmd_name, double param, int precision);
+int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2);
 
 int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val);
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2);
@@ -51,10 +52,16 @@ int ascol_GLLG(int devfd, char *password);
 #define ascol_TEHC(devfd, on) (ascol_1_int_param_cmd(devfd, "TEHC", on))
 #define ascol_TEDC(devfd, on) (ascol_1_int_param_cmd(devfd, "TEDC", on))
 
+
 #define ascol_TGRA(devfd, on) (ascol_1_int_param_cmd(devfd, "TGRA", on))
+
+#define ascol_TSRR(devfd, r_ra, r_de) (ascol_2_double_param_cmd(devfd, "TSRR", r_ra, 2, r_de, 2))
 #define ascol_TGRR(devfd, on) (ascol_1_int_param_cmd(devfd, "TGRR", on))
 
+#define ascol_TSHA(devfd, ha, de) (ascol_2_double_param_cmd(devfd, "TSHR", ha, 4, de, 4))
 #define ascol_TGHA(devfd, on) (ascol_1_int_param_cmd(devfd, "TGHA", on))
+
+#define ascol_TSHR(devfd, r_ha, r_de) (ascol_2_double_param_cmd(devfd, "TSHR", r_ha, 2, r_de, 2))
 #define ascol_TGHR(devfd, on) (ascol_1_int_param_cmd(devfd, "TGHR", on))
 
 #define ascol_TSCS(devfd, model) (ascol_1_int_param_cmd(devfd, "TSCS", model))
@@ -74,9 +81,12 @@ int ascol_GLLG(int devfd, char *password);
 
 int ascol_TRRD(int devfd, double *ra, double *de, char *east);
 #define ascol_TRHD(devfd, ha, de) (ascol_2_double_return_cmd(devfd, "TRHD", ha, de))
-#define ascol_TRGV(devfd, ra_gv, de_gv) (ascol_2_double_return_cmd(devfd, "TRGV", ra_gv, de_gv))
-#define ascol_TRUS(devfd, ra_us, de_us) (ascol_2_double_return_cmd(devfd, "TRUS", ra_us, de_us))
 
+#define ascol_TSGV(devfd, ra_gv, de_gv) (ascol_2_double_param_cmd(devfd, "TSGV", ra_gv, 1, de_gv, 1))
+#define ascol_TRGV(devfd, ra_gv, de_gv) (ascol_2_double_return_cmd(devfd, "TRGV", ra_gv, de_gv))
+
+#define ascol_TSUS(devfd, ra_us, de_us) (ascol_2_double_param_cmd(devfd, "TSUS", ra_us, 4, de_us, 4))
+#define ascol_TRUS(devfd, ra_us, de_us) (ascol_2_double_return_cmd(devfd, "TRUS", ra_us, de_us))
 
 /* Focuser Commands */
 

@@ -268,6 +268,25 @@ int ascol_1_double_param_cmd(int devfd, char *cmd_name, double param, int precis
 }
 
 
+int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2) {
+	char cmd[80] = {0};
+	char resp[80] = {0};
+
+	snprintf(cmd, 80, "%s %.*f %.*f\n", cmd_name, precision1, param1, precision2, param2);
+	int res = write_telescope(devfd, cmd);
+	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = read_telescope(devfd, resp, 80);
+	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	if (strcmp("1",resp)) return ASCOL_COMMAND_ERROR;
+
+	return ASCOL_OK;
+}
+
+
 int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 	const char cmd[] = "TRRD\n";
 	char resp[80] = {0};
