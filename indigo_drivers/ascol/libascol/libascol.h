@@ -33,8 +33,10 @@ int close_telescope(int devfd);
 int read_telescope(int devfd, char *reply, int len);
 #define write_telescope(devfd, buf) (write(devfd, buf, strlen(buf)))
 #define write_telescope_s(devfd, buf, size) (write(devfd, buf, size))
-int ascol_int_param_cmd(int devfd, char *cmd, int param);
-int ascol_double_param_cmd(int devfd, char *cmd, double param, int precision);
+
+int ascol_no_param_cmd(int devfd, char *cmd_name);
+int ascol_int_param_cmd(int devfd, char *cmd_name, int param);
+int ascol_double_param_cmd(int devfd, char *cmd_name, double param, int precision);
 
 
 int ascol_GLLG(int devfd, char *password);
@@ -68,6 +70,9 @@ int ascol_TRHD(int devfd, double *ha, double *de);
 
 /* Focuser Commands */
 
+#define ascol_FOST(devfd) (ascol_no_param_cmd(devfd, "FOST"))
+#define ascol_FOGR(devfd) (ascol_no_param_cmd(devfd, "FOGR"))
+#define ascol_FOGA(devfd) (ascol_no_param_cmd(devfd, "FOGA"))
 #define ascol_FOSR(devfd, position) (ascol_double_param_cmd(devfd, "FOSR", position, 2))
 #define ascol_FOSA(devfd, position) (ascol_double_param_cmd(devfd, "FOSA", position, 2))
 
@@ -75,6 +80,10 @@ int ascol_TRHD(int devfd, double *ha, double *de);
 
 #define ascol_DOON(devfd, on) (ascol_int_param_cmd(devfd, "DOON", on))
 #define ascol_DOSO(devfd, on) (ascol_int_param_cmd(devfd, "DOSO", on))
+#define ascol_DOST(devfd) (ascol_no_param_cmd(devfd, "DOST"))
+#define ascol_DOGR(devfd) (ascol_no_param_cmd(devfd, "DOGR"))
+#define ascol_DOGA(devfd) (ascol_no_param_cmd(devfd, "DOGA"))
+#define ascol_DOAM(devfd) (ascol_no_param_cmd(devfd, "DOAM"))
 #define ascol_DOSR(devfd, position) (ascol_double_param_cmd(devfd, "DOSR", position, 2))
 #define ascol_DOSA(devfd, position) (ascol_double_param_cmd(devfd, "DOSA", position, 2))
 

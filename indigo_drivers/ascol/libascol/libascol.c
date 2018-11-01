@@ -213,6 +213,23 @@ int ascol_GLLG(int devfd, char *password) {
 	return ASCOL_OK;
 }
 
+int ascol_no_param_cmd(int devfd, char *cmd_name) {
+	char cmd[80] = {0};
+	char resp[80] = {0};
+
+	snprintf(cmd, 80, "%s\n", cmd_name);
+	int res = write_telescope(devfd, cmd);
+	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = read_telescope(devfd, resp, 80);
+	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	if (strcmp("1",resp)) return ASCOL_COMMAND_ERROR;
+
+	return ASCOL_OK;
+}
 
 int ascol_int_param_cmd(int devfd, char *cmd_name, int param) {
 	char cmd[80] = {0};
