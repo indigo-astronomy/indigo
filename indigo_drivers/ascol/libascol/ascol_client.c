@@ -42,6 +42,12 @@ int main() {
 	res = ascol_TEON(fd, 3);
 	printf("TEON = %d\n", res);
 
+	printf("\n===== ascol_TSS1() =====\n");
+	res = ascol_TSS1(fd, 150.2134);
+	printf("TSS1 = %d\n", res);
+	res = ascol_TSS1(fd, 15.2134);
+	printf("TSS1 = %d\n", res);
+
 	double dd;
 	printf("\n===== dms2dd() =====\n");
 	strcpy(response, "+1030003.6");
