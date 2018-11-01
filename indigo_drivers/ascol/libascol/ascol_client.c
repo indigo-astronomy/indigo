@@ -75,6 +75,15 @@ int main() {
 	res = ascol_DOPO(fd, &pos);
 	printf("DOST = %d <- %lf\n", res, pos);
 
+	double ra_us, de_us;
+	printf("\n===== ascol_TSUS() =====\n");
+	res = ascol_TSUS(fd, 1.22222, 2.3333);
+	printf("TSUS = %d\n", res);
+
+	printf("\n===== ascol_TRUS() =====\n");
+	res = ascol_TRUS(fd, &ra_us, &de_us);
+	printf("TRUS = %d <- %lf %lf\n", res, ra_us, de_us);
+
 	double dd;
 	printf("\n===== dms2dd() =====\n");
 	strcpy(response, "+1030003.6");
