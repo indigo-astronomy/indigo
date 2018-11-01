@@ -244,3 +244,28 @@ int ascol_TRRD(int fd, double *ra, double *de, char *east) {
 	printf("%s() == %2d return: %lf %lf %d\n", __FUNCTION__, ASCOL_OK, *ra, *de, *east);
 	return ASCOL_OK;
 }
+
+
+int ascol_TRHD(int fd, double *ha, double *de) {
+	const char cmd[] = "TRHD\n";
+	char resp[80] = {0};
+	double buf_ha;
+	double buf_de;
+
+	int res = write_telescope(fd, cmd);
+	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = read_telescope(fd, resp, 80);
+	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	res = sscanf(resp, "%lf %lf", &buf_ha, &buf_de);
+	if (res != 2) return ASCOL_RESPONCE_ERROR;
+
+	if (ha) *ha = buf_ha;
+	if (de) *de = buf_de;
+
+	printf("%s() == %2d return: %lf %lf\n", __FUNCTION__, ASCOL_OK, *ha, *de);
+	return ASCOL_OK;
+}

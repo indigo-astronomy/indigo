@@ -33,6 +33,7 @@ int hms2dd(double *dd, const char *hms);
 
 int ascol_GLLG(int fd, char *password);
 int ascol_TRRD(int fd, double *ra, double *de, char *east);
+int ascol_TRHD(int fd, double *ha, double *de);
 
 #ifdef __cplusplus /* If this is a C++ compiler, end C linkage */
 }
