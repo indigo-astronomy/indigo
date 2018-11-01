@@ -88,6 +88,9 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east);
 #define ascol_TSUS(devfd, ra_us, de_us) (ascol_2_double_param_cmd(devfd, "TSUS", ra_us, 4, de_us, 4))
 #define ascol_TRUS(devfd, ra_us, de_us) (ascol_2_double_return_cmd(devfd, "TRUS", ra_us, de_us))
 
+#define ascol_TSGC(devfd, ra_gc, de_gc) (ascol_2_double_param_cmd(devfd, "TSGC", ra_gc, 1, de_gc, 1))
+#define ascol_TECE(devfd, on) (ascol_1_int_param_cmd(devfd, "TECE", on))
+
 /* Focuser Commands */
 
 #define ascol_FOST(devfd) (ascol_0_param_cmd(devfd, "FOST"))

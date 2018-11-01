@@ -95,6 +95,14 @@ int main() {
 	res = ascol_TRGV(fd, &ra_gv, &de_gv);
 	printf("TRGV = %d <- %lf %lf\n", res, ra_gv, de_gv);
 
+	printf("\n===== ascol_TECE() =====\n");
+	res = ascol_TECE(fd, ASCOL_ON);
+	printf("TECE = %d\n", res);
+	res = ascol_TECE(fd, ASCOL_OFF);
+	printf("TECE = %d\n", res);
+	res = ascol_TECE(fd, 2);
+	printf("TECE = %d\n", res);
+
 	double dd;
 	printf("\n===== dms2dd() =====\n");
 	strcpy(response, "+1030003.6");
