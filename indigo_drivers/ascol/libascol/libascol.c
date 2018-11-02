@@ -96,11 +96,6 @@ int ascol_open(char *host, int port) {
 }
 
 
-int ascol_close(int devfd) {
-	return close(devfd);
-}
-
-
 int ascol_read(int devfd, char *reply, int len) {
 	char c;
 	int res;
