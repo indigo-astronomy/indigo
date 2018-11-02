@@ -10,6 +10,7 @@
 
 #include<string.h>
 #include<unistd.h>
+#include<stdint.h>
 
 #define ASCOL_LEN            (80)
 
@@ -39,6 +40,28 @@ typedef struct {
 	char **unit;
 } ascol_glme_t;
 
+#define ASCOL_GLST_N         (22)
+typedef struct {
+	uint16_t oil_state;
+	uint16_t telescope_state;
+	uint16_t ra_axis_state;
+	uint16_t de_axis_state;
+	uint16_t focus_state;
+	// 6 -> unused
+	uint16_t dome_state;
+	uint16_t slit_state;
+	uint16_t flap_tube_state;
+	uint16_t flap_coude_state;
+	// 11 -> unused
+	// 12 -> unused
+	// 13 -> unused
+	// 14 -> unused
+	uint16_t selected_model_index;
+	uint16_t state_bits;
+	uint16_t alarm_bits[5];
+	// 22 -> unused
+} ascol_glst_t;
+
 #ifdef __cplusplus /* If this is a C++ compiler, use C linkage */
 extern "C" {
 #endif
@@ -67,6 +90,7 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 
 int ascol_GLLG(int devfd, char *password);
 int ascol_GLME(int devfd, ascol_glme_t *glme);
+int ascol_GLST(int devfd, ascol_glst_t *glst);
 
 /* Telescope Commands */
 
