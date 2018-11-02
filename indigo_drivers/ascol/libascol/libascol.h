@@ -62,7 +62,7 @@ int ascol_GLLG(int devfd, char *password);
 #define ascol_TSRR(devfd, r_ra, r_de) (ascol_2_double_param_cmd(devfd, "TSRR", r_ra, 2, r_de, 2))
 #define ascol_TGRR(devfd, on) (ascol_1_int_param_cmd(devfd, "TGRR", on))
 
-#define ascol_TSHA(devfd, ha, de) (ascol_2_double_param_cmd(devfd, "TSHR", ha, 4, de, 4))
+#define ascol_TSHA(devfd, ha, de) (ascol_2_double_param_cmd(devfd, "TSHA", ha, 4, de, 4))
 #define ascol_TGHA(devfd, on) (ascol_1_int_param_cmd(devfd, "TGHA", on))
 
 #define ascol_TSHR(devfd, r_ha, r_de) (ascol_2_double_param_cmd(devfd, "TSHR", r_ha, 2, r_de, 2))
