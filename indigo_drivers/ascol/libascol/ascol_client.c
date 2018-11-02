@@ -2,6 +2,7 @@
 #include<libascol.h>
 
 int main() {
+	ascol_debug = 1;
 	int fd = open_telescope("localhost",2000);
 	printf("OPEN: %d\n", fd);
 
@@ -31,7 +32,7 @@ int main() {
 
 	printf("\n===== ascol_TSRA() =====\n");
 	res = ascol_TSRA(fd, 15.5, -10.111111, 1);
-	printf("TSRA = %d <-\n", res);
+	printf("TSRA = %d\n", res);
 
 	ascol_TGRA(fd, ASCOL_ON);
 	sleep(30);
