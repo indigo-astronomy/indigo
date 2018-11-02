@@ -62,6 +62,27 @@ static const char *oimv_units[] = {
 	"deg C"
 };
 
+static const char *glme_descriptions[] = {
+	"Outdoor temperature",
+	"Outdoor pressure",
+	"Outdoor humidity",
+	"Dew point",
+	"Dome temperature",
+	"Primary mirror temperature",
+	"Secondary mirror temperature",
+};
+
+static const char *glme_units[] = {
+	"deg C",
+	"hPa",
+	"%rh",
+	"deg C",
+	"deg C",
+	"deg C",
+	"deg C"
+};
+
+
 static size_t strncpy_n(char *dest, const char *src, size_t n){
 	size_t i;
 
@@ -431,7 +452,6 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 	const char cmd[] = "OIMV\n";
 	char resp[180] = {0};
-	double buf;
 
 	if (!oimv) return ASCOL_PARAM_ERROR;
 
@@ -445,16 +465,45 @@ int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 
 	res = sscanf(
 		resp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-	   	&(oimv->value[0]), &(oimv->value[1]),&(oimv->value[2]), &(oimv->value[3]), &(oimv->value[4]),
+		&(oimv->value[0]), &(oimv->value[1]),&(oimv->value[2]), &(oimv->value[3]), &(oimv->value[4]),
 		&(oimv->value[5]), &(oimv->value[6]),&(oimv->value[7]), &(oimv->value[8]), &(oimv->value[9]),
 		&(oimv->value[10]), &(oimv->value[11]),&(oimv->value[12]), &(oimv->value[13]), &(oimv->value[14]),
 		&(oimv->value[15]), &(oimv->value[16])
 	);
-	if (res != 17) return ASCOL_RESPONCE_ERROR;
+	if (res != ASCOL_OIMV_N) return ASCOL_RESPONCE_ERROR;
 
 	oimv->description = (char **)oimv_descriptions;
 	oimv->unit = (char **)oimv_units;
 
 	ASCOL_DEBUG("%s()=%2d <=> ascol_oimv_t\n", __FUNCTION__, ASCOL_OK);
+	return ASCOL_OK;
+}
+
+
+int ascol_GLME(int devfd, ascol_glme_t *glme) {
+	const char cmd[] = "GLME\n";
+	char resp[180] = {0};
+
+	if (!glme) return ASCOL_PARAM_ERROR;
+
+	int res = ascol_write(devfd, cmd);
+	ASCOL_DEBUG_WRITE(res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = ascol_read(devfd, resp, 180);
+	ASCOL_DEBUG_READ(res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	res = sscanf(
+		resp, "%lf %lf %lf %lf %lf %lf %lf",
+		&(glme->value[0]), &(glme->value[1]),&(glme->value[2]), &(glme->value[3]),
+		&(glme->value[4]), &(glme->value[5]), &(glme->value[6])
+	);
+	if (res != ASCOL_GLME_N) return ASCOL_RESPONCE_ERROR;
+
+	glme->description = (char **)glme_descriptions;
+	glme->unit = (char **)glme_units;
+
+	ASCOL_DEBUG("%s()=%2d <=> ascol_glme_t\n", __FUNCTION__, ASCOL_OK);
 	return ASCOL_OK;
 }
