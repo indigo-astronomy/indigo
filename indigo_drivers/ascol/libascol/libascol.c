@@ -82,6 +82,70 @@ static const char *glme_units[] = {
 	"deg C"
 };
 
+/* Oil state descriptions */
+static const char *oil_state_descr_s[] = {
+	"OFF",
+	"START1",
+	"START2",
+	"START3",
+	"ON",
+	"OFF_DELAY"
+};
+
+static const char *oil_state_descr_l[] = {
+	"Off",
+	"Checking pressure of nitrogen",
+	"Starting oil pump",
+	"Stabilization of oil pressure",
+	"On",
+	"Time before stop"
+};
+
+/* Telescope state descriptions */
+static const char *telescope_state_descr_s[] = {
+	"INIT",
+	"OFF",
+	"OFF_WAIT",
+	"STOP",
+	"TRACK",
+	"OFF_REQ",
+	"SS_CLU1",
+	"SS_SLEW",
+	"SS_CLU2",
+	"SS_CLU3",
+	"ST_DECC1",
+	"ST_CLU1",
+	"ST_SLEW",
+	"ST_DECC2",
+	"ST_CLU2",
+	"ST_DECC3",
+	"ST_CLU3",
+	"SS_DECC3",
+	"SS_DECC2"
+};
+
+static const char *telescope_state_descr_l[] = {
+	"initialization of sensors",
+	"Off",
+	"Wait on start converter",
+	"Stop",
+	"Tracking",
+	"Time before off",
+	"Clutch 1",
+	"Slew to source coordinates",
+	"Clutch 2",
+	"Clutch 3",
+	"Lateral inhibition before descent on sky coordinates",
+	"Clutch 1",
+	"Slew to sky coordinates",
+	"Lateral inhibition",
+	"Clutch 2",
+	"Lateral inhibition after break-in descent",
+	"Clutch 3",
+	"Lateral inhibition after break-in descent",
+	"Lateral inhibition"
+};
+
 
 static size_t strncpy_n(char *dest, const char *src, size_t n){
 	size_t i;
@@ -176,6 +240,21 @@ int ascol_read(int devfd, char *reply, int len) {
 		}
 	}
 	return -1;
+}
+
+
+int ascol_get_oil_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
+	if ((glst.oil_state < 0) || (glst.oil_state > 5)) return ASCOL_PARAM_ERROR;
+	if (long_descr) *long_descr = (char*)oil_state_descr_l[glst.oil_state];
+	if (short_descr) *short_descr = (char*)oil_state_descr_s[glst.oil_state];
+	return ASCOL_OK;
+}
+
+int ascol_get_telescope_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
+	if ((glst.telescope_state < 0) || (glst.telescope_state > 18)) return ASCOL_PARAM_ERROR;
+	if (long_descr) *long_descr = (char*)telescope_state_descr_l[glst.telescope_state];
+	if (short_descr) *short_descr = (char*)telescope_state_descr_s[glst.telescope_state];
+	return ASCOL_OK;
 }
 
 
