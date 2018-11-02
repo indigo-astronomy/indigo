@@ -35,7 +35,7 @@ static size_t strncpy_n(char *dest, const char *src, size_t n){
  }
 
 
-int parse_devname(char *device, char *host, int *port) {
+int ascol_parse_devname(char *device, char *host, int *port) {
 	char *strp;
 	int n;
 
@@ -43,7 +43,7 @@ int parse_devname(char *device, char *host, int *port) {
 	if (n < 1) {
 		n = sscanf(device,"ascol://%s",host);
 		if (n < 1) {
-			return 0;
+			sscanf(device,"%s",host);
 		}
 	}
 
@@ -58,7 +58,7 @@ int parse_devname(char *device, char *host, int *port) {
 }
 
 
-int open_telescope(char *host, int port) {
+int ascol_open(char *host, int port) {
 	struct sockaddr_in srv_info;
 	struct hostent *he;
 	int sock;
@@ -96,12 +96,12 @@ int open_telescope(char *host, int port) {
 }
 
 
-int close_telescope(int devfd) {
+int ascol_close(int devfd) {
 	return close(devfd);
 }
 
 
-int read_telescope(int devfd, char *reply, int len) {
+int ascol_read(int devfd, char *reply, int len) {
 	char c;
 	int res;
 	int count=0;
@@ -205,11 +205,11 @@ int ascol_0_param_cmd(int devfd, char *cmd_name) {
 	char resp[80] = {0};
 
 	snprintf(cmd, 80, "%s\n", cmd_name);
-	int res = write_telescope(devfd, cmd);
+	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(devfd, resp, 80);
+	res = ascol_read(devfd, resp, 80);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -223,11 +223,11 @@ int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param) {
 	char resp[80] = {0};
 
 	snprintf(cmd, 80, "%s %d\n", cmd_name, param);
-	int res = write_telescope(devfd, cmd);
+	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(devfd, resp, 80);
+	res = ascol_read(devfd, resp, 80);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -241,11 +241,11 @@ int ascol_1_double_param_cmd(int devfd, char *cmd_name, double param, int precis
 	char resp[80] = {0};
 
 	snprintf(cmd, 80, "%s %.*f\n", cmd_name, precision, param);
-	int res = write_telescope(devfd, cmd);
+	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(devfd, resp, 80);
+	res = ascol_read(devfd, resp, 80);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -260,11 +260,11 @@ int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int preci
 	char resp[80] = {0};
 
 	snprintf(cmd, 80, "%s %.*f %.*f\n", cmd_name, precision1, param1, precision2, param2);
-	int res = write_telescope(devfd, cmd);
+	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(devfd, resp, 80);
+	res = ascol_read(devfd, resp, 80);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -279,11 +279,11 @@ int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int
 	char resp[80] = {0};
 
 	snprintf(cmd, 80, "%s %.*f %.*f %d\n", cmd_name, precision1, param1, precision2, param2, east);
-	int res = write_telescope(devfd, cmd);
+	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(devfd, resp, 80);
+	res = ascol_read(devfd, resp, 80);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -299,11 +299,11 @@ int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val) {
 	double buf;
 
 	snprintf(cmd, 80, "%s\n", cmd_name);
-	int res = write_telescope(devfd, cmd);
+	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(devfd, resp, 80);
+	res = ascol_read(devfd, resp, 80);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -324,11 +324,11 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 	double buf2;
 
 	snprintf(cmd, 80, "%s\n", cmd_name);
-	int res = write_telescope(devfd, cmd);
+	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(devfd, resp, 80);
+	res = ascol_read(devfd, resp, 80);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -348,11 +348,11 @@ int ascol_GLLG(int devfd, char *password) {
 	char resp[80] = {0};
 
 	sprintf(cmd, "GLLG %s\n", password);
-	int res = write_telescope(devfd, cmd);
+	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(devfd, resp, 80);
+	res = ascol_read(devfd, resp, 80);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -369,11 +369,11 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 	char de_s[80];
 	int east_c;
 
-	int res = write_telescope(devfd, cmd);
+	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = read_telescope(devfd, resp, 80);
+	res = ascol_read(devfd, resp, 80);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
