@@ -90,6 +90,8 @@ int ascol_read(int devfd, char *reply, int len);
 #define ascol_write_s(devfd, buf, size) (write(devfd, buf, size))
 #define ascol_close(devfd) (close(devfd))
 
+int ascol_get_oil_state(ascol_glst_t glst, char **long_descr, char **short_descr);
+int ascol_get_telescope_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 
 int ascol_0_param_cmd(int devfd, char *cmd_name);
 int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param);

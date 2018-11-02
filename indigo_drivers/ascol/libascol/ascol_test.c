@@ -53,6 +53,14 @@ int main() {
 	printf("DA callibrated: %d\n", IS_DA_CALIBRATED(glst));
 	printf("Aberration Cor: %d\n", IS_ABEARRATION_CORR(glst));
 
+	char *oil_l, *oil_s;
+	ascol_get_oil_state(glst, &oil_l, &oil_s);
+	printf("oil state: %s - %s\n", oil_s, oil_l);
+
+	char *te_l, *te_s;
+	ascol_get_telescope_state(glst, &te_l, &te_s);
+	printf("telescope state: %s - %s\n", te_s, te_l);
+
 	ascol_glme_t glme;
 	printf("\n===== ascol_GLME() =====\n");
 	res = ascol_GLME(fd, &glme);
