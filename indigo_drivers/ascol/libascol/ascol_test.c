@@ -33,8 +33,17 @@ int main() {
 	ascol_oimv_t oimv;
 	printf("\n===== ascol_OIMV() =====\n");
 	res = ascol_OIMV(fd, &oimv);
+	printf("OIMV = %2d\n", res);
 	for (int i=0; i < ASCOL_OIMV_N; i++) {
-		printf("%2d OIMV[%d] = %lf %s (%s)\n", res, i, oimv.value[i], oimv.unit[i], oimv.description[i]);
+		printf("OIMV[%d] = %lf %s (%s)\n", i, oimv.value[i], oimv.unit[i], oimv.description[i]);
+	}
+
+	ascol_glme_t glme;
+	printf("\n===== ascol_GLME() =====\n");
+	res = ascol_GLME(fd, &glme);
+	printf("GLME = %2d\n", res);
+	for (int i=0; i < ASCOL_GLME_N; i++) {
+		printf("GLME[%d] = %lf %s (%s)\n", i, glme.value[i], glme.unit[i], glme.description[i]);
 	}
 
 	printf("\n===== ascol_TSRA() =====\n");

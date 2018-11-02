@@ -32,8 +32,9 @@ typedef struct {
 	char **unit;
 } ascol_oimv_t;
 
+#define ASCOL_GLME_N         (7)
 typedef struct {
-	double value[7];
+	double value[ASCOL_GLME_N];
 	char **description;
 	char **unit;
 } ascol_glme_t;
@@ -62,8 +63,10 @@ int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int
 int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val);
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2);
 
+/* Global commands */
 
 int ascol_GLLG(int devfd, char *password);
+int ascol_GLME(int devfd, ascol_glme_t *glme);
 
 /* Telescope Commands */
 
