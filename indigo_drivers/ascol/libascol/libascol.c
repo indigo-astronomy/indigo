@@ -465,8 +465,8 @@ int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 
 	res = sscanf(
 		resp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-		&(oimv->value[0]), &(oimv->value[1]),&(oimv->value[2]), &(oimv->value[3]), &(oimv->value[4]),
-		&(oimv->value[5]), &(oimv->value[6]),&(oimv->value[7]), &(oimv->value[8]), &(oimv->value[9]),
+		&(oimv->value[0]), &(oimv->value[1]), &(oimv->value[2]), &(oimv->value[3]), &(oimv->value[4]),
+		&(oimv->value[5]), &(oimv->value[6]), &(oimv->value[7]), &(oimv->value[8]), &(oimv->value[9]),
 		&(oimv->value[10]), &(oimv->value[11]),&(oimv->value[12]), &(oimv->value[13]), &(oimv->value[14]),
 		&(oimv->value[15]), &(oimv->value[16])
 	);
@@ -496,7 +496,7 @@ int ascol_GLME(int devfd, ascol_glme_t *glme) {
 
 	res = sscanf(
 		resp, "%lf %lf %lf %lf %lf %lf %lf",
-		&(glme->value[0]), &(glme->value[1]),&(glme->value[2]), &(glme->value[3]),
+		&(glme->value[0]), &(glme->value[1]), &(glme->value[2]), &(glme->value[3]),
 		&(glme->value[4]), &(glme->value[5]), &(glme->value[6])
 	);
 	if (res != ASCOL_GLME_N) return ASCOL_RESPONCE_ERROR;
@@ -505,5 +505,33 @@ int ascol_GLME(int devfd, ascol_glme_t *glme) {
 	glme->unit = (char **)glme_units;
 
 	ASCOL_DEBUG("%s()=%2d <=> ascol_glme_t\n", __FUNCTION__, ASCOL_OK);
+	return ASCOL_OK;
+}
+
+
+int ascol_GLST(int devfd, ascol_glst_t *glst) {
+	const char cmd[] = "GLST\n";
+	char resp[180] = {0};
+
+	if (!glst) return ASCOL_PARAM_ERROR;
+
+	int res = ascol_write(devfd, cmd);
+	ASCOL_DEBUG_WRITE(res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = ascol_read(devfd, resp, 180);
+	ASCOL_DEBUG_READ(res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	res = sscanf(
+		resp, "%hu %hu %hu %hu %hu %*d %hu %hu %hu %hu %*d %*d %*d %*d %hu %hu %hu %hu %hu %hu %hu %*d",
+		&(glst->oil_state), &(glst->telescope_state), &(glst->ra_axis_state), &(glst->de_axis_state), &(glst->focus_state),
+		&(glst->dome_state), &(glst->slit_state), &(glst->flap_tube_state), &(glst->flap_coude_state), &(glst->selected_model_index),
+		&(glst->state_bits), &(glst->alarm_bits[0]), &(glst->alarm_bits[1]), &(glst->alarm_bits[2]), &(glst->alarm_bits[3]),
+		&(glst->alarm_bits[4])
+	);
+	if (res != ASCOL_GLST_N) return ASCOL_RESPONCE_ERROR;
+
+	ASCOL_DEBUG("%s()=%2d <=> ascol_glst_t\n", __FUNCTION__, ASCOL_OK);
 	return ASCOL_OK;
 }
