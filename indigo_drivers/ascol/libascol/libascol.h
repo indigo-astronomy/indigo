@@ -24,6 +24,20 @@
 #define ASCOL_RESPONCE_ERROR  (4)
 #define ASCOL_PARAM_ERROR     (5)
 
+#define CHECK_BIT(bitmap, bit) (((bitmap) >> (bit)) & 1)
+
+/* Check state bits */
+#define IS_RA_CALIBRATED(glst)             CHECK_BIT(glst.state_bits, 0)
+#define IS_DA_CALIBRATED(glst)             CHECK_BIT(glst.state_bits, 1)
+#define IS_ABEARRATION_CORR(glst)          CHECK_BIT(glst.state_bits, 4)
+#define IS_PRECESSION_CORR(glst)           CHECK_BIT(glst.state_bits, 5)
+#define IS_NUTATION_CORR(glst)             CHECK_BIT(glst.state_bits, 6)
+#define IS_ERR_MODEL_CORR(glst)            CHECK_BIT(glst.state_bits, 7)
+#define IS_GUIDE_MODE_ON(glst)             CHECK_BIT(glst.state_bits, 8)
+#define IS_USER1_BIT_I_ON(glst)            CHECK_BIT(glst.state_bits, 14)
+#define IS_USER1_BIT_II_ON(glst)           CHECK_BIT(glst.state_bits, 15)
+
+
 extern int ascol_debug;
 
 #define ASCOL_OIMV_N         (17)

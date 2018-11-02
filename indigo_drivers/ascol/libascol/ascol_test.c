@@ -49,6 +49,10 @@ int main() {
 		(glst.alarm_bits[4])
 	);
 
+	printf("HA callibrated: %d\n", IS_RA_CALIBRATED(glst));
+	printf("DA callibrated: %d\n", IS_DA_CALIBRATED(glst));
+	printf("Aberration Cor: %d\n", IS_ABEARRATION_CORR(glst));
+
 	ascol_glme_t glme;
 	printf("\n===== ascol_GLME() =====\n");
 	res = ascol_GLME(fd, &glme);
