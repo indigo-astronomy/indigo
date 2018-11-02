@@ -22,6 +22,45 @@ int ascol_debug = 0;
 #define ASCOL_DEBUG_WRITE(res, cmd) (ASCOL_DEBUG("%s()=%2d --> %s", __FUNCTION__, res, cmd))
 #define ASCOL_DEBUG_READ(res, resp) (ASCOL_DEBUG("%s()=%2d <-- %s\n", __FUNCTION__, res, resp))
 
+static const char *oimv_descriptions[] = {
+	"Left side pressure",
+	"Right side pressure",
+	"Left Segment 1 pressure",
+	"Left Segment 2 pressure",
+	"Left Segment 3 pressure",
+	"Left Segment 4 pressure",
+	"Left Segment 5 pressure",
+	"Right Segment 1 pressure",
+	"Right Segment 2 pressure",
+	"Right Segment 3 pressure",
+	"Right Segment 4 pressure",
+	"Right Segment 5 pressure",
+	"Nitrogen pressure",
+	"Level of oil in \"IN\" tank",
+	"Level of oil in \"OUT\" tank",
+	"Temperature of oil in \"IN\" tank",
+	"Temperature of motor M25"
+};
+
+static const char *oimv_units[] = {
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"%",
+	"%",
+	"deg C",
+	"deg C"
+};
 
 static size_t strncpy_n(char *dest, const char *src, size_t n){
 	size_t i;
@@ -385,5 +424,37 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 	if (east) *east = east_c;
 
 	ASCOL_DEBUG("%s()=%2d <=> %lf %lf %d\n", __FUNCTION__, ASCOL_OK, *ra, *de, *east);
+	return ASCOL_OK;
+}
+
+
+int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
+	const char cmd[] = "OIMV\n";
+	char resp[180] = {0};
+	double buf;
+
+	if (!oimv) return ASCOL_PARAM_ERROR;
+
+	int res = ascol_write(devfd, cmd);
+	ASCOL_DEBUG_WRITE(res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = ascol_read(devfd, resp, 180);
+	ASCOL_DEBUG_READ(res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	res = sscanf(
+		resp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+	   	&(oimv->value[0]), &(oimv->value[1]),&(oimv->value[2]), &(oimv->value[3]), &(oimv->value[4]),
+		&(oimv->value[5]), &(oimv->value[6]),&(oimv->value[7]), &(oimv->value[8]), &(oimv->value[9]),
+		&(oimv->value[10]), &(oimv->value[11]),&(oimv->value[12]), &(oimv->value[13]), &(oimv->value[14]),
+		&(oimv->value[15]), &(oimv->value[16])
+	);
+	if (res != 17) return ASCOL_RESPONCE_ERROR;
+
+	oimv->description = (char **)oimv_descriptions;
+	oimv->unit = (char **)oimv_units;
+
+	ASCOL_DEBUG("%s()=%2d <=> ascol_oimv_t\n", __FUNCTION__, ASCOL_OK);
 	return ASCOL_OK;
 }

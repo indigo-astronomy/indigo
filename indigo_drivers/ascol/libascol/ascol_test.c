@@ -30,6 +30,13 @@ int main() {
 
 	ascol_TETR(fd, ASCOL_ON);
 
+	ascol_oimv_t oimv;
+	printf("\n===== ascol_OIMV() =====\n");
+	res = ascol_OIMV(fd, &oimv);
+	for (int i=0; i < ASCOL_OIMV_N; i++) {
+		printf("%2d OIMV[%d] = %lf %s (%s)\n", res, i, oimv.value[i], oimv.unit[i], oimv.description[i]);
+	}
+
 	printf("\n===== ascol_TSRA() =====\n");
 	res = ascol_TSRA(fd, 15.5, -10.111111, 1);
 	printf("TSRA = %d\n", res);
