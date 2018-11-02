@@ -11,6 +11,8 @@
 #include<string.h>
 #include<unistd.h>
 
+#define ASCOL_LEN            (80)
+
 #define ASCOL_OFF             (0)
 #define ASCOL_ON              (1)
 
@@ -19,8 +21,22 @@
 #define ASCOL_WRITE_ERROR     (2)
 #define ASCOL_COMMAND_ERROR   (3)
 #define ASCOL_RESPONCE_ERROR  (4)
+#define ASCOL_PARAM_ERROR     (5)
 
 extern int ascol_debug;
+
+#define ASCOL_OIMV_N         (17)
+typedef struct {
+	double value[ASCOL_OIMV_N];
+	char **description;
+	char **unit;
+} ascol_oimv_t;
+
+typedef struct {
+	double value[7];
+	char **description;
+	char **unit;
+} ascol_glme_t;
 
 #ifdef __cplusplus /* If this is a C++ compiler, use C linkage */
 extern "C" {
@@ -124,6 +140,7 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east);
 /* Oil Commands */
 
 #define ascol_OION(devfd, on) (ascol_1_int_param_cmd(devfd, "OION", on))
+int ascol_OIMV(int devfd, ascol_oimv_t *oimv);
 
 
 #ifdef __cplusplus /* If this is a C++ compiler, end C linkage */
