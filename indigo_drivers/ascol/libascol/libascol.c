@@ -95,6 +95,8 @@ static size_t strncpy_n(char *dest, const char *src, size_t n){
  }
 
 
+/* Utility functions */
+
 int ascol_parse_devname(char *device, char *host, int *port) {
 	char *strp;
 	int n;
@@ -177,7 +179,9 @@ int ascol_read(int devfd, char *reply, int len) {
 }
 
 
-int dms2dd(double *dd, const char *dms) {
+/* Convert ASCOL HHMMSS.SS and DDMMSS.SS format in decimal degrees */
+
+int ascol_dms2dd(double *dd, const char *dms) {
 	int i;
 	double deg, min, sec, sign = 1;
 	char *buff, *b1;
@@ -217,7 +221,7 @@ int dms2dd(double *dd, const char *dms) {
 }
 
 
-int hms2dd(double *dd, const char *hms) {
+int ascol_hms2dd(double *dd, const char *hms) {
 	int i;
 	double hour, min, sec, sign = 1;
 	char *buff, *b1;
@@ -254,6 +258,7 @@ int hms2dd(double *dd, const char *hms) {
 	return 0;
 }
 
+/* Most commands are mapped to the following functions */
 
 int ascol_0_param_cmd(int devfd, char *cmd_name) {
 	char cmd[80] = {0};
@@ -397,6 +402,7 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 	return ASCOL_OK;
 }
 
+/* Comands that require output manipulation and can not be mapped by the functions above */
 
 int ascol_GLLG(int devfd, char *password) {
 	char cmd[80] = {0};
@@ -436,10 +442,10 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 	if (res != 3) return ASCOL_RESPONCE_ERROR;
 
 	res = 0;
-	if (ra) res = hms2dd(ra, ra_s);
+	if (ra) res = ascol_hms2dd(ra, ra_s);
 	if (res) return ASCOL_RESPONCE_ERROR;
 
-	if (de) res = dms2dd(de, de_s);
+	if (de) res = ascol_dms2dd(de, de_s);
 	if (res) return ASCOL_RESPONCE_ERROR;
 
 	if (east) *east = east_c;
