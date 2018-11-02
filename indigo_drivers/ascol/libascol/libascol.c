@@ -22,6 +22,66 @@ int ascol_debug = 0;
 #define ASCOL_DEBUG_WRITE(res, cmd) (ASCOL_DEBUG("%s()=%2d --> %s", __FUNCTION__, res, cmd))
 #define ASCOL_DEBUG_READ(res, resp) (ASCOL_DEBUG("%s()=%2d <-- %s\n", __FUNCTION__, res, resp))
 
+static const char *oimv_descriptions[] = {
+	"Left side pressure",
+	"Right side pressure",
+	"Left Segment 1 pressure",
+	"Left Segment 2 pressure",
+	"Left Segment 3 pressure",
+	"Left Segment 4 pressure",
+	"Left Segment 5 pressure",
+	"Right Segment 1 pressure",
+	"Right Segment 2 pressure",
+	"Right Segment 3 pressure",
+	"Right Segment 4 pressure",
+	"Right Segment 5 pressure",
+	"Nitrogen pressure",
+	"Level of oil in \"IN\" tank",
+	"Level of oil in \"OUT\" tank",
+	"Temperature of oil in \"IN\" tank",
+	"Temperature of motor M25"
+};
+
+static const char *oimv_units[] = {
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"bar",
+	"%",
+	"%",
+	"deg C",
+	"deg C"
+};
+
+static const char *glme_descriptions[] = {
+	"Outdoor temperature",
+	"Outdoor pressure",
+	"Outdoor humidity",
+	"Dew point",
+	"Dome temperature",
+	"Primary mirror temperature",
+	"Secondary mirror temperature",
+};
+
+static const char *glme_units[] = {
+	"deg C",
+	"hPa",
+	"%rh",
+	"deg C",
+	"deg C",
+	"deg C",
+	"deg C"
+};
+
 
 static size_t strncpy_n(char *dest, const char *src, size_t n){
 	size_t i;
@@ -34,6 +94,8 @@ static size_t strncpy_n(char *dest, const char *src, size_t n){
 	return i;
  }
 
+
+/* Utility functions */
 
 int ascol_parse_devname(char *device, char *host, int *port) {
 	char *strp;
@@ -117,7 +179,9 @@ int ascol_read(int devfd, char *reply, int len) {
 }
 
 
-int dms2dd(double *dd, const char *dms) {
+/* Convert ASCOL HHMMSS.SS and DDMMSS.SS format in decimal degrees */
+
+int ascol_dms2dd(double *dd, const char *dms) {
 	int i;
 	double deg, min, sec, sign = 1;
 	char *buff, *b1;
@@ -157,7 +221,7 @@ int dms2dd(double *dd, const char *dms) {
 }
 
 
-int hms2dd(double *dd, const char *hms) {
+int ascol_hms2dd(double *dd, const char *hms) {
 	int i;
 	double hour, min, sec, sign = 1;
 	char *buff, *b1;
@@ -194,6 +258,7 @@ int hms2dd(double *dd, const char *hms) {
 	return 0;
 }
 
+/* Most commands are mapped to the following functions */
 
 int ascol_0_param_cmd(int devfd, char *cmd_name) {
 	char cmd[80] = {0};
@@ -337,6 +402,7 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 	return ASCOL_OK;
 }
 
+/* Comands that require output manipulation and can not be mapped by the functions above */
 
 int ascol_GLLG(int devfd, char *password) {
 	char cmd[80] = {0};
@@ -376,14 +442,102 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 	if (res != 3) return ASCOL_RESPONCE_ERROR;
 
 	res = 0;
-	if (ra) res = hms2dd(ra, ra_s);
+	if (ra) res = ascol_hms2dd(ra, ra_s);
 	if (res) return ASCOL_RESPONCE_ERROR;
 
-	if (de) res = dms2dd(de, de_s);
+	if (de) res = ascol_dms2dd(de, de_s);
 	if (res) return ASCOL_RESPONCE_ERROR;
 
 	if (east) *east = east_c;
 
 	ASCOL_DEBUG("%s()=%2d <=> %lf %lf %d\n", __FUNCTION__, ASCOL_OK, *ra, *de, *east);
+	return ASCOL_OK;
+}
+
+
+int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
+	const char cmd[] = "OIMV\n";
+	char resp[180] = {0};
+
+	if (!oimv) return ASCOL_PARAM_ERROR;
+
+	int res = ascol_write(devfd, cmd);
+	ASCOL_DEBUG_WRITE(res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = ascol_read(devfd, resp, 180);
+	ASCOL_DEBUG_READ(res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	res = sscanf(
+		resp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+		&(oimv->value[0]), &(oimv->value[1]), &(oimv->value[2]), &(oimv->value[3]), &(oimv->value[4]),
+		&(oimv->value[5]), &(oimv->value[6]), &(oimv->value[7]), &(oimv->value[8]), &(oimv->value[9]),
+		&(oimv->value[10]), &(oimv->value[11]),&(oimv->value[12]), &(oimv->value[13]), &(oimv->value[14]),
+		&(oimv->value[15]), &(oimv->value[16])
+	);
+	if (res != ASCOL_OIMV_N) return ASCOL_RESPONCE_ERROR;
+
+	oimv->description = (char **)oimv_descriptions;
+	oimv->unit = (char **)oimv_units;
+
+	ASCOL_DEBUG("%s()=%2d <=> ascol_oimv_t\n", __FUNCTION__, ASCOL_OK);
+	return ASCOL_OK;
+}
+
+
+int ascol_GLME(int devfd, ascol_glme_t *glme) {
+	const char cmd[] = "GLME\n";
+	char resp[180] = {0};
+
+	if (!glme) return ASCOL_PARAM_ERROR;
+
+	int res = ascol_write(devfd, cmd);
+	ASCOL_DEBUG_WRITE(res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = ascol_read(devfd, resp, 180);
+	ASCOL_DEBUG_READ(res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	res = sscanf(
+		resp, "%lf %lf %lf %lf %lf %lf %lf",
+		&(glme->value[0]), &(glme->value[1]), &(glme->value[2]), &(glme->value[3]),
+		&(glme->value[4]), &(glme->value[5]), &(glme->value[6])
+	);
+	if (res != ASCOL_GLME_N) return ASCOL_RESPONCE_ERROR;
+
+	glme->description = (char **)glme_descriptions;
+	glme->unit = (char **)glme_units;
+
+	ASCOL_DEBUG("%s()=%2d <=> ascol_glme_t\n", __FUNCTION__, ASCOL_OK);
+	return ASCOL_OK;
+}
+
+
+int ascol_GLST(int devfd, ascol_glst_t *glst) {
+	const char cmd[] = "GLST\n";
+	char resp[180] = {0};
+
+	if (!glst) return ASCOL_PARAM_ERROR;
+
+	int res = ascol_write(devfd, cmd);
+	ASCOL_DEBUG_WRITE(res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = ascol_read(devfd, resp, 180);
+	ASCOL_DEBUG_READ(res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	res = sscanf(
+		resp, "%hu %hu %hu %hu %hu %*d %hu %hu %hu %hu %*d %*d %*d %*d %hu %hu %hu %hu %hu %hu %hu %*d",
+		&(glst->oil_state), &(glst->telescope_state), &(glst->ra_axis_state), &(glst->de_axis_state), &(glst->focus_state),
+		&(glst->dome_state), &(glst->slit_state), &(glst->flap_tube_state), &(glst->flap_coude_state), &(glst->selected_model_index),
+		&(glst->state_bits), &(glst->alarm_bits[0]), &(glst->alarm_bits[1]), &(glst->alarm_bits[2]), &(glst->alarm_bits[3]),
+		&(glst->alarm_bits[4])
+	);
+	if (res != ASCOL_GLST_N) return ASCOL_RESPONCE_ERROR;
+
+	ASCOL_DEBUG("%s()=%2d <=> ascol_glst_t\n", __FUNCTION__, ASCOL_OK);
 	return ASCOL_OK;
 }

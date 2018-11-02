@@ -10,6 +10,9 @@
 
 #include<string.h>
 #include<unistd.h>
+#include<stdint.h>
+
+#define ASCOL_LEN            (80)
 
 #define ASCOL_OFF             (0)
 #define ASCOL_ON              (1)
@@ -19,15 +22,52 @@
 #define ASCOL_WRITE_ERROR     (2)
 #define ASCOL_COMMAND_ERROR   (3)
 #define ASCOL_RESPONCE_ERROR  (4)
+#define ASCOL_PARAM_ERROR     (5)
 
 extern int ascol_debug;
+
+#define ASCOL_OIMV_N         (17)
+typedef struct {
+	double value[ASCOL_OIMV_N];
+	char **description;
+	char **unit;
+} ascol_oimv_t;
+
+#define ASCOL_GLME_N         (7)
+typedef struct {
+	double value[ASCOL_GLME_N];
+	char **description;
+	char **unit;
+} ascol_glme_t;
+
+#define ASCOL_GLST_N         (22)
+typedef struct {
+	uint16_t oil_state;
+	uint16_t telescope_state;
+	uint16_t ra_axis_state;
+	uint16_t de_axis_state;
+	uint16_t focus_state;
+	// 6 -> unused
+	uint16_t dome_state;
+	uint16_t slit_state;
+	uint16_t flap_tube_state;
+	uint16_t flap_coude_state;
+	// 11 -> unused
+	// 12 -> unused
+	// 13 -> unused
+	// 14 -> unused
+	uint16_t selected_model_index;
+	uint16_t state_bits;
+	uint16_t alarm_bits[5];
+	// 22 -> unused
+} ascol_glst_t;
 
 #ifdef __cplusplus /* If this is a C++ compiler, use C linkage */
 extern "C" {
 #endif
 
-int dms2dd(double *dd, const char *dms);
-int hms2dd(double *dd, const char *hms);
+int ascol_dms2dd(double *dd, const char *dms);
+int ascol_hms2dd(double *dd, const char *hms);
 
 int ascol_parse_devname(char *device, char *host, int *port);
 int ascol_open(char *host, int port);
@@ -46,8 +86,11 @@ int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int
 int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val);
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2);
 
+/* Global commands */
 
 int ascol_GLLG(int devfd, char *password);
+int ascol_GLME(int devfd, ascol_glme_t *glme);
+int ascol_GLST(int devfd, ascol_glst_t *glst);
 
 /* Telescope Commands */
 
@@ -62,7 +105,7 @@ int ascol_GLLG(int devfd, char *password);
 #define ascol_TSRR(devfd, r_ra, r_de) (ascol_2_double_param_cmd(devfd, "TSRR", r_ra, 2, r_de, 2))
 #define ascol_TGRR(devfd, on) (ascol_1_int_param_cmd(devfd, "TGRR", on))
 
-#define ascol_TSHA(devfd, ha, de) (ascol_2_double_param_cmd(devfd, "TSHR", ha, 4, de, 4))
+#define ascol_TSHA(devfd, ha, de) (ascol_2_double_param_cmd(devfd, "TSHA", ha, 4, de, 4))
 #define ascol_TGHA(devfd, on) (ascol_1_int_param_cmd(devfd, "TGHA", on))
 
 #define ascol_TSHR(devfd, r_ha, r_de) (ascol_2_double_param_cmd(devfd, "TSHR", r_ha, 2, r_de, 2))
@@ -124,6 +167,7 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east);
 /* Oil Commands */
 
 #define ascol_OION(devfd, on) (ascol_1_int_param_cmd(devfd, "OION", on))
+int ascol_OIMV(int devfd, ascol_oimv_t *oimv);
 
 
 #ifdef __cplusplus /* If this is a C++ compiler, end C linkage */

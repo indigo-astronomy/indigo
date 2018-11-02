@@ -30,6 +30,33 @@ int main() {
 
 	ascol_TETR(fd, ASCOL_ON);
 
+	ascol_oimv_t oimv;
+	printf("\n===== ascol_OIMV() =====\n");
+	res = ascol_OIMV(fd, &oimv);
+	printf("OIMV = %2d\n", res);
+	for (int i=0; i < ASCOL_OIMV_N; i++) {
+		printf("OIMV[%d] = %lf %s (%s)\n", i, oimv.value[i], oimv.unit[i], oimv.description[i]);
+	}
+
+	ascol_glst_t glst;
+	printf("\n===== ascol_glst() =====\n");
+	res = ascol_GLST(fd, &glst);
+	printf("GLST = %2d\n", res);
+	printf( "%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
+		(glst.oil_state), (glst.telescope_state), (glst.ra_axis_state), (glst.de_axis_state), (glst.focus_state),
+		(glst.dome_state), (glst.slit_state), (glst.flap_tube_state), (glst.flap_coude_state), (glst.selected_model_index),
+		(glst.state_bits), (glst.alarm_bits[0]), (glst.alarm_bits[1]), (glst.alarm_bits[2]), (glst.alarm_bits[3]),
+		(glst.alarm_bits[4])
+	);
+
+	ascol_glme_t glme;
+	printf("\n===== ascol_GLME() =====\n");
+	res = ascol_GLME(fd, &glme);
+	printf("GLME = %2d\n", res);
+	for (int i=0; i < ASCOL_GLME_N; i++) {
+		printf("GLME[%d] = %lf %s (%s)\n", i, glme.value[i], glme.unit[i], glme.description[i]);
+	}
+
 	printf("\n===== ascol_TSRA() =====\n");
 	res = ascol_TSRA(fd, 15.5, -10.111111, 1);
 	printf("TSRA = %d\n", res);
@@ -54,6 +81,16 @@ int main() {
 	printf("TEON = %d\n", res);
 	res = ascol_TEON(fd, ASCOL_ON);
 	printf("TEON = %d\n", res);
+
+	printf("\n===== ascol_TSCS() =====\n");
+	res = ascol_TETR(fd, ASCOL_OFF);
+	printf("TETR = %d\n", res);
+
+	res = ascol_TSCS(fd, 3);
+	printf("TSCS = %d\n", res);
+
+	res = ascol_TETR(fd, ASCOL_ON);
+	printf("TETR = %d\n", res);
 
 	printf("\n===== ascol_TSS1() =====\n");
 	res = ascol_TSS1(fd, 150.2134);
@@ -114,54 +151,54 @@ int main() {
 	printf("TECE = %d\n", res);
 
 	double dd;
-	printf("\n===== dms2dd() =====\n");
+	printf("\n===== ascol_dms2dd() =====\n");
 	strcpy(response, "+1030003.6");
-	res = dms2dd(&dd, response);
-	printf("dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_dms2dd(&dd, response);
+	printf("ascol_dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "+103003.6");
-	res = dms2dd(&dd, response);
-	printf("dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_dms2dd(&dd, response);
+	printf("ascol_dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "+1003");
-	res = dms2dd(&dd, response);
-	printf("dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_dms2dd(&dd, response);
+	printf("ascol_dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "+103");
-	res = dms2dd(&dd, response);
-	printf("dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_dms2dd(&dd, response);
+	printf("ascol_dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "103003");
-	res = dms2dd(&dd, response);
-	printf("dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_dms2dd(&dd, response);
+	printf("ascol_dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "103003.6");
-	res = dms2dd(&dd, response);
-	printf("dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_dms2dd(&dd, response);
+	printf("ascol_dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "-103036.");
-	res = dms2dd(&dd, response);
-	printf("dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_dms2dd(&dd, response);
+	printf("ascol_dms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 
-	printf("\n===== hms2dd() =====\n");
+	printf("\n===== ascol_hms2dd() =====\n");
 	strcpy(response, "+1030003.6");
-	res = hms2dd(&dd, response);
-	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_hms2dd(&dd, response);
+	printf("ascol_hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "+103003.6");
-	res = hms2dd(&dd, response);
-	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_hms2dd(&dd, response);
+	printf("ascol_hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "+1003");
-	res = hms2dd(&dd, response);
-	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_hms2dd(&dd, response);
+	printf("ascol_hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "+103");
-	res = hms2dd(&dd, response);
-	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_hms2dd(&dd, response);
+	printf("ascol_hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "103003");
-	res = hms2dd(&dd, response);
-	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_hms2dd(&dd, response);
+	printf("ascol_hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "103003.6");
-	res = hms2dd(&dd, response);
-	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_hms2dd(&dd, response);
+	printf("ascol_hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "240000.01");
-	res = hms2dd(&dd, response);
-	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_hms2dd(&dd, response);
+	printf("ascol_hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 	strcpy(response, "235959.99999");
-	res = hms2dd(&dd, response);
-	printf("hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
+	res = ascol_hms2dd(&dd, response);
+	printf("ascol_hms2dd() = %2d: %s -> %.9lf\n", res, response, dd);
 
 
 }
