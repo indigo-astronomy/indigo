@@ -17,9 +17,7 @@ int main() {
 	double ra, ha, de;
 	char east;
 
-	printf("\n===== ascol_TRRD() =====\n");
-	res = ascol_TRRD(fd, &ra, &de, &east);
-	printf("TRRD = %d <- %lf %lf %d\n", res, ra, de, east);
+
 
 	printf("\n===== ascol_GLLG() =====\n");
 	res = ascol_GLLG(fd, "234");
@@ -29,6 +27,18 @@ int main() {
 	res = ascol_GLLG(fd, "");
 	printf("GLLG = %d\n", res);
 
+	ascol_TETR(fd, ASCOL_ON);
+
+	printf("\n===== ascol_TSRA() =====\n");
+	res = ascol_TSRA(fd, 15.5, -10.111111, 1);
+	printf("TSRA = %d <-\n", res);
+
+	ascol_TGRA(fd, ASCOL_ON);
+	sleep(30);
+
+	printf("\n===== ascol_TRRD() =====\n");
+	res = ascol_TRRD(fd, &ra, &de, &east);
+	printf("TRRD = %d <- %lf %lf %d\n", res, ra, de, east);
 
 	printf("\n===== ascol_TRHD() =====\n");
 	res = ascol_TRHD(fd, &ha, &de);
@@ -65,7 +75,6 @@ int main() {
 	printf("\n===== ascol_DOGA() =====\n");
 	res = ascol_DOGA(fd);
 	printf("DOGA = %d\n", res);
-	sleep(2);
 
 	//printf("\n===== ascol_DOST() =====\n");
 	//res = ascol_DOST(fd);

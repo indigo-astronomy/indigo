@@ -105,7 +105,6 @@ int read_telescope(int devfd, char *reply, int len) {
 		if (res == 1) {
 			reply[count] = c;
 			count++;
-			//printf("HC: %c, %d C:%d\n", (unsigned char)reply[count-1], (unsigned char)reply[count-1], count);
 			if ((c == '\n') || (c == '\r')) {
 				reply[count-1] = '\0';
 				return count;
@@ -273,6 +272,25 @@ int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int preci
 	char resp[80] = {0};
 
 	snprintf(cmd, 80, "%s %.*f %.*f\n", cmd_name, precision1, param1, precision2, param2);
+	int res = write_telescope(devfd, cmd);
+	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = read_telescope(devfd, resp, 80);
+	printf("%s() <- %2d %s\n", __FUNCTION__, res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	if (strcmp("1",resp)) return ASCOL_COMMAND_ERROR;
+
+	return ASCOL_OK;
+}
+
+
+int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2, int east) {
+	char cmd[80] = {0};
+	char resp[80] = {0};
+
+	snprintf(cmd, 80, "%s %.*f %.*f %d\n", cmd_name, precision1, param1, precision2, param2, east);
 	int res = write_telescope(devfd, cmd);
 	printf("%s() -> %2d %s", __FUNCTION__, res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;

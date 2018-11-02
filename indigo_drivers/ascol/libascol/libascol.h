@@ -38,6 +38,7 @@ int ascol_0_param_cmd(int devfd, char *cmd_name);
 int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param);
 int ascol_1_double_param_cmd(int devfd, char *cmd_name, double param, int precision);
 int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2);
+int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2, int east);
 
 int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val);
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2);
@@ -52,7 +53,7 @@ int ascol_GLLG(int devfd, char *password);
 #define ascol_TEHC(devfd, on) (ascol_1_int_param_cmd(devfd, "TEHC", on))
 #define ascol_TEDC(devfd, on) (ascol_1_int_param_cmd(devfd, "TEDC", on))
 
-
+#define ascol_TSRA(devfd, ra, de, east) (ascol_2_double_1_int_param_cmd(devfd, "TSRA", ra, 5, de, 5, east))
 #define ascol_TGRA(devfd, on) (ascol_1_int_param_cmd(devfd, "TGRA", on))
 
 #define ascol_TSRR(devfd, r_ra, r_de) (ascol_2_double_param_cmd(devfd, "TSRR", r_ra, 2, r_de, 2))
