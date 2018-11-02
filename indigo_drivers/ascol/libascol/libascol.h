@@ -20,6 +20,8 @@
 #define ASCOL_COMMAND_ERROR   (3)
 #define ASCOL_RESPONCE_ERROR  (4)
 
+extern int ascol_debug;
+
 #ifdef __cplusplus /* If this is a C++ compiler, use C linkage */
 extern "C" {
 #endif
