@@ -3,16 +3,16 @@
 
 int main() {
 	ascol_debug = 1;
-	int fd = open_telescope("localhost",2000);
+	int fd = ascol_open("localhost",2000);
 	printf("OPEN: %d\n", fd);
 
 	char cmd[80] = "TRRD\n";
 	char response[80];
-	int res = write_telescope(fd, cmd);
+	int res = ascol_write(fd, cmd);
 	printf("WROTE: %d -> %s", res, cmd);
 
 	char res_str[80] = {0};
-	res = read_telescope(fd, res_str, 80);
+	res = ascol_read(fd, res_str, 80);
 	printf("READ: %d <- >%s<\n", res, res_str);
 
 	double ra, ha, de;

@@ -29,12 +29,13 @@ extern "C" {
 int dms2dd(double *dd, const char *dms);
 int hms2dd(double *dd, const char *hms);
 
-int parse_devname(char *device, char *host, int *port);
-int open_telescope(char *host, int port);
-int close_telescope(int devfd);
-int read_telescope(int devfd, char *reply, int len);
-#define write_telescope(devfd, buf) (write(devfd, buf, strlen(buf)))
-#define write_telescope_s(devfd, buf, size) (write(devfd, buf, size))
+int ascol_parse_devname(char *device, char *host, int *port);
+int ascol_open(char *host, int port);
+int ascol_read(int devfd, char *reply, int len);
+#define ascol_write(devfd, buf) (write(devfd, buf, strlen(buf)))
+#define ascol_write_s(devfd, buf, size) (write(devfd, buf, size))
+#define ascol_close(devfd) (close(devfd))
+
 
 int ascol_0_param_cmd(int devfd, char *cmd_name);
 int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param);
