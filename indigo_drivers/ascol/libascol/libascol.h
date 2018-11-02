@@ -66,8 +66,8 @@ typedef struct {
 extern "C" {
 #endif
 
-int dms2dd(double *dd, const char *dms);
-int hms2dd(double *dd, const char *hms);
+int ascol_dms2dd(double *dd, const char *dms);
+int ascol_hms2dd(double *dd, const char *hms);
 
 int ascol_parse_devname(char *device, char *host, int *port);
 int ascol_open(char *host, int port);
