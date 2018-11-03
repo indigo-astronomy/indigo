@@ -53,6 +53,8 @@ int main() {
 	printf("DA callibrated: %d\n", IS_DA_CALIBRATED(glst));
 	printf("Aberration Cor: %d\n", IS_ABEARRATION_CORR(glst));
 
+	printf("BRIDGE not parked: %d", CHECK_ALARM(glst, ALARM_BRIDGE));
+
 	char *st_l, *st_s;
 	ascol_get_oil_state(glst, &st_l, &st_s);
 	printf("\noil state: %s - %s\n", st_s, st_l);
