@@ -55,7 +55,7 @@ int main() {
 
 	char *st_l, *st_s;
 	ascol_get_oil_state(glst, &st_l, &st_s);
-	printf("oil state: %s - %s\n", st_s, st_l);
+	printf("\noil state: %s - %s\n", st_s, st_l);
 
 	ascol_get_telescope_state(glst, &st_l, &st_s);
 	printf("telescope state: %s - %s\n", st_s, st_l);
@@ -64,6 +64,9 @@ int main() {
 	printf("Ra axis state: %s - %s\n", st_s, st_l);
 	ascol_get_de_axis_state(glst, &st_l, &st_s);
 	printf("De axis state: %s - %s\n", st_s, st_l);
+
+	ascol_get_focus_state(glst, &st_l, &st_s);
+	printf("focus state: %s - %s\n", st_s, st_l);
 
 	ascol_glme_t glme;
 	printf("\n===== ascol_GLME() =====\n");

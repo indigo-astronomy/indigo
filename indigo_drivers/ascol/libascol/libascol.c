@@ -202,6 +202,23 @@ static const char *axis_state_descr_l[] = {
 	"Automatically centering, clutch"
 };
 
+/* Focus state descriptions */
+static const char *focus_state_descr_s[] = {
+	"OFF",
+	"STOP",
+	"PLUS",
+	"MINUS",
+	"SLEW"
+};
+
+static const char *focus_state_descr_l[] = {
+	"Off",
+	"Stop",
+	"Manual move (+)",
+	"Manual move (-)",
+	"Slew on position"
+};
+
 
 static size_t strncpy_n(char *dest, const char *src, size_t n){
 	size_t i;
@@ -410,6 +427,14 @@ int ascol_get_de_axis_state(ascol_glst_t glst, char **long_descr, char **short_d
 	if ((glst.de_axis_state < 0) || (glst.de_axis_state > 23)) return ASCOL_PARAM_ERROR;
 	if (long_descr) *long_descr = (char*)axis_state_descr_l[glst.de_axis_state];
 	if (short_descr) *short_descr = (char*)axis_state_descr_s[glst.de_axis_state];
+	return ASCOL_OK;
+}
+
+
+int ascol_get_focus_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
+	if ((glst.focus_state < 0) || (glst.focus_state > 4)) return ASCOL_PARAM_ERROR;
+	if (long_descr) *long_descr = (char*)focus_state_descr_l[glst.focus_state];
+	if (short_descr) *short_descr = (char*)focus_state_descr_s[glst.focus_state];
 	return ASCOL_OK;
 }
 
