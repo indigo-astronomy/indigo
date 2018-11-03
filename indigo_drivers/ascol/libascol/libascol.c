@@ -262,15 +262,15 @@ static const char *slit_flap_state_descr_l[] = {
 };
 
 /* Alarm descriptions */
-
 static const char *alarm_descr[] = {
-	"Error – absolute sensor of hour axis",
-	"Error – absolute sensor of declination axis",
-	"Error – regulation speed of focus",
+	/* Bank 0 */
+	"Error: absolute sensor of hour axis",
+	"Error: absolute sensor of declination axis",
+	"Error: regulation speed of focus",
 	"End position of focus is outside limits",
-	"Error – regulation position of focus",
-	"Error – motor focus",
-	"Error – regulation dome",
+	"Error: regulation position of focus",
+	"Error: motor focus",
+	"Error: regulation dome",
 	"Horizontal limiting I. step absolute sensor",
 	"Horizontal limiting I. step relative sensor",
 	"Horizontal limiting II. step absolute sensor",
@@ -279,8 +279,76 @@ static const char *alarm_descr[] = {
 	"Mercurial switch -8 degrees",
 	"Mercurial switch +8 degrees",
 	"Mercurial switch +/-4 degrees",
-	"Limiting of hour axis I -180 till 330 degrees absolute sensor"
+	"Limiting of hour axis I -180 till 330 degrees absolute sensor",
+
+	/* Bank 1 */
+	"Limiting of hour axis I -180 till 330 degrees relative sensor",
+	"Limiting of hour axis – SH3",
+	"Limiting of hour axis – SH4",
+	"Alarm humidity level",
+	"", /* unised */
+	"Dissonance absolute and relative sensor of hour axis",
+	"Dissonance absolute and relative sensor of declination axis",
+	"Error: regulation speed of hour axis",
+	"Error: regulation position of hour axis",
+	"Error: regulation speed of declination axis",
+	"Error: regulation position of declination axis",
+	"Error: calibration of hour axis",
+	"Error: calibration of declination axis",
+	"Error: motor for fast move of hour axis",
+	"Error: motor for slow move of hour axis",
+	"Error: motor for fast move of declination axis",
+
+	/* Bank 2 */
+	"Error: motor for slow move of declination axis",
+	"Bridge is not in parking position",
+	"STOP on handler 1",
+	"STOP on handler 2",
+	"STOP on handler 3",
+	"STOP on handler 4",
+	"STOP on handler 5",
+	"Limiting of hour axis II -185 till 335 degrees",
+	"Limiting of declination axis II -30 till 210 degrees",
+	"Error: centering",
+	"Error: shutter of tube",
+	"Error: shutter of coude",
+	"Error: slit",
+	"", /* unised */
+	"", /* unised */
+	"Low level of oil in tank IN",
+
+	/* Bank 3 */
+	"Low level of oil in tank OUT",
+	"Low pressure left side of bearing",
+	"Low pressure right side of bearing",
+	"Low pressure in tank of nitrogen I",
+	"Low pressure of oil in distribute - binary input",
+	"Emergency position focus plus S09",
+	"Emergency position focus minus S11",
+	"Error: regulation speed of rotator",
+	"End position of rotator is outside limits",
+	"Error: regulation position of rotator",
+	"Error: motor of rotator",
+	"MIN level in return oil tank",
+	"MIN level in base oil tank",
+	"", /* unised */
+	"", /* unised */
+	"", /* unised */
+
+	/* Bank 4 */
+	"Low pressure left side of bearing segment 1",
+	"Low pressure left side of bearing segment 2",
+	"Low pressure left side of bearing segment 3",
+	"Low pressure left side of bearing segment 4",
+	"Low pressure left side of bearing segment 5",
+	"Low pressure right side of bearing segment 1",
+	"Low pressure right side of bearing segment 2",
+	"Low pressure right side of bearing segment 3",
+	"Low pressure right side of bearing segment 4",
+	"Low pressure right side of bearing segment 5"
+	/* 10 - 15 unused */
 };
+
 
 static size_t strncpy_n(char *dest, const char *src, size_t n){
 	size_t i;
@@ -512,6 +580,15 @@ int ascol_get_slit_flap_state(uint16_t state, char **long_descr, char **short_de
 	if ((state < 0) || (state > 4)) return ASCOL_PARAM_ERROR;
 	if (long_descr) *long_descr = (char*)slit_flap_state_descr_l[state];
 	if (short_descr) *short_descr = (char*)slit_flap_state_descr_s[state];
+	return ASCOL_OK;
+}
+
+/* Check alarms of set */
+
+int ascol_check_alarm(ascol_glst_t glst, int alarm, char **descr, int *state) {
+	if ((alarm < 0) || (alarm > 73)) return ASCOL_PARAM_ERROR;
+	if (descr) *descr = (char*)alarm_descr[alarm];
+	if (state) *state = CHECK_ALARM(glst, alarm);
 	return ASCOL_OK;
 }
 

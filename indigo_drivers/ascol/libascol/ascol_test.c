@@ -53,6 +53,14 @@ int main() {
 	printf("DA callibrated: %d\n", IS_DA_CALIBRATED(glst));
 	printf("Aberration Cor: %d\n", IS_ABEARRATION_CORR(glst));
 
+	int state, alarm;
+	char *desc;
+
+	for (alarm = 0; alarm <= ALARM_MAX; alarm++) {
+		ascol_check_alarm(glst, alarm, &desc, &state);
+		printf("ALARM[%d] %2d == %s\n", alarm, state, desc);
+	}
+
 	printf("BRIDGE not parked: %d", CHECK_ALARM(glst, ALARM_BRIDGE));
 
 	char *st_l, *st_s;
