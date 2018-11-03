@@ -272,11 +272,11 @@ static indigo_result focuser_detach(indigo_device *device);
 	message.ucMSG[3] = (uint8_t)value;
 	message.ucSUM = message.ucADD + message.ucCMD + message.ucIDX + message.ucMSG[0] + message.ucMSG[1] + message.ucMSG[2] + message.ucMSG[3];
 	dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-		[lock lock];
+		[self->lock lock];
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %02x%02x%02x%02x%02x%02x%02x%02x", message.ucADD, message.ucCMD, message.ucIDX, message.ucMSG[0], message.ucMSG[1], message.ucMSG[2], message.ucMSG[3], message.ucSUM);
-		[stackrail writeValue:[NSData dataWithBytes:&message length:8] forCharacteristic:ffe1 type:CBCharacteristicWriteWithoutResponse];
+		[self->stackrail writeValue:[NSData dataWithBytes:&message length:8] forCharacteristic:self->ffe1 type:CBCharacteristicWriteWithoutResponse];
 		usleep(200000);
-		[lock unlock];
+		[self->lock unlock];
 	});
 }
 

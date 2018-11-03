@@ -153,7 +153,7 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 	double d = 0;
 	double r = dome_radius;
 	int n = 0;
-	double x, y, z;
+	double x = 0, y = 0, z = 0;
 	/* converges fast => 5 should be ok */
 	while (n < 5) {
 		d = d - (r - dome_radius);

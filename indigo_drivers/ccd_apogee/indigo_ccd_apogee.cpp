@@ -460,7 +460,6 @@ static bool apogee_read_pixels(indigo_device *device) {
 
 static void abort_exposure_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int res;
 	try {
 		PRIVATE_DATA->camera->StopExposure(false);
 	} catch (std::runtime_error err) {
@@ -638,7 +637,6 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		bool at_setpoint;
 		if (apogee_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power, &at_setpoint)) {
-			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
 			if (CCD_COOLER_ON_ITEM->sw.value)
 				CCD_TEMPERATURE_PROPERTY->state = at_setpoint ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 			else
@@ -808,7 +806,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					indigo_define_property(device, APG_FAN_SPEED_PROPERTY, NULL);
 
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s ADCs=%d Chanels=%d", device->name, num_adcs, num_channels);
-					int item;
 					for (int adc = 0, item = 0; adc < num_adcs; adc++) {
 						for (int ch = 0; ch < num_channels; ch++, item++) {
 							char item_name[32];
@@ -923,8 +920,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(APG_OFFSET_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		APG_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
-
-		int item;
 		for (int adc = 0, item = 0; adc < PRIVATE_DATA->num_adcs; adc++) {
 			for (int ch = 0; ch < PRIVATE_DATA->num_channels; ch++, item++) {
 				uint16_t offset = (uint16_t)APG_OFFSET_PROPERTY->items[item].number.value;
@@ -948,8 +943,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(APG_GAIN_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		APG_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-
-		int item;
 		for (int adc = 0, item = 0; adc < PRIVATE_DATA->num_adcs; adc++) {
 			for (int ch = 0; ch < PRIVATE_DATA->num_channels; ch++, item++) {
 				uint16_t gain = (uint16_t)APG_GAIN_PROPERTY->items[item].number.value;
@@ -989,7 +982,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		char name[32] = "";
-
+		sprintf(name, "BIN_%dx%d", horizontal_bin, vertical_bin);
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
 			item->sw.value = !strcmp(item->name, name);

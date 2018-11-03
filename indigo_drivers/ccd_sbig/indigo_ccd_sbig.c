@@ -160,8 +160,8 @@ typedef struct {
 static pthread_mutex_t driver_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 short (*sbig_command)(short, void*, void*);
-static void remove_usb_devices();
-static void remove_eth_devices();
+static void remove_usb_devices(void);
+static void remove_eth_devices(void);
 static bool plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address);
 
 
@@ -178,7 +178,7 @@ static double bcd2double(unsigned long bcd) {
 
 /* driver commands */
 
-static char *sbig_error_string(int err) {
+static char *sbig_error_string(long err) {
 	GetErrorStringParams gesp;
 	gesp.errorNo = err;
 	static GetErrorStringResults gesr;
@@ -187,7 +187,7 @@ static char *sbig_error_string(int err) {
 		return gesr.errorString;
 	}
 	static char str[128];
-	sprintf(str, "Error string not found! Error code: %d", err);
+	sprintf(str, "Error string not found! Error code: %ld", err);
 	return str;
 }
 
@@ -2170,7 +2170,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 				sprintf(device->name, "SBIG %s #%s", cfw_type[cfwr.cfwModel], device_index_str);
 				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				private_data->fw_device = cfwr.cfwModel;
-				private_data->fw_count = cfwr.cfwResult2;
+				private_data->fw_count = (int)cfwr.cfwResult2;
 				device->private_data = private_data;
 				indigo_async((void *)(void *)indigo_attach_device, device);
 				devices[slot]=device;

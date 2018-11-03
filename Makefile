@@ -1762,6 +1762,9 @@ package-prepare: all
 	install -D -m 0644 indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/USB2ST4.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_guider_asi.rules
 	install -D -m 0644 indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_focuser_usbv3.rules
 	install -D -m 0644 indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_focuser_wemacro.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_mi/indigo_ccd_mi.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_mi.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_touptek/bin_externals/libtoupcam/99-toupcam.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_toupcam.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_altair/bin_externals/libaltaircam/99-altaircam.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_altaircam.rules
 	install -D -m 0644 indigo_libs/indigo_bus.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_bus.h
 	install -D -m 0644 indigo_libs/indigo_client.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_client.h
 	install -D -m 0644 indigo_libs/indigo_xml.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_xml.h
@@ -1846,12 +1849,3 @@ remote:
 	scp raspi32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
 	ssh raspi64.local "cd indigo; git pull; make clean; make; sudo make package"
 	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
-
-#---------------------------------------------------------------------
-#
-#	Private build
-#
-#---------------------------------------------------------------------
-
-private:
-	$(MAKE) -C indigo_private_drivers
