@@ -261,6 +261,26 @@ static const char *slit_flap_state_descr_l[] = {
 	"Close"
 };
 
+/* Alarm descriptions */
+
+static const char *alarm_descr[] = {
+	"Error – absolute sensor of hour axis",
+	"Error – absolute sensor of declination axis",
+	"Error – regulation speed of focus",
+	"End position of focus is outside limits",
+	"Error – regulation position of focus",
+	"Error – motor focus",
+	"Error – regulation dome",
+	"Horizontal limiting I. step absolute sensor",
+	"Horizontal limiting I. step relative sensor",
+	"Horizontal limiting II. step absolute sensor",
+	"Horizontal limiting II. step relative sensor",
+	"Switched on jumper of limitation",
+	"Mercurial switch -8 degrees",
+	"Mercurial switch +8 degrees",
+	"Mercurial switch +/-4 degrees",
+	"Limiting of hour axis I -180 till 330 degrees absolute sensor"
+};
 
 static size_t strncpy_n(char *dest, const char *src, size_t n){
 	size_t i;
