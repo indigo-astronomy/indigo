@@ -68,6 +68,9 @@ int main() {
 	ascol_get_focus_state(glst, &st_l, &st_s);
 	printf("focus state: %s - %s\n", st_s, st_l);
 
+	ascol_get_dome_state(glst, &st_l, &st_s);
+	printf("dome state: %s - %s\n", st_s, st_l);
+
 	ascol_glme_t glme;
 	printf("\n===== ascol_GLME() =====\n");
 	res = ascol_GLME(fd, &glme);
