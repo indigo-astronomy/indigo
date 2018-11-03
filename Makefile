@@ -16,8 +16,7 @@ ENABLE_SHARED=yes
 BUILD_ROOT=build
 BUILD_BIN=$(BUILD_ROOT)/bin
 BUILD_DRIVERS=$(BUILD_ROOT)/drivers
-LIB_DIR=lib
-BUILD_LIB=$(BUILD_ROOT)/$(LIB_DIR)
+BUILD_LIB=$(BUILD_ROOT)/lib
 BUILD_INCLUDE=$(BUILD_ROOT)/include
 BUILD_SHARE=$(BUILD_ROOT)/share
 BIN_EXTERNALS=bin_externals
@@ -136,7 +135,7 @@ ifeq ($(OS_DETECTED),Linux)
 		CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
 		CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 	endif
-	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lgphoto2 -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../$(LIB_DIR),-rpath=\$$ORIGIN/../drivers,-rpath=.
+	LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lgphoto2 -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
@@ -1852,3 +1851,12 @@ remote:
 	scp raspi32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
 	ssh raspi64.local "cd indigo; git pull; make clean; make; sudo make package"
 	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
+
+#---------------------------------------------------------------------
+#
+#	Private build
+#
+#---------------------------------------------------------------------
+
+private:
+	$(MAKE) -C indigo_private_drivers
