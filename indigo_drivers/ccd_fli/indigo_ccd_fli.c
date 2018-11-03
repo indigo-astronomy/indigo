@@ -312,7 +312,7 @@ static bool fli_read_pixels(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = FLIGetExposureStatus(id, &timeleft);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (timeleft) usleep(timeleft);
+		if (timeleft) usleep((useconds_t)timeleft);
 	} while (timeleft*1000);
 
 	do {

@@ -72,7 +72,7 @@ static bool gps_open(indigo_device *device) {
 		indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
 		return INDIGO_OK;
 	}
-	srand(time(NULL));
+	srand((unsigned)time(NULL));
 	PRIVATE_DATA->timer_ticks = 0;
 	return true;
 }
