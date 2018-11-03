@@ -24,9 +24,8 @@
 #define ASCOL_RESPONCE_ERROR  (4)
 #define ASCOL_PARAM_ERROR     (5)
 
-#define CHECK_BIT(bitmap, bit) (((bitmap) >> (bit)) & 1)
-
 /* ALARM_BITS */
+/* Bank 0 */
 #define ALARM_0_BIT_0	(0)
 #define ALARM_0_BIT_1	(1)
 #define ALARM_0_BIT_2	(2)
@@ -43,7 +42,7 @@
 #define ALARM_0_BIT_13	(13)
 #define ALARM_0_BIT_14	(14)
 #define ALARM_0_BIT_15	(15)
-
+/* Bank 1 */
 #define ALARM_1_BIT_0	(16)
 #define ALARM_1_BIT_1	(17)
 #define ALARM_1_BIT_2	(18)
@@ -60,7 +59,7 @@
 #define ALARM_1_BIT_13	(29)
 #define ALARM_1_BIT_14	(30)
 #define ALARM_1_BIT_15	(31)
-
+/* Bank 2 */
 #define ALARM_2_BIT_0	(32)
 #define ALARM_2_BIT_1	(33)
 #define ALARM_2_BIT_2	(34)
@@ -76,7 +75,7 @@
 #define ALARM_2_BIT_12	(44)
 /* 13, 14 UNUSED */
 #define ALARM_2_BIT_15	(47)
-
+/* Bank 3 */
 #define ALARM_3_BIT_0	(48)
 #define ALARM_3_BIT_1	(49)
 #define ALARM_3_BIT_2	(50)
@@ -91,7 +90,7 @@
 #define ALARM_3_BIT_11	(59)
 #define ALARM_3_BIT_12	(60)
 /* 13, 14, 15 UNUSED */
-
+/* Bank 4 */
 #define ALARM_4_BIT_0	(64)
 #define ALARM_4_BIT_1	(65)
 #define ALARM_4_BIT_2	(66)
@@ -104,7 +103,17 @@
 #define ALARM_4_BIT_9	(73)
 #define ALARM_4_BIT_10	(74)
 /* 11 - 15 UNUSED */
+#define ALARM_MAX  ALARM_4_BIT_10
 
+/* Often used Alarms */
+#define ALARM_BRIDGE      ALARM_2_BIT_1
+#define ALARM_HUMIDITY    ALARM_1_BIT_3
+
+/* Bitwise checks */
+#define CHECK_BIT(bitmap, bit)      (((bitmap) >> (bit)) & 1)
+#define CHECK_ALARM(glst, alarm)    CHECK_BIT(glst.alarm_bits[(int)(alarm/16)], (alarm%16))
+
+/* Data structures */
 
 #define ASCOL_OIMV_N         (17)
 typedef struct {
@@ -147,12 +156,10 @@ extern "C" {
 #endif
 
 /* Convert ASCOL HHMMSS.SS and DDMMSS.SS format in decimal degrees */
-
 int ascol_dms2dd(double *dd, const char *dms);
 int ascol_hms2dd(double *dd, const char *hms);
 
 /* Check state bits */
-
 #define IS_RA_CALIBRATED(glst)      CHECK_BIT(glst.state_bits, 0)
 #define IS_DA_CALIBRATED(glst)      CHECK_BIT(glst.state_bits, 1)
 #define IS_ABEARRATION_CORR(glst)   CHECK_BIT(glst.state_bits, 4)
@@ -163,14 +170,10 @@ int ascol_hms2dd(double *dd, const char *hms);
 #define IS_USER1_BIT_I_ON(glst)     CHECK_BIT(glst.state_bits, 14)
 #define IS_USER1_BIT_II_ON(glst)    CHECK_BIT(glst.state_bits, 15)
 
-/* Check alarms */
-
-#define ALARM_BRIDGE      ALARM_2_BIT_1
-#define ALARM_HUMIDITY    ALARM_1_BIT_3
-#define CHECK_ALARM(glst, alarm)    CHECK_BIT(glst.alarm_bits[(int)(alarm/16)], (alarm%16))
+/* Check alarms and get descripion */
+int ascol_check_alarm(ascol_glst_t glst, int alarm, char **descr, int *state);
 
 /* Utility functions */
-
 int ascol_parse_devname(char *device, char *host, int *port);
 int ascol_open(char *host, int port);
 int ascol_read(int devfd, char *reply, int len);
@@ -179,38 +182,33 @@ int ascol_read(int devfd, char *reply, int len);
 #define ascol_close(devfd) (close(devfd))
 
 /* State desctiption functions */
-
 int ascol_get_oil_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 int ascol_get_telescope_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 int ascol_get_ra_axis_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 int ascol_get_de_axis_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 int ascol_get_focus_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 int ascol_get_dome_state(ascol_glst_t glst, char **long_descr, char **short_descr);
-
 int ascol_get_slit_flap_state(uint16_t state, char **long_descr, char **short_descr);
 #define ascol_get_slit_state(glst, long_descr, short_descr) (ascol_get_slit_flap_state(glst.slit_state, long_descr, short_descr))
 #define ascol_get_flap_tube_state(glst, long_descr, short_descr) (ascol_get_slit_flap_state(glst.flap_tube_state, long_descr, short_descr))
 #define ascol_get_flap_coude_state(glst, long_descr, short_descr) (ascol_get_slit_flap_state(glst.flap_coude_state, long_descr, short_descr))
 
 /* COMMANDS TO ASCOL CONTROLER */
-
+/* Generic functions */
 int ascol_0_param_cmd(int devfd, char *cmd_name);
 int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param);
 int ascol_1_double_param_cmd(int devfd, char *cmd_name, double param, int precision);
 int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2);
 int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2, int east);
-
 int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val);
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2);
 
 /* Global commands */
-
 int ascol_GLLG(int devfd, char *password);
 int ascol_GLME(int devfd, ascol_glme_t *glme);
 int ascol_GLST(int devfd, ascol_glst_t *glst);
 
 /* Telescope Commands */
-
 #define ascol_TEON(devfd, on) (ascol_1_int_param_cmd(devfd, "TEON", on))
 #define ascol_TETR(devfd, on) (ascol_1_int_param_cmd(devfd, "TETR", on))
 #define ascol_TEHC(devfd, on) (ascol_1_int_param_cmd(devfd, "TEHC", on))
@@ -254,7 +252,6 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east);
 #define ascol_TECE(devfd, on) (ascol_1_int_param_cmd(devfd, "TECE", on))
 
 /* Focuser Commands */
-
 #define ascol_FOST(devfd) (ascol_0_param_cmd(devfd, "FOST"))
 #define ascol_FOGR(devfd) (ascol_0_param_cmd(devfd, "FOGR"))
 #define ascol_FOGA(devfd) (ascol_0_param_cmd(devfd, "FOGA"))
@@ -263,7 +260,6 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east);
 #define ascol_FOPO(devfd, pos) (ascol_1_double_return_cmd(devfd, "FOPO", pos))
 
 /* Dome Commands */
-
 #define ascol_DOON(devfd, on) (ascol_1_int_param_cmd(devfd, "DOON", on))
 #define ascol_DOSO(devfd, on) (ascol_1_int_param_cmd(devfd, "DOSO", on))
 #define ascol_DOPO(devfd, pos) (ascol_1_double_return_cmd(devfd, "DOPO", pos))
@@ -275,12 +271,10 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east);
 #define ascol_DOSA(devfd, pos) (ascol_1_double_param_cmd(devfd, "DOSA", pos, 2))
 
 /* Flap commands */
-
 #define ascol_FTOC(devfd, on) (ascol_1_int_param_cmd(devfd, "FTOC", on))
 #define ascol_FCOC(devfd, on) (ascol_1_int_param_cmd(devfd, "FCOC", on))
 
 /* Oil Commands */
-
 #define ascol_OION(devfd, on) (ascol_1_int_param_cmd(devfd, "OION", on))
 int ascol_OIMV(int devfd, ascol_oimv_t *oimv);
 
