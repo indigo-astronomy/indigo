@@ -28,7 +28,8 @@
 use strict;
 use IO::Socket;
 use Net::hostent;
-use POSIX qw(ceil floor);
+use POSIX qw(ceil floor strftime);
+use Time::HiRes qw(gettimeofday);
 use Getopt::Std;
 use threads;
 use threads::shared;
@@ -1360,6 +1361,15 @@ sub main() {
 			if ($cmd[0] eq "GLST") {
 				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
 				print_client($client, "$oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 0 $correction_model $state_bits @alarm_bits 0\n");
+				next;
+			}
+
+			# ----- Telescope GMT ----- #
+			if ($cmd[0] eq "GLUT") {
+				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
+				my ($s,$us) = gettimeofday();
+				my $ascol_ut = sprintf "%s.%03d\n", strftime("%H%M%S", gmtime($s)), int($us/1000);
+				print_client($client, $ascol_ut);
 				next;
 			}
 
