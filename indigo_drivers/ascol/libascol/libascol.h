@@ -97,6 +97,7 @@ int ascol_get_telescope_state(ascol_glst_t glst, char **long_descr, char **short
 int ascol_get_ra_axis_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 int ascol_get_de_axis_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 int ascol_get_focus_state(ascol_glst_t glst, char **long_descr, char **short_descr);
+int ascol_get_dome_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 
 /* COMMANDS TO ASCOL CONTROLER */
 

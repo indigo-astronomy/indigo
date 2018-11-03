@@ -179,10 +179,10 @@ static const char *axis_state_descr_l[] = {
 	"Stopped",
 	"Position regulation",
 	"Clutch before calibration",
-	"Calibration roughly",
-	"Calibration roughly lateral inhibition",
+	"Calibration, roughly",
+	"Calibration, roughly lateral inhibition",
 	"Clutch gently calibration",
-	"Calibration gently",
+	"Calibration, gently",
 	"Move T1 lateral inhibition",
 	"Move T1 clutch",
 	"Move T1",
@@ -195,11 +195,11 @@ static const char *axis_state_descr_l[] = {
 	"Manual centering, centering",
 	"Manual centering, lateral inhibition",
 	"Manual centering, clutch",
-	"Automatically centering, lateral inhibition",
-	"Automatically centering, clutch",
-	"Automatically centering, centering",
-	"Automatically centering, lateral inhibition",
-	"Automatically centering, clutch"
+	"Automatic centering, lateral inhibition",
+	"Automatic centering, clutch",
+	"Automatic centering, centering",
+	"Automatic centering, lateral inhibition",
+	"Automatic centering, clutch"
 };
 
 /* Focus state descriptions */
@@ -217,6 +217,31 @@ static const char *focus_state_descr_l[] = {
 	"Manual move (+)",
 	"Manual move (-)",
 	"Slew on position"
+};
+
+/* Dome state descriptions */
+static const char *dome_state_descr_s[] = {
+	"OFF",
+	"STOP",
+	"PLUS",
+	"MINUS",
+	"SLEW_PLUS",
+	"SLEW_MINUS",
+	"AUTO_STOP",
+	"AUTO_PLUS",
+	"AUTO_MINUS"
+};
+
+static const char *dome_state_descr_l[] = {
+	"Off",
+	"Stop",
+	"Manual move (+)",
+	"Manual move (-)",
+	"Slew on poisition (+)",
+	"Slew on poisition (-)",
+	"Auto mode, stop",
+	"Auto mode, move (+)",
+	"Auto mode, move (-)"
 };
 
 
@@ -435,6 +460,14 @@ int ascol_get_focus_state(ascol_glst_t glst, char **long_descr, char **short_des
 	if ((glst.focus_state < 0) || (glst.focus_state > 4)) return ASCOL_PARAM_ERROR;
 	if (long_descr) *long_descr = (char*)focus_state_descr_l[glst.focus_state];
 	if (short_descr) *short_descr = (char*)focus_state_descr_s[glst.focus_state];
+	return ASCOL_OK;
+}
+
+
+int ascol_get_dome_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
+	if ((glst.dome_state < 0) || (glst.dome_state > 8)) return ASCOL_PARAM_ERROR;
+	if (long_descr) *long_descr = (char*)dome_state_descr_l[glst.dome_state];
+	if (short_descr) *short_descr = (char*)dome_state_descr_s[glst.dome_state];
 	return ASCOL_OK;
 }
 
