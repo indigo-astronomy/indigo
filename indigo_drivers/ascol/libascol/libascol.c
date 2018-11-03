@@ -244,6 +244,23 @@ static const char *dome_state_descr_l[] = {
 	"Auto mode, move (-)"
 };
 
+/* Dome Slit and Telescope Flaps state descriptions */
+static const char *slit_flap_state_descr_s[] = {
+	"UNDEF",
+	"OPENING",
+	"CLOSING",
+	"OPEN",
+	"CLOSE"
+};
+
+static const char *slit_flap_state_descr_l[] = {
+	"Unknown state",
+	"Opening",
+	"Closing",
+	"Open",
+	"Close"
+};
+
 
 static size_t strncpy_n(char *dest, const char *src, size_t n){
 	size_t i;
@@ -468,6 +485,13 @@ int ascol_get_dome_state(ascol_glst_t glst, char **long_descr, char **short_desc
 	if ((glst.dome_state < 0) || (glst.dome_state > 8)) return ASCOL_PARAM_ERROR;
 	if (long_descr) *long_descr = (char*)dome_state_descr_l[glst.dome_state];
 	if (short_descr) *short_descr = (char*)dome_state_descr_s[glst.dome_state];
+	return ASCOL_OK;
+}
+
+int ascol_get_slit_flap_state(uint16_t state, char **long_descr, char **short_descr) {
+	if ((state < 0) || (state > 4)) return ASCOL_PARAM_ERROR;
+	if (long_descr) *long_descr = (char*)slit_flap_state_descr_l[state];
+	if (short_descr) *short_descr = (char*)slit_flap_state_descr_s[state];
 	return ASCOL_OK;
 }
 

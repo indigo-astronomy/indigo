@@ -99,6 +99,11 @@ int ascol_get_de_axis_state(ascol_glst_t glst, char **long_descr, char **short_d
 int ascol_get_focus_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 int ascol_get_dome_state(ascol_glst_t glst, char **long_descr, char **short_descr);
 
+int ascol_get_slit_flap_state(uint16_t state, char **long_descr, char **short_descr);
+#define ascol_get_slit_state(glst, long_descr, short_descr) (ascol_get_slit_flap_state(glst.slit_state, long_descr, short_descr))
+#define ascol_get_flap_tube_state(glst, long_descr, short_descr) (ascol_get_slit_flap_state(glst.flap_tube_state, long_descr, short_descr))
+#define ascol_get_flap_coude_state(glst, long_descr, short_descr) (ascol_get_slit_flap_state(glst.flap_coude_state, long_descr, short_descr))
+
 /* COMMANDS TO ASCOL CONTROLER */
 
 int ascol_0_param_cmd(int devfd, char *cmd_name);
