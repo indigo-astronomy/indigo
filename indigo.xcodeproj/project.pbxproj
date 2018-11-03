@@ -1653,6 +1653,7 @@
 		9DBC34721DCB26F200588DB9 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		9DBC34741DCB270200588DB9 /* libstdc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libstdc++.tbd"; path = "usr/lib/libstdc++.tbd"; sourceTree = SDKROOT; };
 		9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.01.pdf; sourceTree = "<group>"; };
+		9DBFA44B218C9BF400E19BF9 /* private_drivers.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = private_drivers.xcodeproj; path = ../indigo_private_drivers/private_drivers.xcodeproj; sourceTree = "<group>"; };
 		9DDA7FD01F791F7D0094D65D /* indigo_novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_novas.c; sourceTree = "<group>"; };
 		9DDA7FD11F791F7D0094D65D /* indigo_novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_novas.h; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -2101,6 +2102,7 @@
 				59C499DF1EFADF7600E750AA /* indigo_mac_drivers */,
 				9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */,
 				9D45254520E0FB20004D1137 /* indigo_optional_drivers */,
+				9DBFA432218C9B4100E19BF9 /* private_drivers */,
 				59D381A61D9590EA00E87393 /* indigo_libs */,
 				9D1880BF1E534B89002F75D7 /* indigo_tools */,
 				599A63D61DF5D93500ABC827 /* indigo_server */,
@@ -4075,6 +4077,22 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		9DBFA432218C9B4100E19BF9 /* private_drivers */ = {
+			isa = PBXGroup;
+			children = (
+				9DBFA44B218C9BF400E19BF9 /* private_drivers.xcodeproj */,
+			);
+			name = private_drivers;
+			path = indigo_private_drivers;
+			sourceTree = "<group>";
+		};
+		9DBFA451218C9C6A00E19BF9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {
 			isa = PBXGroup;
 			children = (
@@ -4462,6 +4480,12 @@
 			mainGroup = 592662A41D9590630021746A;
 			productRefGroup = 592662AE1D9590630021746A /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 9DBFA451218C9C6A00E19BF9 /* Products */;
+					ProjectRef = 9DBFA44B218C9BF400E19BF9 /* private_drivers.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				59F7560C1DCE4E37002CFC82 /* hidapi */,
