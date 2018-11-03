@@ -985,7 +985,7 @@ indigo_result indigo_aux_upb(indigo_driver_action action, indigo_driver_info *in
 		focuser_detach
 	);
 
-	SET_DRIVER_INFO(info, "PegasusAstro Ultimate Powebox", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, "Ultimate Powebox", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
