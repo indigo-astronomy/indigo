@@ -1849,12 +1849,3 @@ remote:
 	scp raspi32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
 	ssh raspi64.local "cd indigo; git pull; make clean; make; sudo make package"
 	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
-
-#---------------------------------------------------------------------
-#
-#	Private build
-#
-#---------------------------------------------------------------------
-
-private:
-	$(MAKE) -C indigo_private_drivers
