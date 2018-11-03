@@ -154,21 +154,21 @@ static char *get_bayer_string(indigo_device *device) {
 }
 
 
-static int get_pixel_depth(indigo_device *device) {
-	int item = 0;
-	while (item < QHY_MAX_FORMATS) {
-		if (PIXEL_FORMAT_PROPERTY->items[item].sw.value) {
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW8_NAME)) {
-				return 8;
-			}
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW16_NAME)) {
-				return 16;
-			}
-		}
-		item++;
-	}
-	return CCD_INFO_BITS_PER_PIXEL_ITEM->number.value;
-}
+//static int get_pixel_depth(indigo_device *device) {
+//	int item = 0;
+//	while (item < QHY_MAX_FORMATS) {
+//		if (PIXEL_FORMAT_PROPERTY->items[item].sw.value) {
+//			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW8_NAME)) {
+//				return 8;
+//			}
+//			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW16_NAME)) {
+//				return 16;
+//			}
+//		}
+//		item++;
+//	}
+//	return CCD_INFO_BITS_PER_PIXEL_ITEM->number.value;
+//}
 
 
 static bool bpp_supported(indigo_device *device, int bpp) {
@@ -1459,14 +1459,14 @@ static int find_available_device_slot() {
 }
 
 
-static int find_device_slot(const char *sid) {
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
-		if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) return slot;
-	}
-	return NOT_FOUND;
-}
+//static int find_device_slot(const char *sid) {
+//	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+//		indigo_device *device = devices[slot];
+//		if (device == NULL) continue;
+//		if (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN)) return slot;
+//	}
+//	return NOT_FOUND;
+//}
 
 
 static int find_unplugged_device_slot() {

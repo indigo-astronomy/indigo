@@ -419,9 +419,10 @@ void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_
 	w[15] = (unsigned) n << 3;
 	sha1mix(r, w);
 
-	for (i = 0; i < 5; ++i)
-  h[(i << 2) + 0] = (unsigned char) (r[i] >> 0x18),
-  h[(i << 2) + 1] = (unsigned char) (r[i] >> 0x10),
-  h[(i << 2) + 2] = (unsigned char) (r[i] >> 0x08),
-  h[(i << 2) + 3] = (unsigned char) (r[i] >> 0x00);
+	for (i = 0; i < 5; ++i) {
+		h[(i << 2) + 0] = (unsigned char) (r[i] >> 0x18);
+		h[(i << 2) + 1] = (unsigned char) (r[i] >> 0x10);
+		h[(i << 2) + 2] = (unsigned char) (r[i] >> 0x08);
+		h[(i << 2) + 3] = (unsigned char) (r[i] >> 0x00);
+	}
 }

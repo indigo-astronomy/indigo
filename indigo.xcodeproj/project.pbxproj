@@ -908,6 +908,7 @@
 		59CBD47E1FAF6C80000DAFDB /* indigo_gps_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_simulator_main.c; sourceTree = "<group>"; };
 		59CC779B1F27BCF2003AD2DB /* indigo_ica_ptp_sony.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_sony.h; sourceTree = "<group>"; };
 		59CC779C1F27BCF2003AD2DB /* indigo_ica_ptp_sony.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_sony.m; sourceTree = "<group>"; };
+		59CD7310218E418900F646D4 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59D381A71D95926E00E87393 /* indigo_bus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = indigo_bus.h; path = indigo_libs/indigo_bus.h; sourceTree = SOURCE_ROOT; wrapsLines = 0; };
 		59D381A81D9592A400E87393 /* indigo_bus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_bus.c; path = indigo_libs/indigo_bus.c; sourceTree = SOURCE_ROOT; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator.c; sourceTree = "<group>"; };
@@ -1652,7 +1653,6 @@
 		9DBC34721DCB26F200588DB9 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		9DBC34741DCB270200588DB9 /* libstdc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libstdc++.tbd"; path = "usr/lib/libstdc++.tbd"; sourceTree = SDKROOT; };
 		9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.01.pdf; sourceTree = "<group>"; };
-		9DBFA44B218C9BF400E19BF9 /* private_drivers.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = private_drivers.xcodeproj; path = ../indigo_private_drivers/private_drivers.xcodeproj; sourceTree = "<group>"; };
 		9DDA7FD01F791F7D0094D65D /* indigo_novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_novas.c; sourceTree = "<group>"; };
 		9DDA7FD11F791F7D0094D65D /* indigo_novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_novas.h; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -2101,7 +2101,6 @@
 				59C499DF1EFADF7600E750AA /* indigo_mac_drivers */,
 				9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */,
 				9D45254520E0FB20004D1137 /* indigo_optional_drivers */,
-				9DBFA432218C9B4100E19BF9 /* private_drivers */,
 				59D381A61D9590EA00E87393 /* indigo_libs */,
 				9D1880BF1E534B89002F75D7 /* indigo_tools */,
 				599A63D61DF5D93500ABC827 /* indigo_server */,
@@ -3840,6 +3839,7 @@
 				9D6940892180B9F600AB112C /* indigo_aux_upb.c */,
 				9D69408B2180B9F600AB112C /* indigo_aux_upb_main.c */,
 				9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */,
+				59CD7310218E418900F646D4 /* Makefile */,
 				9D69408C2180BA1800AB112C /* upb_simulator */,
 			);
 			path = aux_upb;
@@ -4073,22 +4073,6 @@
 				9DBC34701DCB26E500588DB9 /* Cocoa.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		9DBFA432218C9B4100E19BF9 /* private_drivers */ = {
-			isa = PBXGroup;
-			children = (
-				9DBFA44B218C9BF400E19BF9 /* private_drivers.xcodeproj */,
-			);
-			name = private_drivers;
-			path = indigo_private_drivers;
-			sourceTree = "<group>";
-		};
-		9DBFA451218C9C6A00E19BF9 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {
@@ -4432,7 +4416,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0800;
-				LastUpgradeCheck = 0810;
+				LastUpgradeCheck = 1010;
 				ORGANIZATIONNAME = "CloudMakers, s. r. o.";
 				TargetAttributes = {
 					592662AC1D9590630021746A = {
@@ -4478,12 +4462,6 @@
 			mainGroup = 592662A41D9590630021746A;
 			productRefGroup = 592662AE1D9590630021746A /* Products */;
 			projectDirPath = "";
-			projectReferences = (
-				{
-					ProductGroup = 9DBFA451218C9C6A00E19BF9 /* Products */;
-					ProjectRef = 9DBFA44B218C9BF400E19BF9 /* private_drivers.xcodeproj */;
-				},
-			);
 			projectRoot = "";
 			targets = (
 				59F7560C1DCE4E37002CFC82 /* hidapi */,
@@ -4854,15 +4832,23 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_SUSPICIOUS_MOVES = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
@@ -4908,15 +4894,23 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_SUSPICIOUS_MOVES = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
@@ -4977,7 +4971,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_IDENTITY = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				INFOPLIST_FILE = "$(SRCROOT)/INDIGO Server for macOS/Info.plist";
@@ -5003,7 +4997,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_IDENTITY = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				INFOPLIST_FILE = "$(SRCROOT)/INDIGO Server for macOS/Info.plist";

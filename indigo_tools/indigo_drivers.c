@@ -29,14 +29,28 @@ void group(int argc, char **argv, char *group, char *prefix) {
 	printf(" </devGroup>\n");
 }
 
+void version(char *name) {
+	indigo_driver_info info;
+	indigo_driver_entry *driver;
+	indigo_load_driver(name, false, &driver);
+	indigo_available_drivers[0].driver(INDIGO_DRIVER_INFO, &info);
+	printf("%d.%d", INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version));
+	indigo_remove_driver(driver);
+}
+
+
 int main(int argc, char **argv) {
-  printf("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-	printf("<driversList>\n");
-	group(argc, argv, "Telescopes", "indigo_mount_");
-	group(argc, argv, "CCDs", "indigo_ccd_");
-	group(argc, argv, "Focusers", "indigo_focuser_");
-	group(argc, argv, "Filter Wheels", "indigo_wheel_");
-	group(argc, argv, "Domes", "indigo_dome_");
-	group(argc, argv, "Auxiliary", "indigo_aux_");
-  printf("</driversList>\n");
+	if (argc == 3 && !strcmp(argv[1], "-v")) {
+		version(argv[2]);
+	} else {
+		printf("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+		printf("<driversList>\n");
+		group(argc, argv, "Telescopes", "indigo_mount_");
+		group(argc, argv, "CCDs", "indigo_ccd_");
+		group(argc, argv, "Focusers", "indigo_focuser_");
+		group(argc, argv, "Filter Wheels", "indigo_wheel_");
+		group(argc, argv, "Domes", "indigo_dome_");
+		group(argc, argv, "Auxiliary", "indigo_aux_");
+		printf("</driversList>\n");
+	}
 }

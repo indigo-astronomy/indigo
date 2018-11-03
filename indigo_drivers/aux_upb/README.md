@@ -1,6 +1,6 @@
 # PegasusAstro Ultimate Powerbox driver
 
-http://www.pegasusastro.com
+https://pegasusastro.com/products/ultimate-powerbox/
 
 ## Supported devices
 * PegasusAstro Ultimate Powebox
@@ -19,5 +19,6 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_upb
 
-## Status: Untested
+## Status: Stable
 
+Tested with physical device.

@@ -54,7 +54,7 @@ extern indigo_result indigo_server_start(indigo_server_tcp_callback callback);
 
 /** Shutdown network server (function will block until server is active).
  */
-extern void indigo_server_shutdown();
+extern void indigo_server_shutdown(void);
 
 #ifdef __cplusplus
 }

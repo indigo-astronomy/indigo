@@ -525,7 +525,7 @@ static void server_main() {
 	}
 	runLoop = true;
 	while (runLoop) {
-		CFRunLoopRunResult result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, true);
+		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, true);
 	}
 #endif
 
