@@ -1695,7 +1695,6 @@ install:
 	sudo install -D -m 0644 indigo_drivers/ccd_mi/indigo_ccd_mi.rules /lib/udev/rules.d/99-indigo_ccd_mi.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_touptek/bin_externals/libtoupcam/99-toupcam.rules /lib/udev/rules.d/99-indigo_ccd_toupcam.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_altair/bin_externals/libaltaircam/99-altaircam.rules /lib/udev/rules.d/99-indigo_ccd_altaircam.rules
-	sudo install -D -m 0644 indigo_drivers/aux_upb/indigo_aux_upb.rules /lib/udev/rules.d/99-indigo_aux_upb.rules
 	sudo udevadm control --reload-rules
 	sudo install -D -m 0644 $(BUILD_SHARE)/indi/indi_indigo.xml /usr/share/indi/indi_indigo.xml
 
@@ -1766,7 +1765,6 @@ package-prepare: all
 	sudo install -D -m 0644 indigo_drivers/ccd_mi/indigo_ccd_mi.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_mi.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_touptek/bin_externals/libtoupcam/99-toupcam.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_toupcam.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_altair/bin_externals/libaltaircam/99-altaircam.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_altaircam.rules
-	sudo install -D -m 0644 indigo_drivers/aux_upb/indigo_aux_upb.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_aux_upb.rules
 	install -D -m 0644 indigo_libs/indigo_bus.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_bus.h
 	install -D -m 0644 indigo_libs/indigo_client.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_client.h
 	install -D -m 0644 indigo_libs/indigo_xml.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_xml.h

@@ -461,7 +461,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		}
 #endif
 #ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/powerbox");
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
 #endif
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
@@ -766,7 +766,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		}
 #endif
 #ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/powerbox");
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
 #endif
 		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
 		FOCUSER_ROTATION_PROPERTY->hidden = false;
