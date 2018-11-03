@@ -369,7 +369,7 @@ const char *dsicmd_lookup_usb_speed(enum DSI_USB_SPEED speed) {
 static unsigned int dsi_get_sysclock_ms() {
 	struct timeval tv;
 	gettimeofday(&tv, 0);
-	return (tv.tv_sec * 1000 + tv.tv_usec/1000);
+	return (unsigned int)(tv.tv_sec * 1000 + tv.tv_usec/1000);
 }
 
 /**
@@ -740,11 +740,11 @@ static int dsicmd_usb_command(dsi_camera_t *dsi, unsigned char *ibuf, int ibuf_l
 	}
 
 	int actual_length;
-	retcode = libusb_bulk_transfer(dsi->handle, 0x01, (unsigned char *) ibuf, ibuf[0], &actual_length, dsi->write_command_timeout);
+	retcode = (int)libusb_bulk_transfer(dsi->handle, 0x01, (unsigned char *) ibuf, ibuf[0], &actual_length, dsi->write_command_timeout);
 	if (retcode < 0)
 		return retcode;
 
-	retcode = libusb_bulk_transfer(dsi->handle, 0x81, (unsigned char *)obuf, obuf_size, &actual_length, dsi->read_command_timeout);
+	retcode = (int)libusb_bulk_transfer(dsi->handle, 0x81, (unsigned char *)obuf, obuf_size, &actual_length, dsi->read_command_timeout);
 	if (retcode < 0)
 		return retcode;
 
@@ -966,7 +966,7 @@ static void dsicmd_set_eeprom_string(dsi_camera_t *dsi, char *buffer, int start,
 	   length as the first byte and are terminated (padded?) with 0xff. */
 	scratch = malloc(length * sizeof(char));
 	memset(scratch, 0xff, length);
-	n = strlen(buffer);
+	n = (int)strlen(buffer);
 	if (n > length-2) {
 		n = length - 2;
 	}
@@ -1645,7 +1645,7 @@ void dsi_load_firmware() {
 	int i;
 
 	// check for uninitialized cameras
-	int cnt = libusb_get_device_list(NULL, &list);
+	int cnt = (int)libusb_get_device_list(NULL, &list);
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
 			if ((desc.idVendor == 0x156c) && (desc.idProduct == 0x0100)) {
@@ -1677,7 +1677,7 @@ int dsi_scan_usb(dsi_device_list devices) {
 	int i;
 
 	// check for initialized cameras
-	int cnt = libusb_get_device_list(NULL, &list);
+	int cnt = (int)libusb_get_device_list(NULL, &list);
 
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
@@ -1712,7 +1712,7 @@ dsi_camera_t *dsi_open_camera(const char *identifier) {
 	char dev_id[20];
 	int i;
 
-	int cnt = libusb_get_device_list(NULL, &list);
+	int cnt = (int)libusb_get_device_list(NULL, &list);
 
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {

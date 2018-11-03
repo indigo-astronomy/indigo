@@ -107,7 +107,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		if (steps_remaining) {
 			PRIVATE_DATA->focuser_timer = indigo_set_timer(device, POLL_TIME, focuser_timer_callback);
 		} else if (PRIVATE_DATA->steps_to_go) {
-			int steps = PRIVATE_DATA->steps_to_go;
+			int steps = (int)PRIVATE_DATA->steps_to_go;
 			if (labs(steps) > MAX_STEPS_AT_ONCE) {
 				int sign = (steps >= 0) ? 1 : -1;
 				PRIVATE_DATA->steps_to_go = steps;
