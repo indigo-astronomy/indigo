@@ -147,6 +147,62 @@ static const char *telescope_state_descr_l[] = {
 };
 
 
+/* Axis state descriptions for (RA axis only first 14 states are valid) */
+static const char *axis_state_descr_s[] = {
+	"STOP",
+	"POSITION",
+	"CA_CLU1",
+	"CA_FAST",
+	"CA_FASTBR",
+	"CA_CLU2",
+	"CA_SLOW",
+	"MO_BR",
+	"MO_CLU1",
+	"MO_FAST",
+	"MO_FASTBR",
+	"MO_CLU2",
+	"MO_SLOW",
+	"MO_SLOWEST",
+	"CENM_SLOWBR",
+	"CENM_CLU3",
+	"CENM_CEN",
+	"CENM_BR",
+	"CENM_CLU4",
+	"CENA_SLOWBR",
+	"CENA_CLU3",
+	"CENA_CEN",
+	"CENA_BR",
+	"CENA_CLU4"
+};
+
+static const char *axis_state_descr_l[] = {
+	"Stopped",
+	"Position regulation",
+	"Clutch before calibration",
+	"Calibration roughly",
+	"Calibration roughly lateral inhibition",
+	"Clutch gently calibration",
+	"Calibration gently",
+	"Move T1 lateral inhibition",
+	"Move T1 clutch",
+	"Move T1",
+	"Move T1 lateral inhibition",
+	"Move T2 clutch",
+	"Move T2",
+	"Move T3",
+	"Manual centering, lateral inhibition",
+	"Manual centering, clutch",
+	"Manual centering, centering",
+	"Manual centering, lateral inhibition",
+	"Manual centering, clutch",
+	"Automatically centering, lateral inhibition",
+	"Automatically centering, clutch",
+	"Automatically centering, centering",
+	"Automatically centering, lateral inhibition",
+	"Automatically centering, clutch"
+};
+
+
 static size_t strncpy_n(char *dest, const char *src, size_t n){
 	size_t i;
 
@@ -243,21 +299,6 @@ int ascol_read(int devfd, char *reply, int len) {
 }
 
 
-int ascol_get_oil_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
-	if ((glst.oil_state < 0) || (glst.oil_state > 5)) return ASCOL_PARAM_ERROR;
-	if (long_descr) *long_descr = (char*)oil_state_descr_l[glst.oil_state];
-	if (short_descr) *short_descr = (char*)oil_state_descr_s[glst.oil_state];
-	return ASCOL_OK;
-}
-
-int ascol_get_telescope_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
-	if ((glst.telescope_state < 0) || (glst.telescope_state > 18)) return ASCOL_PARAM_ERROR;
-	if (long_descr) *long_descr = (char*)telescope_state_descr_l[glst.telescope_state];
-	if (short_descr) *short_descr = (char*)telescope_state_descr_s[glst.telescope_state];
-	return ASCOL_OK;
-}
-
-
 /* Convert ASCOL HHMMSS.SS and DDMMSS.SS format in decimal degrees */
 
 int ascol_dms2dd(double *dd, const char *dms) {
@@ -337,6 +378,43 @@ int ascol_hms2dd(double *dd, const char *hms) {
 	return 0;
 }
 
+
+/* State description functions */
+
+int ascol_get_oil_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
+	if ((glst.oil_state < 0) || (glst.oil_state > 5)) return ASCOL_PARAM_ERROR;
+	if (long_descr) *long_descr = (char*)oil_state_descr_l[glst.oil_state];
+	if (short_descr) *short_descr = (char*)oil_state_descr_s[glst.oil_state];
+	return ASCOL_OK;
+}
+
+
+int ascol_get_telescope_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
+	if ((glst.telescope_state < 0) || (glst.telescope_state > 18)) return ASCOL_PARAM_ERROR;
+	if (long_descr) *long_descr = (char*)telescope_state_descr_l[glst.telescope_state];
+	if (short_descr) *short_descr = (char*)telescope_state_descr_s[glst.telescope_state];
+	return ASCOL_OK;
+}
+
+
+int ascol_get_ra_axis_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
+	/* For RA axis only first 13 states are valid */
+	if ((glst.ra_axis_state < 0) || (glst.ra_axis_state > 13)) return ASCOL_PARAM_ERROR;
+	if (long_descr) *long_descr = (char*)axis_state_descr_l[glst.ra_axis_state];
+	if (short_descr) *short_descr = (char*)axis_state_descr_s[glst.ra_axis_state];
+	return ASCOL_OK;
+}
+
+
+int ascol_get_de_axis_state(ascol_glst_t glst, char **long_descr, char **short_descr) {
+	if ((glst.de_axis_state < 0) || (glst.de_axis_state > 23)) return ASCOL_PARAM_ERROR;
+	if (long_descr) *long_descr = (char*)axis_state_descr_l[glst.de_axis_state];
+	if (short_descr) *short_descr = (char*)axis_state_descr_s[glst.de_axis_state];
+	return ASCOL_OK;
+}
+
+
+/* COMMANDS TO ASCOL CONTROLER */
 /* Most commands are mapped to the following functions */
 
 int ascol_0_param_cmd(int devfd, char *cmd_name) {
