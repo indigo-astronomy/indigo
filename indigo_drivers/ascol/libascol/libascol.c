@@ -594,15 +594,15 @@ int ascol_check_alarm(ascol_glst_t glst, int alarm, char **descr, int *state) {
 /* Most commands are mapped to the following functions */
 
 int ascol_0_param_cmd(int devfd, char *cmd_name) {
-	char cmd[80] = {0};
-	char resp[80] = {0};
+	char cmd[ASCOL_MSG_LEN] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 
-	snprintf(cmd, 80, "%s\n", cmd_name);
+	snprintf(cmd, ASCOL_MSG_LEN, "%s\n", cmd_name);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -612,15 +612,15 @@ int ascol_0_param_cmd(int devfd, char *cmd_name) {
 }
 
 int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param) {
-	char cmd[80] = {0};
-	char resp[80] = {0};
+	char cmd[ASCOL_MSG_LEN] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 
-	snprintf(cmd, 80, "%s %d\n", cmd_name, param);
+	snprintf(cmd, ASCOL_MSG_LEN, "%s %d\n", cmd_name, param);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -630,15 +630,15 @@ int ascol_1_int_param_cmd(int devfd, char *cmd_name, int param) {
 }
 
 int ascol_1_double_param_cmd(int devfd, char *cmd_name, double param, int precision) {
-	char cmd[80] = {0};
-	char resp[80] = {0};
+	char cmd[ASCOL_MSG_LEN] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 
-	snprintf(cmd, 80, "%s %.*f\n", cmd_name, precision, param);
+	snprintf(cmd, ASCOL_MSG_LEN, "%s %.*f\n", cmd_name, precision, param);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -649,15 +649,15 @@ int ascol_1_double_param_cmd(int devfd, char *cmd_name, double param, int precis
 
 
 int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2) {
-	char cmd[80] = {0};
-	char resp[80] = {0};
+	char cmd[ASCOL_MSG_LEN] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 
-	snprintf(cmd, 80, "%s %.*f %.*f\n", cmd_name, precision1, param1, precision2, param2);
+	snprintf(cmd, ASCOL_MSG_LEN, "%s %.*f %.*f\n", cmd_name, precision1, param1, precision2, param2);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -668,15 +668,15 @@ int ascol_2_double_param_cmd(int devfd, char *cmd_name, double param1, int preci
 
 
 int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int precision1, double param2, int precision2, int east) {
-	char cmd[80] = {0};
-	char resp[80] = {0};
+	char cmd[ASCOL_MSG_LEN] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 
-	snprintf(cmd, 80, "%s %.*f %.*f %d\n", cmd_name, precision1, param1, precision2, param2, east);
+	snprintf(cmd, ASCOL_MSG_LEN, "%s %.*f %.*f %d\n", cmd_name, precision1, param1, precision2, param2, east);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -687,16 +687,16 @@ int ascol_2_double_1_int_param_cmd(int devfd, char *cmd_name, double param1, int
 
 
 int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val) {
-	char cmd[80] = {0};
-	char resp[80] = {0};
+	char cmd[ASCOL_MSG_LEN] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 	double buf;
 
-	snprintf(cmd, 80, "%s\n", cmd_name);
+	snprintf(cmd, ASCOL_MSG_LEN, "%s\n", cmd_name);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -711,17 +711,17 @@ int ascol_1_double_return_cmd(int devfd, char *cmd_name, double *val) {
 
 
 int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *val2) {
-	char cmd[80] = {0};
-	char resp[80] = {0};
+	char cmd[ASCOL_MSG_LEN] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 	double buf1;
 	double buf2;
 
-	snprintf(cmd, 80, "%s\n", cmd_name);
+	snprintf(cmd, ASCOL_MSG_LEN, "%s\n", cmd_name);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -740,16 +740,16 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 
 int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 	const char cmd[] = "TRRD\n";
-	char resp[80] = {0};
-	char ra_s[80];
-	char de_s[80];
+	char resp[ASCOL_MSG_LEN] = {0};
+	char ra_s[ASCOL_MSG_LEN];
+	char de_s[ASCOL_MSG_LEN];
 	int east_c;
 
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -772,7 +772,7 @@ int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 
 int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 	const char cmd[] = "OIMV\n";
-	char resp[180] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 
 	if (!oimv) return ASCOL_PARAM_ERROR;
 
@@ -780,7 +780,7 @@ int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 180);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -802,15 +802,15 @@ int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 
 
 int ascol_GLLG(int devfd, char *password) {
-	char cmd[80] = {0};
-	char resp[80] = {0};
+	char cmd[ASCOL_MSG_LEN] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 
 	sprintf(cmd, "GLLG %s\n", password);
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -822,14 +822,14 @@ int ascol_GLLG(int devfd, char *password) {
 
 int ascol_GLUT(int devfd, double *ut) {
 	const char cmd[] = "GLUT\n";
-	char resp[80] = {0};
-	char ut_s[80];
+	char resp[ASCOL_MSG_LEN] = {0};
+	char ut_s[ASCOL_MSG_LEN];
 
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 80);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -849,7 +849,7 @@ int ascol_GLUT(int devfd, double *ut) {
 
 int ascol_GLME(int devfd, ascol_glme_t *glme) {
 	const char cmd[] = "GLME\n";
-	char resp[180] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 
 	if (!glme) return ASCOL_PARAM_ERROR;
 
@@ -857,7 +857,7 @@ int ascol_GLME(int devfd, ascol_glme_t *glme) {
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 180);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 
@@ -878,7 +878,7 @@ int ascol_GLME(int devfd, ascol_glme_t *glme) {
 
 int ascol_GLST(int devfd, ascol_glst_t *glst) {
 	const char cmd[] = "GLST\n";
-	char resp[180] = {0};
+	char resp[ASCOL_MSG_LEN] = {0};
 
 	if (!glst) return ASCOL_PARAM_ERROR;
 
@@ -886,7 +886,7 @@ int ascol_GLST(int devfd, ascol_glst_t *glst) {
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
 
-	res = ascol_read(devfd, resp, 180);
+	res = ascol_read(devfd, resp, ASCOL_MSG_LEN);
 	ASCOL_DEBUG_READ(res, resp);
 	if (res <= 0) return ASCOL_READ_ERROR;
 

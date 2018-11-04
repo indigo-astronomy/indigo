@@ -6,13 +6,12 @@
 #if !defined(__LIBASCOL_H)
 #define __LIBASCOL_H
 
-#define DEFAULT_PORT 2001
-
 #include<string.h>
 #include<unistd.h>
 #include<stdint.h>
 
-#define ASCOL_LEN            (80)
+#define DEFAULT_PORT       (2001)
+#define ASCOL_MSG_LEN       (100)
 
 #define ASCOL_OFF             (0)
 #define ASCOL_ON              (1)
