@@ -280,7 +280,6 @@ static const char *alarm_descr[] = {
 	"Mercurial switch +8 degrees",
 	"Mercurial switch +/-4 degrees",
 	"Limiting of hour axis I -180 till 330 degrees absolute sensor",
-
 	/* Bank 1 */
 	"Limiting of hour axis I -180 till 330 degrees relative sensor",
 	"Limiting of hour axis – SH3",
@@ -298,7 +297,6 @@ static const char *alarm_descr[] = {
 	"Error: motor for fast move of hour axis",
 	"Error: motor for slow move of hour axis",
 	"Error: motor for fast move of declination axis",
-
 	/* Bank 2 */
 	"Error: motor for slow move of declination axis",
 	"Bridge is not in parking position",
@@ -316,7 +314,6 @@ static const char *alarm_descr[] = {
 	"", /* unised */
 	"", /* unised */
 	"Low level of oil in tank IN",
-
 	/* Bank 3 */
 	"Low level of oil in tank OUT",
 	"Low pressure left side of bearing",
@@ -334,7 +331,6 @@ static const char *alarm_descr[] = {
 	"", /* unised */
 	"", /* unised */
 	"", /* unised */
-
 	/* Bank 4 */
 	"Low pressure left side of bearing segment 1",
 	"Low pressure left side of bearing segment 2",
@@ -583,7 +579,8 @@ int ascol_get_slit_flap_state(uint16_t state, char **long_descr, char **short_de
 	return ASCOL_OK;
 }
 
-/* Check alarms of set */
+
+/* Check alarms if set */
 
 int ascol_check_alarm(ascol_glst_t glst, int alarm, char **descr, int *state) {
 	if ((alarm < 0) || (alarm > 73)) return ASCOL_PARAM_ERROR;
@@ -738,26 +735,8 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 	return ASCOL_OK;
 }
 
+
 /* Comands that require output manipulation and can not be mapped by the functions above */
-
-int ascol_GLLG(int devfd, char *password) {
-	char cmd[80] = {0};
-	char resp[80] = {0};
-
-	sprintf(cmd, "GLLG %s\n", password);
-	int res = ascol_write(devfd, cmd);
-	ASCOL_DEBUG_WRITE(res, cmd);
-	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
-
-	res = ascol_read(devfd, resp, 80);
-	ASCOL_DEBUG_READ(res, resp);
-	if (res <= 0) return ASCOL_READ_ERROR;
-
-	if (strcmp("1",resp)) return ASCOL_COMMAND_ERROR;
-
-	return ASCOL_OK;
-}
-
 
 int ascol_TRRD(int devfd, double *ra, double *de, char *east) {
 	const char cmd[] = "TRRD\n";
@@ -818,6 +797,52 @@ int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 	oimv->unit = (char **)oimv_units;
 
 	ASCOL_DEBUG("%s()=%2d <=> ascol_oimv_t\n", __FUNCTION__, ASCOL_OK);
+	return ASCOL_OK;
+}
+
+
+int ascol_GLLG(int devfd, char *password) {
+	char cmd[80] = {0};
+	char resp[80] = {0};
+
+	sprintf(cmd, "GLLG %s\n", password);
+	int res = ascol_write(devfd, cmd);
+	ASCOL_DEBUG_WRITE(res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = ascol_read(devfd, resp, 80);
+	ASCOL_DEBUG_READ(res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	if (strcmp("1",resp)) return ASCOL_COMMAND_ERROR;
+
+	return ASCOL_OK;
+}
+
+
+int ascol_GLUT(int devfd, double *ut) {
+	const char cmd[] = "GLUT\n";
+	char resp[80] = {0};
+	char ut_s[80];
+
+	int res = ascol_write(devfd, cmd);
+	ASCOL_DEBUG_WRITE(res, cmd);
+	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
+
+	res = ascol_read(devfd, resp, 80);
+	ASCOL_DEBUG_READ(res, resp);
+	if (res <= 0) return ASCOL_READ_ERROR;
+
+	res = sscanf(resp, "%s", ut_s);
+	if (res != 1) return ASCOL_RESPONCE_ERROR;
+
+	res = 0;
+	if (ut) res = ascol_hms2dd(ut, ut_s);
+	if (res) return ASCOL_RESPONCE_ERROR;
+
+	if (*ut != 0) *ut /= 15.0; /* convert back to hours */
+
+	ASCOL_DEBUG("%s()=%2d <=> %lf\n", __FUNCTION__, ASCOL_OK, *ut);
 	return ASCOL_OK;
 }
 
