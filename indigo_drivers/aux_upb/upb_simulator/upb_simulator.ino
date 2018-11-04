@@ -37,7 +37,7 @@ int backlash = 100;
 int speed = 400;
 
 void setup() {
-  Serial.begin(19200);
+  Serial.begin(9600);
   Serial.setTimeout(1000);
   while (!Serial)
     ;
@@ -95,6 +95,8 @@ void loop() {
     Serial.print(power3 ? '1' : '0');
     Serial.print(power4 ? '1' : '0');
     Serial.print(':');
+		Serial.print(hub ? '0' : '1');
+		Serial.print(':');
     Serial.print(power5);
     Serial.print(':');
     Serial.print(power6);
