@@ -38,6 +38,11 @@ int main() {
 		printf("OIMV[%d] = %lf %s (%s)\n", i, oimv.value[i], oimv.unit[i], oimv.description[i]);
 	}
 
+	double ut;
+	printf("\n===== ascol_GLUT() =====\n");
+	res = ascol_GLUT(fd, &ut);
+	printf("GLUT = %2d UT: %lf\n", res, ut);
+
 	ascol_glst_t glst;
 	printf("\n===== ascol_glst() =====\n");
 	res = ascol_GLST(fd, &glst);

@@ -170,6 +170,7 @@ DRIVERS=\
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/dome_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*))) \
+	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/system_*))) \
 	$(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/aux_*)))
 
 DRIVER_LIBS=$(PLATFORM_DRIVER_LIBS)\
@@ -180,6 +181,7 @@ DRIVER_LIBS=$(PLATFORM_DRIVER_LIBS)\
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/dome_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*)))) \
+	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/system_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/aux_*)))) \
 	$(addsuffix .a, $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/agent_*))))
 
@@ -191,6 +193,7 @@ DRIVER_SOLIBS=$(PLATFORM_DRIVER_SOLIBS)\
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/gps_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/dome_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/guider_*)))) \
+	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/system_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/aux_*)))) \
 	$(addsuffix .$(SOEXT), $(addprefix $(BUILD_DRIVERS)/indigo_, $(notdir $(wildcard indigo_drivers/agent_*))))
 
@@ -1580,6 +1583,21 @@ $(BUILD_DRIVERS)/indigo_focuser_optec: indigo_drivers/focuser_optec/indigo_focus
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
 
 $(BUILD_DRIVERS)/indigo_focuser_optec.$(SOEXT): indigo_drivers/focuser_optec/indigo_focuser_optec.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#-------------------------------------------------------------------
+#
+#	Build ASCOL system driver
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_system_ascol.a: indigo_drivers/system_ascol/indigo_system_ascol.o indigo_drivers/system_ascol/libascol/libascol.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_system_ascol: indigo_drivers/system_ascol/indigo_system_ascol_main.o $(BUILD_DRIVERS)/indigo_system_ascol.a
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+
+$(BUILD_DRIVERS)/indigo_system_ascol.$(SOEXT): indigo_drivers/system_ascol/indigo_system_ascol.o indigo_drivers/system_ascol/libascol/libascol.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 #---------------------------------------------------------------------
