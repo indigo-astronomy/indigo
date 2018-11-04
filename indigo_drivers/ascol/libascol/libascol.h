@@ -207,6 +207,7 @@ int ascol_2_double_return_cmd(int devfd, char *cmd_name, double *val1, double *v
 int ascol_GLLG(int devfd, char *password);
 int ascol_GLME(int devfd, ascol_glme_t *glme);
 int ascol_GLST(int devfd, ascol_glst_t *glst);
+int ascol_GLUT(int devfd, double *ut);
 
 /* Telescope Commands */
 #define ascol_TEON(devfd, on) (ascol_1_int_param_cmd(devfd, "TEON", on))
