@@ -15,7 +15,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <libascol.h>
+#include "libascol.h"
 
 int ascol_debug = 0;
 #define ASCOL_DEBUG(...) (ascol_debug && printf(__VA_ARGS__))
