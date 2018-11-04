@@ -72,7 +72,7 @@ typedef struct {
 	int slew_rate;
 	int st4_ra_rate, st4_dec_rate;
 	int vendor_id;
-	pthread_mutex_t serial_mutex;
+	pthread_mutex_t net_mutex;
 	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
 	int guide_rate;
 	indigo_property *command_guide_rate_property;
@@ -83,11 +83,15 @@ typedef struct {
 static bool mount_open(indigo_device *device) {
 	if (device->is_connected) return false;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
-		int dev_id = ascol_open(DEVICE_PORT_ITEM->text.value,2000);
+		char host[255];
+		int port;
+		ascol_parse_devname(DEVICE_PORT_ITEM->text.value, host, &port);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "host = %s, port = %d", host, port);
+		int dev_id = ascol_open(host, port);
 		if (dev_id == -1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_open(%s) = %d", DEVICE_PORT_ITEM->text.value, dev_id);
 			PRIVATE_DATA->count_open--;
 			return false;
@@ -95,21 +99,21 @@ static bool mount_open(indigo_device *device) {
 			PRIVATE_DATA->dev_id = dev_id;
 		}
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	return true;
 }
 
 
 static void mount_handle_coordinates(indigo_device *device) {
 	int res = RC_OK;
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 
 	/* return if mount not aligned */
 	int aligned = 0; //tc_check_align(PRIVATE_DATA->dev_id);
 	if (aligned < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_check_align(%d) = %d", PRIVATE_DATA->dev_id, res);
 	} else if (aligned == 0) {
-		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_coordinates(device, "Mount is not aligned, please align it first.");
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Mount is not aligned, please align it first.");
@@ -133,7 +137,7 @@ static void mount_handle_coordinates(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_sync_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	indigo_update_coordinates(device, NULL);
 }
 
@@ -142,7 +146,7 @@ static void mount_handle_tracking(indigo_device *device) {
 	int res = RC_OK;
 
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		// res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
 		if (res != RC_OK) {
@@ -156,7 +160,7 @@ static void mount_handle_tracking(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
 
@@ -185,7 +189,7 @@ static void mount_handle_motion_ns(indigo_device *device) {
 
 	if (PRIVATE_DATA->slew_rate == 0) mount_handle_slew_rate(device);
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if(MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		// res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -196,7 +200,7 @@ static void mount_handle_motion_ns(indigo_device *device) {
 		// res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
@@ -211,7 +215,7 @@ static void mount_handle_motion_ne(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	int res = RC_OK;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if(MOUNT_MOTION_EAST_ITEM->sw.value) {
 		// res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -222,7 +226,7 @@ static void mount_handle_motion_ne(indigo_device *device) {
 		// res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
@@ -237,9 +241,9 @@ static bool mount_set_location(indigo_device *device) {
 	int res;
 	double lon = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
 	if (lon > 180) lon -= 360.0;
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	// res = tc_set_location(PRIVATE_DATA->dev_id, lon, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = %d", PRIVATE_DATA->dev_id, res);
 		return false;
@@ -257,7 +261,7 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 
 	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	/* reset only if input value is changed - better begaviour for Sky-Watcher as there are no separate RA and DEC rates */
 	if ((int)(MOUNT_GUIDE_RATE_RA_ITEM->number.value) != PRIVATE_DATA->st4_ra_rate) {
 		// res = tc_set_autoguide_rate(dev_id, TC_AXIS_RA, (int)(MOUNT_GUIDE_RATE_RA_ITEM->number.value)-1);
@@ -295,7 +299,7 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 		MOUNT_GUIDE_RATE_DEC_ITEM->number.value = st4_dec_rate + offset;
 	}
 
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 
 	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 }
@@ -310,10 +314,10 @@ static void mount_handle_utc(indigo_device *device) {
 		return;
 	}
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	/* set mount time to UTC */
 	int res = 0; // tc_set_time(PRIVATE_DATA->dev_id, utc_time, atoi(MOUNT_UTC_OFFEST_ITEM->text.value), 0);
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -334,10 +338,10 @@ static bool mount_set_utc_from_host(indigo_device *device) {
 		return false;
 	}
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	/* set mount time to UTC */
 	int res = 0; // tc_set_time(PRIVATE_DATA->dev_id, utc_time, 0, 0);
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -348,7 +352,7 @@ static bool mount_set_utc_from_host(indigo_device *device) {
 
 
 static bool mount_cancel_slew(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 
 	int res = 0; // tc_goto_cancel(PRIVATE_DATA->dev_id);
 	if (res != RC_OK) {
@@ -371,7 +375,7 @@ static bool mount_cancel_slew(indigo_device *device) {
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted.");
 
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	return true;
 }
 
@@ -379,12 +383,12 @@ static bool mount_cancel_slew(indigo_device *device) {
 static void mount_close(indigo_device *device) {
 	if (!device->is_connected) return;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		ascol_close(PRIVATE_DATA->dev_id);
 		PRIVATE_DATA->dev_id = -1;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 }
 
 
@@ -394,7 +398,7 @@ static void park_timer_callback(indigo_device *device) {
 
 	if (dev_id < 0) return;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if ( 0 /* tc_goto_in_progress(dev_id) */) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 		PRIVATE_DATA->park_in_progress = true;
@@ -410,7 +414,7 @@ static void park_timer_callback(indigo_device *device) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->park_in_progress = false;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 
 	if (PRIVATE_DATA->park_in_progress) {
 		indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->park_timer);
@@ -428,7 +432,7 @@ static void position_timer_callback(indigo_device *device) {
 
 	if (dev_id < 0) return;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if ( 0 /* tc_goto_in_progress(dev_id) */) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
@@ -455,7 +459,7 @@ static void position_timer_callback(indigo_device *device) {
 	} else {
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
@@ -475,7 +479,7 @@ static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_mount_attach(device, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->net_mutex, NULL);
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
@@ -483,7 +487,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
-		DEVICE_PORTS_PROPERTY->hidden = false;
+		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
@@ -616,9 +620,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->parked = true;  /* a but premature but need to cancel other movements from now on until unparked */
 			PRIVATE_DATA->park_in_progress = true;
 
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 			int res = 0; //tc_goto_azalt_p(PRIVATE_DATA->dev_id, 0, 90);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 			if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_azalt_p(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
@@ -630,9 +634,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparking...");
 
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 			int res = 0; //tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 			if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res);
 			} else {
@@ -772,9 +776,9 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	int res;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	//res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, 0); // STOP move
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
 	}
@@ -791,9 +795,9 @@ static void guider_timer_callback_dec(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	int res;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	//res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", dev_id, res);
 	}
@@ -875,9 +879,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 			int res = 0; //tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 			if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
@@ -886,9 +890,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		} else {
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 				int res = 0; //tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_DE, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 				if (res != RC_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
 				}
@@ -905,9 +909,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 			int res = 0; //tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->guide_rate);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 			if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
@@ -916,9 +920,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		} else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 				int res = 0; //tc_slew_fixed(PRIVATE_DATA->dev_id, TC_AXIS_RA, TC_DIR_NEGATIVE, PRIVATE_DATA->guide_rate);
-				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 				if (res != RC_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d", PRIVATE_DATA->dev_id, res);
 				}
