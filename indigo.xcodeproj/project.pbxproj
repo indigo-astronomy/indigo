@@ -318,6 +318,8 @@
 		9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9EA6AF1DBFA30600E11841 /* indigo_guider_driver.h */; };
 		9D9EA6B61DBFA30600E11841 /* indigo_wheel_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9EA6B01DBFA30600E11841 /* indigo_wheel_driver.c */; };
 		9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9EA6B11DBFA30600E11841 /* indigo_wheel_driver.h */; };
+		9DA451CE21908CBC00818B58 /* indigo_agent_imager.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DA451CC21908CBC00818B58 /* indigo_agent_imager.c */; };
+		9DA451CF21908CBC00818B58 /* indigo_agent_imager.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DA451CD21908CBC00818B58 /* indigo_agent_imager.h */; };
 		9DAC59CF1DC0A7B200AE410D /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9EA6A81DBE21DE00E11841 /* libatik.a */; };
 		9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */; };
 		9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAC59D21DC0A8AD00AE410D /* indigo_focuser_driver.h */; };
@@ -1594,6 +1596,9 @@
 		9D9EA6AF1DBFA30600E11841 /* indigo_guider_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_driver.h; sourceTree = "<group>"; };
 		9D9EA6B01DBFA30600E11841 /* indigo_wheel_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_driver.c; sourceTree = "<group>"; };
 		9D9EA6B11DBFA30600E11841 /* indigo_wheel_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_driver.h; sourceTree = "<group>"; };
+		9DA451CB21908CBC00818B58 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DA451CC21908CBC00818B58 /* indigo_agent_imager.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_imager.c; sourceTree = "<group>"; };
+		9DA451CD21908CBC00818B58 /* indigo_agent_imager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_imager.h; sourceTree = "<group>"; };
 		9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "build/lib/libusb-1.0.0.dylib"; sourceTree = SOURCE_ROOT; };
 		9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_driver.c; sourceTree = "<group>"; };
 		9DAC59D21DC0A8AD00AE410D /* indigo_focuser_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_driver.h; sourceTree = "<group>"; };
@@ -2796,6 +2801,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9DA451C6219082BE00818B58 /* agent_imager */,
 				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
@@ -3911,6 +3917,16 @@
 			path = libatik;
 			sourceTree = "<group>";
 		};
+		9DA451C6219082BE00818B58 /* agent_imager */ = {
+			isa = PBXGroup;
+			children = (
+				9DA451CB21908CBC00818B58 /* README.md */,
+				9DA451CD21908CBC00818B58 /* indigo_agent_imager.h */,
+				9DA451CC21908CBC00818B58 /* indigo_agent_imager.c */,
+			);
+			path = agent_imager;
+			sourceTree = "<group>";
+		};
 		9DAD521721246C17002FCC79 /* mount_synscan */ = {
 			isa = PBXGroup;
 			children = (
@@ -4148,6 +4164,7 @@
 				59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */,
 				595F2924211E211200380EF4 /* DDHidDevice.h in Headers */,
 				9DAD522421246C18002FCC79 /* indigo_mount_synscan_driver.h in Headers */,
+				9DA451CF21908CBC00818B58 /* indigo_agent_imager.h in Headers */,
 				9D59D62720D3F829009EA8FF /* CamRegMirror.h in Headers */,
 				9DB918091DFEA42E00678721 /* indigo_io.h in Headers */,
 				59DD69D61FC1DC4900AEF0DF /* indigo_dome_simulator.h in Headers */,
@@ -4558,6 +4575,7 @@
 				9D59D5E320D3F829009EA8FF /* helpers.cpp in Sources */,
 				9D4F4742215A4447006110FD /* indigo_focuser_moonlite.c in Sources */,
 				9D59D66620D3F82A009EA8FF /* AltaEthernetIo.cpp in Sources */,
+				9DA451CE21908CBC00818B58 /* indigo_agent_imager.c in Sources */,
 				59C8E7C31DBBB05500AA3F0A /* indigo_ccd_ssag.c in Sources */,
 				5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */,
 				9D59D65020D3F829009EA8FF /* parseCfgTabDelim.cpp in Sources */,
