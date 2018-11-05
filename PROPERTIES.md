@@ -212,19 +212,19 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 <tr><td></td><td></td><td></td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
 
 <tr><td>AUX_HEATER_OUTLET</td><td>number</td><td>no</td><td>no</td><td>OUTLET_1</td><td>yes</td><td>Set heater outlets power</td></tr>
-<tr><td></td><td></td><td></td><td>no</td><td>OUTLET_2</td><td>no</td><td></td></tr>
-<tr><td></td><td></td><td></td><td>no</td><td>OUTLET_3</td><td>no</td><td></td></tr>
-<tr><td></td><td></td><td></td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OUTLET_2</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OUTLET_3</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OUTLET_4</td><td>no</td><td></td></tr>
 
 <tr><td>AUX_HEATER_OUTLET_STATE</td><td>light</td><td>yes</td><td>no</td><td>OUTLET_1</td><td>yes</td><td>Heater outlets state (IDLE = unused, OK = used, ALERT = over-current etc.)</td></tr>
-<tr><td></td><td></td><td></td><td>no</td><td>OUTLET_2</td><td>no</td><td></td></tr>
-<tr><td></td><td></td><td></td><td>no</td><td>OUTLET_3</td><td>no</td><td></td></tr>
-<tr><td></td><td></td><td></td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OUTLET_2</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OUTLET_3</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OUTLET_4</td><td>no</td><td></td></tr>
 
 <tr><td>AUX_HEATER_OUTLET_CURRENT</td><td>number</td><td>yes</td><td>no</td><td>OUTLET_1</td><td>yes</td><td>Heater outlets current</td></tr>
-<tr><td></td><td></td><td></td><td>no</td><td>OUTLET_2</td><td>no</td><td></td></tr>
-<tr><td></td><td></td><td></td><td>no</td><td>OUTLET_3</td><td>no</td><td></td></tr>
-<tr><td></td><td></td><td></td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OUTLET_2</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OUTLET_3</td><td>no</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>OUTLET_4</td><td>no</td><td></td></tr>
 
 <tr><td>AUX_DEW_CONTROL</td><td>switch</td><td>no</td><td>no</td><td>MANUAL</td><td>yes</td><td>Use AUX_HEATER_OUTLET values</td></tr>
 <tr><td></td><td></td><td></td><td></td><td>AUTOMATIC</td><td>yes</td><td>Set power automatically</td></tr>
