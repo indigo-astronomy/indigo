@@ -141,7 +141,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
+			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "usbserial")) {
 				strncpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name, INDIGO_VALUE_SIZE);
 				break;
 			}

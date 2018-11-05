@@ -912,6 +912,7 @@
 		59CC779C1F27BCF2003AD2DB /* indigo_ica_ptp_sony.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_sony.m; sourceTree = "<group>"; };
 		59CD7310218E418900F646D4 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_aux_upb.rules"; sourceTree = "<group>"; };
+		59D1EA032190B907001901BE /* indigo_dome_azimuth.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_azimuth.h; sourceTree = "<group>"; };
 		59D381A71D95926E00E87393 /* indigo_bus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = indigo_bus.h; path = indigo_libs/indigo_bus.h; sourceTree = SOURCE_ROOT; wrapsLines = 0; };
 		59D381A81D9592A400E87393 /* indigo_bus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_bus.c; path = indigo_libs/indigo_bus.c; sourceTree = SOURCE_ROOT; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator.c; sourceTree = "<group>"; };
@@ -2769,6 +2770,7 @@
 				59CBD4781FAF6C19000DAFDB /* indigo_gps_driver.c */,
 				59DD69CD1FC1D30300AEF0DF /* indigo_dome_driver.h */,
 				59DD69CC1FC1D30300AEF0DF /* indigo_dome_driver.c */,
+				59D1EA032190B907001901BE /* indigo_dome_azimuth.h */,
 				594122A01FD2DE5900D792FF /* indigo_dome_azimuth.c */,
 				595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */,
 				595AA1D01FC5EEFE00350E7B /* indigo_agent.c */,
