@@ -1500,6 +1500,18 @@ $(BUILD_DRIVERS)/indigo_agent_snoop.$(SOEXT): indigo_drivers/agent_snoop/indigo_
 
 #---------------------------------------------------------------------
 #
+#	Build Imager agent
+#
+#---------------------------------------------------------------------
+
+$(BUILD_DRIVERS)/indigo_agent_imager.a: indigo_drivers/agent_imager/indigo_agent_imager.o
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_DRIVERS)/indigo_agent_imager.$(SOEXT): indigo_drivers/agent_imager/indigo_agent_imager.o
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
+#---------------------------------------------------------------------
+#
 #	Build LX200 server agent
 #
 #---------------------------------------------------------------------
