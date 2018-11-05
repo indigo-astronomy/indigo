@@ -23,9 +23,9 @@ properties are first of all defined memory structures which are, if needed, mapp
 <tr><td></td><td></td><td></td><td></td><td>DEVICE_SERIAL_NUMBER</td><td>no</td><td></td></tr>
 <tr><td>SIMULATION</td><td>switch</td><td>no</td><td>no</td><td>ENABLED</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>DISABLED</td><td>yes</td><td></td></tr>
-<tr><td>CONFIG</td><td>switch</td><td>no</td><td>yes</td><td>LOAD</td><td>yes</td><td>DEFAULT is not implemented by INDIGO yet.</td></tr>
+<tr><td>CONFIG</td><td>switch</td><td>no</td><td>yes</td><td>LOAD</td><td>yes</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td>SAVE</td><td>yes</td><td></td></tr>
-<tr><td></td><td></td><td></td><td></td><td>DEFAULT</td><td>yes</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>REMOVE</td><td>yes</td><td></td></tr>
 <tr><td>PROFILE</td><td>switch</td><td>no</td><td>yes</td><td>PROFILE_0,...</td><td>yes</td><td>Select the profile number for subsequent CONFIG operation</td></tr>
 <tr><td>DEVICE_PORT</td><td>text</td><td>no</td><td>no</td><td>PORT</td><td>no</td><td>Either device path like "/dev/tty0" or URL like "lx200://host:port".</td></tr>
 <tr><td>DEVICE_PORTS</td><td>switch</td><td>no</td><td>no</td><td>valid serial port name</td><td></td><td>When selected, it is copied to DEVICE_PORT property.</td></tr>
@@ -110,9 +110,11 @@ Properties are implemented by wheel driver base class in [indigo_wheel_driver.c]
 <tr><td>FOCUSER_STEPS</td><td>number</td><td>no</td><td>yes</td><td>STEPS</td><td>yes</td><td></td></tr>
 <tr><td>FOCUSER_POSITION</td><td>number</td><td></td><td>no</td><td>POSITION</td><td>yes</td><td>It depends on hardware if it is undefined, read-only or read-write.</td></tr>
 <tr><td>FOCUSER_ABORT_MOTION</td><td>switch</td><td>no</td><td>yes</td><td>ABORT_MOTION</td><td>yes</td><td></td></tr>
-<tr><td>FOCUSER_BACKLASH</td><td>number</td><td>no</td><td>no</td><td>BACKLASH</td><td>yes</td><td></td></tr>
 <tr><td>FOCUSER_TEMPERATURE</td><td>number</td><td>no</td><td>no</td><td>TEMPERATURE</td><td>yes</td><td></td></tr>
-<tr><td>FOCUSER_COMPENSATION</td><td>number</td><td>no</td><td>no</td><td>COMPENSATION</td><td>yes</td><td></td></tr>
+<tr><td>FOCUSER_BACKLASH</td><td>number</td><td>no</td><td>no</td><td>BACKLASH</td><td>yes</td><td>Mechanical backlash compensation</td></tr>
+<tr><td>FOCUSER_COMPENSATION</td><td>number</td><td>no</td><td>no</td><td>COMPENSATION</td><td>yes</td><td>Temperature compensation (if FOCUSER_MODE.AUTOMATIC is set</td></tr>
+<tr><td>FOCUSER_MODE</td><td>switch</td><td>no</td><td>no</td><td>MANUAL</td><td>yes</td><td>Manual mode</td></tr>
+<tr><td></td><td></td><td></td><td></td><td>AUTOMATIC</td><td>yes</td><td>Temperature compensated mode</td></tr>
 </table>
 
 
@@ -189,7 +191,7 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 
 Properties are implemented by guider driver base class in [indigo_guider_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_guider_driver.c).
 
-## Generic properties
+## Auxiliary properties
 
 To be used by auxiliary devices like powerboxes, weather stations, etc.
 
