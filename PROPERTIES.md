@@ -188,3 +188,51 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 
 
 Properties are implemented by guider driver base class in [indigo_guider_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_guider_driver.c).
+
+## Generic properties
+
+To be used by auxiliary devices like powerboxes, weather stations, etc.
+
+<table>
+<tr><th colspan='4'>Property</th><th colspan='2'>Items</th><th>Comments</th></tr>
+<tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
+<tr><td>AUX_POWER_OUTLET</td><td>number</td><td>no</td><td>no</td><td>OUTLET_1</td><td>yes</td><td>Enable power outlets</td></tr>
+<tr><td></td><td>switch</td><td>no</td><td>no</td><td>OUTLET_2</td><td>no</td><td></td></tr>
+<tr><td></td><td>switch</td><td>no</td><td>no</td><td>OUTLET_3</td><td>no</td><td></td></tr>
+<tr><td></td><td>switch</td><td>no</td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
+
+<tr><td>AUX_POWER_OUTLET_STATE</td><td>light</td><td>yes</td><td>no</td><td>OUTLET_1</td><td>yes</td><td>Power outlets state (IDLE = unused, OK = used, ALERT = over-current etc.)</td></tr>
+<tr><td></td><td>light</td><td>yes</td><td>no</td><td>OUTLET_2</td><td>no</td><td></td></tr>
+<tr><td></td><td>light</td><td>yes</td><td>no</td><td>OUTLET_3</td><td>no</td><td></td></tr>
+<tr><td></td><td>light</td><td>yes</td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
+
+<tr><td>AUX_POWER_OUTLET_CURRENT</td><td>number</td><td>yes</td><td>no</td><td>OUTLET_1</td><td>yes</td><td>Power outlets current</td></tr>
+<tr><td></td><td>number</td><td>yes</td><td>no</td><td>OUTLET_2</td><td>no</td><td></td></tr>
+<tr><td></td><td>number</td><td>yes</td><td>no</td><td>OUTLET_3</td><td>no</td><td></td></tr>
+<tr><td></td><td>number</td><td>yes</td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
+
+<tr><td>AUX_HEATER_OUTLET</td><td>number</td><td>no</td><td>no</td><td>OUTLET_1</td><td>yes</td><td>Set heater outlets power</td></tr>
+<tr><td></td><td>number</td><td>no</td><td>no</td><td>OUTLET_2</td><td>no</td><td></td></tr>
+<tr><td></td><td>number</td><td>no</td><td>no</td><td>OUTLET_3</td><td>no</td><td></td></tr>
+<tr><td></td><td>number</td><td>no</td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
+
+<tr><td>AUX_HEATER_OUTLET_STATE</td><td>light</td><td>yes</td><td>no</td><td>OUTLET_1</td><td>yes</td><td>Heater outlets state (IDLE = unused, OK = used, ALERT = over-current etc.)</td></tr>
+<tr><td></td><td>light</td><td>yes</td><td>no</td><td>OUTLET_2</td><td>no</td><td></td></tr>
+<tr><td></td><td>light</td><td>yes</td><td>no</td><td>OUTLET_3</td><td>no</td><td></td></tr>
+<tr><td></td><td>light</td><td>yes</td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
+
+<tr><td>AUX_HEATER_OUTLET_CURRENT</td><td>number</td><td>yes</td><td>no</td><td>OUTLET_1</td><td>yes</td><td>Heater outlets current</td></tr>
+<tr><td></td><td>number</td><td>yes</td><td>no</td><td>OUTLET_2</td><td>no</td><td></td></tr>
+<tr><td></td><td>number</td><td>yes</td><td>no</td><td>OUTLET_3</td><td>no</td><td></td></tr>
+<tr><td></td><td>number</td><td>yes</td><td>no</td><td>OUTLET_4</td><td>no</td><td></td></tr>
+
+<tr><td>AUX_DEW_CONTROL</td><td>switch</td><td>no</td><td>no</td><td>MANUAL</td><td>yes</td><td>Use AUX_HEATER_OUTLET values</td></tr>
+<tr><td></td><td>switch</td><td>no</td><td>no</td><td>AUTOMATIC</td><td>yes</td><td>Set power automatically</td></tr>
+
+<tr><td>AUX_WEATHER</td><td>number</td><td>yes</td><td>no</td><td>TEMPERATURE</td><td>no</td><td></td></tr>
+<tr><td></td><td>number</td><td>yes</td><td>no</td><td>HUMIDITY</td><td>no</td><td></td></tr>
+<tr><td></td><td>number</td><td>yes</td><td>no</td><td>DEVPOINT</td><td>no</td><td></td></tr>
+
+<tr><td>AUX_INFO</td><td>number</td><td>yes</td><td>no</td><td>...</td><td>no</td><td>Any number of any number items</td></tr>
+<tr><td>AUX_CONTROL</td><td>switch</td><td>no</td><td>no</td><td>...</td><td>no</td><td>Any number of any switch items</td></tr>
+</table>
