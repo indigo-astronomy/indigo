@@ -166,7 +166,7 @@ bool indigo_printf(int handle, const char *format, ...) {
 	char buffer[1024];
 	va_list args;
 	va_start(args, format);
-	int length = vsnprintf(buffer, 1024, format, args);
+	int length = vsnprintf(buffer, sizeof(buffer), format, args);
 	va_end(args);
 	INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, buffer));
 	return indigo_write(handle, buffer, length);
