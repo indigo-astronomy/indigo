@@ -91,9 +91,15 @@ static bool mount_open(indigo_device *device) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "host = %s, port = %d", host, port);
 		int dev_id = ascol_open(host, port);
 		if (dev_id == -1) {
+			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_open(%s) = %d", DEVICE_PORT_ITEM->text.value, dev_id);
+			return false;
+		} else if (ascol_GLLG(dev_id, AUTHENTICATION_PASSWORD_ITEM->text.value) != ASCOL_OK ) {
+			ascol_close(dev_id);
 			PRIVATE_DATA->count_open--;
+			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLLG(****): Authentication failure");
 			return false;
 		} else {
 			PRIVATE_DATA->dev_id = dev_id;
@@ -484,8 +490,12 @@ static indigo_result mount_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+		// --------------------------------------------------------------------------------
+		AUTHENTICATION_PROPERTY->hidden = false;
+		AUTHENTICATION_PROPERTY->count = 1;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
+		strncpy(DEVICE_PORT_ITEM->text.value, "ascol://localhost:2000", INDIGO_VALUE_SIZE);
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
@@ -504,9 +514,9 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
 
-		MOUNT_TRACK_RATE_PROPERTY->hidden = true;
+		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 
-		MOUNT_SLEW_RATE_PROPERTY->hidden = false;
+		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
