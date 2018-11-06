@@ -115,7 +115,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a
+	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libtoupcam.dylib $(BUILD_LIB)/libaltaircam.dylib
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.a $(BUILD_DRIVERS)/indigo_guider_eqmac.a $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.a $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.dylib $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.dylib
 endif
@@ -140,7 +140,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI)  $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(LIBBOOST-REGEX)
+	EXTERNALS=$(LIBHIDAPI)  $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(BUILD_LIB)/libtoupcam.so $(BUILD_LIB)/libaltaircam.so $(LIBBOOST-REGEX)
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.so
 endif
@@ -1304,8 +1304,6 @@ $(BUILD_DRIVERS)/indigo_aux_rts.$(SOEXT): indigo_drivers/aux_rts/indigo_aux_rts.
 #
 #---------------------------------------------------------------------
 
-indigo_drivers/ccd_touptek/indigo_ccd_touptek.o:	$(BUILD_INCLUDE)/toupcam.h $(BUILD_LIB)/libtoupcam.$(SOEXT)
-
 $(BUILD_DRIVERS)/indigo_ccd_touptek.a: indigo_drivers/ccd_touptek/indigo_ccd_touptek.o
 	$(AR) $(ARFLAGS) $@ $^
 
@@ -1320,8 +1318,6 @@ $(BUILD_DRIVERS)/indigo_ccd_touptek.$(SOEXT): indigo_drivers/ccd_touptek/indigo_
 #	Build AltairAstro CCD driver
 #
 #---------------------------------------------------------------------
-
-indigo_drivers/ccd_altair/indigo_ccd_altair.o:	$(BUILD_INCLUDE)/altaircam.h $(BUILD_LIB)/libaltaircam.$(SOEXT)
 
 $(BUILD_DRIVERS)/indigo_ccd_altair.a: indigo_drivers/ccd_altair/indigo_ccd_altair.o
 	$(AR) $(ARFLAGS) $@ $^
