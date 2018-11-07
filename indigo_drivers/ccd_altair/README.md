@@ -21,3 +21,5 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 indigo_server indigo_ccd_altair
 
 ## Status: Stable
+
+Tested with GP 224C
