@@ -23,7 +23,7 @@
  \file indigo_ccd_altair.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_ccd_altair"
 
 #include <stdlib.h>
@@ -73,7 +73,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
 				result = Altaircam_Pause(PRIVATE_DATA->handle, 1);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Pause(1) -> %08x", result);
-				indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits, true, NULL);
+				indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits, PRIVATE_DATA->bits != 24, NULL);
 				CCD_EXPOSURE_ITEM->number.value = 0;
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -97,7 +97,7 @@ static void push_callback(const void *data, const AltaircamFrameInfoV2* frameInf
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "push_callback %d x %d, %x, %d", frameInfo->width, frameInfo->height, frameInfo->flag, frameInfo->seq);
 		int size = frameInfo->width * frameInfo->height * (PRIVATE_DATA->bits / 8);
 		memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE,data, size);
-		indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo->width, frameInfo->height, PRIVATE_DATA->bits, true, NULL);
+		indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo->width, frameInfo->height, PRIVATE_DATA->bits, PRIVATE_DATA->bits != 24, NULL);
 		if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
 			CCD_STREAMING_COUNT_ITEM->number.value -= 1;
 		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
