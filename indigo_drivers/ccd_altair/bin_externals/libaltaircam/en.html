@@ -9,7 +9,7 @@
 <hr/>
 <h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
 <hr/>
-<ul><li>Version: 30.13010.2018.0926</li></ul>
+<ul><li>Version: 30.13270.2018.1102</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -332,7 +332,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 </li></ul>
 <ul><li><h2><a id="callback"><font color="#0000FF">Callback: PALTAIRCAM_EVENT_CALLBACK and PALTAIRCAM_DATA_CALLBACK(_V2)</font></a></h2>
 	<p>These callback functions are called back from the internal thread in altaircam.dll, so great attention should be paid to multithread issue.</p>
-	<p><strong>There are limitation in the callback context:</strong></p>
+	<p><strong>There are limitations in the callback context:</strong></p>
 	<p><strong>(a) Do NOT call Altaircam_Stop and Altaircam_Close in this callback function, otherwise, deadlocks.</strong></p>
 	<p><strong>(b) Do NOT call Altaircam_put_Option with ALTAIRCAM_OPTION_TRIGGER, ALTAIRCAM_OPTION_BITDEPTH, ALTAIRCAM_OPTION_PIXEL_FORMAT, ALTAIRCAM_OPTION_BINNING, ALTAIRCAM_OPTION_ROTATE, the return value is E_WRONG_THREAD.</strong></p>
 </li></ul>
@@ -1011,6 +1011,15 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td width="20%">Yes</td>
       </tr>
       <tr>
+      	<td width="28%"><a id="rotate">ALTAIRCAM_OPTION_UPSIDE_DOWN</a></td>
+      	<td width="48%">Upside down:<br/>
+						1: yes<br/>
+						0: no</td>
+      	<td width="4%">Win: 1<br/>
+						Linux/MacOS: 0</td>
+      	<td width="20%">No</td>
+      </tr>
+      <tr>
       	<td width="28%">ALTAIRCAM_OPTION_CG</td>
       	<td width="48%">Conversion Gain:<br/>
 						0: LCG<br/>
@@ -1084,7 +1093,8 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
       <tr>
       	<td width="28%">ALTAIRCAM_OPTION_TEC_VOLTAGE</td>
-      	<td width="48%">get the current TEC voltage in 0.1V, 59 mean 5.9V; readonly</td>
+      	<td width="48%">get the current TEC voltage in 0.1V, 59 mean 5.9V; readonly<br/>
+					Please do not get this value too frequently, the recommended interval is 2 seconds or more</td>
       	<td width="4%">NA/td>
       	<td width="20%">NA</td>
       </tr>
