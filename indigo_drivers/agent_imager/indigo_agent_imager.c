@@ -366,7 +366,7 @@ static indigo_result agent_delete_property(indigo_client *client, struct indigo_
 		}
 	} else {
 		for (int i = 0; i < MAX_CACHED_PROPERTIES; i++) {
-			if (!strcmp(cache[i]->device, property->device)) {
+			if (cache[i] && !strcmp(cache[i]->device, property->device)) {
 				cache[i] = NULL;
 			}
 		}
