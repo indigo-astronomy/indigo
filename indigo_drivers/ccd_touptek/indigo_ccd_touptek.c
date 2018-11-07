@@ -180,6 +180,8 @@ static void setup_exposure(indigo_device *device) {
 		result = Toupcam_put_Roi(PRIVATE_DATA->handle, left, top, width, height);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Roi(%d, %d, %d, %d) -> %08x", left, top, width, height, result);
 	}
+	result = Toupcam_put_AutoExpoEnable(PRIVATE_DATA->handle, false);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_AutoExpoEnable() -> %08x", result);
 	result = Toupcam_Flush(PRIVATE_DATA->handle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Flush() -> %08x", result);
 }

@@ -145,6 +145,8 @@ static void setup_exposure(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_RAW, 1) -> %08x", result);
 				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 0);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 0) -> %08x", result);
+				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_UPSIDE_DOWN, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_UPSIDE_DOWN, 0) -> %08x", result);
 				resolutionIndex = atoi(item->name + 5);
 				result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
@@ -154,6 +156,8 @@ static void setup_exposure(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_RAW, 1) -> %08x", result);
 				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 1);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 1) -> %08x", result);
+				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_UPSIDE_DOWN, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_UPSIDE_DOWN, 0) -> %08x", result);
 				resolutionIndex = atoi(item->name + 6);
 				result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
@@ -161,6 +165,8 @@ static void setup_exposure(indigo_device *device) {
 			} else if (strncmp(item->name, "RGB", 3) == 0) {
 				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_RAW, 0);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_RAW, 0) -> %08x", result);
+				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_UPSIDE_DOWN, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_UPSIDE_DOWN, 0) -> %08x", result);
 				resolutionIndex = atoi(item->name + 4);
 				result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
@@ -180,6 +186,8 @@ static void setup_exposure(indigo_device *device) {
 		result = Altaircam_put_Roi(PRIVATE_DATA->handle, left, top, width, height);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Roi(%d, %d, %d, %d) -> %08x", left, top, width, height, result);
 	}
+	result = Altaircam_put_AutoExpoEnable(PRIVATE_DATA->handle, false);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_AutoExpoEnable(false) -> %08x", result);
 	result = Altaircam_Flush(PRIVATE_DATA->handle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Flush() -> %08x", result);
 }
