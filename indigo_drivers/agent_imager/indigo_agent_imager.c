@@ -46,7 +46,8 @@
 
 #define AGENT_CCD_BATCH_PROPERTY				(DEVICE_PRIVATE_DATA->agent_ccd_batch_property)
 #define AGENT_CCD_BATCH_COUNT_ITEM      (AGENT_CCD_BATCH_PROPERTY->items+0)
-#define AGENT_CCD_BATCH_DELAY_ITEM     	(AGENT_CCD_BATCH_PROPERTY->items+1)
+#define AGENT_CCD_BATCH_EXPOSURE_ITEM   (AGENT_CCD_BATCH_PROPERTY->items+1)
+#define AGENT_CCD_BATCH_DELAY_ITEM     	(AGENT_CCD_BATCH_PROPERTY->items+2)
 
 #define AGENT_START_PROCESS_PROPERTY		(DEVICE_PRIVATE_DATA->agent_start_process_property)
 #define AGENT_START_CCD_EXPOSURE_ITEM   (AGENT_START_PROCESS_PROPERTY->items+0)
@@ -59,6 +60,7 @@
 typedef struct {
 	indigo_device *device;
 	indigo_client *client;
+	char ccd[INDIGO_NAME_SIZE];
 	indigo_property *agent_ccd_list_property;
 	indigo_property *agent_ccd_batch_property;
 	indigo_property *agent_start_process_property;
@@ -68,61 +70,124 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
 
-static indigo_property *get_property(indigo_device *device, indigo_property *device_list, const char *name) {
-	for (int i = 0; i < device_list->count; i++) {
-		if (device_list->items[i].sw.value) {
-			char *device_name = device_list->items[i].name;
-			indigo_property **cache = DEVICE_PRIVATE_DATA->property_cache;
-			for (int j = 0; j < MAX_CACHED_PROPERTIES; j++) {
-				if (cache[j] && !strcpy(cache[j]->device, device_name) && !strcpy(cache[j]->name, name))
-					return cache[j];
-			}
-		}
-	}
-	return NULL;
-}
+//static indigo_property *get_property(indigo_device *device, const char *name) {
+//	indigo_property **cache = DEVICE_PRIVATE_DATA->property_cache;
+//	for (int j = 0; j < MAX_CACHED_PROPERTIES; j++) {
+//		if (cache[j] && !strcpy(cache[j]->device, DEVICE_PRIVATE_DATA->ccd) && !strcpy(cache[j]->name, name))
+//			return cache[j];
+//	}
+//	return NULL;
+//}
 
-static bool set_simple_property(indigo_device *device, indigo_property *device_list, const char *property_name, const char *value, double timeout) {
-	if (*value == 0)
-		return true;
-	indigo_property *remote_property = get_property(device, device_list, property_name);
-	indigo_property *local_property = NULL;
-	if (remote_property) {
-		switch (remote_property->type) {
-			case INDIGO_TEXT_VECTOR: {
-				local_property = indigo_init_text_property(NULL, remote_property->device, remote_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-				indigo_init_text_item(local_property->items, local_property->items->name, "", value);
-				break;
-			}
-			case INDIGO_NUMBER_VECTOR: {
-				local_property = indigo_init_number_property(NULL, remote_property->device, remote_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-				indigo_init_number_item(local_property->items, local_property->items->name, "", remote_property->items->number.min, remote_property->items->number.max, remote_property->items->number.step, atof(value));
-				break;
-			}
-			case INDIGO_SWITCH_VECTOR: {
-				local_property = indigo_init_switch_property(NULL, remote_property->device, remote_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, remote_property->rule, 1);
-				indigo_init_switch_item(local_property->items, value, "", true);
-				break;
-			}
-			default: {
-				break;
-			}
-		}
-		if (local_property) {
-			indigo_change_property(DEVICE_PRIVATE_DATA->client, local_property);
-			indigo_release_property(local_property);
-			while (remote_property->state == INDIGO_BUSY_STATE && timeout > 0) {
-				usleep(10000);
-				timeout -= 0.01;
-			}
-			return remote_property->state == INDIGO_OK_STATE;
-		}
-	}
-	return false;
-}
+//static bool set_simple_property(indigo_device *device, indigo_property *device_list, const char *property_name, const char *value, double timeout) {
+//	if (*value == 0)
+//		return true;
+//	indigo_property *remote_property = get_property(device, device_list, property_name);
+//	indigo_property *local_property = NULL;
+//	if (remote_property) {
+//		switch (remote_property->type) {
+//			case INDIGO_TEXT_VECTOR: {
+//				local_property = indigo_init_text_property(NULL, remote_property->device, remote_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+//				indigo_init_text_item(local_property->items, local_property->items->name, "", value);
+//				break;
+//			}
+//			case INDIGO_NUMBER_VECTOR: {
+//				local_property = indigo_init_number_property(NULL, remote_property->device, remote_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+//				indigo_init_number_item(local_property->items, local_property->items->name, "", remote_property->items->number.min, remote_property->items->number.max, remote_property->items->number.step, atof(value));
+//				break;
+//			}
+//			case INDIGO_SWITCH_VECTOR: {
+//				local_property = indigo_init_switch_property(NULL, remote_property->device, remote_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, remote_property->rule, 1);
+//				indigo_init_switch_item(local_property->items, value, "", true);
+//				break;
+//			}
+//			default: {
+//				break;
+//			}
+//		}
+//		if (local_property) {
+//			indigo_change_property(DEVICE_PRIVATE_DATA->client, local_property);
+//			indigo_release_property(local_property);
+//			while (remote_property->state == INDIGO_BUSY_STATE && timeout > 0) {
+//				usleep(10000);
+//				timeout -= 0.01;
+//			}
+//			return remote_property->state == INDIGO_OK_STATE;
+//		}
+//	}
+//	return false;
+//}
 
 static void exposure_batch(indigo_device *device) {
-	
+	indigo_property **cache = DEVICE_PRIVATE_DATA->property_cache;
+	for (int j = 0; j < MAX_CACHED_PROPERTIES; j++) {
+		if (cache[j] && !strcmp(cache[j]->device, DEVICE_PRIVATE_DATA->ccd) && !strcmp(cache[j]->name, CCD_EXPOSURE_PROPERTY_NAME)) {
+			indigo_property *remote_exposure_property = cache[j];
+			indigo_property *local_exposure_property = indigo_init_number_property(NULL, remote_exposure_property->device, remote_exposure_property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, remote_exposure_property->count);
+			if (local_exposure_property) {
+				memcpy(local_exposure_property, remote_exposure_property, sizeof(indigo_property) + remote_exposure_property->count * sizeof(indigo_item));
+				AGENT_CCD_BATCH_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, AGENT_CCD_BATCH_PROPERTY, NULL);
+				int count = AGENT_CCD_BATCH_COUNT_ITEM->number.target;
+				for (int i = count; AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && i > 0; i--) {
+					AGENT_CCD_BATCH_COUNT_ITEM->number.value = i;
+					double time = AGENT_CCD_BATCH_EXPOSURE_ITEM->number.target;
+					AGENT_CCD_BATCH_EXPOSURE_ITEM->number.value = time;
+					indigo_update_property(device, AGENT_CCD_BATCH_PROPERTY, NULL);
+					local_exposure_property->items[0].number.value = time;
+					indigo_change_property(DEVICE_PRIVATE_DATA->client, local_exposure_property);
+					while (remote_exposure_property->state == INDIGO_BUSY_STATE && time > 0) {
+						if (time > 1) {
+							usleep(1000000);
+							time -= 1;
+							AGENT_CCD_BATCH_EXPOSURE_ITEM->number.value = time;
+							indigo_update_property(device, AGENT_CCD_BATCH_PROPERTY, NULL);
+						} else {
+							usleep(10000);
+							time -= 0.01;
+						}
+					}
+					AGENT_CCD_BATCH_EXPOSURE_ITEM->number.value = 0;
+					indigo_update_property(device, AGENT_CCD_BATCH_PROPERTY, NULL);
+					if (i > 1) {
+						time = AGENT_CCD_BATCH_DELAY_ITEM->number.target;
+						AGENT_CCD_BATCH_DELAY_ITEM->number.value = time;
+						indigo_update_property(device, AGENT_CCD_BATCH_PROPERTY, NULL);
+						while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && time > 0) {
+							if (time > 1) {
+								usleep(1000000);
+								time -= 1;
+								AGENT_CCD_BATCH_DELAY_ITEM->number.value = time;
+								indigo_update_property(device, AGENT_CCD_BATCH_PROPERTY, NULL);
+							} else {
+								usleep(10000);
+								time -= 0.01;
+							}
+						}
+						AGENT_CCD_BATCH_DELAY_ITEM->number.value = 0;
+						indigo_update_property(device, AGENT_CCD_BATCH_PROPERTY, NULL);
+					}
+				}
+				AGENT_CCD_BATCH_COUNT_ITEM->number.value = AGENT_CCD_BATCH_COUNT_ITEM->number.target;
+				AGENT_CCD_BATCH_EXPOSURE_ITEM->number.value = AGENT_CCD_BATCH_EXPOSURE_ITEM->number.target;
+				AGENT_CCD_BATCH_DELAY_ITEM->number.value = AGENT_CCD_BATCH_DELAY_ITEM->number.target;
+				AGENT_CCD_BATCH_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_CCD_BATCH_PROPERTY, NULL);
+				if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+					AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				indigo_release_property(local_exposure_property);
+			}
+			return;
+		}
+	}
+	AGENT_CCD_BATCH_COUNT_ITEM->number.value = AGENT_CCD_BATCH_COUNT_ITEM->number.target;
+	AGENT_CCD_BATCH_EXPOSURE_ITEM->number.value = AGENT_CCD_BATCH_EXPOSURE_ITEM->number.target;
+	AGENT_CCD_BATCH_DELAY_ITEM->number.value = AGENT_CCD_BATCH_DELAY_ITEM->number.target;
+	AGENT_CCD_BATCH_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, AGENT_CCD_BATCH_PROPERTY, NULL);
+	AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 }
 
 static void streaming_batch(indigo_device *device) {
@@ -144,16 +209,17 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_CCD_LIST_PROPERTY->count = 1;
 		indigo_init_switch_item(AGENT_CCD_LIST_PROPERTY->items, AGENT_DEVICE_LIST_NONE_ITEM_NAME, "None", true);
 		// -------------------------------------------------------------------------------- Batch properties
-		AGENT_CCD_BATCH_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_CCD_BATCH_PROPERTY_NAME, "Batch", "Batch settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		AGENT_CCD_BATCH_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_CCD_BATCH_PROPERTY_NAME, "Batch", "Batch settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_CCD_BATCH_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_CCD_BATCH_COUNT_ITEM, AGENT_CCD_BATCH_COUNT_ITEM_NAME, "Frame count", 0, 1000, 1, 1);
-		indigo_init_number_item(AGENT_CCD_BATCH_DELAY_ITEM, AGENT_CCD_BATCH_DELAY_ITEM_NAME, "Delay after each exposure", 0, 3600, 1, 0);
+		indigo_init_number_item(AGENT_CCD_BATCH_EXPOSURE_ITEM, AGENT_CCD_BATCH_EXPOSURE_ITEM_NAME, "Exposure time", 0, 3600, 0, 1);
+		indigo_init_number_item(AGENT_CCD_BATCH_DELAY_ITEM, AGENT_CCD_BATCH_DELAY_ITEM_NAME, "Delay after each exposure", 0, 3600, 0, 0);
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Batch", "Start batch", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(AGENT_START_CCD_EXPOSURE_ITEM, AGENT_START_CCD_EXPOSURE_ITEM_NAME, "Start exposure", false);
-		indigo_init_switch_item(AGENT_START_CCD_STREAMING_ITEM, AGENT_START_CCD_STREAMING_ITEM_NAME, "Start exposure", false);
+		indigo_init_switch_item(AGENT_START_CCD_EXPOSURE_ITEM, AGENT_START_CCD_EXPOSURE_ITEM_NAME, "Start batch", false);
+		indigo_init_switch_item(AGENT_START_CCD_STREAMING_ITEM, AGENT_START_CCD_STREAMING_ITEM_NAME, "Start streaming", false);
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Batch", "Abort batch", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -186,6 +252,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (client == DEVICE_PRIVATE_DATA->client)
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_CCD_LIST_PROPERTY, property)) {
+		strcpy(DEVICE_PRIVATE_DATA->ccd, "");
 		indigo_property *connection_property = indigo_init_switch_property(NULL, "", CONNECTION_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		indigo_init_switch_item(connection_property->items + 0, CONNECTION_CONNECTED_ITEM_NAME, NULL, false);
 		indigo_init_switch_item(connection_property->items + 1, CONNECTION_DISCONNECTED_ITEM_NAME, NULL, true);
@@ -231,6 +298,16 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	} else 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
+		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_property *abort_property = indigo_init_switch_property(NULL, DEVICE_PRIVATE_DATA->ccd, CCD_ABORT_EXPOSURE_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			if (abort_property) {
+				indigo_init_switch_item(abort_property->items, CCD_ABORT_EXPOSURE_ITEM_NAME, "", true);
+				indigo_change_property(DEVICE_PRIVATE_DATA->client, abort_property);
+				indigo_release_property(abort_property);
+			}
+			AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+		}
 		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
@@ -316,7 +393,9 @@ static indigo_result agent_update_property(struct indigo_client *client, struct 
 					if (device_list->state == INDIGO_BUSY_STATE) {
 						if (property->state == INDIGO_ALERT_STATE) {
 							device_list->state = INDIGO_ALERT_STATE;
+							strcpy(CLIENT_PRIVATE_DATA->ccd, "");
 						} else if (connected_device->sw.value && property->state == INDIGO_OK_STATE) {
+							strcpy(CLIENT_PRIVATE_DATA->ccd, property->device);
 							indigo_property all_properties;
 							memset(&all_properties, 0, sizeof(all_properties));
 							strcpy(all_properties.device, property->device);
@@ -327,6 +406,7 @@ static indigo_result agent_update_property(struct indigo_client *client, struct 
 						return INDIGO_OK;
 					} else if (device_list->state == INDIGO_OK_STATE && !connected_device->sw.value) {
 						device_list->state = INDIGO_ALERT_STATE;
+						strcpy(CLIENT_PRIVATE_DATA->ccd, "");
 						indigo_update_property(CLIENT_PRIVATE_DATA->device, device_list, NULL);
 						return INDIGO_OK;
 					}
