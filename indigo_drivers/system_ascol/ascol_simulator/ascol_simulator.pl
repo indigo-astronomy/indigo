@@ -376,7 +376,7 @@ sub update_state {
 		if ($elapsed_time > TE_CLU3_TIME) {
 			$set_ha=$req_ha;
 			$set_de=$req_de;
-			$te_state = TE_TRACK;
+			$te_state = TE_STOP;
 			$te_hd_move_time = 0;
 		} elsif ($elapsed_time > TE_DECC3_TIME) {
 			$te_state = TE_SS_CLU3;
