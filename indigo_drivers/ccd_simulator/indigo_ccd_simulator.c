@@ -75,7 +75,9 @@ typedef struct {
 	indigo_property *guider_mode_property;
 
 	int star_x[STARS], star_y[STARS], star_a[STARS];
-	char image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
+	char imager_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
+	char guider_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
+	char dslr_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	pthread_mutex_t image_mutex;
 	double target_temperature, current_temperature;
 	int target_slot, current_slot;
@@ -172,7 +174,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		simulator_private_data *private_data = PRIVATE_DATA;
 		if (device == PRIVATE_DATA->dslr) {
-			unsigned char *raw = (unsigned char *)(private_data->image+FITS_HEADER_SIZE);
+			unsigned char *raw = (unsigned char *)(private_data->imager_image+FITS_HEADER_SIZE);
 			int size = WIDTH * HEIGHT * 3;
 			for (int i = 0; i < size; i++) {
 				int rgb = indigo_ccd_simulator_rgb_image[i];
@@ -181,9 +183,9 @@ static void exposure_timer_callback(indigo_device *device) {
 				else
 					raw[i] = rgb;
 			}
-			indigo_process_image(device, private_data->image, WIDTH, HEIGHT, 24, false, NULL);
+			indigo_process_image(device, raw, WIDTH, HEIGHT, 24, false, NULL);
 		} else {
-			unsigned short *raw = (unsigned short *)(private_data->image+FITS_HEADER_SIZE);
+			unsigned short *raw = (unsigned short *)((device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image) + FITS_HEADER_SIZE);
 			int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 			int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 			int frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value / horizontal_bin;
@@ -290,7 +292,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				memcpy(raw, tmp, 2 * size);
 				free(tmp);
 			}
-			indigo_process_image(device, private_data->image, frame_width, frame_height, 16, true, NULL);
+			indigo_process_image(device, raw, frame_width, frame_height, 16, true, NULL);
 		}
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
