@@ -152,7 +152,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 #endif
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 5;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "DMFCv3");
+		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
 		// -------------------------------------------------------------------------------- FOCUSER_ROTATION
 		FOCUSER_ROTATION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
@@ -200,20 +200,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 			if (PRIVATE_DATA->handle > 0) {
-				if (dmfc_command(device, "#", response, sizeof(response)) && !strcmp(response, "OK_DMFCN")) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "DMFCv3 OK");
+				if (dmfc_command(device, "#", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s OK", response + 3);
 				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "DMFCv3 not detected");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser not detected");
 					close(PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = 0;
 				}
-//			} else {
-//				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-//				INDIGO_DRIVER_ERROR(DRIVER_NAME, "DMFCv3 failed to open %s %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 			}
 			if (PRIVATE_DATA->handle > 0) {
 				if (dmfc_command(device, "A", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
 					char *token = strtok(response, ":");
+					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
 					token = strtok(NULL, ":"); // status
 					if (token) { // version
 						strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
@@ -258,6 +256,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				}
 			}
 			if (PRIVATE_DATA->handle > 0) {
+				indigo_delete_property(device, INFO_PROPERTY, NULL);
+				indigo_define_property(device, INFO_PROPERTY, NULL);
 				indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 				indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
 				dmfc_command(device, "L:2", response, sizeof(response));
@@ -275,6 +275,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				dmfc_command(device, "L:1", response, sizeof(response));
 				indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 				indigo_delete_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
+				indigo_delete_property(device, INFO_PROPERTY, NULL);
+				indigo_define_property(device, INFO_PROPERTY, NULL);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
