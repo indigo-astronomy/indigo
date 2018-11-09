@@ -256,8 +256,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				}
 			}
 			if (PRIVATE_DATA->handle > 0) {
-				indigo_delete_property(device, INFO_PROPERTY, NULL);
-				indigo_define_property(device, INFO_PROPERTY, NULL);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 				indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 				indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
 				dmfc_command(device, "L:2", response, sizeof(response));
@@ -276,8 +275,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 				indigo_delete_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
-				indigo_delete_property(device, INFO_PROPERTY, NULL);
-				indigo_define_property(device, INFO_PROPERTY, NULL);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
