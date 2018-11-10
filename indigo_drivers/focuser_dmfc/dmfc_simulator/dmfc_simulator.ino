@@ -65,6 +65,7 @@ void loop() {
     Serial.println("L:1");
     led_status = 1;
   } else if (command.startsWith("S:")) {
+    Serial.println(command);
   } else if (command.startsWith("G:")) {
     position += command.substring(2).toInt();
   } else if (command.startsWith("M:")) {
@@ -72,6 +73,7 @@ void loop() {
 	} else if (command.startsWith("W:")) {
 		position = command.substring(2).toInt();
   } else if (command.startsWith("H")) {
+    Serial.println(command);
   } else if (command.startsWith("N:")) {
     reverse = command.substring(2).toInt();
     Serial.print("N:");
@@ -81,8 +83,10 @@ void loop() {
     Serial.println(motor_mode);
   } else if (command.startsWith("E:")) {
     disabled_encoder = command.substring(2).toInt();
+    Serial.println(command);
   } else if (command.startsWith("C:")) {
     backlash_value = command.substring(2).toInt();
+    Serial.println(command);
   } else if (command.equals("T")) {
     Serial.println(temperature);
   } else if (command.equals("P")) {
