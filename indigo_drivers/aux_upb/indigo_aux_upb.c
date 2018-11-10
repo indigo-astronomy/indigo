@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>
@@ -36,7 +36,7 @@
 #include <stdarg.h>
 
 #include <sys/time.h>
-
+#include <sys/termios.h>
 #include "indigo_driver_xml.h"
 #include "indigo_io.h"
 #include "indigo_aux_upb.h"
@@ -129,11 +129,13 @@ typedef struct {
 
 static bool upb_command(indigo_device *device, char *command, char *response, int max) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	indigo_write(PRIVATE_DATA->handle, "\n", 1);
 	if (response != NULL) {
 		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == -1) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
 			return false;
 		}
 	}
@@ -778,21 +780,12 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_AUX_HUB_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_AUX_HUB
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(X_AUX_HUB_PROPERTY, property, false);
-			upb_command(device, X_AUX_HUB_ENABLED_ITEM->sw.value ? "PU:1" : "PU:0", response, sizeof(response));
-			X_AUX_HUB_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
-		}
-		return INDIGO_OK;
 	} else if (indigo_property_match(X_AUX_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_REBOOT
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(X_AUX_REBOOT_PROPERTY, property, false);
 			if (X_AUX_REBOOT_ITEM->sw.value) {
-				upb_command(device, "PF", NULL, 0);
+				upb_command(device, "PF", response, sizeof(response));
 				X_AUX_REBOOT_ITEM->sw.value = false;
 				X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
@@ -902,17 +895,17 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.min = 1;
-		FOCUSER_SPEED_ITEM->number.max = 1000;
+		FOCUSER_SPEED_ITEM->number.max = 65535;
 		FOCUSER_SPEED_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_STEPS_ITEM->number.max = 100000;
+		FOCUSER_STEPS_ITEM->number.min = 1;
+		FOCUSER_STEPS_ITEM->number.max = 9999999;
 		FOCUSER_STEPS_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_ITEM->number.min = 0;
-		FOCUSER_POSITION_ITEM->number.max = 100000;
+		FOCUSER_POSITION_ITEM->number.min = -9999999;
+		FOCUSER_POSITION_ITEM->number.max = 9999999;
 		FOCUSER_POSITION_ITEM->number.step = 1;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
