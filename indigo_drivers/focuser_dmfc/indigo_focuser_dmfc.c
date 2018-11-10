@@ -23,7 +23,7 @@
  \file indigo_focuser_dmfc.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_dmfc"
 
 #include <stdlib.h>
@@ -36,6 +36,7 @@
 #include <stdarg.h>
 
 #include <sys/time.h>
+#include <sys/termios.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_io.h"
@@ -62,11 +63,13 @@ typedef struct {
 
 static bool dmfc_command(indigo_device *device, char *command, char *response, int max) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	indigo_write(PRIVATE_DATA->handle, "\n", 1);
 	if (response != NULL) {
 		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == 0) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
 			return false;
 		}
 	}
@@ -158,18 +161,18 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		FOCUSER_SPEED_ITEM->number.min = 100;
-		FOCUSER_SPEED_ITEM->number.max = 1000;
+		FOCUSER_SPEED_ITEM->number.min = 1;
+		FOCUSER_SPEED_ITEM->number.max = 65535;
 		FOCUSER_SPEED_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		FOCUSER_STEPS_ITEM->number.min = 0;
-		FOCUSER_STEPS_ITEM->number.max = 100000;
+		FOCUSER_STEPS_ITEM->number.min = 1;
+		FOCUSER_STEPS_ITEM->number.max = 9999999;
 		FOCUSER_STEPS_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_ITEM->number.min = 0;
-		FOCUSER_POSITION_ITEM->number.max = 100000;
+		FOCUSER_POSITION_ITEM->number.min = -9999999;
+		FOCUSER_POSITION_ITEM->number.max = 9999999;
 		FOCUSER_POSITION_ITEM->number.step = 1;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
@@ -289,7 +292,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 			snprintf(command, sizeof(command), "S:%d", (int)FOCUSER_SPEED_ITEM->number.value);
-			if (dmfc_command(device, command, NULL, 0)) {
+			if (dmfc_command(device, command, response, sizeof(response))) {
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -301,7 +304,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		snprintf(command, sizeof(command), "G:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1));
-		if (dmfc_command(device, command, NULL, 0)) {
+		if (dmfc_command(device, command, response, sizeof(response))) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
@@ -316,7 +319,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 			snprintf(command, sizeof(command), "M:%d", (int)FOCUSER_POSITION_ITEM->number.value);
-			if (dmfc_command(device, command, NULL, 0)) {
+			if (dmfc_command(device, command, response, sizeof(response))) {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			} else {
@@ -327,7 +330,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
 			snprintf(command, sizeof(command), "W:%d", (int)FOCUSER_POSITION_ITEM->number.value);
-			if (dmfc_command(device, command, NULL, 0)) {
+			if (dmfc_command(device, command, response, sizeof(response))) {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -340,7 +343,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-			if (dmfc_command(device, "H", NULL, 0)) {
+			if (dmfc_command(device, "H", response, sizeof(response))) {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -391,7 +394,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
 		snprintf(command, sizeof(command), "C:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
-		if (dmfc_command(device, command, NULL, 0)) {
+		if (dmfc_command(device, command, response, sizeof(response))) {
 			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
