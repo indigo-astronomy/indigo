@@ -661,7 +661,6 @@ static void exposure_timer_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (andor_read_pixels(device)) {
 			frame_buffer = PRIVATE_DATA->buffer;
-
 			indigo_process_image(device, frame_buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x),
 			                    (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
