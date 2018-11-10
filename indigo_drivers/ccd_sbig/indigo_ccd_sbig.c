@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -851,11 +851,11 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 			} else {
 				frame_buffer = PRIVATE_DATA->guider_buffer;
 			}
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			// FIXME: race between capture and frame size/bpp
 			indigo_process_image(device, frame_buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value),
 			                    (int)(CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value), (int)(CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value), true, bayer_keys);
+            CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+            indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
