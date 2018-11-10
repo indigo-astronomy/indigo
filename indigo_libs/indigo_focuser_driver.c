@@ -69,7 +69,14 @@ indigo_result indigo_focuser_attach(indigo_device *device, unsigned version) {
 			if (FOCUSER_STEPS_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(FOCUSER_STEPS_ITEM, FOCUSER_STEPS_ITEM_NAME, "Relative move (steps/ms)", 0, 65535, 1, 0);
-				// -------------------------------------------------------------------------------- FOCUSER_POSITION
+			// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
+			FOCUSER_ON_POSITION_SET_PROPERTY = indigo_init_switch_property(NULL, device->name,FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "On position set", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			if (FOCUSER_ON_POSITION_SET_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			FOCUSER_ON_POSITION_SET_PROPERTY->hidden = true;
+			indigo_init_switch_item(FOCUSER_ON_POSITION_SET_GOTO_ITEM, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, "Goto to position", true);
+			indigo_init_switch_item(FOCUSER_ON_POSITION_SET_SYNC_ITEM, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, "Sync to position", false);
+			// -------------------------------------------------------------------------------- FOCUSER_POSITION
 			FOCUSER_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Absolute position", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
@@ -131,6 +138,8 @@ indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_
 				if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property))
 					indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 			}
+			if (indigo_property_match(FOCUSER_ON_POSITION_SET_PROPERTY, property))
+				indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
 			if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property))
 				indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			if (indigo_property_match(FOCUSER_TEMPERATURE_PROPERTY, property))
@@ -159,6 +168,7 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 				indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 			}
+			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			indigo_define_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
@@ -172,6 +182,7 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 				indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 				indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 			}
+			indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			indigo_delete_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
@@ -189,7 +200,13 @@ indigo_result indigo_focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_ROTATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_ROTATION_PROPERTY, NULL);
 		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- FOCUSER_DIRECTION
+	// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
+	} else if (indigo_property_match(FOCUSER_ON_POSITION_SET_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_ON_POSITION_SET_PROPERTY, property, false);
+		FOCUSER_ON_POSITION_SET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- FOCUSER_DIRECTION
 	} else if (indigo_property_match(FOCUSER_DIRECTION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_DIRECTION_PROPERTY, property, false);
 		FOCUSER_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -237,6 +254,7 @@ indigo_result indigo_focuser_detach(indigo_device *device) {
 	indigo_release_property(FOCUSER_STEPS_PROPERTY);
 	indigo_release_property(FOCUSER_ABORT_MOTION_PROPERTY);
 	indigo_release_property(FOCUSER_BACKLASH_PROPERTY);
+	indigo_release_property(FOCUSER_ON_POSITION_SET_PROPERTY);
 	indigo_release_property(FOCUSER_POSITION_PROPERTY);
 	indigo_release_property(FOCUSER_TEMPERATURE_PROPERTY);
 	indigo_release_property(FOCUSER_COMPENSATION_PROPERTY);

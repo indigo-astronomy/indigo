@@ -81,56 +81,69 @@ extern "C" {
  */
 #define FOCUSER_STEPS_ITEM										(FOCUSER_STEPS_PROPERTY->items+0)
 
+//----------------------------------------------
+/** FOCUSER_ON_POSITION_SET property pointer, property is optionsl, property change request is handled by indigo_focuser_change_property.
+*/
+#define FOCUSER_ON_POSITION_SET_PROPERTY			(FOCUSER_CONTEXT->focuser_on_position_set_property)
+
+/** FOCUSER_ON_POSITION_SET.GOTO property item pointer.
+*/
+#define FOCUSER_ON_POSITION_SET_GOTO_ITEM			(FOCUSER_ON_POSITION_SET_PROPERTY->items+0)
+
+/** FOCUSER_ON_POSITION_SET.SYNC property item pointer.
+*/
+#define FOCUSER_ON_POSITION_SET_SYNC_ITEM			(FOCUSER_ON_POSITION_SET_PROPERTY->items+1)
+
 /** FOCUSER_POSITION property pointer, property is mandatory, property change request should be fully handled by focuser driver
- */
+*/
 #define FOCUSER_POSITION_PROPERTY							(FOCUSER_CONTEXT->focuser_position_property)
 
 /** FOCUSER_POSITION.POSITION property item pointer.
- */
+*/
 #define FOCUSER_POSITION_ITEM									(FOCUSER_POSITION_PROPERTY->items+0)
 
 /** FOCUSER_ABORT_MOTION property pointer, property is mandatory, property change request should be fully handled by focuser driver
- */
+*/
 #define FOCUSER_ABORT_MOTION_PROPERTY					(FOCUSER_CONTEXT->focuser_abort_motion_property)
 
 /** FOCUSER_ABORT_MOTION.ABORT_MOTION property item pointer.
- */
+*/
 #define FOCUSER_ABORT_MOTION_ITEM							(FOCUSER_ABORT_MOTION_PROPERTY->items+0)
 
-	/** FOCUSER_BACKLASH property pointer, property is optional, property change request should be fully handled by focuser driver
-	 */
+/** FOCUSER_BACKLASH property pointer, property is optional, property change request should be fully handled by focuser driver
+*/
 #define FOCUSER_BACKLASH_PROPERTY							(FOCUSER_CONTEXT->focuser_backlash_property)
-	
-	/** FOCUSER_BACKLASH.BACKLASH property item pointer.
-	 */
+
+/** FOCUSER_BACKLASH.BACKLASH property item pointer.
+*/
 #define FOCUSER_BACKLASH_ITEM									(FOCUSER_BACKLASH_PROPERTY->items+0)
-	
+
 /** FOCUSER_TEMPERATURE property pointer, property is optional, property should be fully handled by focuser driver
- */
+*/
 #define FOCUSER_TEMPERATURE_PROPERTY					(FOCUSER_CONTEXT->focuser_temperature_property)
 
 /** FOCUSER_TEMPERATURE.TEMPERATURE property item pointer.
- */
+*/
 #define FOCUSER_TEMPERATURE_ITEM							(FOCUSER_TEMPERATURE_PROPERTY->items+0)
 
 /** FOCUSER_COMPENSATION property pointer, property is optional, property should be fully handled by focuser driver
- */
+*/
 #define FOCUSER_COMPENSATION_PROPERTY					(FOCUSER_CONTEXT->focuser_compensation_property)
 
 /** FOCUSER_TEMPERATURE.TEMPERATURE property item pointer.
- */
+*/
 #define FOCUSER_COMPENSATION_ITEM							(FOCUSER_COMPENSATION_PROPERTY->items+0)
 
 /** FOCUSER_MODE property pointer, property is optional, property change request should be fully handled by indigo_focuser_change_property.
- */
+*/
 #define FOCUSER_MODE_PROPERTY									(FOCUSER_CONTEXT->focuser_mode_property)
 
 /** FOCUSER_MODE.MANUAL property item pointer.
- */
+*/
 #define FOCUSER_MODE_MANUAL_ITEM							(FOCUSER_MODE_PROPERTY->items+0)
 
 /** FOCUSER_MODE.AUTOMATIC property item pointer.
- */
+*/
 #define FOCUSER_MODE_AUTOMATIC_ITEM						(FOCUSER_MODE_PROPERTY->items+1)
 
 
@@ -142,6 +155,7 @@ typedef struct {
 	indigo_property *focuser_rotation_property;				///< FOCUSER_ROTATION property pointer
 	indigo_property *focuser_direction_property;			///< FOCUSER_DIRECTION property pointer
 	indigo_property *focuser_steps_property;					///< FOCUSER_STEPS property pointer
+	indigo_property *focuser_on_position_set_property;///< FOCUSER_ON_POSITION_SET property pointer
 	indigo_property *focuser_position_property;				///< FOCUSER_POSITION property pointer
 	indigo_property *focuser_abort_motion_property;		///< FOCUSER_ABORT_MOTION property pointer
 	indigo_property *focuser_backlash_property;				///< FOCUSER_BACKLASH property pointer

@@ -137,8 +137,11 @@ void loop() {
     Serial.println(backlash);
   } else if (command.startsWith("SB:")) {
     backlash = command.substring(3).toInt();
+		Serial.println(command);
   } else if (command.equals("SP")) {
     Serial.println((int)position);
+	} else if (command.equals("SS")) {
+		Serial.println((int)speed);
   } else if (command.startsWith("SH")) {
     target = (long)position;
     Serial.println("H:1");
@@ -156,6 +159,7 @@ void loop() {
     target = position = command.substring(3).toInt();
   } else if (command.startsWith("SS:")) {
     speed = command.substring(3).toInt();
+		Serial.println((int)speed);
   } else if (command.startsWith("SG:")) {
     target = position + command.substring(3).toInt();
     Serial.println(command);

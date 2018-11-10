@@ -865,6 +865,19 @@
 #define FOCUSER_STEPS_ITEM_NAME								"STEPS"
 
 //----------------------------------------------------------------------
+/** FOCUSER_ON_POSITION_SET property name.
+ */
+#define FOCUSER_ON_POSITION_SET_PROPERTY_NAME	"FOCUSER_ON_POSITION_SET"
+
+/** FOCUSER_ON_POSITION_SET.GOTO property item name.
+ */
+#define FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME	"GOTO"
+
+/** FOCUSER_ON_POSITION_SET.SYNC property item name.
+ */
+#define FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME		"SYNC"
+
+//----------------------------------------------------------------------
 /** FOCUSER_POSITION property name.
  */
 #define FOCUSER_POSITION_PROPERTY_NAME				"FOCUSER_POSITION"
