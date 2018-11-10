@@ -83,6 +83,10 @@ use constant TE_CLU2_TIME => 22;
 use constant TE_DECC3_TIME => 24;
 use constant TE_CLU3_TIME => 26;
 
+# True if the telescope is tracking
+# (no matter slewing ot not at the moment)
+my $te_tracking = 0;
+
 my $te_state = TE_OFF;
 my $te_rd_move_time = 0;
 my $te_hd_move_time = 0;
@@ -236,6 +240,14 @@ sub in_range($$$$) {
 	return 0;
 }
 
+# This function returns GMT as LST
+# it is good enough for simulation ;)
+sub fake_LST(){
+	my ($s,$us) = gettimeofday();
+	my $hours = (int($s % 86400) + $us / 1e6) / 3600.0;
+	return $hours;
+}
+
 sub can_slew() {
 	if ((($state_bits & 3) == 3) # H axis and Dec axis are calibrated
 	   and (($alarm_bits[2] & 2) == 0)) # Bridge is parked
@@ -336,6 +348,19 @@ sub dd2dms($$) {
 
 sub update_state {
 	my $elapsed_time;
+
+	#update HA or RA deepending on telesope state
+	if ($te_tracking) {
+		$set_ha = fake_LST()*15 - $set_ra;
+		if ($set_ha < 0) {
+			$set_ha += 360;
+		}
+	} else {
+		$set_ra = fake_LST()*15 - $set_ha;
+		if ($set_ra < 0) {
+			$set_ra += 360;
+		}
+	}
 
 	# OIL state
 	if ($oil_time != 0) {
@@ -663,6 +688,7 @@ sub main() {
 		$oil_state = OIL_ON;
 		print "[Oil: ON]\n";
 		$te_state = TE_STOP;
+		$te_tracking = 0;
 		$da_state = DA_POSITION;
 		$ha_state = HA_POSITION;
 		print "[Telescope: ON (Tracking: OFF)]\n";
@@ -671,6 +697,7 @@ sub main() {
 		$oil_state = OIL_ON;
 		print "[Oil: ON]\n";
 		$te_state = TE_TRACK;
+		$te_tracking = 1;
 		$da_state = DA_POSITION;
 		$ha_state = HA_POSITION;
 		print "[Telescope: ON (Tracking: ON)]\n";
@@ -753,6 +780,7 @@ sub main() {
 				}
 				if (($oil_state == OIL_ON) && ($cmd[1] eq "1")) {
 					$te_state = TE_STOP;
+					$te_tracking = 0;
 					$da_state = DA_POSITION;
 					$ha_state = HA_POSITION;
 					print_client($client, "1\n");
@@ -760,6 +788,7 @@ sub main() {
 				}
 				if (($oil_state == OIL_ON) && ($cmd[1] eq "0")) {
 					$te_state = TE_OFF;
+					$te_tracking = 0;
 					$da_state = DA_STOP;
 					$ha_state = HA_STOP;
 					print_client($client, "1\n");
@@ -778,11 +807,13 @@ sub main() {
 				}
 				if (($te_state == TE_STOP) && ($cmd[1] eq "1")) {
 					$te_state = TE_TRACK;
+					$te_tracking = 1;
 					print_client($client, "1\n");
 					next;
 				}
 				if (($oil_state == TE_TRACK) && ($cmd[1] eq "0")) {
 					$te_state = TE_STOP;
+					$te_tracking = 0;
 					print_client($client, "1\n");
 					next;
 				}
@@ -1014,7 +1045,8 @@ sub main() {
 
 			if ($cmd[0] eq "TRHD") {
 				if ($#cmd!=0) { print_client($client, "ERR\n"); next; }
-				print_client($client, "$set_ha $set_de\n");
+				my $resp = sprintf "%.4f %.4f\n", $set_ha - 180, $set_de;
+				print_client($client, $resp);
 				next;
 			}
 
