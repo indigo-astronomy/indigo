@@ -69,6 +69,8 @@ void loop() {
     position += command.substring(2).toInt();
   } else if (command.startsWith("M:")) {
     position = command.substring(2).toInt();
+	} else if (command.startsWith("W:")) {
+		position = command.substring(2).toInt();
   } else if (command.startsWith("H")) {
   } else if (command.startsWith("N:")) {
     reverse = command.substring(2).toInt();

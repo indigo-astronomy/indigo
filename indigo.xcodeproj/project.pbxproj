@@ -1558,7 +1558,7 @@
 		9D6940892180B9F600AB112C /* indigo_aux_upb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_upb.c; sourceTree = "<group>"; };
 		9D69408A2180B9F600AB112C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D69408B2180B9F600AB112C /* indigo_aux_upb_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_upb_main.c; sourceTree = "<group>"; };
-		9D69408D2180BA1800AB112C /* upb_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = upb_simulator.ino; sourceTree = "<group>"; };
+		9D69408D2180BA1800AB112C /* upb_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = upb_simulator.ino; sourceTree = "<group>"; };
 		9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Ultimate_Powerbox_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D855DF4215119CB0049C4B0 /* libnexstar.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnexstar.a; path = build/lib/libnexstar.a; sourceTree = "<group>"; };
