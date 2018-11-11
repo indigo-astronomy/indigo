@@ -63,6 +63,7 @@ typedef struct {
 static void stop_camera_callback(indigo_device *device) {
 	HRESULT result = Altaircam_Stop(PRIVATE_DATA->handle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
+	PRIVATE_DATA->can_check_temperature = true;
 }
 
 static void pull_callback(unsigned event, void* callbackCtx) {
