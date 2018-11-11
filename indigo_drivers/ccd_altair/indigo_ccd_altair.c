@@ -260,14 +260,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_GETTEMPERATURE) {
 			CCD_TEMPERATURE_PROPERTY->hidden = false;
-			if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_PUTTEMPERATURE) {
-
+			if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_TEC_ONOFF) {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-
-				if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_TEC_ONOFF) {
-					CCD_COOLER_PROPERTY->hidden = false;
-					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
-				}
+				CCD_COOLER_PROPERTY->hidden = false;
+				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
 			} else {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 			}
