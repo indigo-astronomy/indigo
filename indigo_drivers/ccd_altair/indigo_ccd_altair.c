@@ -23,7 +23,7 @@
  \file indigo_ccd_altair.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_ccd_altair"
 
 #include <stdlib.h>
@@ -49,8 +49,11 @@
 #define X_CCD_SATURATION_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 2)
 #define X_CCD_BRIGHTNESS_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 3)
 #define X_CCD_GAMMA_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 4)
-#define X_CCD_SPEED_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 5)
-#define X_CCD_FAN_SPEED_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 6)
+#define X_CCD_R_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 5)
+#define X_CCD_G_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 6)
+#define X_CCD_B_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 7)
+#define FAN_SPEED_INDEX										8
+#define X_CCD_FAN_SPEED_ITEM							(X_CCD_ADVANCED_PROPERTY->items + FAN_SPEED_INDEX)
 
 typedef struct {
 	AltaircamInstV2 cam;
@@ -71,7 +74,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 	AltaircamFrameInfoV2 frameInfo;
 	HRESULT result;
 	indigo_device *device = (indigo_device *)callbackCtx;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback #%d", event);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback #%04x", event);
 	switch (event) {
 		case ALTAIRCAM_EVENT_IMAGE: {
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -133,51 +136,106 @@ static void setup_exposure(indigo_device *device) {
 	for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 		indigo_item *item = CCD_MODE_PROPERTY->items + i;
 		if (item->sw.value) {
-			if (strncmp(item->name, "RAW8", 4) == 0) {
-				resolutionIndex = atoi(item->name + 5);
-				if (resolutionIndex != currentResolutionIndex) {
-					result = Altaircam_Stop(PRIVATE_DATA->handle);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
-					result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
-					result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
-				}
-				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_RAW, 1);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_RAW, 1) -> %08x", result);
-				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 0);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 0) -> %08x", result);
-				PRIVATE_DATA->bits = 8;
-			} else if (strncmp(item->name, "RAW16", 4) == 0) {
+			if (strncmp(item->name, "MONO8_", 6) == 0) {
 				resolutionIndex = atoi(item->name + 6);
 				if (resolutionIndex != currentResolutionIndex) {
 					result = Altaircam_Stop(PRIVATE_DATA->handle);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
 					result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 0);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 0) -> %08x", result);
 					result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
 				}
-				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_RAW, 1);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_RAW, 1) -> %08x", result);
-				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 1);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 1) -> %08x", result);
+				PRIVATE_DATA->bits = 8;
+			} else if (strncmp(item->name, "MONO12_", 7) == 0) {
+				resolutionIndex = atoi(item->name + 7);
+				if (resolutionIndex != currentResolutionIndex) {
+					result = Altaircam_Stop(PRIVATE_DATA->handle);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
+					result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 1);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 1) -> %08x", result);
+					result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
+				}
+				PRIVATE_DATA->bits = 12;
+			} else if (strncmp(item->name, "MONO16_", 7) == 0) {
+				resolutionIndex = atoi(item->name + 7);
+				if (resolutionIndex != currentResolutionIndex) {
+					result = Altaircam_Stop(PRIVATE_DATA->handle);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
+					result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 1);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 1) -> %08x", result);
+					result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
+				}
 				PRIVATE_DATA->bits = 16;
-			} else if (strncmp(item->name, "RGB", 3) == 0) {
+			} else if (strncmp(item->name, "RAW8_", 5) == 0) {
+				resolutionIndex = atoi(item->name + 5);
+				if (resolutionIndex != currentResolutionIndex) {
+					result = Altaircam_Stop(PRIVATE_DATA->handle);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
+					result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_RAW, 1);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_RAW, 1) -> %08x", result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 0);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 0) -> %08x", result);
+					result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
+				}
+				PRIVATE_DATA->bits = 8;
+			} else if (strncmp(item->name, "RAW16_", 6) == 0) {
+				resolutionIndex = atoi(item->name + 6);
+				if (resolutionIndex != currentResolutionIndex) {
+					result = Altaircam_Stop(PRIVATE_DATA->handle);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
+					result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_RAW, 1);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_RAW, 1) -> %08x", result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 1);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 1) -> %08x", result);
+					result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
+				}
+				PRIVATE_DATA->bits = 16;
+			} else if (strncmp(item->name, "RAW12_", 6) == 0) {
+				resolutionIndex = atoi(item->name + 6);
+				if (resolutionIndex != currentResolutionIndex) {
+					result = Altaircam_Stop(PRIVATE_DATA->handle);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
+					result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_RAW, 1);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_RAW, 1) -> %08x", result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_BITDEPTH, 1);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 1) -> %08x", result);
+					result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
+				}
+				PRIVATE_DATA->bits = 12;
+			} else if (strncmp(item->name, "RGB_", 4) == 0) {
 				resolutionIndex = atoi(item->name + 4);
 				if (resolutionIndex != currentResolutionIndex) {
 					result = Altaircam_Stop(PRIVATE_DATA->handle);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
 					result = Altaircam_put_eSize(PRIVATE_DATA->handle, resolutionIndex);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_eSize(%d) -> %08x", resolutionIndex, result);
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_RAW, 0);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_RAW, 1) -> %08x", result);
 					result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
 				}
 				PRIVATE_DATA->bits = 24;
 			}
 		}
-	}
-	if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_ROI_HARDWARE) {
+	}	if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_ROI_HARDWARE) {
 		unsigned left = 2 * ((unsigned)CCD_FRAME_LEFT_ITEM->number.value / (unsigned)CCD_BIN_HORIZONTAL_ITEM->number.value / 2);
 		unsigned top = 2 * ((unsigned)CCD_FRAME_TOP_ITEM->number.value / (unsigned)CCD_BIN_VERTICAL_ITEM->number.value / 2);
 		unsigned width = 2 * ((unsigned)CCD_FRAME_WIDTH_ITEM->number.value / (unsigned)CCD_BIN_HORIZONTAL_ITEM->number.value / 2);
@@ -219,23 +277,48 @@ static indigo_result ccd_attach(indigo_device *device) {
 				CCD_INFO_WIDTH_ITEM->number.value = frame_width;
 			if (frame_height > CCD_INFO_HEIGHT_ITEM->number.value)
 				CCD_INFO_HEIGHT_ITEM->number.value = frame_height;
-			if (flags & ALTAIRCAM_FLAG_RAW8) {
-				snprintf(name, sizeof(name), "RAW8_%d", i);
-				snprintf(label, sizeof(label), "RAW %d x %dx8", frame_width, frame_height);
-				indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-				CCD_MODE_PROPERTY->count++;
-			}
-			if (flags & ALTAIRCAM_FLAG_RAW16 || flags & ALTAIRCAM_FLAG_RAW14 || flags & ALTAIRCAM_FLAG_RAW12 || flags & ALTAIRCAM_FLAG_RAW10) {
-				snprintf(name, sizeof(name), "RAW16_%d", i);
-				snprintf(label, sizeof(label), "RAW %d x %dx16", frame_width, frame_height);
-				indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-				CCD_MODE_PROPERTY->count++;
-			}
 			if ((flags & ALTAIRCAM_FLAG_MONO) == 0) {
+				if (flags & ALTAIRCAM_FLAG_RAW8) {
+					snprintf(name, sizeof(name), "RAW8_%d", i);
+					snprintf(label, sizeof(label), "RAW %d x %dx8", frame_width, frame_height);
+					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
+					CCD_MODE_PROPERTY->count++;
+				}
+				if (flags & ALTAIRCAM_FLAG_RAW16) {
+					snprintf(name, sizeof(name), "RAW16_%d", i);
+					snprintf(label, sizeof(label), "RAW %d x %dx16", frame_width, frame_height);
+					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
+					CCD_MODE_PROPERTY->count++;
+				}
+				if (flags & ALTAIRCAM_FLAG_RAW12) {
+					snprintf(name, sizeof(name), "RAW12_%d", i);
+					snprintf(label, sizeof(label), "RAW %d x %dx12", frame_width, frame_height);
+					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
+					CCD_MODE_PROPERTY->count++;
+				}
 				snprintf(name, sizeof(name), "RGB_%d", i);
 				snprintf(label, sizeof(label), "RGB %d x %d", frame_width, frame_height);
 				indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 				CCD_MODE_PROPERTY->count++;
+			} else {
+				if (flags & ALTAIRCAM_FLAG_RAW8) {
+					snprintf(name, sizeof(name), "MONO8_%d", i);
+					snprintf(label, sizeof(label), "MONO %d x %dx8", frame_width, frame_height);
+					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
+					CCD_MODE_PROPERTY->count++;
+				}
+				if (flags & ALTAIRCAM_FLAG_RAW16) {
+					snprintf(name, sizeof(name), "MONO16_%d", i);
+					snprintf(label, sizeof(label), "MONO %d x %dx16", frame_width, frame_height);
+					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
+					CCD_MODE_PROPERTY->count++;
+				}
+				if (flags & ALTAIRCAM_FLAG_RAW12) {
+					snprintf(name, sizeof(name), "MONO12_%d", i);
+					snprintf(label, sizeof(label), "MONO %d x %dx12", frame_width, frame_height);
+					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
+					CCD_MODE_PROPERTY->count++;
+				}
 			}
 		}
 		CCD_MODE_ITEM->sw.value = true;
@@ -265,7 +348,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_STREAMING_PROPERTY->hidden = false;
-		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED_PROPERTY", CCD_MAIN_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, flags & ALTAIRCAM_FLAG_FAN ? 7 : 6);
+		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED_PROPERTY", CCD_MAIN_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, flags & ALTAIRCAM_FLAG_FAN ? FAN_SPEED_INDEX + 1 : FAN_SPEED_INDEX);
 		if (X_CCD_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", ALTAIRCAM_CONTRAST_MIN, ALTAIRCAM_CONTRAST_MAX, 1, ALTAIRCAM_CONTRAST_DEF);
@@ -273,7 +356,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_number_item(X_CCD_SATURATION_ITEM, "SATURATION", "Saturation", ALTAIRCAM_SATURATION_MIN, ALTAIRCAM_SATURATION_MAX, 1, ALTAIRCAM_SATURATION_DEF);
 		indigo_init_number_item(X_CCD_BRIGHTNESS_ITEM, "BRIGHTNESS", "Brightness", ALTAIRCAM_BRIGHTNESS_MIN, ALTAIRCAM_BRIGHTNESS_MAX, 1, ALTAIRCAM_BRIGHTNESS_DEF);
 		indigo_init_number_item(X_CCD_GAMMA_ITEM, "GAMMA", "Gamma", ALTAIRCAM_GAMMA_MIN, ALTAIRCAM_GAMMA_MAX, 1, ALTAIRCAM_GAMMA_DEF);
-		indigo_init_number_item(X_CCD_SPEED_ITEM, "SPEED", "Speed (framerate)", 0, 0, 1, 0);
+		indigo_init_number_item(X_CCD_R_GAIN_ITEM, "R_GAIN", "Red gain", ALTAIRCAM_WBGAIN_MIN, ALTAIRCAM_WBGAIN_MAX, 1, ALTAIRCAM_WBGAIN_DEF);
+		indigo_init_number_item(X_CCD_G_GAIN_ITEM, "G_GAIN", "Green gain", ALTAIRCAM_WBGAIN_MIN, ALTAIRCAM_WBGAIN_MAX, 1, ALTAIRCAM_WBGAIN_DEF);
+		indigo_init_number_item(X_CCD_B_GAIN_ITEM, "B_GAIN", "Blue gain", ALTAIRCAM_WBGAIN_MIN, ALTAIRCAM_WBGAIN_MAX, 1, ALTAIRCAM_WBGAIN_DEF);
 		if (flags & ALTAIRCAM_FLAG_FAN)
 			indigo_init_number_item(X_CCD_FAN_SPEED_ITEM, "FAN_SPEED", "Fan speed", 0, 0, 1, 0);
 
@@ -307,7 +392,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				} else {
-					PRIVATE_DATA->handle = Altaircam_Open(PRIVATE_DATA->cam.id);
+					char id[66];
+					sprintf(id, "@%s", PRIVATE_DATA->cam.id);
+					PRIVATE_DATA->handle = Altaircam_Open(id);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Open(%s) -> %p", id, PRIVATE_DATA->handle);
 				}
 			}
 			device->gp_bits = 1;
@@ -358,10 +446,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				Altaircam_get_ExpTimeRange(PRIVATE_DATA->handle, &min, &max, &current);
 				CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = min / 1000000.0;
 				CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = max / 1000000.0;
-				result = Altaircam_get_Speed(PRIVATE_DATA->handle, (unsigned short *)&current);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_Speed(->%d) -> %08x", current, result);
-				X_CCD_SPEED_ITEM->number.max = Altaircam_get_MaxSpeed(PRIVATE_DATA->handle);
-				if (X_CCD_ADVANCED_PROPERTY->count > 6)
+				if (X_CCD_ADVANCED_PROPERTY->count > FAN_SPEED_INDEX)
 					X_CCD_FAN_SPEED_ITEM->number.max = Altaircam_get_FanMaxSpeed(PRIVATE_DATA->handle);
 				indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TRIGGER, 1);
@@ -482,38 +567,67 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_CCD_ADVANCED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
+		// -------------------------------------------------------------------------------- X_CCD_ADVANCED_PROPERTY
 		indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
 		X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
 		result = Altaircam_put_Contrast(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value);
-		if (result < 0)
+		if (result < 0) {
 			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
+			indigo_send_message(device, "Contrast setting is not supported");
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
+		}
 		result = Altaircam_put_Hue(PRIVATE_DATA->handle, (int)X_CCD_HUE_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value);
-		if (result < 0)
+		if (result < 0) {
 			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
+			indigo_send_message(device, "Hue setting is not supported");
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
+		}
 		result = Altaircam_put_Saturation(PRIVATE_DATA->handle, (int)X_CCD_SATURATION_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value);
-		if (result < 0)
+		if (result < 0) {
 			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
+			indigo_send_message(device, "Saturation setting is not supported");
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
+		}
 		result = Altaircam_put_Brightness(PRIVATE_DATA->handle, (int)X_CCD_BRIGHTNESS_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value);
-		if (result < 0)
+		if (result < 0) {
 			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
+			indigo_send_message(device, "Brightness setting is not supported");
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
+		}
 		result = Altaircam_put_Gamma(PRIVATE_DATA->handle, (int)X_CCD_GAMMA_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value);
-		if (result < 0)
+		if (result < 0) {
 			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-		result = Altaircam_put_Speed(PRIVATE_DATA->handle, (int)X_CCD_SPEED_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Speed(%d) -> %08x", (int)X_CCD_SPEED_ITEM->number.value);
-		if (result < 0)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
+			indigo_send_message(device, "Gamma setting is not supported");
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
+		}
+		int gain[3] = { (int)X_CCD_R_GAIN_ITEM->number.value, (int)X_CCD_G_GAIN_ITEM->number.value, (int)X_CCD_B_GAIN_ITEM->number.value };
+		result = Altaircam_put_WhiteBalanceGain(PRIVATE_DATA->handle, gain);
+		if (result < 0) {
 			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-		if (X_CCD_ADVANCED_PROPERTY->count > 6) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
+			indigo_send_message(device, "White ballance gain setting is not supported");
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
+		}
+		if (X_CCD_ADVANCED_PROPERTY->count > FAN_SPEED_INDEX) {
 			result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_FAN, (int)X_CCD_FAN_SPEED_ITEM->number.value);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value);
-			if (result < 0)
+			if (result < 0) {
 				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value, result);
+				indigo_send_message(device, "Fan speed setting is not supported");
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value, result);
+			}
 		}
 		indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -558,7 +672,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				} else {
-					PRIVATE_DATA->handle = Altaircam_Open(PRIVATE_DATA->cam.id);
+					char id[66];
+					sprintf(id, "@%s", PRIVATE_DATA->cam.id);
+					PRIVATE_DATA->handle = Altaircam_Open(id);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Open(%s) -> %p", id, PRIVATE_DATA->handle);
 				}
 			}
 			device->gp_bits = 1;
@@ -640,7 +757,7 @@ static void hotplug_callback(void* pCallbackCtx) {
 		bool found = false;
 		for (int i = 0; i < ALTAIRCAM_MAX; i++) {
 			indigo_device *device = devices[i];
-			if (device && memcmp(PRIVATE_DATA->cam.id, cam.id, sizeof(64)) == 0) {
+			if (device && memcmp(PRIVATE_DATA->cam.id, cam.id, sizeof(cam.id)) == 0) {
 				found = true;
 				PRIVATE_DATA->present = true;
 				break;
