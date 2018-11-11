@@ -279,6 +279,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			device->gp_bits = 1;
 			if (PRIVATE_DATA->handle) {
 				if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_GETTEMPERATURE) {
+					if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM) {
+						int value;
+						result = Altaircam_get_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TEC, &value);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_Option(ALTAIRCAM_OPTION_TEC, ->%d) -> %08x", value, result);
+						indigo_set_switch(CCD_COOLER_PROPERTY, value ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
+						result = Altaircam_get_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TECTARGET, &value);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_Option(ALTAIRCAM_OPTION_TECTARGET, ->%d) -> %08x", value, result);
+						CCD_TEMPERATURE_ITEM->number.target = value / 10.0;
+					}
 					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 5.0, ccd_temperature_callback);
 				} else {
 					PRIVATE_DATA->temperature_timer = NULL;
