@@ -64,6 +64,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 	ToupcamFrameInfoV2 frameInfo;
 	HRESULT result;
 	indigo_device *device = (indigo_device *)callbackCtx;
+	PRIVATE_DATA->can_check_temperature = false;
 	if (PRIVATE_DATA->pull_active) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback #%d", event);
 		switch (event) {
@@ -88,11 +89,13 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 			}
 		}
 	}
+	PRIVATE_DATA->can_check_temperature = true;
 }
 
 static void push_callback(const void *data, const ToupcamFrameInfoV2* frameInfo, int snap, void* callbackCtx) {
 	HRESULT result;
 	indigo_device *device = (indigo_device *)callbackCtx;
+	PRIVATE_DATA->can_check_temperature = false;
 	if (PRIVATE_DATA->push_active) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "push_callback %d x %d, %x, %d", frameInfo->width, frameInfo->height, frameInfo->flag, frameInfo->seq);
 		int size = frameInfo->width * frameInfo->height * (PRIVATE_DATA->bits / 8);
@@ -109,6 +112,7 @@ static void push_callback(const void *data, const ToupcamFrameInfoV2* frameInfo,
 		}
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	}
+	PRIVATE_DATA->can_check_temperature = true;
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
@@ -117,7 +121,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		short temperature;
 		if (Toupcam_get_Temperature(PRIVATE_DATA->handle, &temperature) >= 0) {
-			CCD_TEMPERATURE_ITEM->number.value = temperature / 1.0;
+			CCD_TEMPERATURE_ITEM->number.value = temperature / 10.0;
 			if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM && fabs(CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target) > 1.0) {
 				if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value)
 					CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -283,10 +287,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 			device->gp_bits = 1;
 			if (PRIVATE_DATA->handle) {
-				if (PRIVATE_DATA->cam.model->flag & TOUPCAM_FLAG_GETTEMPERATURE)
+				if (PRIVATE_DATA->cam.model->flag & TOUPCAM_FLAG_GETTEMPERATURE) {
 					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 5.0, ccd_temperature_callback);
-				else
+					PRIVATE_DATA->can_check_temperature = true;
+				} else {
 					PRIVATE_DATA->temperature_timer = NULL;
+				}
 				int rawMode;
 				int bitDepth;
 				unsigned resolutionIndex;
