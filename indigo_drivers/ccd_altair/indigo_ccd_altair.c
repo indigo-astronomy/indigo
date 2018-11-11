@@ -43,6 +43,15 @@
 
 #define PRIVATE_DATA        ((altair_private_data *)device->private_data)
 
+#define X_CCD_ADVANCED_PROPERTY						(PRIVATE_DATA->advanced_property)
+#define X_CCD_CONTRAST_ITEM								(X_CCD_ADVANCED_PROPERTY->items + 0)
+#define X_CCD_HUE_ITEM										(X_CCD_ADVANCED_PROPERTY->items + 1)
+#define X_CCD_SATURATION_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 2)
+#define X_CCD_BRIGHTNESS_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 3)
+#define X_CCD_GAMMA_ITEM										(X_CCD_ADVANCED_PROPERTY->items + 4)
+#define X_CCD_SPEED_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 5)
+#define X_CCD_FAN_SPEED_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 6)
+
 typedef struct {
 	AltaircamInstV2 cam;
 	HAltairCam handle;
@@ -53,6 +62,7 @@ typedef struct {
 	unsigned char *buffer;
 	int bits;
 	pthread_mutex_t mutex;
+	indigo_property *advanced_property;
 } altair_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -185,6 +195,8 @@ static void setup_exposure(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Flush() -> %08x", result);
 }
 
+static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -253,13 +265,33 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_STREAMING_PROPERTY->hidden = false;
+		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED_PROPERTY", CCD_MAIN_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, flags & ALTAIRCAM_FLAG_FAN ? 7 : 6);
+		if (X_CCD_ADVANCED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", ALTAIRCAM_CONTRAST_MIN, ALTAIRCAM_CONTRAST_MAX, 1, ALTAIRCAM_CONTRAST_DEF);
+		indigo_init_number_item(X_CCD_HUE_ITEM, "HUE", "Hue", ALTAIRCAM_HUE_MIN, ALTAIRCAM_HUE_MAX, 1, ALTAIRCAM_HUE_DEF);
+		indigo_init_number_item(X_CCD_SATURATION_ITEM, "SATURATION", "Saturation", ALTAIRCAM_SATURATION_MIN, ALTAIRCAM_SATURATION_MAX, 1, ALTAIRCAM_SATURATION_DEF);
+		indigo_init_number_item(X_CCD_BRIGHTNESS_ITEM, "BRIGHTNESS", "Brightness", ALTAIRCAM_BRIGHTNESS_MIN, ALTAIRCAM_BRIGHTNESS_MAX, 1, ALTAIRCAM_BRIGHTNESS_DEF);
+		indigo_init_number_item(X_CCD_GAMMA_ITEM, "GAMMA", "Gamma", ALTAIRCAM_GAMMA_MIN, ALTAIRCAM_GAMMA_MAX, 1, ALTAIRCAM_GAMMA_DEF);
+		indigo_init_number_item(X_CCD_SPEED_ITEM, "SPEED", "Speed (framerate)", 0, 0, 1, 0);
+		if (flags & ALTAIRCAM_FLAG_FAN)
+			indigo_init_number_item(X_CCD_FAN_SPEED_ITEM, "FAN_SPEED", "Fan speed", 0, 0, 1, 0);
+
 		PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(3 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
+}
+
+static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(X_CCD_ADVANCED_PROPERTY, property))
+			indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+	}
+	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -322,10 +354,16 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				CCD_BIN_HORIZONTAL_ITEM->number.value = (int)(CCD_INFO_WIDTH_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].width);
 				CCD_BIN_VERTICAL_ITEM->number.value = (int)(CCD_INFO_HEIGHT_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].height);
-				uint32_t min=0, max=0, current=0;
+				uint32_t min, max, current;
 				Altaircam_get_ExpTimeRange(PRIVATE_DATA->handle, &min, &max, &current);
 				CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = min / 1000000.0;
 				CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = max / 1000000.0;
+				result = Altaircam_get_Speed(PRIVATE_DATA->handle, (unsigned short *)&current);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_Speed(->%d) -> %08x", current, result);
+				X_CCD_SPEED_ITEM->number.max = Altaircam_get_MaxSpeed(PRIVATE_DATA->handle);
+				if (X_CCD_ADVANCED_PROPERTY->count > 6)
+					X_CCD_FAN_SPEED_ITEM->number.max = Altaircam_get_FanMaxSpeed(PRIVATE_DATA->handle);
+				indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TRIGGER, 1);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_TRIGGER) -> %08x", result);
 				result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
@@ -443,6 +481,42 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(X_CCD_ADVANCED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
+		indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
+		X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
+		result = Altaircam_put_Contrast(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value);
+		if (result < 0)
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+		result = Altaircam_put_Hue(PRIVATE_DATA->handle, (int)X_CCD_HUE_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value);
+		if (result < 0)
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+		result = Altaircam_put_Saturation(PRIVATE_DATA->handle, (int)X_CCD_SATURATION_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value);
+		if (result < 0)
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+		result = Altaircam_put_Brightness(PRIVATE_DATA->handle, (int)X_CCD_BRIGHTNESS_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value);
+		if (result < 0)
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+		result = Altaircam_put_Gamma(PRIVATE_DATA->handle, (int)X_CCD_GAMMA_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value);
+		if (result < 0)
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+		result = Altaircam_put_Speed(PRIVATE_DATA->handle, (int)X_CCD_SPEED_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Speed(%d) -> %08x", (int)X_CCD_SPEED_ITEM->number.value);
+		if (result < 0)
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (X_CCD_ADVANCED_PROPERTY->count > 6) {
+			result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_FAN, (int)X_CCD_FAN_SPEED_ITEM->number.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value);
+			if (result < 0)
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
@@ -464,6 +538,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
+	indigo_release_property(X_CCD_ADVANCED_PROPERTY);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
