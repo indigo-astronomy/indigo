@@ -60,6 +60,11 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
+static void stop_camera_callback(indigo_device *device) {
+	HRESULT result = Altaircam_Stop(PRIVATE_DATA->handle);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Stop() -> %08x", result);
+}
+
 static void pull_callback(unsigned event, void* callbackCtx) {
 	AltaircamFrameInfoV2 frameInfo;
 	HRESULT result;
@@ -78,6 +83,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 				CCD_EXPOSURE_ITEM->number.value = 0;
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				indigo_set_timer(device, 0, stop_camera_callback);
 				break;
 			}
 			case ALTAIRCAM_EVENT_TIMEOUT:
@@ -85,15 +91,14 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 			case ALTAIRCAM_EVENT_ERROR: {
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				indigo_set_timer(device, 0, stop_camera_callback);
 				break;
 			}
 		}
 	}
-	PRIVATE_DATA->can_check_temperature = true;
 }
 
 static void push_callback(const void *data, const AltaircamFrameInfoV2* frameInfo, int snap, void* callbackCtx) {
-	HRESULT result;
 	indigo_device *device = (indigo_device *)callbackCtx;
 	PRIVATE_DATA->can_check_temperature = false;
 	if (PRIVATE_DATA->push_active) {
@@ -105,14 +110,12 @@ static void push_callback(const void *data, const AltaircamFrameInfoV2* frameInf
 			CCD_STREAMING_COUNT_ITEM->number.value -= 1;
 		if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
 			PRIVATE_DATA->push_active = false;
-			result = Altaircam_Pause(PRIVATE_DATA->handle, 1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Pause(1) -> %08x", result);
 			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+			indigo_set_timer(device, 0, stop_camera_callback);
 		}
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	}
-	PRIVATE_DATA->can_check_temperature = true;
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
@@ -332,6 +335,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				CCD_BIN_HORIZONTAL_ITEM->number.value = (int)(CCD_INFO_WIDTH_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].width);
 				CCD_BIN_VERTICAL_ITEM->number.value = (int)(CCD_INFO_HEIGHT_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].height);
+				uint32_t min=0, max=0, current=0;
+				Altaircam_get_ExpTimeRange(PRIVATE_DATA->handle, &min, &max, &current);
+				CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = min / 1000000.0;
+				CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = max / 1000000.0;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
