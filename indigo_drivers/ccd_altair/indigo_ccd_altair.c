@@ -52,8 +52,9 @@
 #define X_CCD_R_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 5)
 #define X_CCD_G_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 6)
 #define X_CCD_B_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 7)
-#define FAN_SPEED_INDEX										8
-#define X_CCD_FAN_SPEED_ITEM							(X_CCD_ADVANCED_PROPERTY->items + FAN_SPEED_INDEX)
+
+#define X_CCD_FAN_PROPERTY								(PRIVATE_DATA->fan_property)
+#define X_CCD_FAN_SPEED_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 0)
 
 typedef struct {
 	AltaircamInstV2 cam;
@@ -66,6 +67,7 @@ typedef struct {
 	int bits;
 	pthread_mutex_t mutex;
 	indigo_property *advanced_property;
+	indigo_property *fan_property;
 } altair_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -348,20 +350,26 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
 		CCD_STREAMING_PROPERTY->hidden = false;
-		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED_PROPERTY", CCD_MAIN_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, flags & ALTAIRCAM_FLAG_FAN ? FAN_SPEED_INDEX + 1 : FAN_SPEED_INDEX);
-		if (X_CCD_ADVANCED_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", ALTAIRCAM_CONTRAST_MIN, ALTAIRCAM_CONTRAST_MAX, 1, ALTAIRCAM_CONTRAST_DEF);
-		indigo_init_number_item(X_CCD_HUE_ITEM, "HUE", "Hue", ALTAIRCAM_HUE_MIN, ALTAIRCAM_HUE_MAX, 1, ALTAIRCAM_HUE_DEF);
-		indigo_init_number_item(X_CCD_SATURATION_ITEM, "SATURATION", "Saturation", ALTAIRCAM_SATURATION_MIN, ALTAIRCAM_SATURATION_MAX, 1, ALTAIRCAM_SATURATION_DEF);
-		indigo_init_number_item(X_CCD_BRIGHTNESS_ITEM, "BRIGHTNESS", "Brightness", ALTAIRCAM_BRIGHTNESS_MIN, ALTAIRCAM_BRIGHTNESS_MAX, 1, ALTAIRCAM_BRIGHTNESS_DEF);
-		indigo_init_number_item(X_CCD_GAMMA_ITEM, "GAMMA", "Gamma", ALTAIRCAM_GAMMA_MIN, ALTAIRCAM_GAMMA_MAX, 1, ALTAIRCAM_GAMMA_DEF);
-		indigo_init_number_item(X_CCD_R_GAIN_ITEM, "R_GAIN", "Red gain", ALTAIRCAM_WBGAIN_MIN, ALTAIRCAM_WBGAIN_MAX, 1, ALTAIRCAM_WBGAIN_DEF);
-		indigo_init_number_item(X_CCD_G_GAIN_ITEM, "G_GAIN", "Green gain", ALTAIRCAM_WBGAIN_MIN, ALTAIRCAM_WBGAIN_MAX, 1, ALTAIRCAM_WBGAIN_DEF);
-		indigo_init_number_item(X_CCD_B_GAIN_ITEM, "B_GAIN", "Blue gain", ALTAIRCAM_WBGAIN_MIN, ALTAIRCAM_WBGAIN_MAX, 1, ALTAIRCAM_WBGAIN_DEF);
-		if (flags & ALTAIRCAM_FLAG_FAN)
+		CCD_GAIN_PROPERTY->hidden = false;
+		if ((flags & ALTAIRCAM_FLAG_MONO) == 0) {
+		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_MAIN_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
+			if (X_CCD_ADVANCED_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", ALTAIRCAM_CONTRAST_MIN, ALTAIRCAM_CONTRAST_MAX, 1, ALTAIRCAM_CONTRAST_DEF);
+			indigo_init_number_item(X_CCD_HUE_ITEM, "HUE", "Hue", ALTAIRCAM_HUE_MIN, ALTAIRCAM_HUE_MAX, 1, ALTAIRCAM_HUE_DEF);
+			indigo_init_number_item(X_CCD_SATURATION_ITEM, "SATURATION", "Saturation", ALTAIRCAM_SATURATION_MIN, ALTAIRCAM_SATURATION_MAX, 1, ALTAIRCAM_SATURATION_DEF);
+			indigo_init_number_item(X_CCD_BRIGHTNESS_ITEM, "BRIGHTNESS", "Brightness", ALTAIRCAM_BRIGHTNESS_MIN, ALTAIRCAM_BRIGHTNESS_MAX, 1, ALTAIRCAM_BRIGHTNESS_DEF);
+			indigo_init_number_item(X_CCD_GAMMA_ITEM, "GAMMA", "Gamma", ALTAIRCAM_GAMMA_MIN, ALTAIRCAM_GAMMA_MAX, 1, ALTAIRCAM_GAMMA_DEF);
+			indigo_init_number_item(X_CCD_R_GAIN_ITEM, "R_GAIN", "Red gain", ALTAIRCAM_WBGAIN_MIN, ALTAIRCAM_WBGAIN_MAX, 1, ALTAIRCAM_WBGAIN_DEF);
+			indigo_init_number_item(X_CCD_G_GAIN_ITEM, "G_GAIN", "Green gain", ALTAIRCAM_WBGAIN_MIN, ALTAIRCAM_WBGAIN_MAX, 1, ALTAIRCAM_WBGAIN_DEF);
+			indigo_init_number_item(X_CCD_B_GAIN_ITEM, "B_GAIN", "Blue gain", ALTAIRCAM_WBGAIN_MIN, ALTAIRCAM_WBGAIN_MAX, 1, ALTAIRCAM_WBGAIN_DEF);
+		}
+		if (flags & ALTAIRCAM_FLAG_FAN) {
+			X_CCD_FAN_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_FAN", CCD_MAIN_GROUP, "Fan control", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			if (X_CCD_FAN_PROPERTY == NULL)
+				return INDIGO_FAILED;
 			indigo_init_number_item(X_CCD_FAN_SPEED_ITEM, "FAN_SPEED", "Fan speed", 0, 0, 1, 0);
-
+		}
 		PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(3 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		// --------------------------------------------------------------------------------
@@ -373,8 +381,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_CCD_ADVANCED_PROPERTY, property))
+		if (X_CCD_ADVANCED_PROPERTY && indigo_property_match(X_CCD_ADVANCED_PROPERTY, property))
 			indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+		if (X_CCD_FAN_PROPERTY && indigo_property_match(X_CCD_FAN_PROPERTY, property))
+			indigo_define_property(device, X_CCD_FAN_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -446,9 +456,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				Altaircam_get_ExpTimeRange(PRIVATE_DATA->handle, &min, &max, &current);
 				CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = min / 1000000.0;
 				CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = max / 1000000.0;
-				if (X_CCD_ADVANCED_PROPERTY->count > FAN_SPEED_INDEX)
+				min = max = current = 0;
+				result = Altaircam_get_ExpoAGainRange(PRIVATE_DATA->handle, (unsigned short *)&min, (unsigned short *)&max, (unsigned short *)&current);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_ExpoAGainRange(->%d, ->%d, ->%d) -> %08x", min, max, current, result);
+				result = Altaircam_get_ExpoAGain(PRIVATE_DATA->handle, (unsigned short *)&current);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_ExpoAGain(->%d) -> %08x", current, result);
+				CCD_GAIN_ITEM->number.min = min;
+				CCD_GAIN_ITEM->number.max = max;
+				CCD_GAIN_ITEM->number.value = current;
+				if (X_CCD_ADVANCED_PROPERTY) {
+					indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+				}
+				if (X_CCD_FAN_PROPERTY) {
 					X_CCD_FAN_SPEED_ITEM->number.max = Altaircam_get_FanMaxSpeed(PRIVATE_DATA->handle);
-				indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+					indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+				}
 				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TRIGGER, 1);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_TRIGGER) -> %08x", result);
 				result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
@@ -566,8 +588,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_CCD_ADVANCED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_CCD_ADVANCED_PROPERTY
+	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_GAIN
+		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
+		result = Altaircam_put_ExpoAGain(PRIVATE_DATA->handle, (int)CCD_GAIN_ITEM->number.value);
+		if (result < 0) {
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
+			indigo_send_message(device, "Analog gain setting is not supported");
+		} else {
+			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
+		}
+		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+	} else if (X_CCD_ADVANCED_PROPERTY && indigo_property_match(X_CCD_ADVANCED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CCD_ADVANCED
 		indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
 		X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
 		result = Altaircam_put_Contrast(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
@@ -619,17 +654,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
 		}
-		if (X_CCD_ADVANCED_PROPERTY->count > FAN_SPEED_INDEX) {
-			result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_FAN, (int)X_CCD_FAN_SPEED_ITEM->number.value);
-			if (result < 0) {
-				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value, result);
-				indigo_send_message(device, "Fan speed setting is not supported");
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value, result);
-			}
-		}
 		indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (X_CCD_FAN_PROPERTY && indigo_property_match(X_CCD_FAN_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CCD_FAN
+		indigo_property_copy_values(X_CCD_FAN_PROPERTY, property, false);
+		X_CCD_FAN_PROPERTY->state = INDIGO_OK_STATE;
+		result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_FAN, (int)X_CCD_FAN_SPEED_ITEM->number.value);
+		if (result < 0) {
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value, result);
+			indigo_send_message(device, "Fan speed setting is not supported");
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value, result);
+		}
+		indigo_update_property(device, X_CCD_FAN_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
@@ -640,6 +679,11 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
+	if (X_CCD_ADVANCED_PROPERTY)
+		indigo_release_property(X_CCD_ADVANCED_PROPERTY);
+	if (X_CCD_FAN_PROPERTY)
+		indigo_release_property(X_CCD_FAN_PROPERTY);
+
 	if (device == device->master_device)
 		indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
@@ -652,7 +696,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
-	indigo_release_property(X_CCD_ADVANCED_PROPERTY);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
