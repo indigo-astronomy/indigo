@@ -64,6 +64,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 	AltaircamFrameInfoV2 frameInfo;
 	HRESULT result;
 	indigo_device *device = (indigo_device *)callbackCtx;
+	PRIVATE_DATA->can_check_temperature = false;
 	if (PRIVATE_DATA->pull_active) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback #%d", event);
 		switch (event) {
@@ -88,11 +89,13 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 			}
 		}
 	}
+	PRIVATE_DATA->can_check_temperature = true;
 }
 
 static void push_callback(const void *data, const AltaircamFrameInfoV2* frameInfo, int snap, void* callbackCtx) {
 	HRESULT result;
 	indigo_device *device = (indigo_device *)callbackCtx;
+	PRIVATE_DATA->can_check_temperature = false;
 	if (PRIVATE_DATA->push_active) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "push_callback %d x %d, %x, %d", frameInfo->width, frameInfo->height, frameInfo->flag, frameInfo->seq);
 		int size = frameInfo->width * frameInfo->height * (PRIVATE_DATA->bits / 8);
@@ -109,12 +112,13 @@ static void push_callback(const void *data, const AltaircamFrameInfoV2* frameInf
 		}
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	}
+	PRIVATE_DATA->can_check_temperature = true;
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
-	//if (PRIVATE_DATA->can_check_temperature) {
+	if (PRIVATE_DATA->can_check_temperature) {
 		short temperature;
 		HRESULT result = Altaircam_get_Temperature(PRIVATE_DATA->handle, &temperature);
 		if (result >= 0) {
@@ -131,7 +135,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_get_Temperature() -> %08x", result);
 		}
-	//}
+	}
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
 }
 
@@ -294,10 +298,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 			device->gp_bits = 1;
 			if (PRIVATE_DATA->handle) {
-				if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_GETTEMPERATURE)
+				if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_GETTEMPERATURE) {
 					PRIVATE_DATA->temperature_timer = indigo_set_timer(device, 5.0, ccd_temperature_callback);
-				else
+					PRIVATE_DATA->can_check_temperature = true;
+				} else {
 					PRIVATE_DATA->temperature_timer = NULL;
+				}
 				int rawMode;
 				int bitDepth;
 				unsigned resolutionIndex;
