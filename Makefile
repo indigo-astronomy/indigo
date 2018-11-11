@@ -1759,7 +1759,7 @@ uninstall:
 #
 #---------------------------------------------------------------------
 
-REWRITE_DEBS="libsbigudrv2,libqhy,indi-dsi"
+REWRITE_DEBS="libsbigudrv2,libqhy,indi-dsi,indigo-upb"
 package: $(PACKAGE_NAME).$(PACKAGE_TYPE)
 
 package-prepare: all
