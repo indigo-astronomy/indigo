@@ -23,7 +23,7 @@
  \file indigo_ccd_altair.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_ccd_altair"
 
 #include <stdlib.h>
@@ -51,7 +51,6 @@ typedef struct {
 	indigo_device *guider;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	unsigned char *buffer;
-	bool pull_active;
 	int bits;
 	pthread_mutex_t mutex;
 } altair_private_data;
@@ -62,28 +61,31 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 	AltaircamFrameInfoV2 frameInfo;
 	HRESULT result;
 	indigo_device *device = (indigo_device *)callbackCtx;
-	if (PRIVATE_DATA->pull_active) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback #%d", event);
-		switch (event) {
-			case ALTAIRCAM_EVENT_IMAGE: {
-				PRIVATE_DATA->pull_active = false;
-				pthread_mutex_lock(&PRIVATE_DATA->mutex);
-				result = Altaircam_PullImageV2(PRIVATE_DATA->handle, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->bits, &frameInfo);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
-				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-				indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits, PRIVATE_DATA->bits != 24, NULL);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback #%d", event);
+	switch (event) {
+		case ALTAIRCAM_EVENT_IMAGE: {
+			pthread_mutex_lock(&PRIVATE_DATA->mutex);
+			result = Altaircam_PullImageV2(PRIVATE_DATA->handle, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->bits, &frameInfo);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+			indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits, PRIVATE_DATA->bits != 24, NULL);
+			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				CCD_EXPOSURE_ITEM->number.value = 0;
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-				break;
+			} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+				if (--CCD_STREAMING_COUNT_ITEM->number.value == 0)
+					CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			}
-			case ALTAIRCAM_EVENT_TIMEOUT:
-			case ALTAIRCAM_EVENT_DISCONNECTED:
-			case ALTAIRCAM_EVENT_ERROR: {
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-				break;
-			}
+			break;
+		}
+		case ALTAIRCAM_EVENT_TIMEOUT:
+		case ALTAIRCAM_EVENT_DISCONNECTED:
+		case ALTAIRCAM_EVENT_ERROR: {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			break;
 		}
 	}
 }
@@ -376,34 +378,31 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		setup_exposure(device);
 		result = Altaircam_put_ExpoTime(PRIVATE_DATA->handle, (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_ExpoTime(%u) -> %08x", (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000), result);
-		PRIVATE_DATA->pull_active = true;
 		result = Altaircam_Trigger(PRIVATE_DATA->handle, 1);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Trigger(1) -> %08x", result);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
+		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		setup_exposure(device);
 		result = Altaircam_put_ExpoTime(PRIVATE_DATA->handle, (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_ExpoTime(%u) -> %08x", (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000), result);
-		PRIVATE_DATA->pull_active = true;
-		result = Altaircam_Trigger(PRIVATE_DATA->handle, (int)CCD_STREAMING_EXPOSURE_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Trigger(%d) -> %08x", (int)CCD_STREAMING_EXPOSURE_ITEM->number.value);
+		result = Altaircam_Trigger(PRIVATE_DATA->handle, (int)CCD_STREAMING_COUNT_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Trigger(%d) -> %08x", (int)CCD_STREAMING_COUNT_ITEM->number.value);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
-			PRIVATE_DATA->pull_active = false;
 			result = Altaircam_Trigger(PRIVATE_DATA->handle, 0);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Trigger(0) -> %08x", result);
 			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
