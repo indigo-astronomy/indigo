@@ -48,7 +48,7 @@
 #define X_CCD_HUE_ITEM										(X_CCD_ADVANCED_PROPERTY->items + 1)
 #define X_CCD_SATURATION_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 2)
 #define X_CCD_BRIGHTNESS_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 3)
-#define X_CCD_GAMMA_ITEM										(X_CCD_ADVANCED_PROPERTY->items + 4)
+#define X_CCD_GAMMA_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 4)
 #define X_CCD_SPEED_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 5)
 #define X_CCD_FAN_SPEED_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 6)
 
@@ -650,7 +650,7 @@ static void hotplug_callback(void* pCallbackCtx) {
 			static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 				"",
 				ccd_attach,
-				indigo_ccd_enumerate_properties,
+				ccd_enumerate_properties,
 				ccd_change_property,
 				NULL,
 				ccd_detach
