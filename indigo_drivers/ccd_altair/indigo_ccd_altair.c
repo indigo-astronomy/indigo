@@ -114,10 +114,11 @@ static void push_callback(const void *data, const AltaircamFrameInfoV2* frameInf
 static void ccd_temperature_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
-	if (PRIVATE_DATA->can_check_temperature) {
+	//if (PRIVATE_DATA->can_check_temperature) {
 		short temperature;
-		if (Altaircam_get_Temperature(PRIVATE_DATA->handle, &temperature) >= 0) {
-			CCD_TEMPERATURE_ITEM->number.value = temperature / 1.0;
+		HRESULT result = Altaircam_get_Temperature(PRIVATE_DATA->handle, &temperature);
+		if (result >= 0) {
+			CCD_TEMPERATURE_ITEM->number.value = temperature / 10.0;
 			if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM && fabs(CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target) > 1.0) {
 				if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value)
 					CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -127,8 +128,10 @@ static void ccd_temperature_callback(indigo_device *device) {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_get_Temperature() -> %08x", result);
 		}
-	}
+	//}
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
 }
 
@@ -251,7 +254,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_GETTEMPERATURE) {
 			CCD_TEMPERATURE_PROPERTY->hidden = false;
 			if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_PUTTEMPERATURE) {
+
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+
 				if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_TEC_ONOFF) {
 					CCD_COOLER_PROPERTY->hidden = false;
 					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
@@ -411,28 +416,35 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
-		if (Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TEC, CCD_COOLER_ON_ITEM->sw.value ? 1 : 0) >= 0)
+		result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TEC, CCD_COOLER_ON_ITEM->sw.value ? 1 : 0);
+		if (result >= 0)
 			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		else {
 			CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_TEC) -> %08x", result);
+		}
 		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
-		if (Altaircam_put_Temperature(PRIVATE_DATA->handle, (short)(CCD_TEMPERATURE_ITEM->number.target * 10))) {
+		result = Altaircam_put_Temperature(PRIVATE_DATA->handle, (short)(CCD_TEMPERATURE_ITEM->number.target * 10));
+		if (result >= 0) {
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value) {
-				if (Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TEC, 1) >= 0) {
+				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TEC, 1);
+				if (result >= 0) {
 					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
 					CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_TEC, 1) -> %08x", result);
 				}
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 			}
 		} else {
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Temperature() -> %08x", result);
 		}
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		return INDIGO_OK;
