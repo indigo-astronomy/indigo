@@ -144,7 +144,6 @@ static void ccd_temperature_callback(indigo_device *device) {
 
 static void setup_exposure(indigo_device *device) {
 	HRESULT result;
-	PRIVATE_DATA->bits = 0;
 	unsigned resolutionIndex = 0;
 	for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 		indigo_item *item = CCD_MODE_PROPERTY->items + i;

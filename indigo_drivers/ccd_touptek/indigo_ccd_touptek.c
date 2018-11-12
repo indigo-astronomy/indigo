@@ -144,7 +144,6 @@ static void ccd_temperature_callback(indigo_device *device) {
 
 static void setup_exposure(indigo_device *device) {
 	HRESULT result;
-	PRIVATE_DATA->bits = 0;
 	unsigned resolutionIndex = 0, currentResolutionIndex = 0;
 	result = Toupcam_get_eSize(PRIVATE_DATA->handle, &currentResolutionIndex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_get_eSize(->%d) -> %08x", currentResolutionIndex, result);
