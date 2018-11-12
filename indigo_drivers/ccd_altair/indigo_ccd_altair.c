@@ -673,6 +673,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, X_CCD_FAN_PROPERTY, NULL);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- CONFIG
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, X_CCD_ADVANCED_PROPERTY);
+		}
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
