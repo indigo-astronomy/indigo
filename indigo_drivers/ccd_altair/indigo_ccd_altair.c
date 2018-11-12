@@ -73,7 +73,7 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void pull_callback(unsigned event, void* callbackCtx) {
-	AltaircamFrameInfoV2 frameInfo;
+	AltaircamFrameInfoV2 frameInfo = { 0 };
 	HRESULT result;
 	indigo_device *device = (indigo_device *)callbackCtx;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback #%04x", event);
@@ -81,9 +81,9 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 		case ALTAIRCAM_EVENT_IMAGE: {
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			result = Altaircam_PullImageV2(PRIVATE_DATA->handle, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->bits, &frameInfo);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			if (result >= 0) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
 				indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits, PRIVATE_DATA->bits != 24, NULL);
 				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 					CCD_EXPOSURE_ITEM->number.value = 0;
@@ -95,6 +95,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				}
 			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
 				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -106,7 +107,6 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 			break;
 		}
 		case ALTAIRCAM_EVENT_TIMEOUT:
-		case ALTAIRCAM_EVENT_DISCONNECTED:
 		case ALTAIRCAM_EVENT_ERROR: {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -247,7 +247,8 @@ static void setup_exposure(indigo_device *device) {
 				PRIVATE_DATA->bits = 24;
 			}
 		}
-	}	if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_ROI_HARDWARE) {
+	}
+	if (PRIVATE_DATA->cam.model->flag & ALTAIRCAM_FLAG_ROI_HARDWARE) {
 		unsigned left = 2 * ((unsigned)CCD_FRAME_LEFT_ITEM->number.value / (unsigned)CCD_BIN_HORIZONTAL_ITEM->number.value / 2);
 		unsigned top = 2 * ((unsigned)CCD_FRAME_TOP_ITEM->number.value / (unsigned)CCD_BIN_VERTICAL_ITEM->number.value / 2);
 		unsigned width = 2 * ((unsigned)CCD_FRAME_WIDTH_ITEM->number.value / (unsigned)CCD_BIN_HORIZONTAL_ITEM->number.value / 2);
