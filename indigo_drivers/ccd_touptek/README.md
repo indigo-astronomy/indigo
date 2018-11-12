@@ -23,3 +23,5 @@ indigo_server indigo_ccd_touptek
 ## Status: Stable
 
 Tested with GP-1200KMB
+
+There is a known issue with 12 bit mode and mono cameras

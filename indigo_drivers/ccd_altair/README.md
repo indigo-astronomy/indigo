@@ -22,4 +22,6 @@ indigo_server indigo_ccd_altair
 
 ## Status: Stable
 
-Tested with GP 224C
+Tested with GP 224C and 183M
+
+There is a known issue with 12 bit mode and mono cameras
