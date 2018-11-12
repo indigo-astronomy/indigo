@@ -469,6 +469,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				if (X_CCD_FAN_PROPERTY) {
 					X_CCD_FAN_SPEED_ITEM->number.max = Altaircam_get_FanMaxSpeed(PRIVATE_DATA->handle);
+					int value;
+					Altaircam_get_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_FAN, &value);
+					X_CCD_FAN_SPEED_ITEM->number.value = (double)value;
 					indigo_define_property(device, X_CCD_FAN_PROPERTY, NULL);
 				}
 				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TRIGGER, 1);
