@@ -349,7 +349,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			}
 		}
 		CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
-		CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_STREAMING_PROPERTY->hidden = ((flags & ALTAIRCAM_FLAG_TRIGGER_SINGLE) != 0);
 		CCD_GAIN_PROPERTY->hidden = false;
 		if ((flags & ALTAIRCAM_FLAG_MONO) == 0) {
 		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_MAIN_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
@@ -789,7 +789,7 @@ static indigo_result guider_detach(indigo_device *device) {
 
 static bool hotplug_callback_initialized = false;
 static indigo_device *devices[ALTAIRCAM_MAX];
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void hotplug_callback(void* pCallbackCtx) {
 	pthread_mutex_lock(&mutex);
