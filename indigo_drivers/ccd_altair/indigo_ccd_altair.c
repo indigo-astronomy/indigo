@@ -789,8 +789,10 @@ static indigo_result guider_detach(indigo_device *device) {
 
 static bool hotplug_callback_initialized = false;
 static indigo_device *devices[ALTAIRCAM_MAX];
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void hotplug_callback(void* pCallbackCtx) {
+	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < ALTAIRCAM_MAX; i++) {
 		indigo_device *device = devices[i];
 		if (device)
@@ -869,6 +871,7 @@ static void hotplug_callback(void* pCallbackCtx) {
 			devices[i] = NULL;
 		}
 	}
+	pthread_mutex_unlock(&mutex);
 }
 
 
