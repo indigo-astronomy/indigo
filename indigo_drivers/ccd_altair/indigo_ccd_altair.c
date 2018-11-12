@@ -469,7 +469,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				}
 				if (X_CCD_FAN_PROPERTY) {
 					X_CCD_FAN_SPEED_ITEM->number.max = Altaircam_get_FanMaxSpeed(PRIVATE_DATA->handle);
-					indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+					indigo_define_property(device, X_CCD_FAN_PROPERTY, NULL);
 				}
 				result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TRIGGER, 1);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_TRIGGER) -> %08x", result);
@@ -662,7 +662,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		X_CCD_FAN_PROPERTY->state = INDIGO_OK_STATE;
 		result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_FAN, (int)X_CCD_FAN_SPEED_ITEM->number.value);
 		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			X_CCD_FAN_PROPERTY->state = INDIGO_ALERT_STATE;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FAN, %d) -> %08x", (int)X_CCD_FAN_SPEED_ITEM->number.value, result);
 			indigo_send_message(device, "Fan speed setting is not supported");
 		} else {
