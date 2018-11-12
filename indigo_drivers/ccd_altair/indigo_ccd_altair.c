@@ -54,7 +54,7 @@
 #define X_CCD_B_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 7)
 
 #define X_CCD_FAN_PROPERTY								(PRIVATE_DATA->fan_property)
-#define X_CCD_FAN_SPEED_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 0)
+#define X_CCD_FAN_SPEED_ITEM							(X_CCD_FAN_PROPERTY->items + 0)
 
 typedef struct {
 	AltaircamInstV2 cam;
