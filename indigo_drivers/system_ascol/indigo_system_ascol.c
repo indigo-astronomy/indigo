@@ -69,6 +69,16 @@
 #define OIL_STATE_ITEM_NAME                "STATE"
 
 
+#define MOUNT_STATE_PROPERTY               (PRIVATE_DATA->mount_state_property)
+#define MOUNT_STATE_ITEM                   (MOUNT_STATE_PROPERTY->items+0)
+#define RA_STATE_ITEM                      (MOUNT_STATE_PROPERTY->items+1)
+#define DEC_STATE_ITEM                     (MOUNT_STATE_PROPERTY->items+2)
+#define MOUNT_STATE_PROPERTY_NAME          "ASCOL_MOUNT_STATE"
+#define MOUNT_STATE_ITEM_NAME              "MOUNT"
+#define RA_STATE_ITEM_NAME                 "RA_AXIS"
+#define DEC_STATE_ITEM_NAME                "DEC_AXIS"
+
+
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
 
@@ -91,6 +101,8 @@ typedef struct {
 	indigo_property *command_guide_rate_property;
 	indigo_property *alarm_property;
 	indigo_property *oil_state_property;
+	indigo_property *mount_state_property;
+	indigo_property *tube_state_property;
 } ascol_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -101,6 +113,8 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, ALARM_PROPERTY, NULL);
 		if (indigo_property_match(OIL_STATE_PROPERTY, property))
 			indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_STATE_PROPERTY, property))
+			indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -516,6 +530,8 @@ static void glst_timer_callback(indigo_device *device) {
 		indigo_update_property(device, ALARM_PROPERTY, "Could not read Global Status");
 		OIL_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, OIL_STATE_PROPERTY, "Could not read Global Status");
+		MOUNT_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_STATE_PROPERTY, "Could not read Global Status");
 		indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
 		return;
 	}
@@ -542,6 +558,15 @@ static void glst_timer_callback(indigo_device *device) {
 	ascol_get_oil_state(PRIVATE_DATA->glst, &descr, &descrs);
 	snprintf(OIL_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 	indigo_update_property(device, OIL_STATE_PROPERTY, NULL);
+
+	MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
+	ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
+	snprintf(MOUNT_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+	ascol_get_ra_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
+	snprintf(RA_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+	ascol_get_de_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
+	snprintf(DEC_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
 }
@@ -606,10 +631,18 @@ static indigo_result mount_attach(indigo_device *device) {
 			}
 		}
 		ALARM_PROPERTY->count = index;
+		// --------------------------------------------------------------------------- OIL STATE
 		OIL_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, OIL_STATE_PROPERTY_NAME, "Telescope Status", "Oil State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
 		if (OIL_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(OIL_STATE_ITEM, OIL_STATE_ITEM_NAME, "State", "");
+		// --------------------------------------------------------------------------- TELESCOPE STATE
+		MOUNT_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, MOUNT_STATE_PROPERTY_NAME, "Telescope Status", "Mount State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
+		if (MOUNT_STATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(MOUNT_STATE_ITEM, MOUNT_STATE_ITEM_NAME, "Mount", "");
+		indigo_init_text_item(RA_STATE_ITEM, RA_STATE_ITEM_NAME, "RA Axis", "");
+		indigo_init_text_item(DEC_STATE_ITEM, DEC_STATE_ITEM_NAME, "DEC Axis", "");
 		// ---------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -697,6 +730,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 					indigo_define_property(device, ALARM_PROPERTY, NULL);
 					indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
+					indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 
 					device->is_connected = true;
 					/* start updates */
@@ -714,6 +748,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				mount_close(device);
 				indigo_delete_property(device, ALARM_PROPERTY, NULL);
 				indigo_delete_property(device, OIL_STATE_PROPERTY, NULL);
+				indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -866,6 +901,7 @@ static indigo_result mount_detach(indigo_device *device) {
 
 	indigo_release_property(ALARM_PROPERTY);
 	indigo_release_property(OIL_STATE_PROPERTY);
+	indigo_release_property(MOUNT_STATE_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
