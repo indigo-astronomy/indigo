@@ -499,29 +499,33 @@ static void position_timer_callback(indigo_device *device) {
 
 
 static void glst_timer_callback(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	if (res != ASCOL_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
 		ALARM_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ALARM_PROPERTY, "Could not read Global Status.");
+		indigo_update_property(device, ALARM_PROPERTY, "Could not read Global Status");
 		indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
 		return;
 	}
 
+	ALARM_PROPERTY->state = INDIGO_OK_STATE;
 	int index = 0;
 	for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
 		char *alarm_descr;
 		int alarm_state;
 		ascol_check_alarm(PRIVATE_DATA->glst, alarm, &alarm_descr, &alarm_state);
 		if (alarm_descr[0] != '\0') {
-			if (alarm_state)
+			if (alarm_state) {
 				ALARM_ITEMS(index)->light.value = INDIGO_ALERT_STATE;
-			else
+				ALARM_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
 				ALARM_ITEMS(index)->light.value = INDIGO_OK_STATE;
+			}
 			index++;
 		}
 	}
-	ALARM_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, ALARM_PROPERTY, NULL);
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
 }
