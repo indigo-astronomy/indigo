@@ -216,6 +216,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		unsigned long long flags = PRIVATE_DATA->cam.model->flag;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "flags = %0LX", flags);
 		char name[128], label[128];
+		INFO_PROPERTY->count = 7;
+		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name, INDIGO_VALUE_SIZE);
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->cam.model->xpixsz;
 		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->cam.model->ypixsz;
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = (CCD_INFO_PIXEL_WIDTH_ITEM->number.value + CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) / 2.0;
@@ -415,6 +417,15 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				} else {
 					PRIVATE_DATA->temperature_timer = NULL;
 				}
+
+				result = Altaircam_get_SerialNumber(PRIVATE_DATA->handle, INFO_DEVICE_SERIAL_NUM_ITEM->text.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_SerialNumber() -> %08x", result);
+				result = Altaircam_get_HwVersion(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_HwVersion() -> %08x", result);
+				result = Altaircam_get_FwVersion(PRIVATE_DATA->handle, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_FwVersion() -> %08x", result);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+
 				int bitDepth = 0;
 				unsigned resolutionIndex = 0;
 				char name[16];
@@ -771,6 +782,8 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_VERSION) == INDIGO_OK) {
+		INFO_PROPERTY->count = 7;
+		strncpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name, INDIGO_VALUE_SIZE);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -797,6 +810,13 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 			device->gp_bits = 1;
 			if (PRIVATE_DATA->handle) {
+				HRESULT result = Altaircam_get_SerialNumber(PRIVATE_DATA->handle, INFO_DEVICE_SERIAL_NUM_ITEM->text.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_SerialNumber() -> %08x", result);
+				result = Altaircam_get_HwVersion(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_HwVersion() -> %08x", result);
+				result = Altaircam_get_FwVersion(PRIVATE_DATA->handle, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_get_FwVersion() -> %08x", result);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
