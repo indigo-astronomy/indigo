@@ -521,6 +521,8 @@ static void glst_timer_callback(indigo_device *device) {
 			index++;
 		}
 	}
+	ALARM_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, ALARM_PROPERTY, NULL);
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
 }
 
