@@ -189,6 +189,8 @@ static void setup_exposure(indigo_device *device) {
 				if (CCD_COOLER_ON_ITEM->sw.value) {
 					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TEC,  1);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_TEC) -> %08x", result);
+					result = Altaircam_put_Temperature(PRIVATE_DATA->handle, (short)(CCD_TEMPERATURE_ITEM->number.target * 10));
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Temperature(%d) -> %08x", (short)(CCD_TEMPERATURE_ITEM->number.target * 10), result);
 				}
 				PRIVATE_DATA->mode = i;
 			}
