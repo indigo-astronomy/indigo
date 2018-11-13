@@ -100,9 +100,8 @@
 #define ALARM_4_BIT_7	(71)
 #define ALARM_4_BIT_8	(72)
 #define ALARM_4_BIT_9	(73)
-#define ALARM_4_BIT_10	(74)
-/* 11 - 15 UNUSED */
-#define ALARM_MAX  ALARM_4_BIT_10
+/* 10 - 15 UNUSED */
+#define ALARM_MAX  ALARM_4_BIT_9
 
 /* Often used Alarms */
 #define ALARM_BRIDGE      ALARM_2_BIT_1
@@ -128,7 +127,8 @@ typedef struct {
 	char **unit;
 } ascol_glme_t;
 
-#define ASCOL_GLST_N         (22)
+#define ASCOL_GLST_N_LINUX   (22)
+#define ASCOL_GLST_N_MACOS   (16)
 typedef struct {
 	uint16_t oil_state;
 	uint16_t telescope_state;

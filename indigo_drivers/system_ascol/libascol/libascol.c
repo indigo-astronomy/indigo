@@ -279,13 +279,13 @@ static const char *alarm_descr[] = {
 	"Mercurial switch -8 degrees",
 	"Mercurial switch +8 degrees",
 	"Mercurial switch +/-4 degrees",
-	"Limiting of hour axis I -180 till 330 degrees absolute sensor",
+	"Limiting of hour axis I -180 to 330 degrees absolute sensor",
 	/* Bank 1 */
-	"Limiting of hour axis I -180 till 330 degrees relative sensor",
-	"Limiting of hour axis – SH3",
-	"Limiting of hour axis – SH4",
+	"Limiting of hour axis I -180 to 330 degrees relative sensor",
+	"Limiting of hour axis - SH3",
+	"Limiting of hour axis - SH4",
 	"Alarm humidity level",
-	"", /* unised */
+	"", /* unused */
 	"Dissonance absolute and relative sensor of hour axis",
 	"Dissonance absolute and relative sensor of declination axis",
 	"Error: regulation speed of hour axis",
@@ -305,14 +305,14 @@ static const char *alarm_descr[] = {
 	"STOP on handler 3",
 	"STOP on handler 4",
 	"STOP on handler 5",
-	"Limiting of hour axis II -185 till 335 degrees",
-	"Limiting of declination axis II -30 till 210 degrees",
+	"Limiting of hour axis II -185 to 335 degrees",
+	"Limiting of declination axis II -30 to 210 degrees",
 	"Error: centering",
 	"Error: shutter of tube",
 	"Error: shutter of coude",
 	"Error: slit",
-	"", /* unised */
-	"", /* unised */
+	"", /* unused */
+	"", /* unused */
 	"Low level of oil in tank IN",
 	/* Bank 3 */
 	"Low level of oil in tank OUT",
@@ -328,9 +328,9 @@ static const char *alarm_descr[] = {
 	"Error: motor of rotator",
 	"MIN level in return oil tank",
 	"MIN level in base oil tank",
-	"", /* unised */
-	"", /* unised */
-	"", /* unised */
+	"", /* unused */
+	"", /* unused */
+	"", /* unused */
 	/* Bank 4 */
 	"Low pressure left side of bearing segment 1",
 	"Low pressure left side of bearing segment 2",
@@ -583,7 +583,7 @@ int ascol_get_slit_flap_state(uint16_t state, char **long_descr, char **short_de
 /* Check alarms if set */
 
 int ascol_check_alarm(ascol_glst_t glst, int alarm, char **descr, int *state) {
-	if ((alarm < 0) || (alarm > 73)) return ASCOL_PARAM_ERROR;
+	if ((alarm < 0) || (alarm > ALARM_MAX)) return ASCOL_PARAM_ERROR;
 	if (descr) *descr = (char*)alarm_descr[alarm];
 	if (state) *state = CHECK_ALARM(glst, alarm);
 	return ASCOL_OK;
@@ -897,7 +897,12 @@ int ascol_GLST(int devfd, ascol_glst_t *glst) {
 		&(glst->state_bits), &(glst->alarm_bits[0]), &(glst->alarm_bits[1]), &(glst->alarm_bits[2]), &(glst->alarm_bits[3]),
 		&(glst->alarm_bits[4])
 	);
-	if (res != ASCOL_GLST_N) return ASCOL_RESPONCE_ERROR;
+	/* sscanf() returns the number of matched fields on Linux,
+	   on MacOS returns tne number of read fields */
+	if ((res != ASCOL_GLST_N_LINUX) && (res != ASCOL_GLST_N_MACOS)) {
+		ASCOL_DEBUG("%s()=%2d <=> parsed %d fields\n", __FUNCTION__, ASCOL_RESPONCE_ERROR, res);
+		return ASCOL_RESPONCE_ERROR;
+	}
 
 	ASCOL_DEBUG("%s()=%2d <=> ascol_glst_t\n", __FUNCTION__, ASCOL_OK);
 	return ASCOL_OK;
