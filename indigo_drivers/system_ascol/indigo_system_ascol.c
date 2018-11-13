@@ -57,6 +57,13 @@
 #define GUIDE_50_ITEM_NAME                 "GUIDE_50"
 #define GUIDE_100_ITEM_NAME                "GUIDE_100"
 
+#define ALARM_PROPERTY                 (PRIVATE_DATA->alarm_property)
+#define ALARM_ITEMS(index)             (ALARM_PROPERTY->items+index)
+
+#define ALARM_PROPERTY_NAME                "ASCOL_ALARMS"
+#define ALARM_ITEM_NAME_BASE               "ALARM"
+
+
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
 
@@ -73,12 +80,22 @@ typedef struct {
 	int st4_ra_rate, st4_dec_rate;
 	int vendor_id;
 	pthread_mutex_t net_mutex;
-	indigo_timer *position_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
+	ascol_glst_t glst;
+	indigo_timer *position_timer, *glst_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
 	int guide_rate;
 	indigo_property *command_guide_rate_property;
+	indigo_property *alarm_property;
 } ascol_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
+
+static indigo_result ascol_mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(ALARM_PROPERTY, property))
+			indigo_define_property(device, ALARM_PROPERTY, NULL);
+	}
+	return indigo_mount_enumerate_properties(device, NULL, NULL);
+}
 
 static bool mount_open(indigo_device *device) {
 	if (device->is_connected) return false;
@@ -481,6 +498,33 @@ static void position_timer_callback(indigo_device *device) {
 }
 
 
+static void glst_timer_callback(indigo_device *device) {
+	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLST(%d) = %d", PRIVATE_DATA->dev_id, res);
+		ALARM_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ALARM_PROPERTY, "Could not read Global Status.");
+		indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
+		return;
+	}
+
+	int index = 0;
+	for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
+		char *alarm_descr;
+		int alarm_state;
+		ascol_check_alarm(PRIVATE_DATA->glst, alarm, &alarm_descr, &alarm_state);
+		if (alarm_descr[0] != '\0') {
+			if (alarm_state)
+				ALARM_ITEMS(index)->light.value = INDIGO_ALERT_STATE;
+			else
+				ALARM_ITEMS(index)->light.value = INDIGO_OK_STATE;
+			index++;
+		}
+	}
+	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
+}
+
+
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -518,6 +562,29 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
 
+		// -------------------------------------------------------------------------- ALARM
+		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, "Alarms", "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
+		if (ALARM_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		int index = 0;
+		for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
+			char alarm_name[INDIGO_NAME_SIZE];
+			char *alarm_descr;
+			ascol_check_alarm(PRIVATE_DATA->glst, alarm, &alarm_descr, NULL);
+			if (alarm_descr[0] != '\0') {
+				snprintf(alarm_name, INDIGO_NAME_SIZE, "ALARM_%d_BIT_%d", alarm/16, alarm%16);
+
+				int a,b;
+				sscanf(alarm_name, "ALARM_%d_BIT_%d", &a, &b);
+				INDIGO_DRIVER_LOG(DRIVER_NAME,"%s - >%d %d",alarm_name,a,b);
+
+				indigo_init_light_item(ALARM_ITEMS(index), alarm_name, alarm_descr, INDIGO_IDLE_STATE);
+				index++;
+			}
+		}
+		ALARM_PROPERTY->count = index;
+		// ---------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
@@ -602,10 +669,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 					}
+					indigo_define_property(device, ALARM_PROPERTY, NULL);
 
 					device->is_connected = true;
 					/* start updates */
 					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
+					PRIVATE_DATA->glst_timer = indigo_set_timer(device, 0, glst_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -614,7 +683,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			if (device->is_connected) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+				indigo_cancel_timer(device, &PRIVATE_DATA->glst_timer);
 				mount_close(device);
+				indigo_delete_property(device, ALARM_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -763,7 +834,9 @@ static indigo_result mount_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+	indigo_cancel_timer(device, &PRIVATE_DATA->glst_timer);
 
+	indigo_release_property(ALARM_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
@@ -973,7 +1046,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
 		SYSTEM_ASCOL_NAME,
 		mount_attach,
-		indigo_mount_enumerate_properties,
+		ascol_mount_enumerate_properties,
 		mount_change_property,
 		NULL,
 		mount_detach
@@ -986,6 +1059,7 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 		NULL,
 		guider_detach
 	);
+	ascol_debug = 1;
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
