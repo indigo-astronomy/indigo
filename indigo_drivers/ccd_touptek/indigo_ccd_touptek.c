@@ -182,6 +182,8 @@ static void setup_exposure(indigo_device *device) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_BITDEPTH, 0) -> %08x", result);
 					PRIVATE_DATA->bits = 24;
 				}
+				result = Toupcam_put_Speed(PRIVATE_DATA->handle, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Speed(0) -> %08x", result);
 				result = Toupcam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_StartPullModeWithCallback() -> %08x", result);
 				PRIVATE_DATA->mode = i;

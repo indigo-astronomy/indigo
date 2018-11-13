@@ -182,6 +182,8 @@ static void setup_exposure(indigo_device *device) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_BITDEPTH, 0) -> %08x", result);
 					PRIVATE_DATA->bits = 24;
 				}
+				result = Altaircam_put_Speed(PRIVATE_DATA->handle, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Speed(0) -> %08x", result);
 				result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
 				PRIVATE_DATA->mode = i;
