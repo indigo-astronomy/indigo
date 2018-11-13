@@ -186,6 +186,10 @@ static void setup_exposure(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Speed(0) -> %08x", result);
 				result = Toupcam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_StartPullModeWithCallback() -> %08x", result);
+				if (CCD_COOLER_ON_ITEM->sw.value) {
+					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_TEC,  1);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_TEC) -> %08x", result);
+				}
 				PRIVATE_DATA->mode = i;
 			}
 		}
@@ -626,9 +630,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_TEC, CCD_COOLER_ON_ITEM->sw.value ? 1 : 0);
-		if (result >= 0)
+		if (result >= 0) {
 			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
-		else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_TEC) -> %08x", result);
+		} else {
 			CCD_COOLER_PROPERTY->state = INDIGO_ALERT_STATE;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_TEC) -> %08x", result);
 		}

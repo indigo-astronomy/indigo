@@ -186,6 +186,10 @@ static void setup_exposure(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Speed(0) -> %08x", result);
 				result = Altaircam_StartPullModeWithCallback(PRIVATE_DATA->handle, pull_callback, device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_StartPullModeWithCallback() -> %08x", result);
+				if (CCD_COOLER_ON_ITEM->sw.value) {
+					result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TEC,  1);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_TEC) -> %08x", result);
+				}
 				PRIVATE_DATA->mode = i;
 			}
 		}
