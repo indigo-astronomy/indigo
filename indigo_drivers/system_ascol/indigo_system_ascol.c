@@ -62,12 +62,15 @@
 #define ALARM_PROPERTY_NAME                "ASCOL_ALARMS"
 #define ALARM_ITEM_NAME_BASE               "ALARM"
 
-
 #define OIL_STATE_PROPERTY                 (PRIVATE_DATA->oil_state_property)
 #define OIL_STATE_ITEM                     (OIL_STATE_PROPERTY->items+0)
 #define OIL_STATE_PROPERTY_NAME            "ASCOL_OIL_STATE"
 #define OIL_STATE_ITEM_NAME                "STATE"
 
+#define OIMV_PROPERTY                      (PRIVATE_DATA->oimv_property)
+#define OIMV_ITEMS(index)                  (OIMV_PROPERTY->items+index)
+#define OIMV_PROPERTY_NAME                 "ASCOL_OIMV"
+#define OIMV_ITEM_NAME_BASE                "VALUE"
 
 #define MOUNT_STATE_PROPERTY               (PRIVATE_DATA->mount_state_property)
 #define MOUNT_STATE_ITEM                   (MOUNT_STATE_PROPERTY->items+0)
@@ -102,11 +105,13 @@ typedef struct {
 	int vendor_id;
 	pthread_mutex_t net_mutex;
 	ascol_glst_t glst;
+	ascol_oimv_t oimv;
 	indigo_timer *position_timer, *glst_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
 	int guide_rate;
 	indigo_property *command_guide_rate_property;
 	indigo_property *alarm_property;
 	indigo_property *oil_state_property;
+	indigo_property *oimv_property;
 	indigo_property *mount_state_property;
 	indigo_property *flap_state_property;
 } ascol_private_data;
@@ -119,6 +124,8 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, ALARM_PROPERTY, NULL);
 		if (indigo_property_match(OIL_STATE_PROPERTY, property))
 			indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
+		if (indigo_property_match(OIMV_PROPERTY, property))
+			indigo_define_property(device, OIMV_PROPERTY, NULL);
 		if (indigo_property_match(MOUNT_STATE_PROPERTY, property))
 			indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 		if (indigo_property_match(FLAP_STATE_PROPERTY, property))
@@ -543,7 +550,7 @@ static void glst_timer_callback(indigo_device *device) {
 		FLAP_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FLAP_STATE_PROPERTY, "Could not read Global Status");
 		indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
-		return;
+		goto OIL_MEASURE;
 	}
 
 	char *descr, *descrs;
@@ -584,6 +591,23 @@ static void glst_timer_callback(indigo_device *device) {
 	ascol_get_flap_coude_state(PRIVATE_DATA->glst, &descr, &descrs);
 	snprintf(COUDE_FLAP_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 	indigo_update_property(device, FLAP_STATE_PROPERTY, NULL);
+
+	OIL_MEASURE:
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_OIMV(PRIVATE_DATA->dev_id, &PRIVATE_DATA->oimv);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_OIMV(%d) = %d", PRIVATE_DATA->dev_id, res);
+		OIMV_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, OIMV_PROPERTY, "Could not read oil sensrs");
+		return;
+	}
+
+	OIMV_PROPERTY->state = INDIGO_OK_STATE;
+	for (int index = 0; index < ASCOL_OIMV_N; index++) {
+		OIMV_ITEMS(index)->number.value = PRIVATE_DATA->oimv.value[index];
+	}
+	indigo_update_property(device, OIMV_PROPERTY, NULL);
 
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
 }
@@ -638,11 +662,6 @@ static indigo_result mount_attach(indigo_device *device) {
 			ascol_check_alarm(PRIVATE_DATA->glst, alarm, &alarm_descr, NULL);
 			if (alarm_descr[0] != '\0') {
 				snprintf(alarm_name, INDIGO_NAME_SIZE, "ALARM_%d_BIT_%d", alarm/16, alarm%16);
-
-				int a,b;
-				sscanf(alarm_name, "ALARM_%d_BIT_%d", &a, &b);
-				INDIGO_DRIVER_LOG(DRIVER_NAME,"%s - >%d %d",alarm_name,a,b);
-
 				indigo_init_light_item(ALARM_ITEMS(index), alarm_name, alarm_descr, INDIGO_IDLE_STATE);
 				index++;
 			}
@@ -667,6 +686,21 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_text_item(TUBE_FLAP_STATE_ITEM, TUBE_FLAP_STATE_ITEM_NAME, "Tube Flap", "");
 		indigo_init_text_item(COUDE_FLAP_STATE_ITEM, COUDE_FLAP_STATE_ITEM_NAME, "Coude Flap", "");
 		// ---------------------------------------------------------------------------
+		OIMV_PROPERTY = indigo_init_number_property(NULL, device->name, OIMV_PROPERTY_NAME, "Telescope Status", "Oil Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_OIMV_N);
+		if (OIMV_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		ascol_OIMV(ASCOL_DESCRIBE, &PRIVATE_DATA->oimv);
+		for (index = 0; index < ASCOL_OIMV_N; index++) {
+			char item_name[INDIGO_NAME_SIZE];
+			char item_label[INDIGO_NAME_SIZE];
+			snprintf(item_name, INDIGO_NAME_SIZE, "%s_%d", OIMV_ITEM_NAME_BASE, index);
+			snprintf(item_label, INDIGO_NAME_SIZE, "%s (%s)",
+			         PRIVATE_DATA->oimv.description[index],
+					 PRIVATE_DATA->oimv.unit[index]
+			);
+			indigo_init_number_item(OIMV_ITEMS(index), item_name, item_label, -1000, 1000, 0.01, 0);
+		}
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
@@ -753,6 +787,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 					indigo_define_property(device, ALARM_PROPERTY, NULL);
 					indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
+					indigo_define_property(device, OIMV_PROPERTY, NULL);
 					indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
 
@@ -772,6 +807,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				mount_close(device);
 				indigo_delete_property(device, ALARM_PROPERTY, NULL);
 				indigo_delete_property(device, OIL_STATE_PROPERTY, NULL);
+				indigo_delete_property(device, OIMV_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, FLAP_STATE_PROPERTY, NULL);
 				device->is_connected = false;
@@ -926,6 +962,7 @@ static indigo_result mount_detach(indigo_device *device) {
 
 	indigo_release_property(ALARM_PROPERTY);
 	indigo_release_property(OIL_STATE_PROPERTY);
+	indigo_release_property(OIMV_PROPERTY);
 	indigo_release_property(MOUNT_STATE_PROPERTY);
 	indigo_release_property(FLAP_STATE_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
