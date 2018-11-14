@@ -390,6 +390,14 @@ extern indigo_result indigo_change_property(indigo_client *client, indigo_proper
  */
 extern indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
 
+/** Register BLOB property.
+ */
+extern void indigo_add_blob(indigo_property *property);
+
+	/** Unregister BLOB property.
+	 */
+extern void indigo_delete_blob(indigo_property *property);
+
 /** Stop bus operation.
  Call has no effect if bus is already stopped.
  */
