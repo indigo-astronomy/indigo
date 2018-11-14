@@ -613,11 +613,7 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	property->state = state;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
-	for (int i = 0; i < MAX_BLOBS; i++)
-		if (blobs[i] == NULL) {
-			blobs[i] = property;
-			break;
-		}
+	indigo_add_blob(property);
 	return property;
 }
 
@@ -632,14 +628,28 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 }
 
 void indigo_release_property(indigo_property *property) {
-	if (property == NULL) return;
-	for (int i = 0; i < MAX_BLOBS; i++)
-		if (blobs[i] == property) {
-			blobs[i] = NULL;
-			break;
-		}
+	if (property == NULL)
+		return;
+	indigo_delete_blob(property);
 	free(property);
 }
+
+void indigo_add_blob(indigo_property *property) {
+	for (int i = 0; i < MAX_BLOBS; i++)
+	if (blobs[i] == NULL) {
+		blobs[i] = property;
+		break;
+	}
+}
+
+void indigo_delete_blob(indigo_property *property) {
+	for (int i = 0; i < MAX_BLOBS; i++)
+	if (blobs[i] == property) {
+		blobs[i] = NULL;
+		break;
+	}
+}
+
 
 indigo_result indigo_validate_blob(indigo_item *item) {
 	for (int i = 0; i < MAX_BLOBS; i++) {
