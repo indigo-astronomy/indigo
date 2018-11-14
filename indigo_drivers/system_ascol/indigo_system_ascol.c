@@ -92,6 +92,11 @@
 #define TUBE_FLAP_STATE_ITEM_NAME         "TUBE_FLAP"
 #define COUDE_FLAP_STATE_ITEM_NAME        "COUDE_FLAP"
 
+#define GLME_PROPERTY                      (PRIVATE_DATA->glme_property)
+#define GLME_ITEMS(index)                  (GLME_PROPERTY->items+index)
+#define GLME_PROPERTY_NAME                 "ASCOL_GLME"
+#define GLME_ITEM_NAME_BASE                "VALUE"
+
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
 
@@ -110,6 +115,7 @@ typedef struct {
 	pthread_mutex_t net_mutex;
 	ascol_glst_t glst;
 	ascol_oimv_t oimv;
+	ascol_glme_t glme;
 	indigo_timer *position_timer, *glst_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
 	int guide_rate;
 	indigo_property *command_guide_rate_property;
@@ -118,6 +124,7 @@ typedef struct {
 	indigo_property *oimv_property;
 	indigo_property *mount_state_property;
 	indigo_property *flap_state_property;
+	indigo_property *glme_property;
 } ascol_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -134,6 +141,8 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 		if (indigo_property_match(FLAP_STATE_PROPERTY, property))
 			indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
+		if (indigo_property_match(GLME_PROPERTY, property))
+			indigo_define_property(device, GLME_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -553,7 +562,6 @@ static void glst_timer_callback(indigo_device *device) {
 		indigo_update_property(device, MOUNT_STATE_PROPERTY, "Could not read Global Status");
 		FLAP_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FLAP_STATE_PROPERTY, "Could not read Global Status");
-		indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
 		goto OIL_MEASURE;
 	}
 
@@ -604,7 +612,7 @@ static void glst_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_OIMV(%d) = %d", PRIVATE_DATA->dev_id, res);
 		OIMV_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, OIMV_PROPERTY, "Could not read oil sensrs");
-		return;
+		goto METEO_MEASURE;
 	}
 
 	OIMV_PROPERTY->state = INDIGO_OK_STATE;
@@ -613,6 +621,24 @@ static void glst_timer_callback(indigo_device *device) {
 	}
 	indigo_update_property(device, OIMV_PROPERTY, NULL);
 
+	METEO_MEASURE:
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_GLME(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glme);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLME(%d) = %d", PRIVATE_DATA->dev_id, res);
+		GLME_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GLME_PROPERTY, "Could not read Meteo sensrs");
+		goto RESCHEDULE_TIMER;
+	}
+
+	GLME_PROPERTY->state = INDIGO_OK_STATE;
+	for (int index = 0; index < ASCOL_GLME_N; index++) {
+		GLME_ITEMS(index)->number.value = PRIVATE_DATA->glme.value[index];
+	}
+	indigo_update_property(device, GLME_PROPERTY, NULL);
+
+	RESCHEDULE_TIMER:
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
 }
 
@@ -689,6 +715,9 @@ static indigo_result mount_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_text_item(TUBE_FLAP_STATE_ITEM, TUBE_FLAP_STATE_ITEM_NAME, "Tube Flap", "");
 		indigo_init_text_item(COUDE_FLAP_STATE_ITEM, COUDE_FLAP_STATE_ITEM_NAME, "Coude Flap", "");
+
+		char item_name[INDIGO_NAME_SIZE];
+		char item_label[INDIGO_NAME_SIZE];
 		// --------------------------------------------------------------------------- OIMV
 		OIMV_PROPERTY = indigo_init_number_property(NULL, device->name, OIMV_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Oil Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_OIMV_N);
 		if (OIMV_PROPERTY == NULL)
@@ -696,15 +725,28 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		ascol_OIMV(ASCOL_DESCRIBE, &PRIVATE_DATA->oimv);
 		for (index = 0; index < ASCOL_OIMV_N; index++) {
-			char item_name[INDIGO_NAME_SIZE];
-			char item_label[INDIGO_NAME_SIZE];
 			snprintf(item_name, INDIGO_NAME_SIZE, "%s_%d", OIMV_ITEM_NAME_BASE, index);
 			snprintf(item_label, INDIGO_NAME_SIZE, "%s (%s)",
 			         PRIVATE_DATA->oimv.description[index],
-					 PRIVATE_DATA->oimv.unit[index]
+			         PRIVATE_DATA->oimv.unit[index]
 			);
 			indigo_init_number_item(OIMV_ITEMS(index), item_name, item_label, -1000, 1000, 0.01, 0);
 		}
+		// --------------------------------------------------------------------------- GLME
+		GLME_PROPERTY = indigo_init_number_property(NULL, device->name, GLME_PROPERTY_NAME, METEO_DATA_GROUP, "Meteo Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_GLME_N);
+		if (GLME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		ascol_GLME(ASCOL_DESCRIBE, &PRIVATE_DATA->glme);
+		for (index = 0; index < ASCOL_GLME_N; index++) {
+			snprintf(item_name, INDIGO_NAME_SIZE, "%s_%d", GLME_ITEM_NAME_BASE, index);
+			snprintf(item_label, INDIGO_NAME_SIZE, "%s (%s)",
+			         PRIVATE_DATA->glme.description[index],
+			         PRIVATE_DATA->glme.unit[index]
+			);
+			indigo_init_number_item(GLME_ITEMS(index), item_name, item_label, -1000, 1000, 0.01, 0);
+		}
+
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}
@@ -794,6 +836,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, OIMV_PROPERTY, NULL);
 					indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
+					indigo_define_property(device, GLME_PROPERTY, NULL);
 
 					device->is_connected = true;
 					/* start updates */
@@ -814,6 +857,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, OIMV_PROPERTY, NULL);
 				indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, FLAP_STATE_PROPERTY, NULL);
+				indigo_delete_property(device, GLME_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -969,6 +1013,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(OIMV_PROPERTY);
 	indigo_release_property(MOUNT_STATE_PROPERTY);
 	indigo_release_property(FLAP_STATE_PROPERTY);
+	indigo_release_property(GLME_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
