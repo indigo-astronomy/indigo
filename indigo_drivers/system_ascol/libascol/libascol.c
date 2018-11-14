@@ -36,9 +36,9 @@ static const char *oimv_descriptions[] = {
 	"Right Segment 4 pressure",
 	"Right Segment 5 pressure",
 	"Nitrogen pressure",
-	"Level of oil in \"IN\" tank",
-	"Level of oil in \"OUT\" tank",
-	"Temperature of oil in \"IN\" tank",
+	"Level of oil in IN tank",
+	"Level of oil in OUT tank",
+	"Temperature of oil in IN tank",
 	"Temperature of motor M25"
 };
 
@@ -776,6 +776,11 @@ int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 
 	if (!oimv) return ASCOL_PARAM_ERROR;
 
+	oimv->description = (char **)oimv_descriptions;
+	oimv->unit = (char **)oimv_units;
+
+	if (devfd < 0) return ASCOL_PARAM_ERROR;
+
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
@@ -792,9 +797,6 @@ int ascol_OIMV(int devfd, ascol_oimv_t *oimv) {
 		&(oimv->value[15]), &(oimv->value[16])
 	);
 	if (res != ASCOL_OIMV_N) return ASCOL_RESPONCE_ERROR;
-
-	oimv->description = (char **)oimv_descriptions;
-	oimv->unit = (char **)oimv_units;
 
 	ASCOL_DEBUG("%s()=%2d <=> ascol_oimv_t\n", __FUNCTION__, ASCOL_OK);
 	return ASCOL_OK;
@@ -853,6 +855,11 @@ int ascol_GLME(int devfd, ascol_glme_t *glme) {
 
 	if (!glme) return ASCOL_PARAM_ERROR;
 
+	glme->description = (char **)glme_descriptions;
+	glme->unit = (char **)glme_units;
+
+	if (devfd < 0) return ASCOL_PARAM_ERROR;
+
 	int res = ascol_write(devfd, cmd);
 	ASCOL_DEBUG_WRITE(res, cmd);
 	if (res != strlen(cmd)) return ASCOL_WRITE_ERROR;
@@ -867,9 +874,6 @@ int ascol_GLME(int devfd, ascol_glme_t *glme) {
 		&(glme->value[4]), &(glme->value[5]), &(glme->value[6])
 	);
 	if (res != ASCOL_GLME_N) return ASCOL_RESPONCE_ERROR;
-
-	glme->description = (char **)glme_descriptions;
-	glme->unit = (char **)glme_units;
 
 	ASCOL_DEBUG("%s()=%2d <=> ascol_glme_t\n", __FUNCTION__, ASCOL_OK);
 	return ASCOL_OK;

@@ -112,6 +112,7 @@
 #define CHECK_ALARM(glst, alarm)    CHECK_BIT(glst.alarm_bits[(int)(alarm/16)], (alarm%16))
 
 /* Data structures */
+#define ASCOL_DESCRIBE       (-1)   /* ascol_OIMV() and ascol_GLME() return descriptions only */
 
 #define ASCOL_OIMV_N         (17)
 typedef struct {
