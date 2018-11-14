@@ -46,7 +46,7 @@
 
 #define REFRESH_SECONDS (0.5)
 
-#define PRIVATE_DATA        ((ascol_private_data *)device->private_data)
+#define PRIVATE_DATA                    ((ascol_private_data *)device->private_data)
 
 
 #define COMMAND_GUIDE_RATE_PROPERTY     (PRIVATE_DATA->command_guide_rate_property)
@@ -56,6 +56,10 @@
 #define COMMAND_GUIDE_RATE_PROPERTY_NAME   "COMMAND_GUIDE_RATE"
 #define GUIDE_50_ITEM_NAME                 "GUIDE_50"
 #define GUIDE_100_ITEM_NAME                "GUIDE_100"
+
+#define ALARM_GROUP                        "Alarms"
+#define TELESCOPE_STATE_GROUP              "Telescope Status"
+#define METEO_DATA_GROUP                   "Meteo Data"
 
 #define ALARM_PROPERTY                     (PRIVATE_DATA->alarm_property)
 #define ALARM_ITEMS(index)                 (ALARM_PROPERTY->items+index)
@@ -651,7 +655,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
 
 		// -------------------------------------------------------------------------- ALARM
-		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, "Alarms", "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
+		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, ALARM_GROUP, "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
 		if (ALARM_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -668,25 +672,25 @@ static indigo_result mount_attach(indigo_device *device) {
 		}
 		ALARM_PROPERTY->count = index;
 		// --------------------------------------------------------------------------- OIL STATE
-		OIL_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, OIL_STATE_PROPERTY_NAME, "Telescope Status", "Oil State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
+		OIL_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, OIL_STATE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Oil State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
 		if (OIL_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(OIL_STATE_ITEM, OIL_STATE_ITEM_NAME, "State", "");
 		// --------------------------------------------------------------------------- MOUNT STATE
-		MOUNT_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, MOUNT_STATE_PROPERTY_NAME, "Telescope Status", "Mount State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
+		MOUNT_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, MOUNT_STATE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Mount State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
 		if (MOUNT_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(MOUNT_STATE_ITEM, MOUNT_STATE_ITEM_NAME, "Mount", "");
 		indigo_init_text_item(RA_STATE_ITEM, RA_STATE_ITEM_NAME, "RA Axis", "");
 		indigo_init_text_item(DEC_STATE_ITEM, DEC_STATE_ITEM_NAME, "DEC Axis", "");
 		// --------------------------------------------------------------------------- FLAP STATE
-		FLAP_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, FLAP_STATE_PROPERTY_NAME, "Telescope Status", "Flaps State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
+		FLAP_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, FLAP_STATE_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Flaps State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
 		if (FLAP_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(TUBE_FLAP_STATE_ITEM, TUBE_FLAP_STATE_ITEM_NAME, "Tube Flap", "");
 		indigo_init_text_item(COUDE_FLAP_STATE_ITEM, COUDE_FLAP_STATE_ITEM_NAME, "Coude Flap", "");
-		// ---------------------------------------------------------------------------
-		OIMV_PROPERTY = indigo_init_number_property(NULL, device->name, OIMV_PROPERTY_NAME, "Telescope Status", "Oil Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_OIMV_N);
+		// --------------------------------------------------------------------------- OIMV
+		OIMV_PROPERTY = indigo_init_number_property(NULL, device->name, OIMV_PROPERTY_NAME, TELESCOPE_STATE_GROUP, "Oil Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_OIMV_N);
 		if (OIMV_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
