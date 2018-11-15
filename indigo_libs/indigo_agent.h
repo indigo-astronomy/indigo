@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Agent base
+/** INDIGO Generic agent base
  \file indigo_agent_driver.h
  */
 
