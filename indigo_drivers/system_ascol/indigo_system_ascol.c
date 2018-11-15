@@ -60,6 +60,7 @@
 #define ALARM_GROUP                        "Alarms"
 #define TELESCOPE_STATE_GROUP              "Telescope Status"
 #define METEO_DATA_GROUP                   "Meteo Data"
+#define SWITCHES_GROUP                     "System Switches"
 
 #define ALARM_PROPERTY                     (PRIVATE_DATA->alarm_property)
 #define ALARM_ITEMS(index)                 (ALARM_PROPERTY->items+index)
@@ -97,6 +98,20 @@
 #define GLME_PROPERTY_NAME                 "ASCOL_GLME"
 #define GLME_ITEM_NAME_BASE                "VALUE"
 
+#define OIL_POWER_PROPERTY                 (PRIVATE_DATA->oil_power_property)
+#define OIL_ON_ITEM                        (OIL_POWER_PROPERTY->items+0)
+#define OIL_OFF_ITEM                       (OIL_POWER_PROPERTY->items+1)
+#define OIL_POWER_PROPERTY_NAME            "ASCOL_OIL_POWER"
+#define OIL_ON_ITEM_NAME                   "ON"
+#define OIL_OFF_ITEM_NAME                  "OFF"
+
+#define TELESCOPE_POWER_PROPERTY           (PRIVATE_DATA->telescope_power_property)
+#define TELESCOPE_ON_ITEM                  (TELESCOPE_POWER_PROPERTY->items+0)
+#define TELESCOPE_OFF_ITEM                 (TELESCOPE_POWER_PROPERTY->items+1)
+#define TELESCOPE_POWER_PROPERTY_NAME      "ASCOL_TELESCOPE_POWER"
+#define TELESCOPE_ON_ITEM_NAME             "ON"
+#define TELESCOPE_OFF_ITEM_NAME            "OFF"
+
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
 
@@ -125,6 +140,8 @@ typedef struct {
 	indigo_property *mount_state_property;
 	indigo_property *flap_state_property;
 	indigo_property *glme_property;
+	indigo_property *oil_power_property;
+	indigo_property *telescope_power_property;
 } ascol_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -143,6 +160,10 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
 		if (indigo_property_match(GLME_PROPERTY, property))
 			indigo_define_property(device, GLME_PROPERTY, NULL);
+		if (indigo_property_match(OIL_POWER_PROPERTY, property))
+			indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
+		if (indigo_property_match(TELESCOPE_POWER_PROPERTY, property))
+			indigo_define_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -779,6 +800,20 @@ static indigo_result mount_attach(indigo_device *device) {
 			);
 			indigo_init_number_item(GLME_ITEMS(index), item_name, item_label, -1000, 1000, 0.01, 0);
 		}
+		// -------------------------------------------------------------------------- OIL_POWER
+		OIL_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, OIL_POWER_PROPERTY_NAME, SWITCHES_GROUP, "Oil Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (OIL_POWER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(OIL_ON_ITEM, OIL_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(OIL_OFF_ITEM, OIL_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- TELESCOPE_POWER
+		TELESCOPE_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, TELESCOPE_POWER_PROPERTY_NAME, SWITCHES_GROUP, "Telescope Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (TELESCOPE_POWER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(TELESCOPE_ON_ITEM, TELESCOPE_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(TELESCOPE_OFF_ITEM, TELESCOPE_OFF_ITEM_NAME, "Off", true);
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -870,6 +905,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
 					indigo_define_property(device, GLME_PROPERTY, NULL);
+					indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
+					indigo_define_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 
 					device->is_connected = true;
 					/* start updates */
@@ -891,6 +928,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, FLAP_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, GLME_PROPERTY, NULL);
+				indigo_delete_property(device, OIL_POWER_PROPERTY, NULL);
+				indigo_delete_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -1047,6 +1086,8 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_STATE_PROPERTY);
 	indigo_release_property(FLAP_STATE_PROPERTY);
 	indigo_release_property(GLME_PROPERTY);
+	indigo_release_property(OIL_POWER_PROPERTY);
+	indigo_release_property(TELESCOPE_POWER_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
