@@ -549,6 +549,11 @@ static void position_timer_callback(indigo_device *device) {
 
 
 static void glst_timer_callback(indigo_device *device) {
+	static ascol_glst_t prev_glst = {0};
+	static ascol_oimv_t prev_oimv = {0};
+	static ascol_glme_t prev_glme = {0};
+	static bool first_call = true;
+
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	int res = ascol_GLST(PRIVATE_DATA->dev_id, &PRIVATE_DATA->glst);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
@@ -566,43 +571,62 @@ static void glst_timer_callback(indigo_device *device) {
 	}
 
 	char *descr, *descrs;
-	ALARM_PROPERTY->state = INDIGO_OK_STATE;
-	int index = 0;
-	for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
-		int alarm_state;
-		ascol_check_alarm(PRIVATE_DATA->glst, alarm, &descr, &alarm_state);
-		if (descr[0] != '\0') {
-			if (alarm_state) {
-				ALARM_ITEMS(index)->light.value = INDIGO_ALERT_STATE;
-				ALARM_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				ALARM_ITEMS(index)->light.value = INDIGO_OK_STATE;
+	int index;
+	if (first_call || memcmp(prev_glst.alarm_bits, PRIVATE_DATA->glst.alarm_bits, 10)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating ALARM_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		ALARM_PROPERTY->state = INDIGO_OK_STATE;
+		index = 0;
+		for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
+			int alarm_state;
+			ascol_check_alarm(PRIVATE_DATA->glst, alarm, &descr, &alarm_state);
+			if (descr[0] != '\0') {
+				if (alarm_state) {
+					ALARM_ITEMS(index)->light.value = INDIGO_ALERT_STATE;
+					ALARM_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					ALARM_ITEMS(index)->light.value = INDIGO_OK_STATE;
+				}
+				index++;
 			}
-			index++;
 		}
+		indigo_update_property(device, ALARM_PROPERTY, NULL);
 	}
-	indigo_update_property(device, ALARM_PROPERTY, NULL);
 
-	OIL_STATE_PROPERTY->state = INDIGO_OK_STATE;
-	ascol_get_oil_state(PRIVATE_DATA->glst, &descr, &descrs);
-	snprintf(OIL_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
-	indigo_update_property(device, OIL_STATE_PROPERTY, NULL);
+	if (first_call || (prev_glst.oil_state != PRIVATE_DATA->glst.oil_state)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIL_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		OIL_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		ascol_get_oil_state(PRIVATE_DATA->glst, &descr, &descrs);
+		snprintf(OIL_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		indigo_update_property(device, OIL_STATE_PROPERTY, NULL);
+	}
 
-	MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
-	ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
-	snprintf(MOUNT_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
-	ascol_get_ra_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
-	snprintf(RA_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
-	ascol_get_de_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
-	snprintf(DEC_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
-	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+	if (first_call || (prev_glst.telescope_state != PRIVATE_DATA->glst.telescope_state) ||
+	   (prev_glst.ra_axis_state != PRIVATE_DATA->glst.ra_axis_state) ||
+	   (prev_glst.de_axis_state != PRIVATE_DATA->glst.de_axis_state)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIL_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
+		snprintf(MOUNT_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		ascol_get_ra_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
+		snprintf(RA_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		ascol_get_de_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
+		snprintf(DEC_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+	}
 
-	FLAP_STATE_PROPERTY->state = INDIGO_OK_STATE;
-	ascol_get_flap_tube_state(PRIVATE_DATA->glst, &descr, &descrs);
-	snprintf(TUBE_FLAP_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
-	ascol_get_flap_coude_state(PRIVATE_DATA->glst, &descr, &descrs);
-	snprintf(COUDE_FLAP_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
-	indigo_update_property(device, FLAP_STATE_PROPERTY, NULL);
+	if (first_call || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
+	   (prev_glst.flap_coude_state != PRIVATE_DATA->glst.flap_coude_state)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating FLAP_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		FLAP_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		ascol_get_flap_tube_state(PRIVATE_DATA->glst, &descr, &descrs);
+		snprintf(TUBE_FLAP_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		ascol_get_flap_coude_state(PRIVATE_DATA->glst, &descr, &descrs);
+		snprintf(COUDE_FLAP_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		indigo_update_property(device, FLAP_STATE_PROPERTY, NULL);
+	}
+	/* should be copied every time as there are several properties
+	   relaying on this and we have no track which one changed */
+	prev_glst = PRIVATE_DATA->glst;
 
 	OIL_MEASURE:
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
@@ -615,11 +639,15 @@ static void glst_timer_callback(indigo_device *device) {
 		goto METEO_MEASURE;
 	}
 
-	OIMV_PROPERTY->state = INDIGO_OK_STATE;
-	for (int index = 0; index < ASCOL_OIMV_N; index++) {
-		OIMV_ITEMS(index)->number.value = PRIVATE_DATA->oimv.value[index];
+	if (first_call || memcmp(&prev_oimv, &PRIVATE_DATA->oimv, sizeof(prev_oimv))) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIMV_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		OIMV_PROPERTY->state = INDIGO_OK_STATE;
+		for (int index = 0; index < ASCOL_OIMV_N; index++) {
+			OIMV_ITEMS(index)->number.value = PRIVATE_DATA->oimv.value[index];
+		}
+		indigo_update_property(device, OIMV_PROPERTY, NULL);
+		prev_oimv = PRIVATE_DATA->oimv;
 	}
-	indigo_update_property(device, OIMV_PROPERTY, NULL);
 
 	METEO_MEASURE:
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
@@ -632,13 +660,18 @@ static void glst_timer_callback(indigo_device *device) {
 		goto RESCHEDULE_TIMER;
 	}
 
-	GLME_PROPERTY->state = INDIGO_OK_STATE;
-	for (int index = 0; index < ASCOL_GLME_N; index++) {
-		GLME_ITEMS(index)->number.value = PRIVATE_DATA->glme.value[index];
+	if (first_call || memcmp(&prev_glme, &PRIVATE_DATA->glme, sizeof(prev_glme))) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating GLME_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		GLME_PROPERTY->state = INDIGO_OK_STATE;
+		for (int index = 0; index < ASCOL_GLME_N; index++) {
+			GLME_ITEMS(index)->number.value = PRIVATE_DATA->glme.value[index];
+		}
+		indigo_update_property(device, GLME_PROPERTY, NULL);
+		prev_glme = PRIVATE_DATA->glme;
 	}
-	indigo_update_property(device, GLME_PROPERTY, NULL);
 
 	RESCHEDULE_TIMER:
+	first_call = false;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
 }
 
