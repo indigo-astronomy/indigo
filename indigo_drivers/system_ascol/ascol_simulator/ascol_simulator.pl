@@ -742,8 +742,10 @@ sub main() {
 					next;
 				}
 				if ($cmd[1] eq "1") {
-					$oil_state = OIL_START1;
-					$oil_time = time();
+					if ($oil_state == OIL_OFF) {
+						$oil_state = OIL_START1;
+						$oil_time = time();
+					}
 					print_client($client, "1\n");
 					next;
 				}
@@ -779,10 +781,12 @@ sub main() {
 					next;
 				}
 				if (($oil_state == OIL_ON) && ($cmd[1] eq "1")) {
-					$te_state = TE_STOP;
-					$te_tracking = 0;
-					$da_state = DA_POSITION;
-					$ha_state = HA_POSITION;
+					if ($te_state == TE_OFF) {
+						$te_state = TE_STOP;
+						$te_tracking = 0;
+						$da_state = DA_POSITION;
+						$ha_state = HA_POSITION;
+					}
 					print_client($client, "1\n");
 					next;
 				}
