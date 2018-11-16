@@ -613,18 +613,35 @@ static void glst_timer_callback(indigo_device *device) {
 		indigo_update_property(device, ALARM_PROPERTY, NULL);
 	}
 
-	if (first_call || (prev_glst.oil_state != PRIVATE_DATA->glst.oil_state)) {
+	if (first_call || (prev_glst.oil_state != PRIVATE_DATA->glst.oil_state) ||
+	   (OIL_STATE_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIL_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		OIL_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		ascol_get_oil_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(OIL_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		indigo_update_property(device, OIL_STATE_PROPERTY, NULL);
+
+		if (PRIVATE_DATA->glst.oil_state == 0) {
+			OIL_ON_ITEM->sw.value = false;
+			OIL_OFF_ITEM->sw.value = true;
+			OIL_POWER_PROPERTY->state = INDIGO_OK_STATE;
+		} else if(PRIVATE_DATA->glst.oil_state == 4) {
+			OIL_ON_ITEM->sw.value = true;
+			OIL_OFF_ITEM->sw.value = false;
+			OIL_POWER_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			OIL_ON_ITEM->sw.value = true;
+			OIL_OFF_ITEM->sw.value = false;
+			OIL_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, OIL_POWER_PROPERTY, NULL);
 	}
 
 	if (first_call || (prev_glst.telescope_state != PRIVATE_DATA->glst.telescope_state) ||
 	   (prev_glst.ra_axis_state != PRIVATE_DATA->glst.ra_axis_state) ||
-	   (prev_glst.de_axis_state != PRIVATE_DATA->glst.de_axis_state)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIL_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+	   (prev_glst.de_axis_state != PRIVATE_DATA->glst.de_axis_state) ||
+	   (TELESCOPE_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating TELESCOPE_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(MOUNT_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
@@ -633,6 +650,22 @@ static void glst_timer_callback(indigo_device *device) {
 		ascol_get_de_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(DEC_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+
+		if (PRIVATE_DATA->glst.telescope_state == 1) {
+			TELESCOPE_ON_ITEM->sw.value = false;
+			TELESCOPE_OFF_ITEM->sw.value = true;
+			TELESCOPE_POWER_PROPERTY->state = INDIGO_OK_STATE;
+		} else if((PRIVATE_DATA->glst.telescope_state == 3) ||
+		          (PRIVATE_DATA->glst.telescope_state == 4)) {
+			TELESCOPE_ON_ITEM->sw.value = true;
+			TELESCOPE_OFF_ITEM->sw.value = false;
+			TELESCOPE_POWER_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			TELESCOPE_ON_ITEM->sw.value = true;
+			TELESCOPE_OFF_ITEM->sw.value = false;
+			TELESCOPE_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 	}
 
 	if (first_call || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
@@ -807,6 +840,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_switch_item(OIL_ON_ITEM, OIL_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(OIL_OFF_ITEM, OIL_OFF_ITEM_NAME, "Off", true);
+		OIL_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
 		// -------------------------------------------------------------------------- TELESCOPE_POWER
 		TELESCOPE_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, TELESCOPE_POWER_PROPERTY_NAME, SWITCHES_GROUP, "Telescope Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (TELESCOPE_POWER_PROPERTY == NULL)
@@ -814,6 +848,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_switch_item(TELESCOPE_ON_ITEM, TELESCOPE_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(TELESCOPE_OFF_ITEM, TELESCOPE_OFF_ITEM_NAME, "Off", true);
+		TELESCOPE_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
