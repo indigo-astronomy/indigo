@@ -621,11 +621,11 @@ static void glst_timer_callback(indigo_device *device) {
 		snprintf(OIL_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		indigo_update_property(device, OIL_STATE_PROPERTY, NULL);
 
-		if (PRIVATE_DATA->glst.oil_state == 0) {
+		if (PRIVATE_DATA->glst.oil_state == OIL_STATE_OFF) {
 			OIL_ON_ITEM->sw.value = false;
 			OIL_OFF_ITEM->sw.value = true;
 			OIL_POWER_PROPERTY->state = INDIGO_OK_STATE;
-		} else if(PRIVATE_DATA->glst.oil_state == 4) {
+		} else if(PRIVATE_DATA->glst.oil_state == OIL_STATE_ON) {
 			OIL_ON_ITEM->sw.value = true;
 			OIL_OFF_ITEM->sw.value = false;
 			OIL_POWER_PROPERTY->state = INDIGO_OK_STATE;
@@ -651,12 +651,12 @@ static void glst_timer_callback(indigo_device *device) {
 		snprintf(DEC_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 
-		if (PRIVATE_DATA->glst.telescope_state == 1) {
+		if (PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF) {
 			TELESCOPE_ON_ITEM->sw.value = false;
 			TELESCOPE_OFF_ITEM->sw.value = true;
 			TELESCOPE_POWER_PROPERTY->state = INDIGO_OK_STATE;
-		} else if((PRIVATE_DATA->glst.telescope_state == 3) ||
-		          (PRIVATE_DATA->glst.telescope_state == 4)) {
+		} else if((PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
+		          (PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK)) {
 			TELESCOPE_ON_ITEM->sw.value = true;
 			TELESCOPE_OFF_ITEM->sw.value = false;
 			TELESCOPE_POWER_PROPERTY->state = INDIGO_OK_STATE;
@@ -1044,11 +1044,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		int res = ASCOL_OK;
 		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 		if (OIL_ON_ITEM->sw.value) {
-			res = ascol_OION(PRIVATE_DATA->dev_id, 1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_OION(%d, 1) = %d", PRIVATE_DATA->dev_id, res);
+			res = ascol_OION(PRIVATE_DATA->dev_id, ASCOL_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_OION(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
 		} else {
-			res = ascol_OION(PRIVATE_DATA->dev_id, 0);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_OION(%d, 0) = %d", PRIVATE_DATA->dev_id, res);
+			res = ascol_OION(PRIVATE_DATA->dev_id, ASCOL_OFF);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_OION(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		if(res == ASCOL_OK) {
@@ -1067,11 +1067,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		int res = ASCOL_OK;
 		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 		if (TELESCOPE_ON_ITEM->sw.value) {
-			res = ascol_TEON(PRIVATE_DATA->dev_id, 1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, 1) = %d", PRIVATE_DATA->dev_id, res);
+			res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_ON);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
 		} else {
-			res = ascol_TEON(PRIVATE_DATA->dev_id, 0);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, 0) = %d", PRIVATE_DATA->dev_id, res);
+			res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_OFF);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 		if(res == ASCOL_OK) {

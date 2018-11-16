@@ -10,18 +10,73 @@
 #include<unistd.h>
 #include<stdint.h>
 
-#define DEFAULT_PORT       (2001)
-#define ASCOL_MSG_LEN       (100)
+#define DEFAULT_PORT        (2001)
+#define ASCOL_MSG_LEN        (100)
 
-#define ASCOL_OFF             (0)
-#define ASCOL_ON              (1)
+#define ASCOL_OFF              (0)
+#define ASCOL_ON               (1)
 
-#define ASCOL_OK              (0)
-#define ASCOL_READ_ERROR      (1)
-#define ASCOL_WRITE_ERROR     (2)
-#define ASCOL_COMMAND_ERROR   (3)
-#define ASCOL_RESPONCE_ERROR  (4)
-#define ASCOL_PARAM_ERROR     (5)
+/* Function Return Codes */
+#define ASCOL_OK               (0)
+#define ASCOL_READ_ERROR       (1)
+#define ASCOL_WRITE_ERROR      (2)
+#define ASCOL_COMMAND_ERROR    (3)
+#define ASCOL_RESPONCE_ERROR   (4)
+#define ASCOL_PARAM_ERROR      (5)
+
+/* Oil States */
+#define OIL_STATE_OFF          (0)
+#define OIL_STATE_START1       (1)
+#define OIL_STATE_START2       (2)
+#define OIL_STATE_START3       (3)
+#define OIL_STATE_ON           (4)
+#define OIL_STATE_OFF_DELAY    (5)
+
+/* Telescope States */
+#define TE_STATE_INIT          (0)
+#define TE_STATE_OFF           (1)
+#define TE_STATE_OFF_WAIT      (2)
+#define TE_STATE_STOP          (3)
+#define TE_STATE_TRACK         (4)
+#define TE_STATE_OFF_REQ       (5)
+#define TE_STATE_SS_CLU1       (6)
+#define TE_STATE_SS_SLEW       (7)
+#define TE_STATE_SS_CLU2       (8)
+#define TE_STATE_SS_CLU3       (9)
+#define TE_STATE_ST_DECC1     (10)
+#define TE_STATE_ST_CLU1      (11)
+#define TE_STATE_ST_SLEW      (12)
+#define TE_STATE_ST_DECC2     (13)
+#define TE_STATE_ST_CLU2      (14)
+#define TE_STATE_ST_DECC3     (15)
+#define TE_STATE_ST_CLU3      (16)
+#define TE_STATE_SS_DECC3     (17)
+#define TE_STATE_SS_DECC2     (18)
+
+/* Focus States */
+#define FOCUS_STATE_OFF        (0)
+#define FOCUS_STATE_STOP       (1)
+#define FOCUS_STATE_PLUS       (2)
+#define FOCUS_STATE_MINUS      (3)
+#define FOCUS_STATE_SLEW       (4)
+
+/* Dome States */
+#define DOME_STATE_OFF         (0)
+#define DOME_STATE_STOP        (1)
+#define DOME_STATE_PLUS        (2)
+#define DOME_STATE_MINUS       (3)
+#define DOME_STATE_SLEW_PLUS   (4)
+#define DOME_STATE_SLEW_MINUS  (5)
+#define DOME_STATE_AUTO_STOP   (6)
+#define DOME_STATE_AUTO_PLUS   (7)
+#define DOME_STATE_AUTO_MINUS  (8)
+
+/* Slit and Flap States */
+#define SF_STATE_UNDEF         (0)
+#define SF_STATE_OPENING       (1)
+#define SF_STATE_CLOSING       (2)
+#define SF_STATE_OPEN          (3)
+#define SF_STATE_CLOSE         (4)
 
 /* ALARM_BITS */
 /* Bank 0 */
