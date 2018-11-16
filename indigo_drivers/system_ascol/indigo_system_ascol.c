@@ -259,6 +259,52 @@ static void mount_handle_tracking(indigo_device *device) {
 }
 
 
+static void mount_handle_oil_power(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (OIL_ON_ITEM->sw.value) {
+		res = ascol_OION(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_OION(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_OION(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_OION(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		OIL_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		OIL_ON_ITEM->sw.value = !OIL_ON_ITEM->sw.value;
+		OIL_OFF_ITEM->sw.value = !OIL_OFF_ITEM->sw.value;
+		OIL_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_OION(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, OIL_POWER_PROPERTY, NULL);
+}
+
+
+static void mount_handle_telescope_power(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (TELESCOPE_ON_ITEM->sw.value) {
+		res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		TELESCOPE_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		TELESCOPE_ON_ITEM->sw.value = !TELESCOPE_ON_ITEM->sw.value;
+		TELESCOPE_OFF_ITEM->sw.value = !TELESCOPE_OFF_ITEM->sw.value;
+		TELESCOPE_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEON(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, TELESCOPE_POWER_PROPERTY, NULL);
+}
+
+
 static void mount_handle_slew_rate(indigo_device *device) {
 	if(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = PRIVATE_DATA->guide_rate;
@@ -614,7 +660,7 @@ static void state_timer_callback(indigo_device *device) {
 	}
 
 	if (first_call || (prev_glst.oil_state != PRIVATE_DATA->glst.oil_state) ||
-	   (OIL_STATE_PROPERTY->state == INDIGO_BUSY_STATE)) {
+	   (OIL_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating OIL_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		OIL_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		ascol_get_oil_state(PRIVATE_DATA->glst, &descr, &descrs);
@@ -1040,49 +1086,17 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(OIL_POWER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- OIL_POWER_PROPERTY
-		indigo_property_copy_values(OIL_POWER_PROPERTY, property, false);
-		int res = ASCOL_OK;
-		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-		if (OIL_ON_ITEM->sw.value) {
-			res = ascol_OION(PRIVATE_DATA->dev_id, ASCOL_ON);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_OION(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
-		} else {
-			res = ascol_OION(PRIVATE_DATA->dev_id, ASCOL_OFF);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_OION(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(OIL_POWER_PROPERTY, property, false);
+			mount_handle_oil_power(device);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-		if(res == ASCOL_OK) {
-			OIL_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			OIL_ON_ITEM->sw.value = !OIL_ON_ITEM->sw.value;
-			OIL_OFF_ITEM->sw.value = !OIL_OFF_ITEM->sw.value;
-			OIL_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_OION(%d) = %d", PRIVATE_DATA->dev_id, res);
-		}
-		indigo_update_property(device, OIL_POWER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(TELESCOPE_POWER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- TELESCOPE_POWER_PROPERTY
-		indigo_property_copy_values(TELESCOPE_POWER_PROPERTY, property, false);
-		int res = ASCOL_OK;
-		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-		if (TELESCOPE_ON_ITEM->sw.value) {
-			res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_ON);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
-		} else {
-			res = ascol_TEON(PRIVATE_DATA->dev_id, ASCOL_OFF);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(TELESCOPE_POWER_PROPERTY, property, false);
+			mount_handle_telescope_power(device);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-		if(res == ASCOL_OK) {
-			TELESCOPE_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else {
-			TELESCOPE_ON_ITEM->sw.value = !TELESCOPE_ON_ITEM->sw.value;
-			TELESCOPE_OFF_ITEM->sw.value = !TELESCOPE_OFF_ITEM->sw.value;
-			TELESCOPE_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEON(%d) = %d", PRIVATE_DATA->dev_id, res);
-		}
-		indigo_update_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
