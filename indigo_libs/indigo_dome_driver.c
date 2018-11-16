@@ -138,36 +138,33 @@ indigo_result indigo_dome_attach(indigo_device *device, unsigned version) {
 indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
-	indigo_result result = INDIGO_OK;
-	if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (IS_CONNECTED) {
-			if (indigo_property_match(DOME_SPEED_PROPERTY, property))
-				indigo_define_property(device, DOME_SPEED_PROPERTY, NULL);
-			if (indigo_property_match(DOME_DIRECTION_PROPERTY, property))
-				indigo_define_property(device, DOME_DIRECTION_PROPERTY, NULL);
-			if (indigo_property_match(DOME_STEPS_PROPERTY, property))
-				indigo_define_property(device, DOME_STEPS_PROPERTY, NULL);
-			if (indigo_property_match(DOME_EQUATORIAL_COORDINATES_PROPERTY, property))
-				indigo_define_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-			if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property))
-				indigo_define_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			if (indigo_property_match(DOME_SYNC_PROPERTY, property))
-				indigo_define_property(device, DOME_SYNC_PROPERTY, NULL);
-			if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property))
-				indigo_define_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
-			if (indigo_property_match(DOME_SHUTTER_PROPERTY, property))
-				indigo_define_property(device, DOME_SHUTTER_PROPERTY, NULL);
-			if (indigo_property_match(DOME_PARK_PROPERTY, property))
-				indigo_define_property(device, DOME_PARK_PROPERTY, NULL);
-			if (indigo_property_match(DOME_DIMENSION_PROPERTY, property))
-				indigo_define_property(device, DOME_DIMENSION_PROPERTY, NULL);
-			if (indigo_property_match(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, property))
-				indigo_define_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-			if (indigo_property_match(DOME_SNOOP_DEVICES_PROPERTY, property))
-				indigo_define_property(device, DOME_SNOOP_DEVICES_PROPERTY, NULL);
-		}
+	if (IS_CONNECTED) {
+		if (indigo_property_match(DOME_SPEED_PROPERTY, property))
+			indigo_define_property(device, DOME_SPEED_PROPERTY, NULL);
+		if (indigo_property_match(DOME_DIRECTION_PROPERTY, property))
+			indigo_define_property(device, DOME_DIRECTION_PROPERTY, NULL);
+		if (indigo_property_match(DOME_STEPS_PROPERTY, property))
+			indigo_define_property(device, DOME_STEPS_PROPERTY, NULL);
+		if (indigo_property_match(DOME_EQUATORIAL_COORDINATES_PROPERTY, property))
+			indigo_define_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property))
+			indigo_define_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		if (indigo_property_match(DOME_SYNC_PROPERTY, property))
+			indigo_define_property(device, DOME_SYNC_PROPERTY, NULL);
+		if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property))
+			indigo_define_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+		if (indigo_property_match(DOME_SHUTTER_PROPERTY, property))
+			indigo_define_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		if (indigo_property_match(DOME_PARK_PROPERTY, property))
+			indigo_define_property(device, DOME_PARK_PROPERTY, NULL);
+		if (indigo_property_match(DOME_DIMENSION_PROPERTY, property))
+			indigo_define_property(device, DOME_DIMENSION_PROPERTY, NULL);
+		if (indigo_property_match(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, property))
+			indigo_define_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		if (indigo_property_match(DOME_SNOOP_DEVICES_PROPERTY, property))
+			indigo_define_property(device, DOME_SNOOP_DEVICES_PROPERTY, NULL);
 	}
-	return result;
+	return indigo_device_enumerate_properties(device, client, property);
 }
 
 indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
