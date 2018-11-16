@@ -16,6 +16,6 @@ Closed-source license.
 
 ## Use
 
-indigo_server indigo_agent_imager indigo_ccd_... indigo_wheel_... indigo_focuser_...
+indigo_server indigo_agent_imager indigo_ccd_...
 
 ## Status: Under development
