@@ -790,7 +790,7 @@ sub main() {
 					print_client($client, "1\n");
 					next;
 				}
-				if (($oil_state == OIL_ON) && ($cmd[1] eq "0")) {
+				if ($cmd[1] eq "0") {
 					$te_state = TE_OFF;
 					$te_tracking = 0;
 					$da_state = DA_STOP;
