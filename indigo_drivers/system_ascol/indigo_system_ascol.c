@@ -131,7 +131,7 @@ typedef struct {
 	ascol_glst_t glst;
 	ascol_oimv_t oimv;
 	ascol_glme_t glme;
-	indigo_timer *position_timer, *glst_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
+	indigo_timer *position_timer, *state_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
 	int guide_rate;
 	indigo_property *command_guide_rate_property;
 	indigo_property *alarm_property;
@@ -569,7 +569,7 @@ static void position_timer_callback(indigo_device *device) {
 }
 
 
-static void glst_timer_callback(indigo_device *device) {
+static void state_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
 	static ascol_oimv_t prev_oimv = {0};
 	static ascol_glme_t prev_glme = {0};
@@ -726,7 +726,7 @@ static void glst_timer_callback(indigo_device *device) {
 
 	RESCHEDULE_TIMER:
 	first_call = false;
-	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->glst_timer);
+	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->state_timer);
 }
 
 
@@ -946,7 +946,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					device->is_connected = true;
 					/* start updates */
 					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
-					PRIVATE_DATA->glst_timer = indigo_set_timer(device, 0, glst_timer_callback);
+					PRIVATE_DATA->state_timer = indigo_set_timer(device, 0, state_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -955,7 +955,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			if (device->is_connected) {
 				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
-				indigo_cancel_timer(device, &PRIVATE_DATA->glst_timer);
+				indigo_cancel_timer(device, &PRIVATE_DATA->state_timer);
 				mount_close(device);
 				indigo_delete_property(device, ALARM_PROPERTY, NULL);
 				indigo_delete_property(device, OIL_STATE_PROPERTY, NULL);
@@ -1159,7 +1159,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
 	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
-	indigo_cancel_timer(device, &PRIVATE_DATA->glst_timer);
+	indigo_cancel_timer(device, &PRIVATE_DATA->state_timer);
 
 	indigo_release_property(ALARM_PROPERTY);
 	indigo_release_property(OIL_STATE_PROPERTY);
