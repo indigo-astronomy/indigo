@@ -229,54 +229,51 @@ indigo_result indigo_ccd_attach(indigo_device *device, unsigned version) {
 indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
-	indigo_result result = INDIGO_OK;
-	if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (IS_CONNECTED) {
-			if (indigo_property_match(CCD_INFO_PROPERTY, property))
-				indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
-			if (indigo_property_match(CCD_LOCAL_MODE_PROPERTY, property))
-				indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_IMAGE_FILE_PROPERTY, property))
-				indigo_define_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_MODE_PROPERTY, property))
-				indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_READ_MODE_PROPERTY, property))
-				indigo_define_property(device, CCD_READ_MODE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property))
-				indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_STREAMING_PROPERTY, property))
-				indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
-			if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property))
-				indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_FRAME_PROPERTY, property))
-				indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
-			if (indigo_property_match(CCD_BIN_PROPERTY, property))
-				indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
-			if (indigo_property_match(CCD_OFFSET_PROPERTY, property))
-				indigo_define_property(device, CCD_OFFSET_PROPERTY, NULL);
-			if (indigo_property_match(CCD_GAIN_PROPERTY, property))
-				indigo_define_property(device, CCD_GAIN_PROPERTY, NULL);
-			if (indigo_property_match(CCD_GAMMA_PROPERTY, property))
-				indigo_define_property(device, CCD_GAMMA_PROPERTY, NULL);
-			if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property))
-				indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_IMAGE_FORMAT_PROPERTY, property))
-				indigo_define_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
-			if (indigo_property_match(CCD_UPLOAD_MODE_PROPERTY, property))
-				indigo_define_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_IMAGE_PROPERTY, property))
-				indigo_define_property(device, CCD_IMAGE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_COOLER_PROPERTY, property))
-				indigo_define_property(device, CCD_COOLER_PROPERTY, NULL);
-			if (indigo_property_match(CCD_COOLER_POWER_PROPERTY, property))
-				indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-			if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property))
-				indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-			if (indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property))
-			indigo_define_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
-		}
+	if (IS_CONNECTED) {
+		if (indigo_property_match(CCD_INFO_PROPERTY, property))
+			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
+		if (indigo_property_match(CCD_LOCAL_MODE_PROPERTY, property))
+			indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_IMAGE_FILE_PROPERTY, property))
+			indigo_define_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_MODE_PROPERTY, property))
+			indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_READ_MODE_PROPERTY, property))
+			indigo_define_property(device, CCD_READ_MODE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property))
+			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_STREAMING_PROPERTY, property))
+			indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
+		if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property))
+			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_FRAME_PROPERTY, property))
+			indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
+		if (indigo_property_match(CCD_BIN_PROPERTY, property))
+			indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
+		if (indigo_property_match(CCD_OFFSET_PROPERTY, property))
+			indigo_define_property(device, CCD_OFFSET_PROPERTY, NULL);
+		if (indigo_property_match(CCD_GAIN_PROPERTY, property))
+			indigo_define_property(device, CCD_GAIN_PROPERTY, NULL);
+		if (indigo_property_match(CCD_GAMMA_PROPERTY, property))
+			indigo_define_property(device, CCD_GAMMA_PROPERTY, NULL);
+		if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property))
+			indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_IMAGE_FORMAT_PROPERTY, property))
+			indigo_define_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
+		if (indigo_property_match(CCD_UPLOAD_MODE_PROPERTY, property))
+			indigo_define_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_IMAGE_PROPERTY, property))
+			indigo_define_property(device, CCD_IMAGE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_COOLER_PROPERTY, property))
+			indigo_define_property(device, CCD_COOLER_PROPERTY, NULL);
+		if (indigo_property_match(CCD_COOLER_POWER_PROPERTY, property))
+			indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+		if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property))
+			indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		if (indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property))
+		indigo_define_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
 	}
-	return result;
+	return indigo_device_enumerate_properties(device, client, property);
 }
 
 indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

@@ -96,24 +96,20 @@ indigo_result indigo_gps_attach(indigo_device *device, unsigned version) {
 indigo_result indigo_gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
-
-	indigo_result result = INDIGO_OK;
 	GPS_ADVANCED_STATUS_PROPERTY->hidden = GPS_ADVANCED_PROPERTY->hidden;
-	if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (IS_CONNECTED) {
-			if (indigo_property_match(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, property))
-				indigo_define_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-			if (indigo_property_match(GPS_UTC_TIME_PROPERTY, property))
-				indigo_define_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-			if (indigo_property_match(GPS_STATUS_PROPERTY, property))
-				indigo_define_property(device, GPS_STATUS_PROPERTY, NULL);
-			if (indigo_property_match(GPS_ADVANCED_PROPERTY, property))
-				indigo_define_property(device, GPS_ADVANCED_PROPERTY, NULL);
-			if (indigo_property_match(GPS_ADVANCED_PROPERTY, property) && (GPS_ADVANCED_ENABLED_ITEM->sw.value))
-				indigo_define_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
-		}
+	if (IS_CONNECTED) {
+		if (indigo_property_match(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, property))
+			indigo_define_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		if (indigo_property_match(GPS_UTC_TIME_PROPERTY, property))
+			indigo_define_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+		if (indigo_property_match(GPS_STATUS_PROPERTY, property))
+			indigo_define_property(device, GPS_STATUS_PROPERTY, NULL);
+		if (indigo_property_match(GPS_ADVANCED_PROPERTY, property))
+			indigo_define_property(device, GPS_ADVANCED_PROPERTY, NULL);
+		if (indigo_property_match(GPS_ADVANCED_PROPERTY, property) && (GPS_ADVANCED_ENABLED_ITEM->sw.value))
+			indigo_define_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 	}
-	return result;
+	return indigo_device_enumerate_properties(device, client, property);
 }
 
 indigo_result indigo_gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

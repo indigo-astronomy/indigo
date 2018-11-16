@@ -74,18 +74,15 @@ indigo_result indigo_guider_attach(indigo_device *device, unsigned version) {
 indigo_result indigo_guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
-	indigo_result result = INDIGO_OK;
-	if ((result = indigo_device_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (IS_CONNECTED) {
-			if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property))
-				indigo_define_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-			if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property))
-				indigo_define_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-			if (indigo_property_match(GUIDER_RATE_PROPERTY, property))
-				indigo_define_property(device, GUIDER_RATE_PROPERTY, NULL);
-		}
+	if (IS_CONNECTED) {
+		if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property))
+			indigo_define_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property))
+			indigo_define_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		if (indigo_property_match(GUIDER_RATE_PROPERTY, property))
+			indigo_define_property(device, GUIDER_RATE_PROPERTY, NULL);
 	}
-	return result;
+	return indigo_device_enumerate_properties(device, client, property);
 }
 
 indigo_result indigo_guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
