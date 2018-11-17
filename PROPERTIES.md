@@ -94,6 +94,7 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 <tr><th>Name</th><th>Type</th><th>RO</th><th>Required</th><th>Name</th><th>Required</th><th></th></tr>
 <tr><td>WHEEL_SLOT</td><td>number</td><td>no</td><td>yes</td><td>SLOT</td><td>yes</td><td></td></tr>
 <tr><td>WHEEL_SLOT_NAME</td><td>switch</td><td>no</td><td>yes</td><td>SLOT_NAME_1, ...</td><td>yes</td><td></td></tr>
+<tr><td>WHEEL_SLOT_OFFSET</td><td>switch</td><td>no</td><td>yes</td><td>SLOT_OFFSET_1, ...</td><td>yes</td><td>Value is number of focuser steps</td></tr>
 </table>
 
 

@@ -57,12 +57,21 @@ extern "C" {
  */
 #define WHEEL_SLOT_NAME_1_ITEM               (WHEEL_SLOT_NAME_PROPERTY->items+0)
 
+/** WHEEL_SLOT_OFFSET property pointer, property is mandatory, property change request should be fully handled by indigo_wheel_change_property.
+*/
+#define WHEEL_SLOT_OFFSET_PROPERTY             (WHEEL_CONTEXT->wheel_slot_offset_property)
+
+/** WHEEL_SLOT_NAME.NAME_1 property item pointer.
+*/
+#define WHEEL_SLOT_OFFSET_1_ITEM               (WHEEL_SLOT_OFFSET_PROPERTY->items+0)
+
 /** Wheel device context structure.
  */
 typedef struct {
 	indigo_device_context device_context;       ///< device context base
 	indigo_property *wheel_slot_property;				///< WHEEL_SLOT property pointer
 	indigo_property *wheel_slot_name_property;  ///< WHEEL_SLOT_NAME property pointer
+	indigo_property *wheel_slot_offset_property;///< WHEEL_SLOT_OFFSET property pointer
 } indigo_wheel_context;
 
 /** Attach callback function.

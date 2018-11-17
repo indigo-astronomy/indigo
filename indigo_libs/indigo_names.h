@@ -818,6 +818,111 @@
  */
 #define WHEEL_SLOT_NAME_24_ITEM_NAME						"SLOT_NAME_24"
 
+//----------------------------------------------------------------------
+/** WHEEL_SLOT_OFFSET property name.
+ */
+#define WHEEL_SLOT_OFFSET_PROPERTY_NAME					"WHEEL_SLOT_OFFSET"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_%d property item name.
+ */
+#define WHEEL_SLOT_OFFSET_ITEM_NAME						"SLOT_OFFSET_%d"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_1 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_1_ITEM_NAME						"SLOT_OFFSET_1"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_2 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_2_ITEM_NAME						"SLOT_OFFSET_2"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_3 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_3_ITEM_NAME						"SLOT_OFFSET_3"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_4 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_4_ITEM_NAME						"SLOT_OFFSET_4"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_5 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_5_ITEM_NAME						"SLOT_OFFSET_5"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_6 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_6_ITEM_NAME						"SLOT_OFFSET_6"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_7 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_7_ITEM_NAME						"SLOT_OFFSET_7"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_8 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_8_ITEM_NAME						"SLOT_OFFSET_8"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_9 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_9_ITEM_NAME						"SLOT_OFFSET_9"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_10 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_10_ITEM_NAME						"SLOT_OFFSET_10"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_11 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_11_ITEM_NAME						"SLOT_OFFSET_11"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_12 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_12_ITEM_NAME						"SLOT_OFFSET_12"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_3 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_13_ITEM_NAME						"SLOT_OFFSET_13"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_4 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_14_ITEM_NAME						"SLOT_OFFSET_14"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_15 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_15_ITEM_NAME						"SLOT_OFFSET_15"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_16 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_16_ITEM_NAME						"SLOT_OFFSET_16"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_7 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_17_ITEM_NAME						"SLOT_OFFSET_17"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_18 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_18_ITEM_NAME						"SLOT_OFFSET_18"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_19 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_19_ITEM_NAME						"SLOT_OFFSET_19"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_20 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_20_ITEM_NAME						"SLOT_OFFSET_20"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_21 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_21_ITEM_NAME						"SLOT_OFFSET_21"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_22 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_22_ITEM_NAME						"SLOT_OFFSET_22"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_23 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_23_ITEM_NAME						"SLOT_OFFSET_23"
+
+/** WHEEL_SLOT_OFFSET.OFFSET_24 property item name.
+ */
+#define WHEEL_SLOT_OFFSET_24_ITEM_NAME						"SLOT_OFFSET_24"
+
 
 //----------------------------------------------------------------------
 /** FOCUSER_SPEED property name.
