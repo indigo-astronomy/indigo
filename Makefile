@@ -96,7 +96,6 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBBOOST-REGEX=$(BUILD_LIB)/libboost_regex.a
 	PACKAGE_NAME=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 	INSTALL_PREFIX=/usr/local
-	PACKAGE_TYPE=deb
 endif
 
 #---------------------------------------------------------------------
@@ -222,7 +221,9 @@ SO_LIBS= $(wildcard $(BUILD_LIB)/*.$(SOEXT))
 #
 #---------------------------------------------------------------------
 
-all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) ctrlpanel drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server macfixpath $(BUILD_SHARE)/indi/indi_indigo.xml
+all: init $(EXTERNALS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) ctrlpanel drivers $(BUILD_BIN)/indigo_server_standalone $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/test $(BUILD_BIN)/client $(BUILD_BIN)/indigo_server $(BUILD_BIN)/indigo_drivers macfixpath
+	cp $(wildcard indigo_drivers/*/indi_go_*.xml) $(BUILD_SHARE)/indi
+
 
 
 #---------------------------------------------------------------------
@@ -238,10 +239,6 @@ ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
 	#install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
 endif
-
-$(BUILD_SHARE)/indi/indi_indigo.xml: $(DRIVER_SOLIBS) $(BUILD_BIN)/indigo_drivers
-	install -d $(BUILD_SHARE)/indi
-	$(BUILD_BIN)/indigo_drivers $(BUILD_DRIVERS)/indigo_*.$(SOEXT) >$(BUILD_SHARE)/indi/indi_indigo.xml
 
 #---------------------------------------------------------------------
 #
@@ -626,10 +623,13 @@ init: submodule-init
 	install -d $(BUILD_DRIVERS)
 	install -d $(BUILD_INCLUDE)
 	install -d $(BUILD_SHARE)/indigo
+	install -d $(BUILD_SHARE)/indi
 	cp indigo_libs/indigo_config.h indigo_libs/indigo_config.h.orig
 	sed 's/INDIGO_BUILD.*/INDIGO_BUILD $(INDIGO_BUILD)/' indigo_libs/indigo_config.h.orig >indigo_libs/indigo_config.h
 	cp INDIGO\ Server\ for\ macOS/Info.plist INDIGO\ Server\ for\ macOS/Info.plist.orig
 	sed '/CFBundleVersion/ { n; s/>.*</>$(INDIGO_BUILD)</; }' INDIGO\ Server\ for\ macOS/Info.plist.orig >INDIGO\ Server\ for\ macOS/Info.plist
+	cp indigo.pc indigo.pc.orig
+	sed 's/Version.*/Version: 2.0-$(INDIGO_BUILD)/' indigo.pc.orig >indigo.pc
 
 #---------------------------------------------------------------------
 #
@@ -1706,7 +1706,7 @@ install:
 	sudo install -D -m 0644 $(DRIVER_SOLIBS) $(INSTALL_PREFIX)/lib
 	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/ -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	mkdir qhy_scratch; cd qhy_scratch; cmake -DCMAKE_INSTALL_PREFIX=/ -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_qhy/bin_externals/qhyccd/; make install; cd ..; rm -rf qhy_scratch
-	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=$(INSTALL_PREFIX)/etc/apogee RULES_PREFIX=/lib/udev/rules.d; cd ../../../../
+	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=/etc/apogee RULES_PREFIX=/lib/udev/rules.d; cd ../../../../
 	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_fli/indigo-fli.rules /lib/udev/rules.d/99-indigo_fli.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_atik/bin_externals/libatik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
@@ -1723,7 +1723,8 @@ install:
 	sudo install -D -m 0644 indigo_drivers/ccd_altair/bin_externals/libaltaircam/99-altaircam.rules /lib/udev/rules.d/99-indigo_ccd_altaircam.rules
 	sudo install -D -m 0644 indigo_drivers/aux_upb/99-indigo_aux_upb.rules /lib/udev/rules.d/99-indigo_aux_upb.rules
 	sudo udevadm control --reload-rules
-	sudo install -D -m 0644 $(BUILD_SHARE)/indi/indi_indigo.xml /usr/share/indi/indi_indigo.xml
+	sudo install -D /usr/share/indi
+	sudo install -m 0644 $(BUILD_SHARE)/indi/indi_go_*.xml /usr/share/indi
 
 #---------------------------------------------------------------------
 #
@@ -1732,25 +1733,26 @@ install:
 #---------------------------------------------------------------------
 
 uninstall:
-	sudo rm -f $(INSTALL_PREFIX)/bin/*indigo_*
-	sudo rm -f $(INSTALL_PREFIX)/lib/*indigo*
-	sudo rm -rf $(INSTALL_PREFIX)/lib/pkgconfig
+	sudo rm -f $(INSTALL_PREFIX)/bin/indigo_*
+	sudo rm -f $(INSTALL_PREFIX)/lib/indigo_*
+	sudo rm -f $(INSTALL_PREFIX)/lib/libindigo*
+	sudo rm -f $(INSTALL_PREFIX)/lib/pkgconfig/indigo.pc
 	sudo rm -f $(INSTALL_PREFIX)/lib/libtoupcam.$(SOEXT)
 	sudo rm -f $(INSTALL_PREFIX)/lib/libaltaircam.$(SOEXT)
 	sudo rm -f /lib/udev/rules.d/99-indigo_*.rules
 	sudo rm -f /lib/udev/rules.d/51-sbig-debian.rules
+	sudo rm -f /lib/udev/rules.d/85-qhyccd.rules
+	sudo rm -f /lib/udev/rules.d/99-meadedsi.rules
 	sudo rm -f /lib/firmware/sbigfcam.hex
 	sudo rm -f /lib/firmware/sbiglcam.hex
 	sudo rm -f /lib/firmware/sbigpcam.hex
 	sudo rm -f /lib/firmware/sbigucam.hex
 	sudo rm -f /lib/firmware/stfga.bin
 	sudo rm -rf /lib/firmware/qhy
-	sudo rm -f /lib/udev/rules.d/85-qhyccd.rules
-	sudo rm -rf /usr/etc/appgee
-	sudo rm -f /lib/udev/rules.d/99-meadedsi.rules
+	sudo rm -rf /usr/local/etc/apogee /etc/apogee
 	sudo rm -f /lib/firmware/meade-deepskyimager.hex
 	sudo udevadm control --reload-rules
-	sudo rm -rf /usr/share/indi/indi_indigo.xml
+	sudo rm -rf /usr/share/indi/indi_indigo.xml /usr/share/indi/indi_go_*.xml
 
 
 #---------------------------------------------------------------------
@@ -1760,24 +1762,26 @@ uninstall:
 #---------------------------------------------------------------------
 
 REWRITE_DEBS="libsbigudrv2,libqhy,indi-dsi,indigo-upb"
-package: $(PACKAGE_NAME).$(PACKAGE_TYPE)
+package: $(PACKAGE_NAME).deb
 
 package-prepare: all
-	install -d /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
-	install $(BUILD_BIN)/indigo_server /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
-	install $(BUILD_BIN)/indigo_server_standalone /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
-	install $(BUILD_BIN)/indigo_prop_tool /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
-	install $(DRIVERS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/bin
-	install -d /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
-	install $(BUILD_LIB)/libindigo.so /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
-	install $(BUILD_LIB)/libindigo.a /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
-	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
-	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
-	install $(BUILD_LIB)/libtoupcam.$(SOEXT) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
-	install $(BUILD_LIB)/libaltaircam.$(SOEXT) /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib
+	install -d /tmp/$(PACKAGE_NAME)/usr/bin
+	install -d /tmp/$(PACKAGE_NAME)/usr/lib
+	install -d /tmp/$(PACKAGE_NAME)/usr/include/indigo
+	install -d /tmp/$(PACKAGE_NAME)/usr/share
+	install $(BUILD_BIN)/indigo_server /tmp/$(PACKAGE_NAME)/usr/bin
+	install $(BUILD_BIN)/indigo_server_standalone /tmp/$(PACKAGE_NAME)/usr/bin
+	install $(BUILD_BIN)/indigo_prop_tool /tmp/$(PACKAGE_NAME)/usr/bin
+	install $(DRIVERS) /tmp/$(PACKAGE_NAME)/usr/bin
+	install $(BUILD_LIB)/libindigo.so /tmp/$(PACKAGE_NAME)/usr/lib
+	install $(BUILD_LIB)/libindigo.a /tmp/$(PACKAGE_NAME)/usr/lib
+	install $(DRIVER_LIBS) /tmp/$(PACKAGE_NAME)/usr/lib
+	install $(DRIVER_SOLIBS) /tmp/$(PACKAGE_NAME)/usr/lib
+	install $(BUILD_LIB)/libtoupcam.$(SOEXT) /tmp/$(PACKAGE_NAME)/usr/lib
+	install $(BUILD_LIB)/libaltaircam.$(SOEXT) /tmp/$(PACKAGE_NAME)/usr/lib
 	mkdir sbig_scratch; cd sbig_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_sbig/bin_externals/sbigudrv/; make install; cd ..; rm -rf sbig_scratch
 	mkdir qhy_scratch; cd qhy_scratch; cmake -DCMAKE_INSTALL_PREFIX=/tmp/$(PACKAGE_NAME) -DSKIP_LIBS_INSTALL="True" ../indigo_drivers/ccd_qhy/bin_externals/qhyccd/; make install; cd ..; rm -rf qhy_scratch
-	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=/tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/etc/apogee RULES_PREFIX=/tmp/$(PACKAGE_NAME)/lib/udev/rules.d; cd ../../../../
+	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=/tmp/$(PACKAGE_NAME)/etc/apogee RULES_PREFIX=/tmp/$(PACKAGE_NAME)/lib/udev/rules.d; cd ../../../../
 	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
 	install -D -m 0644 indigo_drivers/ccd_fli/indigo-fli.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_fli.rules
 	install -D -m 0644 indigo_drivers/ccd_atik/bin_externals/libatik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
@@ -1793,21 +1797,35 @@ package-prepare: all
 	sudo install -D -m 0644 indigo_drivers/ccd_touptek/bin_externals/libtoupcam/99-toupcam.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_toupcam.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_altair/bin_externals/libaltaircam/99-altaircam.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_altaircam.rules
 	sudo install -D -m 0644 indigo_drivers/aux_upb/99-indigo_aux_upb.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_aux_upb.rules
-	install -D -m 0644 indigo_libs/indigo_bus.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_bus.h
-	install -D -m 0644 indigo_libs/indigo_client.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_client.h
-	install -D -m 0644 indigo_libs/indigo_xml.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_xml.h
-	install -D -m 0644 indigo_libs/indigo_config.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_config.h
-	install -D -m 0644 indigo_libs/indigo_driver.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_driver.h
-	install -D -m 0644 indigo_libs/indigo_names.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_names.h
-	install -D -m 0644 indigo_libs/indigo_timer.h /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/include/indigo/indigo_timer.h
-	install -D -m 0644 indigo.pc /tmp/$(PACKAGE_NAME)/$(INSTALL_PREFIX)/lib/pkgconfig/indigo.pc
-	install -D -m 0644 $(BUILD_SHARE)/indi/indi_indigo.xml /tmp/$(PACKAGE_NAME)/usr/share/indi/indi_indigo.xml
-	cp -r $(BUILD_SHARE) /tmp/$(PACKAGE_NAME)/usr/
+	install -m 0644 indigo_libs/indigo_*.h /tmp/$(PACKAGE_NAME)/usr/include/indigo
+	install -D -m 0644 indigo.pc /tmp/$(PACKAGE_NAME)/usr/lib/pkgconfig/indigo.pc
+	cp -r $(BUILD_SHARE)/* /tmp/$(PACKAGE_NAME)/usr/share
 
 $(PACKAGE_NAME).deb: package-prepare
 	rm -f $(PACKAGE_NAME).deb
 	install -d /tmp/$(PACKAGE_NAME)/DEBIAN
-	printf "Package: indigo\nVersion: $(INDIGO_VERSION)-$(INDIGO_BUILD)\nInstalled-Size: $(shell echo $$((`du -s /tmp/$(PACKAGE_NAME) | cut -f1`)))\nPriority: optional\nArchitecture: $(DEBIAN_ARCH)\nReplaces: $(REWRITE_DEBS)\nMaintainer: CloudMakers, s. r. o.\nDepends: fxload, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\nDescription: INDIGO Server\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Package: indigo\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Version: $(INDIGO_VERSION)-$(INDIGO_BUILD)\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Installed-Size: $(shell echo $$((`du -s /tmp/$(PACKAGE_NAME) | cut -f1`)))\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Priority: optional\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Architecture: $(DEBIAN_ARCH)\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Replaces: $(REWRITE_DEBS)\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Homepage: http://www.indigo-astronomy.org\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Depends: fxload, libsbigudrv2, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "Description: INDIGO Framework and drivers\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf " INDIGO is a system of standards and frameworks for multiplatform and distributed astronomy software development designed to scale with your needs.\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	cat /tmp/$(PACKAGE_NAME)/DEBIAN/control
+	printf "echo Remove pre-2.0-76 build if any\n" > /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/bin/indigo_*\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/indigo_*\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/libindigo*\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/pkgconfig/indigo.pc\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/libtoupcam.$(SOEXT)\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/libaltaircam.$(SOEXT)\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
+	printf "sudo rm -rf /usr/local/etc/apogee\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
+	cat /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
+	chmod a+x /tmp/$(PACKAGE_NAME)/DEBIAN/preinst
 	sudo chown root /tmp/$(PACKAGE_NAME)
 	dpkg --build /tmp/$(PACKAGE_NAME)
 	mv /tmp/$(PACKAGE_NAME).deb .
@@ -1832,8 +1850,7 @@ clean: init
 	rm -rf $(BUILD_ROOT)/bin/client
 	rm -rf $(BUILD_LIB)/libindigo*
 	rm -rf $(BUILD_ROOT)/drivers
-	rm -rf $(BUILD_ROOT)/share/indigo/*
-	rm -rf $(BUILD_ROOT)/share/indi/indi_indigo.xml
+	rm -rf $(BUILD_ROOT)/share
 	rm -f indigo_libs/*.o
 	rm -f indigo_server/*.o
 	rm -f indigo_server/*.data
@@ -1863,10 +1880,6 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 
 #---------------------------------------------------------------------
-#
-#	Remote build on ubuntu32.local, ubuntu64.local, raspi32.local and raspi64.local
-#
-#---------------------------------------------------------------------
 
 remote:
 	ssh ubuntu32.local "cd indigo; git pull; make clean; make; sudo make package"
@@ -1877,3 +1890,23 @@ remote:
 	scp raspi32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
 	ssh raspi64.local "cd indigo; git pull; make clean; make; sudo make package"
 	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
+
+#---------------------------------------------------------------------
+#
+#	Remote build on ubuntu32.local, ubuntu64.local, raspi32.local and raspi64.local
+#
+# https://www.aptly.info
+#
+#---------------------------------------------------------------------
+
+init-repo:
+	aptly repo create -distribution=indigo -component=main indigo-release
+
+publish:
+	aptly repo add indigo-release indigo-*.deb
+	aptly repo show -with-packages indigo-release
+	aptly publish -force-drop drop indigo
+	aptly publish repo indigo-release
+	ln -s ~/.aptly/public ~/Desktop
+
+

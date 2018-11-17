@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<driversList>
+	<devGroup group="Auxiliary">
+		<device label="PegasusAstro Ultimate Powerbox">
+			<driver name="Ultimate Powerbox">indigo_aux_upb</driver>
+			<version>0.8</version>
+		</device>
+	</devGroup>
+</driversList>
