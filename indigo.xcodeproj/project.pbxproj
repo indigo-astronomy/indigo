@@ -870,6 +870,7 @@
 		599E6A73214D8EEB00E45C9E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nstep_simulator.ino; sourceTree = "<group>"; };
 		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
+		59A52CDA21A08D3D000B6F27 /* indi_go_upb.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indi_go_upb.xml; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
@@ -3857,6 +3858,7 @@
 				59CD7310218E418900F646D4 /* Makefile */,
 				59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */,
 				9D69408C2180BA1800AB112C /* upb_simulator */,
+				59A52CDA21A08D3D000B6F27 /* indi_go_upb.xml */,
 			);
 			path = aux_upb;
 			sourceTree = "<group>";
