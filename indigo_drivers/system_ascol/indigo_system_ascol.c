@@ -237,24 +237,24 @@ static void mount_handle_coordinates(indigo_device *device) {
 
 
 static void mount_handle_tracking(indigo_device *device) {
-	int res = RC_OK;
-
-	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+	int res = ASCOL_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
-		// res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_EQ);
-		if (res != RC_OK) {
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res);
-		}
-	} else if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
-		// res = tc_set_tracking_mode(PRIVATE_DATA->dev_id, TC_TRACK_OFF);
-		if (res != RC_OK) {
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_tracking_mode(%d) = %d", PRIVATE_DATA->dev_id, res);
-		}
+		res = ascol_TETR(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TETR(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TETR(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TETR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		MOUNT_TRACKING_ON_ITEM->sw.value = !MOUNT_TRACKING_ON_ITEM->sw.value;
+		MOUNT_TRACKING_OFF_ITEM->sw.value = !MOUNT_TRACKING_OFF_ITEM->sw.value;
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TETR(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
 
@@ -686,8 +686,9 @@ static void state_timer_callback(indigo_device *device) {
 	if (first_call || (prev_glst.telescope_state != PRIVATE_DATA->glst.telescope_state) ||
 	   (prev_glst.ra_axis_state != PRIVATE_DATA->glst.ra_axis_state) ||
 	   (prev_glst.de_axis_state != PRIVATE_DATA->glst.de_axis_state) ||
-	   (TELESCOPE_POWER_PROPERTY->state == INDIGO_BUSY_STATE)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating TELESCOPE_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+	   (TELESCOPE_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (MOUNT_TRACKING_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating MOUNT_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(MOUNT_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
@@ -697,7 +698,8 @@ static void state_timer_callback(indigo_device *device) {
 		snprintf(DEC_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 
-		if (PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF) {
+		if ((PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF) ||
+		    (PRIVATE_DATA->glst.telescope_state == TE_STATE_INIT)) {
 			TELESCOPE_ON_ITEM->sw.value = false;
 			TELESCOPE_OFF_ITEM->sw.value = true;
 			TELESCOPE_POWER_PROPERTY->state = INDIGO_OK_STATE;
@@ -712,6 +714,21 @@ static void state_timer_callback(indigo_device *device) {
 			TELESCOPE_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
 		indigo_update_property(device, TELESCOPE_POWER_PROPERTY, NULL);
+
+		if ((PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF) ||
+		    (PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
+		    (PRIVATE_DATA->glst.telescope_state == TE_STATE_INIT)) {
+			MOUNT_TRACKING_ON_ITEM->sw.value = false;
+			MOUNT_TRACKING_OFF_ITEM->sw.value = true;
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		} else if(PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) {
+			MOUNT_TRACKING_ON_ITEM->sw.value = true;
+			MOUNT_TRACKING_OFF_ITEM->sw.value = false;
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	}
 
 	if (first_call || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
@@ -810,9 +827,9 @@ static indigo_result mount_attach(indigo_device *device) {
 		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
 
 		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
+		strncpy(MOUNT_TRACKING_PROPERTY->group, SWITCHES_GROUP, INDIGO_NAME_SIZE);
 
 		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
-
 		// -------------------------------------------------------------------------- ALARM
 		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, ALARM_GROUP, "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
 		if (ALARM_PROPERTY == NULL)
