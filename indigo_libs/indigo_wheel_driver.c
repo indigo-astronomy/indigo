@@ -61,6 +61,17 @@ indigo_result indigo_wheel_attach(indigo_device *device, unsigned version) {
 				snprintf(label, 16, "Slot #%d", i + 1);
 				indigo_init_text_item(WHEEL_SLOT_NAME_1_ITEM + i, name, label, "Filter #%d", i + 1);
 			}
+			// -------------------------------------------------------------------------------- WHEEL_SLOT_OFFSET
+			WHEEL_SLOT_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, WHEEL_SLOT_OFFSET_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Slot focus offsets", INDIGO_OK_STATE, INDIGO_RW_PERM, WHEEL_SLOT_ITEM->number.max);
+			if (WHEEL_SLOT_NAME_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			for (int i = 0; i < WHEEL_SLOT_NAME_PROPERTY->count; i++) {
+				char name[16];
+				char label[16];
+				snprintf(name, 16, WHEEL_SLOT_OFFSET_ITEM_NAME, i + 1);
+				snprintf(label, 16, "Slot #%d", i + 1);
+				indigo_init_number_item(WHEEL_SLOT_OFFSET_1_ITEM + i, name, label, -9999, 9999, 1, 0);
+			}
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -76,6 +87,8 @@ indigo_result indigo_wheel_enumerate_properties(indigo_device *device, indigo_cl
 			indigo_define_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		if (indigo_property_match(WHEEL_SLOT_NAME_PROPERTY, property))
 			indigo_define_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+		if (indigo_property_match(WHEEL_SLOT_OFFSET_PROPERTY, property))
+			indigo_define_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -89,9 +102,11 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 		if (IS_CONNECTED) {
 			indigo_define_property(device, WHEEL_SLOT_PROPERTY, NULL);
 			indigo_define_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+			indigo_define_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
 		} else {
 			indigo_delete_property(device, WHEEL_SLOT_PROPERTY, NULL);
 			indigo_delete_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+			indigo_delete_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
 		}
 		// -------------------------------------------------------------------------------- WHEEL_SLOT_NAME
 	} else if (indigo_property_match(WHEEL_SLOT_NAME_PROPERTY, property)) {
@@ -99,10 +114,17 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 		WHEEL_SLOT_NAME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- WHEEL_SLOT_OFFSET
+	} else if (indigo_property_match(WHEEL_SLOT_OFFSET_PROPERTY, property)) {
+		indigo_property_copy_values(WHEEL_SLOT_OFFSET_PROPERTY, property, false);
+		WHEEL_SLOT_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, WHEEL_SLOT_NAME_PROPERTY);
+			indigo_save_property(device, NULL, WHEEL_SLOT_OFFSET_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
@@ -113,5 +135,6 @@ indigo_result indigo_wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_release_property(WHEEL_SLOT_PROPERTY);
 	indigo_release_property(WHEEL_SLOT_NAME_PROPERTY);
+	indigo_release_property(WHEEL_SLOT_OFFSET_PROPERTY);
 	return indigo_device_detach(device);
 }
