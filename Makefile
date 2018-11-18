@@ -1879,9 +1879,6 @@ clean: init
 clean-all: clean
 	rm -rf $(BUILD_ROOT)
 	rm -rf externals
-	cd externals/hidapi; make maintainer-clean; rm configure; cd ../..
-	cd externals/libusb; make maintainer-clean; rm configure; cd ../..
-	cd externals/libjpeg; make distclean; cd ../..
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223; make clean; cd ../../../..
