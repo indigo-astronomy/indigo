@@ -162,6 +162,11 @@
 #define ERROR_CORRECTION_ON_ITEM_NAME      "ON"
 #define ERROR_CORRECTION_OFF_ITEM_NAME     "OFF"
 
+#define CORRECTION_MODEL_PROPERTY          (PRIVATE_DATA->correction_model_property)
+#define CORRECTION_MODEL_INDEX_ITEM        (CORRECTION_MODEL_PROPERTY->items+0)
+#define CORRECTION_MODEL_PROPERTY_NAME     "ASCOL_CORRECTION_MODEL"
+#define CORRECTION_MODEL_INDEX_ITEM_NAME   "INDEX"
+
 #define GUIDE_MODE_PROPERTY                (PRIVATE_DATA->guide_mode_property)
 #define GUIDE_MODE_ON_ITEM                 (GUIDE_MODE_PROPERTY->items+0)
 #define GUIDE_MODE_OFF_ITEM                (GUIDE_MODE_PROPERTY->items+1)
@@ -206,6 +211,7 @@ typedef struct {
 	indigo_property *precession_property;
 	indigo_property *refraction_property;
 	indigo_property *error_correction_property;
+	indigo_property *correction_model_property;
 	indigo_property *guide_mode_property;
 } ascol_private_data;
 
@@ -243,6 +249,8 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, REFRACTION_PROPERTY, NULL);
 		if (indigo_property_match(ERROR_CORRECTION_PROPERTY, property))
 			indigo_define_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+		if (indigo_property_match(CORRECTION_MODEL_PROPERTY, property))
+			indigo_define_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 		if (indigo_property_match(GUIDE_MODE_PROPERTY, property))
 			indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
 	}
@@ -513,6 +521,23 @@ static void mount_handle_error_correction(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCM(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	indigo_update_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_correction_model(indigo_device *device) {
+	int res = ASCOL_OK;
+	int index = (int)CORRECTION_MODEL_INDEX_ITEM->number.value;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_TSCS(PRIVATE_DATA->dev_id, index);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCS(%d, %d) = %d", PRIVATE_DATA->dev_id, index, res);
+	if(res == ASCOL_OK) {
+		CORRECTION_MODEL_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		CORRECTION_MODEL_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCS(%d, %d) = %d", PRIVATE_DATA->dev_id, index, res);
+	}
+	indigo_update_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 }
 
 
@@ -1057,6 +1082,16 @@ static void state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 	}
 
+	if (first_call || (prev_glst.selected_model_index != PRIVATE_DATA->glst.selected_model_index) ||
+	   (CORRECTION_MODEL_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		CORRECTION_MODEL_PROPERTY->state = INDIGO_OK_STATE;
+		if (!first_call && ((int)CORRECTION_MODEL_INDEX_ITEM->number.value != PRIVATE_DATA->glst.selected_model_index)) {
+			CORRECTION_MODEL_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		CORRECTION_MODEL_INDEX_ITEM->number.value = (double)PRIVATE_DATA->glst.selected_model_index;
+		indigo_update_property(device, CORRECTION_MODEL_PROPERTY, NULL);
+	}
+
 	if (first_call || (IS_GUIDE_MODE_ON(prev_glst) != IS_GUIDE_MODE_ON(PRIVATE_DATA->glst)) ||
 	   (GUIDE_MODE_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		GUIDE_MODE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1298,7 +1333,13 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_switch_item(ERROR_CORRECTION_ON_ITEM, ERROR_CORRECTION_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(ERROR_CORRECTION_OFF_ITEM, ERROR_CORRECTION_OFF_ITEM_NAME, "Off", true);
-		// -------------------------------------------------------------------------- GUIDEMODE
+		// -------------------------------------------------------------------------- CORRECTION_MODEL
+		CORRECTION_MODEL_PROPERTY = indigo_init_number_property(NULL, device->name, CORRECTION_MODEL_PROPERTY_NAME, CORRECTIONS_GROUP, "Correction Model", INDIGO_BUSY_STATE, INDIGO_RW_PERM, 1);
+		if (CORRECTION_MODEL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_number_item(CORRECTION_MODEL_INDEX_ITEM, CORRECTION_MODEL_INDEX_ITEM_NAME, "Index", 0, 4, 1, 0);
+		// -------------------------------------------------------------------------- GUIDE_MODE
 		GUIDE_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, GUIDE_MODE_PROPERTY_NAME, CORRECTIONS_GROUP, "Guide Mode Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (GUIDE_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -1406,6 +1447,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, PRECESSION_PROPERTY, NULL);
 					indigo_define_property(device, REFRACTION_PROPERTY, NULL);
 					indigo_define_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+					indigo_define_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 					indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
 
 					device->is_connected = true;
@@ -1437,6 +1479,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, PRECESSION_PROPERTY, NULL);
 				indigo_delete_property(device, REFRACTION_PROPERTY, NULL);
 				indigo_delete_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+				indigo_delete_property(device, CORRECTION_MODEL_PROPERTY, NULL);
 				indigo_delete_property(device, GUIDE_MODE_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1567,6 +1610,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			mount_handle_error_correction(device);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(CORRECTION_MODEL_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CORRECTION_MODEL_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(CORRECTION_MODEL_PROPERTY, property, false);
+			mount_handle_correction_model(device);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDE_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDMODE_PROPERTY
 		if (IS_CONNECTED) {
@@ -1666,6 +1716,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(PRECESSION_PROPERTY);
 	indigo_release_property(REFRACTION_PROPERTY);
 	indigo_release_property(ERROR_CORRECTION_PROPERTY);
+	indigo_release_property(CORRECTION_MODEL_PROPERTY);
 	indigo_release_property(GUIDE_MODE_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
