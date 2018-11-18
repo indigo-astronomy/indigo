@@ -155,13 +155,19 @@
 #define REFRACTION_ON_ITEM_NAME            "ON"
 #define REFRACTION_OFF_ITEM_NAME           "OFF"
 
+#define ERROR_CORRECTION_PROPERTY          (PRIVATE_DATA->error_correction_property)
+#define ERROR_CORRECTION_ON_ITEM           (ERROR_CORRECTION_PROPERTY->items+0)
+#define ERROR_CORRECTION_OFF_ITEM          (ERROR_CORRECTION_PROPERTY->items+1)
+#define ERROR_CORRECTION_PROPERTY_NAME     "ASCOL_ERROR_CORRECTION"
+#define ERROR_CORRECTION_ON_ITEM_NAME      "ON"
+#define ERROR_CORRECTION_OFF_ITEM_NAME     "OFF"
+
 #define GUIDEMODE_PROPERTY                 (PRIVATE_DATA->guidemode_property)
 #define GUIDEMODE_ON_ITEM                  (GUIDEMODE_PROPERTY->items+0)
 #define GUIDEMODE_OFF_ITEM                 (GUIDEMODE_PROPERTY->items+1)
 #define GUIDEMODE_PROPERTY_NAME            "ASCOL_GUIDEMODE"
 #define GUIDEMODE_ON_ITEM_NAME             "ON"
 #define GUIDEMODE_OFF_ITEM_NAME            "OFF"
-
 
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
@@ -199,6 +205,7 @@ typedef struct {
 	indigo_property *aberration_property;
 	indigo_property *precession_property;
 	indigo_property *refraction_property;
+	indigo_property *error_correction_property;
 	indigo_property *guidemode_property;
 } ascol_private_data;
 
@@ -234,6 +241,8 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, PRECESSION_PROPERTY, NULL);
 		if (indigo_property_match(REFRACTION_PROPERTY, property))
 			indigo_define_property(device, REFRACTION_PROPERTY, NULL);
+		if (indigo_property_match(ERROR_CORRECTION_PROPERTY, property))
+			indigo_define_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 		if (indigo_property_match(GUIDEMODE_PROPERTY, property))
 			indigo_define_property(device, GUIDEMODE_PROPERTY, NULL);
 	}
@@ -483,6 +492,27 @@ static void mount_handle_refraction(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCR(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	indigo_update_property(device, REFRACTION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_error_correction(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (ERROR_CORRECTION_ON_ITEM->sw.value) {
+		res = ascol_TSCM(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCM(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSCM(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCM(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		ERROR_CORRECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		ERROR_CORRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCM(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 }
 
 
@@ -1014,6 +1044,19 @@ static void state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, REFRACTION_PROPERTY, NULL);
 	}
 
+	if (first_call || (IS_ERR_MODEL_CORR(prev_glst) != IS_ERR_MODEL_CORR(PRIVATE_DATA->glst)) ||
+	   (ERROR_CORRECTION_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		ERROR_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_ERR_MODEL_CORR(PRIVATE_DATA->glst)) {
+			ERROR_CORRECTION_ON_ITEM->sw.value = true;
+			ERROR_CORRECTION_OFF_ITEM->sw.value = false;
+		} else {
+			ERROR_CORRECTION_ON_ITEM->sw.value = false;
+			ERROR_CORRECTION_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+	}
+
 	if (first_call || (IS_GUIDE_MODE_ON(prev_glst) != IS_GUIDE_MODE_ON(PRIVATE_DATA->glst)) ||
 	   (GUIDEMODE_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		GUIDEMODE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1248,6 +1291,13 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_switch_item(REFRACTION_ON_ITEM, REFRACTION_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(REFRACTION_OFF_ITEM, REFRACTION_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- ERROR_CORRECTION
+		ERROR_CORRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, ERROR_CORRECTION_PROPERTY_NAME, CORRECTIONS_GROUP, "Error Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (ERROR_CORRECTION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(ERROR_CORRECTION_ON_ITEM, ERROR_CORRECTION_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(ERROR_CORRECTION_OFF_ITEM, ERROR_CORRECTION_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------- GUIDEMODE
 		GUIDEMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, GUIDEMODE_PROPERTY_NAME, CORRECTIONS_GROUP, "Guide Mode Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (GUIDEMODE_PROPERTY == NULL)
@@ -1355,6 +1405,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, ABERRATION_PROPERTY, NULL);
 					indigo_define_property(device, PRECESSION_PROPERTY, NULL);
 					indigo_define_property(device, REFRACTION_PROPERTY, NULL);
+					indigo_define_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 					indigo_define_property(device, GUIDEMODE_PROPERTY, NULL);
 
 					device->is_connected = true;
@@ -1385,6 +1436,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, ABERRATION_PROPERTY, NULL);
 				indigo_delete_property(device, PRECESSION_PROPERTY, NULL);
 				indigo_delete_property(device, REFRACTION_PROPERTY, NULL);
+				indigo_delete_property(device, ERROR_CORRECTION_PROPERTY, NULL);
 				indigo_delete_property(device, GUIDEMODE_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1508,6 +1560,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			mount_handle_refraction(device);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(ERROR_CORRECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ERROR_CORRECTION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(ERROR_CORRECTION_PROPERTY, property, false);
+			mount_handle_error_correction(device);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDEMODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDMODE_PROPERTY
 		if (IS_CONNECTED) {
@@ -1606,6 +1665,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(ABERRATION_PROPERTY);
 	indigo_release_property(PRECESSION_PROPERTY);
 	indigo_release_property(REFRACTION_PROPERTY);
+	indigo_release_property(ERROR_CORRECTION_PROPERTY);
 	indigo_release_property(GUIDEMODE_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
