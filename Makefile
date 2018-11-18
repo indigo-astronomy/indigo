@@ -1878,6 +1878,7 @@ clean: init
 
 clean-all: clean
 	rm -rf $(BUILD_ROOT)
+	rm -rf externals
 	cd externals/hidapi; make maintainer-clean; rm configure; cd ../..
 	cd externals/libusb; make maintainer-clean; rm configure; cd ../..
 	cd externals/libjpeg; make distclean; cd ../..
