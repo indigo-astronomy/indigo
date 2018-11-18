@@ -228,6 +228,14 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, RA_CALIBRATION_PROPERTY, NULL);
 		if (indigo_property_match(DEC_CALIBRATION_PROPERTY, property))
 			indigo_define_property(device, DEC_CALIBRATION_PROPERTY, NULL);
+		if (indigo_property_match(ABERRATION_PROPERTY, property))
+			indigo_define_property(device, ABERRATION_PROPERTY, NULL);
+		if (indigo_property_match(PRECESSION_PROPERTY, property))
+			indigo_define_property(device, PRECESSION_PROPERTY, NULL);
+		if (indigo_property_match(REFRACTION_PROPERTY, property))
+			indigo_define_property(device, REFRACTION_PROPERTY, NULL);
+		if (indigo_property_match(GUIDEMODE_PROPERTY, property))
+			indigo_define_property(device, GUIDEMODE_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
