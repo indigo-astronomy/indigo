@@ -387,7 +387,7 @@ $(BUILD_LIB)/libqhy.a:
 
 $(BUILD_INCLUDE)/asi_efw/EFW_filter.h: indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h
 	install -d $(BUILD_INCLUDE)/asi_efw
-	cp indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h $(BUILD_INCLUDE)/asi_efw
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h $(BUILD_INCLUDE)/asi_efw
 
 $(BUILD_LIB)/libEFWFilter.a: $(LIBASIEFW) $(BUILD_INCLUDE)/asi_efw/EFW_filter.h
 	install -d $(BUILD_LIB)
@@ -398,7 +398,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	ar d /tmp/64.a hid_mac.o
 	lipo /tmp/32.a /tmp/64.a -create -output $(BUILD_LIB)/libEFWFilter.a
 else
-	cp $(LIBASIEFW) $(BUILD_LIB)/libEFWFilter.a
+	ln -sf $(INDIGO_ROOT)/$(LIBASIEFW) $(BUILD_LIB)/libEFWFilter.a
 endif
 
 #---------------------------------------------------------------------
@@ -409,11 +409,11 @@ endif
 
 $(BUILD_INCLUDE)/asi_ccd/ASICamera2.h: indigo_drivers/ccd_asi/bin_externals/libasicamera/include/ASICamera2.h
 	install -d $(BUILD_INCLUDE)/asi_ccd
-	cp indigo_drivers/ccd_asi/bin_externals/libasicamera/include/ASICamera2.h $(BUILD_INCLUDE)/asi_ccd
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_asi/bin_externals/libasicamera/include/ASICamera2.h $(BUILD_INCLUDE)/asi_ccd
 
 $(BUILD_LIB)/libASICamera2.a: $(BUILD_INCLUDE)/asi_ccd/ASICamera2.h
 	install -d $(BUILD_LIB)
-	cp $(LIBASICAMERA) $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBASICAMERA) $(BUILD_LIB)
 
 
 #---------------------------------------------------------------------
@@ -424,11 +424,11 @@ $(BUILD_LIB)/libASICamera2.a: $(BUILD_INCLUDE)/asi_ccd/ASICamera2.h
 
 $(BUILD_INCLUDE)/asi_guider/USB2ST4_Conv.h: indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include/USB2ST4_Conv.h
 	install -d $(BUILD_INCLUDE)/asi_guider
-	cp indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include/USB2ST4_Conv.h $(BUILD_INCLUDE)/asi_guider
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include/USB2ST4_Conv.h $(BUILD_INCLUDE)/asi_guider
 
 $(BUILD_LIB)/libUSB2ST4Conv.a: $(BUILD_INCLUDE)/asi_guider/USB2ST4_Conv.h
 	install -d $(BUILD_LIB)
-	cp $(LIBASIST4) $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBASIST4) $(BUILD_LIB)
 
 
 #---------------------------------------------------------------------
@@ -497,15 +497,15 @@ $(BUILD_LIB)/libnexstar.a: indigo_drivers/mount_nexstar/externals/libnexstar/Mak
 $(BUILD_INCLUDE)/libapogee/ApogeeCam.h: indigo_drivers/ccd_apogee/externals/libapogee/ApogeeCam.h
 	install -d $(BUILD_INCLUDE)
 	install -d $(BUILD_INCLUDE)/libapogee
-	cp indigo_drivers/ccd_apogee/externals/libapogee/*.h $(BUILD_INCLUDE)/libapogee
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_apogee/externals/libapogee/*.h $(BUILD_INCLUDE)/libapogee
 
 $(BUILD_LIB)/libapogee.a:	$(BUILD_INCLUDE)/libapogee/ApogeeCam.h
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make clean; make; cd ../../../..
 	install -d $(BUILD_LIB)
-	cp indigo_drivers/ccd_apogee/externals/libapogee/libapogee.a $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_apogee/externals/libapogee/libapogee.a $(BUILD_LIB)
 ifeq ($(OS_DETECTED),Linux)
 	cd indigo_drivers/ccd_apogee/externals/boost_regex/build; make clean; make; cd ../../../..
-	cp indigo_drivers/ccd_apogee/externals/boost_regex/build/gcc/libboost_regex-gcc-1_53.a $(LIBBOOST-REGEX)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_apogee/externals/boost_regex/build/gcc/libboost_regex-gcc-1_53.a $(LIBBOOST-REGEX)
 endif
 
 #---------------------------------------------------------------------
@@ -517,12 +517,12 @@ endif
 $(BUILD_INCLUDE)/libfli/libfli.h: indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.h
 	install -d $(BUILD_INCLUDE)
 	install -d $(BUILD_INCLUDE)/libfli
-	cp indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.h $(BUILD_INCLUDE)/libfli
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.h $(BUILD_INCLUDE)/libfli
 
 $(BUILD_LIB)/libfli.a: $(BUILD_INCLUDE)/libfli/libfli.h
 	cd indigo_drivers/ccd_fli/externals/$(FLISDK); make clean; make; cd ../../../..
 	install -d $(BUILD_LIB)
-	cp indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.a $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.a $(BUILD_LIB)
 
 
 #---------------------------------------------------------------------
