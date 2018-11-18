@@ -423,6 +423,90 @@ static void mount_handle_dec_calibration(indigo_device *device) {
 }
 
 
+static void mount_handle_aberration(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (ABERRATION_ON_ITEM->sw.value) {
+		res = ascol_TSCA(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCA(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSCA(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCA(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		ABERRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		ABERRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCA(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, ABERRATION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_precession(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (PRECESSION_ON_ITEM->sw.value) {
+		res = ascol_TSCP(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCP(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSCP(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCP(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		PRECESSION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		PRECESSION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCP(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, PRECESSION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_refraction(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (REFRACTION_ON_ITEM->sw.value) {
+		res = ascol_TSCR(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCR(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSCR(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		REFRACTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		REFRACTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCR(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, REFRACTION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_guidemode(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (GUIDEMODE_ON_ITEM->sw.value) {
+		res = ascol_TSGM(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSGM(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSGM(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSGM(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		GUIDEMODE_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		GUIDEMODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSGM(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, GUIDEMODE_PROPERTY, NULL);
+}
+
+
 static void mount_handle_slew_rate(indigo_device *device) {
 	if(MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
 		PRIVATE_DATA->slew_rate = PRIVATE_DATA->guide_rate;
@@ -891,6 +975,58 @@ static void state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DEC_CALIBRATION_PROPERTY, NULL);
 	}
 
+	if (first_call || (IS_ABEARRATION_CORR(prev_glst) != IS_ABEARRATION_CORR(PRIVATE_DATA->glst)) ||
+	   (ABERRATION_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		ABERRATION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_ABEARRATION_CORR(PRIVATE_DATA->glst)) {
+			ABERRATION_ON_ITEM->sw.value = true;
+			ABERRATION_OFF_ITEM->sw.value = false;
+		} else {
+			ABERRATION_ON_ITEM->sw.value = false;
+			ABERRATION_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, ABERRATION_PROPERTY, NULL);
+	}
+
+	if (first_call || (IS_PRECESSION_CORR(prev_glst) != IS_PRECESSION_CORR(PRIVATE_DATA->glst)) ||
+	   (PRECESSION_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		PRECESSION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_PRECESSION_CORR(PRIVATE_DATA->glst)) {
+			PRECESSION_ON_ITEM->sw.value = true;
+			PRECESSION_OFF_ITEM->sw.value = false;
+		} else {
+			PRECESSION_ON_ITEM->sw.value = false;
+			PRECESSION_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, PRECESSION_PROPERTY, NULL);
+	}
+
+	if (first_call || (IS_REFRACTION_CORR(prev_glst) != IS_REFRACTION_CORR(PRIVATE_DATA->glst)) ||
+	   (REFRACTION_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		REFRACTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_REFRACTION_CORR(PRIVATE_DATA->glst)) {
+			REFRACTION_ON_ITEM->sw.value = true;
+			REFRACTION_OFF_ITEM->sw.value = false;
+		} else {
+			REFRACTION_ON_ITEM->sw.value = false;
+			REFRACTION_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, REFRACTION_PROPERTY, NULL);
+	}
+
+	if (first_call || (IS_GUIDE_MODE_ON(prev_glst) != IS_GUIDE_MODE_ON(PRIVATE_DATA->glst)) ||
+	   (GUIDEMODE_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		GUIDEMODE_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_GUIDE_MODE_ON(PRIVATE_DATA->glst)) {
+			GUIDEMODE_ON_ITEM->sw.value = true;
+			GUIDEMODE_OFF_ITEM->sw.value = false;
+		} else {
+			GUIDEMODE_ON_ITEM->sw.value = false;
+			GUIDEMODE_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, GUIDEMODE_PROPERTY, NULL);
+	}
+
 	if (first_call || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
 	   (prev_glst.flap_coude_state != PRIVATE_DATA->glst.flap_coude_state)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating FLAP_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
@@ -1349,6 +1485,34 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(DEC_CALIBRATION_PROPERTY, property, false);
 			mount_handle_dec_calibration(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(ABERRATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ABERRATION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(ABERRATION_PROPERTY, property, false);
+			mount_handle_aberration(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(PRECESSION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- PRECESSION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(PRECESSION_PROPERTY, property, false);
+			mount_handle_precession(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(REFRACTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- REFRACTION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(REFRACTION_PROPERTY, property, false);
+			mount_handle_refraction(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(GUIDEMODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDMODE_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(GUIDEMODE_PROPERTY, property, false);
+			mount_handle_guidemode(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
