@@ -61,6 +61,7 @@
 #define TELESCOPE_STATE_GROUP              "Telescope Status"
 #define METEO_DATA_GROUP                   "Meteo Data"
 #define SWITCHES_GROUP                     "System Switches"
+#define CORRECTIONS_GROUP                  "Corrections"
 
 #define ALARM_PROPERTY                     (PRIVATE_DATA->alarm_property)
 #define ALARM_ITEMS(index)                 (ALARM_PROPERTY->items+index)
@@ -133,6 +134,34 @@
 #define DEC_CALIBRATION_START_ITEM_NAME    "START"
 #define DEC_CALIBRATION_STOP_ITEM_NAME     "STOP"
 
+#define ABERRATION_PROPERTY                (PRIVATE_DATA->aberration_property)
+#define ABERRATION_ON_ITEM                 (ABERRATION_PROPERTY->items+0)
+#define ABERRATION_OFF_ITEM                (ABERRATION_PROPERTY->items+1)
+#define ABERRATION_PROPERTY_NAME           "ASCOL_ABERRATION"
+#define ABERRATION_ON_ITEM_NAME            "ON"
+#define ABERRATION_OFF_ITEM_NAME           "OFF"
+
+#define PRECESSION_PROPERTY                (PRIVATE_DATA->precession_property)
+#define PRECESSION_ON_ITEM                 (PRECESSION_PROPERTY->items+0)
+#define PRECESSION_OFF_ITEM                (PRECESSION_PROPERTY->items+1)
+#define PRECESSION_PROPERTY_NAME           "ASCOL_ABERRATION_NUTATION"
+#define PRECESSION_ON_ITEM_NAME            "ON"
+#define PRECESSION_OFF_ITEM_NAME           "OFF"
+
+#define REFRACTION_PROPERTY                (PRIVATE_DATA->refraction_property)
+#define REFRACTION_ON_ITEM                 (REFRACTION_PROPERTY->items+0)
+#define REFRACTION_OFF_ITEM                (REFRACTION_PROPERTY->items+1)
+#define REFRACTION_PROPERTY_NAME           "ASCOL_REFRACTION"
+#define REFRACTION_ON_ITEM_NAME            "ON"
+#define REFRACTION_OFF_ITEM_NAME           "OFF"
+
+#define GUIDEMODE_PROPERTY                 (PRIVATE_DATA->guidemode_property)
+#define GUIDEMODE_ON_ITEM                  (GUIDEMODE_PROPERTY->items+0)
+#define GUIDEMODE_OFF_ITEM                 (GUIDEMODE_PROPERTY->items+1)
+#define GUIDEMODE_PROPERTY_NAME            "ASCOL_GUIDEMODE"
+#define GUIDEMODE_ON_ITEM_NAME             "ON"
+#define GUIDEMODE_OFF_ITEM_NAME            "OFF"
+
 
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
@@ -167,6 +196,10 @@ typedef struct {
 	indigo_property *axis_calibrated_property;
 	indigo_property *ra_calibration_property;
 	indigo_property *dec_calibration_property;
+	indigo_property *aberration_property;
+	indigo_property *precession_property;
+	indigo_property *refraction_property;
+	indigo_property *guidemode_property;
 } ascol_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -1050,6 +1083,34 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_switch_item(DEC_CALIBRATION_START_ITEM, DEC_CALIBRATION_START_ITEM_NAME, "Start", false);
 		indigo_init_switch_item(DEC_CALIBRATION_STOP_ITEM, DEC_CALIBRATION_STOP_ITEM_NAME, "Stop", false);
+		// -------------------------------------------------------------------------- ABERRATION_CORRECTION
+		ABERRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, ABERRATION_PROPERTY_NAME, CORRECTIONS_GROUP, "Aberration Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (ABERRATION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(ABERRATION_ON_ITEM, ABERRATION_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(ABERRATION_OFF_ITEM, ABERRATION_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- PRECESSION_CORRECTION
+		PRECESSION_PROPERTY = indigo_init_switch_property(NULL, device->name, PRECESSION_PROPERTY_NAME, CORRECTIONS_GROUP, "Precession and Nutation Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (PRECESSION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(PRECESSION_ON_ITEM, PRECESSION_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(PRECESSION_OFF_ITEM, PRECESSION_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- REFRACTION_CORRECTION
+		REFRACTION_PROPERTY = indigo_init_switch_property(NULL, device->name, REFRACTION_PROPERTY_NAME, CORRECTIONS_GROUP, "Refraction Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (REFRACTION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(REFRACTION_ON_ITEM, REFRACTION_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(REFRACTION_OFF_ITEM, REFRACTION_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- GUIDEMODE
+		GUIDEMODE_PROPERTY = indigo_init_switch_property(NULL, device->name, GUIDEMODE_PROPERTY_NAME, CORRECTIONS_GROUP, "Guide Mode Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (GUIDEMODE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(GUIDEMODE_ON_ITEM, GUIDEMODE_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(GUIDEMODE_OFF_ITEM, GUIDEMODE_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1147,6 +1208,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
 					indigo_define_property(device, RA_CALIBRATION_PROPERTY, NULL);
 					indigo_define_property(device, DEC_CALIBRATION_PROPERTY, NULL);
+					indigo_define_property(device, ABERRATION_PROPERTY, NULL);
+					indigo_define_property(device, PRECESSION_PROPERTY, NULL);
+					indigo_define_property(device, REFRACTION_PROPERTY, NULL);
+					indigo_define_property(device, GUIDEMODE_PROPERTY, NULL);
 
 					device->is_connected = true;
 					/* start updates */
@@ -1173,6 +1238,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
 				indigo_delete_property(device, RA_CALIBRATION_PROPERTY, NULL);
 				indigo_delete_property(device, DEC_CALIBRATION_PROPERTY, NULL);
+				indigo_delete_property(device, ABERRATION_PROPERTY, NULL);
+				indigo_delete_property(device, PRECESSION_PROPERTY, NULL);
+				indigo_delete_property(device, REFRACTION_PROPERTY, NULL);
+				indigo_delete_property(device, GUIDEMODE_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -1362,6 +1431,10 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(AXIS_CALIBRATED_PROPERTY);
 	indigo_release_property(RA_CALIBRATION_PROPERTY);
 	indigo_release_property(DEC_CALIBRATION_PROPERTY);
+	indigo_release_property(ABERRATION_PROPERTY);
+	indigo_release_property(PRECESSION_PROPERTY);
+	indigo_release_property(REFRACTION_PROPERTY);
+	indigo_release_property(GUIDEMODE_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
