@@ -1812,7 +1812,18 @@ $(PACKAGE_NAME).deb: package-prepare
 	printf "Replaces: $(REWRITE_DEBS)\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	printf "Homepage: http://www.indigo-astronomy.org\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+ifeq ($(DEBIAN_ARCH),i386)
 	printf "Depends: fxload, libsbigudrv2, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+endif
+ifeq ($(DEBIAN_ARCH),amd64)
+	printf "Depends: fxload, libsbigudrv2, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+endif
+ifeq ($(DEBIAN_ARCH),armhf)
+	printf "Depends: fxload, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+endif
+ifeq ($(DEBIAN_ARCH),arm64)
+	printf "Depends: fxload, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
+endif
 	printf "Description: INDIGO Framework and drivers\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	printf " INDIGO is a system of standards and frameworks for multiplatform and distributed astronomy software development designed to scale with your needs.\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	cat /tmp/$(PACKAGE_NAME)/DEBIAN/control
@@ -1882,13 +1893,13 @@ endif
 #---------------------------------------------------------------------
 
 remote:
-	ssh ubuntu32.local "cd indigo; git pull; make clean; make; sudo make package"
+	ssh ubuntu32.local "cd indigo; git reset --hard; git pull; make clean; make; sudo make package"
 	scp ubuntu32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb .
-	ssh ubuntu64.local "cd indigo; git pull; make clean; make; sudo make package"
+	ssh ubuntu64.local "cd indigo; git reset --hard; git pull; make clean; make; sudo make package"
 	scp ubuntu64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb .
-	ssh raspi32.local "cd indigo; git pull; make clean; make; sudo make package"
+	ssh raspi32.local "cd indigo; git reset --hard; git pull; make clean; make; sudo make package"
 	scp raspi32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
-	ssh raspi64.local "cd indigo; git pull; make clean; make; sudo make package"
+	ssh raspi64.local "cd indigo; git reset --hard; git pull; make clean; make; sudo make package"
 	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
 
 #---------------------------------------------------------------------
