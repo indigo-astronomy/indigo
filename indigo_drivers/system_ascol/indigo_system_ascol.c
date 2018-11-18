@@ -784,7 +784,9 @@ static void state_timer_callback(indigo_device *device) {
 	   (prev_glst.ra_axis_state != PRIVATE_DATA->glst.ra_axis_state) ||
 	   (prev_glst.de_axis_state != PRIVATE_DATA->glst.de_axis_state) ||
 	   (TELESCOPE_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
-	   (MOUNT_TRACKING_PROPERTY->state == INDIGO_BUSY_STATE)) {
+	   (MOUNT_TRACKING_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (RA_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (DEC_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating MOUNT_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
@@ -826,6 +828,26 @@ static void state_timer_callback(indigo_device *device) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+
+		if ((PRIVATE_DATA->glst.ra_axis_state == 0) ||
+			(PRIVATE_DATA->glst.ra_axis_state == 1)) {
+			RA_CALIBRATION_START_ITEM->sw.value = false;
+			RA_CALIBRATION_STOP_ITEM->sw.value = false;
+			RA_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			RA_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, RA_CALIBRATION_PROPERTY, NULL);
+
+		if ((PRIVATE_DATA->glst.de_axis_state == 0) ||
+			(PRIVATE_DATA->glst.de_axis_state == 1)) {
+			DEC_CALIBRATION_START_ITEM->sw.value = false;
+			DEC_CALIBRATION_STOP_ITEM->sw.value = false;
+			DEC_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			DEC_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, DEC_CALIBRATION_PROPERTY, NULL);
 	}
 
 	if (first_call || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
