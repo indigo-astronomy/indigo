@@ -165,8 +165,8 @@
 #define GUIDE_MODE_PROPERTY                (PRIVATE_DATA->guide_mode_property)
 #define GUIDE_MODE_ON_ITEM                 (GUIDE_MODE_PROPERTY->items+0)
 #define GUIDE_MODE_OFF_ITEM                (GUIDE_MODE_PROPERTY->items+1)
-#define GUIDE_MODE_PROPERTY_NAME           "ASCOL_GUIDEMODE"
 #define GUIDE_MODE_ON_ITEM_NAME            "ON"
+#define GUIDE_MODE_PROPERTY_NAME           "ASCOL_GUIDE_MODE"
 #define GUIDE_MODE_OFF_ITEM_NAME           "OFF"
 
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
