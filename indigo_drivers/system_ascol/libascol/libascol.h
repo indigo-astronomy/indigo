@@ -219,7 +219,7 @@ int ascol_hms2dd(double *dd, const char *hms);
 #define IS_DA_CALIBRATED(glst)      CHECK_BIT(glst.state_bits, 1)
 #define IS_ABEARRATION_CORR(glst)   CHECK_BIT(glst.state_bits, 4)
 #define IS_PRECESSION_CORR(glst)    CHECK_BIT(glst.state_bits, 5)
-#define IS_NUTATION_CORR(glst)      CHECK_BIT(glst.state_bits, 6)
+#define IS_REFRACTION_CORR(glst)    CHECK_BIT(glst.state_bits, 6)
 #define IS_ERR_MODEL_CORR(glst)     CHECK_BIT(glst.state_bits, 7)
 #define IS_GUIDE_MODE_ON(glst)      CHECK_BIT(glst.state_bits, 8)
 #define IS_USER1_BIT_I_ON(glst)     CHECK_BIT(glst.state_bits, 14)
