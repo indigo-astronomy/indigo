@@ -962,7 +962,7 @@ sub main() {
 			if ($cmd[0] eq "TSCS") {
 				if (!$login) { print_client($client, "ERR\n"); next; }
 				if ($#cmd != 1) { print_client($client, "ERR\n"); next; }
-				if (($cmd[1] ne "0") and ($cmd[1] ne "1") and ($cmd[1] ne "2") and ($cmd[1] ne "3")) { print_client($client, "ERR\n"); next; };
+				if (($cmd[1] ne "0") and ($cmd[1] ne "1") and ($cmd[1] ne "2") and ($cmd[1] ne "3") and ($cmd[1] ne "4")) { print_client($client, "ERR\n"); next; };
 				if ($te_state != TE_STOP) { print_client($client, "1\n"); next; }
 				$correction_model = $cmd[1];
 				print_client($client, "1\n");
