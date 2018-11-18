@@ -61,6 +61,7 @@
 #define TELESCOPE_STATE_GROUP              "Telescope Status"
 #define METEO_DATA_GROUP                   "Meteo Data"
 #define SWITCHES_GROUP                     "System Switches"
+#define CORRECTIONS_GROUP                  "Corrections"
 
 #define ALARM_PROPERTY                     (PRIVATE_DATA->alarm_property)
 #define ALARM_ITEMS(index)                 (ALARM_PROPERTY->items+index)
@@ -86,12 +87,12 @@
 #define RA_STATE_ITEM_NAME                 "RA_AXIS"
 #define DEC_STATE_ITEM_NAME                "DEC_AXIS"
 
-#define FLAP_STATE_PROPERTY               (PRIVATE_DATA->flap_state_property)
-#define TUBE_FLAP_STATE_ITEM              (FLAP_STATE_PROPERTY->items+0)
-#define COUDE_FLAP_STATE_ITEM             (FLAP_STATE_PROPERTY->items+1)
-#define FLAP_STATE_PROPERTY_NAME          "ASCOL_FLAP_STATE"
-#define TUBE_FLAP_STATE_ITEM_NAME         "TUBE_FLAP"
-#define COUDE_FLAP_STATE_ITEM_NAME        "COUDE_FLAP"
+#define FLAP_STATE_PROPERTY                (PRIVATE_DATA->flap_state_property)
+#define TUBE_FLAP_STATE_ITEM               (FLAP_STATE_PROPERTY->items+0)
+#define COUDE_FLAP_STATE_ITEM              (FLAP_STATE_PROPERTY->items+1)
+#define FLAP_STATE_PROPERTY_NAME           "ASCOL_FLAP_STATE"
+#define TUBE_FLAP_STATE_ITEM_NAME          "TUBE"
+#define COUDE_FLAP_STATE_ITEM_NAME         "COUDE"
 
 #define GLME_PROPERTY                      (PRIVATE_DATA->glme_property)
 #define GLME_ITEMS(index)                  (GLME_PROPERTY->items+index)
@@ -112,13 +113,61 @@
 #define TELESCOPE_ON_ITEM_NAME             "ON"
 #define TELESCOPE_OFF_ITEM_NAME            "OFF"
 
-#define AXIS_CALIBRATED_PROPERTY           (PRIVATE_DATA->axis_callibrated_property)
+#define AXIS_CALIBRATED_PROPERTY           (PRIVATE_DATA->axis_calibrated_property)
 #define RA_CALIBRATED_ITEM                 (AXIS_CALIBRATED_PROPERTY->items+0)
 #define DEC_CALIBRATED_ITEM                (AXIS_CALIBRATED_PROPERTY->items+1)
 #define AXIS_CALIBRATED_PROPERTY_NAME      "ASCOL_AXIS_CALIBRATED"
-#define RA_CALIBRATED_ITEM_NAME            "RA_CALIBRATED"
-#define DEC_CALIBRATED_ITEM_NAME           "DEC_CALIBRATED"
+#define RA_CALIBRATED_ITEM_NAME            "RA"
+#define DEC_CALIBRATED_ITEM_NAME           "DEC"
 
+#define RA_CALIBRATION_PROPERTY            (PRIVATE_DATA->ra_calibration_property)
+#define RA_CALIBRATION_START_ITEM          (RA_CALIBRATION_PROPERTY->items+0)
+#define RA_CALIBRATION_STOP_ITEM           (RA_CALIBRATION_PROPERTY->items+1)
+#define RA_CALIBRATION_PROPERTY_NAME       "ASCOL_RA_CALIBRATION"
+#define RA_CALIBRATION_START_ITEM_NAME     "START"
+#define RA_CALIBRATION_STOP_ITEM_NAME      "STOP"
+
+#define DEC_CALIBRATION_PROPERTY           (PRIVATE_DATA->dec_calibration_property)
+#define DEC_CALIBRATION_START_ITEM         (DEC_CALIBRATION_PROPERTY->items+0)
+#define DEC_CALIBRATION_STOP_ITEM          (DEC_CALIBRATION_PROPERTY->items+1)
+#define DEC_CALIBRATION_PROPERTY_NAME      "ASCOL_DEC_CALIBRATION"
+#define DEC_CALIBRATION_START_ITEM_NAME    "START"
+#define DEC_CALIBRATION_STOP_ITEM_NAME     "STOP"
+
+#define ABERRATION_PROPERTY                (PRIVATE_DATA->aberration_property)
+#define ABERRATION_ON_ITEM                 (ABERRATION_PROPERTY->items+0)
+#define ABERRATION_OFF_ITEM                (ABERRATION_PROPERTY->items+1)
+#define ABERRATION_PROPERTY_NAME           "ASCOL_ABERRATION"
+#define ABERRATION_ON_ITEM_NAME            "ON"
+#define ABERRATION_OFF_ITEM_NAME           "OFF"
+
+#define PRECESSION_PROPERTY                (PRIVATE_DATA->precession_property)
+#define PRECESSION_ON_ITEM                 (PRECESSION_PROPERTY->items+0)
+#define PRECESSION_OFF_ITEM                (PRECESSION_PROPERTY->items+1)
+#define PRECESSION_PROPERTY_NAME           "ASCOL_ABERRATION_NUTATION"
+#define PRECESSION_ON_ITEM_NAME            "ON"
+#define PRECESSION_OFF_ITEM_NAME           "OFF"
+
+#define REFRACTION_PROPERTY                (PRIVATE_DATA->refraction_property)
+#define REFRACTION_ON_ITEM                 (REFRACTION_PROPERTY->items+0)
+#define REFRACTION_OFF_ITEM                (REFRACTION_PROPERTY->items+1)
+#define REFRACTION_PROPERTY_NAME           "ASCOL_REFRACTION"
+#define REFRACTION_ON_ITEM_NAME            "ON"
+#define REFRACTION_OFF_ITEM_NAME           "OFF"
+
+#define ERROR_CORRECTION_PROPERTY          (PRIVATE_DATA->error_correction_property)
+#define ERROR_CORRECTION_ON_ITEM           (ERROR_CORRECTION_PROPERTY->items+0)
+#define ERROR_CORRECTION_OFF_ITEM          (ERROR_CORRECTION_PROPERTY->items+1)
+#define ERROR_CORRECTION_PROPERTY_NAME     "ASCOL_ERROR_CORRECTION"
+#define ERROR_CORRECTION_ON_ITEM_NAME      "ON"
+#define ERROR_CORRECTION_OFF_ITEM_NAME     "OFF"
+
+#define GUIDE_MODE_PROPERTY                (PRIVATE_DATA->guide_mode_property)
+#define GUIDE_MODE_ON_ITEM                 (GUIDE_MODE_PROPERTY->items+0)
+#define GUIDE_MODE_OFF_ITEM                (GUIDE_MODE_PROPERTY->items+1)
+#define GUIDE_MODE_ON_ITEM_NAME            "ON"
+#define GUIDE_MODE_PROPERTY_NAME           "ASCOL_GUIDE_MODE"
+#define GUIDE_MODE_OFF_ITEM_NAME           "OFF"
 
 #define WARN_PARKED_MSG                    "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG          "Mount parking is in progress, please wait until complete!"
@@ -150,7 +199,14 @@ typedef struct {
 	indigo_property *glme_property;
 	indigo_property *oil_power_property;
 	indigo_property *telescope_power_property;
-	indigo_property *axis_callibrated_property;
+	indigo_property *axis_calibrated_property;
+	indigo_property *ra_calibration_property;
+	indigo_property *dec_calibration_property;
+	indigo_property *aberration_property;
+	indigo_property *precession_property;
+	indigo_property *refraction_property;
+	indigo_property *error_correction_property;
+	indigo_property *guide_mode_property;
 } ascol_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -175,6 +231,20 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 			indigo_define_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 		if (indigo_property_match(AXIS_CALIBRATED_PROPERTY, property))
 			indigo_define_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
+		if (indigo_property_match(RA_CALIBRATION_PROPERTY, property))
+			indigo_define_property(device, RA_CALIBRATION_PROPERTY, NULL);
+		if (indigo_property_match(DEC_CALIBRATION_PROPERTY, property))
+			indigo_define_property(device, DEC_CALIBRATION_PROPERTY, NULL);
+		if (indigo_property_match(ABERRATION_PROPERTY, property))
+			indigo_define_property(device, ABERRATION_PROPERTY, NULL);
+		if (indigo_property_match(PRECESSION_PROPERTY, property))
+			indigo_define_property(device, PRECESSION_PROPERTY, NULL);
+		if (indigo_property_match(REFRACTION_PROPERTY, property))
+			indigo_define_property(device, REFRACTION_PROPERTY, NULL);
+		if (indigo_property_match(ERROR_CORRECTION_PROPERTY, property))
+			indigo_define_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+		if (indigo_property_match(GUIDE_MODE_PROPERTY, property))
+			indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -313,6 +383,157 @@ static void mount_handle_telescope_power(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEON(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	indigo_update_property(device, TELESCOPE_POWER_PROPERTY, NULL);
+}
+
+
+static void mount_handle_ra_calibration(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (RA_CALIBRATION_START_ITEM->sw.value) {
+		res = ascol_TEHC(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TEHC(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		RA_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		RA_CALIBRATION_START_ITEM->sw.value = false;
+		RA_CALIBRATION_STOP_ITEM->sw.value = false;
+		RA_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEHC(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, RA_CALIBRATION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_dec_calibration(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (DEC_CALIBRATION_START_ITEM->sw.value) {
+		res = ascol_TEDC(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TEDC(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		DEC_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		DEC_CALIBRATION_START_ITEM->sw.value = false;
+		DEC_CALIBRATION_STOP_ITEM->sw.value = false;
+		DEC_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TEDC(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, RA_CALIBRATION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_aberration(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (ABERRATION_ON_ITEM->sw.value) {
+		res = ascol_TSCA(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCA(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSCA(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCA(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		ABERRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		ABERRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCA(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, ABERRATION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_precession(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (PRECESSION_ON_ITEM->sw.value) {
+		res = ascol_TSCP(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCP(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSCP(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCP(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		PRECESSION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		PRECESSION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCP(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, PRECESSION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_refraction(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (REFRACTION_ON_ITEM->sw.value) {
+		res = ascol_TSCR(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCR(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSCR(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		REFRACTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		REFRACTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCR(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, REFRACTION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_error_correction(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (ERROR_CORRECTION_ON_ITEM->sw.value) {
+		res = ascol_TSCM(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCM(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSCM(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCM(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		ERROR_CORRECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		ERROR_CORRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSCM(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+}
+
+
+static void mount_handle_guidemode(indigo_device *device) {
+	int res = ASCOL_OK;
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	if (GUIDE_MODE_ON_ITEM->sw.value) {
+		res = ascol_TSGM(PRIVATE_DATA->dev_id, ASCOL_ON);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSGM(%d, ASCOL_ON) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TSGM(PRIVATE_DATA->dev_id, ASCOL_OFF);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSGM(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if(res == ASCOL_OK) {
+		GUIDE_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		GUIDE_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSGM(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	indigo_update_property(device, GUIDE_MODE_PROPERTY, NULL);
 }
 
 
@@ -718,7 +939,9 @@ static void state_timer_callback(indigo_device *device) {
 	   (prev_glst.ra_axis_state != PRIVATE_DATA->glst.ra_axis_state) ||
 	   (prev_glst.de_axis_state != PRIVATE_DATA->glst.de_axis_state) ||
 	   (TELESCOPE_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
-	   (MOUNT_TRACKING_PROPERTY->state == INDIGO_BUSY_STATE)) {
+	   (MOUNT_TRACKING_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (RA_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE) ||
+	   (DEC_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating MOUNT_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
@@ -760,6 +983,91 @@ static void state_timer_callback(indigo_device *device) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+
+		if ((PRIVATE_DATA->glst.ra_axis_state == 0) ||
+			(PRIVATE_DATA->glst.ra_axis_state == 1)) {
+			RA_CALIBRATION_START_ITEM->sw.value = false;
+			RA_CALIBRATION_STOP_ITEM->sw.value = false;
+			RA_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			RA_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, RA_CALIBRATION_PROPERTY, NULL);
+
+		if ((PRIVATE_DATA->glst.de_axis_state == 0) ||
+			(PRIVATE_DATA->glst.de_axis_state == 1)) {
+			DEC_CALIBRATION_START_ITEM->sw.value = false;
+			DEC_CALIBRATION_STOP_ITEM->sw.value = false;
+			DEC_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			DEC_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_update_property(device, DEC_CALIBRATION_PROPERTY, NULL);
+	}
+
+	if (first_call || (IS_ABEARRATION_CORR(prev_glst) != IS_ABEARRATION_CORR(PRIVATE_DATA->glst)) ||
+	   (ABERRATION_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		ABERRATION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_ABEARRATION_CORR(PRIVATE_DATA->glst)) {
+			ABERRATION_ON_ITEM->sw.value = true;
+			ABERRATION_OFF_ITEM->sw.value = false;
+		} else {
+			ABERRATION_ON_ITEM->sw.value = false;
+			ABERRATION_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, ABERRATION_PROPERTY, NULL);
+	}
+
+	if (first_call || (IS_PRECESSION_CORR(prev_glst) != IS_PRECESSION_CORR(PRIVATE_DATA->glst)) ||
+	   (PRECESSION_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		PRECESSION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_PRECESSION_CORR(PRIVATE_DATA->glst)) {
+			PRECESSION_ON_ITEM->sw.value = true;
+			PRECESSION_OFF_ITEM->sw.value = false;
+		} else {
+			PRECESSION_ON_ITEM->sw.value = false;
+			PRECESSION_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, PRECESSION_PROPERTY, NULL);
+	}
+
+	if (first_call || (IS_REFRACTION_CORR(prev_glst) != IS_REFRACTION_CORR(PRIVATE_DATA->glst)) ||
+	   (REFRACTION_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		REFRACTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_REFRACTION_CORR(PRIVATE_DATA->glst)) {
+			REFRACTION_ON_ITEM->sw.value = true;
+			REFRACTION_OFF_ITEM->sw.value = false;
+		} else {
+			REFRACTION_ON_ITEM->sw.value = false;
+			REFRACTION_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, REFRACTION_PROPERTY, NULL);
+	}
+
+	if (first_call || (IS_ERR_MODEL_CORR(prev_glst) != IS_ERR_MODEL_CORR(PRIVATE_DATA->glst)) ||
+	   (ERROR_CORRECTION_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		ERROR_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_ERR_MODEL_CORR(PRIVATE_DATA->glst)) {
+			ERROR_CORRECTION_ON_ITEM->sw.value = true;
+			ERROR_CORRECTION_OFF_ITEM->sw.value = false;
+		} else {
+			ERROR_CORRECTION_ON_ITEM->sw.value = false;
+			ERROR_CORRECTION_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+	}
+
+	if (first_call || (IS_GUIDE_MODE_ON(prev_glst) != IS_GUIDE_MODE_ON(PRIVATE_DATA->glst)) ||
+	   (GUIDE_MODE_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		GUIDE_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_GUIDE_MODE_ON(PRIVATE_DATA->glst)) {
+			GUIDE_MODE_ON_ITEM->sw.value = true;
+			GUIDE_MODE_OFF_ITEM->sw.value = false;
+		} else {
+			GUIDE_MODE_ON_ITEM->sw.value = false;
+			GUIDE_MODE_OFF_ITEM->sw.value = true;
+		}
+		indigo_update_property(device, GUIDE_MODE_PROPERTY, NULL);
 	}
 
 	if (first_call || (prev_glst.flap_tube_state != PRIVATE_DATA->glst.flap_tube_state) ||
@@ -928,21 +1236,19 @@ static indigo_result mount_attach(indigo_device *device) {
 			indigo_init_number_item(GLME_ITEMS(index), item_name, item_label, -1000, 1000, 0.01, 0);
 		}
 		// -------------------------------------------------------------------------- OIL_POWER
-		OIL_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, OIL_POWER_PROPERTY_NAME, SWITCHES_GROUP, "Oil Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		OIL_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, OIL_POWER_PROPERTY_NAME, SWITCHES_GROUP, "Oil Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (OIL_POWER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_switch_item(OIL_ON_ITEM, OIL_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(OIL_OFF_ITEM, OIL_OFF_ITEM_NAME, "Off", true);
-		OIL_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
 		// -------------------------------------------------------------------------- TELESCOPE_POWER
-		TELESCOPE_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, TELESCOPE_POWER_PROPERTY_NAME, SWITCHES_GROUP, "Telescope Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		TELESCOPE_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, TELESCOPE_POWER_PROPERTY_NAME, SWITCHES_GROUP, "Telescope Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (TELESCOPE_POWER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_switch_item(TELESCOPE_ON_ITEM, TELESCOPE_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(TELESCOPE_OFF_ITEM, TELESCOPE_OFF_ITEM_NAME, "Off", true);
-		TELESCOPE_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
 		// -------------------------------------------------------------------------- AXIS_CALIBRATED
 		AXIS_CALIBRATED_PROPERTY = indigo_init_light_property(NULL, device->name, AXIS_CALIBRATED_PROPERTY_NAME, SWITCHES_GROUP, "Axis Calibrated", INDIGO_IDLE_STATE, 2);
 		if (AXIS_CALIBRATED_PROPERTY == NULL)
@@ -950,7 +1256,56 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_light_item(RA_CALIBRATED_ITEM, RA_CALIBRATED_ITEM_NAME, "RA Axis", INDIGO_IDLE_STATE);
 		indigo_init_light_item(DEC_CALIBRATED_ITEM, DEC_CALIBRATED_ITEM_NAME, "DEC Axis", INDIGO_IDLE_STATE);
+		// -------------------------------------------------------------------------- RA_CALIBRATION
+		RA_CALIBRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, RA_CALIBRATION_PROPERTY_NAME, SWITCHES_GROUP, "RA Calibration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
+		if (RA_CALIBRATION_PROPERTY == NULL)
+			return INDIGO_FAILED;
 
+		indigo_init_switch_item(RA_CALIBRATION_START_ITEM, RA_CALIBRATION_START_ITEM_NAME, "Start", false);
+		indigo_init_switch_item(RA_CALIBRATION_STOP_ITEM, RA_CALIBRATION_STOP_ITEM_NAME, "Stop", false);
+		// -------------------------------------------------------------------------- DEC_CALIBRATION
+		DEC_CALIBRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, DEC_CALIBRATION_PROPERTY_NAME, SWITCHES_GROUP, "DEC Calibration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
+		if (DEC_CALIBRATION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(DEC_CALIBRATION_START_ITEM, DEC_CALIBRATION_START_ITEM_NAME, "Start", false);
+		indigo_init_switch_item(DEC_CALIBRATION_STOP_ITEM, DEC_CALIBRATION_STOP_ITEM_NAME, "Stop", false);
+		// -------------------------------------------------------------------------- ABERRATION_CORRECTION
+		ABERRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, ABERRATION_PROPERTY_NAME, CORRECTIONS_GROUP, "Aberration Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (ABERRATION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(ABERRATION_ON_ITEM, ABERRATION_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(ABERRATION_OFF_ITEM, ABERRATION_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- PRECESSION_CORRECTION
+		PRECESSION_PROPERTY = indigo_init_switch_property(NULL, device->name, PRECESSION_PROPERTY_NAME, CORRECTIONS_GROUP, "Precession and Nutation Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (PRECESSION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(PRECESSION_ON_ITEM, PRECESSION_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(PRECESSION_OFF_ITEM, PRECESSION_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- REFRACTION_CORRECTION
+		REFRACTION_PROPERTY = indigo_init_switch_property(NULL, device->name, REFRACTION_PROPERTY_NAME, CORRECTIONS_GROUP, "Refraction Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (REFRACTION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(REFRACTION_ON_ITEM, REFRACTION_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(REFRACTION_OFF_ITEM, REFRACTION_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- ERROR_CORRECTION
+		ERROR_CORRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, ERROR_CORRECTION_PROPERTY_NAME, CORRECTIONS_GROUP, "Error Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (ERROR_CORRECTION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(ERROR_CORRECTION_ON_ITEM, ERROR_CORRECTION_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(ERROR_CORRECTION_OFF_ITEM, ERROR_CORRECTION_OFF_ITEM_NAME, "Off", true);
+		// -------------------------------------------------------------------------- GUIDEMODE
+		GUIDE_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, GUIDE_MODE_PROPERTY_NAME, CORRECTIONS_GROUP, "Guide Mode Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (GUIDE_MODE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(GUIDE_MODE_ON_ITEM, GUIDE_MODE_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(GUIDE_MODE_OFF_ITEM, GUIDE_MODE_OFF_ITEM_NAME, "Off", true);
+		// --------------------------------------------------------------------------
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -1045,6 +1400,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
 					indigo_define_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 					indigo_define_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
+					indigo_define_property(device, RA_CALIBRATION_PROPERTY, NULL);
+					indigo_define_property(device, DEC_CALIBRATION_PROPERTY, NULL);
+					indigo_define_property(device, ABERRATION_PROPERTY, NULL);
+					indigo_define_property(device, PRECESSION_PROPERTY, NULL);
+					indigo_define_property(device, REFRACTION_PROPERTY, NULL);
+					indigo_define_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+					indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
 
 					device->is_connected = true;
 					/* start updates */
@@ -1069,6 +1431,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				indigo_delete_property(device, OIL_POWER_PROPERTY, NULL);
 				indigo_delete_property(device, TELESCOPE_POWER_PROPERTY, NULL);
 				indigo_delete_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
+				indigo_delete_property(device, RA_CALIBRATION_PROPERTY, NULL);
+				indigo_delete_property(device, DEC_CALIBRATION_PROPERTY, NULL);
+				indigo_delete_property(device, ABERRATION_PROPERTY, NULL);
+				indigo_delete_property(device, PRECESSION_PROPERTY, NULL);
+				indigo_delete_property(device, REFRACTION_PROPERTY, NULL);
+				indigo_delete_property(device, ERROR_CORRECTION_PROPERTY, NULL);
+				indigo_delete_property(device, GUIDE_MODE_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -1154,6 +1523,55 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(TELESCOPE_POWER_PROPERTY, property, false);
 			mount_handle_telescope_power(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(RA_CALIBRATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- RA_CALIBRATION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(RA_CALIBRATION_PROPERTY, property, false);
+			mount_handle_ra_calibration(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(DEC_CALIBRATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DEC_CALIBRATION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(DEC_CALIBRATION_PROPERTY, property, false);
+			mount_handle_dec_calibration(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(ABERRATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ABERRATION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(ABERRATION_PROPERTY, property, false);
+			mount_handle_aberration(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(PRECESSION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- PRECESSION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(PRECESSION_PROPERTY, property, false);
+			mount_handle_precession(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(REFRACTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- REFRACTION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(REFRACTION_PROPERTY, property, false);
+			mount_handle_refraction(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(ERROR_CORRECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ERROR_CORRECTION_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(ERROR_CORRECTION_PROPERTY, property, false);
+			mount_handle_error_correction(device);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(GUIDE_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- GUIDMODE_PROPERTY
+		if (IS_CONNECTED) {
+			indigo_property_copy_values(GUIDE_MODE_PROPERTY, property, false);
+			mount_handle_guidemode(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
@@ -1242,6 +1660,13 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(OIL_POWER_PROPERTY);
 	indigo_release_property(TELESCOPE_POWER_PROPERTY);
 	indigo_release_property(AXIS_CALIBRATED_PROPERTY);
+	indigo_release_property(RA_CALIBRATION_PROPERTY);
+	indigo_release_property(DEC_CALIBRATION_PROPERTY);
+	indigo_release_property(ABERRATION_PROPERTY);
+	indigo_release_property(PRECESSION_PROPERTY);
+	indigo_release_property(REFRACTION_PROPERTY);
+	indigo_release_property(ERROR_CORRECTION_PROPERTY);
+	indigo_release_property(GUIDE_MODE_PROPERTY);
 	if (PRIVATE_DATA->dev_id > 0) mount_close(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
