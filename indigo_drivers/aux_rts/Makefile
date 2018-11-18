@@ -34,8 +34,6 @@ else
 	DRIVER_MAIN_O=$(DRIVER)_main.o
 endif
 DRIVER_O=$(filter-out $(DRIVER_MAIN),$(addsuffix .o, $(basename $(notdir $(wildcard $(DRIVER)*.c)))))
-RULES=$(notdir $(wildcard *.rules))
-XML=$(notdir $(wildcard indi_go_*.xml))
 
 all: $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
@@ -53,15 +51,9 @@ install:
 ifneq ($(DRIVER_EXECUTABLE),)
 	install -m 0755 $(DRIVER_EXECUTABLE) $(INSTALL_BIN)
 endif
-ifneq ($(RULES),)
-	install -m 0644 $(RULES) $(INSTALL_RULES)/99-$(DRIVER).rules
-endif
-ifneq ($(XML),)
-	install -m 0644 $(XML) $(INSTALL_SHARE)/indi
-endif
 
 uninstall:
-	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER) $(INSTALL_RULES)/99-$(DRIVER).rules $(INSTALL_SHARE)/indi/$(XML)
+	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER)
 
 clean:
 	rm -f $(DRIVER_O) $(DRIVER_MAIN_O) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
