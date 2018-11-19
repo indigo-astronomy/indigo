@@ -13,7 +13,6 @@ indigo.xcodeproj/project.xcworkspace/
 indigo.xcodeproj/xcuserdata/
 indigo_server/ctrl.data
 indigo_server/resource/*.data
-indigo_drivers/ccd_qsi/externals/
 indigo_drivers/ccd_iidc/externals/
 indigo_drivers/mount_nexstar/externals/libnexstar/
 indigo_drivers/gps_nmea/externals/nmealib/build/

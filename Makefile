@@ -1130,8 +1130,8 @@ $(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sb
 else ifeq ($(OS_DETECTED),Darwin)
 
 $(BUILD_INCLUDE)/sbigudrv.h:
-	install -d $(BUILD_INCLUDE)/libsbig
-	cp indigo_drivers/ccd_sbig/bin_externals/sbigudrv/include/sbigudrv.h $(BUILD_INCLUDE)/
+	install -d $(BUILD_INCLUDE)
+	cp indigo_drivers/ccd_sbig/bin_externals/sbigudrv/include/sbigudrv.h $(BUILD_INCLUDE)
 
 indigo_drivers/ccd_sbig/indigo_ccd_sbig.o: $(BUILD_INCLUDE)/sbigudrv.h
 

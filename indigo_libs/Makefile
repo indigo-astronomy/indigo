@@ -32,6 +32,8 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 endif
 
+BIN_EXTERNALS = $(INDIGO_ROOT)/bin_externals
+
 .PHONY: all clean
 
 all:	status libindigo
@@ -62,7 +64,7 @@ clean: status
 #
 #---------------------------------------------------------------------
 
-libindigo: version libusb-1.0 libhidapi libjpeg libnovas $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigo: version libusb-1.0 libhidapi libjpeg libnovas libftd2xx $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
 $(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard *.c)))
 	$(AR) $(ARFLAGS) $@ $^
@@ -133,3 +135,47 @@ $(LIBHIDAPI):
 	git clone https://github.com/indigo-astronomy/hidapi.git
 	cd hidapi; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; make; make install
 	rm -rf hidapi
+
+#---------------------------------------------------------------------
+#
+#	Install libftd2xx
+#
+#---------------------------------------------------------------------
+
+libftd2xx: $(BUILD_LIB)/libftd2xx.a
+
+$(BUILD_LIB)/libftd2xx.a:
+	install -d $(BUILD_LIB)
+ifeq ($(OS_DETECTED),Darwin)
+	hdiutil attach -noverify -noautoopen $(BIN_EXTERNALS)/D2XX1.4.4.dmg
+	cp /Volumes/release/D2XX/ftd2xx.h /Volumes/release/D2XX/WinTypes.h $(BUILD_INCLUDE)
+	cp /Volumes/release/D2XX/libftd2xx.a $(BUILD_LIB)
+	hdiutil detach /Volumes/release
+	rm -rf /tmp/D2XX1.4.4.dmg
+endif
+ifeq ($(OS_DETECTED),Linux)
+ifeq ($(ARCH_DETECTED),arm)
+	tar xvfz $(BIN_EXTERNALS)/libftd2xx-arm-v6-hf-1.4.6.tgz -C /tmp
+	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
+	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
+	rm -rf /tmp/libftd2xx-arm-v6-hf-1.4.6.tgz /tmp/release
+endif
+ifeq ($(ARCH_DETECTED),arm64)
+	tar xvfz $(BIN_EXTERNALS)/libftd2xx-arm-v8-1.4.6.tgz -C /tmp
+	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
+	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
+	rm -rf /tmp/libftd2xx-arm-v8-1.4.6.tgz /tmp/release
+endif
+ifeq ($(ARCH_DETECTED),x86)
+	tar xvfz $(BIN_EXTERNALS)/libftd2xx-i386-1.4.6.tgz -C /tmp
+	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
+	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
+	rm -rf /tmp/libftd2xx-i386-1.4.6.tgz /tmp/release
+endif
+ifeq ($(ARCH_DETECTED),x64)
+	tar xvfz $(BIN_EXTERNALS)/libftd2xx-x86_64-1.4.6.tgz -C /tmp
+	cp /tmp/release/ftd2xx.h $(BUILD_INCLUDE)
+	cp /tmp/release/build/libftd2xx.a $(BUILD_LIB)
+	rm -rf /tmp/libftd2xx-x86_64-1.4.6.tgz /tmp/release
+endif
+endif
