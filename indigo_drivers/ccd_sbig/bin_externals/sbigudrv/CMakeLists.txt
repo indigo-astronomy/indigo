@@ -22,7 +22,7 @@ IF(UNIX AND NOT WIN32 AND NOT APPLE)
         ENDIF ()
 
         install( FILES ${CMAKE_BINARY_DIR}/libsbigudrv.a DESTINATION ${LIB_INSTALL_DIR}${LIB_POSTFIX})
-        install( FILES include/sbigudrv.h DESTINATION ${INCLUDE_INSTALL_DIR}/libsbig)
+        install( FILES include/sbigudrv.h DESTINATION ${INCLUDE_INSTALL_DIR})
         install( SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/make_sbig_symlink.cmake)
     ENDIF(NOT SKIP_LIBS_INSTALL MATCHES "True")
 
