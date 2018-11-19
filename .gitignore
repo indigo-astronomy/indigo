@@ -2,7 +2,6 @@
 **/*.o
 **/.hg
 **/.hgignore
-**/*externals/**/*.a
 **/.DS_Store
 **/GTAGS
 **/GPATH
