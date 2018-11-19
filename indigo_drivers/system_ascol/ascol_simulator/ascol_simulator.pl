@@ -272,7 +272,7 @@ sub parse_ra($) {
 	my ($ra) = @_;
 	if ($ra =~ /^([0-2][0-9][0-5][0-9][0-5][0-9])(\.\d{0,3})?$/) {
 		return dms2dd($ra, 1);
-	} elsif (($ra =~ /^(\d{1,3}(\.\d{0,6})?)$/) and ($ra > 0.0) and ($ra < 360.0)) {
+	} elsif (($ra =~ /^(\d{1,3}(\.\d{0,6})?)$/) and ($ra >= 0.0) and ($ra < 360.0)) {
 		return $ra;
 	}
 	return undef;
@@ -631,8 +631,14 @@ sub console() {
 			print "Bridge unparked: @alarm_bits\n";
 			next;
 		}
+		if ($cmd[0] eq "status") {
+			if ($#cmd != 0) { print "error\n"; next; }
+			print "Login: $login State: $oil_state $te_state $ha_state $da_state $fo_state 0 $do_state $sl_state $fl_tb_state $fl_cd_state 0 0 0 0 $correction_model $state_bits [@alarm_bits] 0\n";
+			next;
+		}
 		if (($cmd[0] eq "help") or ($cmd[0] eq "?")) {
 			print "Valid console commands:\n";
+			print "   status                   :print status\n";
 			print "   set_state <bit>          :set state bit (0-15)\n";
 			print "   clear_state <bit>        :clear state bit (0-15)\n";
 			print "   set_alarm <bank> <bit>   :set alarm bit (0-15) of bank (0-4)\n";
