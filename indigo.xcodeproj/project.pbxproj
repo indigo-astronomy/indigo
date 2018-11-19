@@ -77,9 +77,7 @@
 		595F2934211E211200380EF4 /* DDHidQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2917211E211100380EF4 /* DDHidQueue.m */; };
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
 		595F2938211E418700380EF4 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
-		5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5981C8DE1DC291AF00C7705F /* libfcusb.a */; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
-		5992F7B71E1EC8EF0035242E /* libfli.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5992F7B61E1EC8EF0035242E /* libfli.a */; };
 		5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */; };
 		59986D741F9BA10900D68DC1 /* libftd2xx.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 595355EC1F6B140300478BEC /* libftd2xx.a */; };
 		59986D751F9BA10900D68DC1 /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 595355ED1F6B140300478BEC /* libqsiapi.a */; };
@@ -106,6 +104,24 @@
 		599C9A611DA02956008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */ = {isa = PBXBuildFile; fileRef = 599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */; };
+		59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D3F21A330FB000B6F27 /* sbigudrv.h */; };
+		59A52D6521A33617000B6F27 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D5721A3360B000B6F27 /* gxccd.h */; };
+		59A52D6621A3361D000B6F27 /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
+		59A52DF021A33E44000B6F27 /* libfli.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52DD221A33E34000B6F27 /* libfli.a */; };
+		59A52DF121A33E4C000B6F27 /* libfli.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52DCF21A33E34000B6F27 /* libfli.h */; };
+		59A52F0521A33FC0000B6F27 /* libatik.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D96DC321A30DF50069A64C /* libatik.h */; };
+		59A52F0621A3412E000B6F27 /* qsiapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 595355B81F6AD79000478BEC /* qsiapi.h */; };
+		59A52F1821A3417C000B6F27 /* libgpusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52F0B21A3416D000B6F27 /* libgpusb.h */; };
+		59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52F0E21A3416D000B6F27 /* libgpusb.a */; };
+		59A52F2B21A341AA000B6F27 /* libfcusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52F1E21A341A0000B6F27 /* libfcusb.h */; };
+		59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52F2121A341A0000B6F27 /* libfcusb.a */; };
+		59A52F2D21A341E0000B6F27 /* altaircam.h in Headers */ = {isa = PBXBuildFile; fileRef = 59BBD17821823693008199D6 /* altaircam.h */; };
+		59A52FB721A34251000B6F27 /* dc1394.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52F4421A3423F000B6F27 /* dc1394.h */; };
+		59A52FB821A34266000B6F27 /* toupcam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D48B7A3215E570600CF757E /* toupcam.h */; };
+		59A5302121A35159000B6F27 /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5301721A3514E000B6F27 /* libatik.a */; };
+		59A5302221A35167000B6F27 /* libatik.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A5301421A3514E000B6F27 /* libatik.h */; };
+		59A5302421A351DF000B6F27 /* libdc1394.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5302321A351C6000B6F27 /* libdc1394.a */; };
+		59A5302521A35264000B6F27 /* libqhy.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5300721A34310000B6F27 /* libqhy.a */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
 		59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD17321823693008199D6 /* indigo_ccd_altair.c */; };
@@ -154,7 +170,6 @@
 		59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */; };
 		59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */; };
 		59F654721EE47516007B8C93 /* indigo_ccd_qhy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 59F6546A1EE47388007B8C93 /* indigo_ccd_qhy.cpp */; };
-		59F654731EE4755F007B8C93 /* libqhy.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F654701EE47484007B8C93 /* libqhy.a */; };
 		59F756061DCE4DB2002CFC82 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */; };
 		59F756221DCE5006002CFC82 /* libhidapi.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59F756231DCE500A002CFC82 /* libusb.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -163,18 +178,13 @@
 		59F756261DCE5043002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
 		59F756271DCE5049002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
 		59F756281DCE504D002CFC82 /* libusb.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; };
-		59FC2EB2210CA58500730343 /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FC2EB1210CA58400730343 /* libgxccd.a */; };
-		59FC2EB4210CA58C00730343 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB3210CA58C00730343 /* gxccd.h */; };
 		59FC2EBB210CA76200730343 /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
 		59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */; };
 		59FE34642187B2F7004FB5D4 /* indigo_aux_dsusb_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE34612187B2F7004FB5D4 /* indigo_aux_dsusb_main.c */; };
 		59FE34652187B2F8004FB5D4 /* indigo_aux_dsusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE34622187B2F7004FB5D4 /* indigo_aux_dsusb.c */; };
 		59FE34662187B2F8004FB5D4 /* indigo_aux_dsusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FE34632187B2F7004FB5D4 /* indigo_aux_dsusb.h */; };
-		59FE347B2187B7CF004FB5D4 /* libgpusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FE347A2187B7CF004FB5D4 /* libgpusb.a */; };
 		59FE347C2187B7DD004FB5D4 /* indigo_guider_gpusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE346B2187B5FD004FB5D4 /* indigo_guider_gpusb.c */; };
 		59FE3484218887EA004FB5D4 /* indigo_focuser_lakeside.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE347E21886A17004FB5D4 /* indigo_focuser_lakeside.c */; };
-		59FFD0D22128604200C7355C /* hidapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFD0D02128604200C7355C /* hidapi.h */; };
-		59FFD0D32128604200C7355C /* hid.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FFD0D12128604200C7355C /* hid.c */; };
 		9D07F7D2216F5EEE00330726 /* libtoupcam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D48B7A7215E570600CF757E /* libtoupcam.dylib */; };
 		9D07F7D3216F5F9100330726 /* libtoupcam.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D48B7A7215E570600CF757E /* libtoupcam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D1880B31E534B5E002F75D7 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
@@ -313,8 +323,6 @@
 		9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D6940892180B9F600AB112C /* indigo_aux_upb.c */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
 		9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */; };
-		9D976FDC1DD0C69D00782B32 /* dc1394.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FDA1DD0C69D00782B32 /* dc1394.h */; };
-		9D976FDD1DD0C69D00782B32 /* libdc1394.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D976FDB1DD0C69D00782B32 /* libdc1394.a */; };
 		9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* indigo_server.c */; };
 		9D9EA6A51DBE1F7300E11841 /* indigo_ccd_atik.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9EA6A11DBE1F7300E11841 /* indigo_ccd_atik.c */; };
 		9D9EA6B21DBFA30600E11841 /* indigo_ccd_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9EA6AC1DBFA30600E11841 /* indigo_ccd_driver.c */; };
@@ -821,16 +829,11 @@
 		595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidKeyboardBarcodeScanner.m; sourceTree = "<group>"; };
 		595F2917211E211100380EF4 /* DDHidQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidQueue.m; sourceTree = "<group>"; };
 		595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_aux_joystick.m; sourceTree = "<group>"; };
-		5971EAA820836A0000B25696 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		5971EAA92083731800B25696 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		5981C8DC1DC291A500C7705F /* libfcusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libfcusb.h; path = include/libfcusb/libfcusb.h; sourceTree = "<group>"; };
-		5981C8DE1DC291AF00C7705F /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfcusb.a; path = lib/macOS/libfcusb.a; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
 		5992F7B11E1EC8A20035242E /* indigo_ccd_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_fli_main.c; sourceTree = "<group>"; };
 		5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		5992F7B31E1EC8A20035242E /* indigo_ccd_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_fli.h; sourceTree = "<group>"; };
-		5992F7B61E1EC8EF0035242E /* libfli.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfli.a; path = "externals/libfli-1.999.1-180223/libfli.a"; sourceTree = "<group>"; };
-		5992F7B81E1EC9030035242E /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = libfli.h; path = "externals/libfli-1.104/libfli.h"; sourceTree = "<group>"; };
 		5992F7BA1E1EC9390035242E /* indigo_wheel_fli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_fli.h; sourceTree = "<group>"; };
 		5992F7BB1E1EC9580035242E /* indigo_wheel_fli_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_fli_main.c; sourceTree = "<group>"; };
 		5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -866,6 +869,620 @@
 		599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nstep_simulator.ino; sourceTree = "<group>"; };
 		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
 		59A52CDA21A08D3D000B6F27 /* indi_go_upb.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indi_go_upb.xml; sourceTree = "<group>"; };
+		59A52D2D21A330FB000B6F27 /* 51-sbig-debian.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "51-sbig-debian.rules"; sourceTree = "<group>"; };
+		59A52D2F21A330FB000B6F27 /* sbigucam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigucam.hex; sourceTree = "<group>"; };
+		59A52D3021A330FB000B6F27 /* sbigpcam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigpcam.hex; sourceTree = "<group>"; };
+		59A52D3121A330FB000B6F27 /* sbigfcam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigfcam.hex; sourceTree = "<group>"; };
+		59A52D3221A330FB000B6F27 /* stfga.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = stfga.bin; sourceTree = "<group>"; };
+		59A52D3321A330FB000B6F27 /* sbiglcam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbiglcam.hex; sourceTree = "<group>"; };
+		59A52D3421A330FB000B6F27 /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		59A52D3621A330FB000B6F27 /* lpardrv.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lpardrv.h; sourceTree = "<group>"; };
+		59A52D3721A330FB000B6F27 /* testmain.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = testmain.cpp; sourceTree = "<group>"; };
+		59A52D3821A330FB000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52D3921A330FB000B6F27 /* csbigimg.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = csbigimg.cpp; sourceTree = "<group>"; };
+		59A52D3A21A330FB000B6F27 /* csbigcam.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = csbigcam.cpp; sourceTree = "<group>"; };
+		59A52D3B21A330FB000B6F27 /* csbigimg.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = csbigimg.h; sourceTree = "<group>"; };
+		59A52D3C21A330FB000B6F27 /* sbigudrv.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sbigudrv.h; sourceTree = "<group>"; };
+		59A52D3D21A330FB000B6F27 /* csbigcam.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = csbigcam.h; sourceTree = "<group>"; };
+		59A52D3F21A330FB000B6F27 /* sbigudrv.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sbigudrv.h; sourceTree = "<group>"; };
+		59A52D4521A330FB000B6F27 /* libsbigudrv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libsbigudrv.a; sourceTree = "<group>"; };
+		59A52D4821A330FB000B6F27 /* libsbigudrv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libsbigudrv.a; sourceTree = "<group>"; };
+		59A52D4B21A330FB000B6F27 /* libsbigudrv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libsbigudrv.a; sourceTree = "<group>"; };
+		59A52D4E21A330FB000B6F27 /* libsbigudrv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libsbigudrv.a; sourceTree = "<group>"; };
+		59A52D5121A330FB000B6F27 /* README.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.txt; sourceTree = "<group>"; };
+		59A52D5221A330FB000B6F27 /* SBIGUDrv.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = SBIGUDrv.pdf; sourceTree = "<group>"; };
+		59A52D5721A3360B000B6F27 /* gxccd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gxccd.h; sourceTree = "<group>"; };
+		59A52D5821A3360B000B6F27 /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
+		59A52D5B21A3360B000B6F27 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		59A52D5E21A3360B000B6F27 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		59A52D6021A3360B000B6F27 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		59A52D6221A3360B000B6F27 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		59A52D6421A3360B000B6F27 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		59A52D6921A33E34000B6F27 /* Makefile.dkms */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.dkms; sourceTree = "<group>"; };
+		59A52D6B21A33E34000B6F27 /* dkms.conf */ = {isa = PBXFileReference; lastKnownFileType = text; path = dkms.conf; sourceTree = "<group>"; };
+		59A52D6C21A33E34000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
+		59A52D6D21A33E34000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52D6E21A33E34000B6F27 /* fliusb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = fliusb.c; sourceTree = "<group>"; };
+		59A52D6F21A33E34000B6F27 /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
+		59A52D7021A33E34000B6F27 /* fliusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb.h; sourceTree = "<group>"; };
+		59A52D7221A33E34000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
+		59A52D7321A33E34000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
+		59A52D7421A33E34000B6F27 /* libfli-camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera.h"; sourceTree = "<group>"; };
+		59A52D7521A33E34000B6F27 /* libfli-camera-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-parport.c"; sourceTree = "<group>"; };
+		59A52D7621A33E34000B6F27 /* libfli-filter-focuser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-filter-focuser.h"; sourceTree = "<group>"; };
+		59A52D7721A33E34000B6F27 /* libfli.dxx */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.dxx; sourceTree = "<group>"; };
+		59A52D7821A33E34000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52D7921A33E34000B6F27 /* libfli-mem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-mem.c"; sourceTree = "<group>"; };
+		59A52D7A21A33E34000B6F27 /* libfli-camera-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-usb.h"; sourceTree = "<group>"; };
+		59A52D7B21A33E34000B6F27 /* libfli-camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera.c"; sourceTree = "<group>"; };
+		59A52D7C21A33E34000B6F27 /* libfli-raw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-raw.h"; sourceTree = "<group>"; };
+		59A52D7E21A33E34000B6F27 /* libfli-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-sys.c"; sourceTree = "<group>"; };
+		59A52D7F21A33E34000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52D8121A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52D8221A33E34000B6F27 /* libfli-usb-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb-sys.h"; sourceTree = "<group>"; };
+		59A52D8321A33E34000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52D8421A33E34000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52D8521A33E34000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52D8721A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52D8821A33E34000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52D8921A33E34000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52D8B21A33E34000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
+		59A52D8C21A33E34000B6F27 /* fli_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_ioctl.h; sourceTree = "<group>"; };
+		59A52D8D21A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52D8E21A33E34000B6F27 /* libfli-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-parport.c"; sourceTree = "<group>"; };
+		59A52D8F21A33E34000B6F27 /* fli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "fli-usb.h"; sourceTree = "<group>"; };
+		59A52D9021A33E34000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52D9121A33E34000B6F27 /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libfli.h; sourceTree = "<group>"; };
+		59A52D9221A33E34000B6F27 /* docxx.sty */ = {isa = PBXFileReference; lastKnownFileType = text; path = docxx.sty; sourceTree = "<group>"; };
+		59A52D9321A33E34000B6F27 /* libfli-filter-focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-filter-focuser.c"; sourceTree = "<group>"; };
+		59A52D9421A33E34000B6F27 /* libfli-camera-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-parport.h"; sourceTree = "<group>"; };
+		59A52D9621A33E34000B6F27 /* FLI_SDK_Documentation.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = FLI_SDK_Documentation.pdf; sourceTree = "<group>"; };
+		59A52D9721A33E34000B6F27 /* libfli-libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-libfli.h"; sourceTree = "<group>"; };
+		59A52D9921A33E34000B6F27 /* libfli-windows.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows.c"; sourceTree = "<group>"; };
+		59A52D9A21A33E34000B6F27 /* libfli.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.def; sourceTree = "<group>"; };
+		59A52D9B21A33E34000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52D9C21A33E34000B6F27 /* libfli-windows-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows-parport.c"; sourceTree = "<group>"; };
+		59A52D9D21A33E34000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52D9E21A33E34000B6F27 /* libfli.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcproj; sourceTree = "<group>"; };
+		59A52D9F21A33E34000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52DA021A33E34000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52DA121A33E34000B6F27 /* libfli64.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli64.def; sourceTree = "<group>"; };
+		59A52DA221A33E34000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52DA321A33E34000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52DA421A33E34000B6F27 /* libfli.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.rc; sourceTree = "<group>"; };
+		59A52DA521A33E34000B6F27 /* resource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = resource.h; sourceTree = "<group>"; };
+		59A52DA621A33E34000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52DA721A33E34000B6F27 /* libfli.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.sln; sourceTree = "<group>"; };
+		59A52DA821A33E34000B6F27 /* libfli-debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-debug.h"; sourceTree = "<group>"; };
+		59A52DA921A33E34000B6F27 /* libfli-camera-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-usb.c"; sourceTree = "<group>"; };
+		59A52DAA21A33E34000B6F27 /* libfli-mem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-mem.h"; sourceTree = "<group>"; };
+		59A52DAC21A33E34000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
+		59A52DAD21A33E34000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
+		59A52DAE21A33E34000B6F27 /* libfli-camera.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera.o"; sourceTree = "<group>"; };
+		59A52DAF21A33E34000B6F27 /* libfli-camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera.h"; sourceTree = "<group>"; };
+		59A52DB021A33E34000B6F27 /* libfli-camera-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-parport.c"; sourceTree = "<group>"; };
+		59A52DB121A33E34000B6F27 /* libfli-filter-focuser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-filter-focuser.h"; sourceTree = "<group>"; };
+		59A52DB221A33E34000B6F27 /* libfli.dxx */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.dxx; sourceTree = "<group>"; };
+		59A52DB321A33E34000B6F27 /* libfli-filter-focuser.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-filter-focuser.o"; sourceTree = "<group>"; };
+		59A52DB421A33E34000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52DB521A33E34000B6F27 /* libfli-mem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-mem.c"; sourceTree = "<group>"; };
+		59A52DB621A33E34000B6F27 /* libfli-camera-usb.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera-usb.o"; sourceTree = "<group>"; };
+		59A52DB721A33E34000B6F27 /* libfli-camera-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-usb.h"; sourceTree = "<group>"; };
+		59A52DB821A33E34000B6F27 /* libfli-camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera.c"; sourceTree = "<group>"; };
+		59A52DB921A33E34000B6F27 /* libfli-raw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-raw.h"; sourceTree = "<group>"; };
+		59A52DBB21A33E34000B6F27 /* libfli-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-sys.c"; sourceTree = "<group>"; };
+		59A52DBC21A33E34000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52DBE21A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52DBF21A33E34000B6F27 /* libfli-usb-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb-sys.h"; sourceTree = "<group>"; };
+		59A52DC021A33E34000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52DC121A33E34000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52DC221A33E34000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52DC421A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52DC521A33E34000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52DC621A33E34000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52DC821A33E34000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
+		59A52DC921A33E34000B6F27 /* fli_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_ioctl.h; sourceTree = "<group>"; };
+		59A52DCA21A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52DCB21A33E34000B6F27 /* libfli-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-parport.c"; sourceTree = "<group>"; };
+		59A52DCC21A33E34000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52DCE21A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52DCF21A33E34000B6F27 /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libfli.h; sourceTree = "<group>"; };
+		59A52DD021A33E34000B6F27 /* libfli-sys.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-sys.o"; sourceTree = "<group>"; };
+		59A52DD121A33E34000B6F27 /* libfli.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = libfli.o; sourceTree = "<group>"; };
+		59A52DD221A33E34000B6F27 /* libfli.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libfli.a; sourceTree = "<group>"; };
+		59A52DD321A33E34000B6F27 /* docxx.sty */ = {isa = PBXFileReference; lastKnownFileType = text; path = docxx.sty; sourceTree = "<group>"; };
+		59A52DD421A33E34000B6F27 /* libfli-usb.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-usb.o"; sourceTree = "<group>"; };
+		59A52DD521A33E34000B6F27 /* libfli-filter-focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-filter-focuser.c"; sourceTree = "<group>"; };
+		59A52DD621A33E34000B6F27 /* libfli-camera-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-parport.h"; sourceTree = "<group>"; };
+		59A52DD721A33E34000B6F27 /* libfli-camera-parport.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera-parport.o"; sourceTree = "<group>"; };
+		59A52DD821A33E34000B6F27 /* libfli-libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-libfli.h"; sourceTree = "<group>"; };
+		59A52DD921A33E34000B6F27 /* libfli-usb-sys.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-usb-sys.o"; sourceTree = "<group>"; };
+		59A52DDB21A33E34000B6F27 /* libfli-windows.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows.c"; sourceTree = "<group>"; };
+		59A52DDC21A33E34000B6F27 /* libfli.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.def; sourceTree = "<group>"; };
+		59A52DDD21A33E34000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52DDE21A33E34000B6F27 /* libfli-windows-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows-parport.c"; sourceTree = "<group>"; };
+		59A52DDF21A33E34000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52DE021A33E34000B6F27 /* libfli.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcproj; sourceTree = "<group>"; };
+		59A52DE121A33E34000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52DE221A33E34000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52DE321A33E34000B6F27 /* libfli64.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli64.def; sourceTree = "<group>"; };
+		59A52DE421A33E34000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52DE521A33E34000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52DE621A33E34000B6F27 /* libfli.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.rc; sourceTree = "<group>"; };
+		59A52DE721A33E34000B6F27 /* resource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = resource.h; sourceTree = "<group>"; };
+		59A52DE821A33E34000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52DE921A33E34000B6F27 /* libfli.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.sln; sourceTree = "<group>"; };
+		59A52DEA21A33E34000B6F27 /* libfli-serial.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-serial.o"; sourceTree = "<group>"; };
+		59A52DEB21A33E34000B6F27 /* libfli-debug.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-debug.o"; sourceTree = "<group>"; };
+		59A52DEC21A33E34000B6F27 /* libfli-debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-debug.h"; sourceTree = "<group>"; };
+		59A52DED21A33E34000B6F27 /* libfli-camera-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-usb.c"; sourceTree = "<group>"; };
+		59A52DEE21A33E34000B6F27 /* libfli-mem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-mem.h"; sourceTree = "<group>"; };
+		59A52DEF21A33E34000B6F27 /* libfli-mem.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-mem.o"; sourceTree = "<group>"; };
+		59A52DF421A33E5C000B6F27 /* Makefile.dkms */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.dkms; sourceTree = "<group>"; };
+		59A52DF621A33E5C000B6F27 /* dkms.conf */ = {isa = PBXFileReference; lastKnownFileType = text; path = dkms.conf; sourceTree = "<group>"; };
+		59A52DF721A33E5C000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
+		59A52DF821A33E5C000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52DF921A33E5C000B6F27 /* fliusb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = fliusb.c; sourceTree = "<group>"; };
+		59A52DFA21A33E5C000B6F27 /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
+		59A52DFB21A33E5C000B6F27 /* fliusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb.h; sourceTree = "<group>"; };
+		59A52DFD21A33E5C000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
+		59A52DFE21A33E5C000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
+		59A52DFF21A33E5C000B6F27 /* libfli-camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera.h"; sourceTree = "<group>"; };
+		59A52E0021A33E5C000B6F27 /* libfli-camera-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-parport.c"; sourceTree = "<group>"; };
+		59A52E0121A33E5C000B6F27 /* libfli-filter-focuser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-filter-focuser.h"; sourceTree = "<group>"; };
+		59A52E0221A33E5C000B6F27 /* libfli.dxx */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.dxx; sourceTree = "<group>"; };
+		59A52E0321A33E5C000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52E0421A33E5C000B6F27 /* libfli-mem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-mem.c"; sourceTree = "<group>"; };
+		59A52E0521A33E5C000B6F27 /* libfli-camera-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-usb.h"; sourceTree = "<group>"; };
+		59A52E0621A33E5C000B6F27 /* libfli-camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera.c"; sourceTree = "<group>"; };
+		59A52E0721A33E5C000B6F27 /* libfli-raw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-raw.h"; sourceTree = "<group>"; };
+		59A52E0921A33E5C000B6F27 /* libfli-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-sys.c"; sourceTree = "<group>"; };
+		59A52E0A21A33E5C000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52E0C21A33E5C000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52E0D21A33E5C000B6F27 /* libfli-usb-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb-sys.h"; sourceTree = "<group>"; };
+		59A52E0E21A33E5C000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52E0F21A33E5C000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52E1021A33E5C000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52E1221A33E5C000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52E1321A33E5C000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52E1421A33E5C000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52E1621A33E5C000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
+		59A52E1721A33E5C000B6F27 /* fli_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_ioctl.h; sourceTree = "<group>"; };
+		59A52E1821A33E5C000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52E1921A33E5C000B6F27 /* libfli-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-parport.c"; sourceTree = "<group>"; };
+		59A52E1A21A33E5C000B6F27 /* fli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "fli-usb.h"; sourceTree = "<group>"; };
+		59A52E1B21A33E5C000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52E1C21A33E5C000B6F27 /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libfli.h; sourceTree = "<group>"; };
+		59A52E1D21A33E5C000B6F27 /* docxx.sty */ = {isa = PBXFileReference; lastKnownFileType = text; path = docxx.sty; sourceTree = "<group>"; };
+		59A52E1E21A33E5C000B6F27 /* libfli-filter-focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-filter-focuser.c"; sourceTree = "<group>"; };
+		59A52E1F21A33E5C000B6F27 /* libfli-camera-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-parport.h"; sourceTree = "<group>"; };
+		59A52E2121A33E5D000B6F27 /* FLI_SDK_Documentation.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = FLI_SDK_Documentation.pdf; sourceTree = "<group>"; };
+		59A52E2221A33E5D000B6F27 /* libfli-libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-libfli.h"; sourceTree = "<group>"; };
+		59A52E2421A33E5D000B6F27 /* libfli-windows.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows.c"; sourceTree = "<group>"; };
+		59A52E2521A33E5D000B6F27 /* libfli.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.def; sourceTree = "<group>"; };
+		59A52E2621A33E5D000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52E2721A33E5D000B6F27 /* libfli-windows-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows-parport.c"; sourceTree = "<group>"; };
+		59A52E2821A33E5D000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52E2921A33E5D000B6F27 /* libfli.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcproj; sourceTree = "<group>"; };
+		59A52E2A21A33E5D000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52E2B21A33E5D000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52E2C21A33E5D000B6F27 /* libfli64.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli64.def; sourceTree = "<group>"; };
+		59A52E2D21A33E5D000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52E2E21A33E5D000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52E2F21A33E5D000B6F27 /* libfli.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.rc; sourceTree = "<group>"; };
+		59A52E3021A33E5D000B6F27 /* resource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = resource.h; sourceTree = "<group>"; };
+		59A52E3121A33E5D000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52E3221A33E5D000B6F27 /* libfli.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.sln; sourceTree = "<group>"; };
+		59A52E3321A33E5D000B6F27 /* libfli-debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-debug.h"; sourceTree = "<group>"; };
+		59A52E3421A33E5D000B6F27 /* libfli-camera-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-usb.c"; sourceTree = "<group>"; };
+		59A52E3521A33E5D000B6F27 /* libfli-mem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-mem.h"; sourceTree = "<group>"; };
+		59A52E3721A33E5D000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
+		59A52E3821A33E5D000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
+		59A52E3921A33E5D000B6F27 /* libfli-camera.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera.o"; sourceTree = "<group>"; };
+		59A52E3A21A33E5D000B6F27 /* libfli-camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera.h"; sourceTree = "<group>"; };
+		59A52E3B21A33E5D000B6F27 /* libfli-camera-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-parport.c"; sourceTree = "<group>"; };
+		59A52E3C21A33E5D000B6F27 /* libfli-filter-focuser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-filter-focuser.h"; sourceTree = "<group>"; };
+		59A52E3D21A33E5D000B6F27 /* libfli.dxx */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.dxx; sourceTree = "<group>"; };
+		59A52E3E21A33E5D000B6F27 /* libfli-filter-focuser.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-filter-focuser.o"; sourceTree = "<group>"; };
+		59A52E3F21A33E5D000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52E4021A33E5D000B6F27 /* libfli-mem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-mem.c"; sourceTree = "<group>"; };
+		59A52E4121A33E5D000B6F27 /* libfli-camera-usb.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera-usb.o"; sourceTree = "<group>"; };
+		59A52E4221A33E5D000B6F27 /* libfli-camera-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-usb.h"; sourceTree = "<group>"; };
+		59A52E4321A33E5D000B6F27 /* libfli-camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera.c"; sourceTree = "<group>"; };
+		59A52E4421A33E5D000B6F27 /* libfli-raw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-raw.h"; sourceTree = "<group>"; };
+		59A52E4621A33E5D000B6F27 /* libfli-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-sys.c"; sourceTree = "<group>"; };
+		59A52E4721A33E5D000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52E4921A33E5D000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52E4A21A33E5D000B6F27 /* libfli-usb-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb-sys.h"; sourceTree = "<group>"; };
+		59A52E4B21A33E5D000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52E4C21A33E5D000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52E4D21A33E5D000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52E4F21A33E5D000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52E5021A33E5D000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52E5121A33E5D000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52E5321A33E5D000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
+		59A52E5421A33E5D000B6F27 /* fli_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_ioctl.h; sourceTree = "<group>"; };
+		59A52E5521A33E5D000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52E5621A33E5D000B6F27 /* libfli-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-parport.c"; sourceTree = "<group>"; };
+		59A52E5721A33E5D000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52E5921A33E5D000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52E5A21A33E5D000B6F27 /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libfli.h; sourceTree = "<group>"; };
+		59A52E5B21A33E5D000B6F27 /* libfli-sys.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-sys.o"; sourceTree = "<group>"; };
+		59A52E5C21A33E5D000B6F27 /* libfli.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = libfli.o; sourceTree = "<group>"; };
+		59A52E5D21A33E5D000B6F27 /* libfli.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libfli.a; sourceTree = "<group>"; };
+		59A52E5E21A33E5D000B6F27 /* docxx.sty */ = {isa = PBXFileReference; lastKnownFileType = text; path = docxx.sty; sourceTree = "<group>"; };
+		59A52E5F21A33E5D000B6F27 /* libfli-usb.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-usb.o"; sourceTree = "<group>"; };
+		59A52E6021A33E5D000B6F27 /* libfli-filter-focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-filter-focuser.c"; sourceTree = "<group>"; };
+		59A52E6121A33E5D000B6F27 /* libfli-camera-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-parport.h"; sourceTree = "<group>"; };
+		59A52E6221A33E5D000B6F27 /* libfli-camera-parport.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera-parport.o"; sourceTree = "<group>"; };
+		59A52E6321A33E5D000B6F27 /* libfli-libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-libfli.h"; sourceTree = "<group>"; };
+		59A52E6421A33E5D000B6F27 /* libfli-usb-sys.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-usb-sys.o"; sourceTree = "<group>"; };
+		59A52E6621A33E5D000B6F27 /* libfli-windows.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows.c"; sourceTree = "<group>"; };
+		59A52E6721A33E5D000B6F27 /* libfli.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.def; sourceTree = "<group>"; };
+		59A52E6821A33E5D000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52E6921A33E5D000B6F27 /* libfli-windows-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows-parport.c"; sourceTree = "<group>"; };
+		59A52E6A21A33E5D000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52E6B21A33E5D000B6F27 /* libfli.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcproj; sourceTree = "<group>"; };
+		59A52E6C21A33E5D000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52E6D21A33E5D000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52E6E21A33E5D000B6F27 /* libfli64.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli64.def; sourceTree = "<group>"; };
+		59A52E6F21A33E5D000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52E7021A33E5D000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52E7121A33E5D000B6F27 /* libfli.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.rc; sourceTree = "<group>"; };
+		59A52E7221A33E5D000B6F27 /* resource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = resource.h; sourceTree = "<group>"; };
+		59A52E7321A33E5D000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52E7421A33E5D000B6F27 /* libfli.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.sln; sourceTree = "<group>"; };
+		59A52E7521A33E5D000B6F27 /* libfli-serial.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-serial.o"; sourceTree = "<group>"; };
+		59A52E7621A33E5D000B6F27 /* libfli-debug.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-debug.o"; sourceTree = "<group>"; };
+		59A52E7721A33E5D000B6F27 /* libfli-debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-debug.h"; sourceTree = "<group>"; };
+		59A52E7821A33E5D000B6F27 /* libfli-camera-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-usb.c"; sourceTree = "<group>"; };
+		59A52E7921A33E5D000B6F27 /* libfli-mem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-mem.h"; sourceTree = "<group>"; };
+		59A52E7A21A33E5D000B6F27 /* libfli-mem.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-mem.o"; sourceTree = "<group>"; };
+		59A52E7D21A33E78000B6F27 /* Makefile.dkms */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.dkms; sourceTree = "<group>"; };
+		59A52E7F21A33E78000B6F27 /* dkms.conf */ = {isa = PBXFileReference; lastKnownFileType = text; path = dkms.conf; sourceTree = "<group>"; };
+		59A52E8021A33E78000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
+		59A52E8121A33E78000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52E8221A33E78000B6F27 /* fliusb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = fliusb.c; sourceTree = "<group>"; };
+		59A52E8321A33E78000B6F27 /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
+		59A52E8421A33E78000B6F27 /* fliusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb.h; sourceTree = "<group>"; };
+		59A52E8621A33E78000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
+		59A52E8721A33E78000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
+		59A52E8821A33E78000B6F27 /* libfli-camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera.h"; sourceTree = "<group>"; };
+		59A52E8921A33E78000B6F27 /* libfli-camera-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-parport.c"; sourceTree = "<group>"; };
+		59A52E8A21A33E78000B6F27 /* libfli-filter-focuser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-filter-focuser.h"; sourceTree = "<group>"; };
+		59A52E8B21A33E78000B6F27 /* libfli.dxx */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.dxx; sourceTree = "<group>"; };
+		59A52E8C21A33E78000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52E8D21A33E78000B6F27 /* libfli-mem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-mem.c"; sourceTree = "<group>"; };
+		59A52E8E21A33E78000B6F27 /* libfli-camera-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-usb.h"; sourceTree = "<group>"; };
+		59A52E8F21A33E78000B6F27 /* libfli-camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera.c"; sourceTree = "<group>"; };
+		59A52E9021A33E78000B6F27 /* libfli-raw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-raw.h"; sourceTree = "<group>"; };
+		59A52E9221A33E78000B6F27 /* libfli-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-sys.c"; sourceTree = "<group>"; };
+		59A52E9321A33E78000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52E9521A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52E9621A33E78000B6F27 /* libfli-usb-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb-sys.h"; sourceTree = "<group>"; };
+		59A52E9721A33E78000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52E9821A33E78000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52E9921A33E78000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52E9B21A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52E9C21A33E78000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52E9D21A33E78000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52E9F21A33E78000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
+		59A52EA021A33E78000B6F27 /* fli_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_ioctl.h; sourceTree = "<group>"; };
+		59A52EA121A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52EA221A33E78000B6F27 /* libfli-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-parport.c"; sourceTree = "<group>"; };
+		59A52EA321A33E78000B6F27 /* fli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "fli-usb.h"; sourceTree = "<group>"; };
+		59A52EA421A33E78000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52EA521A33E78000B6F27 /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libfli.h; sourceTree = "<group>"; };
+		59A52EA621A33E78000B6F27 /* docxx.sty */ = {isa = PBXFileReference; lastKnownFileType = text; path = docxx.sty; sourceTree = "<group>"; };
+		59A52EA721A33E78000B6F27 /* libfli-filter-focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-filter-focuser.c"; sourceTree = "<group>"; };
+		59A52EA821A33E78000B6F27 /* libfli-camera-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-parport.h"; sourceTree = "<group>"; };
+		59A52EAA21A33E78000B6F27 /* FLI_SDK_Documentation.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = FLI_SDK_Documentation.pdf; sourceTree = "<group>"; };
+		59A52EAB21A33E78000B6F27 /* libfli-libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-libfli.h"; sourceTree = "<group>"; };
+		59A52EAD21A33E78000B6F27 /* libfli-windows.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows.c"; sourceTree = "<group>"; };
+		59A52EAE21A33E78000B6F27 /* libfli.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.def; sourceTree = "<group>"; };
+		59A52EAF21A33E78000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52EB021A33E78000B6F27 /* libfli-windows-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows-parport.c"; sourceTree = "<group>"; };
+		59A52EB121A33E78000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52EB221A33E78000B6F27 /* libfli.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcproj; sourceTree = "<group>"; };
+		59A52EB321A33E78000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52EB421A33E78000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52EB521A33E78000B6F27 /* libfli64.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli64.def; sourceTree = "<group>"; };
+		59A52EB621A33E78000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52EB721A33E78000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52EB821A33E78000B6F27 /* libfli.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.rc; sourceTree = "<group>"; };
+		59A52EB921A33E78000B6F27 /* resource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = resource.h; sourceTree = "<group>"; };
+		59A52EBA21A33E78000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52EBB21A33E78000B6F27 /* libfli.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.sln; sourceTree = "<group>"; };
+		59A52EBC21A33E78000B6F27 /* libfli-debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-debug.h"; sourceTree = "<group>"; };
+		59A52EBD21A33E78000B6F27 /* libfli-camera-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-usb.c"; sourceTree = "<group>"; };
+		59A52EBE21A33E78000B6F27 /* libfli-mem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-mem.h"; sourceTree = "<group>"; };
+		59A52EC021A33E78000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
+		59A52EC121A33E78000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
+		59A52EC221A33E78000B6F27 /* libfli-camera.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera.o"; sourceTree = "<group>"; };
+		59A52EC321A33E78000B6F27 /* libfli-camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera.h"; sourceTree = "<group>"; };
+		59A52EC421A33E78000B6F27 /* libfli-camera-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-parport.c"; sourceTree = "<group>"; };
+		59A52EC521A33E78000B6F27 /* libfli-filter-focuser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-filter-focuser.h"; sourceTree = "<group>"; };
+		59A52EC621A33E78000B6F27 /* libfli.dxx */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.dxx; sourceTree = "<group>"; };
+		59A52EC721A33E78000B6F27 /* libfli-filter-focuser.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-filter-focuser.o"; sourceTree = "<group>"; };
+		59A52EC821A33E78000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59A52EC921A33E78000B6F27 /* libfli-mem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-mem.c"; sourceTree = "<group>"; };
+		59A52ECA21A33E78000B6F27 /* libfli-camera-usb.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera-usb.o"; sourceTree = "<group>"; };
+		59A52ECB21A33E78000B6F27 /* libfli-camera-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-usb.h"; sourceTree = "<group>"; };
+		59A52ECC21A33E78000B6F27 /* libfli-camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera.c"; sourceTree = "<group>"; };
+		59A52ECD21A33E78000B6F27 /* libfli-raw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-raw.h"; sourceTree = "<group>"; };
+		59A52ECF21A33E78000B6F27 /* libfli-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-sys.c"; sourceTree = "<group>"; };
+		59A52ED021A33E78000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52ED221A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52ED321A33E78000B6F27 /* libfli-usb-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb-sys.h"; sourceTree = "<group>"; };
+		59A52ED421A33E78000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52ED521A33E78000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52ED621A33E78000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52ED821A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52ED921A33E78000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52EDA21A33E78000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52EDC21A33E78000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
+		59A52EDD21A33E78000B6F27 /* fli_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_ioctl.h; sourceTree = "<group>"; };
+		59A52EDE21A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52EDF21A33E78000B6F27 /* libfli-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-parport.c"; sourceTree = "<group>"; };
+		59A52EE021A33E78000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52EE221A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
+		59A52EE321A33E78000B6F27 /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libfli.h; sourceTree = "<group>"; };
+		59A52EE421A33E78000B6F27 /* libfli-sys.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-sys.o"; sourceTree = "<group>"; };
+		59A52EE521A33E78000B6F27 /* libfli.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = libfli.o; sourceTree = "<group>"; };
+		59A52EE621A33E78000B6F27 /* libfli.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libfli.a; sourceTree = "<group>"; };
+		59A52EE721A33E78000B6F27 /* docxx.sty */ = {isa = PBXFileReference; lastKnownFileType = text; path = docxx.sty; sourceTree = "<group>"; };
+		59A52EE821A33E78000B6F27 /* libfli-usb.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-usb.o"; sourceTree = "<group>"; };
+		59A52EE921A33E78000B6F27 /* libfli-filter-focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-filter-focuser.c"; sourceTree = "<group>"; };
+		59A52EEA21A33E78000B6F27 /* libfli-camera-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-parport.h"; sourceTree = "<group>"; };
+		59A52EEB21A33E78000B6F27 /* libfli-camera-parport.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera-parport.o"; sourceTree = "<group>"; };
+		59A52EEC21A33E78000B6F27 /* libfli-libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-libfli.h"; sourceTree = "<group>"; };
+		59A52EED21A33E78000B6F27 /* libfli-usb-sys.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-usb-sys.o"; sourceTree = "<group>"; };
+		59A52EEF21A33E78000B6F27 /* libfli-windows.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows.c"; sourceTree = "<group>"; };
+		59A52EF021A33E78000B6F27 /* libfli.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.def; sourceTree = "<group>"; };
+		59A52EF121A33E78000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
+		59A52EF221A33E78000B6F27 /* libfli-windows-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows-parport.c"; sourceTree = "<group>"; };
+		59A52EF321A33E78000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
+		59A52EF421A33E78000B6F27 /* libfli.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcproj; sourceTree = "<group>"; };
+		59A52EF521A33E78000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
+		59A52EF621A33E78000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
+		59A52EF721A33E78000B6F27 /* libfli64.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli64.def; sourceTree = "<group>"; };
+		59A52EF821A33E78000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
+		59A52EF921A33E78000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
+		59A52EFA21A33E78000B6F27 /* libfli.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.rc; sourceTree = "<group>"; };
+		59A52EFB21A33E78000B6F27 /* resource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = resource.h; sourceTree = "<group>"; };
+		59A52EFC21A33E78000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
+		59A52EFD21A33E78000B6F27 /* libfli.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.sln; sourceTree = "<group>"; };
+		59A52EFE21A33E78000B6F27 /* libfli-serial.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-serial.o"; sourceTree = "<group>"; };
+		59A52EFF21A33E78000B6F27 /* libfli-debug.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-debug.o"; sourceTree = "<group>"; };
+		59A52F0021A33E78000B6F27 /* libfli-debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-debug.h"; sourceTree = "<group>"; };
+		59A52F0121A33E78000B6F27 /* libfli-camera-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-usb.c"; sourceTree = "<group>"; };
+		59A52F0221A33E78000B6F27 /* libfli-mem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-mem.h"; sourceTree = "<group>"; };
+		59A52F0321A33E78000B6F27 /* libfli-mem.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-mem.o"; sourceTree = "<group>"; };
+		59A52F0821A3416D000B6F27 /* LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.md; sourceTree = "<group>"; };
+		59A52F0B21A3416D000B6F27 /* libgpusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libgpusb.h; sourceTree = "<group>"; };
+		59A52F0E21A3416D000B6F27 /* libgpusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgpusb.a; sourceTree = "<group>"; };
+		59A52F1121A3416D000B6F27 /* libgpusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgpusb.a; sourceTree = "<group>"; };
+		59A52F1321A3416D000B6F27 /* libgpusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgpusb.a; sourceTree = "<group>"; };
+		59A52F1521A3416D000B6F27 /* libgpusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgpusb.a; sourceTree = "<group>"; };
+		59A52F1721A3416D000B6F27 /* libgpusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgpusb.a; sourceTree = "<group>"; };
+		59A52F1B21A341A0000B6F27 /* LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.md; sourceTree = "<group>"; };
+		59A52F1E21A341A0000B6F27 /* libfcusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libfcusb.h; sourceTree = "<group>"; };
+		59A52F2121A341A0000B6F27 /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libfcusb.a; sourceTree = "<group>"; };
+		59A52F2421A341A0000B6F27 /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libfcusb.a; sourceTree = "<group>"; };
+		59A52F2621A341A0000B6F27 /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libfcusb.a; sourceTree = "<group>"; };
+		59A52F2821A341A0000B6F27 /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libfcusb.a; sourceTree = "<group>"; };
+		59A52F2A21A341A0000B6F27 /* libfcusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libfcusb.a; sourceTree = "<group>"; };
+		59A52F2F21A3423F000B6F27 /* acinclude.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = acinclude.m4; sourceTree = "<group>"; };
+		59A52F3021A3423F000B6F27 /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
+		59A52F3121A3423F000B6F27 /* configure.ac */ = {isa = PBXFileReference; lastKnownFileType = text; path = configure.ac; sourceTree = "<group>"; };
+		59A52F3221A3423F000B6F27 /* INSTALL */ = {isa = PBXFileReference; lastKnownFileType = text; path = INSTALL; sourceTree = "<group>"; };
+		59A52F3321A3423F000B6F27 /* ltmain.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ltmain.sh; sourceTree = "<group>"; };
+		59A52F3421A3423F000B6F27 /* ar-lib */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "ar-lib"; sourceTree = "<group>"; };
+		59A52F3521A3423F000B6F27 /* ChangeLog */ = {isa = PBXFileReference; lastKnownFileType = text; path = ChangeLog; sourceTree = "<group>"; };
+		59A52F3621A3423F000B6F27 /* AUTHORS */ = {isa = PBXFileReference; lastKnownFileType = text; path = AUTHORS; sourceTree = "<group>"; };
+		59A52F3721A3423F000B6F27 /* aminclude.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = aminclude.am; sourceTree = "<group>"; };
+		59A52F3821A3423F000B6F27 /* libdc1394-2.pc.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libdc1394-2.pc.in"; sourceTree = "<group>"; };
+		59A52F3921A3423F000B6F27 /* ax_check_framework.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = ax_check_framework.m4; sourceTree = "<group>"; };
+		59A52F3A21A3423F000B6F27 /* Doxyfile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Doxyfile.in; sourceTree = "<group>"; };
+		59A52F3B21A3423F000B6F27 /* config.guess */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = config.guess; sourceTree = "<group>"; };
+		59A52F3C21A3423F000B6F27 /* depcomp */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = depcomp; sourceTree = "<group>"; };
+		59A52F3D21A3423F000B6F27 /* missing */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = missing; sourceTree = "<group>"; };
+		59A52F3E21A3423F000B6F27 /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
+		59A52F3F21A3423F000B6F27 /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		59A52F4021A3423F000B6F27 /* README-windows */ = {isa = PBXFileReference; lastKnownFileType = text; path = "README-windows"; sourceTree = "<group>"; };
+		59A52F4221A3423F000B6F27 /* log.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = log.c; sourceTree = "<group>"; };
+		59A52F4321A3423F000B6F27 /* capture.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = capture.h; sourceTree = "<group>"; };
+		59A52F4421A3423F000B6F27 /* dc1394.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dc1394.h; sourceTree = "<group>"; };
+		59A52F4521A3423F000B6F27 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
+		59A52F4621A3423F000B6F27 /* conversions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = conversions.h; sourceTree = "<group>"; };
+		59A52F4721A3423F000B6F27 /* control.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = control.h; sourceTree = "<group>"; };
+		59A52F4821A3423F000B6F27 /* internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = internal.h; sourceTree = "<group>"; };
+		59A52F4921A3423F000B6F27 /* bayer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bayer.c; sourceTree = "<group>"; };
+		59A52F4A21A3423F000B6F27 /* macosx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = macosx.c; sourceTree = "<group>"; };
+		59A52F4B21A3423F000B6F27 /* iso.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iso.h; sourceTree = "<group>"; };
+		59A52F4C21A3423F000B6F27 /* offsets.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = offsets.h; sourceTree = "<group>"; };
+		59A52F4D21A3423F000B6F27 /* format7.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = format7.c; sourceTree = "<group>"; };
+		59A52F4E21A3423F000B6F27 /* types.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = types.h; sourceTree = "<group>"; };
+		59A52F4F21A3423F000B6F27 /* register.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = register.c; sourceTree = "<group>"; };
+		59A52F5021A3423F000B6F27 /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
+		59A52F5121A3423F000B6F27 /* control.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = control.c; sourceTree = "<group>"; };
+		59A52F5221A3423F000B6F27 /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		59A52F5321A3423F000B6F27 /* internal.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = internal.c; sourceTree = "<group>"; };
+		59A52F5521A3423F000B6F27 /* firewire-constants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "firewire-constants.h"; sourceTree = "<group>"; };
+		59A52F5621A3423F000B6F27 /* firewire-cdev.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "firewire-cdev.h"; sourceTree = "<group>"; };
+		59A52F5721A3423F000B6F27 /* control.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = control.c; sourceTree = "<group>"; };
+		59A52F5821A3423F000B6F27 /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		59A52F5921A3423F000B6F27 /* capture.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = capture.c; sourceTree = "<group>"; };
+		59A52F5A21A3423F000B6F27 /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		59A52F5B21A3423F000B6F27 /* juju.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = juju.h; sourceTree = "<group>"; };
+		59A52F5D21A3423F000B6F27 /* control.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = control.c; sourceTree = "<group>"; };
+		59A52F5E21A3423F000B6F27 /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		59A52F5F21A3423F000B6F27 /* capture.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = capture.c; sourceTree = "<group>"; };
+		59A52F6021A3423F000B6F27 /* usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = usb.h; sourceTree = "<group>"; };
+		59A52F6121A3423F000B6F27 /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		59A52F6221A3423F000B6F27 /* conversions.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = conversions.c; sourceTree = "<group>"; };
+		59A52F6321A3423F000B6F27 /* capture.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = capture.c; sourceTree = "<group>"; };
+		59A52F6421A3423F000B6F27 /* utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = utils.c; sourceTree = "<group>"; };
+		59A52F6521A3423F000B6F27 /* log.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = log.h; sourceTree = "<group>"; };
+		59A52F6721A3423F000B6F27 /* control.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = control.c; sourceTree = "<group>"; };
+		59A52F6821A3423F000B6F27 /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		59A52F6921A3423F000B6F27 /* capture.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = capture.c; sourceTree = "<group>"; };
+		59A52F6A21A3423F000B6F27 /* macosx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = macosx.h; sourceTree = "<group>"; };
+		59A52F6B21A3423F000B6F27 /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		59A52F6C21A3423F000B6F27 /* iso.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = iso.c; sourceTree = "<group>"; };
+		59A52F6E21A3423F000B6F27 /* capture.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = capture.h; sourceTree = "<group>"; };
+		59A52F6F21A3423F000B6F27 /* kernel-video1394.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "kernel-video1394.h"; sourceTree = "<group>"; };
+		59A52F7021A3423F000B6F27 /* control.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = control.h; sourceTree = "<group>"; };
+		59A52F7121A3423F000B6F27 /* linux.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = linux.h; sourceTree = "<group>"; };
+		59A52F7221A3423F000B6F27 /* control.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = control.c; sourceTree = "<group>"; };
+		59A52F7321A3423F000B6F27 /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		59A52F7421A3423F000B6F27 /* capture.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = capture.c; sourceTree = "<group>"; };
+		59A52F7521A3423F000B6F27 /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		59A52F7621A3423F000B6F27 /* format7.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = format7.h; sourceTree = "<group>"; };
+		59A52F7721A3423F000B6F27 /* enumeration.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = enumeration.c; sourceTree = "<group>"; };
+		59A52F7821A3423F000B6F27 /* macosx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = macosx.h; sourceTree = "<group>"; };
+		59A52F7921A3423F000B6F27 /* video.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = video.h; sourceTree = "<group>"; };
+		59A52F7B21A3423F000B6F27 /* platform_windows.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = platform_windows.h; sourceTree = "<group>"; };
+		59A52F7C21A3423F000B6F27 /* control.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = control.c; sourceTree = "<group>"; };
+		59A52F7D21A3423F000B6F27 /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		59A52F7E21A3423F000B6F27 /* capture.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = capture.c; sourceTree = "<group>"; };
+		59A52F7F21A3423F000B6F27 /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		59A52F8021A3423F000B6F27 /* register.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = register.h; sourceTree = "<group>"; };
+		59A52F8121A3423F000B6F27 /* platform.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = platform.h; sourceTree = "<group>"; };
+		59A52F8221A3423F000B6F27 /* .cvsignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .cvsignore; sourceTree = "<group>"; };
+		59A52F8421A3423F000B6F27 /* basler_sff.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = basler_sff.h; sourceTree = "<group>"; };
+		59A52F8521A3423F000B6F27 /* pixelink.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = pixelink.c; sourceTree = "<group>"; };
+		59A52F8621A3423F000B6F27 /* avt.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = avt.c; sourceTree = "<group>"; };
+		59A52F8721A3423F000B6F27 /* basler_sff_registry.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = basler_sff_registry.c; sourceTree = "<group>"; };
+		59A52F8821A3423F000B6F27 /* basler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = basler.c; sourceTree = "<group>"; };
+		59A52F8921A3423F000B6F27 /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		59A52F8A21A3423F000B6F27 /* avt.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = avt.h; sourceTree = "<group>"; };
+		59A52F8B21A3423F000B6F27 /* pixelink.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pixelink.h; sourceTree = "<group>"; };
+		59A52F8C21A3423F000B6F27 /* basler_sff_registry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = basler_sff_registry.h; sourceTree = "<group>"; };
+		59A52F8D21A3423F000B6F27 /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		59A52F8E21A3423F000B6F27 /* basler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = basler.h; sourceTree = "<group>"; };
+		59A52F8F21A3423F000B6F27 /* config.sub */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = config.sub; sourceTree = "<group>"; };
+		59A52F9021A3423F000B6F27 /* COPYING */ = {isa = PBXFileReference; lastKnownFileType = text; path = COPYING; sourceTree = "<group>"; };
+		59A52F9121A3423F000B6F27 /* compile */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = compile; sourceTree = "<group>"; };
+		59A52F9221A3423F000B6F27 /* NEWS */ = {isa = PBXFileReference; lastKnownFileType = text; path = NEWS; sourceTree = "<group>"; };
+		59A52F9321A3423F000B6F27 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		59A52F9521A3423F000B6F27 /* grab_gray_image.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = grab_gray_image.1; sourceTree = "<group>"; };
+		59A52F9621A3423F000B6F27 /* affine.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = affine.c; sourceTree = "<group>"; };
+		59A52F9721A3423F000B6F27 /* basler_sff_extended_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = basler_sff_extended_data.c; sourceTree = "<group>"; };
+		59A52F9821A3423F000B6F27 /* dc1394_vloopback.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = dc1394_vloopback.1; sourceTree = "<group>"; };
+		59A52F9921A3423F000B6F27 /* ladybug5capture.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ladybug5capture.c; sourceTree = "<group>"; };
+		59A52F9A21A3423F000B6F27 /* FindDC1394.cmake */ = {isa = PBXFileReference; lastKnownFileType = text; path = FindDC1394.cmake; sourceTree = "<group>"; };
+		59A52F9B21A3423F000B6F27 /* dc1394_multiview.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = dc1394_multiview.1; sourceTree = "<group>"; };
+		59A52F9C21A3423F000B6F27 /* dc1394_reset_bus.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = dc1394_reset_bus.1; sourceTree = "<group>"; };
+		59A52F9D21A3423F000B6F27 /* grab_color_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = grab_color_image.c; sourceTree = "<group>"; };
+		59A52F9E21A3423F000B6F27 /* grab_partial_pvn.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = grab_partial_pvn.c; sourceTree = "<group>"; };
+		59A52F9F21A3423F000B6F27 /* grab_partial_image.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = grab_partial_image.1; sourceTree = "<group>"; };
+		59A52FA021A3423F000B6F27 /* affine.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = affine.h; sourceTree = "<group>"; };
+		59A52FA121A3423F000B6F27 /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		59A52FA221A3423F000B6F27 /* grab_gray_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = grab_gray_image.c; sourceTree = "<group>"; };
+		59A52FA321A3423F000B6F27 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		59A52FA421A3423F000B6F27 /* basler_sff_info.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = basler_sff_info.c; sourceTree = "<group>"; };
+		59A52FA521A3423F000B6F27 /* dc1394_vloopback.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dc1394_vloopback.c; sourceTree = "<group>"; };
+		59A52FA621A3423F000B6F27 /* grab_color_image2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = grab_color_image2.c; sourceTree = "<group>"; };
+		59A52FA721A3423F000B6F27 /* dc1394_reset_bus.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dc1394_reset_bus.c; sourceTree = "<group>"; };
+		59A52FA821A3423F000B6F27 /* ladybug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ladybug.c; sourceTree = "<group>"; };
+		59A52FA921A3423F000B6F27 /* helloworld.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = helloworld.c; sourceTree = "<group>"; };
+		59A52FAA21A3423F000B6F27 /* dc1394_multiview.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dc1394_multiview.c; sourceTree = "<group>"; };
+		59A52FAB21A3423F000B6F27 /* dc1394_iso.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dc1394_iso.c; sourceTree = "<group>"; };
+		59A52FAC21A3423F000B6F27 /* grab_partial_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = grab_partial_image.c; sourceTree = "<group>"; };
+		59A52FAD21A3423F000B6F27 /* .cvsignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .cvsignore; sourceTree = "<group>"; };
+		59A52FAE21A3423F000B6F27 /* grab_color_image.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = grab_color_image.1; sourceTree = "<group>"; };
+		59A52FAF21A3423F000B6F27 /* INSTALL-windows */ = {isa = PBXFileReference; lastKnownFileType = text; path = "INSTALL-windows"; sourceTree = "<group>"; };
+		59A52FB121A3423F000B6F27 /* ltversion.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = ltversion.m4; sourceTree = "<group>"; };
+		59A52FB221A3423F000B6F27 /* libtool.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = libtool.m4; sourceTree = "<group>"; };
+		59A52FB321A3423F000B6F27 /* ltoptions.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = ltoptions.m4; sourceTree = "<group>"; };
+		59A52FB421A3423F000B6F27 /* ltsugar.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = ltsugar.m4; sourceTree = "<group>"; };
+		59A52FB521A3423F000B6F27 /* lt~obsolete.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = "lt~obsolete.m4"; sourceTree = "<group>"; };
+		59A52FB621A3423F000B6F27 /* .cvsignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .cvsignore; sourceTree = "<group>"; };
+		59A52FBB21A3430F000B6F27 /* QHY21.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY21.HEX; sourceTree = "<group>"; };
+		59A52FBC21A3430F000B6F27 /* QHY290.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY290.img; sourceTree = "<group>"; };
+		59A52FBD21A3430F000B6F27 /* QHY247.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY247.img; sourceTree = "<group>"; };
+		59A52FBE21A3430F000B6F27 /* QHY20.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY20.HEX; sourceTree = "<group>"; };
+		59A52FBF21A3430F000B6F27 /* QHY22.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY22.HEX; sourceTree = "<group>"; };
+		59A52FC021A3430F000B6F27 /* QHY16200A.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY16200A.HEX; sourceTree = "<group>"; };
+		59A52FC121A3430F000B6F27 /* QHY23.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY23.HEX; sourceTree = "<group>"; };
+		59A52FC221A3430F000B6F27 /* QHY2E.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY2E.HEX; sourceTree = "<group>"; };
+		59A52FC321A3430F000B6F27 /* QHY27.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY27.HEX; sourceTree = "<group>"; };
+		59A52FC421A3430F000B6F27 /* IMG50.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IMG50.HEX; sourceTree = "<group>"; };
+		59A52FC521A3430F000B6F27 /* IC16200A.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IC16200A.HEX; sourceTree = "<group>"; };
+		59A52FC621A3430F000B6F27 /* QHY5III174.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III174.img; sourceTree = "<group>"; };
+		59A52FC721A3430F000B6F27 /* QHY8.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY8.HEX; sourceTree = "<group>"; };
+		59A52FC821A3430F000B6F27 /* IMG2P.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IMG2P.HEX; sourceTree = "<group>"; };
+		59A52FC921A3430F000B6F27 /* QHY224.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY224.img; sourceTree = "<group>"; };
+		59A52FCA21A3430F000B6F27 /* QHY5II.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY5II.HEX; sourceTree = "<group>"; };
+		59A52FCB21A3430F000B6F27 /* QHY178.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY178.img; sourceTree = "<group>"; };
+		59A52FCC21A3430F000B6F27 /* IMG2S.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IMG2S.HEX; sourceTree = "<group>"; };
+		59A52FCD21A3430F000B6F27 /* IC16803.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IC16803.HEX; sourceTree = "<group>"; };
+		59A52FCE21A3430F000B6F27 /* miniCam5.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = miniCam5.HEX; sourceTree = "<group>"; };
+		59A52FCF21A3430F000B6F27 /* IMG0H.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IMG0H.HEX; sourceTree = "<group>"; };
+		59A52FD021A3430F000B6F27 /* QHY183.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY183.img; sourceTree = "<group>"; };
+		59A52FD121A3430F000B6F27 /* QHY9S.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY9S.HEX; sourceTree = "<group>"; };
+		59A52FD221A3430F000B6F27 /* QHY168.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY168.img; sourceTree = "<group>"; };
+		59A52FD321A3430F000B6F27 /* QHY695A.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY695A.HEX; sourceTree = "<group>"; };
+		59A52FD421A3430F000B6F27 /* QHY16000.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY16000.HEX; sourceTree = "<group>"; };
+		59A52FD521A3430F000B6F27 /* QHY165.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY165.img; sourceTree = "<group>"; };
+		59A52FD621A3430F000B6F27 /* QHY8M.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY8M.HEX; sourceTree = "<group>"; };
+		59A52FD721A3430F000B6F27 /* QHY367.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY367.img; sourceTree = "<group>"; };
+		59A52FD821A3430F000B6F27 /* QHY5III290.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III290.img; sourceTree = "<group>"; };
+		59A52FD921A3430F000B6F27 /* QHY8L.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY8L.HEX; sourceTree = "<group>"; };
+		59A52FDA21A3430F000B6F27 /* QHY174.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY174.img; sourceTree = "<group>"; };
+		59A52FDB21A3430F000B6F27 /* QHY163.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY163.img; sourceTree = "<group>"; };
+		59A52FDC21A3430F000B6F27 /* QHY90A.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY90A.HEX; sourceTree = "<group>"; };
+		59A52FDD21A3430F000B6F27 /* QHY814A.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY814A.HEX; sourceTree = "<group>"; };
+		59A52FDE21A3430F000B6F27 /* QHY8PRO.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY8PRO.HEX; sourceTree = "<group>"; };
+		59A52FDF21A3430F000B6F27 /* IC8300.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IC8300.HEX; sourceTree = "<group>"; };
+		59A52FE021A3430F000B6F27 /* QHY28.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY28.HEX; sourceTree = "<group>"; };
+		59A52FE121A3430F000B6F27 /* QHY5III178.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III178.img; sourceTree = "<group>"; };
+		59A52FE221A3430F000B6F27 /* QHY5.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY5.HEX; sourceTree = "<group>"; };
+		59A52FE321A3430F000B6F27 /* QHY5LOADER.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY5LOADER.HEX; sourceTree = "<group>"; };
+		59A52FE421A3430F000B6F27 /* QHY160002AD.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY160002AD.HEX; sourceTree = "<group>"; };
+		59A52FE521A3430F000B6F27 /* IC90A.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IC90A.HEX; sourceTree = "<group>"; };
+		59A52FE621A3430F000B6F27 /* QHY15.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY15.HEX; sourceTree = "<group>"; };
+		59A52FE721A3430F000B6F27 /* QHY29.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY29.HEX; sourceTree = "<group>"; };
+		59A52FE821A3430F000B6F27 /* QHY6.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY6.HEX; sourceTree = "<group>"; };
+		59A52FE921A3430F000B6F27 /* QHY5III224.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III224.img; sourceTree = "<group>"; };
+		59A52FEA21A3430F000B6F27 /* POLEMASTER.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = POLEMASTER.HEX; sourceTree = "<group>"; };
+		59A52FEB21A3430F000B6F27 /* QHY7.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY7.HEX; sourceTree = "<group>"; };
+		59A52FEC21A3430F000B6F27 /* QHY5III185.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III185.img; sourceTree = "<group>"; };
+		59A52FED21A3430F000B6F27 /* QHY16.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY16.HEX; sourceTree = "<group>"; };
+		59A52FEE21A3430F000B6F27 /* QHY12.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY12.HEX; sourceTree = "<group>"; };
+		59A52FEF21A3430F000B6F27 /* QHY2PRO.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY2PRO.HEX; sourceTree = "<group>"; };
+		59A52FF021A3430F000B6F27 /* QHY2.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY2.HEX; sourceTree = "<group>"; };
+		59A52FF121A3430F000B6F27 /* QHY11.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY11.HEX; sourceTree = "<group>"; };
+		59A52FF221A3430F000B6F27 /* QHY128.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY128.img; sourceTree = "<group>"; };
+		59A52FF321A3430F000B6F27 /* QHY10.HEX */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = QHY10.HEX; sourceTree = "<group>"; };
+		59A52FF421A3430F000B6F27 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		59A52FF621A3430F000B6F27 /* qhyccderr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = qhyccderr.h; sourceTree = "<group>"; };
+		59A52FF721A3430F000B6F27 /* log4z.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = log4z.h; sourceTree = "<group>"; };
+		59A52FF821A3430F000B6F27 /* qhydevice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = qhydevice.h; sourceTree = "<group>"; };
+		59A52FF921A3430F000B6F27 /* qhybase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = qhybase.h; sourceTree = "<group>"; };
+		59A52FFA21A3430F000B6F27 /* qhycam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = qhycam.h; sourceTree = "<group>"; };
+		59A52FFB21A3430F000B6F27 /* qhyccdstruct.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = qhyccdstruct.h; sourceTree = "<group>"; };
+		59A52FFC21A3430F000B6F27 /* qhyccdcamdef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = qhyccdcamdef.h; sourceTree = "<group>"; };
+		59A52FFD21A3430F000B6F27 /* debugview.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = debugview.h; sourceTree = "<group>"; };
+		59A52FFE21A3430F000B6F27 /* unlockimagequeue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = unlockimagequeue.h; sourceTree = "<group>"; };
+		59A52FFF21A3430F000B6F27 /* qhyccd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = qhyccd.h; sourceTree = "<group>"; };
+		59A5300021A3430F000B6F27 /* cmosdll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cmosdll.h; sourceTree = "<group>"; };
+		59A5300121A3430F000B6F27 /* RELEASE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
+		59A5300221A3430F000B6F27 /* 85-qhyccd.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "85-qhyccd.rules"; sourceTree = "<group>"; };
+		59A5300521A3430F000B6F27 /* libqhy.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhy.a; sourceTree = "<group>"; };
+		59A5300721A34310000B6F27 /* libqhy.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhy.a; sourceTree = "<group>"; };
+		59A5300921A34310000B6F27 /* libqhy.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhy.a; sourceTree = "<group>"; };
+		59A5300B21A34310000B6F27 /* libqhy.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhy.a; sourceTree = "<group>"; };
+		59A5300D21A34310000B6F27 /* libqhy.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhy.a; sourceTree = "<group>"; };
+		59A5301021A34943000B6F27 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		59A5301421A3514E000B6F27 /* libatik.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libatik.h; sourceTree = "<group>"; };
+		59A5301721A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
+		59A5301A21A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
+		59A5301C21A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
+		59A5301E21A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
+		59A5302021A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
+		59A5302321A351C6000B6F27 /* libdc1394.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libdc1394.a; path = ../../../../build/lib/libdc1394.a; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
@@ -2319,12 +2936,8 @@
 		59F654691EE47388007B8C93 /* indigo_ccd_qhy_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_qhy_main.c; sourceTree = "<group>"; };
 		59F6546A1EE47388007B8C93 /* indigo_ccd_qhy.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qhy.cpp; sourceTree = "<group>"; };
 		59F6546B1EE47388007B8C93 /* indigo_ccd_qhy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy.h; sourceTree = "<group>"; };
-		59F654701EE47484007B8C93 /* libqhy.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libqhy.a; path = lib/mac/libqhy.a; sourceTree = "<group>"; };
-		59F654711EE47484007B8C93 /* qhyccd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = qhyccd.h; path = include/qhyccd.h; sourceTree = "<group>"; };
 		59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libhidapi.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		59F756191DCE4F83002CFC82 /* libusb.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libusb.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		59FC2EB1210CA58400730343 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgxccd.a; path = lib/macOS/libgxccd.a; sourceTree = "<group>"; };
-		59FC2EB3210CA58C00730343 /* gxccd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gxccd.h; path = include/gxccd.h; sourceTree = "<group>"; };
 		59FC2EB5210CA76100730343 /* indigo_ccd_mi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_mi_main.c; sourceTree = "<group>"; };
 		59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_mi.c; sourceTree = "<group>"; };
 		59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_mi.h; sourceTree = "<group>"; };
@@ -2338,15 +2951,11 @@
 		59FE34692187B5FD004FB5D4 /* indigo_guider_gpusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_guider_gpusb.h; sourceTree = "<group>"; };
 		59FE346A2187B5FD004FB5D4 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59FE346B2187B5FD004FB5D4 /* indigo_guider_gpusb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_gpusb.c; sourceTree = "<group>"; };
-		59FE34792187B7CF004FB5D4 /* libgpusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = libgpusb.h; path = include/libgpusb/libgpusb.h; sourceTree = "<group>"; };
-		59FE347A2187B7CF004FB5D4 /* libgpusb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgpusb.a; path = lib/macOS/libgpusb.a; sourceTree = "<group>"; };
 		59FE347E21886A17004FB5D4 /* indigo_focuser_lakeside.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lakeside.c; sourceTree = "<group>"; };
 		59FE347F21886A17004FB5D4 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59FE348021886A17004FB5D4 /* indigo_focuser_lakeside.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_lakeside.h; sourceTree = "<group>"; };
 		59FE348121886A17004FB5D4 /* indigo_focuser_lakeside_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lakeside_main.c; sourceTree = "<group>"; };
 		59FE348321886A17004FB5D4 /* lakeside_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = lakeside_simulator.ino; sourceTree = "<group>"; };
-		59FFD0D02128604200C7355C /* hidapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hidapi.h; path = hidapi/hidapi/hidapi.h; sourceTree = "<group>"; };
-		59FFD0D12128604200C7355C /* hid.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = hid.c; path = hidapi/mac/hid.c; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
 		9D3BBBA521147EB500800FB0 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -2915,20 +3524,6 @@
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
 		9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_iidc.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_iidc.h; sourceTree = "<group>"; };
-		9D976FDA1DD0C69D00782B32 /* dc1394.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dc1394.h; path = build/include/dc1394/dc1394.h; sourceTree = SOURCE_ROOT; };
-		9D976FDB1DD0C69D00782B32 /* libdc1394.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libdc1394.a; path = build/lib/libdc1394.a; sourceTree = SOURCE_ROOT; };
-		9D976FDE1DD0C6F200782B32 /* types.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = types.h; path = build/include/dc1394/types.h; sourceTree = SOURCE_ROOT; };
-		9D976FDF1DD0C70A00782B32 /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = camera.h; path = build/include/dc1394/camera.h; sourceTree = SOURCE_ROOT; };
-		9D976FE01DD0C70A00782B32 /* capture.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = capture.h; path = build/include/dc1394/capture.h; sourceTree = SOURCE_ROOT; };
-		9D976FE11DD0C70A00782B32 /* control.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = control.h; path = build/include/dc1394/control.h; sourceTree = SOURCE_ROOT; };
-		9D976FE21DD0C70A00782B32 /* conversions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = conversions.h; path = build/include/dc1394/conversions.h; sourceTree = SOURCE_ROOT; };
-		9D976FE31DD0C70A00782B32 /* format7.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = format7.h; path = build/include/dc1394/format7.h; sourceTree = SOURCE_ROOT; };
-		9D976FE41DD0C70A00782B32 /* iso.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = iso.h; path = build/include/dc1394/iso.h; sourceTree = SOURCE_ROOT; };
-		9D976FE51DD0C70A00782B32 /* log.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = log.h; path = build/include/dc1394/log.h; sourceTree = SOURCE_ROOT; };
-		9D976FE61DD0C70A00782B32 /* macosx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = macosx.h; path = build/include/dc1394/macosx.h; sourceTree = SOURCE_ROOT; };
-		9D976FE71DD0C70A00782B32 /* register.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = register.h; path = build/include/dc1394/register.h; sourceTree = SOURCE_ROOT; };
-		9D976FE81DD0C70A00782B32 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = utils.h; path = build/include/dc1394/utils.h; sourceTree = SOURCE_ROOT; };
-		9D976FE91DD0C70A00782B32 /* video.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = video.h; path = build/include/dc1394/video.h; sourceTree = SOURCE_ROOT; };
 		9D97F8061D9A89ED00582EAF /* indigo_server_tcp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_server_tcp.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D97F8071D9A89ED00582EAF /* indigo_server_tcp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_server_tcp.h; sourceTree = "<group>"; };
 		9D97F8171D9A8A1900582EAF /* indigo_server */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_server; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3041,15 +3636,18 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				59FC2EB2210CA58500730343 /* libgxccd.a in Frameworks */,
-				59F654731EE4755F007B8C93 /* libqhy.a in Frameworks */,
-				5992F7B71E1EC8EF0035242E /* libfli.a in Frameworks */,
+				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
+				59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */,
+				59A52D6621A3361D000B6F27 /* libgxccd.a in Frameworks */,
 				59D9681A21A2FE460069A64C /* libUSB2ST4Conv.a in Frameworks */,
+				59A5302421A351DF000B6F27 /* libdc1394.a in Frameworks */,
+				59A5302121A35159000B6F27 /* libatik.a in Frameworks */,
 				59D9683021A2FE660069A64C /* libEFWFilter.a in Frameworks */,
+				59A52DF021A33E44000B6F27 /* libfli.a in Frameworks */,
+				59A5302521A35264000B6F27 /* libqhy.a in Frameworks */,
 				599A63D51DF3670100ABC827 /* libjpeg.a in Frameworks */,
 				59D9684321A2FFD10069A64C /* libdsusb.a in Frameworks */,
 				59D9680321A2FDF00069A64C /* libASICamera2.a in Frameworks */,
-				9D976FDD1DD0C69D00782B32 /* libdc1394.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3085,9 +3683,7 @@
 			files = (
 				59292E5720D4224F0042E939 /* libcurl.tbd in Frameworks */,
 				59986D751F9BA10900D68DC1 /* libqsiapi.a in Frameworks */,
-				59FE347B2187B7CF004FB5D4 /* libgpusb.a in Frameworks */,
 				590B59D71F79A68100086FD2 /* libnovas.a in Frameworks */,
-				5981C8E11DC291C100C7705F /* libfcusb.a in Frameworks */,
 				599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */,
 				59F756241DCE501F002CFC82 /* libhidapi.dylib in Frameworks */,
 				59F756251DCE5022002CFC82 /* libusb.dylib in Frameworks */,
@@ -3379,8 +3975,6 @@
 		5911F7AB1F02E10B0053F3CA /* ccd_dsi */ = {
 			isa = PBXGroup;
 			children = (
-				59D96DBD21A30A740069A64C /* 99-meadedsi.rules */,
-				59D96DBE21A30A740069A64C /* meade-deepskyimager.hex */,
 				5911F7B21F02E1330053F3CA /* README.md */,
 				5911F7AE1F02E1330053F3CA /* indigo_ccd_dsi.h */,
 				5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */,
@@ -3388,6 +3982,8 @@
 				5911F7AF1F02E1330053F3CA /* libdsi_firmware.h */,
 				5911F7B01F02E1330053F3CA /* libdsi.c */,
 				5911F7B11F02E1330053F3CA /* libdsi.h */,
+				59D96DBD21A30A740069A64C /* 99-meadedsi.rules */,
+				59D96DBE21A30A740069A64C /* meade-deepskyimager.hex */,
 			);
 			path = ccd_dsi;
 			sourceTree = "<group>";
@@ -3415,6 +4011,7 @@
 				591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */,
 				591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */,
 				591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */,
+				59A52DF221A33E5C000B6F27 /* externals */,
 			);
 			path = focuser_fli;
 			sourceTree = "<group>";
@@ -3558,6 +4155,7 @@
 		593CFE3F1DFC89F5003B63D4 /* wheel_atik */ = {
 			isa = PBXGroup;
 			children = (
+				59A5301121A3514E000B6F27 /* bin_externals */,
 				594107C91EC8E50100C44F92 /* README.md */,
 				593CFE421DFC8A12003B63D4 /* indigo_wheel_atik.h */,
 				593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */,
@@ -3726,18 +4324,9 @@
 		5981C8DA1DC2918300C7705F /* bin_externals */ = {
 			isa = PBXGroup;
 			children = (
-				5981C8DB1DC2919100C7705F /* libfcusb */,
+				59A52F1A21A341A0000B6F27 /* libfcusb */,
 			);
 			path = bin_externals;
-			sourceTree = "<group>";
-		};
-		5981C8DB1DC2919100C7705F /* libfcusb */ = {
-			isa = PBXGroup;
-			children = (
-				5981C8DE1DC291AF00C7705F /* libfcusb.a */,
-				5981C8DC1DC291A500C7705F /* libfcusb.h */,
-			);
-			path = libfcusb;
 			sourceTree = "<group>";
 		};
 		5992F7B01E1EC84B0035242E /* ccd_fli */ = {
@@ -3748,18 +4337,9 @@
 				5992F7B31E1EC8A20035242E /* indigo_ccd_fli.h */,
 				5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */,
 				5992F7B11E1EC8A20035242E /* indigo_ccd_fli_main.c */,
-				5992F7B51E1EC8B60035242E /* externals */,
+				59A52D6721A33E34000B6F27 /* externals */,
 			);
 			path = ccd_fli;
-			sourceTree = "<group>";
-		};
-		5992F7B51E1EC8B60035242E /* externals */ = {
-			isa = PBXGroup;
-			children = (
-				5992F7B81E1EC9030035242E /* libfli.h */,
-				5992F7B61E1EC8EF0035242E /* libfli.a */,
-			);
-			name = externals;
 			sourceTree = "<group>";
 		};
 		5992F7B91E1EC9270035242E /* wheel_fli */ = {
@@ -3769,6 +4349,7 @@
 				5992F7BA1E1EC9390035242E /* indigo_wheel_fli.h */,
 				5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */,
 				5992F7BB1E1EC9580035242E /* indigo_wheel_fli_main.c */,
+				59A52E7B21A33E78000B6F27 /* externals */,
 			);
 			path = wheel_fli;
 			sourceTree = "<group>";
@@ -3865,6 +4446,1579 @@
 				599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */,
 			);
 			path = nstep_simulator;
+			sourceTree = "<group>";
+		};
+		59A52D2A21A330FB000B6F27 /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D2B21A330FB000B6F27 /* sbigudrv */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		59A52D2B21A330FB000B6F27 /* sbigudrv */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D2C21A330FB000B6F27 /* udev */,
+				59A52D2E21A330FB000B6F27 /* firmware */,
+				59A52D3421A330FB000B6F27 /* CMakeLists.txt */,
+				59A52D3521A330FB000B6F27 /* app */,
+				59A52D3E21A330FB000B6F27 /* include */,
+				59A52D4021A330FB000B6F27 /* libs */,
+				59A52D5021A330FB000B6F27 /* doc */,
+			);
+			path = sbigudrv;
+			sourceTree = "<group>";
+		};
+		59A52D2C21A330FB000B6F27 /* udev */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D2D21A330FB000B6F27 /* 51-sbig-debian.rules */,
+			);
+			path = udev;
+			sourceTree = "<group>";
+		};
+		59A52D2E21A330FB000B6F27 /* firmware */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D2F21A330FB000B6F27 /* sbigucam.hex */,
+				59A52D3021A330FB000B6F27 /* sbigpcam.hex */,
+				59A52D3121A330FB000B6F27 /* sbigfcam.hex */,
+				59A52D3221A330FB000B6F27 /* stfga.bin */,
+				59A52D3321A330FB000B6F27 /* sbiglcam.hex */,
+			);
+			path = firmware;
+			sourceTree = "<group>";
+		};
+		59A52D3521A330FB000B6F27 /* app */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D3621A330FB000B6F27 /* lpardrv.h */,
+				59A52D3721A330FB000B6F27 /* testmain.cpp */,
+				59A52D3821A330FB000B6F27 /* Makefile */,
+				59A52D3921A330FB000B6F27 /* csbigimg.cpp */,
+				59A52D3A21A330FB000B6F27 /* csbigcam.cpp */,
+				59A52D3B21A330FB000B6F27 /* csbigimg.h */,
+				59A52D3C21A330FB000B6F27 /* sbigudrv.h */,
+				59A52D3D21A330FB000B6F27 /* csbigcam.h */,
+			);
+			path = app;
+			sourceTree = "<group>";
+		};
+		59A52D3E21A330FB000B6F27 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D3F21A330FB000B6F27 /* sbigudrv.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59A52D4021A330FB000B6F27 /* libs */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D5421A335B6000B6F27 /* Linux */,
+			);
+			path = libs;
+			sourceTree = "<group>";
+		};
+		59A52D4421A330FB000B6F27 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D4521A330FB000B6F27 /* libsbigudrv.a */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		59A52D4721A330FB000B6F27 /* armhf */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D4821A330FB000B6F27 /* libsbigudrv.a */,
+			);
+			path = armhf;
+			sourceTree = "<group>";
+		};
+		59A52D4A21A330FB000B6F27 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D4B21A330FB000B6F27 /* libsbigudrv.a */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		59A52D4D21A330FB000B6F27 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D4E21A330FB000B6F27 /* libsbigudrv.a */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		59A52D5021A330FB000B6F27 /* doc */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D5121A330FB000B6F27 /* README.txt */,
+				59A52D5221A330FB000B6F27 /* SBIGUDrv.pdf */,
+			);
+			path = doc;
+			sourceTree = "<group>";
+		};
+		59A52D5421A335B6000B6F27 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D4D21A330FB000B6F27 /* x64 */,
+				59A52D4A21A330FB000B6F27 /* x86 */,
+				59A52D4721A330FB000B6F27 /* armhf */,
+				59A52D4421A330FB000B6F27 /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		59A52D5521A3360B000B6F27 /* libgxccd */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D5621A3360B000B6F27 /* include */,
+				59A52D5821A3360B000B6F27 /* README */,
+				59A52D5921A3360B000B6F27 /* lib */,
+			);
+			path = libgxccd;
+			sourceTree = "<group>";
+		};
+		59A52D5621A3360B000B6F27 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D5721A3360B000B6F27 /* gxccd.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59A52D5921A3360B000B6F27 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D5A21A3360B000B6F27 /* macOS */,
+				59A52D5C21A3360B000B6F27 /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		59A52D5A21A3360B000B6F27 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D5B21A3360B000B6F27 /* libgxccd.a */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		59A52D5C21A3360B000B6F27 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D5D21A3360B000B6F27 /* x64 */,
+				59A52D5F21A3360B000B6F27 /* x86 */,
+				59A52D6121A3360B000B6F27 /* arm */,
+				59A52D6321A3360B000B6F27 /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		59A52D5D21A3360B000B6F27 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D5E21A3360B000B6F27 /* libgxccd.a */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		59A52D5F21A3360B000B6F27 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D6021A3360B000B6F27 /* libgxccd.a */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		59A52D6121A3360B000B6F27 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D6221A3360B000B6F27 /* libgxccd.a */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		59A52D6321A3360B000B6F27 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D6421A3360B000B6F27 /* libgxccd.a */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		59A52D6721A33E34000B6F27 /* externals */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D6821A33E34000B6F27 /* fliusb-1.3 */,
+				59A52D7121A33E34000B6F27 /* libfli-1.104 */,
+				59A52DAB21A33E34000B6F27 /* libfli-1.999.1-180223 */,
+			);
+			path = externals;
+			sourceTree = "<group>";
+		};
+		59A52D6821A33E34000B6F27 /* fliusb-1.3 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D6921A33E34000B6F27 /* Makefile.dkms */,
+				59A52D6A21A33E34000B6F27 /* dkms */,
+				59A52D6C21A33E34000B6F27 /* fliusb_ioctl.h */,
+				59A52D6D21A33E34000B6F27 /* Makefile */,
+				59A52D6E21A33E34000B6F27 /* fliusb.c */,
+				59A52D6F21A33E34000B6F27 /* README */,
+				59A52D7021A33E34000B6F27 /* fliusb.h */,
+			);
+			path = "fliusb-1.3";
+			sourceTree = "<group>";
+		};
+		59A52D6A21A33E34000B6F27 /* dkms */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D6B21A33E34000B6F27 /* dkms.conf */,
+			);
+			path = dkms;
+			sourceTree = "<group>";
+		};
+		59A52D7121A33E34000B6F27 /* libfli-1.104 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D7221A33E34000B6F27 /* libfli.c */,
+				59A52D7321A33E34000B6F27 /* libfli-raw.c */,
+				59A52D7421A33E34000B6F27 /* libfli-camera.h */,
+				59A52D7521A33E34000B6F27 /* libfli-camera-parport.c */,
+				59A52D7621A33E34000B6F27 /* libfli-filter-focuser.h */,
+				59A52D7721A33E34000B6F27 /* libfli.dxx */,
+				59A52D7821A33E34000B6F27 /* Makefile */,
+				59A52D7921A33E34000B6F27 /* libfli-mem.c */,
+				59A52D7A21A33E34000B6F27 /* libfli-camera-usb.h */,
+				59A52D7B21A33E34000B6F27 /* libfli-camera.c */,
+				59A52D7C21A33E34000B6F27 /* libfli-raw.h */,
+				59A52D7D21A33E34000B6F27 /* unix */,
+				59A52D9121A33E34000B6F27 /* libfli.h */,
+				59A52D9221A33E34000B6F27 /* docxx.sty */,
+				59A52D9321A33E34000B6F27 /* libfli-filter-focuser.c */,
+				59A52D9421A33E34000B6F27 /* libfli-camera-parport.h */,
+				59A52D9521A33E34000B6F27 /* doc */,
+				59A52D9721A33E34000B6F27 /* libfli-libfli.h */,
+				59A52D9821A33E34000B6F27 /* windows */,
+				59A52DA821A33E34000B6F27 /* libfli-debug.h */,
+				59A52DA921A33E34000B6F27 /* libfli-camera-usb.c */,
+				59A52DAA21A33E34000B6F27 /* libfli-mem.h */,
+			);
+			path = "libfli-1.104";
+			sourceTree = "<group>";
+		};
+		59A52D7D21A33E34000B6F27 /* unix */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D7E21A33E34000B6F27 /* libfli-sys.c */,
+				59A52D7F21A33E34000B6F27 /* libfli-usb.c */,
+				59A52D8021A33E34000B6F27 /* osx */,
+				59A52D8321A33E34000B6F27 /* libfli-debug.c */,
+				59A52D8421A33E34000B6F27 /* libfli-serial.c */,
+				59A52D8521A33E34000B6F27 /* libfli-parport.h */,
+				59A52D8621A33E34000B6F27 /* bsd */,
+				59A52D8821A33E34000B6F27 /* libfli-sys.h */,
+				59A52D8921A33E34000B6F27 /* libfli-usb.h */,
+				59A52D8A21A33E34000B6F27 /* linux */,
+				59A52D9021A33E34000B6F27 /* libfli-serial.h */,
+			);
+			path = unix;
+			sourceTree = "<group>";
+		};
+		59A52D8021A33E34000B6F27 /* osx */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D8121A33E34000B6F27 /* libfli-usb-sys.c */,
+				59A52D8221A33E34000B6F27 /* libfli-usb-sys.h */,
+			);
+			path = osx;
+			sourceTree = "<group>";
+		};
+		59A52D8621A33E34000B6F27 /* bsd */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D8721A33E34000B6F27 /* libfli-usb-sys.c */,
+			);
+			path = bsd;
+			sourceTree = "<group>";
+		};
+		59A52D8A21A33E34000B6F27 /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D8B21A33E34000B6F27 /* fliusb_ioctl.h */,
+				59A52D8C21A33E34000B6F27 /* fli_ioctl.h */,
+				59A52D8D21A33E34000B6F27 /* libfli-usb-sys.c */,
+				59A52D8E21A33E34000B6F27 /* libfli-parport.c */,
+				59A52D8F21A33E34000B6F27 /* fli-usb.h */,
+			);
+			path = linux;
+			sourceTree = "<group>";
+		};
+		59A52D9521A33E34000B6F27 /* doc */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D9621A33E34000B6F27 /* FLI_SDK_Documentation.pdf */,
+			);
+			path = doc;
+			sourceTree = "<group>";
+		};
+		59A52D9821A33E34000B6F27 /* windows */ = {
+			isa = PBXGroup;
+			children = (
+				59A52D9921A33E34000B6F27 /* libfli-windows.c */,
+				59A52D9A21A33E34000B6F27 /* libfli.def */,
+				59A52D9B21A33E34000B6F27 /* libfli-usb.c */,
+				59A52D9C21A33E34000B6F27 /* libfli-windows-parport.c */,
+				59A52D9D21A33E34000B6F27 /* libfli-debug.c */,
+				59A52D9E21A33E34000B6F27 /* libfli.vcproj */,
+				59A52D9F21A33E34000B6F27 /* libfli-serial.c */,
+				59A52DA021A33E34000B6F27 /* libfli-parport.h */,
+				59A52DA121A33E34000B6F27 /* libfli64.def */,
+				59A52DA221A33E34000B6F27 /* libfli-sys.h */,
+				59A52DA321A33E34000B6F27 /* libfli-usb.h */,
+				59A52DA421A33E34000B6F27 /* libfli.rc */,
+				59A52DA521A33E34000B6F27 /* resource.h */,
+				59A52DA621A33E34000B6F27 /* libfli-serial.h */,
+				59A52DA721A33E34000B6F27 /* libfli.sln */,
+			);
+			path = windows;
+			sourceTree = "<group>";
+		};
+		59A52DAB21A33E34000B6F27 /* libfli-1.999.1-180223 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DAC21A33E34000B6F27 /* libfli.c */,
+				59A52DAD21A33E34000B6F27 /* libfli-raw.c */,
+				59A52DAE21A33E34000B6F27 /* libfli-camera.o */,
+				59A52DAF21A33E34000B6F27 /* libfli-camera.h */,
+				59A52DB021A33E34000B6F27 /* libfli-camera-parport.c */,
+				59A52DB121A33E34000B6F27 /* libfli-filter-focuser.h */,
+				59A52DB221A33E34000B6F27 /* libfli.dxx */,
+				59A52DB321A33E34000B6F27 /* libfli-filter-focuser.o */,
+				59A52DB421A33E34000B6F27 /* Makefile */,
+				59A52DB521A33E34000B6F27 /* libfli-mem.c */,
+				59A52DB621A33E34000B6F27 /* libfli-camera-usb.o */,
+				59A52DB721A33E34000B6F27 /* libfli-camera-usb.h */,
+				59A52DB821A33E34000B6F27 /* libfli-camera.c */,
+				59A52DB921A33E34000B6F27 /* libfli-raw.h */,
+				59A52DBA21A33E34000B6F27 /* unix */,
+				59A52DCF21A33E34000B6F27 /* libfli.h */,
+				59A52DD021A33E34000B6F27 /* libfli-sys.o */,
+				59A52DD121A33E34000B6F27 /* libfli.o */,
+				59A52DD221A33E34000B6F27 /* libfli.a */,
+				59A52DD321A33E34000B6F27 /* docxx.sty */,
+				59A52DD421A33E34000B6F27 /* libfli-usb.o */,
+				59A52DD521A33E34000B6F27 /* libfli-filter-focuser.c */,
+				59A52DD621A33E34000B6F27 /* libfli-camera-parport.h */,
+				59A52DD721A33E34000B6F27 /* libfli-camera-parport.o */,
+				59A52DD821A33E34000B6F27 /* libfli-libfli.h */,
+				59A52DD921A33E34000B6F27 /* libfli-usb-sys.o */,
+				59A52DDA21A33E34000B6F27 /* windows */,
+				59A52DEA21A33E34000B6F27 /* libfli-serial.o */,
+				59A52DEB21A33E34000B6F27 /* libfli-debug.o */,
+				59A52DEC21A33E34000B6F27 /* libfli-debug.h */,
+				59A52DED21A33E34000B6F27 /* libfli-camera-usb.c */,
+				59A52DEE21A33E34000B6F27 /* libfli-mem.h */,
+				59A52DEF21A33E34000B6F27 /* libfli-mem.o */,
+			);
+			path = "libfli-1.999.1-180223";
+			sourceTree = "<group>";
+		};
+		59A52DBA21A33E34000B6F27 /* unix */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DBB21A33E34000B6F27 /* libfli-sys.c */,
+				59A52DBC21A33E34000B6F27 /* libfli-usb.c */,
+				59A52DBD21A33E34000B6F27 /* osx */,
+				59A52DC021A33E34000B6F27 /* libfli-debug.c */,
+				59A52DC121A33E34000B6F27 /* libfli-serial.c */,
+				59A52DC221A33E34000B6F27 /* libfli-parport.h */,
+				59A52DC321A33E34000B6F27 /* bsd */,
+				59A52DC521A33E34000B6F27 /* libfli-sys.h */,
+				59A52DC621A33E34000B6F27 /* libfli-usb.h */,
+				59A52DC721A33E34000B6F27 /* linux */,
+				59A52DCC21A33E34000B6F27 /* libfli-serial.h */,
+				59A52DCD21A33E34000B6F27 /* libusb */,
+			);
+			path = unix;
+			sourceTree = "<group>";
+		};
+		59A52DBD21A33E34000B6F27 /* osx */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DBE21A33E34000B6F27 /* libfli-usb-sys.c */,
+				59A52DBF21A33E34000B6F27 /* libfli-usb-sys.h */,
+			);
+			path = osx;
+			sourceTree = "<group>";
+		};
+		59A52DC321A33E34000B6F27 /* bsd */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DC421A33E34000B6F27 /* libfli-usb-sys.c */,
+			);
+			path = bsd;
+			sourceTree = "<group>";
+		};
+		59A52DC721A33E34000B6F27 /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DC821A33E34000B6F27 /* fliusb_ioctl.h */,
+				59A52DC921A33E34000B6F27 /* fli_ioctl.h */,
+				59A52DCA21A33E34000B6F27 /* libfli-usb-sys.c */,
+				59A52DCB21A33E34000B6F27 /* libfli-parport.c */,
+			);
+			path = linux;
+			sourceTree = "<group>";
+		};
+		59A52DCD21A33E34000B6F27 /* libusb */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DCE21A33E34000B6F27 /* libfli-usb-sys.c */,
+			);
+			path = libusb;
+			sourceTree = "<group>";
+		};
+		59A52DDA21A33E34000B6F27 /* windows */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DDB21A33E34000B6F27 /* libfli-windows.c */,
+				59A52DDC21A33E34000B6F27 /* libfli.def */,
+				59A52DDD21A33E34000B6F27 /* libfli-usb.c */,
+				59A52DDE21A33E34000B6F27 /* libfli-windows-parport.c */,
+				59A52DDF21A33E34000B6F27 /* libfli-debug.c */,
+				59A52DE021A33E34000B6F27 /* libfli.vcproj */,
+				59A52DE121A33E34000B6F27 /* libfli-serial.c */,
+				59A52DE221A33E34000B6F27 /* libfli-parport.h */,
+				59A52DE321A33E34000B6F27 /* libfli64.def */,
+				59A52DE421A33E34000B6F27 /* libfli-sys.h */,
+				59A52DE521A33E34000B6F27 /* libfli-usb.h */,
+				59A52DE621A33E34000B6F27 /* libfli.rc */,
+				59A52DE721A33E34000B6F27 /* resource.h */,
+				59A52DE821A33E34000B6F27 /* libfli-serial.h */,
+				59A52DE921A33E34000B6F27 /* libfli.sln */,
+			);
+			path = windows;
+			sourceTree = "<group>";
+		};
+		59A52DF221A33E5C000B6F27 /* externals */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DF321A33E5C000B6F27 /* fliusb-1.3 */,
+				59A52DFC21A33E5C000B6F27 /* libfli-1.104 */,
+				59A52E3621A33E5D000B6F27 /* libfli-1.999.1-180223 */,
+			);
+			name = externals;
+			path = indigo_drivers/ccd_fli/externals;
+			sourceTree = SOURCE_ROOT;
+		};
+		59A52DF321A33E5C000B6F27 /* fliusb-1.3 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DF421A33E5C000B6F27 /* Makefile.dkms */,
+				59A52DF521A33E5C000B6F27 /* dkms */,
+				59A52DF721A33E5C000B6F27 /* fliusb_ioctl.h */,
+				59A52DF821A33E5C000B6F27 /* Makefile */,
+				59A52DF921A33E5C000B6F27 /* fliusb.c */,
+				59A52DFA21A33E5C000B6F27 /* README */,
+				59A52DFB21A33E5C000B6F27 /* fliusb.h */,
+			);
+			path = "fliusb-1.3";
+			sourceTree = "<group>";
+		};
+		59A52DF521A33E5C000B6F27 /* dkms */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DF621A33E5C000B6F27 /* dkms.conf */,
+			);
+			path = dkms;
+			sourceTree = "<group>";
+		};
+		59A52DFC21A33E5C000B6F27 /* libfli-1.104 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52DFD21A33E5C000B6F27 /* libfli.c */,
+				59A52DFE21A33E5C000B6F27 /* libfli-raw.c */,
+				59A52DFF21A33E5C000B6F27 /* libfli-camera.h */,
+				59A52E0021A33E5C000B6F27 /* libfli-camera-parport.c */,
+				59A52E0121A33E5C000B6F27 /* libfli-filter-focuser.h */,
+				59A52E0221A33E5C000B6F27 /* libfli.dxx */,
+				59A52E0321A33E5C000B6F27 /* Makefile */,
+				59A52E0421A33E5C000B6F27 /* libfli-mem.c */,
+				59A52E0521A33E5C000B6F27 /* libfli-camera-usb.h */,
+				59A52E0621A33E5C000B6F27 /* libfli-camera.c */,
+				59A52E0721A33E5C000B6F27 /* libfli-raw.h */,
+				59A52E0821A33E5C000B6F27 /* unix */,
+				59A52E1C21A33E5C000B6F27 /* libfli.h */,
+				59A52E1D21A33E5C000B6F27 /* docxx.sty */,
+				59A52E1E21A33E5C000B6F27 /* libfli-filter-focuser.c */,
+				59A52E1F21A33E5C000B6F27 /* libfli-camera-parport.h */,
+				59A52E2021A33E5D000B6F27 /* doc */,
+				59A52E2221A33E5D000B6F27 /* libfli-libfli.h */,
+				59A52E2321A33E5D000B6F27 /* windows */,
+				59A52E3321A33E5D000B6F27 /* libfli-debug.h */,
+				59A52E3421A33E5D000B6F27 /* libfli-camera-usb.c */,
+				59A52E3521A33E5D000B6F27 /* libfli-mem.h */,
+			);
+			path = "libfli-1.104";
+			sourceTree = "<group>";
+		};
+		59A52E0821A33E5C000B6F27 /* unix */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E0921A33E5C000B6F27 /* libfli-sys.c */,
+				59A52E0A21A33E5C000B6F27 /* libfli-usb.c */,
+				59A52E0B21A33E5C000B6F27 /* osx */,
+				59A52E0E21A33E5C000B6F27 /* libfli-debug.c */,
+				59A52E0F21A33E5C000B6F27 /* libfli-serial.c */,
+				59A52E1021A33E5C000B6F27 /* libfli-parport.h */,
+				59A52E1121A33E5C000B6F27 /* bsd */,
+				59A52E1321A33E5C000B6F27 /* libfli-sys.h */,
+				59A52E1421A33E5C000B6F27 /* libfli-usb.h */,
+				59A52E1521A33E5C000B6F27 /* linux */,
+				59A52E1B21A33E5C000B6F27 /* libfli-serial.h */,
+			);
+			path = unix;
+			sourceTree = "<group>";
+		};
+		59A52E0B21A33E5C000B6F27 /* osx */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E0C21A33E5C000B6F27 /* libfli-usb-sys.c */,
+				59A52E0D21A33E5C000B6F27 /* libfli-usb-sys.h */,
+			);
+			path = osx;
+			sourceTree = "<group>";
+		};
+		59A52E1121A33E5C000B6F27 /* bsd */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E1221A33E5C000B6F27 /* libfli-usb-sys.c */,
+			);
+			path = bsd;
+			sourceTree = "<group>";
+		};
+		59A52E1521A33E5C000B6F27 /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E1621A33E5C000B6F27 /* fliusb_ioctl.h */,
+				59A52E1721A33E5C000B6F27 /* fli_ioctl.h */,
+				59A52E1821A33E5C000B6F27 /* libfli-usb-sys.c */,
+				59A52E1921A33E5C000B6F27 /* libfli-parport.c */,
+				59A52E1A21A33E5C000B6F27 /* fli-usb.h */,
+			);
+			path = linux;
+			sourceTree = "<group>";
+		};
+		59A52E2021A33E5D000B6F27 /* doc */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E2121A33E5D000B6F27 /* FLI_SDK_Documentation.pdf */,
+			);
+			path = doc;
+			sourceTree = "<group>";
+		};
+		59A52E2321A33E5D000B6F27 /* windows */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E2421A33E5D000B6F27 /* libfli-windows.c */,
+				59A52E2521A33E5D000B6F27 /* libfli.def */,
+				59A52E2621A33E5D000B6F27 /* libfli-usb.c */,
+				59A52E2721A33E5D000B6F27 /* libfli-windows-parport.c */,
+				59A52E2821A33E5D000B6F27 /* libfli-debug.c */,
+				59A52E2921A33E5D000B6F27 /* libfli.vcproj */,
+				59A52E2A21A33E5D000B6F27 /* libfli-serial.c */,
+				59A52E2B21A33E5D000B6F27 /* libfli-parport.h */,
+				59A52E2C21A33E5D000B6F27 /* libfli64.def */,
+				59A52E2D21A33E5D000B6F27 /* libfli-sys.h */,
+				59A52E2E21A33E5D000B6F27 /* libfli-usb.h */,
+				59A52E2F21A33E5D000B6F27 /* libfli.rc */,
+				59A52E3021A33E5D000B6F27 /* resource.h */,
+				59A52E3121A33E5D000B6F27 /* libfli-serial.h */,
+				59A52E3221A33E5D000B6F27 /* libfli.sln */,
+			);
+			path = windows;
+			sourceTree = "<group>";
+		};
+		59A52E3621A33E5D000B6F27 /* libfli-1.999.1-180223 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E3721A33E5D000B6F27 /* libfli.c */,
+				59A52E3821A33E5D000B6F27 /* libfli-raw.c */,
+				59A52E3921A33E5D000B6F27 /* libfli-camera.o */,
+				59A52E3A21A33E5D000B6F27 /* libfli-camera.h */,
+				59A52E3B21A33E5D000B6F27 /* libfli-camera-parport.c */,
+				59A52E3C21A33E5D000B6F27 /* libfli-filter-focuser.h */,
+				59A52E3D21A33E5D000B6F27 /* libfli.dxx */,
+				59A52E3E21A33E5D000B6F27 /* libfli-filter-focuser.o */,
+				59A52E3F21A33E5D000B6F27 /* Makefile */,
+				59A52E4021A33E5D000B6F27 /* libfli-mem.c */,
+				59A52E4121A33E5D000B6F27 /* libfli-camera-usb.o */,
+				59A52E4221A33E5D000B6F27 /* libfli-camera-usb.h */,
+				59A52E4321A33E5D000B6F27 /* libfli-camera.c */,
+				59A52E4421A33E5D000B6F27 /* libfli-raw.h */,
+				59A52E4521A33E5D000B6F27 /* unix */,
+				59A52E5A21A33E5D000B6F27 /* libfli.h */,
+				59A52E5B21A33E5D000B6F27 /* libfli-sys.o */,
+				59A52E5C21A33E5D000B6F27 /* libfli.o */,
+				59A52E5D21A33E5D000B6F27 /* libfli.a */,
+				59A52E5E21A33E5D000B6F27 /* docxx.sty */,
+				59A52E5F21A33E5D000B6F27 /* libfli-usb.o */,
+				59A52E6021A33E5D000B6F27 /* libfli-filter-focuser.c */,
+				59A52E6121A33E5D000B6F27 /* libfli-camera-parport.h */,
+				59A52E6221A33E5D000B6F27 /* libfli-camera-parport.o */,
+				59A52E6321A33E5D000B6F27 /* libfli-libfli.h */,
+				59A52E6421A33E5D000B6F27 /* libfli-usb-sys.o */,
+				59A52E6521A33E5D000B6F27 /* windows */,
+				59A52E7521A33E5D000B6F27 /* libfli-serial.o */,
+				59A52E7621A33E5D000B6F27 /* libfli-debug.o */,
+				59A52E7721A33E5D000B6F27 /* libfli-debug.h */,
+				59A52E7821A33E5D000B6F27 /* libfli-camera-usb.c */,
+				59A52E7921A33E5D000B6F27 /* libfli-mem.h */,
+				59A52E7A21A33E5D000B6F27 /* libfli-mem.o */,
+			);
+			path = "libfli-1.999.1-180223";
+			sourceTree = "<group>";
+		};
+		59A52E4521A33E5D000B6F27 /* unix */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E4621A33E5D000B6F27 /* libfli-sys.c */,
+				59A52E4721A33E5D000B6F27 /* libfli-usb.c */,
+				59A52E4821A33E5D000B6F27 /* osx */,
+				59A52E4B21A33E5D000B6F27 /* libfli-debug.c */,
+				59A52E4C21A33E5D000B6F27 /* libfli-serial.c */,
+				59A52E4D21A33E5D000B6F27 /* libfli-parport.h */,
+				59A52E4E21A33E5D000B6F27 /* bsd */,
+				59A52E5021A33E5D000B6F27 /* libfli-sys.h */,
+				59A52E5121A33E5D000B6F27 /* libfli-usb.h */,
+				59A52E5221A33E5D000B6F27 /* linux */,
+				59A52E5721A33E5D000B6F27 /* libfli-serial.h */,
+				59A52E5821A33E5D000B6F27 /* libusb */,
+			);
+			path = unix;
+			sourceTree = "<group>";
+		};
+		59A52E4821A33E5D000B6F27 /* osx */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E4921A33E5D000B6F27 /* libfli-usb-sys.c */,
+				59A52E4A21A33E5D000B6F27 /* libfli-usb-sys.h */,
+			);
+			path = osx;
+			sourceTree = "<group>";
+		};
+		59A52E4E21A33E5D000B6F27 /* bsd */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E4F21A33E5D000B6F27 /* libfli-usb-sys.c */,
+			);
+			path = bsd;
+			sourceTree = "<group>";
+		};
+		59A52E5221A33E5D000B6F27 /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E5321A33E5D000B6F27 /* fliusb_ioctl.h */,
+				59A52E5421A33E5D000B6F27 /* fli_ioctl.h */,
+				59A52E5521A33E5D000B6F27 /* libfli-usb-sys.c */,
+				59A52E5621A33E5D000B6F27 /* libfli-parport.c */,
+			);
+			path = linux;
+			sourceTree = "<group>";
+		};
+		59A52E5821A33E5D000B6F27 /* libusb */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E5921A33E5D000B6F27 /* libfli-usb-sys.c */,
+			);
+			path = libusb;
+			sourceTree = "<group>";
+		};
+		59A52E6521A33E5D000B6F27 /* windows */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E6621A33E5D000B6F27 /* libfli-windows.c */,
+				59A52E6721A33E5D000B6F27 /* libfli.def */,
+				59A52E6821A33E5D000B6F27 /* libfli-usb.c */,
+				59A52E6921A33E5D000B6F27 /* libfli-windows-parport.c */,
+				59A52E6A21A33E5D000B6F27 /* libfli-debug.c */,
+				59A52E6B21A33E5D000B6F27 /* libfli.vcproj */,
+				59A52E6C21A33E5D000B6F27 /* libfli-serial.c */,
+				59A52E6D21A33E5D000B6F27 /* libfli-parport.h */,
+				59A52E6E21A33E5D000B6F27 /* libfli64.def */,
+				59A52E6F21A33E5D000B6F27 /* libfli-sys.h */,
+				59A52E7021A33E5D000B6F27 /* libfli-usb.h */,
+				59A52E7121A33E5D000B6F27 /* libfli.rc */,
+				59A52E7221A33E5D000B6F27 /* resource.h */,
+				59A52E7321A33E5D000B6F27 /* libfli-serial.h */,
+				59A52E7421A33E5D000B6F27 /* libfli.sln */,
+			);
+			path = windows;
+			sourceTree = "<group>";
+		};
+		59A52E7B21A33E78000B6F27 /* externals */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E7C21A33E78000B6F27 /* fliusb-1.3 */,
+				59A52E8521A33E78000B6F27 /* libfli-1.104 */,
+				59A52EBF21A33E78000B6F27 /* libfli-1.999.1-180223 */,
+			);
+			name = externals;
+			path = indigo_drivers/ccd_fli/externals;
+			sourceTree = SOURCE_ROOT;
+		};
+		59A52E7C21A33E78000B6F27 /* fliusb-1.3 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E7D21A33E78000B6F27 /* Makefile.dkms */,
+				59A52E7E21A33E78000B6F27 /* dkms */,
+				59A52E8021A33E78000B6F27 /* fliusb_ioctl.h */,
+				59A52E8121A33E78000B6F27 /* Makefile */,
+				59A52E8221A33E78000B6F27 /* fliusb.c */,
+				59A52E8321A33E78000B6F27 /* README */,
+				59A52E8421A33E78000B6F27 /* fliusb.h */,
+			);
+			path = "fliusb-1.3";
+			sourceTree = "<group>";
+		};
+		59A52E7E21A33E78000B6F27 /* dkms */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E7F21A33E78000B6F27 /* dkms.conf */,
+			);
+			path = dkms;
+			sourceTree = "<group>";
+		};
+		59A52E8521A33E78000B6F27 /* libfli-1.104 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E8621A33E78000B6F27 /* libfli.c */,
+				59A52E8721A33E78000B6F27 /* libfli-raw.c */,
+				59A52E8821A33E78000B6F27 /* libfli-camera.h */,
+				59A52E8921A33E78000B6F27 /* libfli-camera-parport.c */,
+				59A52E8A21A33E78000B6F27 /* libfli-filter-focuser.h */,
+				59A52E8B21A33E78000B6F27 /* libfli.dxx */,
+				59A52E8C21A33E78000B6F27 /* Makefile */,
+				59A52E8D21A33E78000B6F27 /* libfli-mem.c */,
+				59A52E8E21A33E78000B6F27 /* libfli-camera-usb.h */,
+				59A52E8F21A33E78000B6F27 /* libfli-camera.c */,
+				59A52E9021A33E78000B6F27 /* libfli-raw.h */,
+				59A52E9121A33E78000B6F27 /* unix */,
+				59A52EA521A33E78000B6F27 /* libfli.h */,
+				59A52EA621A33E78000B6F27 /* docxx.sty */,
+				59A52EA721A33E78000B6F27 /* libfli-filter-focuser.c */,
+				59A52EA821A33E78000B6F27 /* libfli-camera-parport.h */,
+				59A52EA921A33E78000B6F27 /* doc */,
+				59A52EAB21A33E78000B6F27 /* libfli-libfli.h */,
+				59A52EAC21A33E78000B6F27 /* windows */,
+				59A52EBC21A33E78000B6F27 /* libfli-debug.h */,
+				59A52EBD21A33E78000B6F27 /* libfli-camera-usb.c */,
+				59A52EBE21A33E78000B6F27 /* libfli-mem.h */,
+			);
+			path = "libfli-1.104";
+			sourceTree = "<group>";
+		};
+		59A52E9121A33E78000B6F27 /* unix */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E9221A33E78000B6F27 /* libfli-sys.c */,
+				59A52E9321A33E78000B6F27 /* libfli-usb.c */,
+				59A52E9421A33E78000B6F27 /* osx */,
+				59A52E9721A33E78000B6F27 /* libfli-debug.c */,
+				59A52E9821A33E78000B6F27 /* libfli-serial.c */,
+				59A52E9921A33E78000B6F27 /* libfli-parport.h */,
+				59A52E9A21A33E78000B6F27 /* bsd */,
+				59A52E9C21A33E78000B6F27 /* libfli-sys.h */,
+				59A52E9D21A33E78000B6F27 /* libfli-usb.h */,
+				59A52E9E21A33E78000B6F27 /* linux */,
+				59A52EA421A33E78000B6F27 /* libfli-serial.h */,
+			);
+			path = unix;
+			sourceTree = "<group>";
+		};
+		59A52E9421A33E78000B6F27 /* osx */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E9521A33E78000B6F27 /* libfli-usb-sys.c */,
+				59A52E9621A33E78000B6F27 /* libfli-usb-sys.h */,
+			);
+			path = osx;
+			sourceTree = "<group>";
+		};
+		59A52E9A21A33E78000B6F27 /* bsd */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E9B21A33E78000B6F27 /* libfli-usb-sys.c */,
+			);
+			path = bsd;
+			sourceTree = "<group>";
+		};
+		59A52E9E21A33E78000B6F27 /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52E9F21A33E78000B6F27 /* fliusb_ioctl.h */,
+				59A52EA021A33E78000B6F27 /* fli_ioctl.h */,
+				59A52EA121A33E78000B6F27 /* libfli-usb-sys.c */,
+				59A52EA221A33E78000B6F27 /* libfli-parport.c */,
+				59A52EA321A33E78000B6F27 /* fli-usb.h */,
+			);
+			path = linux;
+			sourceTree = "<group>";
+		};
+		59A52EA921A33E78000B6F27 /* doc */ = {
+			isa = PBXGroup;
+			children = (
+				59A52EAA21A33E78000B6F27 /* FLI_SDK_Documentation.pdf */,
+			);
+			path = doc;
+			sourceTree = "<group>";
+		};
+		59A52EAC21A33E78000B6F27 /* windows */ = {
+			isa = PBXGroup;
+			children = (
+				59A52EAD21A33E78000B6F27 /* libfli-windows.c */,
+				59A52EAE21A33E78000B6F27 /* libfli.def */,
+				59A52EAF21A33E78000B6F27 /* libfli-usb.c */,
+				59A52EB021A33E78000B6F27 /* libfli-windows-parport.c */,
+				59A52EB121A33E78000B6F27 /* libfli-debug.c */,
+				59A52EB221A33E78000B6F27 /* libfli.vcproj */,
+				59A52EB321A33E78000B6F27 /* libfli-serial.c */,
+				59A52EB421A33E78000B6F27 /* libfli-parport.h */,
+				59A52EB521A33E78000B6F27 /* libfli64.def */,
+				59A52EB621A33E78000B6F27 /* libfli-sys.h */,
+				59A52EB721A33E78000B6F27 /* libfli-usb.h */,
+				59A52EB821A33E78000B6F27 /* libfli.rc */,
+				59A52EB921A33E78000B6F27 /* resource.h */,
+				59A52EBA21A33E78000B6F27 /* libfli-serial.h */,
+				59A52EBB21A33E78000B6F27 /* libfli.sln */,
+			);
+			path = windows;
+			sourceTree = "<group>";
+		};
+		59A52EBF21A33E78000B6F27 /* libfli-1.999.1-180223 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52EC021A33E78000B6F27 /* libfli.c */,
+				59A52EC121A33E78000B6F27 /* libfli-raw.c */,
+				59A52EC221A33E78000B6F27 /* libfli-camera.o */,
+				59A52EC321A33E78000B6F27 /* libfli-camera.h */,
+				59A52EC421A33E78000B6F27 /* libfli-camera-parport.c */,
+				59A52EC521A33E78000B6F27 /* libfli-filter-focuser.h */,
+				59A52EC621A33E78000B6F27 /* libfli.dxx */,
+				59A52EC721A33E78000B6F27 /* libfli-filter-focuser.o */,
+				59A52EC821A33E78000B6F27 /* Makefile */,
+				59A52EC921A33E78000B6F27 /* libfli-mem.c */,
+				59A52ECA21A33E78000B6F27 /* libfli-camera-usb.o */,
+				59A52ECB21A33E78000B6F27 /* libfli-camera-usb.h */,
+				59A52ECC21A33E78000B6F27 /* libfli-camera.c */,
+				59A52ECD21A33E78000B6F27 /* libfli-raw.h */,
+				59A52ECE21A33E78000B6F27 /* unix */,
+				59A52EE321A33E78000B6F27 /* libfli.h */,
+				59A52EE421A33E78000B6F27 /* libfli-sys.o */,
+				59A52EE521A33E78000B6F27 /* libfli.o */,
+				59A52EE621A33E78000B6F27 /* libfli.a */,
+				59A52EE721A33E78000B6F27 /* docxx.sty */,
+				59A52EE821A33E78000B6F27 /* libfli-usb.o */,
+				59A52EE921A33E78000B6F27 /* libfli-filter-focuser.c */,
+				59A52EEA21A33E78000B6F27 /* libfli-camera-parport.h */,
+				59A52EEB21A33E78000B6F27 /* libfli-camera-parport.o */,
+				59A52EEC21A33E78000B6F27 /* libfli-libfli.h */,
+				59A52EED21A33E78000B6F27 /* libfli-usb-sys.o */,
+				59A52EEE21A33E78000B6F27 /* windows */,
+				59A52EFE21A33E78000B6F27 /* libfli-serial.o */,
+				59A52EFF21A33E78000B6F27 /* libfli-debug.o */,
+				59A52F0021A33E78000B6F27 /* libfli-debug.h */,
+				59A52F0121A33E78000B6F27 /* libfli-camera-usb.c */,
+				59A52F0221A33E78000B6F27 /* libfli-mem.h */,
+				59A52F0321A33E78000B6F27 /* libfli-mem.o */,
+			);
+			path = "libfli-1.999.1-180223";
+			sourceTree = "<group>";
+		};
+		59A52ECE21A33E78000B6F27 /* unix */ = {
+			isa = PBXGroup;
+			children = (
+				59A52ECF21A33E78000B6F27 /* libfli-sys.c */,
+				59A52ED021A33E78000B6F27 /* libfli-usb.c */,
+				59A52ED121A33E78000B6F27 /* osx */,
+				59A52ED421A33E78000B6F27 /* libfli-debug.c */,
+				59A52ED521A33E78000B6F27 /* libfli-serial.c */,
+				59A52ED621A33E78000B6F27 /* libfli-parport.h */,
+				59A52ED721A33E78000B6F27 /* bsd */,
+				59A52ED921A33E78000B6F27 /* libfli-sys.h */,
+				59A52EDA21A33E78000B6F27 /* libfli-usb.h */,
+				59A52EDB21A33E78000B6F27 /* linux */,
+				59A52EE021A33E78000B6F27 /* libfli-serial.h */,
+				59A52EE121A33E78000B6F27 /* libusb */,
+			);
+			path = unix;
+			sourceTree = "<group>";
+		};
+		59A52ED121A33E78000B6F27 /* osx */ = {
+			isa = PBXGroup;
+			children = (
+				59A52ED221A33E78000B6F27 /* libfli-usb-sys.c */,
+				59A52ED321A33E78000B6F27 /* libfli-usb-sys.h */,
+			);
+			path = osx;
+			sourceTree = "<group>";
+		};
+		59A52ED721A33E78000B6F27 /* bsd */ = {
+			isa = PBXGroup;
+			children = (
+				59A52ED821A33E78000B6F27 /* libfli-usb-sys.c */,
+			);
+			path = bsd;
+			sourceTree = "<group>";
+		};
+		59A52EDB21A33E78000B6F27 /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52EDC21A33E78000B6F27 /* fliusb_ioctl.h */,
+				59A52EDD21A33E78000B6F27 /* fli_ioctl.h */,
+				59A52EDE21A33E78000B6F27 /* libfli-usb-sys.c */,
+				59A52EDF21A33E78000B6F27 /* libfli-parport.c */,
+			);
+			path = linux;
+			sourceTree = "<group>";
+		};
+		59A52EE121A33E78000B6F27 /* libusb */ = {
+			isa = PBXGroup;
+			children = (
+				59A52EE221A33E78000B6F27 /* libfli-usb-sys.c */,
+			);
+			path = libusb;
+			sourceTree = "<group>";
+		};
+		59A52EEE21A33E78000B6F27 /* windows */ = {
+			isa = PBXGroup;
+			children = (
+				59A52EEF21A33E78000B6F27 /* libfli-windows.c */,
+				59A52EF021A33E78000B6F27 /* libfli.def */,
+				59A52EF121A33E78000B6F27 /* libfli-usb.c */,
+				59A52EF221A33E78000B6F27 /* libfli-windows-parport.c */,
+				59A52EF321A33E78000B6F27 /* libfli-debug.c */,
+				59A52EF421A33E78000B6F27 /* libfli.vcproj */,
+				59A52EF521A33E78000B6F27 /* libfli-serial.c */,
+				59A52EF621A33E78000B6F27 /* libfli-parport.h */,
+				59A52EF721A33E78000B6F27 /* libfli64.def */,
+				59A52EF821A33E78000B6F27 /* libfli-sys.h */,
+				59A52EF921A33E78000B6F27 /* libfli-usb.h */,
+				59A52EFA21A33E78000B6F27 /* libfli.rc */,
+				59A52EFB21A33E78000B6F27 /* resource.h */,
+				59A52EFC21A33E78000B6F27 /* libfli-serial.h */,
+				59A52EFD21A33E78000B6F27 /* libfli.sln */,
+			);
+			path = windows;
+			sourceTree = "<group>";
+		};
+		59A52F0721A3416D000B6F27 /* libgpusb */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F0821A3416D000B6F27 /* LICENSE.md */,
+				59A52F0921A3416D000B6F27 /* include */,
+				59A52F0C21A3416D000B6F27 /* lib */,
+			);
+			path = libgpusb;
+			sourceTree = "<group>";
+		};
+		59A52F0921A3416D000B6F27 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F0B21A3416D000B6F27 /* libgpusb.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59A52F0C21A3416D000B6F27 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F0D21A3416D000B6F27 /* macOS */,
+				59A52F0F21A3416D000B6F27 /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		59A52F0D21A3416D000B6F27 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F0E21A3416D000B6F27 /* libgpusb.a */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		59A52F0F21A3416D000B6F27 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F1021A3416D000B6F27 /* x64 */,
+				59A52F1221A3416D000B6F27 /* x86 */,
+				59A52F1421A3416D000B6F27 /* arm */,
+				59A52F1621A3416D000B6F27 /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		59A52F1021A3416D000B6F27 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F1121A3416D000B6F27 /* libgpusb.a */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		59A52F1221A3416D000B6F27 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F1321A3416D000B6F27 /* libgpusb.a */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		59A52F1421A3416D000B6F27 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F1521A3416D000B6F27 /* libgpusb.a */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		59A52F1621A3416D000B6F27 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F1721A3416D000B6F27 /* libgpusb.a */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		59A52F1A21A341A0000B6F27 /* libfcusb */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F1B21A341A0000B6F27 /* LICENSE.md */,
+				59A52F1C21A341A0000B6F27 /* include */,
+				59A52F1F21A341A0000B6F27 /* lib */,
+			);
+			path = libfcusb;
+			sourceTree = "<group>";
+		};
+		59A52F1C21A341A0000B6F27 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F1E21A341A0000B6F27 /* libfcusb.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59A52F1F21A341A0000B6F27 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F2021A341A0000B6F27 /* macOS */,
+				59A52F2221A341A0000B6F27 /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		59A52F2021A341A0000B6F27 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F2121A341A0000B6F27 /* libfcusb.a */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		59A52F2221A341A0000B6F27 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F2321A341A0000B6F27 /* x64 */,
+				59A52F2521A341A0000B6F27 /* x86 */,
+				59A52F2721A341A0000B6F27 /* arm */,
+				59A52F2921A341A0000B6F27 /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		59A52F2321A341A0000B6F27 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F2421A341A0000B6F27 /* libfcusb.a */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		59A52F2521A341A0000B6F27 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F2621A341A0000B6F27 /* libfcusb.a */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		59A52F2721A341A0000B6F27 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F2821A341A0000B6F27 /* libfcusb.a */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		59A52F2921A341A0000B6F27 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F2A21A341A0000B6F27 /* libfcusb.a */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		59A52F2E21A3423F000B6F27 /* libdc1394 */ = {
+			isa = PBXGroup;
+			children = (
+				59A5302321A351C6000B6F27 /* libdc1394.a */,
+				59A52F2F21A3423F000B6F27 /* acinclude.m4 */,
+				59A52F3021A3423F000B6F27 /* install-sh */,
+				59A52F3121A3423F000B6F27 /* configure.ac */,
+				59A52F3221A3423F000B6F27 /* INSTALL */,
+				59A52F3321A3423F000B6F27 /* ltmain.sh */,
+				59A52F3421A3423F000B6F27 /* ar-lib */,
+				59A52F3521A3423F000B6F27 /* ChangeLog */,
+				59A52F3621A3423F000B6F27 /* AUTHORS */,
+				59A52F3721A3423F000B6F27 /* aminclude.am */,
+				59A52F3821A3423F000B6F27 /* libdc1394-2.pc.in */,
+				59A52F3921A3423F000B6F27 /* ax_check_framework.m4 */,
+				59A52F3A21A3423F000B6F27 /* Doxyfile.in */,
+				59A52F3B21A3423F000B6F27 /* config.guess */,
+				59A52F3C21A3423F000B6F27 /* depcomp */,
+				59A52F3D21A3423F000B6F27 /* missing */,
+				59A52F3E21A3423F000B6F27 /* README */,
+				59A52F3F21A3423F000B6F27 /* Makefile.am */,
+				59A52F4021A3423F000B6F27 /* README-windows */,
+				59A52F4121A3423F000B6F27 /* dc1394 */,
+				59A52F8F21A3423F000B6F27 /* config.sub */,
+				59A52F9021A3423F000B6F27 /* COPYING */,
+				59A52F9121A3423F000B6F27 /* compile */,
+				59A52F9221A3423F000B6F27 /* NEWS */,
+				59A52F9321A3423F000B6F27 /* .gitignore */,
+				59A52F9421A3423F000B6F27 /* examples */,
+				59A52FAF21A3423F000B6F27 /* INSTALL-windows */,
+				59A52FB021A3423F000B6F27 /* m4 */,
+				59A52FB621A3423F000B6F27 /* .cvsignore */,
+			);
+			name = libdc1394;
+			sourceTree = "<group>";
+		};
+		59A52F4121A3423F000B6F27 /* dc1394 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F4221A3423F000B6F27 /* log.c */,
+				59A52F4321A3423F000B6F27 /* capture.h */,
+				59A52F4421A3423F000B6F27 /* dc1394.h */,
+				59A52F4521A3423F000B6F27 /* utils.h */,
+				59A52F4621A3423F000B6F27 /* conversions.h */,
+				59A52F4721A3423F000B6F27 /* control.h */,
+				59A52F4821A3423F000B6F27 /* internal.h */,
+				59A52F4921A3423F000B6F27 /* bayer.c */,
+				59A52F4A21A3423F000B6F27 /* macosx.c */,
+				59A52F4B21A3423F000B6F27 /* iso.h */,
+				59A52F4C21A3423F000B6F27 /* offsets.h */,
+				59A52F4D21A3423F000B6F27 /* format7.c */,
+				59A52F4E21A3423F000B6F27 /* types.h */,
+				59A52F4F21A3423F000B6F27 /* register.c */,
+				59A52F5021A3423F000B6F27 /* camera.h */,
+				59A52F5121A3423F000B6F27 /* control.c */,
+				59A52F5221A3423F000B6F27 /* Makefile.am */,
+				59A52F5321A3423F000B6F27 /* internal.c */,
+				59A52F5421A3423F000B6F27 /* juju */,
+				59A52F5C21A3423F000B6F27 /* usb */,
+				59A52F6221A3423F000B6F27 /* conversions.c */,
+				59A52F6321A3423F000B6F27 /* capture.c */,
+				59A52F6421A3423F000B6F27 /* utils.c */,
+				59A52F6521A3423F000B6F27 /* log.h */,
+				59A52F6621A3423F000B6F27 /* macosx */,
+				59A52F6C21A3423F000B6F27 /* iso.c */,
+				59A52F6D21A3423F000B6F27 /* linux */,
+				59A52F7621A3423F000B6F27 /* format7.h */,
+				59A52F7721A3423F000B6F27 /* enumeration.c */,
+				59A52F7821A3423F000B6F27 /* macosx.h */,
+				59A52F7921A3423F000B6F27 /* video.h */,
+				59A52F7A21A3423F000B6F27 /* windows */,
+				59A52F8021A3423F000B6F27 /* register.h */,
+				59A52F8121A3423F000B6F27 /* platform.h */,
+				59A52F8221A3423F000B6F27 /* .cvsignore */,
+				59A52F8321A3423F000B6F27 /* vendor */,
+			);
+			path = dc1394;
+			sourceTree = "<group>";
+		};
+		59A52F5421A3423F000B6F27 /* juju */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F5521A3423F000B6F27 /* firewire-constants.h */,
+				59A52F5621A3423F000B6F27 /* firewire-cdev.h */,
+				59A52F5721A3423F000B6F27 /* control.c */,
+				59A52F5821A3423F000B6F27 /* Makefile.am */,
+				59A52F5921A3423F000B6F27 /* capture.c */,
+				59A52F5A21A3423F000B6F27 /* Makefile.in */,
+				59A52F5B21A3423F000B6F27 /* juju.h */,
+			);
+			path = juju;
+			sourceTree = "<group>";
+		};
+		59A52F5C21A3423F000B6F27 /* usb */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F5D21A3423F000B6F27 /* control.c */,
+				59A52F5E21A3423F000B6F27 /* Makefile.am */,
+				59A52F5F21A3423F000B6F27 /* capture.c */,
+				59A52F6021A3423F000B6F27 /* usb.h */,
+				59A52F6121A3423F000B6F27 /* Makefile.in */,
+			);
+			path = usb;
+			sourceTree = "<group>";
+		};
+		59A52F6621A3423F000B6F27 /* macosx */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F6721A3423F000B6F27 /* control.c */,
+				59A52F6821A3423F000B6F27 /* Makefile.am */,
+				59A52F6921A3423F000B6F27 /* capture.c */,
+				59A52F6A21A3423F000B6F27 /* macosx.h */,
+				59A52F6B21A3423F000B6F27 /* Makefile.in */,
+			);
+			path = macosx;
+			sourceTree = "<group>";
+		};
+		59A52F6D21A3423F000B6F27 /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F6E21A3423F000B6F27 /* capture.h */,
+				59A52F6F21A3423F000B6F27 /* kernel-video1394.h */,
+				59A52F7021A3423F000B6F27 /* control.h */,
+				59A52F7121A3423F000B6F27 /* linux.h */,
+				59A52F7221A3423F000B6F27 /* control.c */,
+				59A52F7321A3423F000B6F27 /* Makefile.am */,
+				59A52F7421A3423F000B6F27 /* capture.c */,
+				59A52F7521A3423F000B6F27 /* Makefile.in */,
+			);
+			path = linux;
+			sourceTree = "<group>";
+		};
+		59A52F7A21A3423F000B6F27 /* windows */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F7B21A3423F000B6F27 /* platform_windows.h */,
+				59A52F7C21A3423F000B6F27 /* control.c */,
+				59A52F7D21A3423F000B6F27 /* Makefile.am */,
+				59A52F7E21A3423F000B6F27 /* capture.c */,
+				59A52F7F21A3423F000B6F27 /* Makefile.in */,
+			);
+			path = windows;
+			sourceTree = "<group>";
+		};
+		59A52F8321A3423F000B6F27 /* vendor */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F8421A3423F000B6F27 /* basler_sff.h */,
+				59A52F8521A3423F000B6F27 /* pixelink.c */,
+				59A52F8621A3423F000B6F27 /* avt.c */,
+				59A52F8721A3423F000B6F27 /* basler_sff_registry.c */,
+				59A52F8821A3423F000B6F27 /* basler.c */,
+				59A52F8921A3423F000B6F27 /* Makefile.am */,
+				59A52F8A21A3423F000B6F27 /* avt.h */,
+				59A52F8B21A3423F000B6F27 /* pixelink.h */,
+				59A52F8C21A3423F000B6F27 /* basler_sff_registry.h */,
+				59A52F8D21A3423F000B6F27 /* Makefile.in */,
+				59A52F8E21A3423F000B6F27 /* basler.h */,
+			);
+			path = vendor;
+			sourceTree = "<group>";
+		};
+		59A52F9421A3423F000B6F27 /* examples */ = {
+			isa = PBXGroup;
+			children = (
+				59A52F9521A3423F000B6F27 /* grab_gray_image.1 */,
+				59A52F9621A3423F000B6F27 /* affine.c */,
+				59A52F9721A3423F000B6F27 /* basler_sff_extended_data.c */,
+				59A52F9821A3423F000B6F27 /* dc1394_vloopback.1 */,
+				59A52F9921A3423F000B6F27 /* ladybug5capture.c */,
+				59A52F9A21A3423F000B6F27 /* FindDC1394.cmake */,
+				59A52F9B21A3423F000B6F27 /* dc1394_multiview.1 */,
+				59A52F9C21A3423F000B6F27 /* dc1394_reset_bus.1 */,
+				59A52F9D21A3423F000B6F27 /* grab_color_image.c */,
+				59A52F9E21A3423F000B6F27 /* grab_partial_pvn.c */,
+				59A52F9F21A3423F000B6F27 /* grab_partial_image.1 */,
+				59A52FA021A3423F000B6F27 /* affine.h */,
+				59A52FA121A3423F000B6F27 /* Makefile.am */,
+				59A52FA221A3423F000B6F27 /* grab_gray_image.c */,
+				59A52FA321A3423F000B6F27 /* .gitignore */,
+				59A52FA421A3423F000B6F27 /* basler_sff_info.c */,
+				59A52FA521A3423F000B6F27 /* dc1394_vloopback.c */,
+				59A52FA621A3423F000B6F27 /* grab_color_image2.c */,
+				59A52FA721A3423F000B6F27 /* dc1394_reset_bus.c */,
+				59A52FA821A3423F000B6F27 /* ladybug.c */,
+				59A52FA921A3423F000B6F27 /* helloworld.c */,
+				59A52FAA21A3423F000B6F27 /* dc1394_multiview.c */,
+				59A52FAB21A3423F000B6F27 /* dc1394_iso.c */,
+				59A52FAC21A3423F000B6F27 /* grab_partial_image.c */,
+				59A52FAD21A3423F000B6F27 /* .cvsignore */,
+				59A52FAE21A3423F000B6F27 /* grab_color_image.1 */,
+			);
+			path = examples;
+			sourceTree = "<group>";
+		};
+		59A52FB021A3423F000B6F27 /* m4 */ = {
+			isa = PBXGroup;
+			children = (
+				59A52FB121A3423F000B6F27 /* ltversion.m4 */,
+				59A52FB221A3423F000B6F27 /* libtool.m4 */,
+				59A52FB321A3423F000B6F27 /* ltoptions.m4 */,
+				59A52FB421A3423F000B6F27 /* ltsugar.m4 */,
+				59A52FB521A3423F000B6F27 /* lt~obsolete.m4 */,
+			);
+			path = m4;
+			sourceTree = "<group>";
+		};
+		59A52FB921A3430F000B6F27 /* qhyccd */ = {
+			isa = PBXGroup;
+			children = (
+				59A52FBA21A3430F000B6F27 /* firmware */,
+				59A52FF421A3430F000B6F27 /* CMakeLists.txt */,
+				59A52FF521A3430F000B6F27 /* include */,
+				59A5300121A3430F000B6F27 /* RELEASE */,
+				59A5300221A3430F000B6F27 /* 85-qhyccd.rules */,
+				59A5300321A3430F000B6F27 /* lib */,
+			);
+			path = qhyccd;
+			sourceTree = "<group>";
+		};
+		59A52FBA21A3430F000B6F27 /* firmware */ = {
+			isa = PBXGroup;
+			children = (
+				59A52FBB21A3430F000B6F27 /* QHY21.HEX */,
+				59A52FBC21A3430F000B6F27 /* QHY290.img */,
+				59A52FBD21A3430F000B6F27 /* QHY247.img */,
+				59A52FBE21A3430F000B6F27 /* QHY20.HEX */,
+				59A52FBF21A3430F000B6F27 /* QHY22.HEX */,
+				59A52FC021A3430F000B6F27 /* QHY16200A.HEX */,
+				59A52FC121A3430F000B6F27 /* QHY23.HEX */,
+				59A52FC221A3430F000B6F27 /* QHY2E.HEX */,
+				59A52FC321A3430F000B6F27 /* QHY27.HEX */,
+				59A52FC421A3430F000B6F27 /* IMG50.HEX */,
+				59A52FC521A3430F000B6F27 /* IC16200A.HEX */,
+				59A52FC621A3430F000B6F27 /* QHY5III174.img */,
+				59A52FC721A3430F000B6F27 /* QHY8.HEX */,
+				59A52FC821A3430F000B6F27 /* IMG2P.HEX */,
+				59A52FC921A3430F000B6F27 /* QHY224.img */,
+				59A52FCA21A3430F000B6F27 /* QHY5II.HEX */,
+				59A52FCB21A3430F000B6F27 /* QHY178.img */,
+				59A52FCC21A3430F000B6F27 /* IMG2S.HEX */,
+				59A52FCD21A3430F000B6F27 /* IC16803.HEX */,
+				59A52FCE21A3430F000B6F27 /* miniCam5.HEX */,
+				59A52FCF21A3430F000B6F27 /* IMG0H.HEX */,
+				59A52FD021A3430F000B6F27 /* QHY183.img */,
+				59A52FD121A3430F000B6F27 /* QHY9S.HEX */,
+				59A52FD221A3430F000B6F27 /* QHY168.img */,
+				59A52FD321A3430F000B6F27 /* QHY695A.HEX */,
+				59A52FD421A3430F000B6F27 /* QHY16000.HEX */,
+				59A52FD521A3430F000B6F27 /* QHY165.img */,
+				59A52FD621A3430F000B6F27 /* QHY8M.HEX */,
+				59A52FD721A3430F000B6F27 /* QHY367.img */,
+				59A52FD821A3430F000B6F27 /* QHY5III290.img */,
+				59A52FD921A3430F000B6F27 /* QHY8L.HEX */,
+				59A52FDA21A3430F000B6F27 /* QHY174.img */,
+				59A52FDB21A3430F000B6F27 /* QHY163.img */,
+				59A52FDC21A3430F000B6F27 /* QHY90A.HEX */,
+				59A52FDD21A3430F000B6F27 /* QHY814A.HEX */,
+				59A52FDE21A3430F000B6F27 /* QHY8PRO.HEX */,
+				59A52FDF21A3430F000B6F27 /* IC8300.HEX */,
+				59A52FE021A3430F000B6F27 /* QHY28.HEX */,
+				59A52FE121A3430F000B6F27 /* QHY5III178.img */,
+				59A52FE221A3430F000B6F27 /* QHY5.HEX */,
+				59A52FE321A3430F000B6F27 /* QHY5LOADER.HEX */,
+				59A52FE421A3430F000B6F27 /* QHY160002AD.HEX */,
+				59A52FE521A3430F000B6F27 /* IC90A.HEX */,
+				59A52FE621A3430F000B6F27 /* QHY15.HEX */,
+				59A52FE721A3430F000B6F27 /* QHY29.HEX */,
+				59A52FE821A3430F000B6F27 /* QHY6.HEX */,
+				59A52FE921A3430F000B6F27 /* QHY5III224.img */,
+				59A52FEA21A3430F000B6F27 /* POLEMASTER.HEX */,
+				59A52FEB21A3430F000B6F27 /* QHY7.HEX */,
+				59A52FEC21A3430F000B6F27 /* QHY5III185.img */,
+				59A52FED21A3430F000B6F27 /* QHY16.HEX */,
+				59A52FEE21A3430F000B6F27 /* QHY12.HEX */,
+				59A52FEF21A3430F000B6F27 /* QHY2PRO.HEX */,
+				59A52FF021A3430F000B6F27 /* QHY2.HEX */,
+				59A52FF121A3430F000B6F27 /* QHY11.HEX */,
+				59A52FF221A3430F000B6F27 /* QHY128.img */,
+				59A52FF321A3430F000B6F27 /* QHY10.HEX */,
+			);
+			path = firmware;
+			sourceTree = "<group>";
+		};
+		59A52FF521A3430F000B6F27 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59A52FF621A3430F000B6F27 /* qhyccderr.h */,
+				59A52FF721A3430F000B6F27 /* log4z.h */,
+				59A52FF821A3430F000B6F27 /* qhydevice.h */,
+				59A52FF921A3430F000B6F27 /* qhybase.h */,
+				59A52FFA21A3430F000B6F27 /* qhycam.h */,
+				59A52FFB21A3430F000B6F27 /* qhyccdstruct.h */,
+				59A52FFC21A3430F000B6F27 /* qhyccdcamdef.h */,
+				59A52FFD21A3430F000B6F27 /* debugview.h */,
+				59A52FFE21A3430F000B6F27 /* unlockimagequeue.h */,
+				59A52FFF21A3430F000B6F27 /* qhyccd.h */,
+				59A5300021A3430F000B6F27 /* cmosdll.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59A5300321A3430F000B6F27 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				59A5300E21A3487D000B6F27 /* Linux */,
+				59A5300621A34310000B6F27 /* macOS */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		59A5300421A3430F000B6F27 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				59A5300521A3430F000B6F27 /* libqhy.a */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		59A5300621A34310000B6F27 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				59A5300721A34310000B6F27 /* libqhy.a */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		59A5300821A34310000B6F27 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				59A5300921A34310000B6F27 /* libqhy.a */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		59A5300A21A34310000B6F27 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A5300B21A34310000B6F27 /* libqhy.a */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		59A5300C21A34310000B6F27 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A5300D21A34310000B6F27 /* libqhy.a */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		59A5300E21A3487D000B6F27 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A5300C21A34310000B6F27 /* x64 */,
+				59A5300A21A34310000B6F27 /* arm64 */,
+				59A5300821A34310000B6F27 /* arm */,
+				59A5300421A3430F000B6F27 /* x86 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		59A5301121A3514E000B6F27 /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				59A5301221A3514E000B6F27 /* libatik */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		59A5301221A3514E000B6F27 /* libatik */ = {
+			isa = PBXGroup;
+			children = (
+				59A5301321A3514E000B6F27 /* include */,
+				59A5301521A3514E000B6F27 /* lib */,
+			);
+			path = libatik;
+			sourceTree = "<group>";
+		};
+		59A5301321A3514E000B6F27 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59A5301421A3514E000B6F27 /* libatik.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59A5301521A3514E000B6F27 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				59A5301621A3514E000B6F27 /* macOS */,
+				59A5301821A3514E000B6F27 /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		59A5301621A3514E000B6F27 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				59A5301721A3514E000B6F27 /* libatik.a */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		59A5301821A3514E000B6F27 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				59A5301921A3514E000B6F27 /* x64 */,
+				59A5301B21A3514E000B6F27 /* x86 */,
+				59A5301D21A3514E000B6F27 /* arm */,
+				59A5301F21A3514E000B6F27 /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		59A5301921A3514E000B6F27 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A5301A21A3514E000B6F27 /* libatik.a */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		59A5301B21A3514E000B6F27 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				59A5301C21A3514E000B6F27 /* libatik.a */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		59A5301D21A3514E000B6F27 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				59A5301E21A3514E000B6F27 /* libatik.a */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		59A5301F21A3514E000B6F27 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				59A5302021A3514E000B6F27 /* libatik.a */,
+			);
+			path = arm64;
 			sourceTree = "<group>";
 		};
 		59AEB117215446960008A729 /* ioptron_2.0_simulator */ = {
@@ -4029,8 +6183,6 @@
 		59C8E7CC1DBBC00000AA3F0A /* externals */ = {
 			isa = PBXGroup;
 			children = (
-				59FFD0D12128604200C7355C /* hid.c */,
-				59FFD0D02128604200C7355C /* hidapi.h */,
 				9DAC59C81DC0A6A000AE410D /* libusb-1.0.0.dylib */,
 			);
 			path = externals;
@@ -4467,17 +6619,9 @@
 		59D9683321A2FFBC0069A64C /* include */ = {
 			isa = PBXGroup;
 			children = (
-				59D9683421A2FFBC0069A64C /* libdsusb */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		59D9683421A2FFBC0069A64C /* libdsusb */ = {
-			isa = PBXGroup;
-			children = (
 				59D9683521A2FFBC0069A64C /* libdsusb.h */,
 			);
-			path = libdsusb;
+			path = include;
 			sourceTree = "<group>";
 		};
 		59D9683621A2FFBC0069A64C /* lib */ = {
@@ -6611,17 +8755,9 @@
 		59D96DC121A30DF50069A64C /* include */ = {
 			isa = PBXGroup;
 			children = (
-				59D96DC221A30DF50069A64C /* libatik */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		59D96DC221A30DF50069A64C /* libatik */ = {
-			isa = PBXGroup;
-			children = (
 				59D96DC321A30DF50069A64C /* libatik.h */,
 			);
-			path = libatik;
+			path = include;
 			sourceTree = "<group>";
 		};
 		59D96DC521A30DF50069A64C /* lib */ = {
@@ -6713,6 +8849,7 @@
 				59F4EC711E941D1700CC7772 /* indigo_ccd_sbig.h */,
 				59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */,
 				59F4EC721E941D1700CC7772 /* indigo_ccd_sbig_main.c */,
+				59A52D2A21A330FB000B6F27 /* bin_externals */,
 			);
 			path = ccd_sbig;
 			sourceTree = "<group>";
@@ -6721,6 +8858,7 @@
 			isa = PBXGroup;
 			children = (
 				5918E26A1F8C0610005D6300 /* README.md */,
+				59A5301021A34943000B6F27 /* Makefile.inc */,
 				59F6546B1EE47388007B8C93 /* indigo_ccd_qhy.h */,
 				59F6546A1EE47388007B8C93 /* indigo_ccd_qhy.cpp */,
 				59F654691EE47388007B8C93 /* indigo_ccd_qhy_main.c */,
@@ -6732,19 +8870,9 @@
 		59F6546C1EE4738F007B8C93 /* bin_externals */ = {
 			isa = PBXGroup;
 			children = (
-				59F6546D1EE473AF007B8C93 /* qhyccd */,
+				59A52FB921A3430F000B6F27 /* qhyccd */,
 			);
 			path = bin_externals;
-			sourceTree = "<group>";
-		};
-		59F6546D1EE473AF007B8C93 /* qhyccd */ = {
-			isa = PBXGroup;
-			children = (
-				5971EAA820836A0000B25696 /* CMakeLists.txt */,
-				59F654701EE47484007B8C93 /* libqhy.a */,
-				59F654711EE47484007B8C93 /* qhyccd.h */,
-			);
-			path = qhyccd;
 			sourceTree = "<group>";
 		};
 		59FC2E90210CA26D00730343 /* ccd_mi */ = {
@@ -6763,18 +8891,9 @@
 		59FC2E91210CA26D00730343 /* bin_externals */ = {
 			isa = PBXGroup;
 			children = (
-				59FC2EAC210CA35100730343 /* libgxccd */,
+				59A52D5521A3360B000B6F27 /* libgxccd */,
 			);
 			path = bin_externals;
-			sourceTree = "<group>";
-		};
-		59FC2EAC210CA35100730343 /* libgxccd */ = {
-			isa = PBXGroup;
-			children = (
-				59FC2EB3210CA58C00730343 /* gxccd.h */,
-				59FC2EB1210CA58400730343 /* libgxccd.a */,
-			);
-			path = libgxccd;
 			sourceTree = "<group>";
 		};
 		59FE34582187B23C004FB5D4 /* aux_dsusb */ = {
@@ -6812,18 +8931,9 @@
 		59FE346C2187B5FD004FB5D4 /* bin_externals */ = {
 			isa = PBXGroup;
 			children = (
-				59FE346D2187B5FD004FB5D4 /* libgpusb */,
+				59A52F0721A3416D000B6F27 /* libgpusb */,
 			);
 			path = bin_externals;
-			sourceTree = "<group>";
-		};
-		59FE346D2187B5FD004FB5D4 /* libgpusb */ = {
-			isa = PBXGroup;
-			children = (
-				59FE347A2187B7CF004FB5D4 /* libgpusb.a */,
-				59FE34792187B7CF004FB5D4 /* libgpusb.h */,
-			);
-			path = libgpusb;
 			sourceTree = "<group>";
 		};
 		59FE347D2188699F004FB5D4 /* focuser_lakeside */ = {
@@ -7639,20 +9749,7 @@
 		9D976FD31DD0C48500782B32 /* externals */ = {
 			isa = PBXGroup;
 			children = (
-				9D976FDA1DD0C69D00782B32 /* dc1394.h */,
-				9D976FDE1DD0C6F200782B32 /* types.h */,
-				9D976FDF1DD0C70A00782B32 /* camera.h */,
-				9D976FE01DD0C70A00782B32 /* capture.h */,
-				9D976FE11DD0C70A00782B32 /* control.h */,
-				9D976FE21DD0C70A00782B32 /* conversions.h */,
-				9D976FE31DD0C70A00782B32 /* format7.h */,
-				9D976FE41DD0C70A00782B32 /* iso.h */,
-				9D976FE51DD0C70A00782B32 /* log.h */,
-				9D976FE61DD0C70A00782B32 /* macosx.h */,
-				9D976FE71DD0C70A00782B32 /* register.h */,
-				9D976FE81DD0C70A00782B32 /* utils.h */,
-				9D976FE91DD0C70A00782B32 /* video.h */,
-				9D976FDB1DD0C69D00782B32 /* libdc1394.a */,
+				59A52F2E21A3423F000B6F27 /* libdc1394 */,
 			);
 			name = externals;
 			path = externals/libdc1394;
@@ -7878,6 +9975,7 @@
 				59DD69CF1FC1D30300AEF0DF /* indigo_dome_driver.h in Headers */,
 				9D59D65520D3F829009EA8FF /* ApogeeCam.h in Headers */,
 				9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */,
+				59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */,
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
 				9D59D66720D3F82A009EA8FF /* IAltaSerialPortIo.h in Headers */,
 				59463C1920DE6781004950F2 /* indigo_focuser_wemacro_bt.h in Headers */,
@@ -7895,6 +9993,7 @@
 				9D59D5F920D3F829009EA8FF /* CamCfgMatrix.h in Headers */,
 				9D59D64D20D3F829009EA8FF /* FindDeviceEthernet.h in Headers */,
 				9D59D65220D3F829009EA8FF /* CamGen2CcdAcqParams.h in Headers */,
+				59A5302221A35167000B6F27 /* libatik.h in Headers */,
 				590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */,
 				59588CB1211CC30C00E9FC27 /* indigo_aux_driver.h in Headers */,
 				595F292A211E211200380EF4 /* DDHidJoystick.h in Headers */,
@@ -7911,6 +10010,7 @@
 				595F2924211E211200380EF4 /* DDHidDevice.h in Headers */,
 				9DAD522421246C18002FCC79 /* indigo_mount_synscan_driver.h in Headers */,
 				9DA451CF21908CBC00818B58 /* indigo_agent_imager.h in Headers */,
+				59A52DF121A33E4C000B6F27 /* libfli.h in Headers */,
 				9D59D62720D3F829009EA8FF /* CamRegMirror.h in Headers */,
 				9DB918091DFEA42E00678721 /* indigo_io.h in Headers */,
 				59DD69D61FC1DC4900AEF0DF /* indigo_dome_simulator.h in Headers */,
@@ -7926,13 +10026,12 @@
 				59FE34662187B2F8004FB5D4 /* indigo_aux_dsusb.h in Headers */,
 				9D59D64520D3F829009EA8FF /* UdpSocketLinux.h in Headers */,
 				595F2922211E211200380EF4 /* DDHidKeyboardBarcodeScanner.h in Headers */,
+				59A52F2B21A341AA000B6F27 /* libfcusb.h in Headers */,
 				9D59D64620D3F829009EA8FF /* linuxHelpers.h in Headers */,
 				9D59D63B20D3F829009EA8FF /* AscentData.h in Headers */,
 				599A63A81DE8BD1700ABC827 /* indigo_json.h in Headers */,
 				59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */,
 				9D59D64820D3F829009EA8FF /* AscentBasedUsbIo.h in Headers */,
-				9D976FDC1DD0C69D00782B32 /* dc1394.h in Headers */,
-				59FFD0D22128604200C7355C /* hidapi.h in Headers */,
 				591E112921583FBF00ABADA6 /* nexstar_pec.h in Headers */,
 				9D59D61120D3F829009EA8FF /* UdpSocketBase.h in Headers */,
 				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
@@ -7944,6 +10043,7 @@
 				59DD69CA1FC1CF8D00AEF0DF /* indigo_gps_nmea.h in Headers */,
 				595F2925211E211200380EF4 /* DDHidUsage.h in Headers */,
 				9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */,
+				59A52F1821A3417C000B6F27 /* libgpusb.h in Headers */,
 				9D59D66E20D3F82A009EA8FF /* AspenData.h in Headers */,
 				9D59D5E820D3F829009EA8FF /* AltaData.h in Headers */,
 				595F292D211E211200380EF4 /* DDHidLib.h in Headers */,
@@ -7958,6 +10058,7 @@
 				9D59D5F120D3F829009EA8FF /* ITimer.h in Headers */,
 				9D59D63A20D3F829009EA8FF /* PlatformData.h in Headers */,
 				9D59D66A20D3F82A009EA8FF /* CameraStatusRegs.h in Headers */,
+				59A52FB821A34266000B6F27 /* toupcam.h in Headers */,
 				9D59D64920D3F829009EA8FF /* parseCfgTabDelim.h in Headers */,
 				9D59D63020D3F829009EA8FF /* AltaUsbIo.h in Headers */,
 				9D59D5EE20D3F829009EA8FF /* ApgLogger.h in Headers */,
@@ -7966,6 +10067,8 @@
 				59D9681921A2FE3F0069A64C /* USB2ST4_Conv.h in Headers */,
 				9D59D62320D3F829009EA8FF /* FilterWheelIo.h in Headers */,
 				9DAD522721246C18002FCC79 /* indigo_mount_synscan.h in Headers */,
+				59A52FB721A34251000B6F27 /* dc1394.h in Headers */,
+				59A52F0621A3412E000B6F27 /* qsiapi.h in Headers */,
 				59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */,
 				9D59D61B20D3F829009EA8FF /* CamGen2Base.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
@@ -7982,7 +10085,9 @@
 				9D59D62B20D3F829009EA8FF /* AltaF.h in Headers */,
 				595F2920211E211100380EF4 /* DDHidQueue.h in Headers */,
 				595F2919211E211100380EF4 /* NSDictionary+DDHidExtras.h in Headers */,
+				59A52F0521A33FC0000B6F27 /* libatik.h in Headers */,
 				59E38B531F1577A000187839 /* indigo_ica_ptp_canon.h in Headers */,
+				59A52D6521A33617000B6F27 /* gxccd.h in Headers */,
 				9D59D5FD20D3F829009EA8FF /* ApnCamData.h in Headers */,
 				59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */,
 				9DAD52472126BD99002FCC79 /* indigo_wheel_quantum.h in Headers */,
@@ -7998,11 +10103,11 @@
 				591E112721583FBF00ABADA6 /* deg2str.h in Headers */,
 				59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */,
 				9D59D65920D3F829009EA8FF /* AltaEthernetIo.h in Headers */,
-				59FC2EB4210CA58C00730343 /* gxccd.h in Headers */,
 				9D59D62620D3F829009EA8FF /* HiC.h in Headers */,
 				9D59D63620D3F829009EA8FF /* LoggerException.h in Headers */,
 				9D59D63C20D3F829009EA8FF /* libCurlWrap.h in Headers */,
 				9DBC34671DCB267700588DB9 /* indigo_wheel_asi.h in Headers */,
+				59A52F2D21A341E0000B6F27 /* altaircam.h in Headers */,
 				9D59D63220D3F829009EA8FF /* DeviceStrHelpers.h in Headers */,
 				9D9EA6B31DBFA30600E11841 /* indigo_ccd_driver.h in Headers */,
 				9D59D61E20D3F829009EA8FF /* AspenUsbIo.h in Headers */,
@@ -8457,7 +10562,6 @@
 				9D59D61420D3F829009EA8FF /* libCurlWrap.cpp in Sources */,
 				9D59D5F820D3F829009EA8FF /* CamCfgMatrix.cpp in Sources */,
 				9D59D62520D3F829009EA8FF /* ITimer.cpp in Sources */,
-				59FFD0D32128604200C7355C /* hid.c in Sources */,
 				9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */,
 				5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */,
 				9D59D65B20D3F829009EA8FF /* AltaIo.cpp in Sources */,
@@ -8806,8 +10910,15 @@
 					"$(PROJECT_DIR)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223",
+					"$(PROJECT_DIR)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_atik/bin_externals/libatik/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_iidc/externals/libdc1394",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include";
 			};
 			name = Debug;
 		};
@@ -8831,8 +10942,15 @@
 					"$(PROJECT_DIR)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223",
+					"$(PROJECT_DIR)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_atik/bin_externals/libatik/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_iidc/externals/libdc1394",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include";
 			};
 			name = Release;
 		};

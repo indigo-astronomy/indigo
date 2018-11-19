@@ -69,7 +69,7 @@
 #define TEMP_THRESHOLD     0.15
 #define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
 
-#include <libfli/libfli.h>
+#include <libfli.h>
 #include "indigo_driver_xml.h"
 #include "indigo_ccd_fli.h"
 

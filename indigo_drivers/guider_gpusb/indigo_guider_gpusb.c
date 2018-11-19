@@ -24,7 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x0001
-#define DRIVER_NAME "indigo_ccd_gpusb"
+#define DRIVER_NAME "indigo_guider_gpusb"
 
 #include <stdlib.h>
 #include <string.h>
@@ -36,7 +36,7 @@
 
 #include <libusb-1.0/libusb.h>
 
-#include <libgpusb/libgpusb.h>
+#include <libgpusb.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_guider_gpusb.h"

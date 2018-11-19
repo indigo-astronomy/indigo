@@ -40,7 +40,7 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <libfcusb/libfcusb.h>
+#include <libfcusb.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_focuser_fcusb.h"
