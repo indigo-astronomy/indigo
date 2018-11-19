@@ -525,7 +525,7 @@ static void mount_handle_correction_model(indigo_device *device) {
 }
 
 
-static void mount_handle_guidemode(indigo_device *device) {
+static void mount_handle_guide_mode(indigo_device *device) {
 	int res = ASCOL_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (GUIDE_MODE_ON_ITEM->sw.value) {
@@ -1300,7 +1300,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		indigo_init_number_item(CORRECTION_MODEL_INDEX_ITEM, CORRECTION_MODEL_INDEX_ITEM_NAME, "Index", 0, 4, 1, 0);
 		// -------------------------------------------------------------------------- GUIDE_MODE
-		GUIDE_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, GUIDE_MODE_PROPERTY_NAME, CORRECTIONS_GROUP, "Guide Mode Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		GUIDE_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, GUIDE_MODE_PROPERTY_NAME, CORRECTIONS_GROUP, "Guide Mode", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (GUIDE_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
@@ -1576,10 +1576,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDE_MODE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GUIDMODE_PROPERTY
+		// -------------------------------------------------------------------------------- GUIDE_MODE_PROPERTY
 		if (IS_CONNECTED) {
 			indigo_property_copy_values(GUIDE_MODE_PROPERTY, property, false);
-			mount_handle_guidemode(device);
+			mount_handle_guide_mode(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
