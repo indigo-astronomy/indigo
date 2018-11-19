@@ -915,7 +915,6 @@
 		59CBD47E1FAF6C80000DAFDB /* indigo_gps_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_simulator_main.c; sourceTree = "<group>"; };
 		59CC779B1F27BCF2003AD2DB /* indigo_ica_ptp_sony.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_sony.h; sourceTree = "<group>"; };
 		59CC779C1F27BCF2003AD2DB /* indigo_ica_ptp_sony.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_sony.m; sourceTree = "<group>"; };
-		59CD7310218E418900F646D4 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_aux_upb.rules"; sourceTree = "<group>"; };
 		59D1EA032190B907001901BE /* indigo_dome_azimuth.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_azimuth.h; sourceTree = "<group>"; };
 		59D381A71D95926E00E87393 /* indigo_bus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = indigo_bus.h; path = indigo_libs/indigo_bus.h; sourceTree = SOURCE_ROOT; wrapsLines = 0; };
@@ -950,6 +949,10 @@
 		59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator_main.c; sourceTree = "<group>"; };
 		59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator.c; sourceTree = "<group>"; };
 		59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_simulator.h; sourceTree = "<group>"; };
+		59D967EB21A2AE5E0069A64C /* Makefile.new */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.new; sourceTree = "<group>"; };
+		59D967EC21A2AE660069A64C /* Makefile.drv */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.drv; sourceTree = "<group>"; };
+		59D967ED21A2AF770069A64C /* Makefile.drvs */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.drvs; sourceTree = "<group>"; };
+		59D967EE21A2EA930069A64C /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59DD69C51FC1CF8D00AEF0DF /* indigo_gps_nmea.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_nmea.c; sourceTree = "<group>"; };
 		59DD69C61FC1CF8D00AEF0DF /* indigo_gps_nmea.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_gps_nmea.h; sourceTree = "<group>"; };
 		59DD69C71FC1CF8D00AEF0DF /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -2103,6 +2106,9 @@
 			isa = PBXGroup;
 			children = (
 				59D381C91D96A4E800E87393 /* Makefile */,
+				59D967EB21A2AE5E0069A64C /* Makefile.new */,
+				59D967ED21A2AF770069A64C /* Makefile.drvs */,
+				59D967EC21A2AE660069A64C /* Makefile.drv */,
 				59D707651DC5268B00DEF566 /* AUTHORS.md */,
 				59D381C81D96A39400E87393 /* LICENSE.md */,
 				59D381C71D96A33D00E87393 /* README.md */,
@@ -2734,6 +2740,7 @@
 		59D381A61D9590EA00E87393 /* indigo_libs */ = {
 			isa = PBXGroup;
 			children = (
+				59D967EE21A2EA930069A64C /* Makefile */,
 				599C9A281D998345008BBCC1 /* indigo_config.h */,
 				9D658B941DE4A8BC006C9CC5 /* indigo_names.h */,
 				59D381A71D95926E00E87393 /* indigo_bus.h */,
@@ -3855,7 +3862,6 @@
 				9D6940892180B9F600AB112C /* indigo_aux_upb.c */,
 				9D69408B2180B9F600AB112C /* indigo_aux_upb_main.c */,
 				9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */,
-				59CD7310218E418900F646D4 /* Makefile */,
 				59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */,
 				9D69408C2180BA1800AB112C /* upb_simulator */,
 				59A52CDA21A08D3D000B6F27 /* indi_go_upb.xml */,
