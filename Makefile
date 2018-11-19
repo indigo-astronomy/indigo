@@ -335,11 +335,11 @@ $(BUILD_LIB)/libraw.a: indigo_linux_drivers/ccd_gphoto2/externals/libraw/Makefil
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libatik/libatik.h: indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik/libatik.h
+$(BUILD_INCLUDE)/libatik.h: indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik.h
 	install -d $(BUILD_INCLUDE)
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik.h $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libatik.a: $(BUILD_INCLUDE)/libatik/libatik.h
+$(BUILD_LIB)/libatik.a: $(BUILD_INCLUDE)/libatik.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBATIK) $(BUILD_LIB)
 
@@ -373,11 +373,11 @@ $(BUILD_LIB)/libqhy.a:
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/asi_efw/EFW_filter.h: indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h
-	install -d $(BUILD_INCLUDE)/asi_efw
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h $(BUILD_INCLUDE)/asi_efw
+$(BUILD_INCLUDE)/EFW_filter.h: indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include/EFW_filter.h $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libEFWFilter.a: $(LIBASIEFW) $(BUILD_INCLUDE)/asi_efw/EFW_filter.h
+$(BUILD_LIB)/libEFWFilter.a: $(LIBASIEFW) $(BUILD_INCLUDE)/EFW_filter.h
 	install -d $(BUILD_LIB)
 ifeq ($(OS_DETECTED),Darwin)
 	lipo $(LIBASIEFW) -thin i386 -output /tmp/32.a
@@ -395,11 +395,11 @@ endif
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/asi_ccd/ASICamera2.h: indigo_drivers/ccd_asi/bin_externals/libasicamera/include/ASICamera2.h
-	install -d $(BUILD_INCLUDE)/asi_ccd
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_asi/bin_externals/libasicamera/include/ASICamera2.h $(BUILD_INCLUDE)/asi_ccd
+$(BUILD_INCLUDE)/ASICamera2.h: indigo_drivers/ccd_asi/bin_externals/libasicamera/include/ASICamera2.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_asi/bin_externals/libasicamera/include/ASICamera2.h $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libASICamera2.a: $(BUILD_INCLUDE)/asi_ccd/ASICamera2.h
+$(BUILD_LIB)/libASICamera2.a: $(BUILD_INCLUDE)/ASICamera2.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBASICAMERA) $(BUILD_LIB)
 
@@ -410,11 +410,11 @@ $(BUILD_LIB)/libASICamera2.a: $(BUILD_INCLUDE)/asi_ccd/ASICamera2.h
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/asi_guider/USB2ST4_Conv.h: indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include/USB2ST4_Conv.h
-	install -d $(BUILD_INCLUDE)/asi_guider
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include/USB2ST4_Conv.h $(BUILD_INCLUDE)/asi_guider
+$(BUILD_INCLUDE)/USB2ST4_Conv.h: indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include/USB2ST4_Conv.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/include/USB2ST4_Conv.h $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libUSB2ST4Conv.a: $(BUILD_INCLUDE)/asi_guider/USB2ST4_Conv.h
+$(BUILD_LIB)/libUSB2ST4Conv.a: $(BUILD_INCLUDE)/USB2ST4_Conv.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBASIST4) $(BUILD_LIB)
 
@@ -425,11 +425,11 @@ $(BUILD_LIB)/libUSB2ST4Conv.a: $(BUILD_INCLUDE)/asi_guider/USB2ST4_Conv.h
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libfcusb/libfcusb.h: indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb/libfcusb.h
+$(BUILD_INCLUDE)/libfcusb.h: indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb.h
 	install -d $(BUILD_INCLUDE)
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include/libfcusb.h $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libfcusb.a: $(LIBFCUSB) $(BUILD_INCLUDE)/libfcusb/libfcusb.h
+$(BUILD_LIB)/libfcusb.a: $(LIBFCUSB) $(BUILD_INCLUDE)/libfcusb.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBFCUSB) $(BUILD_LIB)
 
@@ -439,11 +439,11 @@ $(BUILD_LIB)/libfcusb.a: $(LIBFCUSB) $(BUILD_INCLUDE)/libfcusb/libfcusb.h
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libdsusb/libdsusb.h: indigo_drivers/aux_dsusb/bin_externals/libdsusb/include/libdsusb/libdsusb.h
+$(BUILD_INCLUDE)/libdsusb.h: indigo_drivers/aux_dsusb/bin_externals/libdsusb/include/libdsusb.h
 	install -d $(BUILD_INCLUDE)
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/include/libdsusb $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/include/libdsusb.h $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libdsusb.a: $(LIBDSUSB) $(BUILD_INCLUDE)/libdsusb/libdsusb.h
+$(BUILD_LIB)/libdsusb.a: $(LIBDSUSB) $(BUILD_INCLUDE)/libdsusb.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBDSUSB) $(BUILD_LIB)
 
@@ -453,11 +453,11 @@ $(BUILD_LIB)/libdsusb.a: $(LIBDSUSB) $(BUILD_INCLUDE)/libdsusb/libdsusb.h
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libgpusb/libgpusb.h: indigo_drivers/guider_gpusb/bin_externals/libgpusb/include/libgpusb/libgpusb.h
+$(BUILD_INCLUDE)/libgpusb.h: indigo_drivers/guider_gpusb/bin_externals/libgpusb/include/libgpusb.h
 	install -d $(BUILD_INCLUDE)
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/include/libgpusb $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/include/libgpusb.h $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libgpusb.a: $(LIBGPUSB) $(BUILD_INCLUDE)/libgpusb/libgpusb.h
+$(BUILD_LIB)/libgpusb.a: $(LIBGPUSB) $(BUILD_INCLUDE)/libgpusb.h
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/$(LIBGPUSB) $(BUILD_LIB)
 
@@ -502,12 +502,11 @@ endif
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libfli/libfli.h: indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.h
+$(BUILD_INCLUDE)/libfli.h: indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.h
 	install -d $(BUILD_INCLUDE)
-	install -d $(BUILD_INCLUDE)/libfli
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.h $(BUILD_INCLUDE)/libfli
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.h $(BUILD_INCLUDE)
 
-$(BUILD_LIB)/libfli.a: $(BUILD_INCLUDE)/libfli/libfli.h
+$(BUILD_LIB)/libfli.a: $(BUILD_INCLUDE)/libfli.h
 	cd indigo_drivers/ccd_fli/externals/$(FLISDK); make clean; make; cd ../../../..
 	install -d $(BUILD_LIB)
 	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_fli/externals/$(FLISDK)/libfli.a $(BUILD_LIB)
@@ -1129,11 +1128,12 @@ $(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sb
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
 else ifeq ($(OS_DETECTED),Darwin)
-$(BUILD_INCLUDE)/libsbig/sbigudrv.h:
-	install -d $(BUILD_INCLUDE)/libsbig
-	cp indigo_drivers/ccd_sbig/bin_externals/sbigudrv/include/sbigudrv.h $(BUILD_INCLUDE)/libsbig/
 
-indigo_drivers/ccd_sbig/indigo_ccd_sbig.o: $(BUILD_INCLUDE)/libsbig/sbigudrv.h
+$(BUILD_INCLUDE)/sbigudrv.h:
+	install -d $(BUILD_INCLUDE)/libsbig
+	cp indigo_drivers/ccd_sbig/bin_externals/sbigudrv/include/sbigudrv.h $(BUILD_INCLUDE)/
+
+indigo_drivers/ccd_sbig/indigo_ccd_sbig.o: $(BUILD_INCLUDE)/sbigudrv.h
 
 $(BUILD_DRIVERS)/indigo_ccd_sbig.a: indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(AR) $(ARFLAGS) $@ $^
@@ -1143,6 +1143,7 @@ $(BUILD_DRIVERS)/indigo_ccd_sbig: indigo_drivers/ccd_sbig/indigo_ccd_sbig_main.o
 
 $(BUILD_DRIVERS)/indigo_ccd_sbig.$(SOEXT): indigo_drivers/ccd_sbig/indigo_ccd_sbig.o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+
 endif
 
 #---------------------------------------------------------------------

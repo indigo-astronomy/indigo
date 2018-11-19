@@ -36,7 +36,7 @@
 
 #include <libusb-1.0/libusb.h>
 
-#include <libdsusb/libdsusb.h>
+#include <libdsusb.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_aux_dsusb.h"
