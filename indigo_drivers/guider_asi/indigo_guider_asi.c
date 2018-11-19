@@ -44,7 +44,7 @@
 #endif
 
 #include <stdbool.h>
-#include "asi_guider/USB2ST4_Conv.h"
+#include "USB2ST4_Conv.h"
 #include "indigo_guider_asi.h"
 #include "indigo_driver_xml.h"
 

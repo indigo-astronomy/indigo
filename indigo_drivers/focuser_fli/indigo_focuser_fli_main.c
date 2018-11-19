@@ -28,8 +28,6 @@
 
 #include "indigo_driver_xml.h"
 
-#include <libfli/libfli.h>
-
 #include "indigo_focuser_fli.h"
 
 int main(int argc, const char * argv[]) {

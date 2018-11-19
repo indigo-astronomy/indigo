@@ -42,7 +42,7 @@
 #endif
 
 #define MAX_PATH 255
-#include <libfli/libfli.h>
+#include <libfli.h>
 #include "indigo_driver_xml.h"
 #include "indigo_wheel_fli.h"
 

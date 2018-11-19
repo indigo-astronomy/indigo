@@ -47,7 +47,7 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <libfli/libfli.h>
+#include <libfli.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_focuser_fli.h"

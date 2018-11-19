@@ -41,7 +41,7 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <asi_efw/EFW_filter.h>
+#include <EFW_filter.h>
 #include "indigo_driver_xml.h"
 #include "indigo_wheel_asi.h"
 

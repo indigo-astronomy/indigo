@@ -36,7 +36,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include <libsbig/sbigudrv.h>
+#include <sbigudrv.h>
 
 #if defined(INDIGO_MACOS)
 #include <libusb-1.0/libusb.h>
