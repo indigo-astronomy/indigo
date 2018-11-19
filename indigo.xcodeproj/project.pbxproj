@@ -1483,6 +1483,7 @@
 		59A5301E21A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
 		59A5302021A3514E000B6F27 /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
 		59A5302321A351C6000B6F27 /* libdc1394.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libdc1394.a; path = ../../../../build/lib/libdc1394.a; sourceTree = "<group>"; };
+		59A5302621A35359000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
@@ -4251,12 +4252,13 @@
 		59588CA1211CBEB100E9FC27 /* aux_joystick */ = {
 			isa = PBXGroup;
 			children = (
+				59A5302721A35552000B6F27 /* external */,
 				59588CA9211CC08D00E9FC27 /* README.md */,
+				59A5302621A35359000B6F27 /* Makefile */,
 				59588CA8211CC08D00E9FC27 /* indigo_aux_joystick_main.c */,
 				59588CA7211CC08D00E9FC27 /* indigo_aux_joystick.c */,
 				595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */,
 				59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */,
-				595F28F9211E211100380EF4 /* DDHidLib */,
 			);
 			path = aux_joystick;
 			sourceTree = "<group>";
@@ -4305,8 +4307,7 @@
 				595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */,
 				595F2917211E211100380EF4 /* DDHidQueue.m */,
 			);
-			name = DDHidLib;
-			path = external/DDHidLib;
+			path = DDHidLib;
 			sourceTree = "<group>";
 		};
 		5981C8D51DC14DB900C7705F /* focuser_fcusb */ = {
@@ -6019,6 +6020,14 @@
 				59A5302021A3514E000B6F27 /* libatik.a */,
 			);
 			path = arm64;
+			sourceTree = "<group>";
+		};
+		59A5302721A35552000B6F27 /* external */ = {
+			isa = PBXGroup;
+			children = (
+				595F28F9211E211100380EF4 /* DDHidLib */,
+			);
+			path = external;
 			sourceTree = "<group>";
 		};
 		59AEB117215446960008A729 /* ioptron_2.0_simulator */ = {
