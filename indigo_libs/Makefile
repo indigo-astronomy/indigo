@@ -34,21 +34,26 @@ endif
 
 .PHONY: all clean
 
-all:	libindigo
+all:	status libindigo
 
-install: libindigo
+status:
+	@printf "\nindigo_libs -------------------------\n\n"
+	@printf "libusb-1.0: $(LIBUSB)\n"
+	@printf "libhidapi: $(LIBHIDAPI)\n\n"
+
+install: status libindigo
 	cp $(BUILD_LIB)/libindigo.$(SOEXT) $(INSTALL_LIB)
 ifeq ($(OS_DETECTED),Darwin)
 	cp $(LIBUSB) $(INSTALL_LIB)
 endif
 
-uninstall:
+uninstall: status
 	rm -f $(INSTALL_LIB)/libindigo.$(SOEXT)
 ifeq ($(OS_DETECTED),Darwin)
 	rm -f $(INSTALL_LIB)/libusb-1.0.dylib
 endif
 
-clean:
+clean: status
 	rm -f *.o *.orig $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
 #---------------------------------------------------------------------

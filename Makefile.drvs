@@ -24,38 +24,39 @@
 
 include ../Makefile.inc
 
+GROUP = $(notdir $(shell pwd))
+
 FOLDERS = $(addsuffix /, $(filter-out $(EXCLUDED_DRIVERS), $(wildcard agent_*) $(wildcard aux_*) $(wildcard ccd_*) $(wildcard dome_*) $(wildcard focuser_*) $(wildcard gps_*) $(wildcard guider_*) $(wildcard mount_*) $(wildcard wheel_*) $(wildcard system_*)))
+EXCLUDED = $(addsuffix /, $(filter $(EXCLUDED_DRIVERS), $(wildcard agent_*) $(wildcard aux_*) $(wildcard ccd_*) $(wildcard dome_*) $(wildcard focuser_*) $(wildcard gps_*) $(wildcard guider_*) $(wildcard mount_*) $(wildcard wheel_*) $(wildcard system_*)))
 
 FOLDERS_WITH_MAKEFILE = $(dir $(wildcard agent_*/Makefile) $(wildcard aux_*/Makefile) $(wildcard ccd_*/Makefile) $(wildcard dome_*/Makefile) $(wildcard focuser_*/Makefile) $(wildcard gps_*/Makefile) $(wildcard guider_*/Makefile) $(wildcard mount_*/Makefile) $(wildcard wheel_*/Makefile) $(wildcard system_*/Makefile))
 FOLDERS_WITHOUT_MAKEFILE = $(filter-out $(FOLDERS_WITH_MAKEFILE), $(FOLDERS))
 .PHONY: all clean $(FOLDERS)
 
 all: OP = all
-all: $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+all: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 status: OP = status
 status: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 install: OP = install
-install: $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+install: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 uninstall: OP = uninstall
-uninstall: $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+uninstall: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 clean: OP = clean
-clean: $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+clean: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 $(FOLDERS_WITH_MAKEFILE):
-	$(MAKE) -C $@ $(OP)
+	@$(MAKE) -C $@ $(OP)
 
 $(FOLDERS_WITHOUT_MAKEFILE):
-	$(MAKE) -C $@ -f ../../Makefile.drv $(OP)
+	@$(MAKE) -C $@ -f ../../Makefile.drv $(OP)
 
 folders:
-	@printf "\nFolders ---------------------------------------\n"
-	@printf "$(FOLDERS)\n"
-	@printf "\nFolders with Makefile -------------------------\n"
-	@printf "$(FOLDERS_WITH_MAKEFILE)\n"
-	@printf "\nFolders without Makefile ----------------------\n"
-	@printf "$(FOLDERS_WITHOUT_MAKEFILE)\n"
+	@printf "\n$(GROUP) -------------------------\n\n"
+	@printf "Folders with Makefile: $(FOLDERS_WITH_MAKEFILE)\n"
+	@printf "Folders without Makefile: $(FOLDERS_WITHOUT_MAKEFILE)\n"
+	@printf "Folders excluded: $(EXCLUDED)\n"
 
