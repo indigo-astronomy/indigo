@@ -1,0 +1,61 @@
+#---------------------------------------------------------------------
+#
+# Copyright (c) 2018 CloudMakers, s. r. o.
+# All rights reserved.
+#
+# You can use this software under the terms of 'INDIGO Astronomy
+# open-source license' (see LICENSE.md).
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+#---------------------------------------------------------------------
+
+# This file is supposed to be called from within indigo_XXX_drivers folder.
+
+include ../Makefile.inc
+
+FOLDERS = $(addsuffix /, $(filter-out $(EXCLUDED_DRIVERS), $(wildcard agent_*) $(wildcard aux_*) $(wildcard ccd_*) $(wildcard dome_*) $(wildcard focuser_*) $(wildcard gps_*) $(wildcard guider_*) $(wildcard mount_*) $(wildcard wheel_*) $(wildcard system_*)))
+
+FOLDERS_WITH_MAKEFILE = $(dir $(wildcard agent_*/Makefile) $(wildcard aux_*/Makefile) $(wildcard ccd_*/Makefile) $(wildcard dome_*/Makefile) $(wildcard focuser_*/Makefile) $(wildcard gps_*/Makefile) $(wildcard guider_*/Makefile) $(wildcard mount_*/Makefile) $(wildcard wheel_*/Makefile) $(wildcard system_*/Makefile))
+FOLDERS_WITHOUT_MAKEFILE = $(filter-out $(FOLDERS_WITH_MAKEFILE), $(FOLDERS))
+.PHONY: all clean $(FOLDERS)
+
+all: OP = all
+all: $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+
+status: OP = status
+status: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+
+install: OP = install
+install: $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+
+uninstall: OP = uninstall
+uninstall: $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+
+clean: OP = clean
+clean: $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+
+$(FOLDERS_WITH_MAKEFILE):
+	$(MAKE) -C $@ $(OP)
+
+$(FOLDERS_WITHOUT_MAKEFILE):
+	$(MAKE) -C $@ -f ../../Makefile.drv $(OP)
+
+folders:
+	@printf "\nFolders ---------------------------------------\n"
+	@printf "$(FOLDERS)\n"
+	@printf "\nFolders with Makefile -------------------------\n"
+	@printf "$(FOLDERS_WITH_MAKEFILE)\n"
+	@printf "\nFolders without Makefile ----------------------\n"
+	@printf "$(FOLDERS_WITHOUT_MAKEFILE)\n"
+

@@ -62,8 +62,8 @@ libindigo: version libusb-1.0 libhidapi libjpeg libnovas $(BUILD_LIB)/libindigo.
 $(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard *.c)))
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c))) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libnovas.a $(LIBHIDAPI)
-	$(CC) -shared -o $@ $^ $(LDFLAGS)
+$(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c)))
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libnovas.a -force_load $(LIBHIDAPI)
 
 #---------------------------------------------------------------------
 #

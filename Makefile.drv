@@ -20,37 +20,50 @@
 #
 #---------------------------------------------------------------------
 
+# This file is supposed to be called from within indigo_XXX_drivers/YYY folder if Makefile is not present.
+
 include ../../Makefile.inc
 
-DRIVER=indigo_$(notdir $(shell pwd))
+DRIVER = indigo_$(notdir $(shell pwd))
 
-DRIVER_A=$(BUILD_DRIVERS)/$(DRIVER).a
-DRIVER_SO=$(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
+DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
+DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
 ifeq ($(wildcard $(DRIVER)_main.c),)
-	DRIVER_EXECUTABLE=
-	DRIVER_MAIN_O=
+	DRIVER_EXECUTABLE =
+	DRIVER_MAIN_O =
 else
-	DRIVER_EXECUTABLE=$(BUILD_DRIVERS)/$(DRIVER)
-	DRIVER_MAIN_O=$(DRIVER)_main.o
+	DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
+	DRIVER_MAIN_O = $(DRIVER)_main.o
 endif
-DRIVER_O=$(filter-out $(DRIVER_MAIN),$(addsuffix .o, $(basename $(notdir $(wildcard $(DRIVER)*.c)))))
-RULES=$(notdir $(wildcard *.rules))
-XML=$(notdir $(wildcard indi_go_*.xml))
+DRIVER_O = $(filter-out $(DRIVER_MAIN_O),$(addsuffix .o, $(basename $(notdir $(wildcard $(DRIVER)*.c)))))
+RULES = $(notdir $(wildcard *.rules))
+XML = $(notdir $(wildcard indi_go_*.xml))
 
-SDK_INCLUDE=$(addprefix -I, $(wildcard bin_externals/*/include))
+SDK_INCLUDE = $(addprefix -I, $(wildcard bin_externals/*/include))
 ifeq ($(OS_DETECTED),Darwin)
-	SDK_LIB_A=$(wildcard bin_externals/*/lib/macOS/*.a)
-	SDK_LIB_SO=$(wildcard bin_externals/*/lib/macOS/*.dylib)
+	SDK_LIB_A = $(wildcard bin_externals/*/lib/macOS/*.a)
+	SDK_LIB_SO = $(wildcard bin_externals/*/lib/macOS/*.dylib)
 endif
 ifeq ($(OS_DETECTED),Linux)
-	SDK_LIB_A=$(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.a)
-	SDK_LIB_SO=$(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.so)
+	SDK_LIB_A = $(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.a)
+	SDK_LIB_SO = $(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.so)
 endif
-SDK_LIB=-L$(dir $(SDK_LIB_A) $(SDK_LIB_SO)) -l$(subst lib,,$(basename $(notdir $(SDK_LIB_A) $(SDK_LIB_SO))))
+SDK_LIB = $(addprefix -L, $(dir $(SDK_LIB_A) $(SDK_LIB_SO))) $(addprefix -l, $(subst lib, , $(basename $(notdir $(SDK_LIB_A) $(SDK_LIB_SO)))))
 
-CFLAGS+=$(SDK_INCLUDE)
+CFLAGS += $(SDK_INCLUDE)
 
 all: $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+
+status:
+	@printf "\n$(DRIVER) ---------------------------------------\n"
+	@printf "Archive: $(DRIVER_A)\n"
+	@printf "Dynamic library: $(DRIVER_SO)\n"
+	@printf "Executable: $(DRIVER_EXECUTABLE)\n"
+	@printf "Rules: $(RULES)\n"
+	@printf "XML: $(XML)\n"
+	@printf "SDK include: $(SDK_INCLUDE)\n"
+	@printf "SDK library: $(SDK_LIB) [$(strip $(SDK_LIB_A) $(SDK_LIB_SO))]\n"
+	@printf "CFLAGS: $(CFLAGS)\n"
 
 $(DRIVER_A): $(DRIVER_O)
 	$(AR) $(ARFLAGS) $@ $^

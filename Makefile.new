@@ -20,16 +20,21 @@
 #
 #---------------------------------------------------------------------
 
-INDIGO_VERSION=2.0
-INDIGO_BUILD=77
+INDIGO_VERSION = 2.0
+INDIGO_BUILD = 76
 
-INDIGO_ROOT=$(shell pwd)
-BUILD_ROOT=$(INDIGO_ROOT)/build
-BUILD_BIN=$(BUILD_ROOT)/bin
-BUILD_DRIVERS=$(BUILD_ROOT)/drivers
-BUILD_LIB=$(BUILD_ROOT)/lib
-BUILD_INCLUDE=$(BUILD_ROOT)/include
-BUILD_SHARE=$(BUILD_ROOT)/share
+INDIGO_ROOT = $(shell pwd)
+BUILD_ROOT = $(INDIGO_ROOT)/build
+BUILD_BIN = $(BUILD_ROOT)/bin
+BUILD_DRIVERS = $(BUILD_ROOT)/drivers
+BUILD_LIB = $(BUILD_ROOT)/lib
+BUILD_INCLUDE = $(BUILD_ROOT)/include
+BUILD_SHARE = $(BUILD_ROOT)/share
+
+STABLE_DRIVERS = agent_lx200_server agent_snoop aux_joystick aux_upb ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_iidc ccd_mi ccd_qhy ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek dome_simulator focuser_dmfc focuser_fcusb focuser_fli focuser_mjkzz focuser_moonlite focuser_nfocus focuser_nstep focuser_usbv3 focuser_wemacro gps_nmea gps_simulator guider_asi guider_cgusbst4 mount_ioptron mount_lx200 mount_nexstar mount_simulator mount_temma wheel_asi wheel_atik wheel_fli wheel_sx
+UNTESTED_DRIVERS = aux_dsusb aux_rts focuser_lakeside focuser_optec guider_gpusb wheel_optec wheel_quantum wheel_trutek wheel_xagyl
+DEVELOPED_DRIVERS = agent_imager mount_synscan system_ascol
+EXCLUDED_DRIVERS = aux_joystick ccd_apogee ccd_asi ccd_dsi ccd_fli ccd_iidc ccd_qhy ccd_qsi focuser_fli guider_asi mount_nexstar wheel_asi wheel_atik wheel_fli system_ascol ccd_ica focuser_mjkzz_bt focuser_wemacro_bt
 
 #---------------------------------------------------------------------
 #
@@ -37,54 +42,54 @@ BUILD_SHARE=$(BUILD_ROOT)/share
 #
 #---------------------------------------------------------------------
 
-DEBUG_BUILD=-g
+DEBUG_BUILD = -g
 
 ifeq ($(OS),Windows_NT)
-	OS_DETECTED=Windows
+	OS_DETECTED = Windows
 else
-	OS_DETECTED=$(shell uname -s)
-	ARCH_DETECTED=$(shell uname -m)
+	OS_DETECTED = $(shell uname -s)
+	ARCH_DETECTED = $(shell uname -m)
 	ifeq ($(OS_DETECTED),Darwin)
-		DEBIAN_ARCH=amd64
-		CC=clang
-		AR=ar
-		CFLAGS=$(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Duint=unsigned
-		CXXFLAGS=$(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
-		MFLAGS=$(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -fno-common -O3 -fobjc-arc -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Wobjc-property-no-attribute
-		LDFLAGS=-headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L$(BUILD_LIB) -lusb-1.0
-		ARFLAGS=-rv
-		SOEXT=dylib
+		DEBIAN_ARCH = amd64
+		CC = clang
+		AR = ar
+		CFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Duint=unsigned
+		CXXFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -DINDIGO_MACOS
+		MFLAGS = $(DEBUG_BUILD) -mmacosx-version-min=10.10 -fPIC -fno-common -O3 -fobjc-arc -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_mac_drivers -I$(BUILD_INCLUDE) -std=gnu11 -DINDIGO_MACOS -Wobjc-property-no-attribute
+		LDFLAGS = -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L$(BUILD_LIB) -lusb-1.0
+		ARFLAGS = -rv
+		SOEXT = dylib
 	endif
 	ifeq ($(OS_DETECTED),Linux)
 		ifeq ($(ARCH_DETECTED),armv7l)
-			ARCH_DETECTED=arm
-			DEBIAN_ARCH=armhf
+			ARCH_DETECTED = arm
+			DEBIAN_ARCH = armhf
 		endif
 		ifeq ($(ARCH_DETECTED),aarch64)
-			ARCH_DETECTED=arm64
-			DEBIAN_ARCH=arm64
+			ARCH_DETECTED = arm64
+			DEBIAN_ARCH = arm64
 		endif
 		ifeq ($(ARCH_DETECTED),i686)
-			ARCH_DETECTED=x86
-			DEBIAN_ARCH=i386
+			ARCH_DETECTED = x86
+			DEBIAN_ARCH = i386
 		endif
 		ifeq ($(ARCH_DETECTED),x86_64)
-			ARCH_DETECTED=x64
-			DEBIAN_ARCH=amd64
+			ARCH_DETECTED = x64
+			DEBIAN_ARCH = amd64
 		endif
-		CC=gcc
-		AR=ar
+		CC = gcc
+		AR = ar
 		ifeq ($(ARCH_DETECTED),arm)
-			CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-			CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
+			CFLAGS = $(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+			CXXFLAGS = $(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 		else
-			CFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-			CXXFLAGS=$(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
+			CFLAGS = $(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+			CXXFLAGS = $(DEBUG_BUILD) -fPIC -O3 -Iindigo_libs -Iindigo_drivers -Iindigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 		endif
-		LDFLAGS=-lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lgphoto2 -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
-		ARFLAGS=-rv
-		SOEXT=so
-		LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
+		LDFLAGS = -lm -lrt -lusb-1.0 -ldl -ludev -ldns_sd -lgphoto2 -L$(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
+		ARFLAGS = -rv
+		SOEXT = so
+		LIBHIDAPI = $(BUILD_LIB)/libhidapi-hidraw.a
 	endif
 endif
 
@@ -92,13 +97,24 @@ endif
 
 all:	init
 	$(MAKE)	-C indigo_libs all
-	$(MAKE)	-C indigo_drivers all
+	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs all
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers all
+	$(MAKE)	-C indigo_mac_drivers  -f ../Makefile.drvs all
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers all
+	$(MAKE)	-C indigo_linux_drivers  -f ../Makefile.drvs all
 endif
+
+status:
+	$(MAKE)	-C indigo_libs status
+	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs status
+ifeq ($(OS_DETECTED),Darwin)
+	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs status
+endif
+ifeq ($(OS_DETECTED),Linux)
+	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs status
+endif
+
 
 reconfigure:
 	rm -f Makefile.inc
@@ -111,62 +127,62 @@ reconfigure:
 	install -d -m 0755 $(INSTALL_RULES)
 	install -d -m 0755 $(INSTALL_FIRMWARE)
 
-install: INSTALL_ROOT=$(INDIGO_ROOT)/install
-install: INSTALL_BIN=$(INSTALL_ROOT)/usr/local/bin
-install: INSTALL_LIB=$(INSTALL_ROOT)/usr/local/lib
-install: INSTALL_SHARE=$(INSTALL_ROOT)/usr/local/share
-install: INSTALL_RULES=$(INSTALL_ROOT)/lib/udev/rules.d
-install: INSTALL_FIRMWARE=$(INSTALL_ROOT)/lib/firmware
+install: INSTALL_ROOT = $(INDIGO_ROOT)/install
+install: INSTALL_BIN = $(INSTALL_ROOT)/usr/local/bin
+install: INSTALL_LIB = $(INSTALL_ROOT)/usr/local/lib
+install: INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
+install: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
+install: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 install: reconfigure init
 	$(MAKE)	-C indigo_libs install
-	$(MAKE)	-C indigo_drivers install
+	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers install
+	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers install
+	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 endif
 
-uninstall: INSTALL_ROOT=$(INDIGO_ROOT)/install
-uninstall: INSTALL_BIN=$(INSTALL_ROOT)/usr/local/bin
-uninstall: INSTALL_LIB=$(INSTALL_ROOT)/usr/local/lib
-uninstall: INSTALL_SHARE=$(INSTALL_ROOT)/usr/local/share
-uninstall: INSTALL_RULES=$(INSTALL_ROOT)/lib/udev/rules.d
-uninstall: INSTALL_FIRMWARE=$(INSTALL_ROOT)/lib/firmware
+uninstall: INSTALL_ROOT = $(INDIGO_ROOT)/install
+uninstall: INSTALL_BIN = $(INSTALL_ROOT)/usr/local/bin
+uninstall: INSTALL_LIB = $(INSTALL_ROOT)/usr/local/lib
+uninstall: INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
+uninstall: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
+uninstall: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 uninstall: reconfigure init
 	$(MAKE)	-C indigo_libs uninstall
-	$(MAKE)	-C indigo_drivers uninstall
+	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers uninstall
+	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs uninstall
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers uninstall
+	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs uninstall
 endif
 
-package: INSTALL_ROOT=indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
-package: INSTALL_BIN=$(INSTALL_ROOT)/usr/bin
-package: INSTALL_LIB=$(INSTALL_ROOT)/usr/lib
-package: INSTALL_SHARE=$(INSTALL_ROOT)/usr/share
-package: INSTALL_RULES=$(INSTALL_ROOT)/lib/udev/rules.d
-package: INSTALL_FIRMWARE=$(INSTALL_ROOT)/lib/firmware
+package: INSTALL_ROOT = indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
+package: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
+package: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
+package: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
+package: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
+package: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 package: reconfigure init
 	$(MAKE)	-C indigo_libs install
-	$(MAKE)	-C indigo_drivers install
+	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers install
+	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers install
+	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 endif
 
 clean:
 	$(MAKE)	-C indigo_libs clean
-	$(MAKE)	-C indigo_drivers clean
+	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs clean
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers clean
+	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs clean
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers clean
+	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean
 endif
 
 clean-all: clean
@@ -183,34 +199,37 @@ init: Makefile.inc
 Makefile.inc: $(MAKEFILE_LIST)
 	rm -f Makefile.inc
 	@printf "# File is created automatically by top level Makefile, don't edit\n\n" > Makefile.inc
-	@printf "INDIGO_VERSION=$(INDIGO_VERSION)\n" >> Makefile.inc
-	@printf "INDIGO_BUILD=$(INDIGO_BUILD)\n" >> Makefile.inc
-	@printf "INDIGO_ROOT=$(INDIGO_ROOT)\n" >> Makefile.inc
-	@printf "BUILD_ROOT=$(BUILD_ROOT)\n" >> Makefile.inc
-	@printf "BUILD_BIN=$(BUILD_BIN)\n" >> Makefile.inc
-	@printf "BUILD_DRIVERS=$(BUILD_DRIVERS)\n" >> Makefile.inc
-	@printf "BUILD_LIB=$(BUILD_LIB)\n" >> Makefile.inc
-	@printf "BUILD_INCLUDE=$(BUILD_INCLUDE)\n" >> Makefile.inc
-	@printf "BUILD_SHARE=$(BUILD_SHARE)\n\n" >> Makefile.inc
-	@printf "OS_DETECTED=$(OS_DETECTED)\n" >> Makefile.inc
-	@printf "ARCH_DETECTED=$(ARCH_DETECTED)\n" >> Makefile.inc
-	@printf "DEBIAN_ARCH=$(DEBIAN_ARCH)\n\n" >> Makefile.inc
-	@printf "CC=$(CC)\n" >> Makefile.inc
-	@printf "AR=$(AR)\n" >> Makefile.inc
-	@printf "CFLAGS=$(CFLAGS)\n" >> Makefile.inc
-	@printf "CXXFLAGS=$(CXXFLAGS)\n" >> Makefile.inc
-	@printf "MFLAGS=$(MFLAGS)\n" >> Makefile.inc
-	@printf "LDFLAGS=$(LDFLAGS)\n" >> Makefile.inc
-	@printf "ARFLAGS=$(ARFLAGS)\n" >> Makefile.inc
-	@printf "SOEXT=$(SOEXT)\n" >> Makefile.inc
-	@printf "LIBHIDAPI=$(LIBHIDAPI)\n\n" >> Makefile.inc
-	@printf "INSTALL_ROOT=$(INSTALL_ROOT)\n" >> Makefile.inc
-	@printf "INSTALL_BIN=$(INSTALL_BIN)\n" >> Makefile.inc
-	@printf "INSTALL_LIB=$(INSTALL_LIB)\n" >> Makefile.inc
-	@printf "INSTALL_SHARE=$(INSTALL_SHARE)\n" >> Makefile.inc
-	@printf "INSTALL_RULES=$(INSTALL_RULES)\n" >> Makefile.inc
-	@printf "INSTALL_FIRMWARE=$(INSTALL_FIRMWARE)\n" >> Makefile.inc
+	@printf "INDIGO_VERSION = $(INDIGO_VERSION)\n" >> Makefile.inc
+	@printf "INDIGO_BUILD = $(INDIGO_BUILD)\n" >> Makefile.inc
+	@printf "INDIGO_ROOT = $(INDIGO_ROOT)\n" >> Makefile.inc
+	@printf "BUILD_ROOT = $(BUILD_ROOT)\n" >> Makefile.inc
+	@printf "BUILD_BIN = $(BUILD_BIN)\n" >> Makefile.inc
+	@printf "BUILD_DRIVERS = $(BUILD_DRIVERS)\n" >> Makefile.inc
+	@printf "BUILD_LIB = $(BUILD_LIB)\n" >> Makefile.inc
+	@printf "BUILD_INCLUDE = $(BUILD_INCLUDE)\n" >> Makefile.inc
+	@printf "BUILD_SHARE = $(BUILD_SHARE)\n\n" >> Makefile.inc
+	@printf "OS_DETECTED = $(OS_DETECTED)\n" >> Makefile.inc
+	@printf "ARCH_DETECTED = $(ARCH_DETECTED)\n" >> Makefile.inc
+	@printf "DEBIAN_ARCH = $(DEBIAN_ARCH)\n\n" >> Makefile.inc
+	@printf "CC = $(CC)\n" >> Makefile.inc
+	@printf "AR = $(AR)\n" >> Makefile.inc
+	@printf "CFLAGS = $(CFLAGS)\n" >> Makefile.inc
+	@printf "CXXFLAGS = $(CXXFLAGS)\n" >> Makefile.inc
+	@printf "MFLAGS = $(MFLAGS)\n" >> Makefile.inc
+	@printf "LDFLAGS = $(LDFLAGS)\n" >> Makefile.inc
+	@printf "ARFLAGS = $(ARFLAGS)\n" >> Makefile.inc
+	@printf "SOEXT = $(SOEXT)\n" >> Makefile.inc
+	@printf "LIBHIDAPI = $(LIBHIDAPI)\n\n" >> Makefile.inc
+	@printf "INSTALL_ROOT = $(INSTALL_ROOT)\n" >> Makefile.inc
+	@printf "INSTALL_BIN = $(INSTALL_BIN)\n" >> Makefile.inc
+	@printf "INSTALL_LIB = $(INSTALL_LIB)\n" >> Makefile.inc
+	@printf "INSTALL_SHARE = $(INSTALL_SHARE)\n" >> Makefile.inc
+	@printf "INSTALL_RULES = $(INSTALL_RULES)\n" >> Makefile.inc
+	@printf "INSTALL_FIRMWARE = $(INSTALL_FIRMWARE)\n\n" >> Makefile.inc
+	@printf "STABLE_DRIVERS = $(STABLE_DRIVERS)\n" >> Makefile.inc
+	@printf "UNTESTED_DRIVERS = $(UNTESTED_DRIVERS)\n" >> Makefile.inc
+	@printf "DEVELOPED_DRIVERS = $(DEVELOPED_DRIVERS)\n" >> Makefile.inc
+	@printf "EXCLUDED_DRIVERS = $(EXCLUDED_DRIVERS)\n" >> Makefile.inc
 	@echo --------------------------------------------------------------------- Makefile.inc
 	@cat Makefile.inc
 	@echo ---------------------------------------------------------------------
-

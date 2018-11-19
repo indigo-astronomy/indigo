@@ -20,6 +20,8 @@
 #
 #---------------------------------------------------------------------
 
+# This file is supposed to be called from within indigo_XXX_drivers/YYY folder if Makefile is not present.
+
 include ../../Makefile.inc
 
 DRIVER=indigo_$(notdir $(shell pwd))
@@ -37,16 +39,29 @@ DRIVER_O=$(filter-out $(DRIVER_MAIN),$(addsuffix .o, $(basename $(notdir $(wildc
 RULES=$(notdir $(wildcard *.rules))
 XML=$(notdir $(wildcard indi_go_*.xml))
 
+SDK_INCLUDE=$(addprefix -I, $(wildcard bin_externals/*/include))
+ifeq ($(OS_DETECTED),Darwin)
+	SDK_LIB_A=$(wildcard bin_externals/*/lib/macOS/*.a)
+	SDK_LIB_SO=$(wildcard bin_externals/*/lib/macOS/*.dylib)
+endif
+ifeq ($(OS_DETECTED),Linux)
+	SDK_LIB_A=$(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.a)
+	SDK_LIB_SO=$(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.so)
+endif
+SDK_LIB=$(addprefix -L,$(dir $(SDK_LIB_A) $(SDK_LIB_SO))) $(addprefix -l,$(subst lib,,$(basename $(notdir $(SDK_LIB_A) $(SDK_LIB_SO)))))
+
+CFLAGS+=$(SDK_INCLUDE)
+
 all: $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 $(DRIVER_A): $(DRIVER_O)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
 
 $(DRIVER_EXECUTABLE): $(DRIVER_A) $(DRIVER_MAIN_O)
-	$(CC) -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
 
 install:
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
