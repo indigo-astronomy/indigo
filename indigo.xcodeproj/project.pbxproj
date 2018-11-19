@@ -15,6 +15,8 @@
 		590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */ = {isa = PBXBuildFile; fileRef = 590DD87A2127590600F2B978 /* indigo_wheel_optec.h */; };
 		5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
 		5911F7B41F02E1400053F3CA /* libdsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7B01F02E1330053F3CA /* libdsi.c */; };
+		5917AD1121A3628F00AC018A /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5917ACE621A3625D00AC018A /* libqsiapi.a */; };
+		5917AD1221A362B200AC018A /* qsiapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 5917ACA621A3625D00AC018A /* qsiapi.h */; };
 		591E112621583FBF00ABADA6 /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = 591E111D21583FBD00ABADA6 /* config.h */; };
 		591E112721583FBF00ABADA6 /* deg2str.h in Headers */ = {isa = PBXBuildFile; fileRef = 591E111E21583FBD00ABADA6 /* deg2str.h */; };
 		591E112821583FBF00ABADA6 /* nex_open.c in Sources */ = {isa = PBXBuildFile; fileRef = 591E111F21583FBE00ABADA6 /* nex_open.c */; };
@@ -110,7 +112,6 @@
 		59A52DF021A33E44000B6F27 /* libfli.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52DD221A33E34000B6F27 /* libfli.a */; };
 		59A52DF121A33E4C000B6F27 /* libfli.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52DCF21A33E34000B6F27 /* libfli.h */; };
 		59A52F0521A33FC0000B6F27 /* libatik.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D96DC321A30DF50069A64C /* libatik.h */; };
-		59A52F0621A3412E000B6F27 /* qsiapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 595355B81F6AD79000478BEC /* qsiapi.h */; };
 		59A52F1821A3417C000B6F27 /* libgpusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52F0B21A3416D000B6F27 /* libgpusb.h */; };
 		59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52F0E21A3416D000B6F27 /* libgpusb.a */; };
 		59A52F2B21A341AA000B6F27 /* libfcusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52F1E21A341A0000B6F27 /* libfcusb.h */; };
@@ -661,6 +662,191 @@
 		5917AC4921A3586D00AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5917AC4A21A3588800AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5917AC4B21A358AD00AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		5917AC4C21A35F9000AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		5917AC4F21A3625D00AC018A /* libtool */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = libtool; sourceTree = "<group>"; };
+		5917AC5121A3625D00AC018A /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		5917AC5221A3625D00AC018A /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		5917AC5321A3625D00AC018A /* ExternalTrigger.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ExternalTrigger.cpp; sourceTree = "<group>"; };
+		5917AC5421A3625D00AC018A /* qsidemo.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = qsidemo.cpp; sourceTree = "<group>"; };
+		5917AC5621A3625D00AC018A /* qsidemo-qsidemo.Po */ = {isa = PBXFileReference; lastKnownFileType = text; path = "qsidemo-qsidemo.Po"; sourceTree = "<group>"; };
+		5917AC5721A3625D00AC018A /* ExternalTrigger-ExternalTrigger.Po */ = {isa = PBXFileReference; lastKnownFileType = text; path = "ExternalTrigger-ExternalTrigger.Po"; sourceTree = "<group>"; };
+		5917AC5821A3625D00AC018A /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		5917AC5921A3625D00AC018A /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
+		5917AC5B21A3625D00AC018A /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
+		5917AC5C21A3625D00AC018A /* ltmain.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ltmain.sh; sourceTree = "<group>"; };
+		5917AC5D21A3625D00AC018A /* ar-lib */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "ar-lib"; sourceTree = "<group>"; };
+		5917AC5E21A3625D00AC018A /* config.guess */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = config.guess; sourceTree = "<group>"; };
+		5917AC5F21A3625D00AC018A /* depcomp */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = depcomp; sourceTree = "<group>"; };
+		5917AC6021A3625D00AC018A /* missing */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = missing; sourceTree = "<group>"; };
+		5917AC6121A3625D00AC018A /* config.sub */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = config.sub; sourceTree = "<group>"; };
+		5917AC6221A3625D00AC018A /* compile */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = compile; sourceTree = "<group>"; };
+		5917AC6321A3625D00AC018A /* configure.ac */ = {isa = PBXFileReference; lastKnownFileType = text; path = configure.ac; sourceTree = "<group>"; };
+		5917AC6421A3625D00AC018A /* INSTALL */ = {isa = PBXFileReference; lastKnownFileType = text; path = INSTALL; sourceTree = "<group>"; };
+		5917AC6521A3625D00AC018A /* ltmain.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ltmain.sh; sourceTree = "<group>"; };
+		5917AC6621A3625D00AC018A /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
+		5917AC6721A3625D00AC018A /* configure */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = configure; sourceTree = "<group>"; };
+		5917AC6821A3625D00AC018A /* ChangeLog */ = {isa = PBXFileReference; lastKnownFileType = text; path = ChangeLog; sourceTree = "<group>"; };
+		5917AC6921A3625D00AC018A /* AUTHORS */ = {isa = PBXFileReference; lastKnownFileType = text; path = AUTHORS; sourceTree = "<group>"; };
+		5917AC6A21A3625D00AC018A /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		5917AC6B21A3625D00AC018A /* stamp-h1 */ = {isa = PBXFileReference; lastKnownFileType = text; path = "stamp-h1"; sourceTree = "<group>"; };
+		5917AC6C21A3625D00AC018A /* config.h.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = config.h.in; sourceTree = "<group>"; };
+		5917AC6D21A3625D00AC018A /* config.guess */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = config.guess; sourceTree = "<group>"; };
+		5917AC6E21A3625D00AC018A /* depcomp */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = depcomp; sourceTree = "<group>"; };
+		5917AC6F21A3625D00AC018A /* libqsiapi-config */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "libqsiapi-config"; sourceTree = "<group>"; };
+		5917AC7021A3625D00AC018A /* missing */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = missing; sourceTree = "<group>"; };
+		5917AC7121A3625D00AC018A /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
+		5917AC7221A3625D00AC018A /* TODO */ = {isa = PBXFileReference; lastKnownFileType = text; path = TODO; sourceTree = "<group>"; };
+		5917AC7321A3625D00AC018A /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		5917AC7421A3625D00AC018A /* config.status */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = config.status; sourceTree = "<group>"; };
+		5917AC7521A3625D00AC018A /* config.sub */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = config.sub; sourceTree = "<group>"; };
+		5917AC7621A3625D00AC018A /* COPYING */ = {isa = PBXFileReference; lastKnownFileType = text; path = COPYING; sourceTree = "<group>"; };
+		5917AC7721A3625D00AC018A /* compile */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = compile; sourceTree = "<group>"; };
+		5917AC7821A3625D00AC018A /* NEWS */ = {isa = PBXFileReference; lastKnownFileType = text; path = NEWS; sourceTree = "<group>"; };
+		5917AC7A21A3625D00AC018A /* QSI_Global.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSI_Global.h; sourceTree = "<group>"; };
+		5917AC7B21A3625D00AC018A /* libqsiapi_la-ICameraEeprom.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-ICameraEeprom.lo"; sourceTree = "<group>"; };
+		5917AC7C21A3625D00AC018A /* IHostIO.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IHostIO.h; sourceTree = "<group>"; };
+		5917AC7D21A3625D00AC018A /* QSI_USBWrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSI_USBWrapper.h; sourceTree = "<group>"; };
+		5917AC7E21A3625D00AC018A /* libqsiapi_la-VidPid.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-VidPid.o"; sourceTree = "<group>"; };
+		5917AC7F21A3625D00AC018A /* libqsiapi_la-VidPid.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-VidPid.lo"; sourceTree = "<group>"; };
+		5917AC8021A3625D00AC018A /* FilterWheel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FilterWheel.h; sourceTree = "<group>"; };
+		5917AC8121A3625D00AC018A /* CCDCamera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CCDCamera.h; sourceTree = "<group>"; };
+		5917AC8221A3625D00AC018A /* IHostIO.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = IHostIO.cpp; sourceTree = "<group>"; };
+		5917AC8321A3625D00AC018A /* libqsiapi_la-Filter.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-Filter.lo"; sourceTree = "<group>"; };
+		5917AC8421A3625D00AC018A /* libqsiapi_la-QSI_USBWrapper.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSI_USBWrapper.lo"; sourceTree = "<group>"; };
+		5917AC8521A3625D00AC018A /* ConvertUTF.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ConvertUTF.c; sourceTree = "<group>"; };
+		5917AC8621A3625D00AC018A /* libqsiapi_la-HostIO_CyUSB.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HostIO_CyUSB.lo"; sourceTree = "<group>"; };
+		5917AC8721A3625D00AC018A /* QSI_USBWrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = QSI_USBWrapper.cpp; sourceTree = "<group>"; };
+		5917AC8821A3625D00AC018A /* QSIFeatures.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = QSIFeatures.cpp; sourceTree = "<group>"; };
+		5917AC8921A3625D00AC018A /* libqsiapi_la-QSIModelInfo.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSIModelInfo.lo"; sourceTree = "<group>"; };
+		5917AC8A21A3625D00AC018A /* QSICriticalSection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSICriticalSection.h; sourceTree = "<group>"; };
+		5917AC8B21A3625D00AC018A /* libqsiapi_la-HostIO_CyUSB.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-HostIO_CyUSB.o"; sourceTree = "<group>"; };
+		5917AC8C21A3625D00AC018A /* ICameraEeprom.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ICameraEeprom.h; sourceTree = "<group>"; };
+		5917AC8D21A3625D00AC018A /* HostIO_TCP.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = HostIO_TCP.cpp; sourceTree = "<group>"; };
+		5917AC8E21A3625D00AC018A /* libqsiapi_la-ICameraEeprom.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-ICameraEeprom.o"; sourceTree = "<group>"; };
+		5917AC8F21A3625D00AC018A /* libqsiapi_la-FilterWheel.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-FilterWheel.lo"; sourceTree = "<group>"; };
+		5917AC9021A3625D00AC018A /* libqsiapi_la-HotPixelMap.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-HotPixelMap.o"; sourceTree = "<group>"; };
+		5917AC9121A3625D00AC018A /* QSI_PacketWrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSI_PacketWrapper.h; sourceTree = "<group>"; };
+		5917AC9221A3625D00AC018A /* libqsiapi_la-HostConnection.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-HostConnection.o"; sourceTree = "<group>"; };
+		5917AC9321A3625D00AC018A /* libqsiapi_la-CCDCamera.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-CCDCamera.o"; sourceTree = "<group>"; };
+		5917AC9421A3625D00AC018A /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		5917AC9521A3625D00AC018A /* HotPixelMap.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = HotPixelMap.cpp; sourceTree = "<group>"; };
+		5917AC9621A3625D00AC018A /* libqsiapi_la-CCDCamera.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-CCDCamera.lo"; sourceTree = "<group>"; };
+		5917AC9721A3625D00AC018A /* ftd2xx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ftd2xx.h; sourceTree = "<group>"; };
+		5917AC9821A3625D00AC018A /* FilterWheel.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = FilterWheel.cpp; sourceTree = "<group>"; };
+		5917AC9921A3625D00AC018A /* libqsiapi_la-HotPixelMap.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HotPixelMap.lo"; sourceTree = "<group>"; };
+		5917AC9A21A3625D00AC018A /* HostConnection.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = HostConnection.cpp; sourceTree = "<group>"; };
+		5917AC9B21A3625D00AC018A /* ICameraEeprom.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ICameraEeprom.cpp; sourceTree = "<group>"; };
+		5917AC9C21A3625D00AC018A /* libqsiapi_la-QSI_Interface.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-QSI_Interface.o"; sourceTree = "<group>"; };
+		5917AC9D21A3625D00AC018A /* QSI_Interface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSI_Interface.h; sourceTree = "<group>"; };
+		5917AC9E21A3625D00AC018A /* libqsiapi_la-CameraID.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-CameraID.lo"; sourceTree = "<group>"; };
+		5917AC9F21A3625D00AC018A /* QSI_PacketWrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = QSI_PacketWrapper.cpp; sourceTree = "<group>"; };
+		5917ACA021A3625D00AC018A /* libqsiapi_la-QSILog.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSILog.lo"; sourceTree = "<group>"; };
+		5917ACA121A3625D00AC018A /* libqsiapi_la-HostIO_TCP.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-HostIO_TCP.o"; sourceTree = "<group>"; };
+		5917ACA221A3625D00AC018A /* QSILog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSILog.h; sourceTree = "<group>"; };
+		5917ACA321A3625D00AC018A /* QSIError.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = QSIError.cpp; sourceTree = "<group>"; };
+		5917ACA421A3625D00AC018A /* QSI_Interface.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = QSI_Interface.cpp; sourceTree = "<group>"; };
+		5917ACA521A3625D00AC018A /* libqsiapi_la-IHostIO.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-IHostIO.o"; sourceTree = "<group>"; };
+		5917ACA621A3625D00AC018A /* qsiapi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qsiapi.h; sourceTree = "<group>"; };
+		5917ACA721A3625D00AC018A /* libqsiapi_la-QSI_PacketWrapper.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSI_PacketWrapper.lo"; sourceTree = "<group>"; };
+		5917ACA821A3625D00AC018A /* libqsiapi_la-IHostIO.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-IHostIO.lo"; sourceTree = "<group>"; };
+		5917ACA921A3625D00AC018A /* libqsiapi_la-Filter.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-Filter.o"; sourceTree = "<group>"; };
+		5917ACAA21A3625D00AC018A /* libqsiapi_la-QSIFeatures.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-QSIFeatures.o"; sourceTree = "<group>"; };
+		5917ACAB21A3625D00AC018A /* Filter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Filter.cpp; sourceTree = "<group>"; };
+		5917ACAC21A3625D00AC018A /* SimpleIni.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SimpleIni.h; sourceTree = "<group>"; };
+		5917ACAD21A3625D00AC018A /* QSIModelInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSIModelInfo.h; sourceTree = "<group>"; };
+		5917ACAE21A3625D00AC018A /* HostIO_TCP.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HostIO_TCP.h; sourceTree = "<group>"; };
+		5917ACAF21A3625D00AC018A /* CCDCamera.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CCDCamera.cpp; sourceTree = "<group>"; };
+		5917ACB021A3625D00AC018A /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		5917ACB121A3625D00AC018A /* VidPid.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VidPid.h; sourceTree = "<group>"; };
+		5917ACB221A3625D00AC018A /* QSI_Registry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSI_Registry.h; sourceTree = "<group>"; };
+		5917ACB321A3625D00AC018A /* WinTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WinTypes.h; sourceTree = "<group>"; };
+		5917ACB421A3625D00AC018A /* libqsiapi_la-HostIO_USB.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HostIO_USB.lo"; sourceTree = "<group>"; };
+		5917ACB521A3625D00AC018A /* libqsiapi_la-FilterWheel.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-FilterWheel.o"; sourceTree = "<group>"; };
+		5917ACB621A3625D00AC018A /* libqsiapi_la-QSIError.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSIError.lo"; sourceTree = "<group>"; };
+		5917ACB721A3625D00AC018A /* HostIO_CyUSB.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HostIO_CyUSB.h; sourceTree = "<group>"; };
+		5917ACB821A3625D00AC018A /* QSIError.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSIError.h; sourceTree = "<group>"; };
+		5917ACB921A3625D00AC018A /* HostIO_CyUSB.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = HostIO_CyUSB.cpp; sourceTree = "<group>"; };
+		5917ACBA21A3625D00AC018A /* libqsiapi_la-ConvertUTF.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-ConvertUTF.o"; sourceTree = "<group>"; };
+		5917ACBB21A3625D00AC018A /* QSILog.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = QSILog.cpp; sourceTree = "<group>"; };
+		5917ACBC21A3625D00AC018A /* libqsiapi_la-ConvertUTF.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-ConvertUTF.lo"; sourceTree = "<group>"; };
+		5917ACBD21A3625D00AC018A /* HotPixelMap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HotPixelMap.h; sourceTree = "<group>"; };
+		5917ACBE21A3625D00AC018A /* QSIModelInfo.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = QSIModelInfo.cpp; sourceTree = "<group>"; };
+		5917ACBF21A3625D00AC018A /* ConvertUTF.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ConvertUTF.h; sourceTree = "<group>"; };
+		5917ACC021A3625D00AC018A /* libqsiapi_la-QSIError.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-QSIError.o"; sourceTree = "<group>"; };
+		5917ACC121A3625D00AC018A /* qsiapi.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = qsiapi.cpp; sourceTree = "<group>"; };
+		5917ACC221A3625D00AC018A /* libqsiapi_la-HostConnection.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HostConnection.lo"; sourceTree = "<group>"; };
+		5917ACC321A3625D00AC018A /* libqsiapi_la-QSI_USBWrapper.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-QSI_USBWrapper.o"; sourceTree = "<group>"; };
+		5917ACC421A3625D00AC018A /* qsicopyright.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = qsicopyright.txt; sourceTree = "<group>"; };
+		5917ACC521A3625D00AC018A /* HostIO_USB.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HostIO_USB.h; sourceTree = "<group>"; };
+		5917ACC621A3625D00AC018A /* VidPid.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = VidPid.cpp; sourceTree = "<group>"; };
+		5917ACC721A3625D00AC018A /* libqsiapi_la-QSIFeatures.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSIFeatures.lo"; sourceTree = "<group>"; };
+		5917ACC821A3625D00AC018A /* libqsiapi_la-CameraID.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-CameraID.o"; sourceTree = "<group>"; };
+		5917ACC921A3625D00AC018A /* libqsiapi_la-HostIO_TCP.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HostIO_TCP.lo"; sourceTree = "<group>"; };
+		5917ACCA21A3625D00AC018A /* libqsiapi_la-qsiapi.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-qsiapi.lo"; sourceTree = "<group>"; };
+		5917ACCB21A3625D00AC018A /* libqsiapi_la-HostIO_USB.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-HostIO_USB.o"; sourceTree = "<group>"; };
+		5917ACCC21A3625D00AC018A /* CameraID.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CameraID.h; sourceTree = "<group>"; };
+		5917ACCE21A3625D00AC018A /* libqsiapi_la-QSI_PacketWrapper.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSI_PacketWrapper.Plo"; sourceTree = "<group>"; };
+		5917ACCF21A3625D00AC018A /* libqsiapi_la-QSIFeatures.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSIFeatures.Plo"; sourceTree = "<group>"; };
+		5917ACD021A3625D00AC018A /* libqsiapi_la-QSI_Interface.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSI_Interface.Plo"; sourceTree = "<group>"; };
+		5917ACD121A3625D00AC018A /* libqsiapi_la-ICameraEeprom.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-ICameraEeprom.Plo"; sourceTree = "<group>"; };
+		5917ACD221A3625D00AC018A /* libqsiapi_la-CCDCamera.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-CCDCamera.Plo"; sourceTree = "<group>"; };
+		5917ACD321A3625D00AC018A /* libqsiapi_la-HostIO_USB.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HostIO_USB.Plo"; sourceTree = "<group>"; };
+		5917ACD421A3625D00AC018A /* libqsiapi_la-HostIO_CyUSB.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HostIO_CyUSB.Plo"; sourceTree = "<group>"; };
+		5917ACD521A3625D00AC018A /* libqsiapi_la-Filter.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-Filter.Plo"; sourceTree = "<group>"; };
+		5917ACD621A3625D00AC018A /* libqsiapi_la-QSIError.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSIError.Plo"; sourceTree = "<group>"; };
+		5917ACD721A3625D00AC018A /* libqsiapi_la-QSIModelInfo.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSIModelInfo.Plo"; sourceTree = "<group>"; };
+		5917ACD821A3625D00AC018A /* libqsiapi_la-HotPixelMap.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HotPixelMap.Plo"; sourceTree = "<group>"; };
+		5917ACD921A3625D00AC018A /* libqsiapi_la-FilterWheel.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-FilterWheel.Plo"; sourceTree = "<group>"; };
+		5917ACDA21A3625D00AC018A /* libqsiapi_la-IHostIO.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-IHostIO.Plo"; sourceTree = "<group>"; };
+		5917ACDB21A3625D00AC018A /* libqsiapi_la-qsiapi.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-qsiapi.Plo"; sourceTree = "<group>"; };
+		5917ACDC21A3625D00AC018A /* libqsiapi_la-HostIO_TCP.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HostIO_TCP.Plo"; sourceTree = "<group>"; };
+		5917ACDD21A3625D00AC018A /* libqsiapi_la-QSILog.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSILog.Plo"; sourceTree = "<group>"; };
+		5917ACDE21A3625D00AC018A /* libqsiapi_la-HostConnection.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-HostConnection.Plo"; sourceTree = "<group>"; };
+		5917ACDF21A3625D00AC018A /* libqsiapi_la-QSI_USBWrapper.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSI_USBWrapper.Plo"; sourceTree = "<group>"; };
+		5917ACE021A3625D00AC018A /* libqsiapi_la-CameraID.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-CameraID.Plo"; sourceTree = "<group>"; };
+		5917ACE121A3625D00AC018A /* libqsiapi_la-ConvertUTF.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-ConvertUTF.Plo"; sourceTree = "<group>"; };
+		5917ACE221A3625D00AC018A /* libqsiapi_la-VidPid.Plo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-VidPid.Plo"; sourceTree = "<group>"; };
+		5917ACE321A3625D00AC018A /* Filter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Filter.h; sourceTree = "<group>"; };
+		5917ACE421A3625D00AC018A /* HostIO_USB.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = HostIO_USB.cpp; sourceTree = "<group>"; };
+		5917ACE621A3625D00AC018A /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqsiapi.a; sourceTree = "<group>"; };
+		5917ACE721A3625D00AC018A /* libqsiapi.lai */ = {isa = PBXFileReference; lastKnownFileType = text; path = libqsiapi.lai; sourceTree = "<group>"; };
+		5917ACE821A3625D00AC018A /* libqsiapi.la */ = {isa = PBXFileReference; lastKnownFileType = text; path = libqsiapi.la; sourceTree = "<group>"; };
+		5917ACE921A3625D00AC018A /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		5917ACEA21A3625D00AC018A /* libqsiapi_la-qsiapi.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-qsiapi.o"; sourceTree = "<group>"; };
+		5917ACEB21A3625D00AC018A /* libqsiapi_la-QSI_Interface.lo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "libqsiapi_la-QSI_Interface.lo"; sourceTree = "<group>"; };
+		5917ACEC21A3625D00AC018A /* QSIFeatures.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSIFeatures.h; sourceTree = "<group>"; };
+		5917ACED21A3625D00AC018A /* HostConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HostConnection.h; sourceTree = "<group>"; };
+		5917ACEE21A3625D00AC018A /* libqsiapi_la-QSIModelInfo.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-QSIModelInfo.o"; sourceTree = "<group>"; };
+		5917ACEF21A3625D00AC018A /* CameraID.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CameraID.cpp; sourceTree = "<group>"; };
+		5917ACF021A3625D00AC018A /* libqsiapi.la */ = {isa = PBXFileReference; lastKnownFileType = text; path = libqsiapi.la; sourceTree = "<group>"; };
+		5917ACF121A3625D00AC018A /* libqsiapi_la-QSI_PacketWrapper.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-QSI_PacketWrapper.o"; sourceTree = "<group>"; };
+		5917ACF221A3625D00AC018A /* wincompat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = wincompat.h; sourceTree = "<group>"; };
+		5917ACF321A3625D00AC018A /* libqsiapi_la-QSILog.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libqsiapi_la-QSILog.o"; sourceTree = "<group>"; };
+		5917ACF421A3625D00AC018A /* QSI_States.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QSI_States.h; sourceTree = "<group>"; };
+		5917ACF621A3625D00AC018A /* ltversion.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = ltversion.m4; sourceTree = "<group>"; };
+		5917ACF721A3625D00AC018A /* libtool.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = libtool.m4; sourceTree = "<group>"; };
+		5917ACF821A3625D00AC018A /* ltoptions.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = ltoptions.m4; sourceTree = "<group>"; };
+		5917ACF921A3625D00AC018A /* ltsugar.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = ltsugar.m4; sourceTree = "<group>"; };
+		5917ACFA21A3625D00AC018A /* lt~obsolete.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = "lt~obsolete.m4"; sourceTree = "<group>"; };
+		5917ACFC21A3625D00AC018A /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		5917ACFD21A3625D00AC018A /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		5917ACFE21A3625D00AC018A /* QSI Linux API Reference Manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "QSI Linux API Reference Manual.pdf"; sourceTree = "<group>"; };
+		5917ACFF21A3625D00AC018A /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		5917AD0021A3625D00AC018A /* config.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = config.log; sourceTree = "<group>"; };
+		5917AD0121A3625D00AC018A /* mkinstalldirs */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = mkinstalldirs; sourceTree = "<group>"; };
+		5917AD0221A3625D00AC018A /* libqsiapi-config.in */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "libqsiapi-config.in"; sourceTree = "<group>"; };
+		5917AD0321A3625D00AC018A /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		5917AD0421A3625D00AC018A /* aclocal.m4 */ = {isa = PBXFileReference; lastKnownFileType = text; path = aclocal.m4; sourceTree = "<group>"; };
+		5917AD0621A3625D00AC018A /* qsiimage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = qsiimage.cpp; sourceTree = "<group>"; };
+		5917AD0721A3625D00AC018A /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		5917AD0821A3625D00AC018A /* Makefile.am */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.am; sourceTree = "<group>"; };
+		5917AD0921A3625D00AC018A /* qsifilter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = qsifilter.cpp; sourceTree = "<group>"; };
+		5917AD0B21A3625D00AC018A /* qsiimage-qsiimage.Po */ = {isa = PBXFileReference; lastKnownFileType = text; path = "qsiimage-qsiimage.Po"; sourceTree = "<group>"; };
+		5917AD0C21A3625D00AC018A /* qsifilter-qsifilter.Po */ = {isa = PBXFileReference; lastKnownFileType = text; path = "qsifilter-qsifilter.Po"; sourceTree = "<group>"; };
+		5917AD0D21A3625D00AC018A /* qsiapitest-qsiapitest.Po */ = {isa = PBXFileReference; lastKnownFileType = text; path = "qsiapitest-qsiapitest.Po"; sourceTree = "<group>"; };
+		5917AD0E21A3625D00AC018A /* qsiapitest-qsiapitest.Tpo */ = {isa = PBXFileReference; lastKnownFileType = text; path = "qsiapitest-qsiapitest.Tpo"; sourceTree = "<group>"; };
+		5917AD0F21A3625D00AC018A /* Makefile.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.in; sourceTree = "<group>"; };
+		5917AD1021A3625D00AC018A /* qsiapitest.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = qsiapitest.cpp; sourceTree = "<group>"; };
 		5918E26A1F8C0610005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5918E26B1F8C0627005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5918E26C1F8C0645005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -735,56 +921,6 @@
 		59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag.h; sourceTree = "<group>"; };
 		59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag_firmware.h; sourceTree = "<group>"; };
 		59519D471DB42443008BAF29 /* indigo_ccd_ssag_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssag_main.c; sourceTree = "<group>"; };
-		595355A51F6AD79000478BEC /* CameraID.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CameraID.h; path = lib/CameraID.h; sourceTree = "<group>"; };
-		595355A61F6AD79000478BEC /* CCDCamera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CCDCamera.h; path = lib/CCDCamera.h; sourceTree = "<group>"; };
-		595355A71F6AD79000478BEC /* ConvertUTF.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ConvertUTF.h; path = lib/ConvertUTF.h; sourceTree = "<group>"; };
-		595355A81F6AD79000478BEC /* Filter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Filter.h; path = lib/Filter.h; sourceTree = "<group>"; };
-		595355A91F6AD79000478BEC /* FilterWheel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = FilterWheel.h; path = lib/FilterWheel.h; sourceTree = "<group>"; };
-		595355AA1F6AD79000478BEC /* ftd2xx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ftd2xx.h; path = lib/ftd2xx.h; sourceTree = "<group>"; };
-		595355AB1F6AD79000478BEC /* HostConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = HostConnection.h; path = lib/HostConnection.h; sourceTree = "<group>"; };
-		595355AC1F6AD79000478BEC /* HostIO_CyUSB.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = HostIO_CyUSB.h; path = lib/HostIO_CyUSB.h; sourceTree = "<group>"; };
-		595355AD1F6AD79000478BEC /* HostIO_TCP.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = HostIO_TCP.h; path = lib/HostIO_TCP.h; sourceTree = "<group>"; };
-		595355AE1F6AD79000478BEC /* HostIO_USB.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = HostIO_USB.h; path = lib/HostIO_USB.h; sourceTree = "<group>"; };
-		595355AF1F6AD79000478BEC /* HotPixelMap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = HotPixelMap.h; path = lib/HotPixelMap.h; sourceTree = "<group>"; };
-		595355B01F6AD79000478BEC /* ICameraEeprom.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ICameraEeprom.h; path = lib/ICameraEeprom.h; sourceTree = "<group>"; };
-		595355B11F6AD79000478BEC /* IHostIO.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = IHostIO.h; path = lib/IHostIO.h; sourceTree = "<group>"; };
-		595355B21F6AD79000478BEC /* QSI_Global.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSI_Global.h; path = lib/QSI_Global.h; sourceTree = "<group>"; };
-		595355B31F6AD79000478BEC /* QSI_Interface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSI_Interface.h; path = lib/QSI_Interface.h; sourceTree = "<group>"; };
-		595355B41F6AD79000478BEC /* QSI_PacketWrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSI_PacketWrapper.h; path = lib/QSI_PacketWrapper.h; sourceTree = "<group>"; };
-		595355B51F6AD79000478BEC /* QSI_Registry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSI_Registry.h; path = lib/QSI_Registry.h; sourceTree = "<group>"; };
-		595355B61F6AD79000478BEC /* QSI_States.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSI_States.h; path = lib/QSI_States.h; sourceTree = "<group>"; };
-		595355B71F6AD79000478BEC /* QSI_USBWrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSI_USBWrapper.h; path = lib/QSI_USBWrapper.h; sourceTree = "<group>"; };
-		595355B81F6AD79000478BEC /* qsiapi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = qsiapi.h; path = lib/qsiapi.h; sourceTree = "<group>"; };
-		595355B91F6AD79000478BEC /* QSICriticalSection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSICriticalSection.h; path = lib/QSICriticalSection.h; sourceTree = "<group>"; };
-		595355BA1F6AD79000478BEC /* QSIError.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSIError.h; path = lib/QSIError.h; sourceTree = "<group>"; };
-		595355BB1F6AD79000478BEC /* QSIFeatures.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSIFeatures.h; path = lib/QSIFeatures.h; sourceTree = "<group>"; };
-		595355BC1F6AD79000478BEC /* QSILog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSILog.h; path = lib/QSILog.h; sourceTree = "<group>"; };
-		595355BD1F6AD79000478BEC /* QSIModelInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = QSIModelInfo.h; path = lib/QSIModelInfo.h; sourceTree = "<group>"; };
-		595355BE1F6AD79000478BEC /* SimpleIni.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = SimpleIni.h; path = lib/SimpleIni.h; sourceTree = "<group>"; };
-		595355BF1F6AD79100478BEC /* VidPid.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VidPid.h; path = lib/VidPid.h; sourceTree = "<group>"; };
-		595355C01F6AD79100478BEC /* wincompat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = wincompat.h; path = lib/wincompat.h; sourceTree = "<group>"; };
-		595355C11F6AD79100478BEC /* WinTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = WinTypes.h; path = lib/WinTypes.h; sourceTree = "<group>"; };
-		595355C21F6AD79100478BEC /* ConvertUTF.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ConvertUTF.c; path = lib/ConvertUTF.c; sourceTree = "<group>"; };
-		595355C31F6AD79100478BEC /* CameraID.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CameraID.cpp; path = lib/CameraID.cpp; sourceTree = "<group>"; };
-		595355C41F6AD79100478BEC /* CCDCamera.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CCDCamera.cpp; path = lib/CCDCamera.cpp; sourceTree = "<group>"; };
-		595355C51F6AD79100478BEC /* Filter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Filter.cpp; path = lib/Filter.cpp; sourceTree = "<group>"; };
-		595355C61F6AD79100478BEC /* FilterWheel.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FilterWheel.cpp; path = lib/FilterWheel.cpp; sourceTree = "<group>"; };
-		595355C71F6AD79100478BEC /* HostConnection.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = HostConnection.cpp; path = lib/HostConnection.cpp; sourceTree = "<group>"; };
-		595355C81F6AD79100478BEC /* HostIO_CyUSB.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = HostIO_CyUSB.cpp; path = lib/HostIO_CyUSB.cpp; sourceTree = "<group>"; };
-		595355C91F6AD79100478BEC /* HostIO_TCP.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = HostIO_TCP.cpp; path = lib/HostIO_TCP.cpp; sourceTree = "<group>"; };
-		595355CA1F6AD79100478BEC /* HostIO_USB.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = HostIO_USB.cpp; path = lib/HostIO_USB.cpp; sourceTree = "<group>"; };
-		595355CB1F6AD79100478BEC /* HotPixelMap.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = HotPixelMap.cpp; path = lib/HotPixelMap.cpp; sourceTree = "<group>"; };
-		595355CC1F6AD79100478BEC /* ICameraEeprom.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ICameraEeprom.cpp; path = lib/ICameraEeprom.cpp; sourceTree = "<group>"; };
-		595355CD1F6AD79100478BEC /* IHostIO.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = IHostIO.cpp; path = lib/IHostIO.cpp; sourceTree = "<group>"; };
-		595355CE1F6AD79100478BEC /* QSI_Interface.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = QSI_Interface.cpp; path = lib/QSI_Interface.cpp; sourceTree = "<group>"; };
-		595355CF1F6AD79100478BEC /* QSI_PacketWrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = QSI_PacketWrapper.cpp; path = lib/QSI_PacketWrapper.cpp; sourceTree = "<group>"; };
-		595355D01F6AD79100478BEC /* QSI_USBWrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = QSI_USBWrapper.cpp; path = lib/QSI_USBWrapper.cpp; sourceTree = "<group>"; };
-		595355D11F6AD79100478BEC /* qsiapi.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = qsiapi.cpp; path = lib/qsiapi.cpp; sourceTree = "<group>"; };
-		595355D21F6AD79100478BEC /* QSIError.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = QSIError.cpp; path = lib/QSIError.cpp; sourceTree = "<group>"; };
-		595355D31F6AD79100478BEC /* QSIFeatures.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = QSIFeatures.cpp; path = lib/QSIFeatures.cpp; sourceTree = "<group>"; };
-		595355D41F6AD79100478BEC /* QSILog.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = QSILog.cpp; path = lib/QSILog.cpp; sourceTree = "<group>"; };
-		595355D51F6AD79100478BEC /* QSIModelInfo.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = QSIModelInfo.cpp; path = lib/QSIModelInfo.cpp; sourceTree = "<group>"; };
-		595355D61F6AD79100478BEC /* VidPid.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VidPid.cpp; path = lib/VidPid.cpp; sourceTree = "<group>"; };
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
 		595355ED1F6B140300478BEC /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libqsiapi.a; path = build/lib/libqsiapi.a; sourceTree = "<group>"; };
 		595705A321866D9700E713A9 /* indigo_drivers.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_drivers.c; sourceTree = "<group>"; };
@@ -832,7 +968,6 @@
 		595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidKeyboardBarcodeScanner.m; sourceTree = "<group>"; };
 		595F2917211E211100380EF4 /* DDHidQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidQueue.m; sourceTree = "<group>"; };
 		595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_aux_joystick.m; sourceTree = "<group>"; };
-		5971EAA92083731800B25696 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
 		5992F7B11E1EC8A20035242E /* indigo_ccd_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_fli_main.c; sourceTree = "<group>"; };
 		5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -3611,7 +3746,6 @@
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
-		9DF7E6521F6AA3FE00156652 /* QSI Linux API Reference Manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = "QSI Linux API Reference Manual.pdf"; path = "doc/QSI Linux API Reference Manual.pdf"; sourceTree = "<group>"; };
 		9DFE1864213586AB00149BDE /* indigo_focuser_dmfc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dmfc.h; sourceTree = "<group>"; };
 		9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dmfc.c; sourceTree = "<group>"; };
 		9DFE1866213586AB00149BDE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -3640,6 +3774,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5917AD1121A3628F00AC018A /* libqsiapi.a in Frameworks */,
 				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
 				59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */,
 				59A52D6621A3361D000B6F27 /* libgxccd.a in Frameworks */,
@@ -3992,6 +4127,285 @@
 			path = ccd_dsi;
 			sourceTree = "<group>";
 		};
+		5917AC4D21A3625D00AC018A /* externals */ = {
+			isa = PBXGroup;
+			children = (
+				5917AC4E21A3625D00AC018A /* qsiapi-7.6.0 */,
+			);
+			path = externals;
+			sourceTree = "<group>";
+		};
+		5917AC4E21A3625D00AC018A /* qsiapi-7.6.0 */ = {
+			isa = PBXGroup;
+			children = (
+				5917AC4F21A3625D00AC018A /* libtool */,
+				5917AC5021A3625D00AC018A /* demo_src */,
+				5917AC5921A3625D00AC018A /* install-sh */,
+				5917AC5A21A3625D00AC018A /* build-aux */,
+				5917AC6321A3625D00AC018A /* configure.ac */,
+				5917AC6421A3625D00AC018A /* INSTALL */,
+				5917AC6521A3625D00AC018A /* ltmain.sh */,
+				5917AC6621A3625D00AC018A /* config.h */,
+				5917AC6721A3625D00AC018A /* configure */,
+				5917AC6821A3625D00AC018A /* ChangeLog */,
+				5917AC6921A3625D00AC018A /* AUTHORS */,
+				5917AC6A21A3625D00AC018A /* Makefile */,
+				5917AC6B21A3625D00AC018A /* stamp-h1 */,
+				5917AC6C21A3625D00AC018A /* config.h.in */,
+				5917AC6D21A3625D00AC018A /* config.guess */,
+				5917AC6E21A3625D00AC018A /* depcomp */,
+				5917AC6F21A3625D00AC018A /* libqsiapi-config */,
+				5917AC7021A3625D00AC018A /* missing */,
+				5917AC7121A3625D00AC018A /* README */,
+				5917AC7221A3625D00AC018A /* TODO */,
+				5917AC7321A3625D00AC018A /* Makefile.am */,
+				5917AC7421A3625D00AC018A /* config.status */,
+				5917AC7521A3625D00AC018A /* config.sub */,
+				5917AC7621A3625D00AC018A /* COPYING */,
+				5917AC7721A3625D00AC018A /* compile */,
+				5917AC7821A3625D00AC018A /* NEWS */,
+				5917AC7921A3625D00AC018A /* lib */,
+				5917ACF521A3625D00AC018A /* m4 */,
+				5917ACFB21A3625D00AC018A /* doc */,
+				5917AD0021A3625D00AC018A /* config.log */,
+				5917AD0121A3625D00AC018A /* mkinstalldirs */,
+				5917AD0221A3625D00AC018A /* libqsiapi-config.in */,
+				5917AD0321A3625D00AC018A /* Makefile.in */,
+				5917AD0421A3625D00AC018A /* aclocal.m4 */,
+				5917AD0521A3625D00AC018A /* src */,
+			);
+			path = "qsiapi-7.6.0";
+			sourceTree = "<group>";
+		};
+		5917AC5021A3625D00AC018A /* demo_src */ = {
+			isa = PBXGroup;
+			children = (
+				5917AC5121A3625D00AC018A /* Makefile */,
+				5917AC5221A3625D00AC018A /* Makefile.am */,
+				5917AC5321A3625D00AC018A /* ExternalTrigger.cpp */,
+				5917AC5421A3625D00AC018A /* qsidemo.cpp */,
+				5917AC5521A3625D00AC018A /* .deps */,
+				5917AC5821A3625D00AC018A /* Makefile.in */,
+			);
+			path = demo_src;
+			sourceTree = "<group>";
+		};
+		5917AC5521A3625D00AC018A /* .deps */ = {
+			isa = PBXGroup;
+			children = (
+				5917AC5621A3625D00AC018A /* qsidemo-qsidemo.Po */,
+				5917AC5721A3625D00AC018A /* ExternalTrigger-ExternalTrigger.Po */,
+			);
+			path = .deps;
+			sourceTree = "<group>";
+		};
+		5917AC5A21A3625D00AC018A /* build-aux */ = {
+			isa = PBXGroup;
+			children = (
+				5917AC5B21A3625D00AC018A /* install-sh */,
+				5917AC5C21A3625D00AC018A /* ltmain.sh */,
+				5917AC5D21A3625D00AC018A /* ar-lib */,
+				5917AC5E21A3625D00AC018A /* config.guess */,
+				5917AC5F21A3625D00AC018A /* depcomp */,
+				5917AC6021A3625D00AC018A /* missing */,
+				5917AC6121A3625D00AC018A /* config.sub */,
+				5917AC6221A3625D00AC018A /* compile */,
+			);
+			path = "build-aux";
+			sourceTree = "<group>";
+		};
+		5917AC7921A3625D00AC018A /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				5917AC7A21A3625D00AC018A /* QSI_Global.h */,
+				5917AC7B21A3625D00AC018A /* libqsiapi_la-ICameraEeprom.lo */,
+				5917AC7C21A3625D00AC018A /* IHostIO.h */,
+				5917AC7D21A3625D00AC018A /* QSI_USBWrapper.h */,
+				5917AC7E21A3625D00AC018A /* libqsiapi_la-VidPid.o */,
+				5917AC7F21A3625D00AC018A /* libqsiapi_la-VidPid.lo */,
+				5917AC8021A3625D00AC018A /* FilterWheel.h */,
+				5917AC8121A3625D00AC018A /* CCDCamera.h */,
+				5917AC8221A3625D00AC018A /* IHostIO.cpp */,
+				5917AC8321A3625D00AC018A /* libqsiapi_la-Filter.lo */,
+				5917AC8421A3625D00AC018A /* libqsiapi_la-QSI_USBWrapper.lo */,
+				5917AC8521A3625D00AC018A /* ConvertUTF.c */,
+				5917AC8621A3625D00AC018A /* libqsiapi_la-HostIO_CyUSB.lo */,
+				5917AC8721A3625D00AC018A /* QSI_USBWrapper.cpp */,
+				5917AC8821A3625D00AC018A /* QSIFeatures.cpp */,
+				5917AC8921A3625D00AC018A /* libqsiapi_la-QSIModelInfo.lo */,
+				5917AC8A21A3625D00AC018A /* QSICriticalSection.h */,
+				5917AC8B21A3625D00AC018A /* libqsiapi_la-HostIO_CyUSB.o */,
+				5917AC8C21A3625D00AC018A /* ICameraEeprom.h */,
+				5917AC8D21A3625D00AC018A /* HostIO_TCP.cpp */,
+				5917AC8E21A3625D00AC018A /* libqsiapi_la-ICameraEeprom.o */,
+				5917AC8F21A3625D00AC018A /* libqsiapi_la-FilterWheel.lo */,
+				5917AC9021A3625D00AC018A /* libqsiapi_la-HotPixelMap.o */,
+				5917AC9121A3625D00AC018A /* QSI_PacketWrapper.h */,
+				5917AC9221A3625D00AC018A /* libqsiapi_la-HostConnection.o */,
+				5917AC9321A3625D00AC018A /* libqsiapi_la-CCDCamera.o */,
+				5917AC9421A3625D00AC018A /* Makefile */,
+				5917AC9521A3625D00AC018A /* HotPixelMap.cpp */,
+				5917AC9621A3625D00AC018A /* libqsiapi_la-CCDCamera.lo */,
+				5917AC9721A3625D00AC018A /* ftd2xx.h */,
+				5917AC9821A3625D00AC018A /* FilterWheel.cpp */,
+				5917AC9921A3625D00AC018A /* libqsiapi_la-HotPixelMap.lo */,
+				5917AC9A21A3625D00AC018A /* HostConnection.cpp */,
+				5917AC9B21A3625D00AC018A /* ICameraEeprom.cpp */,
+				5917AC9C21A3625D00AC018A /* libqsiapi_la-QSI_Interface.o */,
+				5917AC9D21A3625D00AC018A /* QSI_Interface.h */,
+				5917AC9E21A3625D00AC018A /* libqsiapi_la-CameraID.lo */,
+				5917AC9F21A3625D00AC018A /* QSI_PacketWrapper.cpp */,
+				5917ACA021A3625D00AC018A /* libqsiapi_la-QSILog.lo */,
+				5917ACA121A3625D00AC018A /* libqsiapi_la-HostIO_TCP.o */,
+				5917ACA221A3625D00AC018A /* QSILog.h */,
+				5917ACA321A3625D00AC018A /* QSIError.cpp */,
+				5917ACA421A3625D00AC018A /* QSI_Interface.cpp */,
+				5917ACA521A3625D00AC018A /* libqsiapi_la-IHostIO.o */,
+				5917ACA621A3625D00AC018A /* qsiapi.h */,
+				5917ACA721A3625D00AC018A /* libqsiapi_la-QSI_PacketWrapper.lo */,
+				5917ACA821A3625D00AC018A /* libqsiapi_la-IHostIO.lo */,
+				5917ACA921A3625D00AC018A /* libqsiapi_la-Filter.o */,
+				5917ACAA21A3625D00AC018A /* libqsiapi_la-QSIFeatures.o */,
+				5917ACAB21A3625D00AC018A /* Filter.cpp */,
+				5917ACAC21A3625D00AC018A /* SimpleIni.h */,
+				5917ACAD21A3625D00AC018A /* QSIModelInfo.h */,
+				5917ACAE21A3625D00AC018A /* HostIO_TCP.h */,
+				5917ACAF21A3625D00AC018A /* CCDCamera.cpp */,
+				5917ACB021A3625D00AC018A /* Makefile.am */,
+				5917ACB121A3625D00AC018A /* VidPid.h */,
+				5917ACB221A3625D00AC018A /* QSI_Registry.h */,
+				5917ACB321A3625D00AC018A /* WinTypes.h */,
+				5917ACB421A3625D00AC018A /* libqsiapi_la-HostIO_USB.lo */,
+				5917ACB521A3625D00AC018A /* libqsiapi_la-FilterWheel.o */,
+				5917ACB621A3625D00AC018A /* libqsiapi_la-QSIError.lo */,
+				5917ACB721A3625D00AC018A /* HostIO_CyUSB.h */,
+				5917ACB821A3625D00AC018A /* QSIError.h */,
+				5917ACB921A3625D00AC018A /* HostIO_CyUSB.cpp */,
+				5917ACBA21A3625D00AC018A /* libqsiapi_la-ConvertUTF.o */,
+				5917ACBB21A3625D00AC018A /* QSILog.cpp */,
+				5917ACBC21A3625D00AC018A /* libqsiapi_la-ConvertUTF.lo */,
+				5917ACBD21A3625D00AC018A /* HotPixelMap.h */,
+				5917ACBE21A3625D00AC018A /* QSIModelInfo.cpp */,
+				5917ACBF21A3625D00AC018A /* ConvertUTF.h */,
+				5917ACC021A3625D00AC018A /* libqsiapi_la-QSIError.o */,
+				5917ACC121A3625D00AC018A /* qsiapi.cpp */,
+				5917ACC221A3625D00AC018A /* libqsiapi_la-HostConnection.lo */,
+				5917ACC321A3625D00AC018A /* libqsiapi_la-QSI_USBWrapper.o */,
+				5917ACC421A3625D00AC018A /* qsicopyright.txt */,
+				5917ACC521A3625D00AC018A /* HostIO_USB.h */,
+				5917ACC621A3625D00AC018A /* VidPid.cpp */,
+				5917ACC721A3625D00AC018A /* libqsiapi_la-QSIFeatures.lo */,
+				5917ACC821A3625D00AC018A /* libqsiapi_la-CameraID.o */,
+				5917ACC921A3625D00AC018A /* libqsiapi_la-HostIO_TCP.lo */,
+				5917ACCA21A3625D00AC018A /* libqsiapi_la-qsiapi.lo */,
+				5917ACCB21A3625D00AC018A /* libqsiapi_la-HostIO_USB.o */,
+				5917ACCC21A3625D00AC018A /* CameraID.h */,
+				5917ACCD21A3625D00AC018A /* .deps */,
+				5917ACE321A3625D00AC018A /* Filter.h */,
+				5917ACE421A3625D00AC018A /* HostIO_USB.cpp */,
+				5917ACE521A3625D00AC018A /* .libs */,
+				5917ACE921A3625D00AC018A /* Makefile.in */,
+				5917ACEA21A3625D00AC018A /* libqsiapi_la-qsiapi.o */,
+				5917ACEB21A3625D00AC018A /* libqsiapi_la-QSI_Interface.lo */,
+				5917ACEC21A3625D00AC018A /* QSIFeatures.h */,
+				5917ACED21A3625D00AC018A /* HostConnection.h */,
+				5917ACEE21A3625D00AC018A /* libqsiapi_la-QSIModelInfo.o */,
+				5917ACEF21A3625D00AC018A /* CameraID.cpp */,
+				5917ACF021A3625D00AC018A /* libqsiapi.la */,
+				5917ACF121A3625D00AC018A /* libqsiapi_la-QSI_PacketWrapper.o */,
+				5917ACF221A3625D00AC018A /* wincompat.h */,
+				5917ACF321A3625D00AC018A /* libqsiapi_la-QSILog.o */,
+				5917ACF421A3625D00AC018A /* QSI_States.h */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		5917ACCD21A3625D00AC018A /* .deps */ = {
+			isa = PBXGroup;
+			children = (
+				5917ACCE21A3625D00AC018A /* libqsiapi_la-QSI_PacketWrapper.Plo */,
+				5917ACCF21A3625D00AC018A /* libqsiapi_la-QSIFeatures.Plo */,
+				5917ACD021A3625D00AC018A /* libqsiapi_la-QSI_Interface.Plo */,
+				5917ACD121A3625D00AC018A /* libqsiapi_la-ICameraEeprom.Plo */,
+				5917ACD221A3625D00AC018A /* libqsiapi_la-CCDCamera.Plo */,
+				5917ACD321A3625D00AC018A /* libqsiapi_la-HostIO_USB.Plo */,
+				5917ACD421A3625D00AC018A /* libqsiapi_la-HostIO_CyUSB.Plo */,
+				5917ACD521A3625D00AC018A /* libqsiapi_la-Filter.Plo */,
+				5917ACD621A3625D00AC018A /* libqsiapi_la-QSIError.Plo */,
+				5917ACD721A3625D00AC018A /* libqsiapi_la-QSIModelInfo.Plo */,
+				5917ACD821A3625D00AC018A /* libqsiapi_la-HotPixelMap.Plo */,
+				5917ACD921A3625D00AC018A /* libqsiapi_la-FilterWheel.Plo */,
+				5917ACDA21A3625D00AC018A /* libqsiapi_la-IHostIO.Plo */,
+				5917ACDB21A3625D00AC018A /* libqsiapi_la-qsiapi.Plo */,
+				5917ACDC21A3625D00AC018A /* libqsiapi_la-HostIO_TCP.Plo */,
+				5917ACDD21A3625D00AC018A /* libqsiapi_la-QSILog.Plo */,
+				5917ACDE21A3625D00AC018A /* libqsiapi_la-HostConnection.Plo */,
+				5917ACDF21A3625D00AC018A /* libqsiapi_la-QSI_USBWrapper.Plo */,
+				5917ACE021A3625D00AC018A /* libqsiapi_la-CameraID.Plo */,
+				5917ACE121A3625D00AC018A /* libqsiapi_la-ConvertUTF.Plo */,
+				5917ACE221A3625D00AC018A /* libqsiapi_la-VidPid.Plo */,
+			);
+			path = .deps;
+			sourceTree = "<group>";
+		};
+		5917ACE521A3625D00AC018A /* .libs */ = {
+			isa = PBXGroup;
+			children = (
+				5917ACE621A3625D00AC018A /* libqsiapi.a */,
+				5917ACE721A3625D00AC018A /* libqsiapi.lai */,
+				5917ACE821A3625D00AC018A /* libqsiapi.la */,
+			);
+			path = .libs;
+			sourceTree = "<group>";
+		};
+		5917ACF521A3625D00AC018A /* m4 */ = {
+			isa = PBXGroup;
+			children = (
+				5917ACF621A3625D00AC018A /* ltversion.m4 */,
+				5917ACF721A3625D00AC018A /* libtool.m4 */,
+				5917ACF821A3625D00AC018A /* ltoptions.m4 */,
+				5917ACF921A3625D00AC018A /* ltsugar.m4 */,
+				5917ACFA21A3625D00AC018A /* lt~obsolete.m4 */,
+			);
+			path = m4;
+			sourceTree = "<group>";
+		};
+		5917ACFB21A3625D00AC018A /* doc */ = {
+			isa = PBXGroup;
+			children = (
+				5917ACFC21A3625D00AC018A /* Makefile */,
+				5917ACFD21A3625D00AC018A /* Makefile.am */,
+				5917ACFE21A3625D00AC018A /* QSI Linux API Reference Manual.pdf */,
+				5917ACFF21A3625D00AC018A /* Makefile.in */,
+			);
+			path = doc;
+			sourceTree = "<group>";
+		};
+		5917AD0521A3625D00AC018A /* src */ = {
+			isa = PBXGroup;
+			children = (
+				5917AD0621A3625D00AC018A /* qsiimage.cpp */,
+				5917AD0721A3625D00AC018A /* Makefile */,
+				5917AD0821A3625D00AC018A /* Makefile.am */,
+				5917AD0921A3625D00AC018A /* qsifilter.cpp */,
+				5917AD0A21A3625D00AC018A /* .deps */,
+				5917AD0F21A3625D00AC018A /* Makefile.in */,
+				5917AD1021A3625D00AC018A /* qsiapitest.cpp */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		5917AD0A21A3625D00AC018A /* .deps */ = {
+			isa = PBXGroup;
+			children = (
+				5917AD0B21A3625D00AC018A /* qsiimage-qsiimage.Po */,
+				5917AD0C21A3625D00AC018A /* qsifilter-qsifilter.Po */,
+				5917AD0D21A3625D00AC018A /* qsiapitest-qsiapitest.Po */,
+				5917AD0E21A3625D00AC018A /* qsiapitest-qsiapitest.Tpo */,
+			);
+			path = .deps;
+			sourceTree = "<group>";
+		};
 		591E1139215844BC00ABADA6 /* nexstar_simulator */ = {
 			isa = PBXGroup;
 			children = (
@@ -4193,66 +4607,6 @@
 			path = ccd_ssag;
 			sourceTree = "<group>";
 		};
-		595355A41F6AD71300478BEC /* qsiapi-7.6.0 */ = {
-			isa = PBXGroup;
-			children = (
-				5971EAA92083731800B25696 /* Makefile */,
-				9DF7E6521F6AA3FE00156652 /* QSI Linux API Reference Manual.pdf */,
-				595355A51F6AD79000478BEC /* CameraID.h */,
-				595355A61F6AD79000478BEC /* CCDCamera.h */,
-				595355A71F6AD79000478BEC /* ConvertUTF.h */,
-				595355A81F6AD79000478BEC /* Filter.h */,
-				595355A91F6AD79000478BEC /* FilterWheel.h */,
-				595355AA1F6AD79000478BEC /* ftd2xx.h */,
-				595355AB1F6AD79000478BEC /* HostConnection.h */,
-				595355AC1F6AD79000478BEC /* HostIO_CyUSB.h */,
-				595355AD1F6AD79000478BEC /* HostIO_TCP.h */,
-				595355AE1F6AD79000478BEC /* HostIO_USB.h */,
-				595355AF1F6AD79000478BEC /* HotPixelMap.h */,
-				595355B01F6AD79000478BEC /* ICameraEeprom.h */,
-				595355B11F6AD79000478BEC /* IHostIO.h */,
-				595355B21F6AD79000478BEC /* QSI_Global.h */,
-				595355B31F6AD79000478BEC /* QSI_Interface.h */,
-				595355B41F6AD79000478BEC /* QSI_PacketWrapper.h */,
-				595355B51F6AD79000478BEC /* QSI_Registry.h */,
-				595355B61F6AD79000478BEC /* QSI_States.h */,
-				595355B71F6AD79000478BEC /* QSI_USBWrapper.h */,
-				595355B81F6AD79000478BEC /* qsiapi.h */,
-				595355B91F6AD79000478BEC /* QSICriticalSection.h */,
-				595355BA1F6AD79000478BEC /* QSIError.h */,
-				595355BB1F6AD79000478BEC /* QSIFeatures.h */,
-				595355BC1F6AD79000478BEC /* QSILog.h */,
-				595355BD1F6AD79000478BEC /* QSIModelInfo.h */,
-				595355BE1F6AD79000478BEC /* SimpleIni.h */,
-				595355BF1F6AD79100478BEC /* VidPid.h */,
-				595355C01F6AD79100478BEC /* wincompat.h */,
-				595355C11F6AD79100478BEC /* WinTypes.h */,
-				595355C21F6AD79100478BEC /* ConvertUTF.c */,
-				595355C31F6AD79100478BEC /* CameraID.cpp */,
-				595355C41F6AD79100478BEC /* CCDCamera.cpp */,
-				595355C51F6AD79100478BEC /* Filter.cpp */,
-				595355C61F6AD79100478BEC /* FilterWheel.cpp */,
-				595355C71F6AD79100478BEC /* HostConnection.cpp */,
-				595355C81F6AD79100478BEC /* HostIO_CyUSB.cpp */,
-				595355C91F6AD79100478BEC /* HostIO_TCP.cpp */,
-				595355CA1F6AD79100478BEC /* HostIO_USB.cpp */,
-				595355CB1F6AD79100478BEC /* HotPixelMap.cpp */,
-				595355CC1F6AD79100478BEC /* ICameraEeprom.cpp */,
-				595355CD1F6AD79100478BEC /* IHostIO.cpp */,
-				595355CE1F6AD79100478BEC /* QSI_Interface.cpp */,
-				595355CF1F6AD79100478BEC /* QSI_PacketWrapper.cpp */,
-				595355D01F6AD79100478BEC /* QSI_USBWrapper.cpp */,
-				595355D11F6AD79100478BEC /* qsiapi.cpp */,
-				595355D21F6AD79100478BEC /* QSIError.cpp */,
-				595355D31F6AD79100478BEC /* QSIFeatures.cpp */,
-				595355D41F6AD79100478BEC /* QSILog.cpp */,
-				595355D51F6AD79100478BEC /* QSIModelInfo.cpp */,
-				595355D61F6AD79100478BEC /* VidPid.cpp */,
-			);
-			name = "qsiapi-7.6.0";
-			path = "externals/qsiapi-7.6.0";
-			sourceTree = "<group>";
-		};
 		59588CA1211CBEB100E9FC27 /* aux_joystick */ = {
 			isa = PBXGroup;
 			children = (
@@ -4392,8 +4746,8 @@
 		599A63A11DE3733200ABC827 /* mount_nexstar */ = {
 			isa = PBXGroup;
 			children = (
-				5917AC4B21A358AD00AC018A /* Makefile.inc */,
 				594107C61EC8E0BB00C44F92 /* README.md */,
+				5917AC4B21A358AD00AC018A /* Makefile.inc */,
 				599A63A41DE3734700ABC827 /* indigo_mount_nexstar.h */,
 				599A63A31DE3734700ABC827 /* indigo_mount_nexstar.c */,
 				599A63A21DE3734700ABC827 /* indigo_mount_nexstar_main.c */,
@@ -9954,10 +10308,11 @@
 			isa = PBXGroup;
 			children = (
 				591C3F4A1F8A883F002B5596 /* README.md */,
+				5917AC4C21A35F9000AC018A /* Makefile.inc */,
 				9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */,
 				9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */,
 				9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */,
-				595355A41F6AD71300478BEC /* qsiapi-7.6.0 */,
+				5917AC4D21A3625D00AC018A /* externals */,
 			);
 			path = ccd_qsi;
 			sourceTree = "<group>";
@@ -10007,6 +10362,7 @@
 				59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */,
 				9D59D5F920D3F829009EA8FF /* CamCfgMatrix.h in Headers */,
 				9D59D64D20D3F829009EA8FF /* FindDeviceEthernet.h in Headers */,
+				5917AD1221A362B200AC018A /* qsiapi.h in Headers */,
 				9D59D65220D3F829009EA8FF /* CamGen2CcdAcqParams.h in Headers */,
 				59A5302221A35167000B6F27 /* libatik.h in Headers */,
 				590DD87F2127590600F2B978 /* indigo_wheel_optec.h in Headers */,
@@ -10083,7 +10439,6 @@
 				9D59D62320D3F829009EA8FF /* FilterWheelIo.h in Headers */,
 				9DAD522721246C18002FCC79 /* indigo_mount_synscan.h in Headers */,
 				59A52FB721A34251000B6F27 /* dc1394.h in Headers */,
-				59A52F0621A3412E000B6F27 /* qsiapi.h in Headers */,
 				59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */,
 				9D59D61B20D3F829009EA8FF /* CamGen2Base.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
@@ -10931,6 +11286,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_atik/bin_externals/libatik/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_iidc/externals/libdc1394",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include";
@@ -10963,6 +11319,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_atik/bin_externals/libatik/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_iidc/externals/libdc1394",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include";

@@ -123,11 +123,11 @@ clean: status $(CLEAN_SDK)
 $(SDK_LIB_A): $(SDK_DIR)/Makefile
 	cd $(SDK_DIR); export MACOSX_DEPLOYMENT_TARGET=10.10; make
 
-$(SDK_DIR)/configure: $(SDK_DIR)/configure.in
+$(SDK_DIR)/configure: $(SDK_CONFIGURE_IN)
 	cd $(SDK_DIR); autoreconf -fiv
 
-$(SDK_DIR)/Makefile: $(SDK_DIR)/configure
-	cd $(SDK_DIR); ./configure --prefix=`pwd` --libdir=`pwd` --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)"
+$(SDK_DIR)/Makefile: $(SDK_CONFIGURE)
+	cd $(SDK_DIR); ./configure --prefix=`pwd` --libdir=`pwd` --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" CC=$(CC) CXX=$(CC)
 
 $(SDK_LIB_SO): $(SDK_DIR)/Makefile
 	cd $(SDK_DIR); export MACOSX_DEPLOYMENT_TARGET=10.10; make
