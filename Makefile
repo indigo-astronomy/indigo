@@ -56,9 +56,9 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
 	LIBDSUSB=indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS/libdsusb.a
 	LIBGPUSB=indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS/libgpusb.a
-	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac/libEFWFilter.a
-	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/mac/libASICamera2.a
-	LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/mac/libUSB2ST4Conv.a
+	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/macOS/libEFWFilter.a
+	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS/libASICamera2.a
+	LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/macOS/libUSB2ST4Conv.a
 	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/macOS/libtoupcam.dylib
 	LIBALTAIRCAM=indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/macOS/libaltaircam.dylib
 	FLISDK=libfli-1.999.1-180223
@@ -76,21 +76,9 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBGPUSB=indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/Linux/$(ARCH_DETECTED)/libgpusb.a
 	LIBTOUPCAM=indigo_drivers/ccd_touptek/bin_externals/libtoupcam/lib/Linux/$(ARCH_DETECTED)/libtoupcam.so
 	LIBALTAIRCAM=indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/Linux/$(ARCH_DETECTED)/libaltaircam.so
-	ifeq ($(ARCH_DETECTED),arm)
-		LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/armv6/libEFWFilter.a
-		LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/armv6/libASICamera2.a
-		LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/armv6/libUSB2ST4Conv.a
-	else
-		ifeq ($(ARCH_DETECTED),arm64)
-			LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/armv8/libEFWFilter.a
-			LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/armv8/libASICamera2.a
-			LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/armv8/libUSB2ST4Conv.a
-		else
-			LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/$(ARCH_DETECTED)/libEFWFilter.a
-			LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/$(ARCH_DETECTED)/libASICamera2.a
-			LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/$(ARCH_DETECTED)/libUSB2ST4Conv.a
-		endif
-	endif
+	LIBASIEFW=indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/Linux/$(ARCH_DETECTED)/libEFWFilter.a
+	LIBASICAMERA=indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/Linux/$(ARCH_DETECTED)/libASICamera2.a
+	LIBASIST4=indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/Linux/$(ARCH_DETECTED)/libUSB2ST4Conv.a
 	FLISDK=libfli-1.999.1-180223
 	LIBRAW_1394=$(shell pkg-config --libs libraw1394)
 	LIBBOOST-REGEX=$(BUILD_LIB)/libboost_regex.a

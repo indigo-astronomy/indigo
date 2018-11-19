@@ -31,10 +31,10 @@ BUILD_LIB = $(BUILD_ROOT)/lib
 BUILD_INCLUDE = $(BUILD_ROOT)/include
 BUILD_SHARE = $(BUILD_ROOT)/share
 
-STABLE_DRIVERS = agent_lx200_server agent_snoop aux_joystick aux_upb ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_iidc ccd_mi ccd_qhy ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek dome_simulator focuser_dmfc focuser_fcusb focuser_fli focuser_mjkzz focuser_moonlite focuser_nfocus focuser_nstep focuser_usbv3 focuser_wemacro gps_nmea gps_simulator guider_asi guider_cgusbst4 mount_ioptron mount_lx200 mount_nexstar mount_simulator mount_temma wheel_asi wheel_atik wheel_fli wheel_sx
+STABLE_DRIVERS = agent_lx200_server agent_snoop aux_joystick aux_upb ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_ica ccd_iidc ccd_mi ccd_qhy ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek dome_simulator focuser_dmfc focuser_fcusb focuser_fli focuser_mjkzz focuser_mjkzz_bt focuser_moonlite focuser_nfocus focuser_nstep focuser_usbv3 focuser_wemacro focuser_wemacro_bt gps_nmea gps_simulator guider_asi guider_cgusbst4 guider_eqmac mount_ioptron mount_lx200 mount_nexstar mount_simulator mount_temma wheel_asi wheel_atik wheel_fli wheel_sx
 UNTESTED_DRIVERS = aux_dsusb aux_rts focuser_lakeside focuser_optec guider_gpusb wheel_optec wheel_quantum wheel_trutek wheel_xagyl
 DEVELOPED_DRIVERS = agent_imager mount_synscan system_ascol
-EXCLUDED_DRIVERS = aux_joystick ccd_apogee ccd_asi ccd_dsi ccd_fli ccd_iidc ccd_qhy ccd_qsi focuser_fli guider_asi mount_nexstar wheel_asi wheel_atik wheel_fli system_ascol ccd_ica focuser_mjkzz_bt focuser_wemacro_bt
+EXCLUDED_DRIVERS = aux_joystick ccd_andor ccd_apogee ccd_iidc ccd_gphoto2 ccd_qhy ccd_qsi mount_nexstar system_ascol
 
 #---------------------------------------------------------------------
 #
@@ -96,23 +96,23 @@ endif
 .PHONY: init all clean clean-all
 
 all:	init
-	$(MAKE)	-C indigo_libs all
-	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs all
+	@$(MAKE)	-C indigo_libs all
+	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs all
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers  -f ../Makefile.drvs all
+	@$(MAKE)	-C indigo_mac_drivers  -f ../Makefile.drvs all
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers  -f ../Makefile.drvs all
+	@$(MAKE)	-C indigo_linux_drivers  -f ../Makefile.drvs all
 endif
 
 status:
-	$(MAKE)	-C indigo_libs status
-	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs status
+	@$(MAKE)	-C indigo_libs status
+	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs status
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs status
+	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs status
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs status
+	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs status
 endif
 
 
@@ -134,13 +134,13 @@ install: INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
 install: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
 install: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 install: reconfigure init
-	$(MAKE)	-C indigo_libs install
-	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
+	@$(MAKE)	-C indigo_libs install
+	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
+	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
+	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 endif
 
 uninstall: INSTALL_ROOT = $(INDIGO_ROOT)/install
@@ -150,13 +150,13 @@ uninstall: INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
 uninstall: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
 uninstall: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 uninstall: reconfigure init
-	$(MAKE)	-C indigo_libs uninstall
-	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
+	@$(MAKE)	-C indigo_libs uninstall
+	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs uninstall
+	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs uninstall
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs uninstall
+	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs uninstall
 endif
 
 package: INSTALL_ROOT = indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
@@ -166,23 +166,23 @@ package: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
 package: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
 package: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 package: reconfigure init
-	$(MAKE)	-C indigo_libs install
-	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
+	@$(MAKE)	-C indigo_libs install
+	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
+	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
+	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 endif
 
 clean:
-	$(MAKE)	-C indigo_libs clean
-	$(MAKE)	-C indigo_drivers -f ../Makefile.drvs clean
+	@$(MAKE)	-C indigo_libs clean
+	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs clean
 ifeq ($(OS_DETECTED),Darwin)
-	$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs clean
+	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs clean
 endif
 ifeq ($(OS_DETECTED),Linux)
-	$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean
+	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean
 endif
 
 clean-all: clean

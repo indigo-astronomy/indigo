@@ -23,8 +23,12 @@
 # This file is supposed to be called from within indigo_XXX_drivers/YYY folder if Makefile is not present.
 
 include ../../Makefile.inc
+ifneq ($(wildcard Makefile.inc),)
+include Makefile.inc
+endif
 
 DRIVER = indigo_$(notdir $(shell pwd))
+rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
 DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
@@ -35,35 +39,44 @@ else
 	DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
 	DRIVER_MAIN_O = $(DRIVER)_main.o
 endif
-DRIVER_O = $(filter-out $(DRIVER_MAIN_O),$(addsuffix .o, $(basename $(notdir $(wildcard $(DRIVER)*.c)))))
-RULES = $(notdir $(wildcard *.rules))
+DRIVER_O = $(filter-out $(DRIVER_MAIN_O),$(addsuffix .o, $(basename $(notdir $(wildcard *.c) $(wildcard *.m)))))
+RULES = $(notdir $(call rwildcard,,*.rules))
 XML = $(notdir $(wildcard indi_go_*.xml))
 
-SDK_INCLUDE = $(addprefix -I, $(wildcard bin_externals/*/include))
+SDK_INCLUDE ?= $(addprefix -I, $(wildcard bin_externals/*/include))
 ifeq ($(OS_DETECTED),Darwin)
-	SDK_LIB_A = $(wildcard bin_externals/*/lib/macOS/*.a)
-	SDK_LIB_SO = $(wildcard bin_externals/*/lib/macOS/*.dylib)
+	SDK_LIB_A ?= $(wildcard bin_externals/*/lib/macOS/*.a)
+	SDK_LIB_SO ?= $(wildcard bin_externals/*/lib/macOS/*.dylib)
 endif
 ifeq ($(OS_DETECTED),Linux)
-	SDK_LIB_A = $(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.a)
-	SDK_LIB_SO = $(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.so)
+	SDK_LIB_A ?= $(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.a)
+	SDK_LIB_SO ?= $(wildcard bin_externals/*/lib/Linux/$(ARCH_DETECTED)/*.so)
 endif
-SDK_LIB = $(addprefix -L, $(dir $(SDK_LIB_A) $(SDK_LIB_SO))) $(addprefix -l, $(subst lib, , $(basename $(notdir $(SDK_LIB_A) $(SDK_LIB_SO)))))
+SDK_LIB ?= $(addprefix -L, $(dir $(SDK_LIB_A) $(SDK_LIB_SO))) $(addprefix -l, $(subst lib, , $(basename $(notdir $(SDK_LIB_A) $(SDK_LIB_SO)))))
 
 CFLAGS += $(SDK_INCLUDE)
 
-all: $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+.PHONY: all status install uninstall make_sdk clean_sdk
+
+all: status $(MAKE_SDK) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 status:
-	@printf "\n$(DRIVER) ---------------------------------------\n"
-	@printf "Archive: $(DRIVER_A)\n"
-	@printf "Dynamic library: $(DRIVER_SO)\n"
+	@printf "\n$(DRIVER) ---------------------------------------\n\n"
+	@printf "Archive:    $(DRIVER_A)\n"
+	@printf "SO library: $(DRIVER_SO)\n"
+ifneq ($(DRIVER_EXECUTABLE),)
 	@printf "Executable: $(DRIVER_EXECUTABLE)\n"
-	@printf "Rules: $(RULES)\n"
-	@printf "XML: $(XML)\n"
-	@printf "SDK include: $(SDK_INCLUDE)\n"
-	@printf "SDK library: $(SDK_LIB) [$(strip $(SDK_LIB_A) $(SDK_LIB_SO))]\n"
-	@printf "CFLAGS: $(CFLAGS)\n"
+endif
+ifneq ($(RULES),)
+	@printf "Rules:      $(RULES)\n"
+endif
+ifneq ($(XML),)
+	@printf "XML:        $(XML)\n"
+endif
+ifneq ($(strip $(SDK_LIB_A) $(SDK_LIB_SO)),)
+	@printf "SDK:        $(strip $(SDK_LIB_A) $(SDK_LIB_SO)) $(SDK_INCLUDE) $(SDK_LIB)\n"
+endif
+	@printf "\n"
 
 $(DRIVER_A): $(DRIVER_O)
 	$(AR) $(ARFLAGS) $@ $^
@@ -74,10 +87,13 @@ $(DRIVER_SO): $(DRIVER_A)
 $(DRIVER_EXECUTABLE): $(DRIVER_A) $(DRIVER_MAIN_O)
 	$(CC) -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
 
-install:
+install: status $(INSTALL_SDK)
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
 ifneq ($(DRIVER_EXECUTABLE),)
 	install -m 0755 $(DRIVER_EXECUTABLE) $(INSTALL_BIN)
+endif
+ifneq ($(SDK_LIB_SO),)
+	install -m 0644 $(SDK_LIB_SO) $(INSTALL_LIB)
 endif
 ifneq ($(RULES),)
 	install -m 0644 $(RULES) $(INSTALL_RULES)/99-$(DRIVER).rules
@@ -86,8 +102,17 @@ ifneq ($(XML),)
 	install -m 0644 $(XML) $(INSTALL_SHARE)/indi
 endif
 
-uninstall:
+uninstall: status $(UNINSTALL_SDK)
 	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER) $(INSTALL_RULES)/99-$(DRIVER).rules $(INSTALL_SHARE)/indi/$(XML)
 
-clean:
+clean: status $(CLEAN_SDK)
 	rm -f $(DRIVER_O) $(DRIVER_MAIN_O) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+
+$(SDK_LIB_A):
+	cd $(SDK_DIR); make
+
+$(SDK_LIB_SO):
+	cd $(SDK_DIR); make
+
+clean_sdk:
+	cd $(SDK_DIR); make clean
