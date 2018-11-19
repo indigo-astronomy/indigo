@@ -193,7 +193,7 @@ typedef struct {
 	ascol_glst_t glst;
 	ascol_oimv_t oimv;
 	ascol_glme_t glme;
-	indigo_timer *position_timer, *state_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
+	indigo_timer *state_timer, *guider_timer_ra, *guider_timer_dec, *park_timer;
 	int guide_rate;
 	indigo_property *command_guide_rate_property;
 	indigo_property *alarm_property;
@@ -806,56 +806,6 @@ static void park_timer_callback(indigo_device *device) {
 }
 
 
-static void position_timer_callback(indigo_device *device) {
-	int res;
-	double ra, dec, lon, lat;
-	int dev_id = PRIVATE_DATA->dev_id;
-
-	if (dev_id < 0) return;
-
-	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-	if ( 0 /* tc_goto_in_progress(dev_id) */) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	} else {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	}
-
-	//res = tc_get_rade_p(dev_id, &ra, &dec);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_rade_p(%d) = %d", dev_id, res);
-	}
-
-	//res = tc_get_location(dev_id, &lon, &lat);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_location(%d) = %d", dev_id, res);
-	}
-	if (lon < 0) lon += 360;
-
-	time_t ttime;
-	int tz, dst;
-	//res = (int)tc_get_time(dev_id, &ttime, &tz, &dst);
-	if (res == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_time(%d) = %d", dev_id, res);
-		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-
-	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
-	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-	indigo_update_coordinates(device, NULL);
-	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
-	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
-	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-
-	indigo_timetoiso(ttime - 3600 * dst, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-
-	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->position_timer);
-}
-
-
 static void state_timer_callback(indigo_device *device) {
 	static ascol_glst_t prev_glst = {0};
 	static ascol_oimv_t prev_oimv = {0};
@@ -1132,7 +1082,7 @@ static void state_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_GLME(%d) = %d", PRIVATE_DATA->dev_id, res);
 		GLME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GLME_PROPERTY, "Could not read Meteo sensrs");
-		goto RESCHEDULE_TIMER;
+		goto UPDATE_RA_DE;
 	}
 
 	if (first_call || memcmp(&prev_glme, &PRIVATE_DATA->glme, sizeof(prev_glme))) {
@@ -1144,6 +1094,32 @@ static void state_timer_callback(indigo_device *device) {
 		indigo_update_property(device, GLME_PROPERTY, NULL);
 		prev_glme = PRIVATE_DATA->glme;
 	}
+
+	char east;
+	double ra, dec;
+	UPDATE_RA_DE:
+	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
+	res = ascol_TRRD(PRIVATE_DATA->dev_id, &ra, &dec, &east);
+	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
+	if (res != ASCOL_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TRRD(%d) = %d", PRIVATE_DATA->dev_id, res);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_coordinates(device, NULL);
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		goto RESCHEDULE_TIMER;
+	}
+
+	if ((MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) &&
+	    ((PRIVATE_DATA->glst.telescope_state == TE_STATE_TRACK) ||
+		(PRIVATE_DATA->glst.telescope_state == TE_STATE_STOP) ||
+		(PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF))) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	}
+
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+	indigo_update_coordinates(device, NULL);
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 
 	RESCHEDULE_TIMER:
 	first_call = false;
@@ -1436,7 +1412,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 
 					device->is_connected = true;
 					/* start updates */
-					PRIVATE_DATA->position_timer = indigo_set_timer(device, 0, position_timer_callback);
 					PRIVATE_DATA->state_timer = indigo_set_timer(device, 0, state_timer_callback);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1445,7 +1420,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 		} else {
 			if (device->is_connected) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 				indigo_cancel_timer(device, &PRIVATE_DATA->state_timer);
 				mount_close(device);
 				indigo_delete_property(device, ALARM_PROPERTY, NULL);
@@ -1682,7 +1656,6 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 	indigo_cancel_timer(device, &PRIVATE_DATA->state_timer);
 
 	indigo_release_property(ALARM_PROPERTY);
