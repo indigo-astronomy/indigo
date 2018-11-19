@@ -658,6 +658,9 @@
 		5911F7B01F02E1330053F3CA /* libdsi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = libdsi.c; sourceTree = "<group>"; };
 		5911F7B11F02E1330053F3CA /* libdsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libdsi.h; sourceTree = "<group>"; };
 		5911F7B21F02E1330053F3CA /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5917AC4921A3586D00AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		5917AC4A21A3588800AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		5917AC4B21A358AD00AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5918E26A1F8C0610005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5918E26B1F8C0627005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5918E26C1F8C0645005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -4009,6 +4012,7 @@
 			isa = PBXGroup;
 			children = (
 				5918E26C1F8C0645005D6300 /* README.md */,
+				5917AC4A21A3588800AC018A /* Makefile.inc */,
 				591FAB791E391B1C0076BD6E /* indigo_focuser_fli.h */,
 				591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */,
 				591FAB771E391B1C0076BD6E /* indigo_focuser_fli_main.c */,
@@ -4347,6 +4351,7 @@
 			isa = PBXGroup;
 			children = (
 				5918E26D1F8C06AF005D6300 /* README.md */,
+				5917AC4921A3586D00AC018A /* Makefile.inc */,
 				5992F7BA1E1EC9390035242E /* indigo_wheel_fli.h */,
 				5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */,
 				5992F7BB1E1EC9580035242E /* indigo_wheel_fli_main.c */,
@@ -4387,6 +4392,7 @@
 		599A63A11DE3733200ABC827 /* mount_nexstar */ = {
 			isa = PBXGroup;
 			children = (
+				5917AC4B21A358AD00AC018A /* Makefile.inc */,
 				594107C61EC8E0BB00C44F92 /* README.md */,
 				599A63A41DE3734700ABC827 /* indigo_mount_nexstar.h */,
 				599A63A31DE3734700ABC827 /* indigo_mount_nexstar.c */,
