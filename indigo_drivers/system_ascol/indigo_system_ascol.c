@@ -288,36 +288,20 @@ static bool mount_open(indigo_device *device) {
 
 
 static void mount_handle_coordinates(indigo_device *device) {
-	int res = RC_OK;
+	int res = INDIGO_OK;
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
-
-	/* return if mount not aligned */
-	int aligned = 0; //tc_check_align(PRIVATE_DATA->dev_id);
-	if (aligned < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_check_align(%d) = %d", PRIVATE_DATA->dev_id, res);
-	} else if (aligned == 0) {
-		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_coordinates(device, "Mount is not aligned, please align it first.");
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Mount is not aligned, please align it first.");
-		return;
-	}
 
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* GOTO requested */
-	if(MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-		// res = tc_goto_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
-		if (res != RC_OK) {
+	res = ascol_TSRA(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target,0);
+	if (res != INDIGO_OK) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TSRA(%d) = %d", PRIVATE_DATA->dev_id, res);
+	} else {
+		res = ascol_TGRA(PRIVATE_DATA->dev_id, ASCOL_ON);
+		if (res != INDIGO_OK) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res);
-		}
-	}
-	/* SYNC requested */
-	else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		// res = tc_sync_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
-		if (res != RC_OK) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_sync_rade_p(%d) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_TGRA(%d) = %d", PRIVATE_DATA->dev_id, res);
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
@@ -1175,7 +1159,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
-		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+		MOUNT_ON_COORDINATES_SET_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		AUTHENTICATION_PROPERTY->hidden = false;
 		AUTHENTICATION_PROPERTY->count = 1;
