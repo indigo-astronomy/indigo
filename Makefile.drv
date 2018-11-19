@@ -39,8 +39,8 @@ else
 	DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
 	DRIVER_MAIN_O = $(DRIVER)_main.o
 endif
-DRIVER_O = $(filter-out $(DRIVER_MAIN_O),$(addsuffix .o, $(basename $(notdir $(wildcard *.c) $(wildcard *.m)))))
-RULES = $(notdir $(call rwildcard,,*.rules))
+DRIVER_O = $(filter-out $(DRIVER_MAIN_O),$(addsuffix .o, $(basename $(notdir $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.m)))))
+RULES = $(strip $(call rwildcard,,*.rules))
 XML = $(notdir $(wildcard indi_go_*.xml))
 
 SDK_INCLUDE ?= $(addprefix -I, $(wildcard bin_externals/*/include))
@@ -54,7 +54,11 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 SDK_LIB ?= $(addprefix -L, $(dir $(SDK_LIB_A) $(SDK_LIB_SO))) $(addprefix -l, $(subst lib, , $(basename $(notdir $(SDK_LIB_A) $(SDK_LIB_SO)))))
 
+FIRMWARE ?= $(strip $(wildcard bin_externals/*/firmware/*) $(wildcard *.hex))
+FIRMWARE_TARGET ?= $(INSTALL_FIRMWARE)
 CFLAGS += $(SDK_INCLUDE)
+CXXFLAGS += $(SDK_INCLUDE)
+FLAGS += $(SDK_INCLUDE)
 
 .PHONY: all status install uninstall make_sdk clean_sdk
 
@@ -62,19 +66,23 @@ all: status $(MAKE_SDK) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 status:
 	@printf "\n$(DRIVER) ---------------------------------------\n\n"
-	@printf "Archive:    $(DRIVER_A)\n"
-	@printf "SO library: $(DRIVER_SO)\n"
+	@printf "Sources:    $(notdir $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.m))\n"
+	@printf "Archive:    $(notdir $(DRIVER_A))\n"
+	@printf "SO library: $(notdir $(DRIVER_SO))\n"
 ifneq ($(DRIVER_EXECUTABLE),)
-	@printf "Executable: $(DRIVER_EXECUTABLE)\n"
+	@printf "Executable: $(notdir $(DRIVER_EXECUTABLE))\n"
 endif
 ifneq ($(RULES),)
-	@printf "Rules:      $(RULES)\n"
+	@printf "Rules:      $(notdir $(RULES))\n"
 endif
 ifneq ($(XML),)
-	@printf "XML:        $(XML)\n"
+	@printf "XML:        $(notdir $(XML))\n"
 endif
-ifneq ($(strip $(SDK_LIB_A) $(SDK_LIB_SO)),)
-	@printf "SDK:        $(strip $(SDK_LIB_A) $(SDK_LIB_SO)) $(SDK_INCLUDE) $(SDK_LIB)\n"
+ifneq ($(FIRMWARE),)
+	@printf "FIRMWARE:   $(notdir $(FIRMWARE))\n"
+endif
+ifneq ($(strip $(SDK_LIB_A) $(SDK_LIB_SO) $(SDK_INCLUDE)),)
+	@printf "SDK:        $(strip $(SDK_LIB_A) $(SDK_LIB_SO)  $(SDK_INCLUDE) $(SDK_LIB))\n"
 endif
 	@printf "\n"
 
@@ -99,20 +107,30 @@ ifneq ($(RULES),)
 	install -m 0644 $(RULES) $(INSTALL_RULES)/99-$(DRIVER).rules
 endif
 ifneq ($(XML),)
-	install -m 0644 $(XML) $(INSTALL_SHARE)/indi
+	install -m 0644 $(XML) $(INSTALL_SHARE)/indi/indi_go_$(subst indigo_,,$(DRIVER)).xml
+endif
+ifneq ($(FIRMWARE),)
+	install -d $(FIRMWARE_TARGET)
+	install -m 0644 $(FIRMWARE) $(FIRMWARE_TARGET)
 endif
 
 uninstall: status $(UNINSTALL_SDK)
-	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER) $(INSTALL_RULES)/99-$(DRIVER).rules $(INSTALL_SHARE)/indi/$(XML)
+	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER) $(INSTALL_RULES)/99-$(DRIVER).rules $(INSTALL_SHARE)/indi/indi_go_$(subst indigo_,,$(DRIVER)).xml $(addprefix $(FIRMWARE_TARGET)/, $(notdir $(FIRMWARE)))
 
 clean: status $(CLEAN_SDK)
 	rm -f $(DRIVER_O) $(DRIVER_MAIN_O) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
-$(SDK_LIB_A):
-	cd $(SDK_DIR); make
+$(SDK_LIB_A): $(SDK_DIR)/Makefile
+	cd $(SDK_DIR); export MACOSX_DEPLOYMENT_TARGET=10.10; make
 
-$(SDK_LIB_SO):
-	cd $(SDK_DIR); make
+$(SDK_DIR)/configure: $(SDK_DIR)/configure.in
+	cd $(SDK_DIR); autoreconf -fiv
+
+$(SDK_DIR)/Makefile: $(SDK_DIR)/configure
+	cd $(SDK_DIR); ./configure --prefix=`pwd` --libdir=`pwd` --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)"
+
+$(SDK_LIB_SO): $(SDK_DIR)/Makefile
+	cd $(SDK_DIR); export MACOSX_DEPLOYMENT_TARGET=10.10; make
 
 clean_sdk:
 	cd $(SDK_DIR); make clean

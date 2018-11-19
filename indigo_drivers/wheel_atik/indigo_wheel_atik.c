@@ -40,7 +40,7 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include <libatik/libatik.h>
+#include <libatik.h>
 
 #include "indigo_driver_xml.h"
 #include "indigo_wheel_atik.h"

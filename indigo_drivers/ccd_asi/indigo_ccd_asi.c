@@ -45,7 +45,7 @@
 #include <libusb-1.0/libusb.h>
 #endif
 
-#include "asi_ccd/ASICamera2.h"
+#include "ASICamera2.h"
 #include "indigo_ccd_asi.h"
 #include "indigo_driver_xml.h"
 
