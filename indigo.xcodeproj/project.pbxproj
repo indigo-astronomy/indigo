@@ -7023,12 +7023,12 @@
 			path = x64;
 			sourceTree = "<group>";
 		};
-		59D9682221A2FE580069A64C /* armhf */ = {
+		59D9682221A2FE580069A64C /* arm */ = {
 			isa = PBXGroup;
 			children = (
 				59D9682321A2FE580069A64C /* libEFWFilter.a */,
 			);
-			path = armhf;
+			path = arm;
 			sourceTree = "<group>";
 		};
 		59D9682721A2FE580069A64C /* arm64 */ = {
@@ -7160,7 +7160,7 @@
 			children = (
 				59D9682B21A2FE580069A64C /* x86 */,
 				59D9682721A2FE580069A64C /* arm64 */,
-				59D9682221A2FE580069A64C /* armhf */,
+				59D9682221A2FE580069A64C /* arm */,
 				59D9682021A2FE580069A64C /* x64 */,
 			);
 			path = Linux;
