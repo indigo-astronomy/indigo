@@ -72,7 +72,6 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	LIBATIKCAMERAS=indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/Linux/$(ARCH_DETECTED)/libatikcameras.so
 	LIBATIK=indigo_drivers/wheel_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
-	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/Linux/$(ARCH_DETECTED)/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
 	LIBDSUSB=indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/Linux/$(ARCH_DETECTED)/libdsusb.a
@@ -1812,18 +1811,7 @@ $(PACKAGE_NAME).deb: package-prepare
 	printf "Replaces: $(REWRITE_DEBS)\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	printf "Homepage: http://www.indigo-astronomy.org\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
-ifeq ($(DEBIAN_ARCH),i386)
-	printf "Depends: fxload, libsbigudrv2, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
-endif
-ifeq ($(DEBIAN_ARCH),amd64)
-	printf "Depends: fxload, libsbigudrv2, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
-endif
-ifeq ($(DEBIAN_ARCH),armhf)
 	printf "Depends: fxload, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
-endif
-ifeq ($(DEBIAN_ARCH),arm64)
-	printf "Depends: fxload, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
-endif
 	printf "Description: INDIGO Framework and drivers\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	printf " INDIGO is a system of standards and frameworks for multiplatform and distributed astronomy software development designed to scale with your needs.\n" >> /tmp/$(PACKAGE_NAME)/DEBIAN/control
 	cat /tmp/$(PACKAGE_NAME)/DEBIAN/control
