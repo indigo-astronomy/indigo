@@ -1710,7 +1710,7 @@ install:
 	sudo install -D -m 0644 indigo_drivers/ccd_fli/indigo-fli.rules /lib/udev/rules.d/99-indigo_fli.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
-	sudo install -D -m 0644 indigo_drivers/ccd_asi/bin_external/libasicamera/lib/asi.rules /lib/udev/rules.d/99-indigo_ccd_asi.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/asi.rules /lib/udev/rules.d/99-indigo_ccd_asi.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_dsi/99-meadedsi.rules /lib/udev/rules.d/99-meadedsi.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_dsi/meade-deepskyimager.hex /lib/firmware/meade-deepskyimager.hex
 	sudo install -D -m 0644 indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/99-efw.rules /lib/udev/rules.d/99-indigo_wheel_asi.rules
