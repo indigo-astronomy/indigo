@@ -31,10 +31,18 @@ BUILD_LIB = $(BUILD_ROOT)/lib
 BUILD_INCLUDE = $(BUILD_ROOT)/include
 BUILD_SHARE = $(BUILD_ROOT)/share
 
+INSTALL_ROOT = $(INDIGO_ROOT)/install
+INSTALL_BIN = $(INSTALL_ROOT)/usr/local/bin
+INSTALL_LIB = $(INSTALL_ROOT)/usr/local/lib
+INSTALL_ETC = $(INSTALL_ROOT)/etc
+INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
+INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
+INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
+
 STABLE_DRIVERS = agent_lx200_server agent_snoop aux_joystick aux_upb ccd_altair ccd_apogee ccd_asi ccd_atik ccd_dsi ccd_fli ccd_ica ccd_iidc ccd_mi ccd_qhy ccd_qsi ccd_sbig ccd_simulator ccd_ssag ccd_sx ccd_touptek dome_simulator focuser_dmfc focuser_fcusb focuser_fli focuser_mjkzz focuser_mjkzz_bt focuser_moonlite focuser_nfocus focuser_nstep focuser_usbv3 focuser_wemacro focuser_wemacro_bt gps_nmea gps_simulator guider_asi guider_cgusbst4 guider_eqmac mount_ioptron mount_lx200 mount_nexstar mount_simulator mount_temma wheel_asi wheel_atik wheel_fli wheel_sx
 UNTESTED_DRIVERS = aux_dsusb aux_rts focuser_lakeside focuser_optec guider_gpusb wheel_optec wheel_quantum wheel_trutek wheel_xagyl
 DEVELOPED_DRIVERS = agent_imager mount_synscan system_ascol
-EXCLUDED_DRIVERS = ccd_andor ccd_apogee ccd_iidc ccd_gphoto2 ccd_qsi system_ascol
+EXCLUDED_DRIVERS = ccd_andor ccd_iidc ccd_gphoto2 ccd_qsi system_ascol
 
 #---------------------------------------------------------------------
 #
@@ -121,6 +129,7 @@ reconfigure:
 	install -d -m 0755 $(INSTALL_ROOT)
 	install -d -m 0755 $(INSTALL_BIN)
 	install -d -m 0755 $(INSTALL_LIB)
+	install -d -m 0755 $(INSTALL_ETC)
 	install -d -m 0755 $(INSTALL_SHARE)
 	install -d -m 0755 $(INSTALL_SHARE)/indigo
 	install -d -m 0755 $(INSTALL_SHARE)/indi
@@ -128,11 +137,6 @@ reconfigure:
 	install -d -m 0755 $(INSTALL_FIRMWARE)
 
 install: INSTALL_ROOT = $(INDIGO_ROOT)/install
-install: INSTALL_BIN = $(INSTALL_ROOT)/usr/local/bin
-install: INSTALL_LIB = $(INSTALL_ROOT)/usr/local/lib
-install: INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
-install: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
-install: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 install: reconfigure init
 	@$(MAKE)	-C indigo_libs install
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
@@ -144,11 +148,6 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 
 uninstall: INSTALL_ROOT = $(INDIGO_ROOT)/install
-uninstall: INSTALL_BIN = $(INSTALL_ROOT)/usr/local/bin
-uninstall: INSTALL_LIB = $(INSTALL_ROOT)/usr/local/lib
-uninstall: INSTALL_SHARE = $(INSTALL_ROOT)/usr/local/share
-uninstall: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
-uninstall: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 uninstall: reconfigure init
 	@$(MAKE)	-C indigo_libs uninstall
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
@@ -160,11 +159,6 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 
 package: INSTALL_ROOT = indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
-package: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
-package: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
-package: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
-package: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
-package: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 package: reconfigure init
 	@$(MAKE)	-C indigo_libs install
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
@@ -223,6 +217,7 @@ Makefile.inc: $(MAKEFILE_LIST)
 	@printf "INSTALL_ROOT = $(INSTALL_ROOT)\n" >> Makefile.inc
 	@printf "INSTALL_BIN = $(INSTALL_BIN)\n" >> Makefile.inc
 	@printf "INSTALL_LIB = $(INSTALL_LIB)\n" >> Makefile.inc
+	@printf "INSTALL_ETC = $(INSTALL_ETC)\n" >> Makefile.inc
 	@printf "INSTALL_SHARE = $(INSTALL_SHARE)\n" >> Makefile.inc
 	@printf "INSTALL_RULES = $(INSTALL_RULES)\n" >> Makefile.inc
 	@printf "INSTALL_FIRMWARE = $(INSTALL_FIRMWARE)\n\n" >> Makefile.inc
