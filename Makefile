@@ -1870,7 +1870,6 @@ clean-all: clean
 	cd indigo_drivers/ccd_iidc/externals/libdc1394; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/mount_nexstar/externals/libnexstar; make maintainer-clean; rm configure; cd ../../../..
 	cd indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223; make clean; cd ../../../..
-	cd indigo_drivers/ccd_qsi/externals; rm -rf qsiapi-7.6.0; cd ../../..
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make clean; cd ../../../..
 ifeq ($(OS_DETECTED),Linux)
 	cd indigo_linux_drivers/ccd_gphoto2/externals/libraw; make maintainer-clean; rm configure; cd ../../../..
