@@ -6887,12 +6887,12 @@
 			path = x64;
 			sourceTree = "<group>";
 		};
-		59D967F621A2FDE70069A64C /* armhf */ = {
+		59D967F621A2FDE70069A64C /* arm */ = {
 			isa = PBXGroup;
 			children = (
 				59D967F721A2FDE70069A64C /* libASICamera2.a */,
 			);
-			path = armhf;
+			path = arm;
 			sourceTree = "<group>";
 		};
 		59D967FA21A2FDE70069A64C /* arm64 */ = {
@@ -6955,12 +6955,12 @@
 			path = x64;
 			sourceTree = "<group>";
 		};
-		59D9680C21A2FE380069A64C /* armhf */ = {
+		59D9680C21A2FE380069A64C /* arm */ = {
 			isa = PBXGroup;
 			children = (
 				59D9680D21A2FE380069A64C /* libUSB2ST4Conv.a */,
 			);
-			path = armhf;
+			path = arm;
 			sourceTree = "<group>";
 		};
 		59D9681021A2FE380069A64C /* arm64 */ = {
@@ -7139,7 +7139,7 @@
 				59D967FF21A2FDE70069A64C /* x86 */,
 				59D967F421A2FDE70069A64C /* x64 */,
 				59D967FA21A2FDE70069A64C /* arm64 */,
-				59D967F621A2FDE70069A64C /* armhf */,
+				59D967F621A2FDE70069A64C /* arm */,
 			);
 			path = Linux;
 			sourceTree = "<group>";
@@ -7149,7 +7149,7 @@
 			children = (
 				59D9681521A2FE380069A64C /* x86 */,
 				59D9681021A2FE380069A64C /* arm64 */,
-				59D9680C21A2FE380069A64C /* armhf */,
+				59D9680C21A2FE380069A64C /* arm */,
 				59D9680A21A2FE380069A64C /* x64 */,
 			);
 			path = Linux;
