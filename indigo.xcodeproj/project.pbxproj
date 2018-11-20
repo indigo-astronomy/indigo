@@ -17,6 +17,9 @@
 		5911F7B41F02E1400053F3CA /* libdsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7B01F02E1330053F3CA /* libdsi.c */; };
 		5917AD1121A3628F00AC018A /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5917ACE621A3625D00AC018A /* libqsiapi.a */; };
 		5917AD1221A362B200AC018A /* qsiapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 5917ACA621A3625D00AC018A /* qsiapi.h */; };
+		591B017321A49F4A006A1CD8 /* libtoupcam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017221A49F4A006A1CD8 /* libtoupcam.dylib */; };
+		591B017521A49F55006A1CD8 /* libaltaircam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017421A49F55006A1CD8 /* libaltaircam.dylib */; };
+		591B017621A49F63006A1CD8 /* libatikcameras.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; };
 		591E112621583FBF00ABADA6 /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = 591E111D21583FBD00ABADA6 /* config.h */; };
 		591E112721583FBF00ABADA6 /* deg2str.h in Headers */ = {isa = PBXBuildFile; fileRef = 591E111E21583FBD00ABADA6 /* deg2str.h */; };
 		591E112821583FBF00ABADA6 /* nex_open.c in Sources */ = {isa = PBXBuildFile; fileRef = 591E111F21583FBE00ABADA6 /* nex_open.c */; };
@@ -111,7 +114,6 @@
 		59A52D6621A3361D000B6F27 /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
 		59A52DF021A33E44000B6F27 /* libfli.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52DD221A33E34000B6F27 /* libfli.a */; };
 		59A52DF121A33E4C000B6F27 /* libfli.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52DCF21A33E34000B6F27 /* libfli.h */; };
-		59A52F0521A33FC0000B6F27 /* libatik.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D96DC321A30DF50069A64C /* libatik.h */; };
 		59A52F1821A3417C000B6F27 /* libgpusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52F0B21A3416D000B6F27 /* libgpusb.h */; };
 		59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52F0E21A3416D000B6F27 /* libgpusb.a */; };
 		59A52F2B21A341AA000B6F27 /* libfcusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52F1E21A341A0000B6F27 /* libfcusb.h */; };
@@ -126,8 +128,6 @@
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
 		59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD17321823693008199D6 /* indigo_ccd_altair.c */; };
-		59BBD187218236D8008199D6 /* libaltaircam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59BBD17C21823693008199D6 /* libaltaircam.dylib */; };
-		59BBD18821823B60008199D6 /* libaltaircam.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 59BBD17C21823693008199D6 /* libaltaircam.dylib */; };
 		59BBD18E218249CD008199D6 /* indigo_aux_rts.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD18A2182472E008199D6 /* indigo_aux_rts.c */; };
 		59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E11EFADFE000E750AA /* indigo_ccd_ica.h */; };
 		59C499E61EFADFE000E750AA /* indigo_ccd_ica.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */; };
@@ -186,8 +186,6 @@
 		59FE34662187B2F8004FB5D4 /* indigo_aux_dsusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FE34632187B2F7004FB5D4 /* indigo_aux_dsusb.h */; };
 		59FE347C2187B7DD004FB5D4 /* indigo_guider_gpusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE346B2187B5FD004FB5D4 /* indigo_guider_gpusb.c */; };
 		59FE3484218887EA004FB5D4 /* indigo_focuser_lakeside.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE347E21886A17004FB5D4 /* indigo_focuser_lakeside.c */; };
-		9D07F7D2216F5EEE00330726 /* libtoupcam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D48B7A7215E570600CF757E /* libtoupcam.dylib */; };
-		9D07F7D3216F5F9100330726 /* libtoupcam.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D48B7A7215E570600CF757E /* libtoupcam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D1880B31E534B5E002F75D7 /* libindigo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.a */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */; };
@@ -493,17 +491,6 @@
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 1;
-		};
-		9D97F8131D9A8A1900582EAF /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 12;
-			dstPath = "";
-			dstSubfolderSpec = 16;
-			files = (
-				9D07F7D3216F5F9100330726 /* libtoupcam.dylib in CopyFiles */,
-				59BBD18821823B60008199D6 /* libaltaircam.dylib in CopyFiles */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9DE2A1231DC3A317008E8375 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -852,6 +839,17 @@
 		5918E26C1F8C0645005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5918E26D1F8C06AF005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5918E26E1F8C06C0005D6300 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		591B015121A48F47006A1CD8 /* AtikCameras.dll Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AtikCameras.dll Guide.pdf"; sourceTree = "<group>"; };
+		591B015221A48F47006A1CD8 /* AtikHorizon Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AtikHorizon Guide.pdf"; sourceTree = "<group>"; };
+		591B015421A48F53006A1CD8 /* AtikCameras.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AtikCameras.h; sourceTree = "<group>"; };
+		591B015521A48F69006A1CD8 /* libatikcameras.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libatikcameras.dylib; sourceTree = "<group>"; };
+		591B015621A48F76006A1CD8 /* libatikcameras.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libatikcameras.so; sourceTree = "<group>"; };
+		591B015721A48F80006A1CD8 /* libatikcameras.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libatikcameras.so; sourceTree = "<group>"; };
+		591B015821A48F91006A1CD8 /* libatikcameras.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libatikcameras.so; sourceTree = "<group>"; };
+		591B015921A48F9A006A1CD8 /* libatikcameras.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libatikcameras.so; sourceTree = "<group>"; };
+		591B017021A49F3B006A1CD8 /* libatikcameras.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libatikcameras.dylib; path = build/lib/libatikcameras.dylib; sourceTree = "<group>"; };
+		591B017221A49F4A006A1CD8 /* libtoupcam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libtoupcam.dylib; path = build/lib/libtoupcam.dylib; sourceTree = "<group>"; };
+		591B017421A49F55006A1CD8 /* libaltaircam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libaltaircam.dylib; path = build/lib/libaltaircam.dylib; sourceTree = "<group>"; };
 		591C3F4A1F8A883F002B5596 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = indigo_drivers/ccd_qsi/README.md; sourceTree = SOURCE_ROOT; };
 		591C3F4B1F8A8926002B5596 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		591E111D21583FBD00ABADA6 /* config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = config.h; path = externals/libnexstar/src/config.h; sourceTree = "<group>"; };
@@ -3044,14 +3042,7 @@
 		59D96DBC21A309620069A64C /* regex.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = regex.cpp; sourceTree = "<group>"; };
 		59D96DBD21A30A740069A64C /* 99-meadedsi.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-meadedsi.rules"; sourceTree = "<group>"; };
 		59D96DBE21A30A740069A64C /* meade-deepskyimager.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = "meade-deepskyimager.hex"; sourceTree = "<group>"; };
-		59D96DC021A30DF50069A64C /* LICENSE.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.md; sourceTree = "<group>"; };
-		59D96DC321A30DF50069A64C /* libatik.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libatik.h; sourceTree = "<group>"; };
 		59D96DC421A30DF50069A64C /* indigo_ccd_atik.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_atik.rules; sourceTree = "<group>"; };
-		59D96DC721A30DF50069A64C /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
-		59D96DCA21A30DF50069A64C /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
-		59D96DCC21A30DF50069A64C /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
-		59D96DCE21A30DF50069A64C /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
-		59D96DD021A30DF50069A64C /* libatik.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libatik.a; sourceTree = "<group>"; };
 		59D96DD121A30EA90069A64C /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59DD69C51FC1CF8D00AEF0DF /* indigo_gps_nmea.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_nmea.c; sourceTree = "<group>"; };
 		59DD69C61FC1CF8D00AEF0DF /* indigo_gps_nmea.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_gps_nmea.h; sourceTree = "<group>"; };
@@ -3821,6 +3812,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				591B017521A49F55006A1CD8 /* libaltaircam.dylib in Frameworks */,
+				591B017321A49F4A006A1CD8 /* libtoupcam.dylib in Frameworks */,
+				591B017621A49F63006A1CD8 /* libatikcameras.dylib in Frameworks */,
 				59292E5720D4224F0042E939 /* libcurl.tbd in Frameworks */,
 				59986D751F9BA10900D68DC1 /* libqsiapi.a in Frameworks */,
 				590B59D71F79A68100086FD2 /* libnovas.a in Frameworks */,
@@ -3829,10 +3823,8 @@
 				59F756251DCE5022002CFC82 /* libusb.dylib in Frameworks */,
 				59986D741F9BA10900D68DC1 /* libftd2xx.a in Frameworks */,
 				9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */,
-				59BBD187218236D8008199D6 /* libaltaircam.dylib in Frameworks */,
 				9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */,
 				9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */,
-				9D07F7D2216F5EEE00330726 /* libtoupcam.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4407,6 +4399,93 @@
 			path = .deps;
 			sourceTree = "<group>";
 		};
+		591B014821A48F1C006A1CD8 /* libatikcameras */ = {
+			isa = PBXGroup;
+			children = (
+				591B015321A48F53006A1CD8 /* include */,
+				591B015021A48F47006A1CD8 /* doc */,
+				591B014921A48F1C006A1CD8 /* lib */,
+			);
+			path = libatikcameras;
+			sourceTree = "<group>";
+		};
+		591B014921A48F1C006A1CD8 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				591B014A21A48F1C006A1CD8 /* macOS */,
+				591B014B21A48F1C006A1CD8 /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		591B014A21A48F1C006A1CD8 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				591B015521A48F69006A1CD8 /* libatikcameras.dylib */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		591B014B21A48F1C006A1CD8 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				591B014C21A48F1C006A1CD8 /* x64 */,
+				591B014D21A48F1C006A1CD8 /* x86 */,
+				591B014E21A48F1C006A1CD8 /* arm */,
+				591B014F21A48F1C006A1CD8 /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		591B014C21A48F1C006A1CD8 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				591B015621A48F76006A1CD8 /* libatikcameras.so */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		591B014D21A48F1C006A1CD8 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				591B015721A48F80006A1CD8 /* libatikcameras.so */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		591B014E21A48F1C006A1CD8 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				591B015821A48F91006A1CD8 /* libatikcameras.so */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		591B014F21A48F1C006A1CD8 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				591B015921A48F9A006A1CD8 /* libatikcameras.so */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		591B015021A48F47006A1CD8 /* doc */ = {
+			isa = PBXGroup;
+			children = (
+				591B015121A48F47006A1CD8 /* AtikCameras.dll Guide.pdf */,
+				591B015221A48F47006A1CD8 /* AtikHorizon Guide.pdf */,
+			);
+			path = doc;
+			sourceTree = "<group>";
+		};
+		591B015321A48F53006A1CD8 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				591B015421A48F53006A1CD8 /* AtikCameras.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
 		591E1139215844BC00ABADA6 /* nexstar_simulator */ = {
 			isa = PBXGroup;
 			children = (
@@ -4575,11 +4654,11 @@
 		593CFE3F1DFC89F5003B63D4 /* wheel_atik */ = {
 			isa = PBXGroup;
 			children = (
-				59A5301121A3514E000B6F27 /* bin_externals */,
 				594107C91EC8E50100C44F92 /* README.md */,
 				593CFE421DFC8A12003B63D4 /* indigo_wheel_atik.h */,
 				593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */,
 				593CFE401DFC8A12003B63D4 /* indigo_wheel_atik_main.c */,
+				59A5301121A3514E000B6F27 /* bin_externals */,
 			);
 			path = wheel_atik;
 			sourceTree = "<group>";
@@ -4730,7 +4809,7 @@
 		599A23F31DBEA5820020BF8F /* bin_externals */ = {
 			isa = PBXGroup;
 			children = (
-				59D96DBF21A30DF50069A64C /* libatik */,
+				591B014821A48F1C006A1CD8 /* libatikcameras */,
 			);
 			path = bin_externals;
 			sourceTree = "<group>";
@@ -9111,85 +9190,6 @@
 			path = src;
 			sourceTree = "<group>";
 		};
-		59D96DBF21A30DF50069A64C /* libatik */ = {
-			isa = PBXGroup;
-			children = (
-				59D96DC021A30DF50069A64C /* LICENSE.md */,
-				59D96DC121A30DF50069A64C /* include */,
-				59D96DC421A30DF50069A64C /* indigo_ccd_atik.rules */,
-				59D96DC521A30DF50069A64C /* lib */,
-			);
-			path = libatik;
-			sourceTree = "<group>";
-		};
-		59D96DC121A30DF50069A64C /* include */ = {
-			isa = PBXGroup;
-			children = (
-				59D96DC321A30DF50069A64C /* libatik.h */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		59D96DC521A30DF50069A64C /* lib */ = {
-			isa = PBXGroup;
-			children = (
-				59D96DC621A30DF50069A64C /* macOS */,
-				59D96DC821A30DF50069A64C /* Linux */,
-			);
-			path = lib;
-			sourceTree = "<group>";
-		};
-		59D96DC621A30DF50069A64C /* macOS */ = {
-			isa = PBXGroup;
-			children = (
-				59D96DC721A30DF50069A64C /* libatik.a */,
-			);
-			path = macOS;
-			sourceTree = "<group>";
-		};
-		59D96DC821A30DF50069A64C /* Linux */ = {
-			isa = PBXGroup;
-			children = (
-				59D96DC921A30DF50069A64C /* x64 */,
-				59D96DCB21A30DF50069A64C /* x86 */,
-				59D96DCD21A30DF50069A64C /* arm */,
-				59D96DCF21A30DF50069A64C /* arm64 */,
-			);
-			path = Linux;
-			sourceTree = "<group>";
-		};
-		59D96DC921A30DF50069A64C /* x64 */ = {
-			isa = PBXGroup;
-			children = (
-				59D96DCA21A30DF50069A64C /* libatik.a */,
-			);
-			path = x64;
-			sourceTree = "<group>";
-		};
-		59D96DCB21A30DF50069A64C /* x86 */ = {
-			isa = PBXGroup;
-			children = (
-				59D96DCC21A30DF50069A64C /* libatik.a */,
-			);
-			path = x86;
-			sourceTree = "<group>";
-		};
-		59D96DCD21A30DF50069A64C /* arm */ = {
-			isa = PBXGroup;
-			children = (
-				59D96DCE21A30DF50069A64C /* libatik.a */,
-			);
-			path = arm;
-			sourceTree = "<group>";
-		};
-		59D96DCF21A30DF50069A64C /* arm64 */ = {
-			isa = PBXGroup;
-			children = (
-				59D96DD021A30DF50069A64C /* libatik.a */,
-			);
-			path = arm64;
-			sourceTree = "<group>";
-		};
 		59DD69C41FC1CF5B00AEF0DF /* gps_nmea */ = {
 			isa = PBXGroup;
 			children = (
@@ -10133,6 +10133,7 @@
 				9D9EA6A21DBE1F7300E11841 /* indigo_ccd_atik.h */,
 				9D9EA6A11DBE1F7300E11841 /* indigo_ccd_atik.c */,
 				9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */,
+				59D96DC421A30DF50069A64C /* indigo_ccd_atik.rules */,
 				599A23F31DBEA5820020BF8F /* bin_externals */,
 			);
 			path = ccd_atik;
@@ -10292,6 +10293,9 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				591B017421A49F55006A1CD8 /* libaltaircam.dylib */,
+				591B017221A49F4A006A1CD8 /* libtoupcam.dylib */,
+				591B017021A49F3B006A1CD8 /* libatikcameras.dylib */,
 				9D855DF4215119CB0049C4B0 /* libnexstar.a */,
 				59292E5620D4224F0042E939 /* libcurl.tbd */,
 				590B59D61F79A68000086FD2 /* libnovas.a */,
@@ -10457,7 +10461,6 @@
 				9D59D62B20D3F829009EA8FF /* AltaF.h in Headers */,
 				595F2920211E211100380EF4 /* DDHidQueue.h in Headers */,
 				595F2919211E211100380EF4 /* NSDictionary+DDHidExtras.h in Headers */,
-				59A52F0521A33FC0000B6F27 /* libatik.h in Headers */,
 				59E38B531F1577A000187839 /* indigo_ica_ptp_canon.h in Headers */,
 				59A52D6521A33617000B6F27 /* gxccd.h in Headers */,
 				9D59D5FD20D3F829009EA8FF /* ApnCamData.h in Headers */,
@@ -10637,7 +10640,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9D97F8141D9A8A1900582EAF /* Build configuration list for PBXNativeTarget "indigo_server" */;
 			buildPhases = (
-				9D97F8131D9A8A1900582EAF /* CopyFiles */,
 				9D97F80A1D9A8A1900582EAF /* Sources */,
 				9D97F8121D9A8A1900582EAF /* Frameworks */,
 			);
@@ -11289,6 +11291,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_iidc/externals/libdc1394",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include";
@@ -11322,6 +11325,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_iidc/externals/libdc1394",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy/bin_externals/qhyccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include";
@@ -11469,6 +11473,7 @@
 		9D97F8151D9A8A1900582EAF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LD_RUNPATH_SEARCH_PATHS = /Users/polakovic/Development/indigo/build/lib;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
@@ -11481,6 +11486,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -11490,6 +11496,7 @@
 		9D97F8161D9A8A1900582EAF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LD_RUNPATH_SEARCH_PATHS = /Users/polakovic/Development/indigo/build/lib;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
@@ -11502,6 +11509,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_altair/bin_externals/libaltaircam/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -51,7 +51,8 @@ endif
 #---------------------------------------------------------------------
 
 ifeq ($(OS_DETECTED),Darwin)
-	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/macOS/libatik.a
+	LIBATIKCAMERAS=indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS/libatikcameras.dylib
+	LIBATIK=indigo_drivers/wheel_atik/bin_externals/libatik/lib/macOS/libatik.a
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/macOS/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/macOS/libfcusb.a
 	LIBDSUSB=indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS/libdsusb.a
@@ -69,6 +70,8 @@ ifeq ($(OS_DETECTED),Darwin)
 	LIBUSB_LIBS=-L$(INDIGO_ROOT)/$(BUILD_LIB) -lusb-1.0
 endif
 ifeq ($(OS_DETECTED),Linux)
+	LIBATIKCAMERAS=indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/Linux/$(ARCH_DETECTED)/libatikcameras.so
+	LIBATIK=indigo_drivers/wheel_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
 	LIBATIK=indigo_drivers/ccd_atik/bin_externals/libatik/lib/Linux/$(ARCH_DETECTED)/libatik.a
 	LIBGX=indigo_drivers/ccd_mi/bin_externals/libgxccd/lib/Linux/$(ARCH_DETECTED)/libgxccd.a
 	LIBFCUSB=indigo_drivers/focuser_fcusb/bin_externals/libfcusb/lib/Linux/$(ARCH_DETECTED)/libfcusb.a
@@ -102,7 +105,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SOEXT=dylib
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libtoupcam.dylib $(BUILD_LIB)/libaltaircam.dylib
+	EXTERNALS=$(BUILD_LIB)/libusb-1.0.$(SOEXT) $(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatikcameras.dylib $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libtoupcam.dylib $(BUILD_LIB)/libaltaircam.dylib
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.a $(BUILD_DRIVERS)/indigo_guider_eqmac.a $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.a $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_ica.dylib $(BUILD_DRIVERS)/indigo_guider_eqmac.dylib $(BUILD_DRIVERS)/indigo_focuser_wemacro_bt.dylib $(BUILD_DRIVERS)/indigo_focuser_mjkzz_bt.dylib
 endif
@@ -127,7 +130,7 @@ ifeq ($(OS_DETECTED),Linux)
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
 	AR=ar
 	ARFLAGS=-rv
-	EXTERNALS=$(LIBHIDAPI)  $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(BUILD_LIB)/libtoupcam.so $(BUILD_LIB)/libaltaircam.so $(LIBBOOST-REGEX)
+	EXTERNALS=$(LIBHIDAPI) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libatikcameras.dylib $(BUILD_LIB)/libatik.a $(BUILD_LIB)/libgxccd.a $(BUILD_LIB)/libqhy.a $(BUILD_LIB)/libfcusb.a $(BUILD_LIB)/libdsusb.a $(BUILD_LIB)/libgpusb.a $(BUILD_LIB)/libnovas.a $(BUILD_LIB)/libEFWFilter.a $(BUILD_LIB)/libASICamera2.a $(BUILD_LIB)/libUSB2ST4Conv.a $(BUILD_LIB)/libdc1394.a $(BUILD_LIB)/libnexstar.a $(BUILD_LIB)/libfli.a $(BUILD_LIB)/libsbigudrv.a $(BUILD_LIB)/libqsiapi.a $(BUILD_LIB)/libftd2xx.a $(BUILD_LIB)/libapogee.a $(BUILD_LIB)/libraw.a $(BUILD_LIB)/libtoupcam.so $(BUILD_LIB)/libaltaircam.so $(LIBBOOST-REGEX)
 	PLATFORM_DRIVER_LIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.a
 	PLATFORM_DRIVER_SOLIBS=$(BUILD_DRIVERS)/indigo_ccd_gphoto2.so
 endif
@@ -331,13 +334,27 @@ $(BUILD_LIB)/libraw.a: indigo_linux_drivers/ccd_gphoto2/externals/libraw/Makefil
 
 #---------------------------------------------------------------------
 #
+#	Install libatikcameras
+#
+#---------------------------------------------------------------------
+
+$(BUILD_INCLUDE)/AtikCameras.h: indigo_drivers/ccd_atik/bin_externals/libatikcameras/include/AtikCameras.h
+	install -d $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/include/AtikCameras.h $(BUILD_INCLUDE)
+
+$(BUILD_LIB)/libatikcameras.$(SOEXT): $(BUILD_INCLUDE)/AtikCameras.h
+	install -d $(BUILD_LIB)
+	ln -sf $(INDIGO_ROOT)/$(LIBATIKCAMERAS) $(BUILD_LIB)
+
+#---------------------------------------------------------------------
+#
 #	Install libatik
 #
 #---------------------------------------------------------------------
 
-$(BUILD_INCLUDE)/libatik.h: indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik.h
+$(BUILD_INCLUDE)/libatik.h: indigo_drivers/wheel_atik/bin_externals/libatik/include/libatik.h
 	install -d $(BUILD_INCLUDE)
-	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_atik/bin_externals/libatik/include/libatik.h $(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/wheel_atik/bin_externals/libatik/include/libatik.h $(BUILD_INCLUDE)
 
 $(BUILD_LIB)/libatik.a: $(BUILD_INCLUDE)/libatik.h
 	install -d $(BUILD_LIB)
@@ -902,11 +919,11 @@ $(BUILD_DRIVERS)/indigo_ccd_asi.$(SOEXT): indigo_drivers/ccd_asi/indigo_ccd_asi.
 $(BUILD_DRIVERS)/indigo_ccd_atik.a: indigo_drivers/ccd_atik/indigo_ccd_atik.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_DRIVERS)/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o $(BUILD_DRIVERS)/indigo_ccd_atik.a $(BUILD_LIB)/libatik.a $(LIBHIDAPI)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo
+$(BUILD_DRIVERS)/indigo_ccd_atik: indigo_drivers/ccd_atik/indigo_ccd_atik_main.o $(BUILD_DRIVERS)/indigo_ccd_atik.a $(LIBHIDAPI)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lindigo -latikcameras
 
-$(BUILD_DRIVERS)/indigo_ccd_atik.$(SOEXT): indigo_drivers/ccd_atik/indigo_ccd_atik.o $(BUILD_LIB)/libatik.a $(LIBHIDAPI)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+$(BUILD_DRIVERS)/indigo_ccd_atik.$(SOEXT): indigo_drivers/ccd_atik/indigo_ccd_atik.o $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -latikcameras
 
 #---------------------------------------------------------------------
 #
@@ -1692,7 +1709,7 @@ install:
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=/etc/apogee RULES_PREFIX=/lib/udev/rules.d; cd ../../../../
 	sudo install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /lib/udev/rules.d/99-indigo_ccd_sx.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_fli/indigo-fli.rules /lib/udev/rules.d/99-indigo_fli.rules
-	sudo install -D -m 0644 indigo_drivers/ccd_atik/bin_externals/libatik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
+	sudo install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /lib/udev/rules.d/99-indigo_ccd_atik.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /lib/udev/rules.d/99-indigo_ccd_ssag.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_asi/indigo_ccd_asi.rules /lib/udev/rules.d/99-indigo_ccd_asi.rules
 	sudo install -D -m 0644 indigo_drivers/ccd_dsi/99-meadedsi.rules /lib/udev/rules.d/99-meadedsi.rules
@@ -1767,7 +1784,7 @@ package-prepare: all
 	cd indigo_drivers/ccd_apogee/externals/libapogee; make install-config CONFIG_PREFIX=/tmp/$(PACKAGE_NAME)/etc/apogee RULES_PREFIX=/tmp/$(PACKAGE_NAME)/lib/udev/rules.d; cd ../../../../
 	install -D -m 0644 indigo_drivers/ccd_sx/indigo_ccd_sx.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_sx.rules
 	install -D -m 0644 indigo_drivers/ccd_fli/indigo-fli.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_fli.rules
-	install -D -m 0644 indigo_drivers/ccd_atik/bin_externals/libatik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
+	install -D -m 0644 indigo_drivers/ccd_atik/indigo_ccd_atik.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_atik.rules
 	install -D -m 0644 indigo_drivers/ccd_dsi/99-meadedsi.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-meadedsi.rules
 	install -D -m 0644 indigo_drivers/ccd_dsi/meade-deepskyimager.hex /tmp/$(PACKAGE_NAME)/lib/firmware/meade-deepskyimager.hex
 	install -D -m 0644 indigo_drivers/ccd_ssag/indigo_ccd_ssag.rules /tmp/$(PACKAGE_NAME)/lib/udev/rules.d/99-indigo_ccd_ssag.rules
