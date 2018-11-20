@@ -8,5 +8,4 @@ MAKE_SDK = $(SDK_LIB_A)
 SDK_CONFIGURE = $(SDK_DIR)/configure
 CLEAN_SDK = clean_sdk
 
-CFLAGS += -std=c11 -Wno-uninitialized -Wno-unused-variable
 LDFLAGS += -lstdc++

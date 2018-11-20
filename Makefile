@@ -1444,13 +1444,7 @@ endif
 #
 #---------------------------------------------------------------------
 
-indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/configure:
-	curl http://www.qsimaging.com/downloads/qsiapi-7.6.0.tar.gz >/tmp/qsiapi-7.6.0.tar.gz
-	install -d indigo_drivers/ccd_qsi/externals
-	tar xvfz /tmp/qsiapi-7.6.0.tar.gz -C indigo_drivers/ccd_qsi/externals
-	rm /tmp/qsiapi-7.6.0.tar.gz
-
-indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/configure
+indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile:
 	cd indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; cd ../../../..
 
 $(BUILD_LIB)/libqsiapi.a: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile
