@@ -40,10 +40,10 @@ status: OP = status
 status: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 install: OP = install
-install: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+install: folders $(filter-out $(addsuffix /, $(DEVELOPED_DRIVERS)), $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE))
 
 uninstall: OP = uninstall
-uninstall: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+uninstall: folders $(filter-out $(addsuffix /, $(DEVELOPED_DRIVERS)), $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE))
 
 clean: OP = clean
 clean: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
@@ -59,4 +59,5 @@ folders:
 	@printf "Folders with Makefile: $(FOLDERS_WITH_MAKEFILE)\n"
 	@printf "Folders without Makefile: $(FOLDERS_WITHOUT_MAKEFILE)\n"
 	@printf "Folders excluded: $(EXCLUDED)\n"
+	@printf "Folders excluded from install: $(filter $(addsuffix /, $(DEVELOPED_DRIVERS)), $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE))\n"
 
