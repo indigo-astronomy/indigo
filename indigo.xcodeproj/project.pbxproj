@@ -3739,6 +3739,7 @@
 		9DBC34721DCB26F200588DB9 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		9DBC34741DCB270200588DB9 /* libstdc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libstdc++.tbd"; path = "usr/lib/libstdc++.tbd"; sourceTree = SDKROOT; };
 		9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.01.pdf; sourceTree = "<group>"; };
+		9DC4736C21A4596500EE561A /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DDA7FD01F791F7D0094D65D /* indigo_novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_novas.c; sourceTree = "<group>"; };
 		9DDA7FD11F791F7D0094D65D /* indigo_novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_novas.h; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -4610,13 +4611,13 @@
 		59588CA1211CBEB100E9FC27 /* aux_joystick */ = {
 			isa = PBXGroup;
 			children = (
-				59A5302721A35552000B6F27 /* external */,
 				59588CA9211CC08D00E9FC27 /* README.md */,
 				59A5302621A35359000B6F27 /* Makefile */,
 				59588CA8211CC08D00E9FC27 /* indigo_aux_joystick_main.c */,
 				59588CA7211CC08D00E9FC27 /* indigo_aux_joystick.c */,
 				595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */,
 				59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */,
+				59A5302721A35552000B6F27 /* external */,
 			);
 			path = aux_joystick;
 			sourceTree = "<group>";
@@ -9518,11 +9519,12 @@
 		9D59D3C020D3F828009EA8FF /* ccd_apogee */ = {
 			isa = PBXGroup;
 			children = (
-				9D59D3C120D3F828009EA8FF /* externals */,
 				9D59D5DF20D3F829009EA8FF /* README.md */,
+				9DC4736C21A4596500EE561A /* Makefile */,
 				9D59D5E020D3F829009EA8FF /* indigo_ccd_apogee.cpp */,
 				9D59D5E120D3F829009EA8FF /* indigo_ccd_apogee.h */,
 				9D59D5E220D3F829009EA8FF /* indigo_ccd_apogee_main.cpp */,
+				9D59D3C120D3F828009EA8FF /* externals */,
 			);
 			path = ccd_apogee;
 			sourceTree = "<group>";

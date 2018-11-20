@@ -20,18 +20,26 @@
 #
 #---------------------------------------------------------------------
 
+
 include ../../Makefile.inc
 
-DRIVER = indigo_aux_joystick
+DRIVER = indigo_ccd_apogee
 
 DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
 DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
 
+ifeq ($(OS_DETECTED),Linux)
+	SDK = externals/libapogee/libapogee.a externals/boost_regex/build/gcc/libboost_regex-gcc-1_53.a
+endif
+
+ifeq ($(OS_DETECTED),Darwin)
+	SDK_LIB = externals/libapogee/libapogee.a
+endif
 
 .PHONY: all status install uninstall
 
-all: status $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+all: status $(SDK_LIB) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 status:
 	@printf "\n$(DRIVER) ---------------------------------------\n\n"
@@ -40,38 +48,34 @@ status:
 	@printf "Executable: $(notdir $(DRIVER_EXECUTABLE))\n"
 	@printf "\n"
 
-ifeq ($(OS_DETECTED),Darwin)
+indigo_ccd_apogee.o: indigo_ccd_apogee.cpp
+	$(CC)  $(CXXFLAGS) -c -Iexternals -o $@ $<
 
-indigo_aux_joystick.o: indigo_aux_joystick.m
-	$(CC) $(MFLAGS) -Wno-shadow-ivar -c -o $@ $< -Iexternal/DDHidLib
-
-$(DRIVER_A): indigo_aux_joystick.o $(addsuffix .o, $(basename $(wildcard external/DDHidLib/*.m)))
+$(DRIVER_A): indigo_ccd_apogee.o
 	$(AR) $(ARFLAGS) $@ $^
-
-endif
-
-ifeq ($(OS_DETECTED),Linux)
-
-indigo_aux_joystick.o: indigo_aux_joystick.c
-	$(CC)  $(CFLAGS) -c -o $@ $<
-
-$(DRIVER_A): indigo_aux_joystick.o
-	$(AR) $(ARFLAGS) $@ $^
-
-endif
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -lstdc++ -lcurl $(SDK_LIB)
 
-$(DRIVER_EXECUTABLE): $(DRIVER_A) indigo_aux_joystick_main.o
-	$(CC) -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
+$(DRIVER_EXECUTABLE): $(DRIVER_A) indigo_ccd_apogee_main.o
+	$(CC) -o $@ $^ $(LDFLAGS) -lindigo -lstdc++ -lcurl $(SDK_LIB)
 
-install: status $(INSTALL_SDK)
+install: status
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
 	install -m 0755 $(DRIVER_EXECUTABLE) $(INSTALL_BIN)
+	cd externals/libapogee; make install-config CONFIG_PREFIX=$(INSTALL_ETC)/apogee RULES_PREFIX=$(INSTALL_RULES)
 
-uninstall: status $(UNINSTALL_SDK)
+uninstall: status
 	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER)
 
-clean: status $(CLEAN_SDK)
+clean: status
+	cd externals/libapogee; make clean
+	cd externals/boost_regex/build; make clean
 	rm -f *.o external/DDHidLib/*.o $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+
+externals/libapogee/libapogee.a:
+	cd externals/libapogee; make clean; make
+
+externals/boost_regex/build/gcc/libboost_regex-gcc-1_53.a:
+	cd externals/boost_regex/build; make clean; make
+

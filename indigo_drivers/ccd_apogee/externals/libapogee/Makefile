@@ -57,8 +57,8 @@ ifndef RULES_PREFIX
 	$(error RULES_PREFIX is not set)
 endif
 	install -d $(CONFIG_PREFIX)
-	install -D -m 0644 conf/* $(CONFIG_PREFIX)
-	install -D -m 0644 99-apogee.rules $(RULES_PREFIX)/99-indigo_ccd_apogee.rules
+	install -m 0644 conf/* $(CONFIG_PREFIX)
+	install -m 0644 99-apogee.rules $(RULES_PREFIX)/99-indigo_ccd_apogee.rules
 
 clean:
 	rm -f $(LIBAPOGEE) *.o
