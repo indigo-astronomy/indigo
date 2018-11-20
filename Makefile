@@ -1760,7 +1760,7 @@ uninstall:
 #
 #---------------------------------------------------------------------
 
-REWRITE_DEBS="libsbigudrv2,libqhy,indi-dsi,indigo-upb"
+REWRITE_DEBS="libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb"
 package: $(PACKAGE_NAME).deb
 
 package-prepare: all
