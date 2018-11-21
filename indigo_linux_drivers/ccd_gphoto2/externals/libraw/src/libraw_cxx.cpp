@@ -101,6 +101,8 @@ extern "C"
       return "Cancelled by user callback";
     case LIBRAW_BAD_CROP:
       return "Bad crop box";
+    case LIBRAW_TOO_BIG:
+      return "Image too big for processing";
     default:
       return "Unknown error code";
     }
@@ -134,6 +136,9 @@ const float LibRaw_constants::d65_white[3] = {0.95047f, 1.0f, 1.08883f};
     case LIBRAW_EXCEPTION_ALLOC:                                                                                       \
       recycle();                                                                                                       \
       return LIBRAW_UNSUFFICIENT_MEMORY;                                                                               \
+    case LIBRAW_EXCEPTION_TOOBIG:                                                                                      \
+      recycle();                                                                                                       \
+      return LIBRAW_TOO_BIG;                                                                                           \
     case LIBRAW_EXCEPTION_DECODE_RAW:                                                                                  \
     case LIBRAW_EXCEPTION_DECODE_JPEG:                                                                                 \
       recycle();                                                                                                       \
@@ -1702,6 +1707,7 @@ void LibRaw::sony_arq_load_raw()
 {
   int row, col;
   read_shorts(imgdata.rawdata.raw_image, imgdata.sizes.raw_width * imgdata.sizes.raw_height * 4);
+  libraw_internal_data.internal_data.input->seek(-2,SEEK_CUR); // avoid wrong eof error
   for (row = 0; row < imgdata.sizes.raw_height; row++)
   {
     unsigned short(*rowp)[4] = (unsigned short(*)[4]) & imgdata.rawdata.raw_image[row * imgdata.sizes.raw_width * 4];
@@ -2003,14 +2009,13 @@ int LibRaw::open_datastream(LibRaw_abstract_datastream *stream)
     if(callbacks.post_identify_cb)
 	(callbacks.post_identify_cb)(this);
 
-#if 0
-    if(!strcasecmp(imgdata.idata.make, "Sony")
-       && imgdata.color.maximum > 0
-       && imgdata.color.linear_max[0] > imgdata.color.maximum*3
+
+	// Linear max from 14-bit camera, but on 12-bit data?
+    if(( !strcasecmp(imgdata.idata.make, "Sony") /* || !strcasecmp(imgdata.idata.make, "Nikon") */)
+       && imgdata.color.maximum > 0   && imgdata.color.linear_max[0] > imgdata.color.maximum
        && imgdata.color.linear_max[0] <= imgdata.color.maximum*4)
          for(int c = 0; c<4; c++)
-	   imgdata.color.linear_max[c] /= 4;
-#endif
+			imgdata.color.linear_max[c] /= 4;
 
     if (!strcasecmp(imgdata.idata.make, "Canon") && (load_raw == &LibRaw::canon_sraw_load_raw) &&
         imgdata.sizes.raw_width > 0)
@@ -2267,7 +2272,7 @@ int LibRaw::open_datastream(LibRaw_abstract_datastream *stream)
         ID.pana_black[0] && ID.pana_black[1] && ID.pana_black[2])
     {
       if(libraw_internal_data.unpacker_data.pana_encoding == 5)
-          P1.raw_count = 0; // Disable for new decoder
+         libraw_internal_data.internal_output_params.zero_is_bad = 0;
       C.black = 0;
       int add = libraw_internal_data.unpacker_data.pana_encoding == 4?15:0;
       C.cblack[0] = ID.pana_black[0]+add;
@@ -2760,6 +2765,14 @@ int LibRaw::unpack(void)
     if (imgdata.idata.dng_version && dnghost && imgdata.idata.raw_count == 1 && valid_for_dngsdk() &&
         load_raw != &LibRaw::pentax_4shot_load_raw)
     {
+      // Data size check
+		INT64 pixcount = INT64(MAX(S.width, S.raw_width)) * INT64(MAX(S.height, S.raw_height));
+		INT64 planecount = (imgdata.idata.filters || P1.colors == 1)?1: LIM(P1.colors,3,4);
+		INT64 samplesize = is_floating_point()?4:2;
+		INT64 bytes = pixcount * planecount * samplesize;
+		if(bytes > LIBRAW_MAX_ALLOC_MB * INT64(1024 * 1024)) 	throw LIBRAW_EXCEPTION_TOOBIG;
+
+		// find ifd to check sample
       int rr = try_dngsdk();
     }
 #endif
@@ -2770,6 +2783,9 @@ int LibRaw::unpack(void)
       int rawspeed_enabled = 1;
 
       if (imgdata.idata.dng_version && libraw_internal_data.unpacker_data.tiff_samples == 2)
+        rawspeed_enabled = 0;
+
+      if(libraw_internal_data.unpacker_data.pana_encoding == 5)
         rawspeed_enabled = 0;
 
       if (imgdata.idata.raw_count > 1)
@@ -2800,6 +2816,11 @@ int LibRaw::unpack(void)
             (O.raw_processing_options & (LIBRAW_PROCESSING_SRAW_NO_RGB | LIBRAW_PROCESSING_SRAW_NO_INTERPOLATE))) &&
           (decoder_info.decoder_flags & LIBRAW_DECODER_TRYRAWSPEED) && _rawspeed_camerameta)
       {
+		  INT64 pixcount = INT64(MAX(S.width, S.raw_width)) * INT64(MAX(S.height, S.raw_height));
+		  INT64 planecount = (imgdata.idata.filters || P1.colors == 1)?1: LIM(P1.colors,3,4);
+		  INT64 bytes = pixcount * planecount * 2; // sample size is always 2 for rawspeed
+		  if(bytes > LIBRAW_MAX_ALLOC_MB * INT64(1024 * 1024)) 	throw LIBRAW_EXCEPTION_TOOBIG;
+
         int rr = try_rawspeed();
       }
     }
@@ -2817,7 +2838,7 @@ int LibRaw::unpack(void)
       {
         if (INT64(rwidth) * INT64(rheight + 8) * sizeof(imgdata.rawdata.raw_image[0]) * 3 >
             LIBRAW_MAX_ALLOC_MB * INT64(1024 * 1024))
-          throw LIBRAW_EXCEPTION_ALLOC;
+          throw LIBRAW_EXCEPTION_TOOBIG;
 
         imgdata.rawdata.raw_alloc = malloc(rwidth * (rheight + 8) * sizeof(imgdata.rawdata.raw_image[0]) * 3);
         imgdata.rawdata.color3_image = (ushort(*)[3])imgdata.rawdata.raw_alloc;
@@ -2828,7 +2849,7 @@ int LibRaw::unpack(void)
       {
         if (INT64(rwidth) * INT64(rheight + 8) * sizeof(imgdata.rawdata.raw_image[0]) >
             LIBRAW_MAX_ALLOC_MB * INT64(1024 * 1024))
-          throw LIBRAW_EXCEPTION_ALLOC;
+          throw LIBRAW_EXCEPTION_TOOBIG;
         imgdata.rawdata.raw_alloc = malloc(rwidth * (rheight + 8) * sizeof(imgdata.rawdata.raw_image[0]));
         imgdata.rawdata.raw_image = (ushort *)imgdata.rawdata.raw_alloc;
         if (!S.raw_pitch)
@@ -2851,13 +2872,13 @@ int LibRaw::unpack(void)
         }
         // sRAW and old Foveon decoders only, so extra buffer size is just 1/4
         // allocate image as temporary buffer, size
-        if (INT64(MAX(S.width, S.raw_width)) * INT64(MAX(S.height, S.raw_height)) * sizeof(*imgdata.image) >
+        if (INT64(MAX(S.width, S.raw_width)) * INT64(MAX(S.height, S.raw_height)+8) * sizeof(*imgdata.image) >
             LIBRAW_MAX_ALLOC_MB * INT64(1024 * 1024))
-          throw LIBRAW_EXCEPTION_ALLOC;
+          throw LIBRAW_EXCEPTION_TOOBIG;
 
         imgdata.rawdata.raw_alloc = 0;
         imgdata.image = (ushort(*)[4])calloc(
-            unsigned(MAX(S.width, S.raw_width)) * unsigned(MAX(S.height, S.raw_height)), sizeof(*imgdata.image));
+            unsigned(MAX(S.width, S.raw_width)) * unsigned(MAX(S.height, S.raw_height)+8), sizeof(*imgdata.image));
         if (!(decoder_info.decoder_flags & LIBRAW_DECODER_ADOBECOPYPIXEL))
         {
           imgdata.rawdata.raw_image = (ushort *)imgdata.image;
@@ -4243,8 +4264,15 @@ int LibRaw::unpack_thumb(void)
           if (setjmp(jerr.setjmp_buffer))
           {
           err2:
+	    // Error in original JPEG thumb, read it again because
+	    // original bytes 0-1 was damaged above
             jpeg_destroy_decompress(&cinfo);
             T.tcolors = 3;
+            T.tformat = LIBRAW_THUMBNAIL_UNKNOWN;
+            ID.input->seek(ID.toffset, SEEK_SET);
+            ID.input->read(T.thumb, 1, T.tlength);
+            SET_PROC_FLAG(LIBRAW_PROGRESS_THUMB_LOAD);
+            return 0;
           }
           jpeg_create_decompress(&cinfo);
           jpeg_mem_src(&cinfo, (unsigned char *)T.thumb, T.tlength);
@@ -4757,11 +4785,6 @@ int LibRaw::dcraw_process(void)
   int quality, i;
 
   int iterations = -1, dcb_enhance = 1, noiserd = 0;
-  int eeci_refine_fl = 0, es_med_passes_fl = 0;
-  float cared = 0, cablue = 0;
-  float linenoise = 0;
-  float lclean = 0, cclean = 0;
-  float thresh = 0;
   float preser = 0;
   float expos = 1.0;
 
@@ -4927,16 +4950,10 @@ int LibRaw::dcraw_process(void)
 
     if(callbacks.post_interpolate_cb)
 	(callbacks.post_interpolate_cb)(this);
-
-    if (!P1.is_foveon)
+    else if (!P1.is_foveon && P1.colors == 3 && O.med_passes > 0)
     {
-      if (P1.colors == 3)
-      {
-
-        /* median filter callback, if not set use own */
         median_filter();
         SET_PROC_FLAG(LIBRAW_PROGRESS_MEDIAN_FILTER);
-      }
     }
 
     if (O.highlight == 2)
@@ -5723,6 +5740,7 @@ static const char *static_camera_list[] = {
 	"Panasonic DMC-GH4",
 	"Panasonic AG-GH4",
 	"Panasonic DC-GH5",
+	"Panasonic DC-GH5S",
 	"Panasonic DMC-GM1",
 	"Panasonic DMC-GM1s",
 	"Panasonic DMC-GM5",
