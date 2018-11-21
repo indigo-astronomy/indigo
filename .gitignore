@@ -34,4 +34,12 @@ indigo_drivers/gps_nmea/externals/nmealib/build/
 /indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/libtool
 /indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/src/Makefile
 /indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/stamp-h1
+indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/autom4te.cache/
+/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/config.h.in~
+/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/doc/Makefile
+/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/include/
+/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/libqsiapi.a
+/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/src/qsiapitest
+/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/src/qsifilter
+/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/src/qsiimage
 

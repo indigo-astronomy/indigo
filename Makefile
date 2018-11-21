@@ -1460,7 +1460,10 @@ endif
 #
 #---------------------------------------------------------------------
 
-indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile:
+indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/configure:
+	cd indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0; autoreconf -fiv
+
+indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/configure
 	cd indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0; ./configure --prefix=$(INDIGO_ROOT)/$(BUILD_ROOT) --libdir=$(INDIGO_ROOT)/$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; cd ../../../..
 
 $(BUILD_LIB)/libqsiapi.a: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile
