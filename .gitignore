@@ -22,24 +22,3 @@ indigo_drivers/mount_nexstar/externals/libnexstar/
 indigo_drivers/gps_nmea/externals/nmealib/build/
 
 /Makefile.inc
-/indigo_drivers/ccd_apogee/externals/libapogee/libapogee.a
-/indigo_drivers/ccd_fli/externals/libfli-1.999.1-180223/libfli.a
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/config.h
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/config.status
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/demo_src/Makefile
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs/
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/Makefile
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/libqsiapi-config
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/libtool
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/src/Makefile
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/stamp-h1
-indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/autom4te.cache/
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/config.h.in~
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/doc/Makefile
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/include/
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/libqsiapi.a
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/src/qsiapitest
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/src/qsifilter
-/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/src/qsiimage
-
