@@ -4905,7 +4905,7 @@
 				59A52D3421A330FB000B6F27 /* CMakeLists.txt */,
 				59A52D3521A330FB000B6F27 /* app */,
 				59A52D3E21A330FB000B6F27 /* include */,
-				59A52D4021A330FB000B6F27 /* libs */,
+				59A52D4021A330FB000B6F27 /* lib */,
 				59A52D5021A330FB000B6F27 /* doc */,
 			);
 			path = sbigudrv;
@@ -4954,12 +4954,12 @@
 			path = include;
 			sourceTree = "<group>";
 		};
-		59A52D4021A330FB000B6F27 /* libs */ = {
+		59A52D4021A330FB000B6F27 /* lib */ = {
 			isa = PBXGroup;
 			children = (
 				59A52D5421A335B6000B6F27 /* Linux */,
 			);
-			path = libs;
+			path = lib;
 			sourceTree = "<group>";
 		};
 		59A52D4421A330FB000B6F27 /* arm64 */ = {

@@ -92,8 +92,8 @@ $(DRIVER_A): $(DRIVER_O)
 $(DRIVER_SO): $(DRIVER_A)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
 
-$(DRIVER_EXECUTABLE): $(DRIVER_A) $(DRIVER_MAIN_O)
-	$(CC) -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
+$(DRIVER_EXECUTABLE): $(DRIVER_MAIN_O) $(DRIVER_A)
+	$(CC) -o $@ $^ -lindigo $(SDK_LIB) $(LDFLAGS) 
 
 install: status $(INSTALL_SDK)
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)

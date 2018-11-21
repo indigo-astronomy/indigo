@@ -25,11 +25,15 @@ include ../Makefile.inc
 ifeq ($(OS_DETECTED),Darwin)
 	LIBUSB=$(BUILD_LIB)/libusb-1.0.dylib
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi.a
+	FORCE_ALL_ON=-Wl,-force_load
+	FORCE_ALL_OFF=
 endif
 
 ifeq ($(OS_DETECTED),Linux)
 	LIBUSB=
 	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
+	FORCE_ALL_ON=-Wl,--whole-archive
+	FORCE_ALL_OFF=-Wl,--no-whole-archive
 endif
 
 BIN_EXTERNALS = $(INDIGO_ROOT)/bin_externals
@@ -70,7 +74,7 @@ $(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard *.c)))
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c)))
-	$(CC) -shared -o $@ $^ $(LDFLAGS) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libnovas.a -force_load $(LIBHIDAPI)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libnovas.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl
 
 #---------------------------------------------------------------------
 #

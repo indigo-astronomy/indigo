@@ -61,17 +61,17 @@ $(DRIVER_A): indigo_aux_joystick.o
 endif
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
 
-$(DRIVER_EXECUTABLE): $(DRIVER_A) indigo_aux_joystick_main.o
-	$(CC) -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
+$(DRIVER_EXECUTABLE): indigo_aux_joystick_main.o $(DRIVER_A)
+	$(CC) -o $@ $^ $(LDFLAGS) -lindigo
 
-install: status $(INSTALL_SDK)
+install: status
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
 	install -m 0755 $(DRIVER_EXECUTABLE) $(INSTALL_BIN)
 
-uninstall: status $(UNINSTALL_SDK)
+uninstall: status
 	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER)
 
-clean: status $(CLEAN_SDK)
+clean: status
 	rm -f *.o external/DDHidLib/*.o $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
