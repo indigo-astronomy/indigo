@@ -1466,6 +1466,7 @@ indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile:
 $(BUILD_LIB)/libqsiapi.a: indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/Makefile
 	cd indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib; make; make install; cd ../../../../..
 	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/qsiapi.h $(INDIGO_ROOT)/$(BUILD_INCLUDE)
+	ln -sf $(INDIGO_ROOT)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs/libqsiapi.a $(INDIGO_ROOT)/$(BUILD_LIB)
 
 #---------------------------------------------------------------------
 #
