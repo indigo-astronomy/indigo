@@ -3732,6 +3732,19 @@
 		9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.01.pdf; sourceTree = "<group>"; };
 		9DC4736C21A4596500EE561A /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DC782F321A6B6C3009859FD /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9DC782F421A6D919009859FD /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_ascol.c; sourceTree = "<group>"; };
+		9DC782F821A6FCC7009859FD /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9DC782F921A6FCC7009859FD /* libascol.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libascol.c; sourceTree = "<group>"; };
+		9DC782FA21A6FCC7009859FD /* libascol.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = libascol.o; sourceTree = "<group>"; };
+		9DC782FB21A6FCC7009859FD /* libascol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libascol.h; sourceTree = "<group>"; };
+		9DC782FC21A6FCC7009859FD /* ascol_test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ascol_test.c; sourceTree = "<group>"; };
+		9DC782FD21A6FCC7009859FD /* indigo_system_ascol_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_ascol_main.c; sourceTree = "<group>"; };
+		9DC782FF21A6FCC7009859FD /* ascol_client.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = ascol_client.pl; sourceTree = "<group>"; };
+		9DC7830021A6FCC7009859FD /* ascol_simulator.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = ascol_simulator.pl; sourceTree = "<group>"; };
+		9DC7830121A6FCC7009859FD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DC7830221A6FCC7009859FD /* indigo_system_ascol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_ascol.h; sourceTree = "<group>"; };
+		9DC7830321A6FDB6009859FD /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9DDA7FD01F791F7D0094D65D /* indigo_novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_novas.c; sourceTree = "<group>"; };
 		9DDA7FD11F791F7D0094D65D /* indigo_novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_novas.h; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -6785,6 +6798,7 @@
 				590B59CE1F7853F400086FD2 /* mount_temma */,
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
+				9DC782F521A6FCC7009859FD /* system_ascol */,
 				593CFE3F1DFC89F5003B63D4 /* wheel_atik */,
 				9DBC34611DCB265A00588DB9 /* wheel_asi */,
 				5992F7B91E1EC9270035242E /* wheel_fli */,
@@ -9357,11 +9371,12 @@
 		9D45254020E0F9A1004D1137 /* ccd_gphoto2 */ = {
 			isa = PBXGroup;
 			children = (
-				590DD77E212013B500F2B978 /* externals */,
 				9D45254320E0F9A1004D1137 /* README.md */,
+				9DC782F421A6D919009859FD /* Makefile.inc */,
 				9D45254220E0F9A1004D1137 /* indigo_ccd_gphoto2.h */,
 				9D45254420E0F9A1004D1137 /* indigo_ccd_gphoto2.c */,
 				9D45254120E0F9A1004D1137 /* indigo_ccd_gphoto2_main.c */,
+				590DD77E212013B500F2B978 /* externals */,
 			);
 			path = ccd_gphoto2;
 			sourceTree = "<group>";
@@ -10310,6 +10325,41 @@
 				9DBC34701DCB26E500588DB9 /* Cocoa.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		9DC782F521A6FCC7009859FD /* system_ascol */ = {
+			isa = PBXGroup;
+			children = (
+				9DC7830121A6FCC7009859FD /* README.md */,
+				9DC7830321A6FDB6009859FD /* Makefile.inc */,
+				9DC7830221A6FCC7009859FD /* indigo_system_ascol.h */,
+				9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */,
+				9DC782FD21A6FCC7009859FD /* indigo_system_ascol_main.c */,
+				9DC782F721A6FCC7009859FD /* libascol */,
+				9DC782FE21A6FCC7009859FD /* ascol_simulator */,
+			);
+			path = system_ascol;
+			sourceTree = "<group>";
+		};
+		9DC782F721A6FCC7009859FD /* libascol */ = {
+			isa = PBXGroup;
+			children = (
+				9DC782F821A6FCC7009859FD /* Makefile */,
+				9DC782F921A6FCC7009859FD /* libascol.c */,
+				9DC782FA21A6FCC7009859FD /* libascol.o */,
+				9DC782FB21A6FCC7009859FD /* libascol.h */,
+				9DC782FC21A6FCC7009859FD /* ascol_test.c */,
+			);
+			path = libascol;
+			sourceTree = "<group>";
+		};
+		9DC782FE21A6FCC7009859FD /* ascol_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DC782FF21A6FCC7009859FD /* ascol_client.pl */,
+				9DC7830021A6FCC7009859FD /* ascol_simulator.pl */,
+			);
+			path = ascol_simulator;
 			sourceTree = "<group>";
 		};
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {
