@@ -120,6 +120,13 @@ uninstall: status $(UNINSTALL_SDK)
 clean: status $(CLEAN_SDK)
 	rm -f $(DRIVER_O) $(DRIVER_MAIN_O) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
+clean-all:
+ifneq ($(wildcard $(SDK_DIR)/Configure),)
+ifneq ($(wildcard $(SDK_DIR)/Makefile),)
+	cd $(SDK_DIR); make maintainer-clean
+endif
+endif
+
 $(SDK_LIB_A): $(SDK_DIR)/Makefile
 	cd $(SDK_DIR); export MACOSX_DEPLOYMENT_TARGET=10.10; make
 
@@ -130,7 +137,9 @@ $(SDK_DIR)/Makefile: $(SDK_CONFIGURE)
 	cd $(SDK_DIR); ./configure --prefix=`pwd` --libdir=`pwd` --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" CC=$(CC) CXX=$(CC)
 
 $(SDK_LIB_SO): $(SDK_DIR)/Makefile
-	cd $(SDK_DIR); export MACOSX_DEPLOYMENT_TARGET=10.10; make
+	cd $(SDK_DIR); export MACOSX_DEPLOYMENT_TARGET=10.10; export CFLAGS="$(CFLAGS)" export LDFLAGS="$(LDFLAGS)" make
 
 clean_sdk:
+ifneq ($(wildcard $(SDK_DIR)/Makefile),)
 	cd $(SDK_DIR); make clean
+endif

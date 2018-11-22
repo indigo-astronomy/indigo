@@ -62,6 +62,8 @@ endif
 clean: status
 	rm -f *.o *.orig $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
+clean-all:
+
 #---------------------------------------------------------------------
 #
 #	Build libindigo
