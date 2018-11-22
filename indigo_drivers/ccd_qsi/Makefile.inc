@@ -7,4 +7,4 @@ SDK_LIB_A = $(SDK_DIR)/lib/.libs/libqsiapi.a
 MAKE_SDK = $(SDK_LIB_A)
 SDK_CONFIGURE = $(SDK_DIR)/configure
 
-LDFLAGS += -lstdc++
+LDFLAGS += -lstdc++ -lftd2xx

@@ -27,6 +27,15 @@ ifneq ($(wildcard Makefile.inc),)
 include Makefile.inc
 endif
 
+ifeq ($(OS_DETECTED),Darwin)
+	FORCE_ALL_ON=-Wl,-force_load
+	FORCE_ALL_OFF=
+endif
+ifeq ($(OS_DETECTED),Linux)
+	FORCE_ALL_ON=-Wl,--whole-archive
+	FORCE_ALL_OFF=-Wl,--no-whole-archive
+endif
+
 DRIVER = indigo_$(notdir $(shell pwd))
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
@@ -94,7 +103,7 @@ ifneq ($(SDK_LIB_SO),)
 endif
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
+	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(LDFLAGS) -lindigo $(SDK_LIB)
 
 $(DRIVER_EXECUTABLE): $(DRIVER_MAIN_O) $(DRIVER_A)
 	$(CC) -o $@ $^ -lindigo $(SDK_LIB) $(LDFLAGS) 

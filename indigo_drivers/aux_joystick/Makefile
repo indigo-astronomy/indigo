@@ -28,6 +28,15 @@ DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
 DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
 
+ifeq ($(OS_DETECTED),Darwin)
+	FORCE_ALL_ON=-Wl,-force_load
+	FORCE_ALL_OFF=
+endif
+ifeq ($(OS_DETECTED),Linux)
+	FORCE_ALL_ON=-Wl,--whole-archive
+	FORCE_ALL_OFF=-Wl,--no-whole-archive
+endif
+
 
 .PHONY: all status install uninstall clean clean-all
 
@@ -61,7 +70,7 @@ $(DRIVER_A): indigo_aux_joystick.o
 endif
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(LDFLAGS) -lindigo
 
 $(DRIVER_EXECUTABLE): indigo_aux_joystick_main.o $(DRIVER_A)
 	$(CC) -o $@ $^ $(LDFLAGS) -lindigo

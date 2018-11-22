@@ -123,6 +123,11 @@
 		59A5302121A35159000B6F27 /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5301721A3514E000B6F27 /* libatik.a */; };
 		59A5302221A35167000B6F27 /* libatik.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A5301421A3514E000B6F27 /* libatik.h */; };
 		59A5302521A35264000B6F27 /* libqhy.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5300721A34310000B6F27 /* libqhy.a */; };
+		59AAF37821A743BA00EFBB61 /* libEFWFilter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9682A21A2FE580069A64C /* libEFWFilter.a */; };
+		59AAF37921A743DF00EFBB61 /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9681321A2FE380069A64C /* libUSB2ST4Conv.a */; };
+		59AAF37A21A743F900EFBB61 /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
+		59AAF37C21A7449800EFBB61 /* libqsiapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59AAF37B21A7449700EFBB61 /* libqsiapi.a */; };
+		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
 		59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD17321823693008199D6 /* indigo_ccd_altair.c */; };
@@ -148,12 +153,9 @@
 		59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D707681DC527B800DEF566 /* indigo_mount_driver.h */; };
 		59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */; };
 		59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */; };
-		59D9680321A2FDF00069A64C /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
 		59D9680421A2FDF70069A64C /* ASICamera2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D967F121A2FDE70069A64C /* ASICamera2.h */; };
 		59D9681921A2FE3F0069A64C /* USB2ST4_Conv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D9680721A2FE380069A64C /* USB2ST4_Conv.h */; };
-		59D9681A21A2FE460069A64C /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9681321A2FE380069A64C /* libUSB2ST4Conv.a */; };
 		59D9682F21A2FE5D0069A64C /* EFW_filter.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D9681D21A2FE580069A64C /* EFW_filter.h */; };
-		59D9683021A2FE660069A64C /* libEFWFilter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9682A21A2FE580069A64C /* libEFWFilter.a */; };
 		59D9684221A2FFC40069A64C /* libdsusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D9683521A2FFBC0069A64C /* libdsusb.h */; };
 		59D9684321A2FFD10069A64C /* libdsusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9683821A2FFBC0069A64C /* libdsusb.a */; };
 		59DD69C91FC1CF8D00AEF0DF /* indigo_gps_nmea.c in Sources */ = {isa = PBXBuildFile; fileRef = 59DD69C51FC1CF8D00AEF0DF /* indigo_gps_nmea.c */; };
@@ -1622,6 +1624,7 @@
 		59A5302621A35359000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
 		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
+		59AAF37B21A7449700EFBB61 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libqsiapi.a; path = .libs/libqsiapi.a; sourceTree = "<group>"; };
 		59AEB118215446960008A729 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
 		59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usb_utils.h; sourceTree = "<group>"; };
 		59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usb_utils.c; sourceTree = "<group>"; };
@@ -3786,14 +3789,11 @@
 				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
 				59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */,
 				59A52D6621A3361D000B6F27 /* libgxccd.a in Frameworks */,
-				59D9681A21A2FE460069A64C /* libUSB2ST4Conv.a in Frameworks */,
 				59A5302121A35159000B6F27 /* libatik.a in Frameworks */,
-				59D9683021A2FE660069A64C /* libEFWFilter.a in Frameworks */,
 				59A52DF021A33E44000B6F27 /* libfli.a in Frameworks */,
 				59A5302521A35264000B6F27 /* libqhy.a in Frameworks */,
 				599A63D51DF3670100ABC827 /* libjpeg.a in Frameworks */,
 				59D9684321A2FFD10069A64C /* libdsusb.a in Frameworks */,
-				59D9680321A2FDF00069A64C /* libASICamera2.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3828,16 +3828,20 @@
 			buildActionMask = 2147483647;
 			files = (
 				9DC7830521A705D7009859FD /* libdc1394.22.dylib in Frameworks */,
+				59AAF37A21A743F900EFBB61 /* libASICamera2.a in Frameworks */,
 				591B017521A49F55006A1CD8 /* libaltaircam.dylib in Frameworks */,
 				591B017321A49F4A006A1CD8 /* libtoupcam.dylib in Frameworks */,
+				59AAF37921A743DF00EFBB61 /* libUSB2ST4Conv.a in Frameworks */,
 				591B017621A49F63006A1CD8 /* libatikcameras.dylib in Frameworks */,
 				59292E5720D4224F0042E939 /* libcurl.tbd in Frameworks */,
 				59986D751F9BA10900D68DC1 /* libqsiapi.a in Frameworks */,
 				590B59D71F79A68100086FD2 /* libnovas.a in Frameworks */,
 				599C9A651DA0297E008BBCC1 /* libindigo.a in Frameworks */,
+				59AAF37C21A7449800EFBB61 /* libqsiapi.a in Frameworks */,
 				59F756241DCE501F002CFC82 /* libhidapi.dylib in Frameworks */,
 				59F756251DCE5022002CFC82 /* libusb.dylib in Frameworks */,
 				59986D741F9BA10900D68DC1 /* libftd2xx.a in Frameworks */,
+				59AAF37821A743BA00EFBB61 /* libEFWFilter.a in Frameworks */,
 				9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */,
 				9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */,
 				9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */,
@@ -4226,6 +4230,7 @@
 		5917AC7921A3625D00AC018A /* lib */ = {
 			isa = PBXGroup;
 			children = (
+				59AAF37B21A7449700EFBB61 /* libqsiapi.a */,
 				5917AC7A21A3625D00AC018A /* QSI_Global.h */,
 				5917AC7B21A3625D00AC018A /* libqsiapi_la-ICameraEeprom.lo */,
 				5917AC7C21A3625D00AC018A /* IHostIO.h */,
@@ -6891,7 +6896,6 @@
 			isa = PBXGroup;
 			children = (
 				59D9684421A2FFF00069A64C /* Linux */,
-				59D967FC21A2FDE70069A64C /* asi.rules */,
 				59D967FD21A2FDE70069A64C /* macOS */,
 			);
 			path = lib;
@@ -6960,7 +6964,6 @@
 			children = (
 				59D9684521A3003C0069A64C /* Linux */,
 				59D9681221A2FE380069A64C /* macOS */,
-				59D9681421A2FE380069A64C /* USB2ST4.rules */,
 			);
 			path = lib;
 			sourceTree = "<group>";
@@ -7154,10 +7157,11 @@
 		59D9684421A2FFF00069A64C /* Linux */ = {
 			isa = PBXGroup;
 			children = (
+				59D967FC21A2FDE70069A64C /* asi.rules */,
 				59D967FF21A2FDE70069A64C /* x86 */,
 				59D967F421A2FDE70069A64C /* x64 */,
-				59D967FA21A2FDE70069A64C /* arm64 */,
 				59D967F621A2FDE70069A64C /* arm */,
+				59D967FA21A2FDE70069A64C /* arm64 */,
 			);
 			path = Linux;
 			sourceTree = "<group>";
@@ -7165,6 +7169,7 @@
 		59D9684521A3003C0069A64C /* Linux */ = {
 			isa = PBXGroup;
 			children = (
+				59D9681421A2FE380069A64C /* USB2ST4.rules */,
 				59D9681521A2FE380069A64C /* x86 */,
 				59D9681021A2FE380069A64C /* arm64 */,
 				59D9680C21A2FE380069A64C /* arm */,
@@ -11048,6 +11053,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9DC7830721A7072C009859FD /* Makefile in Sources */,
+				59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */,
 				9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -11543,6 +11549,10 @@
 					"$(PROJECT_DIR)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -11566,6 +11576,10 @@
 					"$(PROJECT_DIR)/indigo_drivers/aux_dsusb/bin_externals/libdsusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/guider_gpusb/bin_externals/libgpusb/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/guider_asi/bin_externals/libusb2st4conv/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_NAME = "$(TARGET_NAME)";

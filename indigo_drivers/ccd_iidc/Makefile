@@ -29,6 +29,15 @@ DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
 DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
 
+ifeq ($(OS_DETECTED),Darwin)
+FORCE_ALL_ON=-Wl,-force_load
+FORCE_ALL_OFF=
+endif
+ifeq ($(OS_DETECTED),Linux)
+FORCE_ALL_ON=-Wl,--whole-archive
+FORCE_ALL_OFF=-Wl,--no-whole-archive
+endif
+
 SDK_LIB = $(BUILD_LIB)/libdc1394.$(SOEXT)
 
 .PHONY: all status install uninstall
@@ -50,7 +59,7 @@ $(DRIVER_A): indigo_ccd_iidc.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo  $(SDK_LIB) -ldc1394
+	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(LDFLAGS) -lindigo  $(SDK_LIB) -ldc1394
 
 $(DRIVER_EXECUTABLE): indigo_ccd_iidc_main.o $(DRIVER_A)
 	$(CC) -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB) -lstdc++ -ldc1394
