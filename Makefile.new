@@ -175,7 +175,7 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 	@$(MAKE)	-C indigo_server install
 
-clean:
+clean: init
 	@$(MAKE)	-C indigo_libs clean
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs clean
 ifeq ($(OS_DETECTED),Darwin)
