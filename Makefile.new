@@ -113,6 +113,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers  -f ../Makefile.drvs all
 endif
+	@$(MAKE)	-C indigo_server all
 
 status:
 	@$(MAKE)	-C indigo_libs status
@@ -123,6 +124,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs status
 endif
+	@$(MAKE)	-C indigo_server status
 
 
 reconfigure:
@@ -147,6 +149,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 endif
+	@$(MAKE)	-C indigo_server install
 
 uninstall: INSTALL_ROOT = $(INDIGO_ROOT)/install
 uninstall: reconfigure init
@@ -158,6 +161,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs uninstall
 endif
+	@$(MAKE)	-C indigo_server uninstall
 
 package: INSTALL_ROOT = indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 package: reconfigure init
@@ -169,6 +173,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 endif
+	@$(MAKE)	-C indigo_server install
 
 clean:
 	@$(MAKE)	-C indigo_libs clean
@@ -179,6 +184,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean
 endif
+	@$(MAKE)	-C indigo_server clean
 
 clean-all: clean
 	@$(MAKE)	-C indigo_libs clean-all
@@ -189,6 +195,7 @@ endif
 ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean-all
 endif
+	@$(MAKE)	-C indigo_server clean-all
 	rm -rf $(BUILD_ROOT)
 
 init: Makefile.inc

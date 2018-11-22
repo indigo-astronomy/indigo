@@ -29,6 +29,15 @@ DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
 DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
 
+ifeq ($(OS_DETECTED),Darwin)
+	FORCE_ALL_ON=-Wl,-force_load
+	FORCE_ALL_OFF=
+endif
+ifeq ($(OS_DETECTED),Linux)
+	FORCE_ALL_ON=-Wl,--whole-archive
+	FORCE_ALL_OFF=-Wl,--no-whole-archive
+endif
+
 ifeq ($(OS_DETECTED),Linux)
 	SDK_LIB = externals/libapogee/libapogee.a externals/boost_regex/build/gcc/libboost_regex-gcc-1_53.a
 endif
@@ -55,7 +64,7 @@ $(DRIVER_A): indigo_ccd_apogee.o
 	$(AR) $(ARFLAGS) $@ $^
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo  $(SDK_LIB) -lstdc++ -lcurl
+	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(LDFLAGS) -lindigo  $(SDK_LIB) -lstdc++ -lcurl
 
 $(DRIVER_EXECUTABLE): indigo_ccd_apogee_main.o $(DRIVER_A)
 	$(CC) -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB) -lstdc++ -lcurl

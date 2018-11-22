@@ -27,6 +27,20 @@ DRIVER_LIBS=$(wildcard $(BUILD_DRIVERS)/indigo_*.a)
 
 all: $(BUILD_BIN)/indigo_server
 
+install:
+	cp $(BUILD_BIN)/indigo_server $(INSTALL_BIN)
+
+uninstall:
+	rm -f $(INSTALL_BIN)/indigo_server $(INSTALL_BIN)
+
+status:
+
+clean:
+	rm -f $(BUILD_BIN)/indigo_server
+
+clean-all:
+	rm -f *.data resource/*.data
+
 $(BUILD_BIN)/indigo_server: ctrlpanel indigo_server.o $(SIMULATOR_LIBS)
 	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server.o $(SIMULATOR_LIBS) $(LDFLAGS) -lstdc++ -lindigo
 ifeq ($(OS_DETECTED),Darwin)
