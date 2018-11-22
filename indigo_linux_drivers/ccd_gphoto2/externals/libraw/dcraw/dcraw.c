@@ -1668,6 +1668,14 @@ void CLASS lossless_dng_load_raw()
           checkCancel();
 #endif
           rp = ljpeg_row(jrow, &jh);
+	  if(tiff_samples == 1 && jh.clrs > 1 && jh.clrs*jwide == raw_width)
+          for (jcol = 0; jcol < jwide*jh.clrs; jcol++)
+          {
+            adobe_copy_pixel(trow + row, tcol + col, &rp);
+            if (++col >= tile_width || col >= raw_width)
+              row += 1 + (col = 0);
+	  }
+	  else
           for (jcol = 0; jcol < jwide; jcol++)
           {
             adobe_copy_pixel(trow + row, tcol + col, &rp);
@@ -2800,6 +2808,7 @@ void CLASS unpacked_load_raw()
   while (1 << ++bits < maximum)
     ;
   read_shorts(raw_image, raw_width * raw_height);
+  fseek(ifp,-2,SEEK_CUR); // avoid EOF error
   if (maximum < 0xffff || load_flags)
     for (row = 0; row < raw_height; row++)
     {
@@ -3173,65 +3182,130 @@ void CLASS canon_rmf_load_raw()
   maximum = curve[0x3ff];
 }
 
-unsigned CLASS pana_bits(int nbits)
+unsigned CLASS pana_data(int nb, unsigned *bytes)
 {
 #ifndef LIBRAW_NOTHREADS
-#define buf tls->pana_bits.buf
-#define vbits tls->pana_bits.vbits
+#define vpos tls->pana_data.vpos
+#define buf tls->pana_data.buf
 #else
   static uchar buf[0x4002];
-  static int vbits;
+  static int vpos;
 #endif
   int byte;
 
-  if (!nbits)
-    return vbits = 0;
-  if (!vbits)
+  if (!nb && !bytes)
+    return vpos = 0;
+
+  if (!vpos)
   {
     fread(buf + load_flags, 1, 0x4000 - load_flags, ifp);
     fread(buf, 1, load_flags, ifp);
   }
-  vbits = (vbits - nbits) & 0x1ffff;
-  byte = vbits >> 3 ^ 0x3ff0;
-  return (buf[byte] | buf[byte + 1] << 8) >> (vbits & 7) & ~((~0u) << nbits);
+
+  if (pana_encoding == 5)
+  {
+    for (byte = 0; byte < 16; byte++)
+    {
+      bytes[byte] = buf[vpos++];
+      vpos &= 0x3FFF;
+    }
+  }
+  else
+  {
+    vpos = (vpos - nb) & 0x1ffff;
+    byte = vpos >> 3 ^ 0x3ff0;
+    return (buf[byte] | buf[byte + 1] << 8) >> (vpos & 7) & ~((~0u) << nb);
+  }
+  return 0;
 #ifndef LIBRAW_NOTHREADS
+#undef vpos
 #undef buf
-#undef vbits
 #endif
 }
 
 void CLASS panasonic_load_raw()
 {
   int row, col, i, j, sh = 0, pred[2], nonz[2];
+  unsigned bytes[16];
+  ushort *raw_block_data;
+  int enc_blck_size = pana_bpp == 12 ? 10 : 9;
 
-  pana_bits(0);
-  for (row = 0; row < raw_height; row++)
+  pana_data(0, 0);
+  if (pana_encoding == 5)
   {
-#ifdef LIBRAW_LIBRARY_BUILD
-    checkCancel();
-#endif
-    for (col = 0; col < raw_width; col++)
+    for (row = 0; row < raw_height; row++)
     {
-      if ((i = col % 14) == 0)
-        pred[0] = pred[1] = nonz[0] = nonz[1] = 0;
-      if (i % 3 == 2)
-        sh = 4 >> (3 - pana_bits(2));
-      if (nonz[i & 1])
+      raw_block_data = raw_image + row * raw_width;
+
+#ifdef LIBRAW_LIBRARY_BUILD
+      checkCancel();
+#endif
+      for (col = 0; col < raw_width; col += enc_blck_size)
       {
-        if ((j = pana_bits(8)))
+        pana_data(0, bytes);
+
+        if (pana_bpp == 12)
         {
-          if ((pred[i & 1] -= 0x80 << sh) < 0 || sh == 4)
-            pred[i & 1] &= ~((~0u) << sh);
-          pred[i & 1] += j << sh;
+          raw_block_data[col] = ((bytes[1] & 0xF) << 8) + bytes[0];
+          raw_block_data[col + 1] = 16 * bytes[2] + (bytes[1] >> 4);
+          raw_block_data[col + 2] = ((bytes[4] & 0xF) << 8) + bytes[3];
+          raw_block_data[col + 3] = 16 * bytes[5] + (bytes[4] >> 4);
+          raw_block_data[col + 4] = ((bytes[7] & 0xF) << 8) + bytes[6];
+          raw_block_data[col + 5] = 16 * bytes[8] + (bytes[7] >> 4);
+          raw_block_data[col + 6] = ((bytes[10] & 0xF) << 8) + bytes[9];
+          raw_block_data[col + 7] = 16 * bytes[11] + (bytes[10] >> 4);
+          raw_block_data[col + 8] = ((bytes[13] & 0xF) << 8) + bytes[12];
+          raw_block_data[col + 9] = 16 * bytes[14] + (bytes[13] >> 4);
+        }
+        else if (pana_bpp == 14)
+        {
+          raw_block_data[col] = bytes[0] + ((bytes[1] & 0x3F) << 8);
+          raw_block_data[col + 1] = (bytes[1] >> 6) + 4 * (bytes[2]) +
+                                    ((bytes[3] & 0xF) << 10);
+          raw_block_data[col + 2] = (bytes[3] >> 4) + 16 * (bytes[4]) +
+                                    ((bytes[5] & 3) << 12);
+          raw_block_data[col + 3] = ((bytes[5] & 0xFC) >> 2) + (bytes[6] << 6);
+          raw_block_data[col + 4] = bytes[7] + ((bytes[8] & 0x3F) << 8);
+          raw_block_data[col + 5] = (bytes[8] >> 6) + 4 * bytes[9] + ((bytes[10] & 0xF) << 10);
+          raw_block_data[col + 6] = (bytes[10] >> 4) + 16 * bytes[11] + ((bytes[12] & 3) << 12);
+          raw_block_data[col + 7] = ((bytes[12] & 0xFC) >> 2) + (bytes[13] << 6);
+          raw_block_data[col + 8] = bytes[14] + ((bytes[15] & 0x3F) << 8);
         }
       }
-      else if ((nonz[i & 1] = pana_bits(8)) || i > 11)
-        pred[i & 1] = nonz[i & 1] << 4 | pana_bits(4);
-      if ((RAW(row, col) = pred[col & 1]) > 4098 && col < width && row < height)
-        derror();
+    }
+  }
+  else
+  {
+    for (row = 0; row < raw_height; row++)
+    {
+#ifdef LIBRAW_LIBRARY_BUILD
+      checkCancel();
+#endif
+      for (col = 0; col < raw_width; col++)
+      {
+        if ((i = col % 14) == 0)
+          pred[0] = pred[1] = nonz[0] = nonz[1] = 0;
+        if (i % 3 == 2)
+          sh = 4 >> (3 - pana_data(2, 0));
+        if (nonz[i & 1])
+        {
+          if ((j = pana_data(8, 0)))
+          {
+            if ((pred[i & 1] -= 0x80 << sh) < 0 || sh == 4)
+              pred[i & 1] &= ~((~0u) << sh);
+            pred[i & 1] += j << sh;
+          }
+        }
+        else if ((nonz[i & 1] = pana_data(8, 0)) || i > 11)
+          pred[i & 1] = nonz[i & 1] << 4 | pana_data(4, 0);
+        if ((RAW(row, col) = pred[col & 1]) > 4098 && col < width && row < height)
+          derror();
+      }
     }
   }
 }
+
+
 void CLASS olympus_load_raw()
 {
   ushort huff[4096];
@@ -6323,7 +6397,6 @@ void CLASS wavelet_denoise()
 #pragma omp parallel default(shared) private(i, col, row, thold, lev, lpass, hpass, temp, c) firstprivate(scale, size)
 #endif
   {
-#pragma omp critical
     temp = (float *)malloc((iheight + iwidth) * sizeof *fimg);
     FORC(nc)
     { /* denoise R,G1,B,G3 individually */
@@ -6377,7 +6450,6 @@ void CLASS wavelet_denoise()
       for (i = 0; i < size; i++)
         image[i][c] = CLIP(SQR(fimg[i] + fimg[lpass + i]) / 0x10000);
     }
-#pragma omp critical
     free(temp);
   } /* end omp parallel */
   /* the following loops are hard to parallize, no idea yes,
@@ -7651,7 +7723,6 @@ void CLASS ahd_interpolate()
 #endif
 #endif
   {
-#pragma omp critical
     buffer = (char *)malloc(26 * TS * TS); /* 1664 kB */
     merror(buffer, "ahd_interpolate()");
     rgb = (ushort(*)[TS][TS][3])buffer;
@@ -7685,7 +7756,6 @@ void CLASS ahd_interpolate()
         ahd_interpolate_combine_homogeneous_pixels(top, left, rgb, homo);
       }
     }
-#pragma omp critical
     free(buffer);
   }
 #ifdef LIBRAW_LIBRARY_BUILD
@@ -9603,7 +9673,7 @@ void CLASS setSonyBodyFeatures(unsigned id)
       {360, LIBRAW_FORMAT_APSC, LIBRAW_MOUNT_Sony_E, LIBRAW_SONY_ILCE, 0, 8, 0x0346, 0x01cd},
       {361, 0, 0, 0, 0, 0, 0xffff, 0xffff},
       {362, LIBRAW_FORMAT_FF, LIBRAW_MOUNT_Sony_E, LIBRAW_SONY_ILCE, 0, 9, 0x0320, 0x019f},
-      {363, LIBRAW_FORMAT_FF, LIBRAW_MOUNT_Sony_E, LIBRAW_SONY_ILCE, 0, 0, 0x0320, 0x019f},
+      {363, 0, 0, 0, 0, 0, 0xffff, 0xffff},
       {364, LIBRAW_FORMAT_1INCH, LIBRAW_MOUNT_FixedLens, LIBRAW_SONY_DSC, LIBRAW_MOUNT_FixedLens, 8, 0x0346, 0xffff},
       {365, LIBRAW_FORMAT_1INCH, LIBRAW_MOUNT_FixedLens, LIBRAW_SONY_DSC, LIBRAW_MOUNT_FixedLens, 9, 0x0320, 0xffff},
   };
@@ -9895,7 +9965,7 @@ void CLASS process_Sony_0x9050(uchar *buf, ushort len, unsigned id)
     parseSonyLensFeatures(SonySubstitution[buf[0x116]], SonySubstitution[buf[0x117]]);
   }
 
-  if ((id == 347) || (id == 350) || (id == 354) || (id == 357) || (id == 358) || (id == 360) || (id == 362) || (id == 363))
+  if ((id == 347) || (id == 350) || (id == 354) || (id == 357) || (id == 358) || (id == 360) || (id == 362))
   {
     if (len <= 0x8d)
       return;
@@ -9959,7 +10029,7 @@ void CLASS process_Sony_0x9400(uchar *buf, ushort len, unsigned id)
   if (((bufx == 0x23) || (bufx == 0x24) || (bufx == 0x26)) && (len >= 0x1f))
   { // 0x9400 'c' version
 
-    if ((id == 358) || (id == 362) || (id == 363) || (id == 365))
+    if ((id == 358) || (id == 362) || (id == 365))
     {
       imgdata.makernotes.sony.ShotNumberSincePowerUp = SonySubstitution[buf[0x0a]];
     }
@@ -13993,7 +14063,7 @@ int CLASS parse_tiff_ifd(int base)
     case 10:
       if (pana_raw && len == 1 && type == 3)
       {
-        libraw_internal_data.unpacker_data.pana_bpp = get2();
+        pana_bpp = get2();
       }
     break;
 #endif
@@ -14053,8 +14123,7 @@ int CLASS parse_tiff_ifd(int base)
     break;
 
     case 0x2009:
-      if ((libraw_internal_data.unpacker_data.pana_encoding == 4) ||
-          (libraw_internal_data.unpacker_data.pana_encoding == 5))
+      if ((pana_encoding == 4) || (pana_encoding == 5))
       {
         int n = MIN (8, len);
         int permut[8] = {3, 2, 1, 0, 3+4, 2+4, 1+4, 0+4};
@@ -14064,7 +14133,7 @@ int CLASS parse_tiff_ifd(int base)
         for (int i=0; i < n; i++)
         {
           imgdata.makernotes.panasonic.BlackLevel[permut[i]] =
-            (float) (get2()) / (float) (powf(2.f, 14.f-libraw_internal_data.unpacker_data.pana_bpp));
+            (float) (get2()) / (float) (powf(2.f, 14.f-pana_bpp));
         }
       }
       break;
@@ -14126,7 +14195,7 @@ int CLASS parse_tiff_ifd(int base)
     case 45:
       if (pana_raw && len == 1 && type == 3)
       {
-        libraw_internal_data.unpacker_data.pana_encoding = get2();
+        pana_encoding = get2();
       }
       break;
 #endif
@@ -15682,13 +15751,8 @@ void CLASS apply_tiff()
 
 void CLASS parse_minolta(int base)
 {
-  int tag, len, offset, high = 0, wide = 0, i, c;
+  int save, tag, len, offset, high = 0, wide = 0, i, c;
   short sorder = order;
-#ifdef LIBRAW_LIBRARY_BUILD
-  INT64 save;
-#else
-  int save;
-#endif
 
   fseek(ifp, base, SEEK_SET);
   if (fgetc(ifp) || fgetc(ifp) - 'M' || fgetc(ifp) - 'R')
@@ -15696,9 +15760,8 @@ void CLASS parse_minolta(int base)
   order = fgetc(ifp) * 0x101;
   offset = base + get4() + 8;
 #ifdef LIBRAW_LIBRARY_BUILD
-  INT64 fsize = ifp->size();
-  if(offset>fsize-8) // At least 8 bytes for tag/len
-    offset = fsize-8;
+  if(offset>ifp->size()-8) // At least 8 bytes for tag/len
+    offset = ifp->size()-8;
 #endif
 
   while ((save = ftell(ifp)) < offset)
@@ -15708,10 +15771,6 @@ void CLASS parse_minolta(int base)
     len = get4();
     if(len < 0)
       return; // just ignore wrong len?? or raise bad file exception?
-#ifdef LIBRAW_LIBRARY_BUILD
-    if((INT64)len + save + 8ULL > save)
-      return; // just ignore out of file metadata, stop parse
-#endif
     switch (tag)
     {
     case 0x505244: /* PRD */
@@ -15927,35 +15986,19 @@ void CLASS parse_ciff(int offset, int length, int depth)
 {
   int tboff, nrecs, c, type, len, save, wbi = -1;
   ushort key[] = {0x410, 0x45f3};
-#ifdef LIBRAW_LIBRARY_BUILD
-  INT64 fsize = ifp->size();
-#endif
 
   fseek(ifp, offset + length - 4, SEEK_SET);
   tboff = get4() + offset;
   fseek(ifp, tboff, SEEK_SET);
   nrecs = get2();
-  if (nrecs<1) return;
   if ((nrecs | depth) > 127)
     return;
-#ifdef LIBRAW_LIBRARY_BUILD
-  if(nrecs*10 + offset > fsize) return;
-#endif
-
   while (nrecs--)
   {
     type = get2();
     len = get4();
     save = ftell(ifp) + 4;
-    INT64 see = offset + get4();
-#ifdef LIBRAW_LIBRARY_BUILD
-	if(see >= fsize  ) // At least one byte
-	{
-		fseek(ifp, save, SEEK_SET);
-		continue;
-	}
-#endif
-    fseek(ifp, see, SEEK_SET);
+    fseek(ifp, offset + get4(), SEEK_SET);
     if ((((type >> 8) + 8) | 8) == 0x38)
     {
       parse_ciff(ftell(ifp), len, depth + 1); /* Parse a sub-table */
@@ -16225,11 +16268,8 @@ void CLASS parse_phase_one(int base)
   order = get4() & 0xffff;
   if (get4() >> 8 != 0x526177)
     return; /* "Raw" */
-  unsigned offset = get4();
-  if(offset == 0xbad0bad) return;
-  fseek(ifp, offset + base, SEEK_SET);
+  fseek(ifp, get4() + base, SEEK_SET);
   entries = get4();
-  if(entries > 8192) return; // too much??
   get4();
   while (entries--)
   {
@@ -18575,8 +18615,6 @@ void CLASS adobe_coeff(const char *t_make, const char *t_model
       { 6389,-1703,-378,-4562,12265,2587,-670,1489,6550 } },
     { "Sony ILCE-7M2", 0, 0,
       { 5271,-712,-347,-6153,13653,2763,-1601,2366,7242 } },
-    { "Sony ILCE-7M3", 0, 0,
-      { 7374,-2389,-551,-5435,13162,2519,-1006,1795,6552 } },
     { "Sony ILCE-7SM2", 0, 0,
       { 5838,-1430,-246,-3497,11477,2297,-748,1885,5778 } },
     { "Sony ILCE-7S", 0, 0,
@@ -18955,8 +18993,7 @@ void CLASS identify()
         {0x155, "DSC-RX100M4"}, {0x156, "DSC-RX10M2"},  {0x158, "DSC-RX1RM2"}, {0x15a, "ILCE-QX1"},
         {0x15b, "ILCE-7RM2"},   {0x15e, "ILCE-7SM2"},   {0x161, "ILCA-68"},    {0x162, "ILCA-99M2"},
         {0x163, "DSC-RX10M3"},  {0x164, "DSC-RX100M5"}, {0x165, "ILCE-6300"},  {0x166, "ILCE-9"},
-        {0x168, "ILCE-6500"},   {0x16a, "ILCE-7RM3"},   {0x16b, "ILCE-7M3"}, {0x16c, "DSC-RX0"},
-        {0x16d, "DSC-RX10M4"},
+        {0x168, "ILCE-6500"},   {0x16a, "ILCE-7RM3"},   {0x16c, "DSC-RX0"},    {0x16d, "DSC-RX10M4"},
     };
 
 #ifdef LIBRAW_LIBRARY_BUILD
@@ -20098,7 +20135,8 @@ void CLASS identify()
   }
   else if (!strncmp(make, "Fujifilm", 8))
   {
-    if (!strcmp(model, "X-A3") || !strcmp(model, "X-A10"))
+    if (!strcmp(model, "X-A3") || !strcmp(model, "X-A10") 
+    || !strcmp(model, "X-A5") || !strcmp(model, "X-A20"))
     {
       left_margin = 0;
       top_margin = 0;
@@ -20941,6 +20979,70 @@ dng_skip:
     {
       int sidx;
       // Per field, not per structure
+	  if (imgdata.params.raw_processing_options & LIBRAW_PROCESSING_CHECK_DNG_ILLUMINANT)
+	  {
+		  int illidx[2], cmidx[2],calidx[2], abidx;
+		  for(int i = 0; i < 2; i++)
+		  {
+			  illidx[i] = IFDCOLORINDEX(iifd, i, LIBRAW_DNGFM_ILLUMINANT);
+			  cmidx[i] = IFDCOLORINDEX(iifd, i, LIBRAW_DNGFM_COLORMATRIX);
+			  calidx[i] = IFDCOLORINDEX(iifd, i, LIBRAW_DNGFM_CALIBRATION);
+		  }
+		  abidx = IFDLEVELINDEX(iifd, LIBRAW_DNGFM_ANALOGBALANCE);
+		  // Data found, all in same ifd, illuminants are inited
+		  if (illidx[0] >= 0 && illidx[0] < tiff_nifds && illidx[0] == illidx[1] && illidx[0] == cmidx[0] && illidx[0] == cmidx[1]
+			  && tiff_ifd[illidx[0]].dng_color[0].illuminant>0 && tiff_ifd[illidx[0]].dng_color[1].illuminant>0)
+		  {
+			  sidx = illidx[0]; // => selected IFD
+			  double cc[4][4], cm[4][3], cam_xyz[4][3];
+			  // CM -> Color Matrix
+			  // CC -> Camera calibration
+			  for (int j = 0; j < 4; j++)  for (int i = 0; i < 4; i++)  cc[j][i] = i == j;
+			  int colidx = -1;
+
+			  // IS D65 here?
+			  for(int i = 0; i < 2; i++)
+			  {
+				  int ill = tiff_ifd[sidx].dng_color[i].illuminant;
+				  if (tiff_ifd[sidx].dng_color[i].illuminant == LIBRAW_WBI_D65)
+				  {
+					  colidx = i; break;
+				  }
+			  }
+
+			  // Other daylight-type ill
+			  if(colidx<0)
+				  for(int i = 0; i < 2; i++)
+				  {
+					  int ill = tiff_ifd[sidx].dng_color[i].illuminant;
+					  if (ill == LIBRAW_WBI_Daylight || ill == LIBRAW_WBI_D55 || ill == LIBRAW_WBI_D75 || ill == LIBRAW_WBI_D50 || ill == LIBRAW_WBI_Flash)
+					  {
+						  colidx = i; break;
+					  }
+				  }
+			  if(colidx>=0) // Selected
+			  {
+				  // Init camera matrix from DNG
+				  FORCC for (int j = 0; j < 3; j++)
+					  cm[c][j] = tiff_ifd[sidx].dng_color[colidx].colormatrix[c][j];
+
+				  if(calidx[colidx] == sidx)
+				  {
+					  for (int i = 0; i < colors; i++)
+						  FORCC
+						  cc[i][c] = tiff_ifd[sidx].dng_color[colidx].calibration[i][c];
+				  }
+
+				  if(abidx == sidx)
+					for (int i = 0; i < colors; i++)
+						  FORCC cc[i][c] *= tiff_ifd[sidx].dng_levels.analogbalance[i];
+				  int j;
+				  FORCC for (int i = 0; i < 3; i++) for (cam_xyz[c][i] = j = 0; j < colors; j++) cam_xyz[c][i] +=
+					  cc[c][j] * cm[j][i];// add AsShotXY later * xyz[i];
+				  cam_xyz_coeff(cmatrix, cam_xyz);
+			  }
+		  }
+	  }
 
       if (imgdata.params.raw_processing_options & LIBRAW_PROCESSING_USE_DNG_DEFAULT_CROP)
       {
@@ -21058,6 +21160,30 @@ dng_skip:
     RUN_CALLBACK(LIBRAW_PROGRESS_IDENTIFY, 1, 2);
 #endif
     return;
+  }
+  {
+   // Check cam_mul range
+   int cmul_ok =1;
+   FORCC if(cam_mul[c] <= 0.001f)  cmul_ok = 0;;
+
+   if(cmul_ok)
+   {
+	  double cmin = cam_mul[0],cmax;
+	  double cnorm[4];
+	  FORCC	  cmin = MIN(cmin,cam_mul[c]);
+	  FORCC	  cnorm[c] = cam_mul[c]/cmin;
+	  cmax = cmin = cnorm[0];
+	  FORCC
+	  {
+		  cmin = MIN(cmin,cnorm[c]);
+		  cmax = MIN(cmax,cnorm[c]);
+	  }
+	  if(cmin <= 0.01f || cmax > 100.f)
+		  cmul_ok = false;
+   }
+   if(!cmul_ok)
+	  cam_mul[0] = cam_mul[3] = 0;
+
   }
   if ((use_camera_matrix & ((use_camera_wb || dng_version) | 0x2)) && cmatrix[0][0] > 0.125)
   {
