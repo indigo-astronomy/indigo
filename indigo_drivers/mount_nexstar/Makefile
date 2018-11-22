@@ -66,7 +66,7 @@ $(DRIVER_SO): $(DRIVER_A)
 	$(CC) -shared -o $@ $(FORCE_ALL_ON) $(DRIVER_A) $(FORCE_ALL_OFF) $(LDFLAGS) -L$(SDK_DIR) -lnexstar -lindigo
 
 $(DRIVER_EXECUTABLE): indigo_mount_nexstar_main.o $(DRIVER_A)
-	$(CC) -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB) -lstdc++ -L$(SDK_DIR) -lnexstar
+	$(CC) -o $@ $^ $(LDFLAGS) -lindigo -L$(SDK_DIR) -lnexstar -lstdc++ 
 
 install: status
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
