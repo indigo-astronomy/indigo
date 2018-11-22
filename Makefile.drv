@@ -89,6 +89,9 @@ endif
 
 $(DRIVER_A): $(DRIVER_O)
 	$(AR) $(ARFLAGS) $@ $^
+ifneq ($(SDK_LIB_SO),)
+	install -m 0644 $(SDK_LIB_SO)* $(BUILD_LIB)
+endif
 
 $(DRIVER_SO): $(DRIVER_A)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB)
