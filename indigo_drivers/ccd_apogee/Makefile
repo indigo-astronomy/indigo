@@ -37,7 +37,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	SDK_LIB = externals/libapogee/libapogee.a
 endif
 
-.PHONY: all status install uninstall
+.PHONY: all status install uninstall clean clean-all
 
 all: status $(SDK_LIB) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
@@ -72,6 +72,8 @@ clean: status
 	cd externals/libapogee; make clean
 	cd externals/boost_regex/build; make clean
 	rm -f *.o external/DDHidLib/*.o $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+
+clean-all:
 
 externals/libapogee/libapogee.a:
 	cd externals/libapogee; make clean; make
