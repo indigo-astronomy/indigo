@@ -20,61 +20,57 @@
 #
 #---------------------------------------------------------------------
 
+
 include ../../Makefile.inc
 
-DRIVER = indigo_aux_joystick
+DRIVER = indigo_ccd_iidc
 
 DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
 DRIVER_EXECUTABLE = $(BUILD_DRIVERS)/$(DRIVER)
 
+SDK_LIB = $(BUILD_LIB)/libdc1394.$(SOEXT)
 
-.PHONY: all status install uninstall clean clean-all
+.PHONY: all status install uninstall
 
-all: status $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+all: status $(SDK_LIB) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 status:
 	@printf "\n$(DRIVER) ---------------------------------------\n\n"
 	@printf "Archive:    $(notdir $(DRIVER_A))\n"
 	@printf "SO library: $(notdir $(DRIVER_SO))\n"
 	@printf "Executable: $(notdir $(DRIVER_EXECUTABLE))\n"
+	@printf "SDK:        $(notdir $(SDK_LIB))\n"
 	@printf "\n"
 
-ifeq ($(OS_DETECTED),Darwin)
+indigo_ccd_iidc.o: indigo_ccd_iidc.c
+	$(CC)  $(CXXFLAGS) -c -Iexternals -o $@ $<
 
-indigo_aux_joystick.o: indigo_aux_joystick.m
-	$(CC) $(MFLAGS) -Wno-shadow-ivar -c -o $@ $< -Iexternal/DDHidLib
-
-$(DRIVER_A): indigo_aux_joystick.o $(addsuffix .o, $(basename $(wildcard external/DDHidLib/*.m)))
+$(DRIVER_A): indigo_ccd_iidc.o
 	$(AR) $(ARFLAGS) $@ $^
-
-endif
-
-ifeq ($(OS_DETECTED),Linux)
-
-indigo_aux_joystick.o: indigo_aux_joystick.c
-	$(CC)  $(CFLAGS) -c -o $@ $<
-
-$(DRIVER_A): indigo_aux_joystick.o
-	$(AR) $(ARFLAGS) $@ $^
-
-endif
 
 $(DRIVER_SO): $(DRIVER_A)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo  $(SDK_LIB) -ldc1394
 
-$(DRIVER_EXECUTABLE): indigo_aux_joystick_main.o $(DRIVER_A)
-	$(CC) -o $@ $^ $(LDFLAGS) -lindigo
+$(DRIVER_EXECUTABLE): indigo_ccd_iidc_main.o $(DRIVER_A)
+	$(CC) -o $@ $^ $(LDFLAGS) -lindigo $(SDK_LIB) -lstdc++ -ldc1394
 
 install: status
+	install -m 0644 $(SDK_LIB) $(INSTALL_LIB)
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
 	install -m 0755 $(DRIVER_EXECUTABLE) $(INSTALL_BIN)
 
 uninstall: status
-	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER)
+	rm -f $(INSTALL_LIB)/$(DRIVER).$(SOEXT) $(INSTALL_BIN)/$(DRIVER) $(INSTALL_LIB)/$(SDK_LIB)
 
 clean: status
-	rm -f *.o external/DDHidLib/*.o $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
+	rm -f $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 
 clean-all:
 
+$(SDK_LIB):
+	git clone https://github.com/indigo-astronomy/libdc1394.git
+	cd libdc1394; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=yes --enable-static=no CFLAGS="$(CFLAGS)" --with-pic; make; make install
+	rm -rf libdc1394
+
+	
