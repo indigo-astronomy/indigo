@@ -31,7 +31,7 @@ EXCLUDED = $(addsuffix /, $(filter $(EXCLUDED_DRIVERS), $(wildcard agent_*) $(wi
 
 FOLDERS_WITH_MAKEFILE = $(dir $(wildcard agent_*/Makefile) $(wildcard aux_*/Makefile) $(wildcard ccd_*/Makefile) $(wildcard dome_*/Makefile) $(wildcard focuser_*/Makefile) $(wildcard gps_*/Makefile) $(wildcard guider_*/Makefile) $(wildcard mount_*/Makefile) $(wildcard wheel_*/Makefile) $(wildcard system_*/Makefile))
 FOLDERS_WITHOUT_MAKEFILE = $(filter-out $(FOLDERS_WITH_MAKEFILE), $(FOLDERS))
-.PHONY: all clean $(FOLDERS)
+.PHONY: all clean clean-all $(FOLDERS)
 
 all: OP = all
 all: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
@@ -47,6 +47,9 @@ uninstall: folders $(filter-out $(addsuffix /, $(DEVELOPED_DRIVERS)), $(FOLDERS_
 
 clean: OP = clean
 clean: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
+
+clean-all: OP = clean-all
+clean-all: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 $(FOLDERS_WITH_MAKEFILE):
 	@$(MAKE) -C $@ $(OP)
