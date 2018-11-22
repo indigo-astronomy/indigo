@@ -81,7 +81,6 @@
 		595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */; };
 		595F2934211E211200380EF4 /* DDHidQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2917211E211100380EF4 /* DDHidQueue.m */; };
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
-		595F2938211E418700380EF4 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
 		5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */; };
 		59986D741F9BA10900D68DC1 /* libftd2xx.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 595355EC1F6B140300478BEC /* libftd2xx.a */; };
@@ -123,7 +122,6 @@
 		59A52FB821A34266000B6F27 /* toupcam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D48B7A3215E570600CF757E /* toupcam.h */; };
 		59A5302121A35159000B6F27 /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5301721A3514E000B6F27 /* libatik.a */; };
 		59A5302221A35167000B6F27 /* libatik.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A5301421A3514E000B6F27 /* libatik.h */; };
-		59A5302421A351DF000B6F27 /* libdc1394.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5302321A351C6000B6F27 /* libdc1394.a */; };
 		59A5302521A35264000B6F27 /* libqhy.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5300721A34310000B6F27 /* libqhy.a */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
 		59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
@@ -365,6 +363,8 @@
 		9DBC34711DCB26E500588DB9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34701DCB26E500588DB9 /* Cocoa.framework */; };
 		9DBC34731DCB26F200588DB9 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34721DCB26F200588DB9 /* IOKit.framework */; };
 		9DBC34751DCB270200588DB9 /* libstdc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34741DCB270200588DB9 /* libstdc++.tbd */; };
+		9DC7830521A705D7009859FD /* libdc1394.22.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DC7830421A705D7009859FD /* libdc1394.22.dylib */; };
+		9DC7830721A7072C009859FD /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 9DC7830621A7072B009859FD /* Makefile */; };
 		9DDA7FD21F791F7D0094D65D /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDA7FD11F791F7D0094D65D /* indigo_novas.h */; };
 		9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDBAE171E2D2099004FE70F /* indigo_timer.c */; };
@@ -3732,6 +3732,21 @@
 		9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.01.pdf; sourceTree = "<group>"; };
 		9DC4736C21A4596500EE561A /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DC782F321A6B6C3009859FD /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9DC782F421A6D919009859FD /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_ascol.c; sourceTree = "<group>"; };
+		9DC782F821A6FCC7009859FD /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9DC782F921A6FCC7009859FD /* libascol.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libascol.c; sourceTree = "<group>"; };
+		9DC782FA21A6FCC7009859FD /* libascol.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = libascol.o; sourceTree = "<group>"; };
+		9DC782FB21A6FCC7009859FD /* libascol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libascol.h; sourceTree = "<group>"; };
+		9DC782FC21A6FCC7009859FD /* ascol_test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ascol_test.c; sourceTree = "<group>"; };
+		9DC782FD21A6FCC7009859FD /* indigo_system_ascol_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_ascol_main.c; sourceTree = "<group>"; };
+		9DC782FF21A6FCC7009859FD /* ascol_client.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = ascol_client.pl; sourceTree = "<group>"; };
+		9DC7830021A6FCC7009859FD /* ascol_simulator.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = ascol_simulator.pl; sourceTree = "<group>"; };
+		9DC7830121A6FCC7009859FD /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DC7830221A6FCC7009859FD /* indigo_system_ascol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_ascol.h; sourceTree = "<group>"; };
+		9DC7830321A6FDB6009859FD /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		9DC7830421A705D7009859FD /* libdc1394.22.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libdc1394.22.dylib; path = build/lib/libdc1394.22.dylib; sourceTree = "<group>"; };
+		9DC7830621A7072B009859FD /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DDA7FD01F791F7D0094D65D /* indigo_novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_novas.c; sourceTree = "<group>"; };
 		9DDA7FD11F791F7D0094D65D /* indigo_novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_novas.h; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -3772,7 +3787,6 @@
 				59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */,
 				59A52D6621A3361D000B6F27 /* libgxccd.a in Frameworks */,
 				59D9681A21A2FE460069A64C /* libUSB2ST4Conv.a in Frameworks */,
-				59A5302421A351DF000B6F27 /* libdc1394.a in Frameworks */,
 				59A5302121A35159000B6F27 /* libatik.a in Frameworks */,
 				59D9683021A2FE660069A64C /* libEFWFilter.a in Frameworks */,
 				59A52DF021A33E44000B6F27 /* libfli.a in Frameworks */,
@@ -3813,6 +3827,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9DC7830521A705D7009859FD /* libdc1394.22.dylib in Frameworks */,
 				591B017521A49F55006A1CD8 /* libaltaircam.dylib in Frameworks */,
 				591B017321A49F4A006A1CD8 /* libtoupcam.dylib in Frameworks */,
 				591B017621A49F63006A1CD8 /* libatikcameras.dylib in Frameworks */,
@@ -4851,9 +4866,10 @@
 		599A63D61DF5D93500ABC827 /* indigo_server */ = {
 			isa = PBXGroup;
 			children = (
-				5925E3451E982BBC00FF373F /* resource */,
 				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
 				599A63B21DEB7BF500ABC827 /* ctrl.html */,
+				9DC7830621A7072B009859FD /* Makefile */,
+				5925E3451E982BBC00FF373F /* resource */,
 			);
 			path = indigo_server;
 			sourceTree = "<group>";
@@ -6785,6 +6801,7 @@
 				590B59CE1F7853F400086FD2 /* mount_temma */,
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
+				9DC782F521A6FCC7009859FD /* system_ascol */,
 				593CFE3F1DFC89F5003B63D4 /* wheel_atik */,
 				9DBC34611DCB265A00588DB9 /* wheel_asi */,
 				5992F7B91E1EC9270035242E /* wheel_fli */,
@@ -9357,11 +9374,12 @@
 		9D45254020E0F9A1004D1137 /* ccd_gphoto2 */ = {
 			isa = PBXGroup;
 			children = (
-				590DD77E212013B500F2B978 /* externals */,
 				9D45254320E0F9A1004D1137 /* README.md */,
+				9DC782F421A6D919009859FD /* Makefile.inc */,
 				9D45254220E0F9A1004D1137 /* indigo_ccd_gphoto2.h */,
 				9D45254420E0F9A1004D1137 /* indigo_ccd_gphoto2.c */,
 				9D45254120E0F9A1004D1137 /* indigo_ccd_gphoto2_main.c */,
+				590DD77E212013B500F2B978 /* externals */,
 			);
 			path = ccd_gphoto2;
 			sourceTree = "<group>";
@@ -10295,6 +10313,7 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				9DC7830421A705D7009859FD /* libdc1394.22.dylib */,
 				591B017421A49F55006A1CD8 /* libaltaircam.dylib */,
 				591B017221A49F4A006A1CD8 /* libtoupcam.dylib */,
 				591B017021A49F3B006A1CD8 /* libatikcameras.dylib */,
@@ -10310,6 +10329,41 @@
 				9DBC34701DCB26E500588DB9 /* Cocoa.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		9DC782F521A6FCC7009859FD /* system_ascol */ = {
+			isa = PBXGroup;
+			children = (
+				9DC7830121A6FCC7009859FD /* README.md */,
+				9DC7830321A6FDB6009859FD /* Makefile.inc */,
+				9DC7830221A6FCC7009859FD /* indigo_system_ascol.h */,
+				9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */,
+				9DC782FD21A6FCC7009859FD /* indigo_system_ascol_main.c */,
+				9DC782F721A6FCC7009859FD /* libascol */,
+				9DC782FE21A6FCC7009859FD /* ascol_simulator */,
+			);
+			path = system_ascol;
+			sourceTree = "<group>";
+		};
+		9DC782F721A6FCC7009859FD /* libascol */ = {
+			isa = PBXGroup;
+			children = (
+				9DC782F821A6FCC7009859FD /* Makefile */,
+				9DC782F921A6FCC7009859FD /* libascol.c */,
+				9DC782FA21A6FCC7009859FD /* libascol.o */,
+				9DC782FB21A6FCC7009859FD /* libascol.h */,
+				9DC782FC21A6FCC7009859FD /* ascol_test.c */,
+			);
+			path = libascol;
+			sourceTree = "<group>";
+		};
+		9DC782FE21A6FCC7009859FD /* ascol_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DC782FF21A6FCC7009859FD /* ascol_client.pl */,
+				9DC7830021A6FCC7009859FD /* ascol_simulator.pl */,
+			);
+			path = ascol_simulator;
 			sourceTree = "<group>";
 		};
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {
@@ -10993,8 +11047,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9DC7830721A7072C009859FD /* Makefile in Sources */,
 				9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */,
-				595F2938211E418700380EF4 /* NSDictionary+DDHidExtras.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11296,7 +11350,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include";
+				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/externals";
 			};
 			name = Debug;
 		};
@@ -11330,7 +11384,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatikcameras/lib/macOS",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include";
+				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/externals";
 			};
 			name = Release;
 		};
