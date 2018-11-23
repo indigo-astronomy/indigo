@@ -34,6 +34,7 @@ uninstall:
 	rm -f $(INSTALL_BIN)/indigo_prop_tool
 
 status:
+	@printf "\nindigo_tools -------------------------\n\n"
 
 clean:
 	rm -f $(BUILD_BIN)/indigo_prop_tool
