@@ -114,10 +114,6 @@ Install XCode and download and build autoconf, automake and libtool (use tools/c
 
 `make all`
 
-`bin/indigo_server_standalone`
+`build/bin/indigo_server -v -s`
 
-or
-
-`bin/indigo_server indigo_ccd_asi [other drivers]`
-
-and connect from any INDIGO/INDI client to port 7624...
+and connect from any INDIGO/INDI client or web browser to localhost on port 7624...

@@ -31,7 +31,7 @@ install:
 	cp $(BUILD_BIN)/indigo_server $(INSTALL_BIN)
 
 uninstall:
-	rm -f $(INSTALL_BIN)/indigo_server $(INSTALL_BIN)
+	rm -f $(INSTALL_BIN)/indigo_server
 
 status:
 
@@ -49,14 +49,6 @@ ifeq ($(OS_DETECTED),Darwin)
 	install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
 else
 	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server.o $(SIMULATOR_LIBS) $(LDFLAGS) -ldns_sd -lstdc++ -lindigo
-endif
-
-$(BUILD_BIN)/indigo_server_standalone: ctrlpanel indigo_server.c $(DRIVER_LIBS) $(BUILD_LIB)/libindigo.a
-	$(CC) -DSTATIC_DRIVERS $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server.c $(DRIVER_LIBS) $(BUILD_LIB)/libindigo.a $(LDFLAGS) -lstdc++  -lcurl -ltoupcam  -laltaircam -ldc1394 -lusb-1.0
-ifeq ($(OS_DETECTED),Darwin)
-	install_name_tool -add_rpath @loader_path/../drivers $@
-	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
-	install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.0.dylib  @rpath/../lib/libusb-1.0.0.dylib $@
 endif
 
 #---------------------------------------------------------------------
