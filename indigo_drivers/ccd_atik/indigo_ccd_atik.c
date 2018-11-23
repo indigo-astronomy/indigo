@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -746,6 +746,7 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 					hotplug_callback(NULL, PRIVATE_DATA->dev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 				}
 			}
+			ArtemisShutdown();
 			break;
 			
 		case INDIGO_DRIVER_INFO:

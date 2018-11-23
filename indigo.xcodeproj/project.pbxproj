@@ -87,8 +87,6 @@
 		599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */ = {isa = PBXBuildFile; fileRef = 599A63AE1DEA2F4700ABC827 /* indigo_driver_json.c */; };
 		599A63B11DEA2F4700ABC827 /* indigo_driver_json.h in Headers */ = {isa = PBXBuildFile; fileRef = 599A63AF1DEA2F4700ABC827 /* indigo_driver_json.h */; };
 		599A63D51DF3670100ABC827 /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599A63D41DF3670100ABC827 /* libjpeg.a */; };
-		599C9A3C1D9FF0A3008BBCC1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */; };
-		599C9A3F1D9FF0A3008BBCC1 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 599C9A3D1D9FF0A3008BBCC1 /* MainMenu.xib */; };
 		599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381BF1D965FDA00E87393 /* indigo_driver.c */; };
 		599C9A4E1DA022E3008BBCC1 /* indigo_bus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381A81D9592A400E87393 /* indigo_bus.c */; };
 		599C9A4F1DA022E3008BBCC1 /* indigo_version.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81E1D9E9E4F00582EAF /* indigo_version.c */; };
@@ -166,7 +164,6 @@
 		59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */; };
 		59F4EC731E941D2500CC7772 /* indigo_ccd_sbig.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F4EC701E941D1700CC7772 /* indigo_ccd_sbig.c */; };
 		59F654721EE47516007B8C93 /* indigo_ccd_qhy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 59F6546A1EE47388007B8C93 /* indigo_ccd_qhy.cpp */; };
-		59F756061DCE4DB2002CFC82 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */; };
 		59F756221DCE5006002CFC82 /* libhidapi.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59F756231DCE500A002CFC82 /* libusb.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 59F756191DCE4F83002CFC82 /* libusb.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59F756241DCE501F002CFC82 /* libhidapi.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59F7560D1DCE4E37002CFC82 /* libhidapi.dylib */; };
@@ -1029,6 +1026,7 @@
 		598C583721A75B1A001CA8C0 /* nexstar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nexstar.h; sourceTree = "<group>"; };
 		598C583821A75B1A001CA8C0 /* nex_open.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nex_open.h; sourceTree = "<group>"; };
 		598C583921A75B1A001CA8C0 /* nexstar_pec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nexstar_pec.h; sourceTree = "<group>"; };
+		598C583E21A890B5001CA8C0 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		5992F7B11E1EC8A20035242E /* indigo_ccd_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_fli_main.c; sourceTree = "<group>"; };
 		5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		5992F7B31E1EC8A20035242E /* indigo_ccd_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_fli.h; sourceTree = "<group>"; };
@@ -1055,13 +1053,8 @@
 		599A63D41DF3670100ABC827 /* libjpeg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjpeg.a; path = build/lib/libjpeg.a; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
 		599C9A371D9FF0A3008BBCC1 /* INDIGO Server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "INDIGO Server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		599C9A3E1D9FF0A3008BBCC1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
-		599C9A401D9FF0A3008BBCC1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		599C9A481DA022C0008BBCC1 /* libindigo.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libindigo.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_main.c; sourceTree = "<group>"; };
-		599C9A6D1DA05063008BBCC1 /* BridgingHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
 		599E6A71214D8EEB00E45C9E /* indigo_focuser_nstep_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep_main.c; sourceTree = "<group>"; };
 		599E6A72214D8EEB00E45C9E /* indigo_focuser_nstep.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_nstep.h; sourceTree = "<group>"; };
 		599E6A73214D8EEB00E45C9E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -4630,7 +4623,6 @@
 				9D1880BF1E534B89002F75D7 /* indigo_tools */,
 				599A63D61DF5D93500ABC827 /* indigo_server */,
 				592662AF1D9590630021746A /* indigo_test */,
-				599C9A381D9FF0A3008BBCC1 /* INDIGO Server for macOS */,
 				599A240C1DBEC5820020BF8F /* tools */,
 				59C8E7CC1DBBC00000AA3F0A /* externals */,
 				592662AE1D9590630021746A /* Products */,
@@ -5119,24 +5111,12 @@
 		599A63D61DF5D93500ABC827 /* indigo_server */ = {
 			isa = PBXGroup;
 			children = (
+				9DC7830621A7072B009859FD /* Makefile */,
 				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
 				599A63B21DEB7BF500ABC827 /* ctrl.html */,
-				9DC7830621A7072B009859FD /* Makefile */,
 				5925E3451E982BBC00FF373F /* resource */,
 			);
 			path = indigo_server;
-			sourceTree = "<group>";
-		};
-		599C9A381D9FF0A3008BBCC1 /* INDIGO Server for macOS */ = {
-			isa = PBXGroup;
-			children = (
-				599C9A391D9FF0A3008BBCC1 /* AppDelegate.swift */,
-				599C9A3B1D9FF0A3008BBCC1 /* Assets.xcassets */,
-				599C9A3D1D9FF0A3008BBCC1 /* MainMenu.xib */,
-				599C9A401D9FF0A3008BBCC1 /* Info.plist */,
-				599C9A6D1DA05063008BBCC1 /* BridgingHeader.h */,
-			);
-			path = "INDIGO Server for macOS";
 			sourceTree = "<group>";
 		};
 		599E6A70214D8EEB00E45C9E /* focuser_nstep */ = {
@@ -9600,6 +9580,7 @@
 		9D1880BF1E534B89002F75D7 /* indigo_tools */ = {
 			isa = PBXGroup;
 			children = (
+				598C583E21A890B5001CA8C0 /* Makefile */,
 				595705A321866D9700E713A9 /* indigo_drivers.c */,
 				9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */,
 			);
@@ -11036,9 +11017,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				59C8E7EF1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules in Resources */,
-				599C9A3C1D9FF0A3008BBCC1 /* Assets.xcassets in Resources */,
 				59C8E7F11DBBD91400AA3F0A /* indigo_ccd_ssag.rules in Resources */,
-				599C9A3F1D9FF0A3008BBCC1 /* MainMenu.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11078,7 +11057,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				59F756061DCE4DB2002CFC82 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11359,17 +11337,6 @@
 			targetProxy = 9DE2A1211DC3A309008E8375 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
-
-/* Begin PBXVariantGroup section */
-		599C9A3D1D9FF0A3008BBCC1 /* MainMenu.xib */ = {
-			isa = PBXVariantGroup;
-			children = (
-				599C9A3E1D9FF0A3008BBCC1 /* Base */,
-			);
-			name = MainMenu.xib;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		592662B21D9590630021746A /* Debug */ = {
