@@ -34,6 +34,7 @@ uninstall:
 	rm -f $(INSTALL_BIN)/indigo_server
 
 status:
+	@printf "\nindigo_server -------------------------\n\n"
 
 clean:
 	rm -f $(BUILD_BIN)/indigo_server
