@@ -163,17 +163,45 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 	@$(MAKE)	-C indigo_server uninstall
 
-package: INSTALL_ROOT = indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
+ifeq ($(OS_DETECTED),Linux)
+package: INSTALL_ROOT = $(INDIGO_ROOT)/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
+package: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
+package: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
+package: INSTALL_ETC = $(INSTALL_ROOT)/etc
+package: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
+package: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
+package: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 package: reconfigure init
 	@$(MAKE)	-C indigo_libs install
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
-ifeq ($(OS_DETECTED),Darwin)
-	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
-endif
-ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
-endif
 	@$(MAKE)	-C indigo_server install
+	install -d $(INSTALL_ROOT)/DEBIAN
+	printf "Package: indigo\n" > $(INSTALL_ROOT)/DEBIAN/control
+	printf "Version: $(INDIGO_VERSION)-$(INDIGO_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Installed-Size: $(shell echo `du -s $(INSTALL_ROOT) | cut -f1`)\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Priority: optional\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Architecture: $(DEBIAN_ARCH)\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Replaces: libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Homepage: http://www.indigo-astronomy.org\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Depends: fxload, libusb-1.0-0, libgudev-1.0-0, libgphoto2-6, libavahi-compat-libdnssd1\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Description: INDIGO Framework and drivers\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf " INDIGO is a system of standards and frameworks for multiplatform and distributed astronomy software development designed to scale with your needs.\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	cat $(INSTALL_ROOT)/DEBIAN/control
+	printf "echo Remove pre-2.0-76 build if any\n" > $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/bin/indigo_*\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/indigo_*\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/libindigo*\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/pkgconfig/indigo.pc\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/libtoupcam.$(SOEXT)\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "sudo rm -f /usr/local/lib/libaltaircam.$(SOEXT)\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	printf "sudo rm -rf /usr/local/etc/apogee\n" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	chmod a+x $(INSTALL_ROOT)/DEBIAN/preinst
+	rm -f $(INSTALL_ROOT).deb
+	fakeroot dpkg --build $(INSTALL_ROOT)
+#	rm -rf $(INSTALL_ROOT)
+endif
 
 clean: init
 	@$(MAKE)	-C indigo_libs clean
