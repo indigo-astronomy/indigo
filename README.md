@@ -117,3 +117,8 @@ Install XCode and download and build autoconf, automake and libtool (use tools/c
 `build/bin/indigo_server -v -s`
 
 and connect from any INDIGO/INDI client or web browser to localhost on port 7624...
+
+## Travids-CI status
+
+[![Build Status](https://travis-ci.org/indigo-astronomy/indigo.svg?branch=master)](https://travis-ci.org/indigo-astronomy/indigo)
+[![Tag Version](https://img.shields.io/github/tag/indigo-astronomy/indigo.svg)](https://github.com/indigo-astronomy/indigo/tags)
