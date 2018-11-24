@@ -146,7 +146,6 @@
 		59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D707681DC527B800DEF566 /* indigo_mount_driver.h */; };
 		59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */; };
 		59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */; };
-		59D9680421A2FDF70069A64C /* ASICamera2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D967F121A2FDE70069A64C /* ASICamera2.h */; };
 		59D9681921A2FE3F0069A64C /* USB2ST4_Conv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D9680721A2FE380069A64C /* USB2ST4_Conv.h */; };
 		59D9682F21A2FE5D0069A64C /* EFW_filter.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D9681D21A2FE580069A64C /* EFW_filter.h */; };
 		59D9684221A2FFC40069A64C /* libdsusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D9683521A2FFBC0069A64C /* libdsusb.h */; };
@@ -1027,6 +1026,7 @@
 		598C583821A75B1A001CA8C0 /* nex_open.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nex_open.h; sourceTree = "<group>"; };
 		598C583921A75B1A001CA8C0 /* nexstar_pec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nexstar_pec.h; sourceTree = "<group>"; };
 		598C583E21A890B5001CA8C0 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		598C584021A9A3C9001CA8C0 /* ASICamera2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASICamera2.h; sourceTree = "<group>"; };
 		5992F7B11E1EC8A20035242E /* indigo_ccd_fli_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_fli_main.c; sourceTree = "<group>"; };
 		5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		5992F7B31E1EC8A20035242E /* indigo_ccd_fli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_fli.h; sourceTree = "<group>"; };
@@ -1758,7 +1758,6 @@
 		59D967EC21A2AE660069A64C /* Makefile.drv */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.drv; sourceTree = "<group>"; };
 		59D967ED21A2AF770069A64C /* Makefile.drvs */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.drvs; sourceTree = "<group>"; };
 		59D967EE21A2EA930069A64C /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		59D967F121A2FDE70069A64C /* ASICamera2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ASICamera2.h; sourceTree = "<group>"; };
 		59D967F221A2FDE70069A64C /* VERSION */ = {isa = PBXFileReference; lastKnownFileType = text; path = VERSION; sourceTree = "<group>"; };
 		59D967F521A2FDE70069A64C /* libASICamera2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libASICamera2.a; sourceTree = "<group>"; };
 		59D967F721A2FDE70069A64C /* libASICamera2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libASICamera2.a; sourceTree = "<group>"; };
@@ -7105,8 +7104,8 @@
 		59D967EF21A2FDE70069A64C /* libasicamera */ = {
 			isa = PBXGroup;
 			children = (
-				59D967F021A2FDE70069A64C /* include */,
 				59D967F221A2FDE70069A64C /* VERSION */,
+				59D967F021A2FDE70069A64C /* include */,
 				59D967F321A2FDE70069A64C /* lib */,
 			);
 			path = libasicamera;
@@ -7115,7 +7114,7 @@
 		59D967F021A2FDE70069A64C /* include */ = {
 			isa = PBXGroup;
 			children = (
-				59D967F121A2FDE70069A64C /* ASICamera2.h */,
+				598C584021A9A3C9001CA8C0 /* ASICamera2.h */,
 			);
 			path = include;
 			sourceTree = "<group>";
@@ -10756,7 +10755,6 @@
 				59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */,
 				9DAD52472126BD99002FCC79 /* indigo_wheel_quantum.h in Headers */,
 				9D59D67020D3F82A009EA8FF /* indigo_ccd_apogee.h in Headers */,
-				59D9680421A2FDF70069A64C /* ASICamera2.h in Headers */,
 				9D59D61D20D3F829009EA8FF /* AscentBasedIo.h in Headers */,
 				595F292C211E211200380EF4 /* DDHidAppleRemote.h in Headers */,
 				9D59D62020D3F829009EA8FF /* CameraInfo.h in Headers */,
