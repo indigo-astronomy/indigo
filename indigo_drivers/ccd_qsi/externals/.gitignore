@@ -17,8 +17,7 @@
 /qsiapi-7.6.0/src/qsifilter
 /qsiapi-7.6.0/src/qsiimage
 /qsiapi-7.6.0/Makefile.in
-/qsiapi-7.6.0/build-aux/config.guess
-/qsiapi-7.6.0/build-aux/config.sub
+/qsiapi-7.6.0/build-aux/*
 /qsiapi-7.6.0/configure
 /qsiapi-7.6.0/demo_src/Makefile.in
 /qsiapi-7.6.0/doc/Makefile.in
