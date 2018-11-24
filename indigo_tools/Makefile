@@ -25,7 +25,7 @@ include ../Makefile.inc
 SIMULATOR_LIBS=$(wildcard $(BUILD_DRIVERS)/indigo_*_simulator.a)
 DRIVER_LIBS=$(wildcard $(BUILD_DRIVERS)/indigo_*.a)
 
-all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_drivers
+all: $(BUILD_BIN)/indigo_prop_tool
 
 install:
 	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)
