@@ -141,7 +141,7 @@ reconfigure:
 	install -d -m 0755 $(INSTALL_FIRMWARE)
 
 install: INSTALL_ROOT = $(INDIGO_ROOT)/install
-install: reconfigure init
+install: reconfigure init all
 	@$(MAKE)	-C indigo_libs install
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 ifeq ($(OS_DETECTED),Darwin)
@@ -174,7 +174,7 @@ package: INSTALL_ETC = $(INSTALL_ROOT)/etc
 package: INSTALL_SHARE = $(INSTALL_ROOT)/usr/share
 package: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
 package: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
-package: reconfigure init
+package: reconfigure init all
 	@$(MAKE)	-C indigo_libs install
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install

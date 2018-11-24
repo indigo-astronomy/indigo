@@ -629,8 +629,6 @@ init: submodule-init
 	install -d $(BUILD_SHARE)/indi
 	cp indigo_libs/indigo_config.h indigo_libs/indigo_config.h.orig
 	sed 's/INDIGO_BUILD.*/INDIGO_BUILD $(INDIGO_BUILD)/' indigo_libs/indigo_config.h.orig >indigo_libs/indigo_config.h
-	cp INDIGO\ Server\ for\ macOS/Info.plist INDIGO\ Server\ for\ macOS/Info.plist.orig
-	sed '/CFBundleVersion/ { n; s/>.*</>$(INDIGO_BUILD)</; }' INDIGO\ Server\ for\ macOS/Info.plist.orig >INDIGO\ Server\ for\ macOS/Info.plist
 	cp indigo.pc indigo.pc.orig
 	sed 's/Version.*/Version: 2.0-$(INDIGO_BUILD)/' indigo.pc.orig >indigo.pc
 
