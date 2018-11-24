@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>
@@ -894,8 +894,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		FOCUSER_SPEED_ITEM->number.min = 1;
-		FOCUSER_SPEED_ITEM->number.max = 65535;
+		FOCUSER_SPEED_ITEM->number.min = 100;
+		FOCUSER_SPEED_ITEM->number.max = 500;
 		FOCUSER_SPEED_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		FOCUSER_STEPS_ITEM->number.min = 1;
