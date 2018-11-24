@@ -44,6 +44,8 @@ UNTESTED_DRIVERS = aux_dsusb aux_rts focuser_lakeside focuser_optec guider_gpusb
 DEVELOPED_DRIVERS = agent_imager mount_synscan system_ascol
 OPTIONAL_DRIVERS = ccd_andor
 
+EXCLUDED_DRIVERS = ccd_sbig
+
 #---------------------------------------------------------------------
 #
 #	Platform detection
