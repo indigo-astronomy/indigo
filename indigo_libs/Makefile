@@ -70,7 +70,7 @@ clean-all: clean
 #
 #---------------------------------------------------------------------
 
-libindigo: version libusb-1.0 libhidapi libjpeg libnovas libftd2xx $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigo: version libusb libhidapi libjpeg libnovas libftd2xx $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
 $(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard *.c)))
 	$(AR) $(ARFLAGS) $@ $^
@@ -99,9 +99,7 @@ config.h:	../Makefile.inc
 libjpeg: $(BUILD_LIB)/libjpeg.a
 
 $(BUILD_LIB)/libjpeg.a:
-	git clone https://github.com/indigo-astronomy/libjpeg.git
-	cd libjpeg; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB)  --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)"; make install
-	rm -rf libjpeg
+	cd externals/libjpeg; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB)  --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)"; make install
 
 #---------------------------------------------------------------------
 #
@@ -112,9 +110,7 @@ $(BUILD_LIB)/libjpeg.a:
 libnovas: $(BUILD_LIB)/libnovas.a
 
 $(BUILD_LIB)/libnovas.a:
-	git clone https://github.com/indigo-astronomy/novas.git
-	cd novas; $(CC) -c $(CFLAGS) novas.c eph_manager.c novascon.c nutation.c readeph0.c solsys1.c solsys3.c; $(AR) $(ARFLAGS) $@ *.o; install *.h $(BUILD_INCLUDE); install JPLEPH.421 $(BUILD_LIB)
-	rm -rf novas
+	cd externals/novas; $(CC) -c $(CFLAGS) novas.c eph_manager.c novascon.c nutation.c readeph0.c solsys1.c solsys3.c; $(AR) $(ARFLAGS) $@ *.o; install *.h $(BUILD_INCLUDE); install JPLEPH.421 $(BUILD_LIB)
 
 #---------------------------------------------------------------------
 #
@@ -122,12 +118,10 @@ $(BUILD_LIB)/libnovas.a:
 #
 #---------------------------------------------------------------------
 
-libusb-1.0: $(LIBUSB)
+libusb: $(LIBUSB)
 
 $(BUILD_LIB)/libusb-1.0.dylib:
-	git clone https://github.com/indigo-astronomy/libusb.git
-	cd libusb; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=yes --enable-static=no CFLAGS="$(CFLAGS)" --with-pic; make; make install
-	rm -rf libusb
+	cd externals/libusb; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=yes --enable-static=no CFLAGS="$(CFLAGS)" --with-pic; make; make install
 
 #---------------------------------------------------------------------
 #
@@ -138,9 +132,7 @@ $(BUILD_LIB)/libusb-1.0.dylib:
 libhidapi: $(LIBHIDAPI)
 
 $(LIBHIDAPI):
-	git clone https://github.com/indigo-astronomy/hidapi.git
-	cd hidapi; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; make; make install
-	rm -rf hidapi
+	cd externals/hidapi; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=no --enable-static=yes CFLAGS="$(CFLAGS)" --with-pic; make; make install
 
 #---------------------------------------------------------------------
 #
