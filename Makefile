@@ -275,6 +275,7 @@ Makefile.inc: $(MAKEFILE_LIST)
 	@printf "UNTESTED_DRIVERS = $(UNTESTED_DRIVERS)\n" >> Makefile.inc
 	@printf "DEVELOPED_DRIVERS = $(DEVELOPED_DRIVERS)\n" >> Makefile.inc
 	@printf "OPTIONAL_DRIVERS = $(OPTIONAL_DRIVERS)\n" >> Makefile.inc
+	@printf "EXCLUDED_DRIVERS = $(EXCLUDED_DRIVERS)\n" >> Makefile.inc
 	@echo --------------------------------------------------------------------- Makefile.inc
 	@cat Makefile.inc
 	@echo ---------------------------------------------------------------------
