@@ -1,0 +1,13 @@
+/hidapi/ar-lib
+/hidapi/compile
+/libjpeg/.libs/
+/libjpeg/Makefile
+/libjpeg/cjpeg
+/libjpeg/config.status
+/libjpeg/djpeg
+/libjpeg/jconfig.h
+/libjpeg/jpegtran
+/libjpeg/libtool
+/libjpeg/rdjpgcom
+/libjpeg/stamp-h1
+/libjpeg/wrjpgcom
