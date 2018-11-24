@@ -1,0 +1,31 @@
+libnexstar
+==========
+
+This library implements the serial commands supported by the Celestron
+NexStar hand control (HC) and SkyWatcher/Orion SynScan HC. This applies
+to the Celestron: NexStar GPS, NexStar GPS-SA, NexStar iSeries, NexStar
+SE Series, NexStar GT, CPC, SLT, Advanced-VX, Advanced-GT, CGE, CGEM etc.
+SkyWatcher: EQ5, HEQ5, EQ6 (Pro), AZ-EQ5 GT, AZ-EQ6 GT, EQ8 etc. and the
+corresponding Orion mounts.
+
+Communication to the hand control is 9600 bits/sec, no parity and one
+stop bit via the RS-232 port on the base of the hand control.
+
+Communication can be established over TCP/IP if nexbridge is running
+on the computer connected to the telescope.
+
+NOTE: For SkyWatcher/Orion mounts it is highly recommended to enforce
+protocol version checking (see enforce_protocol_version()) as the AUX
+commands are not supported or may behave erratically.
+
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2013-2016 by Rumen G.Bogdanovski
+
+This library is free software, you can redistribute it and/or modify
+it under the terms of GPL3
+
+The author assumes no liability or responsibility for damage or injury
+to persons or property arising from any use of this product. Use it at
+your own risk.

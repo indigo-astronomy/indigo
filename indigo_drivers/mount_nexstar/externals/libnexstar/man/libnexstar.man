@@ -1,0 +1,505 @@
+.\" -*- nroff -*-
+.TH libnexstar 7 "January 2016" "libnexstar(7)" "libnexstar manual page"
+.SH NAME
+C API to control NexStar compatible telescopes
+.SH SYNOPSIS
+
+For basic telescope control:
+.br
+.B #include <nexstar.h>
+
+For periodic error correction commands:
+.br
+.B #include <nexstar.h>
+.br
+.B #include <nexstar_pec.h>
+
+.SH DESCRIPTION
+This library implements the serial commands supported by the Celestron
+NexStar hand control (HC) and SkyWatcher/Orion SynScan HC. This applies
+to the Celestron: NexStar GPS, NexStar GPS-SA, NexStar iSeries, NexStar SE Series,
+NexStar GT, CPC, SLT, Advanced-VX, Advanced-GT, CGE, CGEM etc. SkyWatcher: EQ5, HEQ5,
+EQ6 (Pro), AZ-EQ5 GT, AZ-EQ6 GT, EQ8 etc. and the corresponding Orion mounts.
+
+Communication to the hand control is 9600 bits/sec, no parity and one
+stop bit via the RS-232 port on the base of the hand control.
+
+Communication can be established over TCP/IP if nexbridge is running
+on the computer connected to the telescope.
+
+NOTE: For SkyWatcher/Orion mounts it is highly recommended to enforce protocol
+version checking (see enforce_protocol_version()) as the AUX commands are not supported
+or may behave erratically.
+
+.SH RETURN CODES
+.B #define RC_OK (0)
+/* success */
+
+.B #define RC_FAILED (-1)
+/* general error */
+
+.B #define RC_PARAMS (-2)
+/* invalid parameters */
+
+.B #define RC_DEVICE (-3)
+/* no response from the device */
+
+.B #define RC_DATA (-4)
+/* invalid data */
+
+.B #define RC_UNSUPPORTED (-5)
+/* unsupported command */
+
+.SH CALLS
+
+.SS TELESCOPE COMMUNICATION
+.TP
+.B int open_telescope(char *dev_file);
+Opens serial port to communicate with the telescope and configures it accordingly.
+If the dev_file has "tcp://" prefix the rest of the string is interpreted as an IP
+address and port where to connect to (like "tcp://localhost:9999").
+On success it returns a file descriptor of the device, on error -1 is returned.
+
+NOTE: To be used with TCP you need to run nexbridge on the remote computer.
+.TP
+.B int close_telescope(int dev_fd);
+This function closes the serial port device. It returns the same values as close() syscall.
+.TP
+.B int read_telescope(int dev_fd, char *reply, int len);
+Reads
+.B len
+bytes from
+.B dev_fd
+and stores them in the memory pointed by
+.B *reply.
+Make sure memory pointed by
+.B *reply
+is large enough to accommodate the data.
+On success
+.B len
+is returned. If less then
+.B len
+bytes are read or on error -1 is returned.
+This call is intended for internal library use.
+.TP
+.B int write_telescope(int dev_fd, char *buf, sizet size);
+Writes
+.B size
+bytes of data pointed by
+.B *buf
+in
+.B dev_fd.
+It returns the same values as write() syscall.
+This call is intended for internal library use.
+.TP
+.B int enforce_protocol_version(int devfd, int ver);
+Enforce protocol minimal version checking. If a specific command is not supported by the firmware version given in
+.B ver
+the corresponding tc_*() call will fail with RC_UNSUPPORTED (-5). Valid version thresholds are: VER_1_2, VER_1_6, VER_2_2, VER_2_3,
+VER_3_1, VER_4_10, VER_4_37_8, VER_AUX and VER_AUTO. If
+.B ver
+is set to VER_AUX, version enforcement is disabled and all commands are enabled but some may fail, because
+they may not be supported by the current hand controller firmware. To avoid this VER_AUTO sets the version
+to the value reported by the currently connected hand controller. By default protocol version enforcement is disabled
+and the unsupported commands will either timeout or return erratic results. Because of this, calling
+.B enforce_protocol_version()
+with VER_AUTO right after
+.B open_telescope()
+is highly recommended.
+
+NOTE: The non-documented (AUX) commands are available only when the enforcement is disabled.
+.TP
+.B int guess_mount_vendor(int dev);
+This function guesses the manufacturer of the mount by a slight difference in the protocol.
+The firmware version command returns 2 bytes for Celestron mounts and 6 bytes for SkyWatcher mounts (since version 4.37.8).
+On success the guessed vendor ID is returned (VNDR_CELESTRON or VNDR_SKYWATCHER). On error -1 is returned.
+
+NOTE: SkyWather mounts with firmware before 4.37.8 will be threated as Celestron in this case enforce_vendor_protocol() can be used.
+.TP
+.B int enforce_vendor_protocol(int vendor);
+This function enforces protocol of the specified vendor to be used overriding the guessed one.
+Valid vendor IDs are VNDR_CELESTRON and VNDR_SKYWATCHER. This way the commands not supported
+by the vendor version of the protocol will fail with RC_UNSUPPORTED (-5). On success the vendor
+ID is returned otherwise it returns -1.
+
+.SS TELESCOPE CONTROL
+.TP
+.B int tc_check_align(int dev);
+If the telescope alignment process is complete 1 is returned. If it is not complete 0 is returned.
+On error -1 is returned.
+.TP
+.B int tc_get_orientation(int dev);
+Get the telescope orientation. Character 'E' or 'W' is returned for East and West respectively. If no response received, -1
+is returned.
+.TP
+.B int tc_goto_in_progress(int dev);
+If the telescope is slewing to an object 1 is returned. If slewing is complete 0 is returned.
+On error -1 is returned.
+.TP
+.B int tc_goto_cancel(int dev);
+Cancel telescope slewing. On success 0 is returned, on error -1.
+.TP
+.B int tc_echo(int dev, char ch);
+Send
+.B ch
+to the telescope and return the echo received by the telescope. On error -1 is returned.
+If the sent and the received character are different, this indicates a communication problem. This can be useful to
+troubleshoot communication issues.
+.TP
+.B int tc_get_model(int dev);
+Returns the model number of the telescope mount. On error -1 is returned. For the list of available mounts please see the
+documentation provided by Celestron.
+.TP
+.B int tc_get_version(int dev, char *major, char *minor);
+Get the firmware version as major and minor numbers. It should be used in "major.minor" notation.
+On success >0 is returned, on error -1.
+.TP
+.B int tc_get_tracking_mode(int dev);
+Get the current tracking mode. Possible values are
+.B TC_TRACK_OFF
+(tracking is OFF),
+.B TC_TRACK_ALT_AZ
+(Alt-Azimuthal tracking),
+.B TC_TRACK_EQ_NORTH
+(Equatorial tracking, northern hemisphere, Celestron only) and
+.B TC_TRACK_EQ_SOUTH
+(Equatorial tracking, southern hemisphere, Celestron only).
+.B TC_TRACK_EQ
+(Equatorial tracking, SkyWatcher only)
+.B TC_TRACK_EQ_PEC
+(Equatorial tracking + PEC, SkyWatcher only). On error -1 is returned.
+.TP
+.B int tc_set_tracking_mode(int dev, char mode);
+Set the tracking mode. See tc_get_tracking_mode() for the list of the available modes.
+.B TC_TRACK_EQ_NORTH, TC_TRACK_EQ_SOUTH
+and
+.B TC_TRACK_EQ
+do the same thing on Sky-Watcher (north or south is handled internally by the HC firmware). For Celestron
+.B TC_TRACK_EQ
+is threated as
+.B TC_TRACK_EQ_NORTH
+or
+.B TC_TRACK_EQ_SOUTH
+depending on the geographic location (Southern or Northern hemisphere). On success 0 is returned, on error -1,
+if mode is invalid -2 (RC_PARAMS) is returned.
+
+NOTE: Some modes are supported only on Celestron, others only on Sky-Watcher.
+.TP
+.B int tc_get_rade(int dev, double *ra, double *de);
+.TP
+.B int tc_get_rade_p(int dev, double *ra, double *de);
+Read right ascension and declination from the telescope mount and store them in
+.B *ra
+and
+.B *de
+in decimal degrees. On success 0 is returned, on error -1.
+The only difference between tc_get_rade() and tc_get_rade_p() is that tc_get_rade_p() uses the high precision
+version of the command.
+.TP
+.B int tc_get_azalt(int dev, double *az, double *alt);
+.TP
+.B int tc_get_azalt_p(int dev, double *az, double *alt);
+Read azimuth and altitude from the telescope mount and store them in
+.B *az
+and
+.B *alt
+in decimal degrees. On success 0 is returned, on error -1.
+The only difference between tc_get_azalt() and tc_get_azalt_p() is that tc_get_azalt_p() uses the high precision
+version of the command.
+.TP
+.B int tc_goto_rade(int dev, double ra, double de);
+.TP
+.B int tc_goto_rade_p(int dev, double ra, double de);
+Point the telescope to right ascension
+.B ra
+and declination
+.B de
+both in decimal degrees. On success 0 is returned, on error -1. If right ascension or declination is out of range -2 is returned.
+This function returns before the GOTO command is complete. To check the completion tc_goto_in_progress() should be used. To cancel
+slewing tc_goto_cancel() must be used.
+The only difference between tc_goto_rade() and tc_goto_rade_p() is that tc_goto_rade_p() uses the high precision
+version of the command.
+.TP
+.B int tc_goto_azalt(int dev, double az, double alt);
+.TP
+.B int tc_goto_azalt_p(int dev, double az, double alt);
+Point the telescope to azimuth
+.B az
+and altitude
+.B alt
+both in decimal degrees. On success 0 is returned, on error -1. If azimuth or altitude is out of range -2 is returned.
+This function returns before the GOTO command is complete. To check the completion tc_goto_in_progress() should be used. To cancel
+slewing tc_goto_cancel() must be used.
+The only difference between tc_goto_azalt() and tc_goto_azalt_p() is that tc_goto_azalt_p() uses the high precision
+version of the command.
+.TP
+.B int tc_sync_rade(int dev, double ra, double de);
+.TP
+.B int tc_sync_rade_p(int dev, double ra, double de);
+(TBD)
+.TP
+.B int tc_get_location(int dev, double *lon, double *lat);
+Read longitude and latitude of the location stored in the telescope in
+.B *lon
+and
+.B *lat
+in decimal degrees. On success 0 is returned, on error -1.
+.TP
+.B int tc_set_location(int dev, double lon, double lat);
+Store longitude and latitude of the location in the telescope from 
+.B lon
+and
+.B lat
+given in decimal degrees. On success 0 is returned, on error -1.
+.TP
+.B time_t tc_get_time(int dev, time_t *ttime, int *tz, int *dst);
+Read current time (in unix time as given by time() syscall), timezone (as GMT offset) and daylight saving as 
+(0 or 1) from the telescope. On success current time is returned or -1 on error.
+.TP
+.B int tc_set_time(char dev, time_t ttime, int tz, int dst);
+Set the telescope time (in unix time as given by time() syscall), timezone (as GMT offset) and daylight saving as 
+(0 or 1) from
+.B ttime,
+.B tz
+and
+.B dst. 
+On success 0 is returned or -1 on error. If the mount is known to have RTC (currently only CGE and Advanced VX)
+and the variable
+.B nexstar_use_rtc
+!= 0 (default is 0), the date/time is set to the RTC too.
+
+NOTE: Do not set
+.B nexstar_use_rtc
+if the mount is SkyWatcher otherwise tc_set_time() may fail.
+.TP
+.B int tc_slew_fixed(int dev, char axis, char direction, char rate);
+Start/stop slew around axis TC_AXIS_RA, TC_AXIS_AZM, TC_AXIS_DE or TC_AXIS_ALT 
+in direction TC_DIR_POSITIVE or TC_DIR_NEGATIVE with a fixed rate from 1 to 9 
+that matches the rates of the hand control. To stop the slew the rate should be 
+set to 0. Note that TC_AXIS_RA and TC_AXIS_AZM are different names for the same axis
+and can be used interchangeably. The same applies to TC_AXIS_DE and TC_AXIS_ALT.
+On success 0 is returned, on error -1. If any of the parameters are out of range -2
+is returned.
+.TP
+.B int tc_slew_variable(int dev, char axis, char direction, float rate);
+Start/stop slew like tc_slew_fixed(). The only difference is that the rate
+here is arbitrary, given in arc-seconds per second ("/sec).
+.TP
+.B char *get_model_name(int id, char *name, int len);
+Converts the mount code returned by
+.B tc_get_model()
+to string and stores it in
+.B *name
+if it is shorter than
+.B len.
+The function returns
+.B *name
+if the mount is known or NULL in case it is not known.
+
+.SS AUX COMMANDS
+The following commands are not officially documented by Celestron. Please note that these
+commands are reverse engineered and may not work exactly as expected.
+.C .TP
+.C .B int tc_get_guide_rate();
+.C Unimplemented.
+.C .TP
+.C .B int tc_set_guide_rate_fixed();
+.C Unimplemented.
+.C .TP
+.C .B int tc_set_guide_rate();
+.C Unimplemented.
+.TP
+.B int tc_get_autoguide_rate(int dev, char axis);
+Get autoguide rate setting for axis TC_AXIS_RA, TC_AXIS_AZM, TC_AXIS_DE or TC_AXIS_ALT
+in percents of the sidereal rate. Note that TC_AXIS_RA and TC_AXIS_AZM are different
+names for the same axis and can be used interchangeably. The same applies to TC_AXIS_DE
+and TC_AXIS_ALT. On success the autoguide rate is returned, on error -1.
+.TP
+.B int tc_set_autoguide_rate(int dev, char axis, char rate);
+Set autoguide rate setting for axis TC_AXIS_RA, TC_AXIS_AZM, TC_AXIS_DE or TC_AXIS_ALT
+in percents of the sidereal rate in the range [0%-99%]. Note that TC_AXIS_RA and TC_AXIS_AZM
+are different names for the same axis and can be used interchangeably. The same applies to
+TC_AXIS_DE and TC_AXIS_ALT. On success the autoguide rate is returned, on error -1. If rate is
+out of range -2 is returned.
+.TP
+.B int tc_get_backlash(int dev, char axis, char direction);
+Get anti-backlash setting for axis TC_AXIS_RA, TC_AXIS_AZM, TC_AXIS_DE or TC_AXIS_ALT
+and direction TC_DIR_POSITIVE or TC_DIR_NEGATIVE. Note that TC_AXIS_RA and TC_AXIS_AZM
+are different names for the same axis and can be used interchangeably. The same applies
+to TC_AXIS_DE and TC_AXIS_ALT. On success the value of the anti-backlash is returned,
+on error -1.
+.TP
+.B int tc_set_backlash(int dev, char axis, char direction, char backlash);
+Set anti-backlash value for axis TC_AXIS_RA, TC_AXIS_AZM, TC_AXIS_DE or TC_AXIS_ALT
+and direction TC_DIR_POSITIVE or TC_DIR_NEGATIVE. Note that TC_AXIS_RA and TC_AXIS_AZM
+are different names for the same axis and can be used interchangeably. The same applies
+to TC_AXIS_DE and TC_AXIS_ALT. Backlash should be in range [0-99].
+On success 0 is returned, on error -1. If backlash is out of range -2 is returned.
+.TP
+.B int tc_pass_through_cmd(int dev, char msg_len, char dest_id, char cmd_id, char data1, char data2, char data3, char res_len, char *response);
+Send a pass through command to a specific device. This function is meant for an internal
+library use and should not be used, unless you know exactly what you are doing.
+Calling this function with wrong parameters can be dangerous and can break the telescope!
+
+.SS PERIODIC ERROR CORRECTION COMMANDS
+The following commands are not officially documented by Celestron. Please note that these
+commands are reverse engineered and may not work exactly as expected.
+.TP
+.B int pec_index_found(int dev);
+Determine if the position index is found and the mount will know from where to start
+PEC data playback. If the index is found 1 is returned. If it is not found 0 is returned.
+In case of an error the function returns -1.
+.TP
+.B int pec_seek_index(int dev);
+This command will move the mount slightly until the position index is found, so that the PEC
+playback can be started from the correct position. The telescope will not return to the
+original position when the index is found. The completion of the operation can be checked with
+pec_index_found(). On success 0 is returned. In case of an error -1 is returned.
+.TP
+.B int pec_record(int dev, char action);
+Start or stop the recording of periodic error correction data. The action parameter can
+be PEC_START or PEC_STOP to start or stop the recording. The completion of the recording
+can be monitored with pec_record_complete(). The data is collected by the mount from the
+user or auto-guider corrections made during the recording process. This recording can take
+10-15 minutes depending on the type of the mount. On success 0 is returned. In case of an
+error -1 is returned. If wrong parameter is provided -2 is returned.
+.TP
+.B int pec_record_complete(int dev);
+Check the completion of pec_record(). If recording is complete 1 is returned. If recording is
+still in progress 0 is returned. In case of an error -1 is returned.
+.TP
+.B int pec_playback(int dev, char action);
+Start or stop PEC playback. The action parameter can be PEC_START or PEC_STOP
+to start or stop PEC playback respectively. On success 0 is returned. If a wrong parameter is
+provided -2 is returned. In case of an error -1 is returned.
+.TP
+.B int pec_get_playback_index(int dev);
+Get the index of the PEC data for the current mount position in the range form 0 to
+the value returned by pec_get_data_len() minus 1. If the index position is not found yet, the
+function will always return 0. On error -1 is returned.
+.TP
+.B int pec_get_data_len(int dev);
+Get the length of the internal register array in which the PEC data is stored. On error -1 is
+returned.
+.TP
+.B int pec_set_data(int dev, float *data, int len);
+Upload the periodic error correction data to the mount. The data parameter is an
+array with size len that matches the value returned by pec_get_data_len(). The values must be
+in arc seconds. On success 0 is returned. If the size of the data array does not match the mount
+data size -2 is returned. If any of the PEC values is too big and can not fit in the internal data
+format -4 is returned. On other error -1 is returned.
+.TP
+.B int pec_get_data(int dev, float *data, const int max_len);
+Download the periodic error correction data from the mount. The *data array with size max_len is set
+with the PEC values from the mount. These values are in arc seconds. If max_len is smaller than the
+internal data array -2 is returned. On success the actual number of PEC data elements set in *data is
+returned. On error -1 is returned.
+
+.SS COORDINATE CONVERSION
+.TP
+.B int pnex2dd(char *nex, double *d1, double *d2);
+.TP
+.B int nex2dd(char *nex, double *d1, double *d2);
+This call is intended for internal library use. (TBD)
+.TP
+.B int dd2nex(double d1, double d2, char *nex);
+.TP
+.B int dd2pnex(double d1, double d2, char *nex);
+This call is intended for internal library use. (TBD)
+
+.SH EXAMPLE
+.PP
+.RS 0
+#include <stdio.h>
+.RS 0
+#include <nexstar.h>
+.RS 0
+
+.RS 0
+int main(int argc, char *argv[]) {
+.RS 0
+
+.RS 0
+        int dev = open_telescope("/dev/ttyUSB0");
+.RS 0
+        if (dev < 0) {
+.RS 0
+                printf("Can not open device.\\n");
+.RS 0
+                return 1;
+.RS 0
+        }
+.RS 0
+
+.RS 0
+        /* check if the telescope is aligned */
+.RS 0
+        int aligned = tc_check_align(dev);
+.RS 0
+        if (aligned < 0) {
+.RS 0
+                printf("Communication error.\\n");
+.RS 0
+                close_telescope(dev);
+.RS 0
+                return 1;
+.RS 0
+        }
+.RS 0
+        if (!aligned) {
+.RS 0
+                printf("Telescope is not aligned. Please align it!\\n");
+.RS 0
+                close_telescope(dev);
+.RS 0
+                return 1;
+.RS 0
+        }
+.RS 0
+        printf("Telescope is aligned.\\n");
+.RS 0
+
+.RS 0
+        /* Get the Right Ascension and Declination from the telescope */
+.RS 0
+        double ra, de;
+.RS 0
+        if (tc_get_rade_p(dev, &ra, &de)) {
+.RS 0
+                printf("Communication error.\\n");
+.RS 0
+                close_telescope(dev);
+.RS 0
+                return 1;
+.RS 0
+        }
+.RS 0
+        printf("Telescope coordinates are:\\n");
+.RS 0
+        printf("RA = %f, DE = %f\\n", ra, de);
+.RS 0
+
+.RS 0
+        close_telescope(dev);
+.RS 0
+}
+
+.SH SEE ALSO
+deg2str(8)
+
+For more information about the NexStar commands please refer to the original
+protocol specification described here:
+http://www.celestron.com/c3/images/files/downloads/1154108406_nexstarcommprot.pdf
+
+The undocumented commands are described here:
+http://www.paquettefamily.ca/nexstar/NexStar_AUX_Commands_10.pdf
+
+.SH AUTHORS
+Created by Rumen G.Bogdanovski <rumen@skyarchive.org>
+
+The author assumes no liability or responsibility for damage or injury
+to persons or property arising from any use of this product. Use it at
+your own risk.
+
+.SH BUGS
+If you find any, please send bug reports to rumen@skyarchive.org
